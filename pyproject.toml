@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "inspect_scout"
+dynamic = ["version"]
+description = "AI Analysis"
+authors = [{ name = "Meridian Labs" }]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT License" }
+dependencies = ["typing_extensions>=4.9.0"]
+
+[project.urls]
+"Source Code" = "https://github.com/meridianlabs-ai/inspect_scout"
+"Issue Tracker" = "https://github.com/meridianlabs-ai/inspect_scout/issues"
+
+
+[project.optional-dependencies]
+dev = ["ruff", "mypy", "pytest", "anthropic", "openai", "pytest-dotenv"]
+
+[tool.hatch.build]
+only-packages = true
+exclude = ["docs/", "tests/"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/inspect_scout/_version.py"
+
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version" # Important for PyPI compatibility
+
+[tool.ruff]
+extend-exclude = ["docs"]
+src = ["."]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # flake8
+    "D",      # pydocstyle
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "SIM101", # duplicate isinstance
+    # "RET", # flake8-return
+    # "RUF", # ruff rules
+]
+ignore = ["E203", "E501", "D10", "D212", "D415"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+mypy_path = "src"
+namespace_packages = true
+explicit_package_bases = true

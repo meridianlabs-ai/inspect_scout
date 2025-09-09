@@ -1,13 +1,8 @@
-.PHONY: hooks
-hooks:
-	pre-commit install
-
 .PHONY: check
 check:
-	ruff check --fix
-	ruff format
-	mypy src tests
+	uv tool run ruff check --fix
+	uv tool run ruff format
 
 .PHONY: test
 test:
-	pytest
+	uv tool run pytest

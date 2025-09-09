@@ -17,8 +17,14 @@ dependencies = ["typing_extensions>=4.9.0"]
 "Issue Tracker" = "https://github.com/meridianlabs-ai/inspect_scout/issues"
 
 
-[project.optional-dependencies]
-dev = ["ruff", "mypy", "pytest", "anthropic", "openai", "pytest-dotenv"]
+[dependency-groups]
+dev = [
+    "ruff",
+    "pytest",
+    "anthropic",
+    "openai",
+    "pytest-dotenv",
+]
 
 [tool.hatch.build]
 only-packages = true
@@ -32,6 +38,11 @@ version-file = "src/inspect_scout/_version.py"
 
 [tool.hatch.version.raw-options]
 local_scheme = "no-local-version" # Important for PyPI compatibility
+
+[tool.uv]
+managed = true
+add-bounds = "lower"
+default-groups = ["dev"]
 
 [tool.ruff]
 extend-exclude = ["docs"]
@@ -57,9 +68,3 @@ convention = "google"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-
-[tool.mypy]
-strict = true
-mypy_path = "src"
-namespace_packages = true
-explicit_package_bases = true

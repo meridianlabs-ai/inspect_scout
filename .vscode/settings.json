@@ -11,5 +11,7 @@
     },
     "search.exclude": {
       "logs/**": true
-    }
+    },
+    "ty.disableLanguageServices": true,
+    "ty.diagnosticMode": "workspace"
   }

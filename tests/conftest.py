@@ -1,4 +1,4 @@
-import importlib
+import importlib.util
 import os
 import subprocess
 from typing import Any, Callable, TypeVar, cast
@@ -6,7 +6,7 @@ from typing import Any, Callable, TypeVar, cast
 import pytest
 
 
-def pytest_addoption(parser: pytest.Parser) -> None:
+def pytest_addoption(parser: pytest.Parser):
     parser.addoption(
         "--runslow", action="store_true", default=False, help="run slow tests"
     )
@@ -18,15 +18,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-def pytest_configure(config: pytest.Config) -> None:
+def pytest_configure(config: pytest.Config):
     config.addinivalue_line("markers", "slow: mark test as slow to run")
     config.addinivalue_line("markers", "api: mark test as requiring API access")
     config.addinivalue_line("markers", "flaky: mark test as flaky/unreliable")
 
 
-def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
-) -> None:
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]):
     if not config.getoption("--runslow"):
         skip_slow = pytest.mark.skip(reason="need --runslow option to run")
         for item in items:
@@ -46,7 +44,7 @@ def pytest_collection_modifyitems(
                 item.add_marker(skip_flaky)
 
 
-def skip_if_env_var(var: str, exists: bool = True) -> pytest.MarkDecorator:
+def skip_if_env_var(var: str, exists: bool = True):
     """
     Pytest mark to skip the test if the var environment variable is not defined.
 

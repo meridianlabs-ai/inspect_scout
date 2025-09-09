@@ -24,6 +24,7 @@ dev = [
     "anthropic",
     "openai",
     "pytest-dotenv",
+    "ty>=0.0.1a20",
 ]
 
 [tool.hatch.build]

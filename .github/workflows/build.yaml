@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies with uv
         run: uv sync --dev
       - name: Type check with ty
-        run: uv run ty
+        run: uv run ty check
 
   py-test:
     runs-on: ubuntu-latest

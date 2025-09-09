@@ -10,22 +10,22 @@ authors = [{ name = "Meridian Labs" }]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT License" }
-dependencies = ["typing_extensions>=4.9.0"]
+dependencies = [
+    "click>=8.2.1",
+    "python-dotenv>=1.1.1",
+    "typing_extensions>=4.9.0",
+]
 
 [project.urls]
 "Source Code" = "https://github.com/meridianlabs-ai/inspect_scout"
 "Issue Tracker" = "https://github.com/meridianlabs-ai/inspect_scout/issues"
 
+[project.scripts]
+scout = "inspect_scout._cli.main:main"
 
 [dependency-groups]
-dev = [
-    "ruff",
-    "pytest",
-    "anthropic",
-    "openai",
-    "pytest-dotenv",
-    "ty>=0.0.1a20",
-]
+dev = ["ruff", "pytest", "anthropic", "openai", "pytest-dotenv", "ty>=0.0.1a20"]
+
 
 [tool.hatch.build]
 only-packages = true

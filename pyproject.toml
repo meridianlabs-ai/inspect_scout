@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 license = { text = "MIT License" }
 dependencies = [
     "click>=8.2.1",
-    "msgspec>=0.19.0",
+    "inspect-ai>=0.3.131",
     "python-dotenv>=1.1.1",
     "typing_extensions>=4.9.0",
 ]
@@ -25,7 +25,7 @@ dependencies = [
 scout = "inspect_scout._cli.main:main"
 
 [dependency-groups]
-dev = ["ruff", "pytest", "anthropic", "openai", "pytest-dotenv", "ty>=0.0.1a20"]
+dev = ["ruff", "pytest", "anthropic", "openai", "pytest-dotenv", "pyright"]
 
 
 [tool.hatch.build]

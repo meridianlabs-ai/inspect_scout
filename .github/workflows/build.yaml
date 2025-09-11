@@ -46,8 +46,8 @@ jobs:
         uses: astral-sh/setup-uv@v3
       - name: Install dependencies with uv
         run: uv sync --dev
-      - name: Type check with ty
-        run: uv run ty check
+      - name: Type check with pyright
+        run: uv run pyright
 
   py-test:
     runs-on: ubuntu-latest

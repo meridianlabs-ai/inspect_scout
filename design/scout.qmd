@@ -327,5 +327,4 @@ async def analyze(
 
 def transcripts_predicate(queries: list[TranscriptContent]) -> TranscriptContent:
     ...
-
 ```

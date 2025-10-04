@@ -15,7 +15,7 @@ To work on development of Inspect Scout, clone the repository and install with t
 ```bash
 git clone https://github.com/meridianlabs-ai/inspect_scout
 cd inspect_scout
-uv sync
+pip install -e ".[dev]"
 ```
 
 Run linting, formatting, and tests via

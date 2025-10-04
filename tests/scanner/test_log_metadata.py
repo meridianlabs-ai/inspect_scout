@@ -5,11 +5,11 @@ import uuid
 
 import pandas as pd
 import pytest
-from inspect_scout._transcript.database import EvalLogTranscriptsDB, transcripts
+import pytest_asyncio
+from inspect_scout._transcript.database import EvalLogTranscriptsDB
 from inspect_scout._transcript.log import LogMetadata
 from inspect_scout._transcript.log import log_metadata as lm
 from inspect_scout._transcript.metadata import metadata as m
-from inspect_scout._transcript.types import TranscriptContent
 
 
 def create_log_dataframe(num_samples: int = 10) -> pd.DataFrame:
@@ -62,7 +62,7 @@ def create_log_dataframe(num_samples: int = 10) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db():
     """Create and connect to a test database."""
     df = create_log_dataframe(20)
@@ -434,17 +434,17 @@ def test_mixing_log_and_base_metadata():
 async def test_query_with_typed_properties(db):
     """Test database queries using typed properties."""
     # Filter by model
-    results = list(await db.query(where=[lm.model == "gpt-4"]))
+    results = await db.query(where=[lm.model == "gpt-4"])
     for result in results:
         assert result.metadata["model"] == "gpt-4"
 
     # Filter by epoch
-    results = list(await db.query(where=[lm.epoch > 1]))
+    results = await db.query(where=[lm.epoch > 1])
     for result in results:
         assert result.metadata["epoch"] > 1
 
     # Filter by total tokens range
-    results = list(await db.query(where=[lm.total_tokens.between(150, 300)]))
+    results = await db.query(where=[lm.total_tokens.between(150, 300)])
     for result in results:
         assert 150 <= result.metadata["total_tokens"] <= 300
 
@@ -489,30 +489,30 @@ async def test_count_with_typed_properties(db):
 async def test_transcripts_with_log_metadata():
     """Test using LogMetadata with the Transcripts API."""
     df = create_log_dataframe(20)
-    t = transcripts(df)
+    db = EvalLogTranscriptsDB(df)
+    await db.connect()
 
-    # Simple filter
-    filtered = t.where(lm.model == "gpt-4")
-    async with filtered:
-        count = await filtered.count()
+    try:
+        # Simple filter
+        conditions = [lm.model == "gpt-4"]
+        count = await db.count(conditions)
         assert count > 0
 
-    # Chain multiple filters
-    filtered = (
-        t.where(lm.model == "gpt-4").where(lm.epoch > 1).where(lm.solver == "cot")
-    )
+        # Chain multiple filters
+        conditions = [
+            lm.model == "gpt-4",
+            lm.epoch > 1,
+            lm.solver == "cot",
+        ]
 
-    # Collect and verify results
-    results = []
-    async with filtered:
-        for info in await filtered.index():
-            transcript = await filtered.read(
-                info, TranscriptContent(messages="all", events="all")
-            )
-            results.append(transcript)
-            assert transcript.metadata["model"] == "gpt-4"
-            assert transcript.metadata["epoch"] > 1
-            assert transcript.metadata["solver"] == "cot"
+        # Collect and verify results
+        results = list(await db.query(conditions))
+        for result in results:
+            assert result.metadata["model"] == "gpt-4"
+            assert result.metadata["epoch"] > 1
+            assert result.metadata["solver"] == "cot"
+    finally:
+        await db.disconnect()
 
 
 @pytest.mark.asyncio

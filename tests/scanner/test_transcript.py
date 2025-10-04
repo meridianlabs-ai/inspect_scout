@@ -4,6 +4,7 @@ import uuid
 
 import pandas as pd
 import pytest
+import pytest_asyncio
 from inspect_scout._transcript.database import EvalLogTranscriptsDB, transcripts
 from inspect_scout._transcript.metadata import metadata as m
 from inspect_scout._transcript.types import TranscriptInfo
@@ -34,7 +35,7 @@ def create_test_dataframe(num_samples: int = 10) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db():
     """Create and connect to a test database."""
     df = create_test_dataframe(20)

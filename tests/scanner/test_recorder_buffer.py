@@ -5,6 +5,7 @@ import tempfile
 import pytest
 from inspect_scout._recorder.buffer import RecorderBuffer
 from inspect_scout._scanner.result import Reference, Result, ResultReport
+from inspect_scout._scanspec import ScanScanner, ScanSpec, ScanTranscripts
 from inspect_scout._transcript.types import TranscriptInfo
 
 
@@ -12,7 +13,20 @@ from inspect_scout._transcript.types import TranscriptInfo
 def recorder_buffer():
     """Create a temporary RecorderBuffer for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        buffer = RecorderBuffer(tmpdir)
+        spec = ScanSpec(
+            transcripts=ScanTranscripts(
+                type="eval_log",
+                fields=[],
+                data="",
+            ),
+            scanners={
+                "test_scanner": ScanScanner(name="test_scanner"),
+                "test-scanner.with:special/chars": ScanScanner(
+                    name="test-scanner.with:special/chars"
+                ),
+            },
+        )
+        buffer = RecorderBuffer(tmpdir, spec)
         yield buffer
         buffer.cleanup()
 

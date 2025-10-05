@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import hashlib
 import io
 import json
@@ -9,7 +7,6 @@ from functools import reduce
 from os import PathLike
 from types import TracebackType
 from typing import (
-    TYPE_CHECKING,
     Any,
     Iterator,
     Sequence,
@@ -19,6 +16,7 @@ from typing import (
 )
 from zipfile import ZipFile
 
+import pandas as pd
 from inspect_ai.analysis._dataframe.columns import Column
 from inspect_ai.analysis._dataframe.evals.columns import (
     EvalColumn,
@@ -52,9 +50,6 @@ from .json.load_filtered import load_filtered_transcript
 from .metadata import Condition
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
-if TYPE_CHECKING:
-    import pandas as pd
-
 TRANSCRIPTS = "transcripts"
 
 LogPaths: TypeAlias = (
@@ -65,10 +60,10 @@ LogPaths: TypeAlias = (
 class EvalLogTranscripts(Transcripts):
     """Collection of transcripts for scanning."""
 
-    def __init__(self, logs: LogPaths | "pd.DataFrame" | ScanTranscripts) -> None:
+    def __init__(self, logs: LogPaths | pd.DataFrame | ScanTranscripts) -> None:
         super().__init__()
         if isinstance(logs, ScanTranscripts):
-            self._logs: LogPaths | "pd.DataFrame" = self._logs_df_from_snapshot(logs)
+            self._logs: LogPaths | pd.DataFrame = self._logs_df_from_snapshot(logs)
         else:
             self._logs = logs
         self._db: EvalLogTranscriptsDB | None = None
@@ -172,7 +167,7 @@ class EvalLogTranscripts(Transcripts):
         return df
 
     @property
-    def db(self) -> EvalLogTranscriptsDB:
+    def db(self) -> "EvalLogTranscriptsDB":
         if self._db is None:
             if self._logs is None:
                 raise RuntimeError(
@@ -183,7 +178,7 @@ class EvalLogTranscripts(Transcripts):
 
 
 class EvalLogTranscriptsDB:
-    def __init__(self, logs: LogPaths | "pd.DataFrame"):
+    def __init__(self, logs: LogPaths | pd.DataFrame):
         # pandas required
         verify_df_prerequisites()
         import pandas as pd
@@ -368,10 +363,10 @@ def transcripts(logs: LogPaths) -> Transcripts: ...
 
 
 @overload
-def transcripts(logs: "pd.DataFrame") -> Transcripts: ...
+def transcripts(logs: pd.DataFrame) -> Transcripts: ...
 
 
-def transcripts(logs: LogPaths | "pd.DataFrame") -> Transcripts:
+def transcripts(logs: LogPaths | pd.DataFrame) -> Transcripts:
     return EvalLogTranscripts(logs)
 
 

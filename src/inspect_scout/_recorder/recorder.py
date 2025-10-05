@@ -1,15 +1,12 @@
-from __future__ import annotations
-
 import abc
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
+
+import pandas as pd
 
 from .._scanner.result import ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 
 @dataclass
@@ -21,14 +18,14 @@ class ScanStatus:
 
 @dataclass
 class ScanResults(ScanStatus):
-    scanners: dict[str, "pd.DataFrame"]
+    scanners: dict[str, pd.DataFrame]
 
     def __init__(
         self,
         status: bool,
         spec: ScanSpec,
         location: str,
-        scanners: dict[str, "pd.DataFrame"],
+        scanners: dict[str, pd.DataFrame],
     ) -> None:
         super().__init__(status, spec, location)
         self.scanners = scanners

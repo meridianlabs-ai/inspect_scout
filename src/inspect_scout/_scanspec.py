@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, NotRequired, Required, TypedDict
+from typing import Any, NotRequired, Required
 
 from inspect_ai.model._model_config import ModelConfig
 from pydantic import (
@@ -9,7 +9,7 @@ from pydantic import (
     field_serializer,
 )
 from shortuuid import uuid
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict
 
 
 class ScanScanner(BaseModel):

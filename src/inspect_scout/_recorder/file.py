@@ -1,9 +1,10 @@
 import io
-from typing import Sequence, override
+from typing import Sequence
 
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
+from typing_extensions import override
 from upath import UPath
 
 from .._recorder.buffer import RecorderBuffer

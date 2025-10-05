@@ -2,6 +2,7 @@ import click
 from dotenv import load_dotenv
 
 from .. import __version__
+from .scan import scan_command
 
 
 @click.group(invoke_without_command=True)
@@ -24,6 +25,9 @@ def scout(ctx: click.Context, version: bool) -> None:
     else:
         click.echo(ctx.get_help())
         ctx.exit()
+
+
+scout.add_command(scan_command)
 
 
 def main() -> None:

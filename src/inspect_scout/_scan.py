@@ -112,7 +112,7 @@ async def scan_async(
         raise ValueError("No 'transcripts' specified for scan.")
 
     # resolve results
-    results = results or str(os.getenv("INSPECT_SCAN_RESULTS", "./scans"))
+    results = results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
 
     # initialize scan config
     scan_config = ScanConfig(
@@ -373,7 +373,7 @@ def init_scan_model_context(
 ) -> tuple[Model, dict[str, Any], dict[str, Model] | None]:
     # resolve from inspect eval model env var if rquired
     if model is None:
-        model = os.getenv("INSPECT_SCAN_MODEL", None)
+        model = os.getenv("SCOUT_SCAN_MODEL", None)
 
     # init model context
     resolved_model_args = resolve_args(model_args or {})

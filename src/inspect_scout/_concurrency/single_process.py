@@ -13,7 +13,6 @@ from typing import AsyncIterator, Awaitable, Callable
 import anyio
 from anyio import create_task_group
 from anyio.abc import TaskGroup
-from inspect_ai._util.registry import registry_info
 from inspect_ai.util._anyio import inner_exception
 
 from .._scanner.result import ResultReport

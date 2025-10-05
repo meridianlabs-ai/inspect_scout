@@ -46,6 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           python -m pip install .[dev]
       - name: Run mypy
         run: |
@@ -72,6 +73,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           python -m pip install .[dev]
       - name: Run tests
         run: pytest
@@ -90,6 +92,7 @@ jobs:
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           python -m pip install build
       - name: Build package
         run: python -m build

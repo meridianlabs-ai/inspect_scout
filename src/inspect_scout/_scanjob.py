@@ -1,7 +1,7 @@
 import inspect
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar, cast, overload
+from typing import Any, Callable, Counter, Sequence, TypeVar, cast, overload
 
 from inspect_ai._util.package import get_installed_package_name
 from inspect_ai._util.registry import (
@@ -32,21 +32,28 @@ class ScanJob:
         self._trancripts = transcripts
         self._name = name
 
-        # resolve scanners and confirm unique names
-        self._scanners: dict[str, Scanner[ScannerInput]] = {}
+        # resolve scanners and candidate names (we will ensure no duplicates)
         if isinstance(scanners, dict):
-            self._scanners = scanners
+            named_scanners: list[tuple[str, Scanner[ScannerInput]]] = list(
+                scanners.items()
+            )
         else:
-            for scanner in scanners:
-                if isinstance(scanner, tuple):
-                    name, scanner = scanner
-                else:
-                    name = registry_unqualified_name(scanner)
-                if name in self._scanners:
-                    raise ValueError(
-                        f"Scanners must have unique names (found duplicate name '{name}'). Use a tuple of str,Scanner to explicitly name a scanner."
-                    )
-                self._scanners[name] = scanner
+            named_scanners = [
+                scanner
+                if isinstance(scanner, tuple)
+                else (registry_unqualified_name(scanner), scanner)
+                for scanner in scanners
+            ]
+
+        # now built the dict, adding a numeric suffix for duplicated names
+        self._scanners: dict[str, Scanner[ScannerInput]] = {}
+        name_counts = Counter(t[0] for t in named_scanners)
+        current_counts: dict[str, int] = {k: 0 for k in name_counts.keys()}
+        for name, scanner in named_scanners:
+            if name_counts[name] > 1:
+                current_counts[name] = current_counts[name] + 1
+                name = f"{name}-{current_counts[name]}"
+            self._scanners[name] = scanner
 
     @property
     def name(self) -> str:

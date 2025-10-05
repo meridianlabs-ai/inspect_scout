@@ -87,7 +87,7 @@ def single_process_strategy(
             )
 
         def _scanner_job_info(item: ScannerJob) -> str:
-            return f"{item.union_transcript.id, registry_info(item.scanner).name}"
+            return f"{item.union_transcript.id, item.scanner_name}"
 
         def _update_metrics() -> None:
             if update_metrics:
@@ -129,7 +129,7 @@ def single_process_strategy(
                         _update_metrics()
                         await record_results(
                             scanner_job.union_transcript,
-                            registry_info(scanner_job.scanner).name,
+                            scanner_job.scanner_name,
                             await scan_function(scanner_job),
                         )
                         bump_progress()

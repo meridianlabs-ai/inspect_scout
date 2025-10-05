@@ -251,6 +251,7 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> ScanStatu
                     progress.update(task_id, advance=1)
 
                 # Build scanner list and union content for index resolution
+                scanner_names_list = list(scan.scanners.keys())
                 scanners_list = list(scan.scanners.values())
                 union_content = union_transcript_contents(
                     [
@@ -267,6 +268,7 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> ScanStatu
                         ScannerJob(
                             union_transcript=union_transcript,
                             scanner=scanners_list[idx],
+                            scanner_name=scanner_names_list[idx],
                         )
                         for idx in job.scanner_indices
                     ]

@@ -48,6 +48,9 @@ class ScannerJob(NamedTuple):
     scanner: Scanner[ScannerInput]
     """The specific scanner to apply to the (further filtered) transcript."""
 
+    scanner_name: str
+    """The name of the scanner within the scan job."""
+
 
 class ConcurrencyStrategy(Protocol):
     """Callable strategy interface (Strategy Pattern) for executing scanner work.

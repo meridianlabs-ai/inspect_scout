@@ -14,7 +14,7 @@ dependencies = [
     "anyio>=4.10.0",
     "click>=8.2.1",
     "importlib-metadata>=8.7.0",
-    "inspect-ai>=0.3.131",
+    "inspect-ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai.git",
     "pandas>=2.3.3",
     "pyarrow>=21.0.0",
     "python-dotenv>=1.1.1",

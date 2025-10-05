@@ -99,4 +99,4 @@ jobs:
       - name: Verify package
         run: |
           python -m pip install dist/*.whl
-          python -c "import inspect_scoput; print('Package imported successfully')"
+          python -c "import inspect_scout; print('Package imported successfully')"

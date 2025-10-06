@@ -151,7 +151,7 @@ def scan_command(
     max_connections: int | None,
 ) -> None:
     # scanner args
-    scan_args = parse_cli_args(s)
+    _scan_args = parse_cli_args(s)
 
     # model args and role
     scan_model_args = parse_cli_config(m, model_config)

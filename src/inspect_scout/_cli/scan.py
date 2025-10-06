@@ -183,7 +183,7 @@ def scan_command(
         batch_config = batch
 
     # resolve model config
-    model_config = GenerateConfig(
+    scan_model_config = GenerateConfig(
         max_retries=max_retries,
         timeout=timeout,
         max_connections=max_connections,
@@ -193,10 +193,10 @@ def scan_command(
     # run scan
     scan(
         scanners=[],
-        transcripts=[],
+        transcripts=None,
         results=results,
         model=model,
-        model_config=model_config,
+        model_config=scan_model_config,
         model_base_url=model_base_url,
         model_args=scan_model_args,
         model_roles=scan_model_roles,

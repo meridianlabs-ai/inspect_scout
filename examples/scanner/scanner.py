@@ -87,7 +87,5 @@ if __name__ == "__main__":
         )
 
         if status.complete:
-            results = scan_results(status.location)
-            results.scanners["target_word_scanner"].info()
-            if "llm_scanner" in results.scanners:
-                results.scanners["llm_scanner"].info()
+            for scanner_result in scan_results(status.location).scanners.values():
+                scanner_result.info()

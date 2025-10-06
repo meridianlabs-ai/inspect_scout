@@ -1,4 +1,3 @@
-import asyncio
 import sys
 from pathlib import Path
 
@@ -7,26 +6,40 @@ from inspect_ai.model import get_model
 from inspect_scout import (
     Result,
     Scanner,
-    Transcript,
     scan,
     scan_results,
     scan_resume,
     scanner,
     transcripts,
 )
+from inspect_scout._transcript.types import Transcript
 
 
 @scanner(messages=["assistant"])
-def dummy_scanner() -> Scanner:
-    async def execute(transcript: Transcript) -> Result:
-        await asyncio.sleep(0)
-        return Result(value=1, explanation=transcript.id)
+def target_word_scanner(target_word: str) -> Scanner[Transcript]:
+    target_word = target_word.lower()
+
+    async def execute(transcript: Transcript) -> Result | None:
+        count = sum(
+            msg.text.lower().count(target_word)
+            for msg in transcript.messages
+            if msg.role == "assistant"
+        )
+        return (
+            Result(
+                value=count,
+                explanation=f"Found '{target_word}' {count} times in in assistant messages",
+            )
+            if count
+            else None
+        )
 
     return execute
 
 
-@scanner(messages="all")
-def llm_scanner() -> Scanner:
+# TODO: This wants to be @scanner(messages="all"), but the typing for that isn't quite right yet
+@scanner(messages=["system", "user", "assistant", "tool"])
+def llm_scanner() -> Scanner[Transcript]:
     async def execute(transcript: Transcript) -> Result | None:
         scanner_model = get_model()
         all_message_content = messages_as_str(
@@ -63,16 +76,18 @@ if __name__ == "__main__":
 
         status = scan(
             scanners=[
-                dummy_scanner(),  # FAST NON-BLOCKING
+                target_word_scanner("perfect"),  # FAST NON-BLOCKING
                 llm_scanner(),  # SLOWISH - BLOCKING ON IO
             ],
             transcripts=transcripts(LOGS),
+            limit=20,
+            # max_transcripts=4,
             max_transcripts=50,
             results=SCANS_DIR.as_posix(),
         )
 
         if status.complete:
             results = scan_results(status.location)
-            results.scanners["dummy_scanner"].info()
+            results.scanners["target_word_scanner"].info()
             if "llm_scanner" in results.scanners:
                 results.scanners["llm_scanner"].info()

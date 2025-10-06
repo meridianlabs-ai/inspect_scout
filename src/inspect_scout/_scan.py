@@ -1,9 +1,9 @@
 import os
 import sys
-from asyncio import TaskGroup
 from typing import Any, AsyncIterator, Callable, Mapping, Sequence
 
 import anyio
+from anyio.abc import TaskGroup
 from dotenv import find_dotenv, load_dotenv
 from inspect_ai._display.core.rich import rich_theme
 from inspect_ai._eval.context import init_model_context

@@ -1,5 +1,6 @@
 import os
 import sys
+from asyncio import TaskGroup
 from typing import Any, AsyncIterator, Callable, Mapping, Sequence
 
 import anyio
@@ -8,6 +9,7 @@ from inspect_ai._display.core.rich import rich_theme
 from inspect_ai._eval.context import init_model_context
 from inspect_ai._eval.task.task import resolve_model_roles
 from inspect_ai._util._async import run_coroutine
+from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init
@@ -18,6 +20,7 @@ from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
 )
+from inspect_ai.util._anyio import inner_exception
 from rich import print
 from rich.console import RenderableType
 from rich.progress import (
@@ -193,6 +196,32 @@ async def scan_resume_async(
 
 
 async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> ScanStatus:
+    result: ScanStatus | None = None
+
+    async def run(tg: TaskGroup) -> None:
+        try:
+            nonlocal result
+            result = await _scan_async_inner(scan=scan, recorder=recorder, tg=tg)
+        finally:
+            tg.cancel_scope.cancel()
+
+    try:
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(run, tg)
+    except Exception as ex:
+        raise inner_exception(ex) from None
+    except anyio.get_cancelled_exc_class():
+        # Cancelled exceptions are expected and handled by _scan_async_inner
+        pass
+
+    assert result is not None, "scan async did not return a result."
+
+    return result
+
+
+async def _scan_async_inner(
+    *, scan: ScanContext, recorder: ScanRecorder, tg: TaskGroup
+) -> ScanStatus:
     """Execute a scan by orchestrating concurrent scanner execution across transcripts.
 
     This function is the orchestration layer that coordinates scanner execution
@@ -214,11 +243,15 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> ScanStatu
     Args:
         scan: The scan context containing scanners, transcripts, and configuration
         recorder: The scan recorder for tracking completed work and persisting results
+        tg: Task group we are running within
 
     Returns:
         ScanStatus indicating completion status, spec, and location for resumption
     """
     try:
+        # set background task group for this coroutine (used by batching)
+        set_background_task_group(tg)
+
         # establish max_transcripts
         max_transcripts = scan.spec.config.max_transcripts or DEFAULT_MAX_TRANSCRIPTS
 

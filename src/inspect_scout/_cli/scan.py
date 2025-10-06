@@ -1,19 +1,29 @@
 import click
 from inspect_ai._cli.util import (
+    int_bool_or_str_flag_callback,
     int_or_bool_flag_callback,
     parse_cli_args,
     parse_cli_config,
     parse_model_role_cli_args,
 )
+from inspect_ai._util.config import resolve_args
+from inspect_ai.model import BatchConfig, GenerateConfig
 from typing_extensions import Literal
 
 from inspect_scout._scan import scan
+from inspect_scout._util.constants import DEFAULT_BATCH_SIZE
 
 
 @click.command("scan")
 @click.argument("scanners", nargs=-1)
 @click.option(
-    "-T",
+    "-S",
+    multiple=True,
+    type=str,
+    envvar="SCOUT_SCAN_ARGS",
+    help="One or more scanjob or scanner arguments (e.g. -S arg=value)",
+)
+@click.option(
     "--transcripts",
     multiple=True,
     type=str,
@@ -91,10 +101,38 @@ from inspect_scout._scan import scan
     multiple=True,
     type=str,
     help="Metadata to associate with this scan job (more than one --metadata argument can be specified).",
-    envvar="SCOUT_METADATA",
+    envvar="SCOUT_SCAN_METADATA",
+)
+@click.option(
+    "--batch",
+    is_flag=False,
+    flag_value="true",
+    default=None,
+    callback=int_bool_or_str_flag_callback(DEFAULT_BATCH_SIZE, None),
+    help="Batch requests together to reduce API calls when using a model that supports batching (by default, no batching). Specify --batch to batch with default configuration, specify a batch size e.g. `--batch=1000` to configure batches of 1000 requests, or pass the file path to a YAML or JSON config file with batch configuration.",
+    envvar="SCOUT_SCAN_BATCH",
+)
+@click.option(
+    "--max-connections",
+    type=int,
+    help="Maximum number of concurrent connections to Model API (defaults to max_transcripts)",
+    envvar="SCOUT_SCAN_MAX_CONNECTIONS",
+)
+@click.option(
+    "--max-retries",
+    type=int,
+    help="Maximum number of times to retry model API requests (defaults to unlimited)",
+    envvar="SCOUT_SCAN_MAX_RETRIES",
+)
+@click.option(
+    "--timeout",
+    type=int,
+    help="Model API request timeout in seconds (defaults to no timeout)",
+    envvar="SCOUT_SCAN_TIMEOUT",
 )
 def scan_command(
     scanners: tuple[str, ...] | None,
+    s: tuple[str, ...] | None,
     transcripts: tuple[str, ...] | None,
     results: str,
     model: str | None,
@@ -107,7 +145,14 @@ def scan_command(
     shuffle: int | None,
     tags: str | None,
     metadata: tuple[str, ...] | None,
+    batch: int | str | None,
+    max_retries: int | None,
+    timeout: int | None,
+    max_connections: int | None,
 ) -> None:
+    # scanner args
+    scan_args = parse_cli_args(s)
+
     # model args and role
     scan_model_args = parse_cli_config(m, model_config)
     scan_model_roles = parse_model_role_cli_args(model_role)
@@ -125,11 +170,25 @@ def scan_command(
     else:
         scan_suffle = shuffle
 
-    # resolve scanners
+    # resolve scanners and/or scan job
 
-    # resolve transcripts
+    # resolve transcripts (could be from ScanJob)
 
-    # TODO: model_config ?
+    # resolve batch
+    if isinstance(batch, str):
+        batch_config: bool | int | BatchConfig | None = BatchConfig.model_validate(
+            resolve_args(batch)
+        )
+    else:
+        batch_config = batch
+
+    # resolve model config
+    model_config = GenerateConfig(
+        max_retries=max_retries,
+        timeout=timeout,
+        max_connections=max_connections,
+        batch=batch_config,
+    )
 
     # run scan
     scan(
@@ -137,6 +196,7 @@ def scan_command(
         transcripts=[],
         results=results,
         model=model,
+        model_config=model_config,
         model_base_url=model_base_url,
         model_args=scan_model_args,
         model_roles=scan_model_roles,

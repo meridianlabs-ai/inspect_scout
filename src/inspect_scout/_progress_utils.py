@@ -15,6 +15,6 @@ class UtilizationColumn(ProgressColumn):
         if metrics is None:
             return Text("0/0/0 (0)", style="cyan")
         return Text(
-            f"{metrics.workers_scanning}/{metrics.workers_waiting}/{metrics.worker_count} ({metrics.buffered_jobs})",
+            f"{metrics.workers_parsing}/{metrics.workers_scanning}/{metrics.workers_waiting} ({metrics.buffered_scanner_jobs})",
             style="cyan",
         )

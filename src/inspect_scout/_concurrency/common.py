@@ -22,7 +22,7 @@ class WorkerMetrics:
     workers_waiting: int = 0
     workers_parsing: int = 0
     workers_scanning: int = 0
-    buffered_jobs: int = 0
+    buffered_scanner_jobs: int = 0
 
 
 class ParseJob(NamedTuple):

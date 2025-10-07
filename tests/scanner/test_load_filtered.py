@@ -2,32 +2,25 @@
 
 import io
 import json
-import os
-import shutil
 import time
-import urllib.request
 from typing import Counter
-from zipfile import ZipFile
 
 import pytest
-from inspect_ai._util.appdirs import inspect_cache_dir
+from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai.event import ToolEvent
 from inspect_scout import Transcript, TranscriptInfo
-from inspect_scout._transcript.json.load_filtered import (
-    RawTranscript,
-    _parse_and_filter,
-    _resolve_attachments,
-    _resolve_dict_attachments,
-    load_filtered_transcript,
-)
+from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
+from inspect_scout._transcript.types import EventFilter, MessageFilter
+from inspect_scout._util.async_zip import AsyncZipReader
 
 
 def create_json_stream(data: dict) -> io.BytesIO:
-    """Create a BytesIO stream from dictionary data."""
+    """Create an async-compatible BytesIO stream from dictionary data."""
     return io.BytesIO(json.dumps(data).encode())
 
 
 @pytest.mark.asyncio
-async def test_basic_loading():
+async def test_basic_loading() -> None:
     """Test basic transcript loading."""
     data = {
         "id": "test-001",
@@ -74,7 +67,9 @@ async def test_basic_loading():
         ("all", 3, ["user", "assistant", "system"]),
     ],
 )
-async def test_message_filtering(message_filter, expected_count, expected_roles):
+async def test_message_filtering(
+    message_filter: MessageFilter, expected_count: int, expected_roles: list[str]
+) -> None:
     """Test message filtering with different filter configurations."""
     data = {
         "id": "test",
@@ -107,7 +102,9 @@ async def test_message_filtering(message_filter, expected_count, expected_roles)
         ("all", 3, ["span_begin", "score", "span_end"]),
     ],
 )
-async def test_event_filtering(event_filter, expected_count, expected_types):
+async def test_event_filtering(
+    event_filter: EventFilter, expected_count: int, expected_types: list[str]
+) -> None:
     """Test event filtering with different filter configurations."""
     data = {
         "id": "test",
@@ -142,7 +139,7 @@ async def test_event_filtering(event_filter, expected_count, expected_types):
 
 
 @pytest.mark.asyncio
-async def test_combined_filtering():
+async def test_combined_filtering() -> None:
     """Test filtering both messages and events simultaneously."""
     data = {
         "id": "test",
@@ -175,7 +172,7 @@ async def test_combined_filtering():
 
 
 @pytest.mark.asyncio
-async def test_attachment_resolution():
+async def test_attachment_resolution() -> None:
     """Test resolution of attachment references."""
     data = {
         "id": "test",
@@ -218,12 +215,13 @@ async def test_attachment_resolution():
     result = await load_filtered_transcript(stream, info, "all", "all")
 
     assert result.messages[0].content == "Content A"
-    assert result.messages[1].content[0].text == "Content B"
+    assert result.messages[1].text == "Content B"
+    assert isinstance(result.events[0], ToolEvent)
     assert result.events[0].result == "Content C"
 
 
 @pytest.mark.asyncio
-async def test_missing_attachments():
+async def test_missing_attachments() -> None:
     """Test handling of missing attachment references."""
     data = {
         "id": "test",
@@ -244,7 +242,7 @@ async def test_missing_attachments():
 
 
 @pytest.mark.asyncio
-async def test_malformed_attachments():
+async def test_malformed_attachments() -> None:
     """Test handling of malformed attachment references."""
     data = {
         "id": "test",
@@ -275,7 +273,7 @@ async def test_malformed_attachments():
 
 
 @pytest.mark.asyncio
-async def test_unicode_and_special_chars():
+async def test_unicode_and_special_chars() -> None:
     """Test handling of unicode and special characters in attachments."""
     data = {
         "id": "test",
@@ -297,7 +295,7 @@ async def test_unicode_and_special_chars():
 
 
 @pytest.mark.asyncio
-async def test_empty_transcript():
+async def test_empty_transcript() -> None:
     """Test handling of empty transcript."""
     data = {"id": "empty", "messages": [], "events": [], "attachments": {}}
 
@@ -310,8 +308,9 @@ async def test_empty_transcript():
     assert len(result.events) == 0
 
 
-def test_parse_and_filter():
-    """Test _parse_and_filter function directly."""
+@pytest.mark.asyncio
+async def test_parse_and_filter() -> None:
+    """Test filtering of messages and events."""
     data = {
         "id": "test",
         "messages": [
@@ -335,136 +334,112 @@ def test_parse_and_filter():
         id="test", source_id="42", source_uri="/test.json", metadata={"key": "value"}
     )
 
-    raw_transcript, _ = _parse_and_filter(stream, info, ["user"], ["score"])
+    transcript = await load_filtered_transcript(stream, info, ["user"], ["score"])
 
-    assert isinstance(raw_transcript, RawTranscript)
-    assert raw_transcript.id == "test"
-    assert raw_transcript.metadata == {"key": "value"}
-    assert len(raw_transcript.messages) == 1
-    assert raw_transcript.messages[0]["role"] == "user"
-    assert len(raw_transcript.events) == 1
-    assert raw_transcript.events[0]["event"] == "score"
-
-
-def test_resolve_dict_attachments():
-    """Test _resolve_dict_attachments function."""
-
-    def resolve_func(text: str) -> str:
-        return text.replace("attachment://test", "RESOLVED")
-
-    # Test string resolution
-    result = _resolve_dict_attachments("attachment://test", resolve_func)
-    assert result == "RESOLVED"
-
-    # Test dict resolution
-    test_dict = {
-        "key1": "attachment://test",
-        "nested": {"key2": "attachment://test"},
-        "normal": "no attachment",
-    }
-    result = _resolve_dict_attachments(test_dict, resolve_func)
-    assert result["key1"] == "RESOLVED"
-    assert result["nested"]["key2"] == "RESOLVED"
-    assert result["normal"] == "no attachment"
-
-    # Test list resolution
-    test_list = ["attachment://test", {"key": "attachment://test"}, 123]
-    result = _resolve_dict_attachments(test_list, resolve_func)
-    assert result[0] == "RESOLVED"
-    assert result[1]["key"] == "RESOLVED"
-    assert result[2] == 123
-
-    # Test non-string/dict/list passthrough
-    assert _resolve_dict_attachments(None, resolve_func) is None
-    assert _resolve_dict_attachments(42, resolve_func) == 42
+    assert isinstance(transcript, Transcript)
+    assert transcript.id == "test"
+    assert transcript.metadata == {"key": "value"}
+    assert len(transcript.messages) == 1
+    assert transcript.messages[0].role == "user"
+    assert len(transcript.events) == 1
+    assert transcript.events[0].event == "score"
 
 
-def test_resolve_attachments():
-    """Test _resolve_attachments function."""
-    raw_transcript = RawTranscript(
-        id="test",
-        source_id="source-42",
-        source_uri="/test.json",
-        metadata={},
-        messages=[
-            {"role": "user", "content": "attachment://a1b2c3d4e5f678901234567890123456"}
+@pytest.mark.asyncio
+async def test_attachment_resolution_in_nested_structures() -> None:
+    """Test attachment resolution in deeply nested structures (lists and dicts)."""
+    data = {
+        "id": "test",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "attachment://a1b2c3d4e5f678901234567890123456",
+                    },
+                ],
+            }
         ],
-        events=[
+        "events": [
             {
                 "span_id": "s1",
                 "timestamp": 1.0,
                 "event": "tool",
                 "id": "tool1",
                 "function": "test_function",
-                "arguments": {"input": "attachment://b2c3d4e5f67890123456789012345678"},
+                "arguments": {
+                    "list_input": [
+                        "attachment://b2c3d4e5f67890123456789012345678",
+                        {"nested_key": "attachment://c3d4e5f6789012345678901234567890"},
+                    ],
+                    "dict_input": {
+                        "key1": "attachment://d4e5f67890123456789012345678901a",
+                        "nested": {
+                            "key2": "attachment://e5f67890123456789012345678901ab2"
+                        },
+                    },
+                },
                 "result": "test result",
             }
         ],
-    )
-
-    attachments = {
-        "a1b2c3d4e5f678901234567890123456": "Resolved A",
-        "b2c3d4e5f67890123456789012345678": "Resolved B",
+        "attachments": {
+            "a1b2c3d4e5f678901234567890123456": "Resolved A",
+            "b2c3d4e5f67890123456789012345678": "Resolved B",
+            "c3d4e5f6789012345678901234567890": "Resolved C",
+            "d4e5f67890123456789012345678901a": "Resolved D",
+            "e5f67890123456789012345678901ab2": "Resolved E",
+        },
     }
 
-    result = _resolve_attachments(raw_transcript, attachments)
+    stream = create_json_stream(data)
+    info = TranscriptInfo(id="test", source_id="42", source_uri="/test.json")
 
-    assert isinstance(result, Transcript)
-    assert result.messages[0].content == "Resolved A"
-    assert result.events[0].arguments["input"] == "Resolved B"
+    result = await load_filtered_transcript(stream, info, "all", "all")
+
+    # Check message content array resolution
+    assert result.messages[0].content[0].text == "Resolved A"
+
+    # Check event arguments resolution with lists
+    assert isinstance(result.events[0], ToolEvent)
+    assert result.events[0].arguments["list_input"][0] == "Resolved B"
+    assert result.events[0].arguments["list_input"][1]["nested_key"] == "Resolved C"
+
+    # Check event arguments resolution with nested dicts
+    assert result.events[0].arguments["dict_input"]["key1"] == "Resolved D"
+    assert result.events[0].arguments["dict_input"]["nested"]["key2"] == "Resolved E"
 
 
-@pytest.mark.slow
+# @pytest.mark.slow
 @pytest.mark.asyncio
-async def test_vend_fat_eval_assistant_tool_filter():
-    # TODO: For now, we'll just copy the s3 file locally. Eventually, the test
-    # will stream directly from s3
-    s3_path = "https://slow-tests.s3.us-east-2.amazonaws.com/vend.eval"
-    cache_root = inspect_cache_dir("tests")
-    cache_root.mkdir(parents=True, exist_ok=True)
-    file_path = str(cache_root / os.path.basename(s3_path))
-    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-        tmp_download = file_path + ".partial"
-        with urllib.request.urlopen(s3_path, timeout=30) as response:
-            with open(tmp_download, "wb") as f:
-                shutil.copyfileobj(response, f)
-        os.replace(tmp_download, file_path)
+async def test_s3_eval_assistant_tool_filter() -> None:
+    s3_path = "s3://slow-tests/swe_bench.eval"
+    member_name = "samples/astropy__astropy-14309_epoch_1.json"
 
     info = TranscriptInfo(
         id="what id?",
         source_id="vend_fat_eval",
-        source_uri=file_path,
+        source_uri=s3_path,
         metadata={"test": True},
     )
 
-    # Extract the first JSON file from samples/ directory in the ZIP
-    with ZipFile(file_path, mode="r") as zipfile:
-        # Find the first JSON file in samples/
-        sample_file = next(
-            (
-                f
-                for f in zipfile.namelist()
-                if f.startswith("samples/") and f.endswith(".json")
-            ),
+    async with AsyncFilesystem(anonymous_s3=True) as fs:
+        start = time.time()
+        result = await load_filtered_transcript(
+            AsyncZipReader(fs, s3_path).open_member(member_name),
+            info,
+            ["assistant", "tool"],  # Filter for assistant and tool messages
             None,
         )
-        with zipfile.open(sample_file, "r") as sample_json:
-            start = time.time()
-            result = await load_filtered_transcript(
-                sample_json,
-                info,
-                ["assistant", "tool"],  # Filter for assistant and tool messages
-                None,
-            )
-            duration = time.time() - start
-            print(f"Parse took {duration:.3f}s")
+        duration = time.time() - start
+        print(f"Parse took {duration:.3f}s")
 
     assert isinstance(result, Transcript)
     assert result.id == "what id?"
-    assert result.source_uri == file_path
+    assert result.source_uri == s3_path
     # Check that we got what we asked for and only what we asked for
     role_counts = Counter(msg.role for msg in result.messages)
     assert len(role_counts) == 2
-    assert role_counts["assistant"] == 887
-    assert role_counts["tool"] == 923
+    assert role_counts["assistant"] == 40
+    assert role_counts["tool"] == 38
     assert not result.events

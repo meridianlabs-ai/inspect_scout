@@ -72,7 +72,7 @@ def multi_process_strategy(
             )
 
         # TODO: Obviously, hack_factor is just for exploration for now
-        hack_factor = 3
+        hack_factor = 1
         concurrent_scans_per_process = hack_factor * max(
             1, max_concurrent_scans // max_processes
         )
@@ -102,15 +102,16 @@ def multi_process_strategy(
         )
 
         # Queues are part of IPC context and inherited by forked processes.
-        # ParseJob queue is unbounded - ParseJobs are tiny metadata objects with no backpressure needed.
-        # Real backpressure happens inside each worker via single-process strategy's ScannerJob buffer.
-        work_queue = _mp_common.ipc_context.parse_job_queue
+        # ParseJob queue is unbounded - ParseJobs are tiny metadata objects with
+        # no backpressure needed. Real backpressure happens inside each worker via
+        # single-process strategy's ScannerJob buffer.
+        parse_job_queue = _mp_common.ipc_context.parse_job_queue
         result_queue = _mp_common.ipc_context.result_queue
 
         async def _producer() -> None:
             """Producer task that feeds work items into the queue."""
             async for item in parse_jobs:
-                work_queue.put(item)
+                parse_job_queue.put(item)
                 print_diagnostics(
                     "MP Producer",
                     f"Added ParseJob {_mp_common.parse_job_info(item)}",
@@ -119,7 +120,7 @@ def multi_process_strategy(
             # Send sentinel values to signal worker tasks to stop (one per task)
             sentinel_count = max_processes * concurrent_scans_per_process
             for _ in range(sentinel_count):
-                work_queue.put(None)
+                parse_job_queue.put(None)
 
             print_diagnostics("MP Producer", "FINISHED PRODUCING ALL WORK")
 

@@ -8,15 +8,13 @@ state from _mp_context through fork.
 from __future__ import annotations
 
 import time
-from typing import AsyncIterator
 
 import anyio
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
-from ._mp_common import run_sync_on_thread
-from .common import ParseJob
+from ._iterator import iterator_from_mp_queue
 from .single_process import single_process_strategy
 
 
@@ -47,29 +45,6 @@ def subprocess_main(
             f"Starting with {ctx.concurrent_scans_per_process} max concurrent scans",
         )
 
-        # Create an async iterator that pulls ParseJob items from the work queue
-        async def _parse_job_iterator() -> AsyncIterator[ParseJob]:
-            """Yields ParseJob items from the work queue until sentinel is received."""
-            items_pulled = 0
-            while True:
-                work_item_data = await run_sync_on_thread(ctx.parse_job_queue.get)
-
-                if work_item_data is None:
-                    # Sentinel value - time to stop
-                    print_diagnostics(
-                        "parse job iterator",
-                        f"Received stop signal after pulling {items_pulled} items",
-                    )
-                    break
-
-                items_pulled += 1
-                print_diagnostics(
-                    "parse job iterator",
-                    f"Pulled {_mp_common.parse_job_info(work_item_data)}",
-                )
-
-                yield work_item_data
-
         # Use single_process_strategy to coordinate the async tasks
         strategy = single_process_strategy(
             max_concurrent_scans=ctx.concurrent_scans_per_process,
@@ -88,7 +63,7 @@ def subprocess_main(
         try:
             await strategy(
                 record_results=_record_to_queue,
-                parse_jobs=_parse_job_iterator(),
+                parse_jobs=iterator_from_mp_queue(ctx.parse_job_queue),
                 parse_function=ctx.parse_function,
                 scan_function=ctx.scan_function,
                 bump_progress=lambda: None,  # Progress is bumped in main process

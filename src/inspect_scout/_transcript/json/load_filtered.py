@@ -1,8 +1,10 @@
 import re
 from dataclasses import dataclass
-from typing import IO, Any, Callable
+from typing import IO, Any, AsyncIterator, Callable
 
 import ijson  # type: ignore
+
+from inspect_scout._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 
 from ..types import (
     EventFilter,
@@ -52,7 +54,7 @@ class RawTranscript:
 
 
 async def load_filtered_transcript(
-    sample_json: IO[bytes],
+    sample_bytes: IO[bytes] | AsyncIterator[bytes],
     t: TranscriptInfo,
     messages: MessageFilter,
     events: EventFilter,
@@ -65,7 +67,7 @@ async def load_filtered_transcript(
     2. Resolve attachment references with actual values
 
     Args:
-        sample_json: Byte stream of JSON sample data
+        sample_bytes: Byte stream of JSON sample data
         t: TranscriptInfo representing the transcript to load
         messages: Filter for message roles (None=exclude all, "all"=include all,
             list=include matching)
@@ -76,16 +78,16 @@ async def load_filtered_transcript(
         Transcript object with filtered messages and events, resolved attachments
     """
     # Phase 1: Parse, filter, and collect attachment references
-    transcript, attachment_refs = _parse_and_filter(sample_json, t, messages, events)
+    transcript, attachment_refs = await _parse_and_filter(
+        adapt_to_reader(sample_bytes), t, messages, events
+    )
 
     # Phase 2: Resolve attachment references
-    final_transcript = _resolve_attachments(transcript, attachment_refs)
-
-    return final_transcript
+    return _resolve_attachments(transcript, attachment_refs)
 
 
-def _parse_and_filter(
-    sample_json: IO[bytes],
+async def _parse_and_filter(
+    sample_json: AsyncBytesReader,
     t: TranscriptInfo,
     messages_filter: MessageFilter,
     events_filter: EventFilter,
@@ -129,7 +131,7 @@ def _parse_and_filter(
     last_prefix = ""
     current_section = _SECTION_OTHER
 
-    for prefix, event, value in ijson.parse(sample_json, use_float=True):
+    async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
         # Inline prefix classification for performance (56M+ calls in hot path)
         if prefix != last_prefix:
             last_prefix = prefix

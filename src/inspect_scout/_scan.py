@@ -271,7 +271,7 @@ async def _scan_async_inner(
                 TextColumn("Scanning"),
                 BarColumn(),
                 TextColumn("{task.total}"),
-                TextColumn("Scans (active/waiting/total) (buffered)"),
+                TextColumn("Scans (parsing/scanning/waiting) (buffered)"),
                 UtilizationColumn(),
                 TimeElapsedColumn(),
                 transient=True,

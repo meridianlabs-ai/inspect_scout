@@ -4,11 +4,11 @@ from typing import AsyncIterator, Awaitable, Callable, Literal
 
 import anyio
 from anyio import create_task_group
-from anyio.abc import TaskGroup
 from inspect_ai.util._anyio import inner_exception
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
+from ._iterator import SerializedAsyncIterator
 from .common import ConcurrencyStrategy, ParseJob, ScannerJob, WorkerMetrics
 
 # Module-level counter for assigning unique worker IDs
@@ -22,6 +22,7 @@ def single_process_strategy(
     diagnostics: bool = False,
     diag_prefix: str | None = None,
     overall_start_time: float | None = None,
+    initial_workers: int | None = None,
 ) -> ConcurrencyStrategy:
     """Single-process execution strategy with adaptive application-layer scheduling.
 
@@ -42,7 +43,9 @@ def single_process_strategy(
 
     Architecture
     ------------
-    Workers are identical and execute in a loop where each iteration:
+    Spawns initial_workers at startup (default: min(10, max_concurrent_scans)), then
+    workers spawn additional workers dynamically up to max_concurrent_scans as they
+    complete tasks. Workers are identical and execute in a loop where each iteration:
     1. Consult the scheduler to determine next action (parse, scan, or wait)
     2. Execute the chosen action
     3. Update metrics
@@ -90,6 +93,10 @@ def single_process_strategy(
         max_concurrent_scans: Maximum number of workers. Controls both scan parallelism
             and worker pool size. Recommend setting to balance I/O parallelism with
             system resources (typically 50-200 for LLM-based scanners).
+        initial_workers: Number of workers to spawn immediately at startup. Defaults to
+            min(10, max_concurrent_scans). Additional workers spawn dynamically as tasks
+            complete. Higher values provide faster ramp-up but may cause issues if parse
+            operations use nested event loops (e.g., nest_asyncio).
         buffer_multiple: Multiplier for scanner job queue size (base=max_concurrent_scans).
             Default 1.0 provides one buffered job per worker. Higher values increase
             memory usage without improving throughput if parsing is fast. Lower values
@@ -100,6 +107,8 @@ def single_process_strategy(
         overall_start_time: Optional start time for relative timestamps (internal use).
     """
     diag_prefix = f"{diag_prefix} " if diag_prefix else ""
+    if initial_workers is None:
+        initial_workers = max_concurrent_scans
 
     async def the_func(
         *,
@@ -122,6 +131,14 @@ def single_process_strategy(
         )
 
         scanner_job_deque: deque[ScannerJob] = deque()
+
+        # CRITICAL: Serialize access to the parse_jobs iterator.
+        #
+        # This strategy spawns multiple concurrent worker tasks. When multiple workers
+        # choose to parse simultaneously, because anext is by definition async, they
+        # could both end up within anext(parse_jobs). This is not supported, and
+        # the runtime will raise "anext(): asynchronous generator is already running".
+        parse_jobs = SerializedAsyncIterator(parse_jobs)
         parse_jobs_exhausted = False
 
         def print_diagnostics(actor_name: str, *message_parts: object) -> None:
@@ -129,21 +146,12 @@ def single_process_strategy(
                 running_time = f"+{time.time() - overall_start_time:.3f}s"
                 print(running_time, diag_prefix, f"{actor_name}:", *message_parts)
 
-        def _metrics_info() -> str:
-            return (
-                f"workers: {metrics.worker_count} "
-                f"(parsing: {metrics.workers_parsing}, "
-                f"scanning: {metrics.workers_scanning}, "
-                f"waiting: {metrics.workers_waiting}) "
-                f"queue size: {len(scanner_job_deque)} "
-            )
-
         def _scanner_job_info(item: ScannerJob) -> str:
             return f"{item.union_transcript.id, item.scanner_name}"
 
         def _update_metrics() -> None:
             if update_metrics:
-                metrics.buffered_jobs = len(scanner_job_deque)
+                metrics.buffered_scanner_jobs = len(scanner_job_deque)
                 update_metrics(metrics)
 
         def _choose_next_action() -> Literal["parse", "scan", "wait"]:
@@ -162,7 +170,7 @@ def single_process_strategy(
             # This handles the case where a single slow parser can't keep up with fast scanners
             if (
                 scanner_job_queue_len < max_scanner_job_queue_size * 0.2
-                and metrics.workers_parsing < 2
+                # and metrics.workers_parsing < 2
                 and not parse_jobs_exhausted
             ):
                 return "parse"
@@ -188,117 +196,132 @@ def single_process_strategy(
             # Rule 7: Both queues empty/exhausted
             return "wait"
 
-        async def _unified_worker_task(
-            worker_id: int, tg: TaskGroup, parse_jobs_iter: AsyncIterator[ParseJob]
+        async def _perform_wait() -> None:
+            """Perform the wait action: briefly yield control and update metrics."""
+            metrics.workers_waiting += 1
+            _update_metrics()
+            await anyio.sleep(0)
+            metrics.workers_waiting -= 1
+            _update_metrics()
+
+        async def _perform_parse(worker_id: int) -> bool:
+            """Perform the parse action. Returns True if parse completed, False if there was no parse job to perform."""
+            # Pull from parse_jobs iterator and create scanner jobs
+            try:
+                parse_job = await anext(parse_jobs)
+            except StopAsyncIteration:
+                return False
+
+            exec_start_time = time.time()
+            metrics.workers_parsing += 1
+            _update_metrics()
+
+            try:
+                scanner_jobs = await parse_function(parse_job)
+                print_diagnostics(
+                    f"Worker #{worker_id:02d}",
+                    f"Parsed  ({(time.time() - exec_start_time):.3f}s) - ('{parse_job.transcript_info.id}')",
+                )
+
+                for scanner_job in scanner_jobs:
+                    scanner_job_deque.append(scanner_job)
+                _update_metrics()
+                return True
+            finally:
+                metrics.workers_parsing -= 1
+                _update_metrics()
+
+        async def _perform_scan(worker_id: int) -> bool:
+            """Perform the scan action. Returns True if scan completed, False otherwise."""
+            if len(scanner_job_deque) == 0:
+                # Race condition: queue became empty
+                await anyio.sleep(0)
+                return False
+
+            scanner_job = scanner_job_deque.popleft()
+            _update_metrics()
+
+            # print_diagnostics(
+            #     f"Worker #{worker_id:02d}",
+            #     f"Starting scan on {_scanner_job_info(scanner_job)}",
+            # )
+
+            exec_start_time = time.time()
+            metrics.workers_scanning += 1
+            _update_metrics()
+
+            try:
+                await record_results(
+                    scanner_job.union_transcript,
+                    scanner_job.scanner_name,
+                    await scan_function(scanner_job),
+                )
+                bump_progress()
+                print_diagnostics(
+                    f"Worker #{worker_id:02d}",
+                    f"Scanned ({(time.time() - exec_start_time):.3f}s) - {_scanner_job_info(scanner_job)}",
+                )
+                return True
+            finally:
+                metrics.workers_scanning -= 1
+                _update_metrics()
+
+        async def _worker_task(
+            worker_id: int,
         ) -> None:
-            """Unified worker that dynamically chooses between parsing and scanning."""
+            """Worker that dynamically chooses between parsing and scanning."""
             nonlocal parse_jobs_exhausted
             scans_completed = 0
             parses_completed = 0
+            waited_once = False
 
             try:
                 while True:
                     action = _choose_next_action()
 
                     if action == "wait":
-                        # Both queues empty - wait briefly and check again
-                        metrics.workers_waiting += 1
-                        _update_metrics()
-                        await anyio.sleep(0.1)
-                        metrics.workers_waiting -= 1
-                        _update_metrics()
-
-                        # If still nothing to do, exit
-                        if _choose_next_action() == "wait":
+                        # If we already waited once and there's still nothing to do, exit
+                        if waited_once:
                             break
+                        await _perform_wait()
+                        waited_once = True
                         continue
 
-                    elif action == "parse":
-                        # Parse action: pull from parse_jobs iterator and create scanner jobs
-                        try:
-                            parse_job = await anext(parse_jobs_iter)
-                        except StopAsyncIteration:
-                            parse_jobs_exhausted = True
-                            print_diagnostics(
-                                f"Worker #{worker_id}", "Parse iterator exhausted"
-                            )
-                            continue
-
-                        exec_start_time = time.time()
-                        metrics.workers_parsing += 1
-                        _update_metrics()
-
-                        try:
-                            scanner_jobs = await parse_function(parse_job)
-                            print_diagnostics(
-                                f"Worker #{worker_id}",
-                                f"Parsed {parse_job.transcript_info.id} -> {len(scanner_jobs)} scanner jobs in {(time.time() - exec_start_time):.3f}s\n\t{_metrics_info()}",
-                            )
-
-                            for scanner_job in scanner_jobs:
-                                scanner_job_deque.append(scanner_job)
-                            _update_metrics()
+                    waited_once = False
+                    if action == "parse":
+                        if await _perform_parse(worker_id):
                             parses_completed += 1
-                        finally:
-                            metrics.workers_parsing -= 1
-                            _update_metrics()
+                        else:
+                            print_diagnostics(
+                                f"Worker #{worker_id:02d}", "No more parse jobs"
+                            )
+                            parse_jobs_exhausted = True
 
                     elif action == "scan":
-                        # Scan action: pop from scanner_job_deque and execute
-                        if len(scanner_job_deque) == 0:
-                            # Race condition: queue became empty
-                            await anyio.sleep(0)
-                            continue
-
-                        scanner_job = scanner_job_deque.popleft()
-                        _update_metrics()
-
-                        print_diagnostics(
-                            f"Worker #{worker_id}",
-                            f"Starting scan on {_scanner_job_info(scanner_job)}\n\t{_metrics_info()}",
-                        )
-
-                        exec_start_time = time.time()
-                        metrics.workers_scanning += 1
-                        _update_metrics()
-
-                        try:
-                            await record_results(
-                                scanner_job.union_transcript,
-                                scanner_job.scanner_name,
-                                await scan_function(scanner_job),
-                            )
-                            bump_progress()
-                            print_diagnostics(
-                                f"Worker #{worker_id}",
-                                f"Completed {_scanner_job_info(scanner_job)} in {(time.time() - exec_start_time):.3f}s",
-                            )
+                        if await _perform_scan(worker_id):
                             scans_completed += 1
-                        finally:
-                            metrics.workers_scanning -= 1
-                            _update_metrics()
 
                     # After completing work, check if we should spawn more workers
-                    if (
-                        len(scanner_job_deque) > 0 or not parse_jobs_exhausted
-                    ) and metrics.worker_count < max_concurrent_scans:
-                        metrics.worker_count += 1
-                        _update_metrics()
-                        global worker_id_counter
-                        worker_id_counter += 1
-                        tg.start_soon(
-                            _unified_worker_task, worker_id_counter, tg, parse_jobs_iter
-                        )
-                        print_diagnostics(
-                            f"Worker #{worker_id}",
-                            f"Spawned worker #{worker_id_counter}\n\t{_metrics_info()}",
-                        )
+                    # if (
+                    #     len(scanner_job_deque) > 0 or not parse_jobs_exhausted
+                    # ) and metrics.worker_count < max_concurrent_scans:
+                    #     metrics.worker_count += 1
+                    #     _update_metrics()
+                    #     global worker_id_counter
+                    #     worker_id_counter += 1
+                    #     tg.start_soon(
+                    #         _worker_task, worker_id_counter, tg, parse_jobs_iter
+                    #     )
+                    #     print_diagnostics(
+                    #         f"Worker #{worker_id:02d}",
+                    #         f"Spawned worker #{worker_id_counter}",
+                    #     )
 
                     await anyio.sleep(0)
 
                 print_diagnostics(
-                    f"Worker #{worker_id}",
-                    f"Finished after {parses_completed} parses and {scans_completed} scans.\n\t{_metrics_info()}",
+                    f"Worker #{worker_id:02d}",
+                    f"Finished after {parses_completed} parses and {scans_completed} scans.",
                 )
             finally:
                 metrics.worker_count -= 1
@@ -319,17 +342,15 @@ def single_process_strategy(
                             )
                             await anyio.sleep(2)
 
-                outer_tg.start_soon(progress_task)
+                # outer_tg.start_soon(progress_task)
 
                 async with create_task_group() as tg:
-                    # Spawn 2 initial workers
+                    # Spawn initial workers for faster ramp-up
                     global worker_id_counter
-                    for _ in range(2):
+                    for _ in range(initial_workers):
                         worker_id_counter += 1
                         metrics.worker_count += 1
-                        tg.start_soon(
-                            _unified_worker_task, worker_id_counter, tg, parse_jobs
-                        )
+                        tg.start_soon(_worker_task, worker_id_counter)
                         print_diagnostics(
                             "Initialization",
                             f"Spawned initial worker #{worker_id_counter}",

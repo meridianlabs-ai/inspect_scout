@@ -1,15 +1,19 @@
 {
-    "editor.formatOnSave": true,
-    "[markdown]": {
-      "editor.formatOnSave": false
-    },
-    "[html]": {
-      "editor.formatOnSave": false
-    },
-    "[python]": {
-      "editor.defaultFormatter": "charliermarsh.ruff"
-    },
-    "search.exclude": {
-      "logs/**": true
-    }
-  }
+  "editor.formatOnSave": true,
+  "[markdown]": {
+    "editor.formatOnSave": false
+  },
+  "[html]": {
+    "editor.formatOnSave": false
+  },
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "search.exclude": {
+    "logs/**": true
+  },
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "cSpell.words": ["asyncfiles", "EOCD", "scanspec"]
+}

@@ -15,7 +15,7 @@ from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init
 from inspect_ai._util.rich import rich_traceback
 from inspect_ai.model._generate_config import GenerateConfig
-from inspect_ai.model._model import Model, resolve_models
+from inspect_ai.model._model import Model, init_model_usage, resolve_models
 from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
@@ -307,6 +307,10 @@ async def _scan_async_inner(
                     ]
 
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
+                    # TODO: this is where I do the thing
+
+                    init_model_usage()
+
                     return (
                         # TODO: For now, scanners return a single Result, but we'll
                         # probably will allow multiple in the future

@@ -57,7 +57,7 @@ P = ParamSpec("P")
 
 
 class Scanner(Protocol[T]):
-    def __call__(self, input: T, /) -> Awaitable[Result | None]: ...
+    def __call__(self, input: T, /) -> Awaitable[Result]: ...
 
 
 @dataclass
@@ -291,6 +291,7 @@ def scanners_from_file(
             scanner_fn = registry_lookup("scanner", decorator)
             if scanner_fn is None:
                 raise PrerequisiteError(f"{scanner_fn} was not found in the registry")
+            assert callable(scanner_fn)
             scanner_param_names = list(inspect.signature(scanner_fn).parameters.keys())
             scanner_params = {
                 k: v for k, v in scanner_args.items() if k in scanner_param_names

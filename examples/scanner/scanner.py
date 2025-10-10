@@ -34,7 +34,8 @@ def target_word_scanner(target_word: str) -> Scanner[Transcript]:
     return execute
 
 
-@scanner(messages="all")
+# TODO: This wants to be @scanner(messages="all"), but the typing for that isn't quite right yet
+@scanner(messages=["system", "user", "assistant", "tool"])
 def llm_scanner() -> Scanner[Transcript]:
     async def execute(transcript: Transcript) -> Result | None:
         scanner_model = get_model()

@@ -15,7 +15,7 @@ from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init
 from inspect_ai._util.rich import rich_traceback
 from inspect_ai.model._generate_config import GenerateConfig
-from inspect_ai.model._model import Model, init_model_usage, resolve_models
+from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
 from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
@@ -38,7 +38,7 @@ from ._recorder.factory import scan_recorder_for_location
 from ._recorder.recorder import ScanRecorder, ScanStatus
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob
-from ._scanner.result import ResultReport
+from ._scanner.result import Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
 from ._scanspec import ScanConfig, ScanSpec
@@ -307,30 +307,30 @@ async def _scan_async_inner(
                     ]
 
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
-                    # TODO: this is where I do the thing
-
                     init_model_usage()
 
-                    return (
-                        # TODO: For now, scanners return a single Result, but we'll
-                        # probably will allow multiple in the future
-                        [
-                            ResultReport(
-                                input_type="transcript",
-                                input_id=job.union_transcript.id,
-                                result=result,
-                            )
-                        ]
-                        if (
-                            result := await job.scanner(
-                                filter_transcript(
-                                    job.union_transcript,
-                                    config_for_scanner(job.scanner).content,
-                                )
+                    result: Result | None = None
+                    error: Exception | None = None
+
+                    try:
+                        result = await job.scanner(
+                            filter_transcript(
+                                job.union_transcript,
+                                config_for_scanner(job.scanner).content,
                             )
                         )
-                        else []
-                    )
+                    except Exception as ex:
+                        error = ex
+
+                    return [
+                        ResultReport(
+                            input_type="transcript",
+                            input_id=job.union_transcript.id,
+                            result=result,
+                            error=str(error),
+                            model_usage=model_usage(),
+                        )
+                    ]
 
                 # transform knobs
                 # For now, let's say that:

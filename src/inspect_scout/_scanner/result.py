@@ -1,7 +1,8 @@
 from typing import Any, Literal
 
 from inspect_ai._util.json import to_json_str_safe
-from pydantic import BaseModel, Field, JsonValue
+from inspect_ai.model import ModelUsage
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 
 class Reference(BaseModel):
@@ -34,11 +35,17 @@ class Result(BaseModel):
 
 
 class ResultReport(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     input_type: Literal["transcript", "event", "message"]
 
     input_id: str
 
-    result: Result
+    result: Result | None
+
+    error: str | None
+
+    model_usage: dict[str, ModelUsage]
 
     def to_df_columns(self) -> dict[str, str | bool | int | float | None]:
         columns: dict[str, str | bool | int | float | None] = {}
@@ -46,25 +53,47 @@ class ResultReport(BaseModel):
         columns["input_type"] = self.input_type
         columns["input_id"] = self.input_id
 
-        if isinstance(self.result.value, str | bool | int | float | None):
-            columns["value"] = self.result.value
-            if isinstance(self.result.value, str):
-                columns["value_type"] = "string"
-            elif isinstance(self.result.value, int | float):
-                columns["value_type"] = "number"
-            elif isinstance(self.result.value, bool):
-                columns["value_type"] = "boolean"
-            else:
-                columns["value_type"] = "null"
+        if self.result is not None:
+            if isinstance(self.result.value, str | bool | int | float | None):
+                columns["value"] = self.result.value
+                if isinstance(self.result.value, str):
+                    columns["value_type"] = "string"
+                elif isinstance(self.result.value, int | float):
+                    columns["value_type"] = "number"
+                elif isinstance(self.result.value, bool):
+                    columns["value_type"] = "boolean"
+                else:
+                    columns["value_type"] = "null"
 
+            else:
+                columns["value"] = to_json_str_safe(self.result.value)
+                columns["value_type"] = (
+                    "array" if isinstance(self.result.value, list) else "object"
+                )
+            columns["answer"] = self.result.answer
+            columns["explanation"] = self.result.explanation
+            columns["metadata"] = to_json_str_safe(self.result.metadata or {})
+            columns["references"] = to_json_str_safe(self.result.references)
+            columns["scan_error"] = None
+        elif self.error is not None:
+            columns["value"] = None
+            columns["value_type"] = "null"
+            columns["answer"] = None
+            columns["explanation"] = None
+            columns["metadata"] = to_json_str_safe({})
+            columns["references"] = to_json_str_safe([])
+            columns["scan_error"] = self.error
         else:
-            columns["value"] = to_json_str_safe(self.result.value)
-            columns["value_type"] = (
-                "array" if isinstance(self.result.value, list) else "object"
+            raise ValueError(
+                "A scan result must have either a 'result' or 'error' field."
             )
 
-        columns["answer"] = self.result.answer or ""
-        columns["explanation"] = self.result.explanation or ""
-        columns["metadata"] = to_json_str_safe(self.result.metadata or {})
-        columns["references"] = to_json_str_safe(self.result.references)
+        # report tokens
+        total_tokens = 0
+        for usage in self.model_usage.values():
+            total_tokens += usage.total_tokens
+
+        columns["scan_total_tokens"] = total_tokens
+        columns["scan_model_usage"] = to_json_str_safe(self.model_usage)
+
         return columns

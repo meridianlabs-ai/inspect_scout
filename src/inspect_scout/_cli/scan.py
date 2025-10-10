@@ -185,12 +185,12 @@ def scan_command(
             scanjob = ScanJob(transcripts=None, scanners=scanners)
 
     # resolve transcripts (could be from ScanJob)
-    transcripts = (
+    tx = (
         transcripts_from(transcripts)
         if transcripts is not None
         else scanjob.transcripts
     )
-    if transcripts is None:
+    if tx is None:
         raise PrerequisiteError(
             "No transcripts specified for scanning (pass as --transcripts or include in @scanjob)"
         )
@@ -214,7 +214,7 @@ def scan_command(
     # run scan
     scan(
         scanners=scanjob,
-        transcripts=transcripts,
+        transcripts=tx,
         results=results,
         model=model,
         model_config=scan_model_config,

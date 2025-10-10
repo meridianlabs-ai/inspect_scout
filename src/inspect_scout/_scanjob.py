@@ -196,7 +196,7 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
             return None
 
 
-def scanjob_create(name: str, params: dict[str, Any]) -> Scanner[ScannerInput]:
+def scanjob_create(name: str, params: dict[str, Any]) -> ScanJob:
     obj = registry_lookup("scanjob", name)
     assert callable(obj)
     kwargs = registry_kwargs(**params)

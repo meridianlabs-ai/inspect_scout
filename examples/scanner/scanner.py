@@ -12,6 +12,7 @@ from inspect_scout import (
     scanner,
     transcripts,
 )
+from inspect_scout._scanjob import ScanJob, scanjob
 from inspect_scout._transcript.types import Transcript
 
 
@@ -54,6 +55,11 @@ def llm_scanner() -> Scanner[Transcript]:
         return Result(value=1, explanation=result.completion)
 
     return execute
+
+
+@scanjob
+def job() -> ScanJob:
+    return ScanJob(scanners=[target_word_scanner("perfect"), llm_scanner()])
 
 
 if __name__ == "__main__":

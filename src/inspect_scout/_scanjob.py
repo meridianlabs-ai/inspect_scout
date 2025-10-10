@@ -3,12 +3,18 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Counter, Sequence, TypeVar, cast, overload
 
+from inspect_ai._util.decorator import parse_decorators
+from inspect_ai._util.error import PrerequisiteError
+from inspect_ai._util.module import load_module
 from inspect_ai._util.package import get_installed_package_name
+from inspect_ai._util.path import chdir_python, pretty_path
 from inspect_ai._util.registry import (
     RegistryInfo,
     is_registry_object,
     registry_add,
     registry_info,
+    registry_kwargs,
+    registry_lookup,
     registry_name,
     registry_tag,
     registry_unqualified_name,
@@ -165,3 +171,33 @@ def scanjob(
             return create_scanjob_wrapper(func)
 
         return decorator
+
+
+def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None:
+    # compute path
+    scanjob_path = Path(file).resolve()
+
+    # check for existence
+    if not scanjob_path.exists():
+        raise PrerequisiteError(f"The file '{pretty_path(file)}' does not exist.")
+
+    # switch contexts for load
+    with chdir_python(scanjob_path.parent.as_posix()):
+        # create scanjob
+        load_module(scanjob_path)
+        scanjob_decorators = parse_decorators(scanjob_path, "scanjob")
+        if len(scanjob_decorators) > 1:
+            raise PrerequisiteError(
+                f"More than one @scanjob decorated function found in '{file}"
+            )
+        elif len(scanjob_decorators) == 1:
+            return scanjob_create(scanjob_decorators[0][0], scanjob_args)
+        else:
+            return None
+
+
+def scanjob_create(name: str, params: dict[str, Any]) -> Scanner[ScannerInput]:
+    obj = registry_lookup("scanjob", name)
+    assert callable(obj)
+    kwargs = registry_kwargs(**params)
+    return cast(ScanJob, obj(**kwargs))

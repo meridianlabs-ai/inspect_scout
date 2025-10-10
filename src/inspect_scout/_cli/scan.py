@@ -7,15 +7,19 @@ from inspect_ai._cli.util import (
     parse_model_role_cli_args,
 )
 from inspect_ai._util.config import resolve_args
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model import BatchConfig, GenerateConfig
 from typing_extensions import Literal
 
-from inspect_scout._scan import scan
-from inspect_scout._util.constants import DEFAULT_BATCH_SIZE
+from .._scan import scan
+from .._scanjob import ScanJob, scanjob_from_file
+from .._scanner.scanner import scanners_from_file
+from .._transcript.database import transcripts as transcripts_from
+from .._util.constants import DEFAULT_BATCH_SIZE
 
 
 @click.command("scan")
-@click.argument("scanners", nargs=-1)
+@click.argument("file", nargs=1)
 @click.option(
     "-S",
     multiple=True,
@@ -131,7 +135,7 @@ from inspect_scout._util.constants import DEFAULT_BATCH_SIZE
     envvar="SCOUT_SCAN_TIMEOUT",
 )
 def scan_command(
-    scanners: tuple[str, ...] | None,
+    file: str,
     s: tuple[str, ...] | None,
     transcripts: tuple[str, ...] | None,
     results: str,
@@ -150,9 +154,6 @@ def scan_command(
     timeout: int | None,
     max_connections: int | None,
 ) -> None:
-    # scanner args
-    _scan_args = parse_cli_args(s)
-
     # model args and role
     scan_model_args = parse_cli_config(m, model_config)
     scan_model_roles = parse_model_role_cli_args(model_role)
@@ -170,9 +171,28 @@ def scan_command(
     else:
         scan_suffle = shuffle
 
-    # resolve scanners and/or scan job
+    # resolve scanjobs
+    scanjob_args = parse_cli_args(s)
+    scanjob = scanjob_from_file(file, scanjob_args)
+    if scanjob is None:
+        scanners = scanners_from_file(file, scanjob_args)
+        if len(scanners) == 0:
+            raise PrerequisiteError(
+                f"No @scanjob or @scanner decorated functions found in '{file}'"
+            )
+        else:
+            scanjob = ScanJob(transcripts=None, scanners=scanners)
 
     # resolve transcripts (could be from ScanJob)
+    transcripts = (
+        transcripts_from(transcripts)
+        if transcripts is not None
+        else scanjob.transcripts
+    )
+    if transcripts is None:
+        raise PrerequisiteError(
+            "No transcripts specified for scanning (pass as --transcripts or include in @scanjob)"
+        )
 
     # resolve batch
     if isinstance(batch, str):
@@ -192,8 +212,8 @@ def scan_command(
 
     # run scan
     scan(
-        scanners=[],
-        transcripts=None,
+        scanners=scanjob,
+        transcripts=transcripts,
         results=results,
         model=model,
         model_config=scan_model_config,

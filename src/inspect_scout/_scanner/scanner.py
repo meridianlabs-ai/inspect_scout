@@ -14,11 +14,17 @@ from typing import (
 )
 
 from inspect_ai._util._async import is_callable_coroutine
+from inspect_ai._util.decorator import parse_decorators
+from inspect_ai._util.error import PrerequisiteError
+from inspect_ai._util.module import load_module
 from inspect_ai._util.package import get_installed_package_name
+from inspect_ai._util.path import chdir_python, pretty_path
 from inspect_ai._util.registry import (
     RegistryInfo,
     registry_add,
     registry_info,
+    registry_kwargs,
+    registry_lookup,
     registry_tag,
 )
 from inspect_ai.event._event import Event
@@ -265,3 +271,39 @@ def scanner(
 
 def config_for_scanner(scanner: Scanner[ScannerInput]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
+
+
+def scanners_from_file(
+    file: str, scanner_args: dict[str, Any]
+) -> list[Scanner[ScannerInput]]:
+    # compute path
+    scanner_path = Path(file).resolve()
+
+    # check for existence
+    if not scanner_path.exists():
+        raise PrerequisiteError(f"The file '{pretty_path(file)}' does not exist.")
+
+    # switch contexts for load
+    with chdir_python(scanner_path.parent.as_posix()):
+        # create scanners
+        load_module(scanner_path)
+        scanners: list[Scanner[ScannerInput]] = []
+        for decorator, _ in parse_decorators(scanner_path, "scanner"):
+            scanner_fn = registry_lookup("scanner", decorator)
+            if scanner_fn is None:
+                raise PrerequisiteError(f"{scanner_fn} was not found in the registry")
+            scanner_param_names = list(inspect.signature(scanner_fn).parameters.keys())
+            scanner_params = {
+                k: v for k, v in scanner_args.items() if k in scanner_param_names
+            }
+            scanner = scanner_create(decorator, scanner_params)
+            scanners.append(scanner)
+
+        return scanners
+
+
+def scanner_create(name: str, params: dict[str, Any]) -> Scanner[ScannerInput]:
+    obj = registry_lookup("scanner", name)
+    assert callable(obj)
+    kwargs = registry_kwargs(**params)
+    return cast(Scanner[ScannerInput], obj(**kwargs))

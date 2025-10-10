@@ -9,9 +9,7 @@ from inspect_ai._util.module import load_module
 from inspect_ai._util.path import cwd_relative_path
 from inspect_ai._util.registry import (
     is_registry_object,
-    registry_kwargs,
     registry_log_name,
-    registry_lookup,
     registry_params,
 )
 from inspect_ai.model._model import Model, ModelName
@@ -23,7 +21,7 @@ from inspect_ai.model._model_config import (
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
-from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner
+from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
 from ._scanner.types import ScannerInput
 from ._scanspec import (
     ScanConfig,
@@ -127,16 +125,9 @@ def _scanners_from_spec(spec: ScanSpec) -> dict[str, Scanner[ScannerInput]]:
             loaded.add(scanner.file)
 
         # create the scanner
-        scanners[name] = _scanner_create(scanner)
+        scanners[name] = scanner_create(scanner.name, scanner.params)
 
     return scanners
-
-
-def _scanner_create(scanner: ScanScanner) -> Scanner[ScannerInput]:
-    obj = registry_lookup("scanner", scanner.name)
-    assert callable(obj)
-    kwargs = registry_kwargs(**scanner.params)
-    return cast(Scanner[ScannerInput], obj(**kwargs))
 
 
 def scanner_file(scanner: Scanner[ScannerInput]) -> str | None:

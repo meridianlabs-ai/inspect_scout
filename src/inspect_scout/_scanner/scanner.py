@@ -249,10 +249,9 @@ def scanner(
             # if its not from an installed package then it is a "local"
             # module import, so set its scanner file
             if get_installed_package_name(factory_fn) is None:
-                module = inspect.getmodule(factory_fn)
-                if module and hasattr(module, "__file__") and module.__file__:
-                    file = Path(module.__file__)
-                    setattr(scanner_fn, SCANNER_FILE_ATTR, file.as_posix())
+                file = inspect.getfile(factory_fn)
+                if file:
+                    setattr(scanner_fn, SCANNER_FILE_ATTR, Path(file).as_posix())
 
             return scanner_fn
 

@@ -340,7 +340,7 @@ async def _scan_async_inner(
 
                 # TODO: Plumb this
                 multi_testing = False
-                diagnostics = True
+                diagnostics = False
                 strategy = (
                     multi_process_strategy(
                         # max_processes=2,
@@ -432,7 +432,7 @@ async def handle_scan_interruped(
 
     resume_message = (
         f"\n[bold][{theme.error}]Scan interrupted. Resume scan with:[/{theme.error}]\n\n"
-        + f'[bold][{theme.light}]scan_resume("{pretty_path(location)}")[/{theme.light}][/bold]\n'
+        + f'[bold][{theme.light}]scout scan-resume "{pretty_path(location)}"[/{theme.light}][/bold]\n'
     )
     print(resume_message)
 

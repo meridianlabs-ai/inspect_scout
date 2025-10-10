@@ -154,6 +154,7 @@ def scan_command(
     timeout: int | None,
     max_connections: int | None,
 ) -> None:
+    """Scan transcripts."""
     # model args and role
     scan_model_args = parse_cli_config(m, model_config)
     scan_model_roles = parse_model_role_cli_args(model_role)

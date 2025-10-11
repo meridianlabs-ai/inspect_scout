@@ -17,21 +17,18 @@ worker_id_counter: int = 0
 
 def single_process_strategy(
     *,
-    max_concurrent_scans: int,
-    buffer_multiple: float | None = 1.0,
+    task_count: int,
+    prefetch_multiple: float | None = 1.0,
     diagnostics: bool = False,
     diag_prefix: str | None = None,
     overall_start_time: float | None = None,
-    initial_workers: int | None = None,
 ) -> ConcurrencyStrategy:
     """Single-process execution strategy with adaptive application-layer scheduling.
 
     Overview
     --------
-    Implements a homogeneous worker pool where all workers dynamically choose between
-    parsing (producing scanner jobs) and scanning (consuming scanner jobs) based
-    on runtime conditions using an adaptive scheduler that automatically balances
-    work based on actual task characteristics and queue state.
+    Implements a worker pool where workers dynamically choose between parsing and
+    scanning based on runtime conditions using an adaptive scheduler.
 
     Design Goals
     ------------
@@ -43,13 +40,13 @@ def single_process_strategy(
 
     Architecture
     ------------
-    Spawns initial_workers at startup (default: min(10, max_concurrent_scans)), then
-    workers spawn additional workers dynamically up to max_concurrent_scans as they
+    Spawns initial_workers at startup (default: min(10, task_count)), then
+    workers spawn additional workers dynamically up to task_count as they
     complete tasks. Workers are identical and execute in a loop where each iteration:
     1. Consult the scheduler to determine next action (parse, scan, or wait)
     2. Execute the chosen action
     3. Update metrics
-    4. Potentially spawn additional workers if under max_concurrent_scans
+    4. Potentially spawn additional workers if under task_count
     5. Yield control to allow other workers to execute
 
     The scheduler decision function evaluates:
@@ -90,14 +87,8 @@ def single_process_strategy(
       allows multiple workers to parse simultaneously to quickly fill the pipeline.
 
     Args:
-        max_concurrent_scans: Maximum number of workers. Controls both scan parallelism
-            and worker pool size. Recommend setting to balance I/O parallelism with
-            system resources (typically 50-200 for LLM-based scanners).
-        initial_workers: Number of workers to spawn immediately at startup. Defaults to
-            min(10, max_concurrent_scans). Additional workers spawn dynamically as tasks
-            complete. Higher values provide faster ramp-up but may cause issues if parse
-            operations use nested event loops (e.g., nest_asyncio).
-        buffer_multiple: Multiplier for scanner job queue size (base=max_concurrent_scans).
+        task_count: Number of worker tasks.
+        prefetch_multiple: Multiplier for scanner job queue size (base=task_count).
             Default 1.0 provides one buffered job per worker. Higher values increase
             memory usage without improving throughput if parsing is fast. Lower values
             risk parser stalls if scans complete in bursts.
@@ -107,8 +98,6 @@ def single_process_strategy(
         overall_start_time: Optional start time for relative timestamps (internal use).
     """
     diag_prefix = f"{diag_prefix} " if diag_prefix else ""
-    if initial_workers is None:
-        initial_workers = max_concurrent_scans
 
     async def the_func(
         *,
@@ -126,8 +115,7 @@ def single_process_strategy(
         if not overall_start_time:
             overall_start_time = time.time()
         max_scanner_job_queue_size = int(
-            max_concurrent_scans
-            * (buffer_multiple if buffer_multiple is not None else 1.0)
+            task_count * (prefetch_multiple if prefetch_multiple is not None else 1.0)
         )
 
         scanner_job_deque: deque[ScannerJob] = deque()
@@ -304,7 +292,7 @@ def single_process_strategy(
                     # After completing work, check if we should spawn more workers
                     # if (
                     #     len(scanner_job_deque) > 0 or not parse_jobs_exhausted
-                    # ) and metrics.worker_count < max_concurrent_scans:
+                    # ) and metrics.worker_count < task_count:
                     #     metrics.worker_count += 1
                     #     _update_metrics()
                     #     global worker_id_counter
@@ -347,7 +335,7 @@ def single_process_strategy(
                 async with create_task_group() as tg:
                     # Spawn initial workers for faster ramp-up
                     global worker_id_counter
-                    for _ in range(initial_workers):
+                    for _ in range(task_count):
                         worker_id_counter += 1
                         metrics.worker_count += 1
                         tg.start_soon(_worker_task, worker_id_counter)

@@ -42,13 +42,13 @@ def subprocess_main(
 
         print_diagnostics(
             "worker main",
-            f"Starting with {ctx.concurrent_scans_per_process} max concurrent scans",
+            f"Starting with {ctx.tasks_per_process} max concurrent scans",
         )
 
         # Use single_process_strategy to coordinate the async tasks
         strategy = single_process_strategy(
-            max_concurrent_scans=ctx.concurrent_scans_per_process,
-            buffer_multiple=ctx.buffer_multiple,
+            task_count=ctx.tasks_per_process,
+            prefetch_multiple=ctx.prefetch_multiple,
             diagnostics=ctx.diagnostics,
             diag_prefix=f"P{worker_id}",
             overall_start_time=ctx.overall_start_time,

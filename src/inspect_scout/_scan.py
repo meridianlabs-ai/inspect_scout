@@ -1,5 +1,7 @@
 import os
 import sys
+import traceback
+from logging import getLogger
 from typing import Any, AsyncIterator, Callable, Mapping, Sequence
 
 import anyio
@@ -45,6 +47,8 @@ from ._scanspec import ScanConfig, ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.util import filter_transcript, union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+
+logger = getLogger(__name__)
 
 
 def scan(
@@ -297,17 +301,17 @@ async def _scan_async_inner(
                     ]
 
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
+                    from inspect_ai.log._transcript import Transcript, init_transcript
+
                     # initialize model_usage tracking for this coroutine
                     init_model_usage()
 
                     # initialize transcript for this coroutine
-                    from inspect_ai.log._transcript import Transcript, init_transcript
-
                     transcript = Transcript()
                     init_transcript(transcript)
 
                     result: Result | None = None
-                    error: Exception | None = None
+                    error: str | None = None
 
                     try:
                         result = await job.scanner(
@@ -317,14 +321,15 @@ async def _scan_async_inner(
                             )
                         )
                     except Exception as ex:
-                        error = ex
+                        logger.error(f"Error in '{job.scanner_name}': {ex}")
+                        error = traceback.format_exc()
 
                     return [
                         ResultReport(
                             input_type="transcript",
                             input_id=job.union_transcript.id,
                             result=result,
-                            error=str(error),
+                            error=error,
                             events=transcript.events,
                             model_usage=model_usage(),
                         )
@@ -379,11 +384,13 @@ async def _scan_async_inner(
 
         return scan_info
     except Exception as ex:
-        type, value, traceback = sys.exc_info()
+        type, value, tb = sys.exc_info()
         type = type if type else BaseException
         value = value if value else ex
-        tb = rich_traceback(type, value, traceback)
-        return await handle_scan_interruped(tb, scan.spec, await recorder.location())
+        rich_tb = rich_traceback(type, value, tb)
+        return await handle_scan_interruped(
+            rich_tb, scan.spec, await recorder.location()
+        )
 
     except anyio.get_cancelled_exc_class():
         return await handle_scan_interruped(

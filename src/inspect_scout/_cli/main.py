@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 from .. import __version__
 from .scan import scan_command
+from .scan_complete import scan_complete_command
 from .scan_resume import scan_resume_command
 
 
@@ -30,6 +31,7 @@ def scout(ctx: click.Context, version: bool) -> None:
 
 scout.add_command(scan_command)
 scout.add_command(scan_resume_command)
+scout.add_command(scan_complete_command)
 
 
 def main() -> None:

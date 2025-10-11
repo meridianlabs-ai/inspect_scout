@@ -199,6 +199,29 @@ async def scan_resume_async(
     return await _scan_async(scan=scan, recorder=recorder)
 
 
+def scan_complete(
+    scan_dir: str,
+) -> ScanStatus:
+    return run_coroutine(scan_complete_async(scan_dir))
+
+
+async def scan_complete_async(
+    scan_dir: str,
+) -> ScanStatus:
+    # init runtime
+    init_runtime_context()
+
+    # resume job (will validate that the scan isn't already complete)
+    await resume_scan(scan_dir)
+
+    # create recorder, resume it, then complete it
+    recorder = scan_recorder_for_location(scan_dir)
+    await recorder.resume(scan_dir)
+    status = await recorder.complete()
+    print_scan_complete(status.location)
+    return status
+
+
 async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> ScanStatus:
     result: ScanStatus | None = None
 
@@ -382,9 +405,22 @@ async def _scan_async_inner(
                     update_metrics=update_metrics,
                 )
 
-                scan_info = await recorder.complete()
+                # report status
+                errors = await recorder.errors()
+                if len(errors) > 0:
+                    print_scan_errors(errors, await recorder.location())
+                    return ScanStatus(
+                        complete=False,
+                        spec=scan.spec,
+                        location=await recorder.location(),
+                    )
+                else:
+                    scan_info = await recorder.complete()
+                    print_scan_complete(scan_info.location)
 
+        # return scan_info
         return scan_info
+
     except Exception as ex:
         type, value, tb = sys.exc_info()
         type = type if type else BaseException
@@ -485,3 +521,18 @@ async def _parse_jobs(
             transcript_info=transcript_info,
             scanner_indices=set(scanner_indices_for_transcript),
         )
+
+
+def print_scan_complete(scan_dir: str) -> None:
+    print(f"\n[bold]Scan complete:[/bold] '{pretty_path(scan_dir)}'\n")
+
+
+def print_scan_errors(errors: list[ScanError], scan_dir: str) -> None:
+    theme = rich_theme()
+    print(f"\n[bold]{len(errors)} scan errors occurred![/bold]\n")
+    print(
+        f'Resume (retrying errors):   [bold][{theme.light}]scout scan-resume "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
+    )
+    print(
+        f'Complete (ignoring errors): [bold][{theme.light}]scout scan-complete "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
+    )

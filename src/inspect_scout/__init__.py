@@ -1,5 +1,12 @@
 from ._recorder.recorder import ScanResults, ScanStatus
-from ._scan import scan, scan_async, scan_resume, scan_resume_async
+from ._scan import (
+    scan,
+    scan_async,
+    scan_complete,
+    scan_complete_async,
+    scan_resume,
+    scan_resume_async,
+)
 from ._scanjob import ScanJob, scanjob
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Result
@@ -32,12 +39,14 @@ __all__ = [
     # scan
     "scan",
     "scan_resume",
+    "scan_complete",
     "scan_status",
     "ScanStatus",
     "scan_results",
     "ScanResults",
     "scan_async",
     "scan_resume_async",
+    "scan_complete_async",
     "scan_status_async",
     "scan_results_async",
     "scanjob",

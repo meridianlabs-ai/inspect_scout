@@ -16,6 +16,7 @@ dependencies = [
     "ijson>=3.2.0",
     "importlib-metadata",
     "inspect-ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai.git",
+    "jsonlines>=3.0.0",
     "pandas>=2.0.0",
     "pyarrow>=10.0.1",
     "pydantic>=2.11.4",

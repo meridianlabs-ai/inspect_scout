@@ -4,6 +4,7 @@ from typing import Any, Set, cast
 
 import importlib_metadata
 from inspect_ai._util.constants import PKG_NAME
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.git import git_context
 from inspect_ai._util.module import load_module
 from inspect_ai._util.path import cwd_relative_path
@@ -95,8 +96,11 @@ async def create_scan(
 async def resume_scan(scan_location: str) -> ScanContext:
     # load the spec
     recorder_type = scan_recorder_type_for_location(scan_location)
-    spec = (await recorder_type.status(scan_location)).spec
+    status = await recorder_type.status(scan_location)
+    if status.complete:
+        raise PrerequisiteError(f"Scan at '{scan_location}' is already complete.")
 
+    spec = status.spec
     return ScanContext(
         spec=spec,
         transcripts=await transcripts_from_snapshot(spec.transcripts),

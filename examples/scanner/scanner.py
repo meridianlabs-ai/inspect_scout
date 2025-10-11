@@ -8,7 +8,6 @@ from inspect_scout import (
     Result,
     Scanner,
     scan,
-    scan_results,
     scan_resume,
     scanner,
     transcripts,
@@ -93,6 +92,6 @@ if __name__ == "__main__":
             results=SCANS_DIR.as_posix(),
         )
 
-        if status.complete:
-            for scanner_result in scan_results(status.location).scanners.values():
-                scanner_result.info()
+        # if status.complete:
+        #     for scanner_result in scan_results(status.location).scanners.values():
+        #         scanner_result.info()

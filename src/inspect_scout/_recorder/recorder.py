@@ -4,7 +4,7 @@ from typing import Callable, Sequence, TypeAlias
 
 import pandas as pd
 
-from .._scanner.result import ResultReport
+from .._scanner.result import ResultReport, ScanError
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
@@ -54,6 +54,9 @@ class ScanRecorder(abc.ABC):
 
     @abc.abstractmethod
     async def flush(self) -> None: ...
+
+    @abc.abstractmethod
+    async def errors(self) -> list[ScanError]: ...
 
     @abc.abstractmethod
     async def complete(self) -> ScanStatus: ...

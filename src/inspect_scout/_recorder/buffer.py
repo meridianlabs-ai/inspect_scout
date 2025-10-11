@@ -5,12 +5,13 @@ import shutil
 from datetime import datetime
 from typing import Any, Final, Sequence, Set, cast
 
+import jsonlines
 import pyarrow as pa
 from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.hash import mm3_hash
 from upath import UPath
 
-from .._scanner.result import ResultReport
+from .._scanner.result import ResultReport, ScanError
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
@@ -38,7 +39,11 @@ class RecorderBuffer:
 
     def __init__(self, scan_location: str, spec: ScanSpec):
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
+        self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
+        self._error_file = self._buffer_dir.joinpath("_errors.jsonl")
+        with self._error_file.open("w"):
+            pass  # truncates existing file
 
     async def record(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
@@ -91,9 +96,23 @@ class RecorderBuffer:
         )
         os.replace(tmp_path.as_posix(), final_path.as_posix())
 
+        # record errors
+        for result in results:
+            if result.error is not None:
+                with open(str(self._error_file), "at") as f:
+                    f.write(result.error.model_dump_json(warnings=False) + "\n")
+
     async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
         return (sdir / f"{transcript.id}.parquet").exists()
+
+    def errors(self) -> list[ScanError]:
+        with open(str(self._error_file), "r") as f:
+            errors: list[ScanError] = []
+            reader = jsonlines.Reader(f)
+            for error in reader.iter(type=dict):
+                errors.append(ScanError(**error))
+            return errors
 
     def scanner_table(self, scanner: str) -> bytes | None:
         import pyarrow as pa
@@ -145,10 +164,14 @@ class RecorderBuffer:
         for field in schema:
             if pa.types.is_null(field.type):
                 # Promote null type to string
-                corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+                corrected_fields.append(
+                    pa.field(field.name, pa.string(), nullable=True)
+                )
             elif field.name == "value":
                 # Force value column to string to handle mixed types
-                corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+                corrected_fields.append(
+                    pa.field(field.name, pa.string(), nullable=True)
+                )
             else:
                 corrected_fields.append(field)
         schema = pa.schema(corrected_fields)
@@ -193,13 +216,13 @@ class RecorderBuffer:
                             arrays.append(col.cast(field.type))
                         else:
                             # Column missing - create null array
-                            arrays.append(pa.array([None] * len(batch), type=field.type))
+                            arrays.append(
+                                pa.array([None] * len(batch), type=field.type)
+                            )
 
                     batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
                 except Exception as e:
-                    raise RuntimeError(
-                        f"Failed to cast batch to schema: {e}"
-                    ) from e
+                    raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
 
                 size = batch.nbytes
                 if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:

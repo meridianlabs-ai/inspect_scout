@@ -33,8 +33,8 @@ class IPCContext:
 
     parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]]
     scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]
-    concurrent_scans_per_process: int
-    buffer_multiple: float | None
+    tasks_per_process: int
+    prefetch_multiple: float | None
     diagnostics: bool
     overall_start_time: float
     parse_job_queue: MPQueue[ParseJob | None]

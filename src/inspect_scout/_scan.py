@@ -230,16 +230,6 @@ async def _scan_async_inner(
     optimization goal is to keep `max_transcripts` concurrent LLM calls in flight
     at all times.
 
-    Optimization Strategy:
-        - Concurrency control: `max_transcripts` sets both the worker pool size
-          and the model's `max_connections`, ensuring N concurrent LLM calls can
-          execute simultaneously
-        - Lazy loading: Transcripts are loaded on-demand only when needed by a scanner,
-          minimizing memory usage and I/O
-        - Backpressure: A bounded queue (size = max_transcripts × LOOKAHEAD_BUFFER_MULTIPLE)
-          ensures work items are ready when workers finish, preventing worker starvation
-          while controlling memory growth
-
     Args:
         scan: The scan context containing scanners, transcripts, and configuration
         recorder: The scan recorder for tracking completed work and persisting results
@@ -345,9 +335,9 @@ async def _scan_async_inner(
                 # - max_transcripts is limit of how many parsed transcripts we'll keep in memory
                 # - we want a buffer multiple of 1.0 so that we could feed all active tasks at once if they all finished at the same time.
 
-                buffer_multiple = 1.0
-                max_concurrent_scans = int(
-                    (max_transcripts * scans_per_transcript) / (1 + buffer_multiple)
+                prefetch_multiple = 1.0
+                max_tasks = int(
+                    (max_transcripts * scans_per_transcript) / (1 + prefetch_multiple)
                 )
 
                 # TODO: Plumb this
@@ -355,20 +345,21 @@ async def _scan_async_inner(
                 diagnostics = False
                 strategy = (
                     multi_process_strategy(
-                        # max_processes=2,
-                        max_concurrent_scans=max_concurrent_scans,
-                        buffer_multiple=buffer_multiple,
+                        processes=2,
+                        task_count=max_tasks,
+                        prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
                     if multi_testing
                     else single_process_strategy(
-                        max_concurrent_scans=max_concurrent_scans,
-                        buffer_multiple=buffer_multiple,
+                        task_count=max_tasks,
+                        prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
                 )
 
                 # For multi-process strategy, set context (scanners + union_content)
+                # TODO: Follow up with JJ on this stuff. I'm missing something.
                 if hasattr(strategy, "set_context"):
                     strategy.set_context(scanners_list, union_content)
 

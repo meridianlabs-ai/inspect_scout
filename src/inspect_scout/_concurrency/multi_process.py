@@ -32,10 +32,10 @@ from .common import ConcurrencyStrategy, ParseJob, ScannerJob, WorkerMetrics
 
 def multi_process_strategy(
     *,
-    max_concurrent_scans: int,
-    max_processes: int | None = None,
-    buffer_multiple: float | None = None,
+    task_count: int,
+    prefetch_multiple: float | None = None,
     diagnostics: bool = False,
+    processes: int | float = 1.0,
 ) -> ConcurrencyStrategy:
     """Multi-process execution strategy with nested async concurrency.
 
@@ -44,13 +44,27 @@ def multi_process_strategy(
     The ParseJob queue is unbounded since ParseJobs are lightweight metadata objects.
 
     Args:
-        max_concurrent_scans: Target total scanner concurrency across all processes
-        max_processes: Number of worker processes to spawn (None = auto-detect from CPU count)
-        buffer_multiple: Buffer size multiple passed to each worker's single-process strategy
+        task_count: Target total task concurrency across all processes
+        prefetch_multiple: Buffer size multiple passed to each worker's
+            single-process strategy
+        processes: Number of worker processes. Can be specified as:
+            - int: Absolute number of processes (must be >= 1)
+            - float: Multiplier of CPU count (must be > 0.0, default 1.0)
+              Example: 1.5 means 1.5x the number of CPUs
         diagnostics: Whether to print diagnostic information
     """
-    if max_processes is None:
-        max_processes = multiprocessing.cpu_count()
+    if isinstance(processes, int):
+        if processes < 1:
+            raise ValueError(
+                f"processes must be >= 1 when specified as int, got {processes}"
+            )
+        process_count = processes
+    else:
+        if processes <= 0.0:
+            raise ValueError(
+                f"processes must be > 0.0 when specified as float, got {processes}"
+            )
+        process_count = max(1, int(multiprocessing.cpu_count() * processes))
 
     async def the_func(
         *,
@@ -67,21 +81,18 @@ def multi_process_strategy(
         # (ipc_context is cast(IPCContext, None) initially, so we check truthiness)
         if _mp_common.ipc_context is not None:
             raise RuntimeError(
-                "Another multi_process_strategy is already running. "
-                "Only one instance can be active at a time."
+                "Another multi_process_strategy is already running. Only one instance can be active at a time."
             )
 
         # TODO: Obviously, hack_factor is just for exploration for now
         hack_factor = 1
-        concurrent_scans_per_process = hack_factor * max(
-            1, max_concurrent_scans // max_processes
-        )
+        tasks_per_process = hack_factor * max(1, task_count // process_count)
         # Initialize shared IPC context that will be inherited by forked workers
         _mp_common.ipc_context = _mp_common.IPCContext(
             parse_function=parse_function,
             scan_function=scan_function,
-            concurrent_scans_per_process=concurrent_scans_per_process,
-            buffer_multiple=buffer_multiple,
+            tasks_per_process=tasks_per_process,
+            prefetch_multiple=prefetch_multiple,
             diagnostics=diagnostics,
             overall_start_time=time.time(),
             parse_job_queue=multiprocessing.Queue(),
@@ -97,8 +108,8 @@ def multi_process_strategy(
 
         print_diagnostics(
             "Setup",
-            f"Multi-process strategy: {max_processes} processes × "
-            f"{concurrent_scans_per_process} scans = {max_processes * concurrent_scans_per_process} total concurrency",
+            f"Multi-process strategy: {process_count} processes × "
+            f"{tasks_per_process} scans = {process_count * tasks_per_process} total concurrency",
         )
 
         # Queues are part of IPC context and inherited by forked processes.
@@ -118,7 +129,7 @@ def multi_process_strategy(
                 )
 
             # Send sentinel values to signal worker tasks to stop (one per task)
-            sentinel_count = max_processes * concurrent_scans_per_process
+            sentinel_count = process_count * tasks_per_process
             for _ in range(sentinel_count):
                 parse_job_queue.put(None)
 
@@ -129,7 +140,7 @@ def multi_process_strategy(
             items_processed = 0
             workers_finished = 0
 
-            while workers_finished < max_processes:
+            while workers_finished < process_count:
                 result = await run_sync_on_thread(result_queue.get)
 
                 if result is None:
@@ -137,7 +148,7 @@ def multi_process_strategy(
                     workers_finished += 1
                     print_diagnostics(
                         "MP Collector",
-                        f"Worker finished ({workers_finished}/{max_processes})",
+                        f"Worker finished ({workers_finished}/{process_count})",
                     )
                     continue
 
@@ -158,11 +169,11 @@ def multi_process_strategy(
             # Start worker processes
             ctx = multiprocessing.get_context("fork")
             with ProcessPoolExecutor(
-                max_workers=max_processes, mp_context=ctx
+                max_workers=process_count, mp_context=ctx
             ) as executor:
                 # Submit worker processes
                 futures = []
-                for worker_id in range(max_processes):
+                for worker_id in range(process_count):
                     try:
                         # The only arguments passed to subprocess_main via this
                         # .submit should be subprocess specific. All subprocess invariant

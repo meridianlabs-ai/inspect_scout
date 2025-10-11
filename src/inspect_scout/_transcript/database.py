@@ -33,7 +33,10 @@ from inspect_ai.analysis._dataframe.extract import (
     score_values,
 )
 from inspect_ai.analysis._dataframe.samples.columns import SampleColumn, SampleSummary
-from inspect_ai.analysis._dataframe.samples.extract import sample_total_tokens
+from inspect_ai.analysis._dataframe.samples.extract import (
+    auto_sample_id,
+    sample_total_tokens,
+)
 from inspect_ai.analysis._dataframe.samples.table import SAMPLE_ID, samples_df
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
@@ -325,13 +328,22 @@ class EvalLogTranscriptsDB:
                 self._summaries_cache is None
                 or self._summaries_cache[0] != t.source_uri
             ):
+                summaries = [
+                    summary
+                    if summary.uuid is not None
+                    else summary.model_copy(
+                        update={"uuid": auto_sample_id(t.source_id, summary)}
+                    )
+                    for summary in await read_eval_log_sample_summaries_async(
+                        t.source_uri
+                    )
+                ]
+
                 self._summaries_cache = (
                     t.source_uri,
                     {
                         summary.uuid: summary
-                        for summary in await read_eval_log_sample_summaries_async(
-                            t.source_uri
-                        )
+                        for summary in summaries
                         if summary.uuid is not None
                     },
                 )

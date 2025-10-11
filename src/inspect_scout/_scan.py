@@ -307,7 +307,14 @@ async def _scan_async_inner(
                     ]
 
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
+                    # initialize model_usage tracking for this coroutine
                     init_model_usage()
+
+                    # initialize transcript for this coroutine
+                    from inspect_ai.log._transcript import Transcript, init_transcript
+
+                    transcript = Transcript()
+                    init_transcript(transcript)
 
                     result: Result | None = None
                     error: Exception | None = None
@@ -328,6 +335,7 @@ async def _scan_async_inner(
                             input_id=job.union_transcript.id,
                             result=result,
                             error=str(error),
+                            events=transcript.events,
                             model_usage=model_usage(),
                         )
                     ]

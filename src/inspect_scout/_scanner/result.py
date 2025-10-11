@@ -1,6 +1,7 @@
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 from inspect_ai._util.json import to_json_str_safe
+from inspect_ai.event import Event
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
@@ -44,6 +45,8 @@ class ResultReport(BaseModel):
     result: Result | None
 
     error: str | None
+
+    events: Sequence[Event]
 
     model_usage: dict[str, ModelUsage]
 
@@ -95,5 +98,6 @@ class ResultReport(BaseModel):
 
         columns["scan_total_tokens"] = total_tokens
         columns["scan_model_usage"] = to_json_str_safe(self.model_usage)
+        columns["scan_events"] = to_json_str_safe(self.events)
 
         return columns

@@ -24,7 +24,7 @@ def test_base_type_with_filter():
 
     @scanner(messages=["system", "user"])
     def test_scanner() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -41,7 +41,7 @@ def test_exact_union_match():
 
     @scanner(messages=["system", "user"])
     def test_scanner() -> Scanner[ChatMessageSystem | ChatMessageUser]:
-        async def scan(message: ChatMessageSystem | ChatMessageUser) -> Result | None:
+        async def scan(message: ChatMessageSystem | ChatMessageUser) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -55,7 +55,7 @@ def test_single_type_single_filter():
 
     @scanner(messages=["assistant"])
     def test_scanner() -> Scanner[ChatMessageAssistant]:
-        async def scan(message: ChatMessageAssistant) -> Result | None:
+        async def scan(message: ChatMessageAssistant) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -69,7 +69,7 @@ def test_list_of_base_type():
 
     @scanner(messages=["system", "user"])
     def test_scanner() -> Scanner[list[ChatMessage]]:
-        async def scan(messages: list[ChatMessage]) -> Result | None:
+        async def scan(messages: list[ChatMessage]) -> Result:
             return Result(value={"count": len(messages)})
 
         return scan
@@ -83,7 +83,7 @@ def test_list_of_specific_type():
 
     @scanner(messages=["assistant"])
     def test_scanner() -> Scanner[list[ChatMessageAssistant]]:
-        async def scan(messages: list[ChatMessageAssistant]) -> Result | None:
+        async def scan(messages: list[ChatMessageAssistant]) -> Result:
             return Result(value={"count": len(messages)})
 
         return scan
@@ -99,7 +99,7 @@ def test_list_of_union_type():
     def test_scanner() -> Scanner[list[ChatMessageSystem | ChatMessageUser]]:
         async def scan(
             messages: list[ChatMessageSystem | ChatMessageUser],
-        ) -> Result | None:
+        ) -> Result:
             return Result(value={"count": len(messages)})
 
         return scan
@@ -113,7 +113,7 @@ def test_messages_all_with_base_type():
 
     @scanner(messages="all")
     def test_scanner() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -130,7 +130,7 @@ def test_events_all_with_base_type():
 
     @scanner(events="all")
     def test_scanner() -> Scanner[Event]:
-        async def scan(event: Event) -> Result | None:
+        async def scan(event: Event) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -146,7 +146,7 @@ def test_event_union_types():
 
     @scanner(events=["model", "tool"])
     def test_scanner() -> Scanner[ModelEvent | ToolEvent]:
-        async def scan(event: ModelEvent | ToolEvent) -> Result | None:
+        async def scan(event: ModelEvent | ToolEvent) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -160,7 +160,7 @@ def test_transcript_with_both_filters():
 
     @scanner(messages=["user"], events=["model"])
     def test_scanner() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result | None:
+        async def scan(transcript: Transcript) -> Result:
             return Result(value={"id": transcript.id})
 
         return scan
@@ -181,7 +181,7 @@ def test_all_message_types_union():
             | ChatMessageUser
             | ChatMessageAssistant
             | ChatMessageTool,
-        ) -> Result | None:
+        ) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -199,7 +199,7 @@ def test_subset_type_error():
 
         @scanner(messages=["system", "user"])
         def test_scanner() -> Scanner[ChatMessageSystem]:
-            async def scan(message: ChatMessageSystem) -> Result | None:
+            async def scan(message: ChatMessageSystem) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -213,7 +213,7 @@ def test_wrong_type_error():
 
         @scanner(messages=["user"])
         def test_scanner() -> Scanner[ChatMessageAssistant]:
-            async def scan(message: ChatMessageAssistant) -> Result | None:
+            async def scan(message: ChatMessageAssistant) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -229,7 +229,7 @@ def test_partial_union_error():
         def test_scanner() -> Scanner[ChatMessageSystem | ChatMessageUser]:
             async def scan(
                 message: ChatMessageSystem | ChatMessageUser,
-            ) -> Result | None:
+            ) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -243,7 +243,7 @@ def test_all_filter_with_specific_type():
 
         @scanner(messages="all")
         def test_scanner() -> Scanner[ChatMessageAssistant]:
-            async def scan(message: ChatMessageAssistant) -> Result | None:
+            async def scan(message: ChatMessageAssistant) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -257,7 +257,7 @@ def test_events_all_with_specific_type():
 
         @scanner(events="all")
         def test_scanner() -> Scanner[ModelEvent]:
-            async def scan(event: ModelEvent) -> Result | None:
+            async def scan(event: ModelEvent) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -271,7 +271,7 @@ def test_both_filters_without_transcript():
 
         @scanner(messages=["user"], events=["model"])
         def test_scanner() -> Scanner[ChatMessage]:
-            async def scan(message: ChatMessage) -> Result | None:
+            async def scan(message: ChatMessage) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -285,7 +285,7 @@ def test_list_of_wrong_type():
 
         @scanner(messages=["user"])
         def test_scanner() -> Scanner[list[ChatMessageAssistant]]:
-            async def scan(messages: list[ChatMessageAssistant]) -> Result | None:
+            async def scan(messages: list[ChatMessageAssistant]) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -301,7 +301,7 @@ def test_list_of_partial_union():
         def test_scanner() -> Scanner[list[ChatMessageSystem | ChatMessageUser]]:
             async def scan(
                 messages: list[ChatMessageSystem | ChatMessageUser],
-            ) -> Result | None:
+            ) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -341,7 +341,7 @@ def test_scanner_without_filters_but_with_loader():
 
     @scanner(loader=test_loader())
     def test_scanner() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result | None:
+        async def scan(transcript: Transcript) -> Result:
             return Result(value={"id": transcript.id})
 
         return scan
@@ -357,7 +357,7 @@ def test_non_async_scanner():
 
         @scanner(messages=["system"])
         def test_scanner() -> Scanner[ChatMessage]:
-            def scan(message: ChatMessage) -> Result | None:  # Not async!
+            def scan(message: ChatMessage) -> Result:  # Not async!
                 return Result(value={"bad": True})
 
             return scan  # type: ignore[return-value]
@@ -370,7 +370,7 @@ def test_multiple_event_types():
 
     @scanner(events=["model", "tool", "error", "sample_init"])
     def test_scanner() -> Scanner[Event]:
-        async def scan(event: Event) -> Result | None:
+        async def scan(event: Event) -> Result:
             return Result(value={"event": event.event})
 
         return scan
@@ -404,7 +404,7 @@ def test_all_supported_event_types():
 
     @scanner(events=all_events)
     def test_scanner() -> Scanner[Event]:
-        async def scan(event: Event) -> Result | None:
+        async def scan(event: Event) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -440,7 +440,7 @@ def test_message_validation_matrix(filter_types, scanner_type, should_pass):
 
         @scanner(messages=filter_types)
         def test_scanner() -> Scanner[scanner_type]:  # pyright: ignore[reportInvalidTypeForm]
-            async def scan(message: scanner_type) -> Result | None:  # type: ignore
+            async def scan(message: scanner_type) -> Result:  # type: ignore
                 return Result(value={"ok": True})
 
             return scan
@@ -452,7 +452,7 @@ def test_message_validation_matrix(filter_types, scanner_type, should_pass):
 
             @scanner(messages=filter_types)
             def test_scanner() -> Scanner[scanner_type]:  # pyright: ignore[reportInvalidTypeForm]
-                async def scan(message: scanner_type) -> Result | None:  # type: ignore
+                async def scan(message: scanner_type) -> Result:  # type: ignore
                     return Result(value={"bad": True})
 
                 return scan

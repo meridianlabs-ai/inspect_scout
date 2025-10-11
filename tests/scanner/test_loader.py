@@ -127,7 +127,7 @@ def test_scanner_with_custom_loader():
 
     @scanner(loader=loader_instance)
     def user_scanner() -> Scanner[ChatMessageUser]:
-        async def scan(message: ChatMessageUser) -> Result | None:
+        async def scan(message: ChatMessageUser) -> Result:
             return Result(value={"user_content": message.text})
 
         return scan
@@ -157,7 +157,7 @@ def test_loader_type_transformation():
 
     @scanner(loader=loader_instance)
     def event_scanner() -> Scanner[Event]:
-        async def scan(event: Event) -> Result | None:
+        async def scan(event: Event) -> Result:
             return Result(value={"event_type": event.event})
 
         return scan
@@ -192,7 +192,7 @@ def test_loader_with_custom_logic():
 
     @scanner(loader=loader_instance)
     def long_message_scanner() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"length": len(message.text)})
 
         return scan

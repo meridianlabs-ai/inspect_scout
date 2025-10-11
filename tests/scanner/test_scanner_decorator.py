@@ -12,7 +12,7 @@ from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
 def test_scanner_creates_config():
     @scanner(messages=["system"])
     def test_scanner() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -28,7 +28,7 @@ def test_scanner_with_custom_name():
 
     @scanner(messages=["user"], name="custom_scanner")
     def test_scanner() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -43,7 +43,7 @@ def test_scanner_with_events():
 
     @scanner(events=["model", "tool"])
     def test_scanner() -> Scanner[Event]:
-        async def scan(event: Event) -> Result | None:
+        async def scan(event: Event) -> Result:
             return Result(value={"event": event.event})
 
         return scan
@@ -61,7 +61,7 @@ def test_scanner_with_both_filters():
 
     @scanner(messages=["user"], events=["model"])
     def test_scanner() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result | None:
+        async def scan(transcript: Transcript) -> Result:
             return Result(value={"id": transcript.id})
 
         return scan
@@ -78,7 +78,7 @@ def test_scanner_requires_async():
 
         @scanner(messages=["system"])
         def test_scanner() -> Scanner[ChatMessage]:
-            def scan(message: ChatMessage) -> Result | None:  # Not async!
+            def scan(message: ChatMessage) -> Result:  # Not async!
                 return Result(value={"bad": True})
 
             return scan  # type: ignore[return-value]
@@ -92,7 +92,7 @@ def test_scanner_requires_at_least_one_filter_or_loader():
 
         @scanner()  # No filters or loader!
         def test_scanner() -> Scanner[ChatMessage]:
-            async def scan(message: ChatMessage) -> Result | None:
+            async def scan(message: ChatMessage) -> Result:
                 return Result(value={"bad": True})
 
             return scan
@@ -105,7 +105,7 @@ def test_scanner_factory_with_parameters():
 
     @scanner(messages=["assistant"])
     def parameterized_scanner(threshold: int = 10) -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             if len(message.text) > threshold:
                 return Result(value={"long": True})
             return Result(value={"short": True})
@@ -137,7 +137,7 @@ def test_scanner_with_loader():
 
     @scanner(loader=loader_instance)
     def test_scanner() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result | None:
+        async def scan(transcript: Transcript) -> Result:
             return Result(value={"id": transcript.id})
 
         return scan
@@ -154,7 +154,7 @@ def test_scanner_preserves_function_metadata():
     def test_scanner_with_doc() -> Scanner[ChatMessage]:
         """This is a test scanner."""
 
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -172,7 +172,7 @@ def test_scanner_added_to_registry():
 
     @scanner(messages=["system"], name="registry_test_scanner")
     def test_scanner() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"ok": True})
 
         return scan
@@ -187,14 +187,14 @@ def test_multiple_scanners_different_names():
 
     @scanner(messages=["system"], name="scanner_one")
     def scanner1() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"scanner": 1})
 
         return scan
 
     @scanner(messages=["user"], name="scanner_two")
     def scanner2() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result | None:
+        async def scan(message: ChatMessage) -> Result:
             return Result(value={"scanner": 2})
 
         return scan

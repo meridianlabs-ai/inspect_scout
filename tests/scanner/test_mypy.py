@@ -27,31 +27,31 @@ def test_mypy_scanner_and_loader_types():
 
         @scanner(messages=["assistant"])
         def valid_single_type() -> Scanner[ChatMessageAssistant]:
-            async def scan(message: ChatMessageAssistant) -> Result | None:
+            async def scan(message: ChatMessageAssistant) -> Result:
                 return Result(value={"model": message.model})
             return scan
 
         @scanner(messages=["system", "user"])
         def valid_union_type() -> Scanner[ChatMessageSystem | ChatMessageUser]:
-            async def scan(message: ChatMessageSystem | ChatMessageUser) -> Result | None:
+            async def scan(message: ChatMessageSystem | ChatMessageUser) -> Result:
                 return Result(value={"role": message.role})
             return scan
 
         @scanner(messages=["system", "user"])
         def valid_base_type() -> Scanner[ChatMessage]:
-            async def scan(message: ChatMessage) -> Result | None:
+            async def scan(message: ChatMessage) -> Result:
                 return Result(value={"role": message.role})
             return scan
 
         @scanner(messages="all")
         def valid_all_messages() -> Scanner[ChatMessage]:
-            async def scan(message: ChatMessage) -> Result | None:
+            async def scan(message: ChatMessage) -> Result:
                 return Result(value={"role": message.role})
             return scan
 
         @scanner(messages=["assistant"])
         def valid_list_type() -> Scanner[list[ChatMessageAssistant]]:
-            async def scan(messages: list[ChatMessageAssistant]) -> Result | None:
+            async def scan(messages: list[ChatMessageAssistant]) -> Result:
                 count = len(messages)
                 if messages:
                     first = messages[0]
@@ -61,7 +61,7 @@ def test_mypy_scanner_and_loader_types():
 
         @scanner(messages=["user"], events=["model"])
         def valid_transcript() -> Scanner[Transcript]:
-            async def scan(transcript: Transcript) -> Result | None:
+            async def scan(transcript: Transcript) -> Result:
                 msg_count = len(transcript.messages)
                 event_count = len(transcript.events)
                 return Result(value={"messages": msg_count, "events": event_count})
@@ -103,7 +103,7 @@ def test_mypy_scanner_and_loader_types():
 
         @scanner(loader=user_loader())
         def scanner_with_loader() -> Scanner[ChatMessageUser]:
-            async def scan(message: ChatMessageUser) -> Result | None:
+            async def scan(message: ChatMessageUser) -> Result:
                 text = message.text
                 return Result(value={"user_said": text})
             return scan
@@ -112,7 +112,7 @@ def test_mypy_scanner_and_loader_types():
 
         @scanner(messages=["assistant"])
         def factory_scanner(min_length: int = 100) -> Scanner[ChatMessageAssistant]:
-            async def scan(message: ChatMessageAssistant) -> Result | None:
+            async def scan(message: ChatMessageAssistant) -> Result:
                 text = message.text
                 if len(text) > min_length:
                     return Result(value={"long": True, "model": message.model})
@@ -179,7 +179,7 @@ def test_mypy_detects_type_errors():
         # This should be an error - scan function not async
         @scanner(messages=["assistant"])
         def not_async_scanner() -> Scanner[ChatMessageAssistant]:
-            def scan(message: ChatMessageAssistant) -> Result | None:  # Not async!
+            def scan(message: ChatMessageAssistant) -> Result:  # Not async!
                 return Result(value={"bad": True})
             return scan
 
@@ -196,7 +196,7 @@ def test_mypy_detects_type_errors():
 
         @scanner(loader=user_msg_loader())
         def mismatched_scanner() -> Scanner[ChatMessageAssistant]:  # Wrong type!
-            async def scan(message: ChatMessageAssistant) -> Result | None:
+            async def scan(message: ChatMessageAssistant) -> Result:
                 return Result(value={"model": message.model})
             return scan
     """)

@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Callable, Sequence, TypeAlias
 
 import pandas as pd
 
@@ -29,6 +29,9 @@ class ScanResults(ScanStatus):
     ) -> None:
         super().__init__(status, spec, location)
         self.scanners = scanners
+
+
+ScanResultsFilter: TypeAlias = Callable[[pd.DataFrame], pd.Series]
 
 
 class ScanRecorder(abc.ABC):
@@ -62,5 +65,8 @@ class ScanRecorder(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     async def results(
-        scan_location: str, scanner: str | None = None
+        scan_location: str,
+        *,
+        scanner: str | None = None,
+        filter: ScanResultsFilter | None = None,
     ) -> ScanResults: ...

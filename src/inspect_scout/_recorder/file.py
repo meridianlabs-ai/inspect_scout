@@ -1,6 +1,7 @@
 import io
 from typing import Sequence
 
+import pandas as pd
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
@@ -11,7 +12,7 @@ from .._recorder.buffer import RecorderBuffer
 from .._scanner.result import ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
-from .recorder import ScanRecorder, ScanResults, ScanStatus
+from .recorder import ScanRecorder, ScanResults, ScanResultsFilter, ScanStatus
 
 SCAN_JSON = "_scan.json"
 
@@ -115,8 +116,12 @@ class FileRecorder(ScanRecorder):
         )
 
     @staticmethod
-    async def results(scan_location: str, scanner: str | None = None) -> ScanResults:
-        import pandas as pd
+    async def results(
+        scan_location: str,
+        *,
+        scanner: str | None = None,
+        filter: ScanResultsFilter | None = None,
+    ) -> ScanResults:
         import pyarrow.parquet as pq
         from upath import UPath
 
@@ -126,9 +131,20 @@ class FileRecorder(ScanRecorder):
         async with AsyncFilesystem() as fs:
 
             async def scanner_df(parquet_file: UPath) -> pd.DataFrame:
+                # read table into df
                 bytes = await fs.read_file(parquet_file.as_posix())
                 table = pq.read_table(io.BytesIO(bytes))
-                return table.to_pandas(types_mapper=pd.ArrowDtype)
+                df = table.to_pandas(types_mapper=pd.ArrowDtype)
+
+                # cast value column to appropriate type based on value_type
+                df = _cast_value_column(df)
+
+                # apply filter if requested
+                if filter:
+                    df = df.loc[filter]
+
+                # return
+                return df
 
             # read scanner parquet files
             scanners: dict[str, pd.DataFrame] = {}
@@ -191,3 +207,62 @@ def _ensure_scan_dir(scans_path: UPath, scan_id: str) -> UPath:
 
 def _ensure_scans_dir(scans_dir: UPath) -> None:
     scans_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cast the 'value' column to its appropriate type based on 'value_type'.
+
+    The value column is stored as string in parquet files to handle mixed types
+    during compaction. This function restores the original types for analysis.
+
+    Args:
+        df: DataFrame with 'value' and 'value_type' columns
+
+    Returns:
+        DataFrame with value column cast to appropriate type
+    """
+    if "value" not in df.columns or "value_type" not in df.columns:
+        return df
+
+    # Check if value_type is uniform across all rows
+    value_types = df["value_type"].dropna().unique()
+
+    if len(value_types) == 0:
+        # No value_type information, keep as-is
+        return df
+    elif len(value_types) == 1:
+        # Uniform type - safe to cast entire column
+        vtype = value_types[0]
+
+        try:
+            if vtype == "boolean":
+                # Handle various string representations of booleans
+                df["value"] = df["value"].map(
+                    {
+                        "true": True,
+                        "false": False,
+                        "True": True,
+                        "False": False,
+                        None: None,
+                    }
+                )
+            elif vtype == "number":
+                # Use nullable Int64/Float64 to preserve NaN
+                # Try int first, fall back to float
+                df["value"] = pd.to_numeric(df["value"], errors="coerce")
+            elif vtype in ("string", "null"):
+                # Already strings or nulls, keep as-is
+                pass
+            elif vtype in ("array", "object"):
+                # Complex types are JSON strings, keep as-is
+                # Could optionally parse JSON here if needed
+                pass
+        except Exception:
+            # If casting fails for any reason, keep original string representation
+            pass
+    else:
+        # Mixed types - keep as strings for safety
+        pass
+
+    return df

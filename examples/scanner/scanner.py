@@ -1,3 +1,4 @@
+import random
 import sys
 from pathlib import Path
 
@@ -20,7 +21,10 @@ from inspect_scout._transcript.types import Transcript
 def target_word_scanner(target_word: str) -> Scanner[Transcript]:
     target_word = target_word.lower()
 
-    async def execute(transcript: Transcript) -> Result | None:
+    async def execute(transcript: Transcript) -> Result:
+        if random.random() < 0.2:
+            raise ValueError("Random error occurred!")
+
         count = sum(
             msg.text.lower().count(target_word)
             for msg in transcript.messages
@@ -37,7 +41,7 @@ def target_word_scanner(target_word: str) -> Scanner[Transcript]:
 # TODO: This wants to be @scanner(messages="all"), but the typing for that isn't quite right yet
 @scanner(messages=["system", "user", "assistant", "tool"])
 def llm_scanner() -> Scanner[Transcript]:
-    async def execute(transcript: Transcript) -> Result | None:
+    async def execute(transcript: Transcript) -> Result:
         scanner_model = get_model()
         all_message_content = messages_as_str(
             [message for message in transcript.messages if message.role != "system"]

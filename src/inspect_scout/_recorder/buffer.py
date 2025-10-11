@@ -137,6 +137,22 @@ class RecorderBuffer:
                 f"Unable to discover dataset schema under {sdir}: {e}"
             ) from e
 
+        # Correct schema to handle type inconsistencies across files:
+        # 1. Promote null-type columns to string (unknown type)
+        # 2. Force 'value' column to string since it can have mixed types (bool, int, float, str)
+        #    across different result reports
+        corrected_fields = []
+        for field in schema:
+            if pa.types.is_null(field.type):
+                # Promote null type to string
+                corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+            elif field.name == "value":
+                # Force value column to string to handle mixed types
+                corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+            else:
+                corrected_fields.append(field)
+        schema = pa.schema(corrected_fields)
+
         # state for bounded accumulation -> large-ish row groups
         accumulated: list[pa.RecordBatch] = []
         accumulated_bytes: int = 0
@@ -160,15 +176,36 @@ class RecorderBuffer:
         )
 
         # iterate materialized batches; to keep memory in check we use a small batch_size.
-        for batch in dataset.to_batches(
-            batch_size=DEFAULT_BATCH_ROWS,
-            use_threads=True,
-        ):
-            size = batch.nbytes
-            if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
-                flush_accumulated(writer)
-            accumulated.append(batch)
-            accumulated_bytes += size
+        # We iterate fragments and manually cast to handle schema inconsistencies
+        for fragment in dataset.get_fragments():
+            for batch in fragment.to_batches(
+                batch_size=DEFAULT_BATCH_ROWS,
+                use_threads=False,
+            ):
+                # Cast batch to corrected schema to handle type mismatches
+                # (e.g., null columns promoted to string, or missing columns)
+                try:
+                    arrays = []
+                    for field in schema:
+                        if field.name in batch.schema.names:
+                            # Column exists - cast it to target type
+                            col = batch.column(field.name)
+                            arrays.append(col.cast(field.type))
+                        else:
+                            # Column missing - create null array
+                            arrays.append(pa.array([None] * len(batch), type=field.type))
+
+                    batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to cast batch to schema: {e}"
+                    ) from e
+
+                size = batch.nbytes
+                if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
+                    flush_accumulated(writer)
+                accumulated.append(batch)
+                accumulated_bytes += size
 
         # Final flush. If no rows were seen, this still leaves us with an empty file (schema only).
         flush_accumulated(writer)

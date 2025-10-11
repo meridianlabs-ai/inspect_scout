@@ -328,7 +328,7 @@ def single_process_strategy(
                 _update_metrics()
 
         try:
-            async with create_task_group() as outer_tg:
+            async with create_task_group():
                 progress_cancel_scope = None
 
                 async def progress_task() -> None:

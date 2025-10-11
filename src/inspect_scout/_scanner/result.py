@@ -35,6 +35,11 @@ class Result(BaseModel):
     """References to relevant messages or events."""
 
 
+class ScanError(BaseModel):
+    error: str
+    traceback: str
+
+
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
@@ -44,7 +49,7 @@ class ResultReport(BaseModel):
 
     result: Result | None
 
-    error: str | None
+    error: ScanError | None
 
     events: Sequence[Event]
 
@@ -78,6 +83,7 @@ class ResultReport(BaseModel):
             columns["metadata"] = to_json_str_safe(self.result.metadata or {})
             columns["references"] = to_json_str_safe(self.result.references)
             columns["scan_error"] = None
+            columns["scan_error_traceback"] = None
         elif self.error is not None:
             columns["value"] = None
             columns["value_type"] = "null"
@@ -85,7 +91,8 @@ class ResultReport(BaseModel):
             columns["explanation"] = None
             columns["metadata"] = to_json_str_safe({})
             columns["references"] = to_json_str_safe([])
-            columns["scan_error"] = self.error
+            columns["scan_error"] = self.error.error
+            columns["scan_error_traceback"] = self.error.traceback
         else:
             raise ValueError(
                 "A scan result must have either a 'result' or 'error' field."

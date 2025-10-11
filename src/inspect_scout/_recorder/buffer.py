@@ -7,6 +7,8 @@ from typing import Any, Final, Sequence, Set, cast
 
 import jsonlines
 import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.hash import mm3_hash
 from upath import UPath
@@ -82,9 +84,6 @@ class RecorderBuffer:
 
         # One-shot write per transcript
         final_path = sdir / f"{transcript.id}.parquet"
-        if final_path.exists():
-            # Idempotent: already recorded
-            return
 
         # Atomic write: write to .tmp, then os.replace to final
         tmp_path = sdir / f".{transcript.id}.parquet.tmp"
@@ -104,7 +103,16 @@ class RecorderBuffer:
 
     async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
-        return (sdir / f"{transcript.id}.parquet").exists()
+        transcript_file = sdir / f"{transcript.id}.parquet"
+        if transcript_file.exists():
+            # check if there are any non-null scan_error fields
+            table = pq.read_table(transcript_file.as_posix(), columns=["scan_error"])
+            scan_errors = table.column("scan_error")
+            if pc.any(pc.is_valid(scan_errors)).as_py():
+                return False
+            return True
+        else:
+            return False
 
     def errors(self) -> list[ScanError]:
         with open(str(self._error_file), "r") as f:

@@ -524,7 +524,7 @@ async def _parse_jobs(
 
 
 def print_scan_complete(scan_dir: str) -> None:
-    print(f"\n[bold]Scan complete:[/bold] '{pretty_path(scan_dir)}'\n")
+    print(f'\n[bold]Scan complete:[/bold] "{pretty_path(scan_dir)}"\n')
 
 
 def print_scan_errors(errors: list[ScanError], scan_dir: str) -> None:

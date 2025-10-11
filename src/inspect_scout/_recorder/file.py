@@ -54,7 +54,7 @@ class FileRecorder(ScanRecorder):
     @override
     async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
         # if we either already have a final scanner file or this transcript
-        # is in the buffer then the scan is recorded
+        # is in the buffer without errors then the scan is recorded
         if self._scanner_parquet_file(scanner) in self._scanners_completed:
             return True
         else:

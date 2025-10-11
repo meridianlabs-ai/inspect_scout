@@ -2,7 +2,7 @@ import os
 import sys
 import traceback
 from logging import getLogger
-from typing import Any, AsyncIterator, Callable, Mapping, Sequence
+from typing import Any, AsyncIterator, Mapping, Sequence
 
 import anyio
 from anyio.abc import TaskGroup
@@ -16,6 +16,7 @@ from inspect_ai._util.config import resolve_args
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init
 from inspect_ai._util.rich import rich_traceback
+from inspect_ai.log._transcript import Transcript, init_transcript
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
 from inspect_ai.model._model_config import (
@@ -32,7 +33,7 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from ._concurrency.common import ParseJob, ScannerJob, WorkerMetrics
+from ._concurrency.common import ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
 from ._progress_utils import UtilizationColumn
@@ -287,8 +288,8 @@ async def _scan_async_inner(
             with Progress(
                 TextColumn("Scanning"),
                 BarColumn(),
-                TextColumn("{task.total}"),
-                TextColumn("Scans (parsing/scanning/waiting) (buffered)"),
+                TextColumn("{task.completed}/{task.total}"),
+                TextColumn("(processes/parsing/scanning/waiting) (buffered scan jobs)"),
                 UtilizationColumn(),
                 TimeElapsedColumn(),
                 transient=True,
@@ -296,9 +297,6 @@ async def _scan_async_inner(
                 scans_per_transcript = len(scan.scanners)
                 total_ticks = (await transcripts.count()) * scans_per_transcript
                 task_id = progress.add_task("Scan", total=total_ticks)
-
-                def bump_progress() -> None:
-                    progress.update(task_id, advance=1)
 
                 # Build scanner list and union content for index resolution
                 scanner_names_list = list(scan.scanners.keys())
@@ -329,7 +327,6 @@ async def _scan_async_inner(
                     # initialize model_usage tracking for this coroutine
                     init_model_usage()
 
-                    # initialize transcript for this coroutine
                     transcript = Transcript()
                     init_transcript(transcript)
 
@@ -393,15 +390,25 @@ async def _scan_async_inner(
                 if hasattr(strategy, "set_context"):
                     strategy.set_context(scanners_list, union_content)
 
-                def update_metrics(metrics: WorkerMetrics) -> None:
-                    progress.update(task_id, metrics=metrics)
+                def update_metrics(metrics: ScanMetrics) -> None:
+                    progress.update(
+                        task_id, metrics=metrics, completed=metrics.completed_scans
+                    )
+
+                # Count already-completed scans to advance progress bar
+                skipped_scans = 0
+                for transcript_info in await transcripts.index():
+                    for name in scanner_names_list:
+                        if await recorder.is_recorded(transcript_info, name):
+                            skipped_scans += 1
+                if skipped_scans > 0:
+                    progress.update(task_id, advance=skipped_scans)
 
                 await strategy(
-                    parse_jobs=_parse_jobs(scan, recorder, transcripts, bump_progress),
+                    parse_jobs=_parse_jobs(scan, recorder, transcripts),
                     parse_function=_parse_function,
                     scan_function=_scan_function,
                     record_results=recorder.record,
-                    bump_progress=bump_progress,
                     update_metrics=update_metrics,
                 )
 
@@ -495,13 +502,12 @@ async def _parse_jobs(
     context: ScanContext,
     recorder: ScanRecorder,
     transcripts: Transcripts,
-    bump_progress: Callable[[], None],
 ) -> AsyncIterator[ParseJob]:
     """Yield `ParseJob` objects for transcripts needing scanning.
 
     This encapsulates the logic for:
     - Determining union content once
-    - Skipping already recorded (per-scanner) work while still reporting progress
+    - Skipping already recorded (per-scanner) work
     - Grouping scanners per transcript
     """
     # Build name->index mapping for scanners
@@ -512,7 +518,6 @@ async def _parse_jobs(
         scanner_indices_for_transcript: list[int] = []
         for name in scanner_names:
             if await recorder.is_recorded(transcript_info, name):
-                bump_progress()
                 continue
             scanner_indices_for_transcript.append(name_to_index[name])
         if not scanner_indices_for_transcript:

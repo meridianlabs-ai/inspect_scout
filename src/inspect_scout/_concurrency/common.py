@@ -1,9 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+from functools import reduce
 from typing import (
     AbstractSet,
     AsyncIterator,
     Awaitable,
     Callable,
+    Iterable,
     NamedTuple,
     Protocol,
 )
@@ -15,14 +17,28 @@ from .._transcript.types import Transcript, TranscriptInfo
 
 
 @dataclass
-class WorkerMetrics:
+class ScanMetrics:
     """Encapsulates all worker-related metrics."""
 
-    worker_count: int = 0
-    workers_waiting: int = 0
-    workers_parsing: int = 0
-    workers_scanning: int = 0
+    process_count: int = 0
+    task_count: int = 0
+    tasks_waiting: int = 0
+    tasks_parsing: int = 0
+    tasks_scanning: int = 0
     buffered_scanner_jobs: int = 0
+    completed_scans: int = 0
+
+
+def sum_metrics(metrics_list: Iterable[ScanMetrics]) -> ScanMetrics:
+    def add_metrics(a: ScanMetrics, b: ScanMetrics) -> ScanMetrics:
+        return ScanMetrics(
+            **{
+                f.name: getattr(a, f.name, 0) + getattr(b, f.name, 0)
+                for f in fields(ScanMetrics)
+            }
+        )
+
+    return reduce(add_metrics, metrics_list, ScanMetrics(0))
 
 
 class ParseJob(NamedTuple):
@@ -72,6 +88,5 @@ class ConcurrencyStrategy(Protocol):
         record_results: Callable[
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
-        bump_progress: Callable[[], None],
-        update_metrics: Callable[[WorkerMetrics], None] | None = None,
+        update_metrics: Callable[[ScanMetrics], None],
     ) -> None: ...

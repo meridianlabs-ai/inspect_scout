@@ -15,10 +15,11 @@ import anyio
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
-from .common import ParseJob, ScannerJob
+from .common import ParseJob, ScanMetrics, ScannerJob
 
 ResultItem: TypeAlias = tuple[TranscriptInfo, str, list[ResultReport]]
 ResultQueueItem: TypeAlias = ResultItem | Exception | None
+MetricsQueueItem: TypeAlias = tuple[int, ScanMetrics]
 
 
 @dataclass
@@ -39,6 +40,7 @@ class IPCContext:
     overall_start_time: float
     parse_job_queue: MPQueue[ParseJob | None]
     result_queue: MPQueue[ResultQueueItem]
+    metrics_queue: MPQueue[MetricsQueueItem]
 
 
 # Global IPC context shared between main process and forked subprocesses.

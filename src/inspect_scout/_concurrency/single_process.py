@@ -9,7 +9,7 @@ from inspect_ai.util._anyio import inner_exception
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from ._iterator import SerializedAsyncIterator
-from .common import ConcurrencyStrategy, ParseJob, ScannerJob, WorkerMetrics
+from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob
 
 # Module-level counter for assigning unique worker IDs
 worker_id_counter: int = 0
@@ -107,10 +107,9 @@ def single_process_strategy(
         parse_jobs: AsyncIterator[ParseJob],
         parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
-        bump_progress: Callable[[], None],
-        update_metrics: Callable[[WorkerMetrics], None] | None = None,
+        update_metrics: Callable[[ScanMetrics], None] | None = None,
     ) -> None:
-        metrics = WorkerMetrics()
+        metrics = ScanMetrics(1)
         nonlocal overall_start_time
         if not overall_start_time:
             overall_start_time = time.time()
@@ -164,14 +163,14 @@ def single_process_strategy(
                 return "parse"
 
             # Rule 4: If someone is already parsing and we have scanner jobs, prefer to scan
-            if metrics.workers_parsing > 0 and scanner_job_queue_len > 0:
+            if metrics.tasks_parsing > 0 and scanner_job_queue_len > 0:
                 return "scan"
 
             # Rule 5: If no one is parsing and queue isn't near full, someone should parse
             # This prevents gaps in production when the last parser finishes and switches to scanning
             # The <80% check prevents parse stampedes when all parsers finish simultaneously
             if (
-                metrics.workers_parsing == 0
+                metrics.tasks_parsing == 0
                 and not parse_jobs_exhausted
                 and scanner_job_queue_len < max_scanner_job_queue_size * 0.8
             ):
@@ -186,10 +185,10 @@ def single_process_strategy(
 
         async def _perform_wait() -> None:
             """Perform the wait action: briefly yield control and update metrics."""
-            metrics.workers_waiting += 1
+            metrics.tasks_waiting += 1
             _update_metrics()
             await anyio.sleep(0)
-            metrics.workers_waiting -= 1
+            metrics.tasks_waiting -= 1
             _update_metrics()
 
         async def _perform_parse(worker_id: int) -> bool:
@@ -201,7 +200,7 @@ def single_process_strategy(
                 return False
 
             exec_start_time = time.time()
-            metrics.workers_parsing += 1
+            metrics.tasks_parsing += 1
             _update_metrics()
 
             try:
@@ -216,7 +215,7 @@ def single_process_strategy(
                 _update_metrics()
                 return True
             finally:
-                metrics.workers_parsing -= 1
+                metrics.tasks_parsing -= 1
                 _update_metrics()
 
         async def _perform_scan(worker_id: int) -> bool:
@@ -235,7 +234,7 @@ def single_process_strategy(
             # )
 
             exec_start_time = time.time()
-            metrics.workers_scanning += 1
+            metrics.tasks_scanning += 1
             _update_metrics()
 
             try:
@@ -244,14 +243,14 @@ def single_process_strategy(
                     scanner_job.scanner_name,
                     await scan_function(scanner_job),
                 )
-                bump_progress()
+                metrics.completed_scans += 1
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",
                     f"Scanned ({(time.time() - exec_start_time):.3f}s) - {_scanner_job_info(scanner_job)}",
                 )
                 return True
             finally:
-                metrics.workers_scanning -= 1
+                metrics.tasks_scanning -= 1
                 _update_metrics()
 
         async def _worker_task(
@@ -312,7 +311,7 @@ def single_process_strategy(
                     f"Finished after {parses_completed} parses and {scans_completed} scans.",
                 )
             finally:
-                metrics.worker_count -= 1
+                metrics.task_count -= 1
                 _update_metrics()
 
         try:
@@ -337,7 +336,7 @@ def single_process_strategy(
                     global worker_id_counter
                     for _ in range(task_count):
                         worker_id_counter += 1
-                        metrics.worker_count += 1
+                        metrics.task_count += 1
                         tg.start_soon(_worker_task, worker_id_counter)
                         print_diagnostics(
                             "Initialization",

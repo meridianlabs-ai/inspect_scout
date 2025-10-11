@@ -4,17 +4,17 @@ from rich.progress import (
 )
 from rich.text import Text
 
-from ._concurrency.common import WorkerMetrics
+from ._concurrency.common import ScanMetrics
 
 
 class UtilizationColumn(ProgressColumn):
     """Progress column showing worker utilization (active/max)."""
 
     def render(self, task: Task) -> Text:
-        metrics: WorkerMetrics | None = task.fields.get("metrics")
+        metrics: ScanMetrics | None = task.fields.get("metrics")
         if metrics is None:
-            return Text("0/0/0 (0)", style="cyan")
+            return Text("0/0/0/0 (0)", style="cyan")
         return Text(
-            f"{metrics.workers_parsing}/{metrics.workers_scanning}/{metrics.workers_waiting} ({metrics.buffered_scanner_jobs})",
+            f"{metrics.process_count}/{metrics.tasks_parsing}/{metrics.tasks_scanning}/{metrics.tasks_waiting} ({metrics.buffered_scanner_jobs})",
             style="cyan",
         )

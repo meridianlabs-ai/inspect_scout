@@ -27,7 +27,7 @@ from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._mp_common import run_sync_on_thread
 from ._mp_subprocess import subprocess_main
-from .common import ConcurrencyStrategy, ParseJob, ScannerJob, WorkerMetrics
+from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob, sum_metrics
 
 
 def multi_process_strategy(
@@ -74,9 +74,10 @@ def multi_process_strategy(
         parse_jobs: AsyncIterator[ParseJob],
         parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
-        bump_progress: Callable[[], None],
-        update_metrics: Callable[[WorkerMetrics], None] | None = None,
+        update_metrics: Callable[[ScanMetrics], None] | None = None,
     ) -> None:
+        all_metrics: dict[int, ScanMetrics] = {}
+
         # Enforce single active instance - check if ipc_context is already set
         # (ipc_context is cast(IPCContext, None) initially, so we check truthiness)
         if _mp_common.ipc_context is not None:
@@ -97,6 +98,7 @@ def multi_process_strategy(
             overall_start_time=time.time(),
             parse_job_queue=multiprocessing.Queue(),
             result_queue=multiprocessing.Queue(),
+            metrics_queue=multiprocessing.Queue(),
         )
 
         def print_diagnostics(actor_name: str, *message_parts: object) -> None:
@@ -118,6 +120,7 @@ def multi_process_strategy(
         # single-process strategy's ScannerJob buffer.
         parse_job_queue = _mp_common.ipc_context.parse_job_queue
         result_queue = _mp_common.ipc_context.result_queue
+        metrics_queue = _mp_common.ipc_context.metrics_queue
 
         async def _producer() -> None:
             """Producer task that feeds work items into the queue."""
@@ -157,13 +160,18 @@ def multi_process_strategy(
 
                 transcript_info, scanner_name, results = result
                 await record_results(transcript_info, scanner_name, results)
-                bump_progress()
 
                 items_processed += 1
                 print_diagnostics(
                     "MP Collector",
                     f"Recorded results for {transcript_info.id} (total: {items_processed})",
                 )
+
+        async def _metrics_collector() -> None:
+            while True:
+                worker_id, metrics = await run_sync_on_thread(metrics_queue.get)
+                all_metrics[worker_id] = metrics
+                update_metrics(sum_metrics(all_metrics.values()))
 
         try:
             # Start worker processes
@@ -190,6 +198,7 @@ def multi_process_strategy(
                 async with create_task_group() as tg:
                     tg.start_soon(_producer)
                     tg.start_soon(_result_collector)
+                    tg.start_soon(_metrics_collector)
 
                 # Wait for all worker processes to complete
                 for future in futures:

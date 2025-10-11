@@ -11,6 +11,8 @@ import time
 
 import anyio
 
+from inspect_scout._concurrency.common import ScanMetrics
+
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
@@ -60,13 +62,16 @@ def subprocess_main(
         ) -> None:
             ctx.result_queue.put((transcript, scanner, results))
 
+        def _update_worker_metrics(metrics: ScanMetrics) -> None:
+            ctx.metrics_queue.put((worker_id, metrics))
+
         try:
             await strategy(
                 record_results=_record_to_queue,
                 parse_jobs=iterator_from_mp_queue(ctx.parse_job_queue),
                 parse_function=ctx.parse_function,
                 scan_function=ctx.scan_function,
-                bump_progress=lambda: None,  # Progress is bumped in main process
+                update_metrics=_update_worker_metrics,
             )
         except Exception as ex:
             # Send exception back to main process

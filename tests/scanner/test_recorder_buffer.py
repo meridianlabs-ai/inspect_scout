@@ -56,6 +56,9 @@ def sample_results():
                 metadata={"confidence": 0.95},
                 references=[Reference(type="message", id="msg-1")],
             ),
+            error=None,
+            events=[],
+            model_usage={},
         ),
         ResultReport(
             input_type="transcript",
@@ -67,6 +70,9 @@ def sample_results():
                 metadata={"confidence": 0.88},
                 references=[Reference(type="event", id="evt-1")],
             ),
+            error=None,
+            events=[],
+            model_usage={},
         ),
         ResultReport(
             input_type="transcript",
@@ -78,6 +84,9 @@ def sample_results():
                 metadata=None,
                 references=[],
             ),
+            error=None,
+            events=[],
+            model_usage={},
         ),
     ]
 

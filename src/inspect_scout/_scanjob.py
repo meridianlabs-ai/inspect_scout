@@ -58,7 +58,7 @@ class ScanJob:
         for name, scanner in named_scanners:
             if name_counts[name] > 1:
                 current_counts[name] = current_counts[name] + 1
-                name = f"{name}-{current_counts[name]}"
+                name = f"{name}_{current_counts[name]}"
             self._scanners[name] = scanner
 
     @property

@@ -1,6 +1,4 @@
-from contextvars import ContextVar
-
-from inspect_ai._util.logger import LogHandler, init_logger
+from inspect_ai._util.logger import LogHandlerVar, init_logger
 
 from inspect_scout._util.constants import PKG_NAME
 from inspect_scout._util.trace import scout_trace_dir
@@ -13,10 +11,8 @@ def init_log(log_level: str | None) -> None:
         env_prefix="SCOUT",
         pkg_name=PKG_NAME,
         trace_dir=scout_trace_dir(),
-        log_handler_context=_scout_log_handler,
+        log_handler_var=_scout_log_handler,
     )
 
 
-_scout_log_handler: ContextVar[LogHandler | None] = ContextVar(
-    "_scout_log_handler", default=None
-)
+_scout_log_handler: LogHandlerVar = {"handler": None}

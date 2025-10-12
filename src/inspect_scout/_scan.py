@@ -536,8 +536,8 @@ def print_scan_errors(errors: list[ScanError], scan_dir: str) -> None:
     theme = rich_theme()
     print(f"\n[bold]{len(errors)} scan errors occurred![/bold]\n")
     print(
-        f'Resume (retrying errors):   [bold][{theme.light}]scout scan-resume "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
+        f'Resume (retrying errors):   [bold][{theme.light}]scout scan resume "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
     )
     print(
-        f'Complete (ignoring errors): [bold][{theme.light}]scout scan-complete "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
+        f'Complete (ignoring errors): [bold][{theme.light}]scout scan complete "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
     )

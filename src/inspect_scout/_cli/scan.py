@@ -18,8 +18,27 @@ from .._transcript.database import transcripts as transcripts_from
 from .._util.constants import DEFAULT_BATCH_SIZE
 
 
-@click.command("scan")
-@click.argument("file", nargs=1)
+class ScanGroup(click.Group):
+    """Custom group that allows FILE argument when no subcommand is given."""
+
+    def invoke(self, ctx: click.Context) -> None:
+        # Get the unparsed args
+        args = ctx.protected_args + ctx.args
+
+        # Check if we have a subcommand
+        if args and args[0] in self.commands:
+            # Let the parent handle subcommand invocation
+            return super().invoke(ctx)
+
+        # No subcommand - invoke the group's callback with the args
+        # The callback will get FILE from ctx.args
+        with ctx:
+            ctx.invoked_subcommand = None
+            ctx.args = args
+            return ctx.invoke(self.callback or (lambda: None), **ctx.params)
+
+
+@click.group(cls=ScanGroup, invoke_without_command=True, context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
 @click.option(
     "-S",
     multiple=True,
@@ -134,8 +153,9 @@ from .._util.constants import DEFAULT_BATCH_SIZE
     help="Model API request timeout in seconds (defaults to no timeout)",
     envvar="SCOUT_SCAN_TIMEOUT",
 )
+@click.pass_context
 def scan_command(
-    file: str,
+    ctx: click.Context,
     s: tuple[str, ...] | None,
     transcripts: tuple[str, ...] | None,
     results: str,
@@ -155,6 +175,15 @@ def scan_command(
     max_connections: int | None,
 ) -> None:
     """Scan transcripts."""
+    # if this was a subcommand then allow it to execute
+    if ctx.invoked_subcommand is not None:
+        return
+
+    # Get the file argument from extra args
+    if not ctx.args or len(ctx.args) == 0:
+        raise click.UsageError("Missing argument 'FILE'.")
+
+    file = ctx.args[0]
     # model args and role
     scan_model_args = parse_cli_config(m, model_config)
     scan_model_roles = parse_model_role_cli_args(model_role)

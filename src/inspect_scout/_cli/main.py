@@ -30,8 +30,8 @@ def scout(ctx: click.Context, version: bool) -> None:
 
 
 scout.add_command(scan_command)
-scout.add_command(scan_resume_command)
-scout.add_command(scan_complete_command)
+scan_command.add_command(scan_resume_command)
+scan_command.add_command(scan_complete_command)
 
 
 def main() -> None:

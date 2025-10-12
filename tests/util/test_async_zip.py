@@ -31,7 +31,7 @@ async def test_read_local_zip_member(test_zip_file: Path) -> None:
 
         # Read the test.json member
         chunks = []
-        async for chunk in reader.open_member("test.json"):
+        async for chunk in await reader.open_member("test.json"):
             chunks.append(chunk)
 
         # Verify content
@@ -50,7 +50,7 @@ async def test_read_nested_member(test_zip_file: Path) -> None:
 
         # Read the nested member
         chunks = []
-        async for chunk in reader.open_member("nested/data.txt"):
+        async for chunk in await reader.open_member("nested/data.txt"):
             chunks.append(chunk)
 
         data = b"".join(chunks)
@@ -66,7 +66,7 @@ async def test_member_not_found(test_zip_file: Path) -> None:
         reader = AsyncZipReader(fs, zip_path)
 
         with pytest.raises(KeyError):
-            async for _ in reader.open_member("nonexistent.txt"):
+            async for _ in await reader.open_member("nonexistent.txt"):
                 pass
 
 
@@ -78,12 +78,12 @@ async def test_read_s3_zip_member() -> None:
     member_name = "samples/astropy__astropy-14309_epoch_1.json"
 
     # Use anonymous S3 access for public bucket
-    async with AsyncFilesystem(anonymous_s3=True) as fs:
+    async with AsyncFilesystem() as fs:
         reader = AsyncZipReader(fs, zip_url)
 
         # Read the member and collect all chunks
         chunks: list[bytes] = []
-        async for chunk in reader.open_member(member_name):
+        async for chunk in await reader.open_member(member_name):
             chunks.append(chunk)
 
         # Verify we got data

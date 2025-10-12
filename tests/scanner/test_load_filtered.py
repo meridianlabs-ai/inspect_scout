@@ -398,19 +398,19 @@ async def test_attachment_resolution_in_nested_structures() -> None:
     result = await load_filtered_transcript(stream, info, "all", "all")
 
     # Check message content array resolution
-    assert result.messages[0].content[0].text == "Resolved A"
+    assert result.messages[0].text == "Resolved A"
 
     # Check event arguments resolution with lists
     assert isinstance(result.events[0], ToolEvent)
-    assert result.events[0].arguments["list_input"][0] == "Resolved B"
-    assert result.events[0].arguments["list_input"][1]["nested_key"] == "Resolved C"
+    assert result.events[0].arguments["list_input"][0] == "Resolved B"  # type:ignore
+    assert result.events[0].arguments["list_input"][1]["nested_key"] == "Resolved C"  # type:ignore
 
     # Check event arguments resolution with nested dicts
-    assert result.events[0].arguments["dict_input"]["key1"] == "Resolved D"
-    assert result.events[0].arguments["dict_input"]["nested"]["key2"] == "Resolved E"
+    assert result.events[0].arguments["dict_input"]["key1"] == "Resolved D"  # type:ignore
+    assert result.events[0].arguments["dict_input"]["nested"]["key2"] == "Resolved E"  # type:ignore
 
 
-# @pytest.mark.slow
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_s3_eval_assistant_tool_filter() -> None:
     s3_path = "s3://slow-tests/swe_bench.eval"
@@ -423,10 +423,10 @@ async def test_s3_eval_assistant_tool_filter() -> None:
         metadata={"test": True},
     )
 
-    async with AsyncFilesystem(anonymous_s3=True) as fs:
+    async with AsyncFilesystem() as fs:
         start = time.time()
         result = await load_filtered_transcript(
-            AsyncZipReader(fs, s3_path).open_member(member_name),
+            await AsyncZipReader(fs, s3_path).open_member(member_name),
             info,
             ["assistant", "tool"],  # Filter for assistant and tool messages
             None,

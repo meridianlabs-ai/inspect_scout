@@ -23,7 +23,7 @@ class RecorderBuffer:
     Parquet-backed buffer compatible with the previous RecorderBuffer API.
 
     Layout on disk:
-      inspect_data_dir("scan_buffer") / "<hash_of_scan_location>" /
+      inspect_data_dir("scout_scan_buffer") / "<hash_of_scan_location>" /
           scanner=<scanner_name> /
               <transcript_id>.parquet
 
@@ -36,7 +36,7 @@ class RecorderBuffer:
     def buffer_dir(scan_location: str) -> UPath:
         scan_path = UPath(scan_location).resolve()
         return UPath(
-            inspect_data_dir("scan_buffer") / f"{mm3_hash(scan_path.as_posix())}"
+            inspect_data_dir("scout_scan_buffer") / f"{mm3_hash(scan_path.as_posix())}"
         )
 
     def __init__(self, scan_location: str, spec: ScanSpec):

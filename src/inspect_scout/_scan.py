@@ -14,9 +14,8 @@ from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
 from inspect_ai._util.path import pretty_path
-from inspect_ai._util.platform import platform_init
+from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import rich_traceback
-from inspect_ai.log._transcript import Transcript, init_transcript
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
 from inspect_ai.model._model_config import (
@@ -33,6 +32,9 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
+from inspect_scout._util.display import DisplayType
+from inspect_scout._util.log import init_log
+
 from ._concurrency.common import ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -48,6 +50,7 @@ from ._scanspec import ScanConfig, ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.util import filter_transcript, union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+from ._util.display import display_type_initialized, init_display_type
 
 logger = getLogger(__name__)
 
@@ -68,7 +71,11 @@ def scan(
     shuffle: bool | int | None = None,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
+    display: DisplayType | None = None,
+    log_level: str | None = None,
 ) -> ScanStatus:
+    top_level_sync_init(display)
+
     return run_coroutine(
         scan_async(
             scanners=scanners,
@@ -84,6 +91,7 @@ def scan(
             shuffle=shuffle,
             tags=tags,
             metadata=metadata,
+            log_level=log_level,
         )
     )
 
@@ -104,9 +112,9 @@ async def scan_async(
     shuffle: bool | int | None = None,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
+    log_level: str | None = None,
 ) -> ScanStatus:
-    # init runtime
-    init_runtime_context()
+    top_level_async_init(log_level)
 
     # resolve scanjob
     if isinstance(scanners, ScanJob):
@@ -163,15 +171,15 @@ async def scan_async(
 
 def scan_resume(
     scan_dir: str,
+    display: DisplayType | None = None,
+    log_level: str | None = None,
 ) -> ScanStatus:
-    return run_coroutine(scan_resume_async(scan_dir))
+    top_level_sync_init(display)
+    return run_coroutine(scan_resume_async(scan_dir, log_level=log_level))
 
 
-async def scan_resume_async(
-    scan_dir: str,
-) -> ScanStatus:
-    # init runtime
-    init_runtime_context()
+async def scan_resume_async(scan_dir: str, log_level: str | None = None) -> ScanStatus:
+    top_level_async_init(log_level)
 
     # resume job
     scan = await resume_scan(scan_dir)
@@ -202,15 +210,18 @@ async def scan_resume_async(
 
 def scan_complete(
     scan_dir: str,
+    display: DisplayType | None = None,
+    log_level: str | None = None,
 ) -> ScanStatus:
-    return run_coroutine(scan_complete_async(scan_dir))
+    top_level_sync_init(display)
+
+    return run_coroutine(scan_complete_async(scan_dir, log_level=log_level))
 
 
 async def scan_complete_async(
-    scan_dir: str,
+    scan_dir: str, log_level: str | None = None
 ) -> ScanStatus:
-    # init runtime
-    init_runtime_context()
+    top_level_async_init(log_level)
 
     # resume job (will validate that the scan isn't already complete)
     await resume_scan(scan_dir)
@@ -443,13 +454,28 @@ async def _scan_async_inner(
         )
 
 
-def init_runtime_context() -> None:
-    # platform init
-    platform_init(hooks=False)
+def top_level_sync_init(display: DisplayType | None) -> None:
+    init_environment()
+    init_display_type(display)
 
-    # apply dotenv
-    dotenv_file = find_dotenv(usecwd=True)
-    load_dotenv(dotenv_file)
+
+def top_level_async_init(log_level: str | None) -> None:
+    init_platform(hooks=False)
+    init_environment()
+    if not display_type_initialized():
+        init_display_type("plain")
+    init_log(log_level)
+
+
+def init_environment() -> None:
+    global _initialized_environment
+    if not _initialized_environment:
+        dotenv_file = find_dotenv(usecwd=True)
+        load_dotenv(dotenv_file)
+        _initialized_environment = True
+
+
+_initialized_environment: bool = False
 
 
 def init_scan_model_context(

@@ -1,3 +1,5 @@
+from typing import Literal
+
 import click
 from inspect_ai._cli.util import (
     int_bool_or_str_flag_callback,
@@ -9,13 +11,14 @@ from inspect_ai._cli.util import (
 from inspect_ai._util.config import resolve_args
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model import BatchConfig, GenerateConfig
-from typing_extensions import Literal
+from typing_extensions import Unpack
 
 from .._scan import scan
 from .._scanjob import ScanJob, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
 from .._transcript.database import transcripts as transcripts_from
 from .._util.constants import DEFAULT_BATCH_SIZE
+from .common import CommonOptions, common_options, process_common_options
 
 
 class ScanGroup(click.Group):
@@ -38,7 +41,11 @@ class ScanGroup(click.Group):
             return ctx.invoke(self.callback or (lambda: None), **ctx.params)
 
 
-@click.group(cls=ScanGroup, invoke_without_command=True, context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
+@click.group(
+    cls=ScanGroup,
+    invoke_without_command=True,
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+)
 @click.option(
     "-S",
     multiple=True,
@@ -153,6 +160,7 @@ class ScanGroup(click.Group):
     help="Model API request timeout in seconds (defaults to no timeout)",
     envvar="SCOUT_SCAN_TIMEOUT",
 )
+@common_options
 @click.pass_context
 def scan_command(
     ctx: click.Context,
@@ -173,8 +181,12 @@ def scan_command(
     max_retries: int | None,
     timeout: int | None,
     max_connections: int | None,
+    **common: Unpack[CommonOptions],
 ) -> None:
     """Scan transcripts."""
+    # Process common options
+    process_common_options(common)
+
     # if this was a subcommand then allow it to execute
     if ctx.invoked_subcommand is not None:
         return

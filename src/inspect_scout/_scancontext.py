@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Set, cast
 
 import importlib_metadata
-from inspect_ai._util.constants import PKG_NAME
+from inspect_ai._util.constants import PKG_NAME as INSPECT_PKG_NAME
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.git import git_context
 from inspect_ai._util.module import load_module
@@ -19,6 +19,8 @@ from inspect_ai.model._model_config import (
     model_args_for_log,
     model_roles_to_model_roles_config,
 )
+
+from inspect_scout._util.constants import PKG_NAME
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
@@ -66,7 +68,10 @@ async def create_scan(
     revision = (
         ScanRevision(type="git", origin=git.origin, commit=git.commit) if git else None
     )
-    packages = {PKG_NAME: importlib_metadata.version(PKG_NAME)}
+    packages = {
+        INSPECT_PKG_NAME: importlib_metadata.version(INSPECT_PKG_NAME),
+        PKG_NAME: importlib_metadata.version(PKG_NAME),
+    }
 
     # create scan spec
     async with transcripts:

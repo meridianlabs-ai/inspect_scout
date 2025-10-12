@@ -1,5 +1,7 @@
 import click
-from dotenv import load_dotenv
+
+from inspect_scout._cli.trace import trace_command
+from inspect_scout._scan import init_environment
 
 from .. import __version__
 from .scan import scan_command
@@ -33,9 +35,11 @@ scout.add_command(scan_command)
 scan_command.add_command(scan_resume_command)
 scan_command.add_command(scan_complete_command)
 
+scout.add_command(trace_command)
+
 
 def main() -> None:
-    load_dotenv()
+    init_environment()
     scout(auto_envvar_prefix="SCOUT")  # pylint: disable=no-value-for-parameter
 
 

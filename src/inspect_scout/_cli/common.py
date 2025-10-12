@@ -1,0 +1,68 @@
+import functools
+from typing import Any, Callable, Literal, cast
+
+import click
+from inspect_ai._util.constants import ALL_LOG_LEVELS, DEFAULT_LOG_LEVEL
+from typing_extensions import TypedDict
+
+from inspect_scout._util.constants import DEFAULT_DISPLAY
+from inspect_scout._util.display import init_display_type
+
+
+class CommonOptions(TypedDict):
+    display: Literal["rich", "plain", "none"]
+    log_level: str
+    debug: bool
+    debug_port: int
+
+
+def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
+    @click.option(
+        "--display",
+        type=click.Choice(
+            ["rich", "plain", "none"],
+            case_sensitive=False,
+        ),
+        default=DEFAULT_DISPLAY,
+        envvar="SCOUT_DISPLAY",
+        help=f"Set the display type (defaults to '{DEFAULT_DISPLAY}')",
+    )
+    @click.option(
+        "--log-level",
+        type=click.Choice(
+            [level.lower() for level in ALL_LOG_LEVELS],
+            case_sensitive=False,
+        ),
+        default=DEFAULT_LOG_LEVEL,
+        envvar="SCOUT_LOG_LEVEL",
+        help=f"Set the log level (defaults to '{DEFAULT_LOG_LEVEL}')",
+    )
+    @click.option(
+        "--debug", is_flag=True, envvar="SCOUT_DEBUG", help="Wait to attach debugger"
+    )
+    @click.option(
+        "--debug-port",
+        default=5678,
+        envvar="SCOUT_DEBUG_PORT",
+        help="Port number for debugger",
+    )
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> click.Context:
+        return cast(click.Context, func(*args, **kwargs))
+
+    return wrapper
+
+
+def process_common_options(options: CommonOptions) -> None:
+    # propagate display
+    display = options["display"].lower().strip()
+    init_display_type(display)
+
+    # attach debugger if requested
+    if options["debug"]:
+        import debugpy  # type: ignore
+
+        debugpy.listen(options["debug_port"])
+        print("Waiting for debugger attach")
+        debugpy.wait_for_client()
+        print("Debugger attached")

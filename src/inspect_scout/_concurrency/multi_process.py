@@ -21,7 +21,6 @@ from typing import AsyncIterator, Awaitable, Callable, cast
 import anyio
 from anyio import create_task_group
 from inspect_ai.util._anyio import inner_exception
-from rich import print
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -33,10 +32,10 @@ from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob, sum_
 
 def multi_process_strategy(
     *,
+    process_count: int,
     task_count: int,
     prefetch_multiple: float | None = None,
     diagnostics: bool = False,
-    processes: int | float = 1.0,
 ) -> ConcurrencyStrategy:
     """Multi-process execution strategy with nested async concurrency.
 
@@ -45,27 +44,16 @@ def multi_process_strategy(
     The ParseJob queue is unbounded since ParseJobs are lightweight metadata objects.
 
     Args:
+        process_count: Number of worker processes.
         task_count: Target total task concurrency across all processes
         prefetch_multiple: Buffer size multiple passed to each worker's
             single-process strategy
-        processes: Number of worker processes. Can be specified as:
-            - int: Absolute number of processes (must be >= 1)
-            - float: Multiplier of CPU count (must be > 0.0, default 1.0)
-              Example: 1.5 means 1.5x the number of CPUs
         diagnostics: Whether to print diagnostic information
     """
-    if isinstance(processes, int):
-        if processes < 1:
-            raise ValueError(
-                f"processes must be >= 1 when specified as int, got {processes}"
-            )
-        process_count = processes
-    else:
-        if processes <= 0.0:
-            raise ValueError(
-                f"processes must be > 0.0 when specified as float, got {processes}"
-            )
-        process_count = max(1, int(multiprocessing.cpu_count() * processes))
+    if process_count <= 1:
+        raise ValueError(
+            f"processes must be >= 1 when specified as int, got {process_count}"
+        )
 
     async def the_func(
         *,

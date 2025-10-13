@@ -337,5 +337,11 @@ def single_process_strategy(
                     progress_cancel_scope.cancel()
         except Exception as ex:
             raise inner_exception(ex) from ex
+        finally:
+            metrics.process_count = 0
+            metrics.tasks_parsing = 0
+            metrics.tasks_scanning = 0
+            metrics.tasks_waiting = 0
+            _update_metrics()
 
     return the_func

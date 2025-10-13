@@ -46,7 +46,7 @@ from ._scanjob import ScanJob
 from ._scanner.result import Error, Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
-from ._scanspec import ScanConfig, ScanSpec
+from ._scanspec import ScanOptions, ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.util import filter_transcript, union_transcript_contents
 from ._util.constants import DEFAULT_MAX_PROCESSES, DEFAULT_MAX_TRANSCRIPTS
@@ -133,7 +133,7 @@ async def scan_async(
     results = results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
 
     # initialize scan config
-    scan_config = ScanConfig(
+    scan_config = ScanOptions(
         max_transcripts=max_transcripts or DEFAULT_MAX_TRANSCRIPTS,
         max_processes=max_processes or DEFAULT_MAX_PROCESSES,
         limit=limit,
@@ -188,7 +188,7 @@ async def scan_resume_async(scan_dir: str, log_level: str | None = None) -> Scan
     scan = await resume_scan(scan_dir)
 
     # can't resume a job with non-deterministic shuffling
-    if scan.spec.config.shuffle is True:
+    if scan.spec.options.shuffle is True:
         raise RuntimeError(
             "Cannot resume scans with transcripts shuffled without a seed."
         )
@@ -285,17 +285,17 @@ async def _scan_async_inner(
         set_background_task_group(tg)
 
         # establish max_transcripts
-        max_transcripts = scan.spec.config.max_transcripts or DEFAULT_MAX_TRANSCRIPTS
-        max_processes = scan.spec.config.max_processes or DEFAULT_MAX_PROCESSES
+        max_transcripts = scan.spec.options.max_transcripts or DEFAULT_MAX_TRANSCRIPTS
+        max_processes = scan.spec.options.max_processes or DEFAULT_MAX_PROCESSES
 
         transcripts = scan.transcripts
         # apply limits/shuffle
-        if scan.spec.config.limit is not None:
-            transcripts = transcripts.limit(scan.spec.config.limit)
-        if scan.spec.config.shuffle is not None:
+        if scan.spec.options.limit is not None:
+            transcripts = transcripts.limit(scan.spec.options.limit)
+        if scan.spec.options.shuffle is not None:
             transcripts = transcripts.shuffle(
-                scan.spec.config.shuffle
-                if isinstance(scan.spec.config.shuffle, int)
+                scan.spec.options.shuffle
+                if isinstance(scan.spec.options.shuffle, int)
                 else None
             )
 

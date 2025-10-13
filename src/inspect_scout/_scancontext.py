@@ -27,7 +27,7 @@ from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
 from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
 from ._scanner.types import ScannerInput
 from ._scanspec import (
-    ScanConfig,
+    ScanOptions,
     ScanRevision,
     ScanScanner,
     ScanSpec,
@@ -56,7 +56,7 @@ async def create_scan(
     model_roles: dict[str, Model] | None,
     tags: list[str] | None,
     metadata: dict[str, Any] | None,
-    config: ScanConfig | None,
+    config: ScanOptions | None,
 ) -> ScanContext:
     # resolve transcripts
     transcripts = transcripts or scanjob.transcripts
@@ -79,7 +79,7 @@ async def create_scan(
             scan_file=job_file(scanjob),
             scan_name=scanjob.name,
             scan_args=job_args(scanjob),
-            config=config or ScanConfig(),
+            config=config or ScanOptions(),
             transcripts=await transcripts.snapshot(),
             scanners=_spec_scanners(scanjob.scanners),
             tags=tags,

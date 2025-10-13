@@ -36,8 +36,8 @@ class ScanRevision(BaseModel):
     """Revision commit."""
 
 
-class ScanConfig(BaseModel):
-    """Configuration used for scan."""
+class ScanOptions(BaseModel):
+    """Options used for scan."""
 
     max_transcripts: int | None = Field(default=None)
     """Maximum number of concurrent transcripts (defaults to 10)."""
@@ -112,8 +112,8 @@ class ScanSpec(BaseModel):
     packages: dict[str, str] = Field(default_factory=dict)
     """Package versions for scan."""
 
-    config: ScanConfig = Field(default_factory=ScanConfig)
-    """Scan configuration."""
+    options: ScanOptions = Field(default_factory=ScanOptions)
+    """Scan options."""
 
     transcripts: ScanTranscripts
     """Transcripts to scan."""

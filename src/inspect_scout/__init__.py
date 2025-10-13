@@ -21,7 +21,7 @@ from ._scanresults import (
     scan_status,
     scan_status_async,
 )
-from ._scanspec import ScanConfig, ScanScanner, ScanSpec, ScanTranscripts
+from ._scanspec import ScanOptions, ScanScanner, ScanSpec, ScanTranscripts
 from ._transcript.database import transcripts
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
@@ -51,7 +51,7 @@ __all__ = [
     "scanjob",
     "ScanJob",
     "ScanSpec",
-    "ScanConfig",
+    "ScanOptions",
     "ScanTranscripts",
     "ScanScanner",
     # results

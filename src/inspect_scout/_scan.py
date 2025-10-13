@@ -14,6 +14,7 @@ from inspect_ai._eval.task.task import resolve_model_roles
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import rich_traceback
@@ -41,7 +42,10 @@ from ._concurrency.common import ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
 from ._progress_utils import UtilizationColumn
-from ._recorder.factory import scan_recorder_for_location
+from ._recorder.factory import (
+    scan_recorder_for_location,
+    scan_recorder_type_for_location,
+)
 from ._recorder.recorder import ScanRecorder, ScanStatus
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob
@@ -229,13 +233,16 @@ async def scan_complete_async(
 ) -> ScanStatus:
     top_level_async_init(log_level)
 
-    # resume job (will validate that the scan isn't already complete)
-    await resume_scan(scan_dir)
+    # check if the scan is already complete
+    recorder_type = scan_recorder_type_for_location(scan_dir)
+    status = await recorder_type.status(scan_dir)
+    if status.complete:
+        raise PrerequisiteError(
+            f"Scan at '{pretty_path(scan_dir)}' is already complete."
+        )
 
-    # create recorder, resume it, then complete it
-    recorder = scan_recorder_for_location(scan_dir)
-    await recorder.resume(scan_dir)
-    status = await recorder.complete()
+    # complete the scan
+    status = await recorder_type.complete(scan_dir)
     print_scan_complete(status.location)
     return status
 
@@ -365,7 +372,12 @@ async def _scan_async_inner(
                         )
                     except Exception as ex:
                         logger.error(f"Error in '{job.scanner_name}': {ex}")
-                        error = Error(error=str(ex), traceback=traceback.format_exc())
+                        error = Error(
+                            transcript_id=job.union_transcript.id,
+                            scanner=job.scanner_name,
+                            error=str(ex),
+                            traceback=traceback.format_exc(),
+                        )
 
                     return [
                         ResultReport(
@@ -444,9 +456,10 @@ async def _scan_async_inner(
                         complete=False,
                         spec=scan.spec,
                         location=await recorder.location(),
+                        errors=errors,
                     )
                 else:
-                    scan_info = await recorder.complete()
+                    scan_info = await recorder.complete(await recorder.location())
                     print_scan_complete(scan_info.location)
 
         # return scan_info
@@ -457,14 +470,10 @@ async def _scan_async_inner(
         type = type if type else BaseException
         value = value if value else ex
         rich_tb = rich_traceback(type, value, tb)
-        return await handle_scan_interruped(
-            rich_tb, scan.spec, await recorder.location()
-        )
+        return await handle_scan_interruped(rich_tb, scan.spec, recorder)
 
     except anyio.get_cancelled_exc_class():
-        return await handle_scan_interruped(
-            "Cancelled!", scan.spec, await recorder.location()
-        )
+        return await handle_scan_interruped("Cancelled!", scan.spec, recorder)
 
 
 def top_level_sync_init(display: DisplayType | None) -> None:
@@ -518,12 +527,13 @@ def init_scan_model_context(
 
 
 async def handle_scan_interruped(
-    message: RenderableType, spec: ScanSpec, location: str
+    message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
 ) -> ScanStatus:
     theme = rich_theme()
 
     print(message)
 
+    location = await recorder.location()
     resume_message = (
         f"\n[bold][{theme.error}]Scan interrupted. Resume scan with:[/{theme.error}]\n\n"
         + f'[bold][{theme.light}]scout scan-resume "{pretty_path(location)}"[/{theme.light}][/bold]\n'
@@ -531,9 +541,7 @@ async def handle_scan_interruped(
     print(resume_message)
 
     return ScanStatus(
-        complete=False,
-        spec=spec,
-        location=location,
+        complete=False, spec=spec, location=location, errors=await recorder.errors()
     )
 
 

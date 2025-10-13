@@ -36,6 +36,8 @@ class Result(BaseModel):
 
 
 class Error(BaseModel):
+    transcript_id: str
+    scanner: str
     error: str
     traceback: str
 

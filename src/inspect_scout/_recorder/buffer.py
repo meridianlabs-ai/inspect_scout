@@ -17,6 +17,8 @@ from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
+SCAN_ERRORS = "_errors.jsonl"
+
 
 class RecorderBuffer:
     """
@@ -43,7 +45,7 @@ class RecorderBuffer:
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
-        self._error_file = self._buffer_dir.joinpath("_errors.jsonl")
+        self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
         with self._error_file.open("w"):
             pass  # truncates existing file
 
@@ -115,143 +117,141 @@ class RecorderBuffer:
             return False
 
     def errors(self) -> list[Error]:
-        with open(str(self._error_file), "r") as f:
-            errors: list[Error] = []
-            reader = jsonlines.Reader(f)
-            for error in reader.iter(type=dict):
-                errors.append(Error(**error))
-            return errors
+        return read_scan_errors(str(self._error_file))
 
-    def scanner_table(self, scanner: str) -> bytes | None:
-        import pyarrow as pa
-        import pyarrow.dataset as ds
-        import pyarrow.parquet as pq
-
-        # NOTE: this function attempts to cap memory usage at ~ 100MB for compacting
-        # scanner results. It does get a bit fancy/complicated and uses a bunch of
-        # pyarrow streaming primitives. If this ends up working out poorly the naive
-        # implementation is just this:
-        #
-        #   dataset = ds.dataset(sdir.as_posix(), format="parquet")
-        #   table = dataset.to_table() # materialize fully
-        #
-        #   pq.write_table(
-        #       table,
-        #       table_file,
-        #       compression="zstd",
-        #       use_dictionary=True,
-        #   )
-
-        MAX_BYTES: Final[int] = 100_000_000
-        DEFAULT_BATCH_ROWS: Final[int] = 1_000
-
-        # resolve input dir
-        sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
-        if not sdir.exists():
-            # we avoid creating a schema-less empty Parquet when there is no dataset at all.
-            # If you *must* emit a file even when the directory is missing, you need a known schema.
-            return None
-
-        # build dataset
-        dataset: ds.Dataset = ds.dataset(str(sdir), format="parquet")
-
-        # discover the unified schema up-front. This ensures column order/types are stable.
-        # if there are absolutely no fragments under sdir, accessing .schema may raise.
-        try:
-            schema: pa.Schema = dataset.schema
-        except Exception as e:
-            raise RuntimeError(
-                f"Unable to discover dataset schema under {sdir}: {e}"
-            ) from e
-
-        # Correct schema to handle type inconsistencies across files:
-        # 1. Promote null-type columns to string (unknown type)
-        # 2. Force 'value' column to string since it can have mixed types (bool, int, float, str)
-        #    across different result reports
-        corrected_fields = []
-        for field in schema:
-            if pa.types.is_null(field.type):
-                # Promote null type to string
-                corrected_fields.append(
-                    pa.field(field.name, pa.string(), nullable=True)
-                )
-            elif field.name == "value":
-                # Force value column to string to handle mixed types
-                corrected_fields.append(
-                    pa.field(field.name, pa.string(), nullable=True)
-                )
-            else:
-                corrected_fields.append(field)
-        schema = pa.schema(corrected_fields)
-
-        # state for bounded accumulation -> large-ish row groups
-        accumulated: list[pa.RecordBatch] = []
-        accumulated_bytes: int = 0
-
-        def flush_accumulated(writer: pq.ParquetWriter) -> None:
-            nonlocal accumulated, accumulated_bytes
-            if not accumulated:
-                return
-            table = pa.Table.from_batches(accumulated)  # bounded by MAX_BYTES
-            writer.write_table(table)
-            accumulated.clear()
-            accumulated_bytes = 0
-
-        # Create an in-memory buffer
-        buffer = io.BytesIO()
-        writer = pq.ParquetWriter(
-            buffer,
-            schema,
-            compression="zstd",
-            use_dictionary=True,
-        )
-
-        # iterate materialized batches; to keep memory in check we use a small batch_size.
-        # We iterate fragments and manually cast to handle schema inconsistencies
-        for fragment in dataset.get_fragments():
-            for batch in fragment.to_batches(
-                batch_size=DEFAULT_BATCH_ROWS,
-                use_threads=False,
-            ):
-                # Cast batch to corrected schema to handle type mismatches
-                # (e.g., null columns promoted to string, or missing columns)
-                try:
-                    arrays = []
-                    for field in schema:
-                        if field.name in batch.schema.names:
-                            # Column exists - cast it to target type
-                            col = batch.column(field.name)
-                            arrays.append(col.cast(field.type))
-                        else:
-                            # Column missing - create null array
-                            arrays.append(
-                                pa.array([None] * len(batch), type=field.type)
-                            )
-
-                    batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
-                except Exception as e:
-                    raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
-
-                size = batch.nbytes
-                if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
-                    flush_accumulated(writer)
-                accumulated.append(batch)
-                accumulated_bytes += size
-
-        # Final flush. If no rows were seen, this still leaves us with an empty file (schema only).
-        flush_accumulated(writer)
-        writer.close()
-
-        # rewind bytes and write
-        buffer.seek(0)
-        return buffer.getvalue()
+    def errors_bytes(self) -> bytes:
+        with open(str(self._error_file), "rb") as f:
+            return f.read()
 
     def cleanup(self) -> None:
         """Remove the buffer directory for this scan (best-effort)."""
-        try:
-            shutil.rmtree(self._buffer_dir.as_posix(), ignore_errors=True)
-        except Exception:
-            pass
+        cleanup_buffer_dir(self._buffer_dir)
+
+
+def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
+    import pyarrow as pa
+    import pyarrow.dataset as ds
+    import pyarrow.parquet as pq
+
+    # NOTE: this function attempts to cap memory usage at ~ 100MB for compacting
+    # scanner results. It does get a bit fancy/complicated and uses a bunch of
+    # pyarrow streaming primitives. If this ends up working out poorly the naive
+    # implementation is just this:
+    #
+    #   dataset = ds.dataset(sdir.as_posix(), format="parquet")
+    #   table = dataset.to_table() # materialize fully
+    #
+    #   pq.write_table(
+    #       table,
+    #       table_file,
+    #       compression="zstd",
+    #       use_dictionary=True,
+    #   )
+
+    MAX_BYTES: Final[int] = 100_000_000
+    DEFAULT_BATCH_ROWS: Final[int] = 1_000
+
+    # resolve input dir
+    sdir = buffer_dir / f"scanner={_sanitize_component(scanner)}"
+    if not sdir.exists():
+        # we avoid creating a schema-less empty Parquet when there is no dataset at all.
+        # If you *must* emit a file even when the directory is missing, you need a known schema.
+        return None
+
+    # build dataset
+    dataset: ds.Dataset = ds.dataset(str(sdir), format="parquet")
+
+    # discover the unified schema up-front. This ensures column order/types are stable.
+    # if there are absolutely no fragments under sdir, accessing .schema may raise.
+    try:
+        schema: pa.Schema = dataset.schema
+    except Exception as e:
+        raise RuntimeError(
+            f"Unable to discover dataset schema under {sdir}: {e}"
+        ) from e
+
+    # Correct schema to handle type inconsistencies across files:
+    # 1. Promote null-type columns to string (unknown type)
+    # 2. Force 'value' column to string since it can have mixed types (bool, int, float, str)
+    #    across different result reports
+    corrected_fields = []
+    for field in schema:
+        if pa.types.is_null(field.type):
+            # Promote null type to string
+            corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+        elif field.name == "value":
+            # Force value column to string to handle mixed types
+            corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+        else:
+            corrected_fields.append(field)
+    schema = pa.schema(corrected_fields)
+
+    # state for bounded accumulation -> large-ish row groups
+    accumulated: list[pa.RecordBatch] = []
+    accumulated_bytes: int = 0
+
+    def flush_accumulated(writer: pq.ParquetWriter) -> None:
+        nonlocal accumulated, accumulated_bytes
+        if not accumulated:
+            return
+        table = pa.Table.from_batches(accumulated)  # bounded by MAX_BYTES
+        writer.write_table(table)
+        accumulated.clear()
+        accumulated_bytes = 0
+
+    # Create an in-memory buffer
+    buffer = io.BytesIO()
+    writer = pq.ParquetWriter(
+        buffer,
+        schema,
+        compression="zstd",
+        use_dictionary=True,
+    )
+
+    # iterate materialized batches; to keep memory in check we use a small batch_size.
+    # We iterate fragments and manually cast to handle schema inconsistencies
+    for fragment in dataset.get_fragments():
+        for batch in fragment.to_batches(
+            batch_size=DEFAULT_BATCH_ROWS,
+            use_threads=False,
+        ):
+            # Cast batch to corrected schema to handle type mismatches
+            # (e.g., null columns promoted to string, or missing columns)
+            try:
+                arrays = []
+                for field in schema:
+                    if field.name in batch.schema.names:
+                        # Column exists - cast it to target type
+                        col = batch.column(field.name)
+                        arrays.append(col.cast(field.type))
+                    else:
+                        # Column missing - create null array
+                        arrays.append(pa.array([None] * len(batch), type=field.type))
+
+                batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
+            except Exception as e:
+                raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
+
+            size = batch.nbytes
+            if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
+                flush_accumulated(writer)
+            accumulated.append(batch)
+            accumulated_bytes += size
+
+    # Final flush. If no rows were seen, this still leaves us with an empty file (schema only).
+    flush_accumulated(writer)
+    writer.close()
+
+    # rewind bytes and write
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def cleanup_buffer_dir(buffer_dir: UPath) -> None:
+    try:
+        shutil.rmtree(buffer_dir.as_posix(), ignore_errors=True)
+    except Exception:
+        pass
 
 
 def _sanitize_component(name: str) -> str:
@@ -312,3 +312,12 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
                         record[col] = str(record[col])
 
     return pa.Table.from_pylist(norm)
+
+
+def read_scan_errors(error_file: str) -> list[Error]:
+    with open(error_file, "r") as f:
+        errors: list[Error] = []
+        reader = jsonlines.Reader(f)
+        for error in reader.iter(type=dict):
+            errors.append(Error(**error))
+        return errors

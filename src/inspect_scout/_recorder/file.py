@@ -11,7 +11,13 @@ from upath import UPath
 
 from inspect_scout._transcript.database import transcripts_df_for_results
 
-from .._recorder.buffer import RecorderBuffer
+from .._recorder.buffer import (
+    SCAN_ERRORS,
+    RecorderBuffer,
+    cleanup_buffer_dir,
+    read_scan_errors,
+    scanner_table,
+)
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
@@ -63,7 +69,7 @@ class FileRecorder(ScanRecorder):
     async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
         # if we either already have a final scanner file or this transcript
         # is in the buffer without errors then the scan is recorded
-        if self._scanner_parquet_file(scanner) in self._scanners_completed:
+        if _scanner_parquet_file(self.scan_dir, scanner) in self._scanners_completed:
             return True
         else:
             return await self._scan_buffer.is_recorded(transcript, scanner)
@@ -82,26 +88,6 @@ class FileRecorder(ScanRecorder):
     async def errors(self) -> list[Error]:
         return self._scan_buffer.errors()
 
-    @override
-    async def complete(self) -> ScanStatus:
-        # write scanners
-        async with AsyncFilesystem() as fs:
-            for scanner in sorted(self.scan_spec.scanners.keys()):
-                parquet_bytes = self._scan_buffer.scanner_table(scanner)
-                if parquet_bytes is not None:
-                    await fs.write_file(
-                        self._scanner_parquet_file(scanner), parquet_bytes
-                    )
-
-        # cleanup scan buffer
-        self._scan_buffer.cleanup()
-
-        return ScanStatus(
-            complete=True,
-            spec=self.scan_spec,
-            location=self.scan_dir.as_posix(),
-        )
-
     @property
     def scan_dir(self) -> UPath:
         if self._scan_dir is None:
@@ -118,6 +104,38 @@ class FileRecorder(ScanRecorder):
             )
         return self._scan_spec
 
+    @override
+    @staticmethod
+    async def complete(scan_location: str) -> ScanStatus:
+        # get state
+        scan_dir = UPath(scan_location)
+        scan_spec = _read_scan_spec(scan_dir)
+        scan_buffer_dir = RecorderBuffer.buffer_dir(scan_location)
+
+        # write scanners
+        async with AsyncFilesystem() as fs:
+            for scanner in sorted(scan_spec.scanners.keys()):
+                parquet_bytes = scanner_table(scan_buffer_dir, scanner)
+                if parquet_bytes is not None:
+                    await fs.write_file(
+                        _scanner_parquet_file(scan_dir, scanner), parquet_bytes
+                    )
+
+        # copy errors
+        with file((scan_dir / SCAN_ERRORS).as_posix(), "w") as f:
+            for error in _read_scan_errors(scan_buffer_dir):
+                f.write(error.model_dump_json(warnings=False) + "\n")
+
+        # cleanup scan buffer
+        cleanup_buffer_dir(scan_buffer_dir)
+
+        return ScanStatus(
+            complete=True,
+            spec=scan_spec,
+            location=scan_dir.as_posix(),
+            errors=_read_scan_errors(scan_dir),
+        )
+
     @staticmethod
     async def status(scan_location: str) -> ScanStatus:
         buffer_dir = RecorderBuffer.buffer_dir(scan_location)
@@ -125,6 +143,9 @@ class FileRecorder(ScanRecorder):
             complete=False if buffer_dir.exists() else True,
             spec=_read_scan_spec(UPath(scan_location)),
             location=scan_location,
+            errors=_read_scan_errors(buffer_dir)
+            if buffer_dir.exists()
+            else _read_scan_errors(UPath(scan_location)),
         )
 
     @staticmethod
@@ -181,6 +202,7 @@ class FileRecorder(ScanRecorder):
                 status=status.complete,
                 spec=status.spec,
                 location=status.location,
+                errors=status.errors,
                 data=data,
             )
 
@@ -215,11 +237,13 @@ class FileRecorder(ScanRecorder):
             status=status.complete,
             spec=status.spec,
             location=status.location,
+            errors=status.errors,
             conn=conn,
         )
 
-    def _scanner_parquet_file(self, scanner: str) -> str:
-        return (self.scan_dir / f"{scanner}.parquet").as_posix()
+
+def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:
+    return (scan_dir / f"{scanner}.parquet").as_posix()
 
 
 def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
@@ -232,6 +256,11 @@ def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
 
     with file(scan_json.as_posix(), "r") as f:
         return ScanSpec.model_validate_json(f.read())
+
+
+def _read_scan_errors(scan_dir: UPath) -> list[Error]:
+    scan_errors = scan_dir / SCAN_ERRORS
+    return read_scan_errors(str(scan_errors))
 
 
 def _find_scan_dir(scans_path: UPath, scan_id: str) -> UPath | None:

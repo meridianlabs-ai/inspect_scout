@@ -16,6 +16,7 @@ class ScanStatus:
     complete: bool
     spec: ScanSpec
     location: str
+    errors: list[Error]
 
 
 @dataclass
@@ -27,9 +28,10 @@ class ScanResults(ScanStatus):
         status: bool,
         spec: ScanSpec,
         location: str,
+        errors: list[Error],
         data: dict[str, pd.DataFrame],
     ) -> None:
-        super().__init__(status, spec, location)
+        super().__init__(status, spec, location, errors)
         self.data = data
 
 
@@ -42,9 +44,10 @@ class ScanResultsDB(ScanStatus):
         status: bool,
         spec: ScanSpec,
         location: str,
+        errors: list[Error],
         conn: duckdb.DuckDBPyConnection,
     ) -> None:
-        super().__init__(status, spec, location)
+        super().__init__(status, spec, location, errors)
         self.conn = conn
 
     def __enter__(self) -> "ScanResultsDB":
@@ -145,8 +148,9 @@ class ScanRecorder(abc.ABC):
     @abc.abstractmethod
     async def errors(self) -> list[Error]: ...
 
+    @staticmethod
     @abc.abstractmethod
-    async def complete(self) -> ScanStatus: ...
+    async def complete(scan_location: str) -> ScanStatus: ...
 
     @staticmethod
     @abc.abstractmethod

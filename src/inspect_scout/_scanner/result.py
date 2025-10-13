@@ -58,10 +58,12 @@ class ResultReport(BaseModel):
     def to_df_columns(self) -> dict[str, str | bool | int | float | None]:
         columns: dict[str, str | bool | int | float | None] = {}
 
+        # input (transcript, event, or message)
         columns["input_type"] = self.input_type
         columns["input_id"] = self.input_id
 
         if self.result is not None:
+            # result
             if isinstance(self.result.value, str | bool | int | float | None):
                 columns["value"] = self.result.value
                 if isinstance(self.result.value, str):
@@ -81,7 +83,17 @@ class ResultReport(BaseModel):
             columns["answer"] = self.result.answer
             columns["explanation"] = self.result.explanation
             columns["metadata"] = to_json_str_safe(self.result.metadata or {})
-            columns["references"] = to_json_str_safe(self.result.references)
+
+            # references
+            def references_json(type: str) -> str:
+                return to_json_str_safe(
+                    [ref.id for ref in self.result.references if ref.type == type]
+                )
+
+            columns["message_references"] = references_json("message")
+            columns["event_references"] = references_json("event")
+
+            # error
             columns["scan_error"] = None
             columns["scan_error_traceback"] = None
         elif self.error is not None:
@@ -90,7 +102,8 @@ class ResultReport(BaseModel):
             columns["answer"] = None
             columns["explanation"] = None
             columns["metadata"] = to_json_str_safe({})
-            columns["references"] = to_json_str_safe([])
+            columns["message_references"] = to_json_str_safe([])
+            columns["event_references"] = to_json_str_safe([])
             columns["scan_error"] = self.error.error
             columns["scan_error_traceback"] = self.error.traceback
         else:

@@ -35,7 +35,7 @@ class Result(BaseModel):
     """References to relevant messages or events."""
 
 
-class ScanError(BaseModel):
+class Error(BaseModel):
     error: str
     traceback: str
 
@@ -49,7 +49,7 @@ class ResultReport(BaseModel):
 
     result: Result | None
 
-    error: ScanError | None
+    error: Error | None
 
     events: Sequence[Event]
 

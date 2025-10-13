@@ -9,14 +9,16 @@ from ._scan import (
 )
 from ._scanjob import ScanJob, scanjob
 from ._scanner.loader import Loader, loader
-from ._scanner.result import Result
+from ._scanner.result import Error, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanresults import (
+    ScanResultsFilter,
     scan_results,
     scan_results_async,
     scan_status,
     scan_status_async,
 )
+from ._scanspec import ScanConfig, ScannerSpec, ScanSpec, ScanTranscripts
 from ._transcript.database import transcripts
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
@@ -44,6 +46,7 @@ __all__ = [
     "ScanStatus",
     "scan_results",
     "ScanResults",
+    "ScanResultsFilter",
     "scan_async",
     "scan_resume_async",
     "scan_complete_async",
@@ -51,7 +54,11 @@ __all__ = [
     "scan_results_async",
     "scanjob",
     "ScanJob",
-    # transcripts
+    "ScanSpec",
+    "ScanConfig",
+    "ScanTranscripts",
+    "ScannerSpec",
+    # transcript
     "transcripts",
     "Transcripts",
     "Transcript",
@@ -66,10 +73,10 @@ __all__ = [
     "LogMetadata",
     "log_metadata",
     # scanner
+    "Error",
     "Scanner",
     "Result",
     "scanner",
-    # loader
     "Loader",
     "loader",
     # version

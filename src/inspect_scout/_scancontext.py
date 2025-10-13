@@ -29,7 +29,7 @@ from ._scanner.types import ScannerInput
 from ._scanspec import (
     ScanConfig,
     ScanRevision,
-    ScanScanner,
+    ScannerSpec,
     ScanSpec,
 )
 from ._transcript.database import transcripts_from_snapshot
@@ -115,9 +115,9 @@ async def resume_scan(scan_location: str) -> ScanContext:
 
 def _spec_scanners(
     scanners: dict[str, Scanner[ScannerInput]],
-) -> dict[str, ScanScanner]:
+) -> dict[str, ScannerSpec]:
     return {
-        k: ScanScanner(
+        k: ScannerSpec(
             name=registry_log_name(v), file=scanner_file(v), params=registry_params(v)
         )
         for k, v in scanners.items()

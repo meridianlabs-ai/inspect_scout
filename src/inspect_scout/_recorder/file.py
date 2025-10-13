@@ -9,7 +9,7 @@ from typing_extensions import override
 from upath import UPath
 
 from .._recorder.buffer import RecorderBuffer
-from .._scanner.result import ResultReport, ScanError
+from .._scanner.result import ResultReport, Error
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .recorder import ScanRecorder, ScanResults, ScanResultsFilter, ScanStatus
@@ -71,7 +71,7 @@ class FileRecorder(ScanRecorder):
         pass
 
     @override
-    async def errors(self) -> list[ScanError]:
+    async def errors(self) -> list[Error]:
         return self._scan_buffer.errors()
 
     @override

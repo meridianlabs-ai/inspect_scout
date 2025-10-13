@@ -12,7 +12,7 @@ from shortuuid import uuid
 from typing_extensions import Literal, NotRequired, Required, TypedDict
 
 
-class ScanScanner(BaseModel):
+class ScannerSpec(BaseModel):
     name: str
     """Scanner name."""
 
@@ -110,7 +110,7 @@ class ScanSpec(BaseModel):
     transcripts: ScanTranscripts
     """Transcripts to scan."""
 
-    scanners: dict[str, ScanScanner]
+    scanners: dict[str, ScannerSpec]
     """Scanners to apply to transcripts."""
 
     @field_serializer("timestamp")

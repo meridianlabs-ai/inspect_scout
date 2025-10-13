@@ -43,7 +43,7 @@ from ._recorder.factory import scan_recorder_for_location
 from ._recorder.recorder import ScanRecorder, ScanStatus
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob
-from ._scanner.result import Result, ResultReport, ScanError
+from ._scanner.result import Error, Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
 from ._scanspec import ScanConfig, ScanSpec
@@ -342,7 +342,7 @@ async def _scan_async_inner(
                     init_transcript(transcript)
 
                     result: Result | None = None
-                    error: ScanError | None = None
+                    error: Error | None = None
 
                     try:
                         result = await job.scanner(
@@ -353,9 +353,7 @@ async def _scan_async_inner(
                         )
                     except Exception as ex:
                         logger.error(f"Error in '{job.scanner_name}': {ex}")
-                        error = ScanError(
-                            error=str(ex), traceback=traceback.format_exc()
-                        )
+                        error = Error(error=str(ex), traceback=traceback.format_exc())
 
                     return [
                         ResultReport(
@@ -558,7 +556,7 @@ def print_scan_complete(scan_dir: str) -> None:
     print(f'\n[bold]Scan complete:[/bold] "{pretty_path(scan_dir)}"\n')
 
 
-def print_scan_errors(errors: list[ScanError], scan_dir: str) -> None:
+def print_scan_errors(errors: list[Error], scan_dir: str) -> None:
     theme = rich_theme()
     print(f"\n[bold]{len(errors)} scan errors occurred![/bold]\n")
     print(

@@ -13,7 +13,7 @@ from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.hash import mm3_hash
 from upath import UPath
 
-from .._scanner.result import ResultReport, ScanError
+from .._scanner.result import ResultReport, Error
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
@@ -114,12 +114,12 @@ class RecorderBuffer:
         else:
             return False
 
-    def errors(self) -> list[ScanError]:
+    def errors(self) -> list[Error]:
         with open(str(self._error_file), "r") as f:
-            errors: list[ScanError] = []
+            errors: list[Error] = []
             reader = jsonlines.Reader(f)
             for error in reader.iter(type=dict):
-                errors.append(ScanError(**error))
+                errors.append(Error(**error))
             return errors
 
     def scanner_table(self, scanner: str) -> bytes | None:

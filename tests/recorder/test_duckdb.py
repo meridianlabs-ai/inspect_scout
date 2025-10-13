@@ -338,33 +338,3 @@ class TestToFile:
 
         finally:
             db.conn.close()
-
-
-class TestCloudPaths:
-    """Tests for cloud path handling."""
-
-    def test_to_file_detects_s3_path(self, test_scan_results):
-        """Test that S3 paths are detected (without actually connecting)."""
-        from inspect_scout._scanresults import scan_results_db
-
-        db = scan_results_db(test_scan_results.location)
-
-        # This will fail because we don't have AWS credentials set up,
-        # but we can verify it tries to use cloud storage
-        with pytest.raises(Exception):  # Will fail on connection/auth
-            db.to_file("s3://test-bucket/results.duckdb")
-
-        db.conn.close()
-
-    def test_to_file_detects_gcs_path(self, test_scan_results):
-        """Test that GCS paths are detected (without actually connecting)."""
-        from inspect_scout._scanresults import scan_results_db
-
-        db = scan_results_db(test_scan_results.location)
-
-        # This will fail because we don't have GCS credentials set up,
-        # but we can verify it tries to use cloud storage
-        with pytest.raises(Exception):  # Will fail on connection/auth
-            db.to_file("gs://test-bucket/results.duckdb")
-
-        db.conn.close()

@@ -42,6 +42,14 @@ class ScanConfig(BaseModel):
     max_transcripts: int | None = Field(default=None)
     """Maximum number of concurrent transcripts (defaults to 10)."""
 
+    max_processes: int | float | None = Field(default=None)
+    """
+      Number of worker processes. Can be specified as:
+        - int: Absolute number of processes (must be >= 1)
+        - float: Multiplier of CPU count (must be > 0.0)
+        (defaults to 1.0)
+    """
+
     limit: int | None = Field(default=None)
     """Transcript limit (maximum number of transcripts to read)."""
 

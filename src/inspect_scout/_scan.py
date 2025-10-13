@@ -49,7 +49,7 @@ from ._scanner.types import ScannerInput
 from ._scanspec import ScanConfig, ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.util import filter_transcript, union_transcript_contents
-from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+from ._util.constants import DEFAULT_MAX_PROCESSES, DEFAULT_MAX_TRANSCRIPTS
 from ._util.display import display_type_initialized, init_display_type
 
 logger = getLogger(__name__)
@@ -67,6 +67,7 @@ def scan(
     model_args: dict[str, Any] | str | None = None,
     model_roles: dict[str, str | Model] | None = None,
     max_transcripts: int | None = None,
+    max_processes: int | float | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
     tags: list[str] | None = None,
@@ -108,6 +109,7 @@ async def scan_async(
     model_args: dict[str, Any] | str | None = None,
     model_roles: dict[str, str | Model] | None = None,
     max_transcripts: int | None = None,
+    max_processes: int | float | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
     tags: list[str] | None = None,
@@ -133,6 +135,7 @@ async def scan_async(
     # initialize scan config
     scan_config = ScanConfig(
         max_transcripts=max_transcripts or DEFAULT_MAX_TRANSCRIPTS,
+        max_processes=max_processes or DEFAULT_MAX_PROCESSES,
         limit=limit,
         shuffle=shuffle,
     )
@@ -283,6 +286,7 @@ async def _scan_async_inner(
 
         # establish max_transcripts
         max_transcripts = scan.spec.config.max_transcripts or DEFAULT_MAX_TRANSCRIPTS
+        max_processes = scan.spec.config.max_processes or DEFAULT_MAX_PROCESSES
 
         transcripts = scan.transcripts
         # apply limits/shuffle
@@ -377,16 +381,17 @@ async def _scan_async_inner(
                 )
 
                 # TODO: Plumb this
-                multi_testing = False
+                disable_multi_process = True
                 diagnostics = False
                 strategy = (
                     multi_process_strategy(
-                        processes=2,
                         task_count=max_tasks,
+                        processes=max_processes,
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if multi_testing
+                    if not disable_multi_process
+                    and (isinstance(max_processes, float) or max_processes != 1)
                     else single_process_strategy(
                         task_count=max_tasks,
                         prefetch_multiple=prefetch_multiple,

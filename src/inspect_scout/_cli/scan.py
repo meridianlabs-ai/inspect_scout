@@ -24,6 +24,38 @@ from .common import CommonOptions, common_options, process_common_options
 class ScanGroup(click.Group):
     """Custom group that allows FILE argument when no subcommand is given."""
 
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        """Override parse_args to reorder arguments before parsing."""
+        # Check if we have a subcommand
+        if args and args[0] in self.commands:
+            # Let the parent handle subcommand parsing
+            return super().parse_args(ctx, args)
+
+        # Reorder args to put options before positional arguments
+        # This allows: scout scan file.py -T ./logs to work correctly
+        file_args = []
+        option_args = []
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            # Check if this is an option (starts with -)
+            if arg.startswith("-"):
+                option_args.append(arg)
+                i += 1
+                # For options that take values, check if next arg exists and is not a flag
+                if i < len(args) and not args[i].startswith("-"):
+                    option_args.append(args[i])
+                    i += 1
+            else:
+                file_args.append(arg)
+                i += 1
+
+        # Reorder: options first, then file arguments
+        reordered_args = option_args + file_args
+
+        # Let parent parse the reordered args
+        return super().parse_args(ctx, reordered_args)
+
     def invoke(self, ctx: click.Context) -> Any:
         # Get the unparsed args
         args = ctx.protected_args + ctx.args
@@ -54,6 +86,7 @@ class ScanGroup(click.Group):
     help="One or more scanjob or scanner arguments (e.g. -S arg=value)",
 )
 @click.option(
+    "-T",
     "--transcripts",
     multiple=True,
     type=str,
@@ -164,8 +197,8 @@ class ScanGroup(click.Group):
 @click.pass_context
 def scan_command(
     ctx: click.Context,
-    s: tuple[str, ...] | None,
-    transcripts: tuple[str, ...] | None,
+    s: tuple[str, ...],
+    transcripts: tuple[str, ...],
     results: str,
     model: str | None,
     model_base_url: str | None,
@@ -226,11 +259,7 @@ def scan_command(
             scanjob = ScanJob(transcripts=None, scanners=scanners)
 
     # resolve transcripts (could be from ScanJob)
-    tx = (
-        transcripts_from(transcripts)
-        if transcripts is not None
-        else scanjob.transcripts
-    )
+    tx = transcripts_from(transcripts) if len(transcripts) > 0 else scanjob.transcripts
     if tx is None:
         raise PrerequisiteError(
             "No transcripts specified for scanning (pass as --transcripts or include in @scanjob)"

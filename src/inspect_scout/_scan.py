@@ -399,11 +399,6 @@ async def _scan_async_inner(
                 if hasattr(strategy, "set_context"):
                     strategy.set_context(scanners_list, union_content)
 
-                def update_metrics(metrics: ScanMetrics) -> None:
-                    progress.update(
-                        task_id, metrics=metrics, completed=metrics.completed_scans
-                    )
-
                 # Count already-completed scans to advance progress bar
                 skipped_scans = 0
                 for transcript_info in await transcripts.index():
@@ -411,7 +406,14 @@ async def _scan_async_inner(
                         if await recorder.is_recorded(transcript_info, name):
                             skipped_scans += 1
                 if skipped_scans > 0:
-                    progress.update(task_id, advance=skipped_scans)
+                    progress.update(task_id, completed=skipped_scans)
+
+                def update_metrics(metrics: ScanMetrics) -> None:
+                    progress.update(
+                        task_id,
+                        metrics=metrics,
+                        completed=skipped_scans + metrics.completed_scans,
+                    )
 
                 await strategy(
                     parse_jobs=_parse_jobs(scan, recorder, transcripts),

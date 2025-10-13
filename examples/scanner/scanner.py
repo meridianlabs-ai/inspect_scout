@@ -138,9 +138,8 @@ def print_results(location: str) -> None:
 
         # Test writing to file
         print("\nWriting database to file...")
-        db_file_path = db.to_file(
-            "examples/scanner/scan_results.duckdb", overwrite=True
-        )
+        db_file_path = "examples/scanner/scan_results.duckdb"
+        db.to_file(db_file_path, overwrite=True)
         print(f"Database written to: {db_file_path}")
 
         # Verify the file by opening it and checking tables

@@ -15,4 +15,4 @@ def init_log(log_level: str | None) -> None:
     )
 
 
-_scout_log_handler: LogHandlerVar = {"handler": None}
+_scout_log_handler: LogHandlerVar = LogHandlerVar(handler=None)

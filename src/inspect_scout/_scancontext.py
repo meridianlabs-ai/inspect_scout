@@ -28,7 +28,7 @@ from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
 from ._scanner.types import ScannerInput
 from ._scanspec import (
     ScanConfig,
-    ScannerSpec,
+    ScanScanner,
     ScanRevision,
     ScanSpec,
 )
@@ -115,9 +115,9 @@ async def resume_scan(scan_location: str) -> ScanContext:
 
 def _spec_scanners(
     scanners: dict[str, Scanner[ScannerInput]],
-) -> dict[str, ScannerSpec]:
+) -> dict[str, ScanScanner]:
     return {
-        k: ScannerSpec(
+        k: ScanScanner(
             name=registry_log_name(v), file=scanner_file(v), params=registry_params(v)
         )
         for k, v in scanners.items()

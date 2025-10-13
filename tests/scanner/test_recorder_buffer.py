@@ -5,7 +5,7 @@ import tempfile
 import pytest
 from inspect_scout._recorder.buffer import RecorderBuffer
 from inspect_scout._scanner.result import Reference, Result, ResultReport
-from inspect_scout._scanspec import ScannerSpec, ScanSpec, ScanTranscripts
+from inspect_scout._scanspec import ScanScanner, ScanSpec, ScanTranscripts
 from inspect_scout._transcript.types import TranscriptInfo
 
 
@@ -20,8 +20,8 @@ def recorder_buffer():
                 data="",
             ),
             scanners={
-                "test_scanner": ScannerSpec(name="test_scanner"),
-                "test-scanner.with:special/chars": ScannerSpec(
+                "test_scanner": ScanScanner(name="test_scanner"),
+                "test-scanner.with:special/chars": ScanScanner(
                     name="test-scanner.with:special/chars"
                 ),
             },

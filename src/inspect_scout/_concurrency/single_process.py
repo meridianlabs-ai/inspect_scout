@@ -157,7 +157,7 @@ def single_process_strategy(
             # This handles the case where a single slow parser can't keep up with fast scanners
             if (
                 scanner_job_queue_len < max_scanner_job_queue_size * 0.2
-                # and metrics.workers_parsing < 2
+                and metrics.tasks_parsing < 2
                 and not parse_jobs_exhausted
             ):
                 return "parse"
@@ -183,13 +183,17 @@ def single_process_strategy(
             # Rule 7: Both queues empty/exhausted
             return "wait"
 
-        async def _perform_wait() -> None:
-            """Perform the wait action: briefly yield control and update metrics."""
+        async def _perform_wait(current_wait_duration: float) -> float:
+            """Perform the wait action: yield control and update metrics.
+
+            Returns the next wait duration to use. First wait is 0s, subsequent waits are 1s.
+            """
             metrics.tasks_waiting += 1
             _update_metrics()
-            await anyio.sleep(0)
+            await anyio.sleep(current_wait_duration)
             metrics.tasks_waiting -= 1
             _update_metrics()
+            return 1.0 if current_wait_duration == 0 else 1.0
 
         async def _perform_parse(worker_id: int) -> bool:
             """Perform the parse action. Returns True if parse completed, False if there was no parse job to perform."""
@@ -260,22 +264,16 @@ def single_process_strategy(
             nonlocal parse_jobs_exhausted
             scans_completed = 0
             parses_completed = 0
-            waited_once = False
+            wait_duration = 0.0
 
             try:
                 while True:
                     action = _choose_next_action()
 
                     if action == "wait":
-                        # If we already waited once and there's still nothing to do, exit
-                        if waited_once:
-                            break
-                        await _perform_wait()
-                        waited_once = True
-                        continue
-
-                    waited_once = False
-                    if action == "parse":
+                        wait_duration = await _perform_wait(wait_duration)
+                    elif action == "parse":
+                        wait_duration = 0.0
                         if await _perform_parse(worker_id):
                             parses_completed += 1
                         else:
@@ -283,28 +281,18 @@ def single_process_strategy(
                                 f"Worker #{worker_id:02d}", "No more parse jobs"
                             )
                             parse_jobs_exhausted = True
-
                     elif action == "scan":
+                        wait_duration = 0.0
                         if await _perform_scan(worker_id):
                             scans_completed += 1
 
-                    # After completing work, check if we should spawn more workers
-                    # if (
-                    #     len(scanner_job_deque) > 0 or not parse_jobs_exhausted
-                    # ) and metrics.worker_count < task_count:
-                    #     metrics.worker_count += 1
-                    #     _update_metrics()
-                    #     global worker_id_counter
-                    #     worker_id_counter += 1
-                    #     tg.start_soon(
-                    #         _worker_task, worker_id_counter, tg, parse_jobs_iter
-                    #     )
-                    #     print_diagnostics(
-                    #         f"Worker #{worker_id:02d}",
-                    #         f"Spawned worker #{worker_id_counter}",
-                    #     )
-
-                    await anyio.sleep(0)
+                    # Check if we're done: parse queue exhausted, scanner queue empty, all tasks waiting
+                    if (
+                        parse_jobs_exhausted
+                        and len(scanner_job_deque) == 0
+                        and metrics.tasks_waiting == metrics.task_count - 1
+                    ):
+                        break
 
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",

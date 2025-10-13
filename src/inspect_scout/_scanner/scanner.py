@@ -167,7 +167,11 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
-) -> ScannerFactory[P, T] | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]:
+) -> (
+    ScannerFactory[P, T]
+    | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]
+    | Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]
+):
     # Handle direct decoration without parentheses
     if factory is not None:
         # Called as @scanner (without parentheses)

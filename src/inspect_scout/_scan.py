@@ -133,7 +133,7 @@ async def scan_async(
     results = results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
 
     # initialize scan config
-    scan_config = ScanOptions(
+    scan_options = ScanOptions(
         max_transcripts=max_transcripts or DEFAULT_MAX_TRANSCRIPTS,
         max_processes=max_processes or DEFAULT_MAX_PROCESSES,
         limit=limit,
@@ -143,7 +143,7 @@ async def scan_async(
     # derive max_connections if not specified
     model_config = model_config or GenerateConfig()
     if model_config.max_connections is None:
-        model_config.max_connections = scan_config.max_transcripts
+        model_config.max_connections = scan_options.max_transcripts
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
@@ -161,7 +161,7 @@ async def scan_async(
         model=resolved_model,
         model_args=resolved_model_args,
         model_roles=resolved_model_roles,
-        config=scan_config,
+        options=scan_options,
         tags=tags,
         metadata=metadata,
     )

@@ -56,7 +56,7 @@ async def create_scan(
     model_roles: dict[str, Model] | None,
     tags: list[str] | None,
     metadata: dict[str, Any] | None,
-    config: ScanOptions | None,
+    options: ScanOptions | None,
 ) -> ScanContext:
     # resolve transcripts
     transcripts = transcripts or scanjob.transcripts
@@ -79,7 +79,7 @@ async def create_scan(
             scan_file=job_file(scanjob),
             scan_name=scanjob.name,
             scan_args=job_args(scanjob),
-            config=config or ScanOptions(),
+            options=options or ScanOptions(),
             transcripts=await transcripts.snapshot(),
             scanners=_spec_scanners(scanjob.scanners),
             tags=tags,

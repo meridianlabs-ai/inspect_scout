@@ -86,6 +86,7 @@ class ResultReport(BaseModel):
 
             # references
             def references_json(type: str) -> str:
+                assert self.result
                 return to_json_str_safe(
                     [ref.id for ref in self.result.references if ref.type == type]
                 )

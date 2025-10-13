@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 import click
 from inspect_ai._cli.util import (
@@ -24,7 +24,7 @@ from .common import CommonOptions, common_options, process_common_options
 class ScanGroup(click.Group):
     """Custom group that allows FILE argument when no subcommand is given."""
 
-    def invoke(self, ctx: click.Context) -> None:
+    def invoke(self, ctx: click.Context) -> Any:
         # Get the unparsed args
         args = ctx.protected_args + ctx.args
 

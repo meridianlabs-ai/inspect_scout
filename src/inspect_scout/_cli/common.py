@@ -6,7 +6,7 @@ from inspect_ai._util.constants import ALL_LOG_LEVELS, DEFAULT_LOG_LEVEL
 from typing_extensions import TypedDict
 
 from inspect_scout._util.constants import DEFAULT_DISPLAY
-from inspect_scout._util.display import init_display_type
+from inspect_scout._util.display import DisplayType, init_display_type
 
 
 class CommonOptions(TypedDict):
@@ -55,7 +55,7 @@ def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
 
 def process_common_options(options: CommonOptions) -> None:
     # propagate display
-    display = options["display"].lower().strip()
+    display = cast(DisplayType, options["display"].lower().strip())
     init_display_type(display)
 
     # attach debugger if requested

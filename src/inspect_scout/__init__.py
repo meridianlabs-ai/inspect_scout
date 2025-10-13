@@ -1,4 +1,9 @@
-from ._recorder.recorder import ScanResults, ScanResultsDB, ScanStatus
+from ._recorder.recorder import (
+    ScanResults,
+    ScanResultsDB,
+    ScanResultsFilter,
+    ScanStatus,
+)
 from ._scan import (
     scan,
     scan_async,
@@ -12,7 +17,6 @@ from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanresults import (
-    ScanResultsFilter,
     scan_results,
     scan_results_async,
     scan_status,

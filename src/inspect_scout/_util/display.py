@@ -1,6 +1,6 @@
 import os
 from logging import getLogger
-from typing import Literal
+from typing import Literal, cast
 
 from inspect_ai._display.core.rich import rich_initialise
 from inspect_ai._util.thread import is_main_thread
@@ -20,8 +20,9 @@ def init_display_type(display: DisplayType | None = None) -> DisplayType:
     global _display_type
     if _display_type is None:
         # determine display
-        display = (
-            display or os.environ.get("SCOUT_DISPLAY", DEFAULT_DISPLAY).lower().strip()
+        display = cast(
+            DisplayType,
+            display or os.environ.get("SCOUT_DISPLAY", DEFAULT_DISPLAY).lower().strip(),
         )
 
         # if we are on a background thread then throttle down to "plain"

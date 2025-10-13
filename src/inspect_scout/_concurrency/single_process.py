@@ -5,6 +5,7 @@ from typing import AsyncIterator, Awaitable, Callable, Literal
 import anyio
 from anyio import create_task_group
 from inspect_ai.util._anyio import inner_exception
+from rich import print
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo

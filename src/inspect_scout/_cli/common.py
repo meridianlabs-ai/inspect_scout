@@ -3,6 +3,7 @@ from typing import Any, Callable, Literal, cast
 
 import click
 from inspect_ai._util.constants import ALL_LOG_LEVELS, DEFAULT_LOG_LEVEL
+from rich import print
 from typing_extensions import TypedDict
 
 from inspect_scout._util.constants import DEFAULT_DISPLAY

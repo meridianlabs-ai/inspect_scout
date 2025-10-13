@@ -10,6 +10,7 @@ from __future__ import annotations
 import time
 
 import anyio
+from rich import print
 
 from inspect_scout._concurrency.common import ScanMetrics
 

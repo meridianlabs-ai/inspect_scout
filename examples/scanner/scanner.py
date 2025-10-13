@@ -16,6 +16,7 @@ from inspect_scout import (
 from inspect_scout._scanjob import ScanJob, scanjob
 from inspect_scout._scanresults import scan_results_db
 from inspect_scout._transcript.types import Transcript
+from rich import print
 
 
 @scanner(messages=["assistant"])

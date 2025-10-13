@@ -2,6 +2,7 @@ import random
 import sys
 from pathlib import Path
 
+import duckdb
 from inspect_ai.analysis._dataframe.extract import messages_as_str
 from inspect_ai.model import get_model
 from inspect_scout import (
@@ -131,6 +132,22 @@ def print_results(location: str) -> None:
             LIMIT 5
         """).fetchdf()
         print(both_scanners)
+
+        # Test writing to file
+        print("\nWriting database to file...")
+        db_file_path = db.to_file(
+            "examples/scanner/scan_results.duckdb", overwrite=True
+        )
+        print(f"Database written to: {db_file_path}")
+
+        # Verify the file by opening it and checking tables
+        print("\nVerifying database file...")
+        verify_conn = duckdb.connect(db_file_path)
+        tables = verify_conn.execute("SHOW TABLES").fetchall()
+        print(f"Tables in file: {[t[0] for t in tables]}")
+        count = verify_conn.execute("SELECT COUNT(*) FROM transcripts").fetchone()[0]
+        print(f"Transcripts count in file: {count}")
+        verify_conn.close()
 
 
 if __name__ == "__main__":

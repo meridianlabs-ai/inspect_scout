@@ -5,31 +5,18 @@ from pathlib import Path
 
 import duckdb
 import pytest
-from inspect_scout import scan, transcripts
-
-from .test_scanners import message_length, word_counter
+from inspect_scout._scanresults import scan_status
 
 
 @pytest.fixture
-def test_logs_path():
-    """Path to test logs."""
-    return Path(__file__).parent / "logs"
+def test_scans_path():
+    """Path to test scans."""
+    return Path(__file__).parent / "scans"
 
 
 @pytest.fixture
-def test_scan_results(test_logs_path, tmp_path):
-    """Run a test scan and return the status."""
-    status = scan(
-        scanners=[
-            word_counter("the"),
-            message_length(),
-        ],
-        transcripts=transcripts(test_logs_path),
-        max_transcripts=5,
-        results=tmp_path.as_posix(),
-        model="mockllm/model",
-    )
-    return status
+def test_scan_results(test_scans_path):
+    return scan_status((test_scans_path / "scan_id=JzvEPBFB4aVpCU93FFbiFT").as_posix())
 
 
 class TestResultsDB:

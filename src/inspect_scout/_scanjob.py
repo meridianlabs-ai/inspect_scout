@@ -56,6 +56,10 @@ class ScanJob:
         name_counts = Counter(t[0] for t in named_scanners)
         current_counts: dict[str, int] = {k: 0 for k in name_counts.keys()}
         for name, scanner in named_scanners:
+            if name == "transcripts":
+                raise ValueError(
+                    "'transcripts' is a name reserved for results so cannot be used as scanner name"
+                )
             if name_counts[name] > 1:
                 current_counts[name] = current_counts[name] + 1
                 name = f"{name}_{current_counts[name]}"

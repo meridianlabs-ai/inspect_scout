@@ -1,6 +1,7 @@
 import io
 from typing import Sequence
 
+import duckdb
 import pandas as pd
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
@@ -8,11 +9,19 @@ from inspect_ai._util.json import to_json_str_safe
 from typing_extensions import override
 from upath import UPath
 
+from inspect_scout._transcript.database import transcripts_df_from_snapshot
+
 from .._recorder.buffer import RecorderBuffer
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
-from .recorder import ScanRecorder, ScanResults, ScanResultsFilter, ScanStatus
+from .recorder import (
+    ScanRecorder,
+    ScanResults,
+    ScanResultsDB,
+    ScanResultsFilter,
+    ScanStatus,
+)
 
 SCAN_JSON = "_scan.json"
 
@@ -150,26 +159,62 @@ class FileRecorder(ScanRecorder):
                 # return
                 return df
 
-            # read scanner parquet files
-            scanners: dict[str, pd.DataFrame] = {}
+            # read data
+            data: dict[str, pd.DataFrame] = {}
+
+            # include the original transcripts df
+            data["transcripts"] = await transcripts_df_from_snapshot(
+                status.spec.transcripts
+            )
 
             # single scanner
             if scanner is not None:
                 parquet_file = scan_dir / f"{scanner}.parquet"
-                scanners[scanner] = await scanner_df(parquet_file)
+                data[scanner] = await scanner_df(parquet_file)
 
             # all scanners
             else:
                 for parquet_file in sorted(scan_dir.glob("*.parquet")):
                     name = parquet_file.stem
-                    scanners[name] = await scanner_df(parquet_file)
+                    data[name] = await scanner_df(parquet_file)
 
             return ScanResults(
                 status=status.complete,
                 spec=status.spec,
                 location=status.location,
-                scanners=scanners,
+                data=data,
             )
+
+    @staticmethod
+    async def results_db(scan_location: str) -> ScanResultsDB:
+        from upath import UPath
+
+        scan_dir = UPath(scan_location)
+        status = await FileRecorder.status(scan_location)
+
+        # Create in-memory DuckDB connection
+        conn = duckdb.connect(":memory:")
+
+        # Create views for each parquet file
+        for parquet_file in sorted(scan_dir.glob("*.parquet")):
+            scanner_name = parquet_file.stem
+            # Create a view that references the parquet file
+            # Use absolute path to ensure it works regardless of working directory
+            abs_path = parquet_file.resolve().as_posix()
+            conn.execute(
+                f"CREATE VIEW {scanner_name} AS SELECT * FROM read_parquet('{abs_path}')"
+            )
+
+        # Create the transcripts table from the snapshot
+        transcripts_df = await transcripts_df_from_snapshot(status.spec.transcripts)  # noqa: F841
+        conn.execute("CREATE TABLE transcripts AS SELECT * FROM transcripts_df")
+
+        return ScanResultsDB(
+            status=status.complete,
+            spec=status.spec,
+            location=status.location,
+            conn=conn,
+        )
 
     def _scanner_parquet_file(self, scanner: str) -> str:
         return (self.scan_dir / f"{scanner}.parquet").as_posix()

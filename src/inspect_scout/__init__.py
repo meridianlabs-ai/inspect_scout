@@ -1,4 +1,4 @@
-from ._recorder.recorder import ScanResults, ScanStatus
+from ._recorder.recorder import ScanResults, ScanResultsDB, ScanStatus
 from ._scan import (
     scan,
     scan_async,
@@ -47,11 +47,14 @@ __all__ = [
     "scan_results",
     "ScanResults",
     "ScanResultsFilter",
+    "scan_results_db",
+    "ScanResultsDB",
     "scan_async",
     "scan_resume_async",
     "scan_complete_async",
     "scan_status_async",
     "scan_results_async",
+    "scan_results_db_async",
     "scanjob",
     "ScanJob",
     "ScanSpec",

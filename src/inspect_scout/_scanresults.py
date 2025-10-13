@@ -2,7 +2,12 @@ import pandas as pd
 from inspect_ai._util._async import run_coroutine
 
 from ._recorder.factory import scan_recorder_type_for_location
-from ._recorder.recorder import ScanResults, ScanResultsFilter, ScanStatus
+from ._recorder.recorder import (
+    ScanResults,
+    ScanResultsDB,
+    ScanResultsFilter,
+    ScanStatus,
+)
 
 
 def scan_status(scan_location: str) -> ScanStatus:
@@ -37,3 +42,14 @@ async def scan_results_async(
 ) -> ScanResults:
     recorder = scan_recorder_type_for_location(scan_location)
     return await recorder.results(scan_location, scanner=scanner, filter=filter)
+
+
+def scan_results_db(
+    scan_location: str,
+) -> ScanResultsDB:
+    return run_coroutine(scan_results_db_async(scan_location))
+
+
+async def scan_results_db_async(scan_location: str) -> ScanResultsDB:
+    recorder = scan_recorder_type_for_location(scan_location)
+    return await recorder.results_db(scan_location)

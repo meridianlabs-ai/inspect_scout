@@ -1,7 +1,9 @@
 import abc
 from dataclasses import dataclass
+from types import TracebackType
 from typing import Callable, Sequence, TypeAlias
 
+import duckdb
 import pandas as pd
 
 from .._scanner.result import Error, ResultReport
@@ -18,20 +20,47 @@ class ScanStatus:
 
 @dataclass
 class ScanResults(ScanStatus):
-    scanners: dict[str, pd.DataFrame]
+    data: dict[str, pd.DataFrame]
 
     def __init__(
         self,
         status: bool,
         spec: ScanSpec,
         location: str,
-        scanners: dict[str, pd.DataFrame],
+        data: dict[str, pd.DataFrame],
     ) -> None:
         super().__init__(status, spec, location)
-        self.scanners = scanners
+        self.data = data
 
 
 ScanResultsFilter: TypeAlias = Callable[[pd.DataFrame], pd.Series]
+
+
+@dataclass
+class ScanResultsDB(ScanStatus):
+    conn: duckdb.DuckDBPyConnection
+
+    def __init__(
+        self,
+        status: bool,
+        spec: ScanSpec,
+        location: str,
+        conn: duckdb.DuckDBPyConnection,
+    ) -> None:
+        super().__init__(status, spec, location)
+        self.conn = conn
+
+    def __enter__(self) -> "ScanResultsDB":
+        """Enter the async context manager."""
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self.conn.close()
 
 
 class ScanRecorder(abc.ABC):
@@ -73,3 +102,7 @@ class ScanRecorder(abc.ABC):
         scanner: str | None = None,
         filter: ScanResultsFilter | None = None,
     ) -> ScanResults: ...
+
+    @staticmethod
+    @abc.abstractmethod
+    async def results_db(scan_location: str) -> ScanResultsDB: ...

@@ -19,7 +19,6 @@ from .recorder import (
     ScanRecorder,
     ScanResults,
     ScanResultsDB,
-    ScanResultsFilter,
     ScanStatus,
 )
 
@@ -133,7 +132,7 @@ class FileRecorder(ScanRecorder):
         scan_location: str,
         *,
         scanner: str | None = None,
-        filter: ScanResultsFilter | None = None,
+        include_null: bool = False,
     ) -> ScanResults:
         import pyarrow.parquet as pq
         from upath import UPath
@@ -152,9 +151,9 @@ class FileRecorder(ScanRecorder):
                 # cast value column to appropriate type based on value_type
                 df = _cast_value_column(df)
 
-                # apply filter if requested
-                if filter:
-                    df = df.loc[filter]
+                # exclude nulls if requested
+                if not include_null:
+                    df = df[df["value"].notnull()]
 
                 # return
                 return df
@@ -186,7 +185,9 @@ class FileRecorder(ScanRecorder):
             )
 
     @staticmethod
-    async def results_db(scan_location: str) -> ScanResultsDB:
+    async def results_db(
+        scan_location: str, *, include_null: bool = False
+    ) -> ScanResultsDB:
         from upath import UPath
 
         scan_dir = UPath(scan_location)
@@ -201,8 +202,9 @@ class FileRecorder(ScanRecorder):
             # Create a view that references the parquet file
             # Use absolute path to ensure it works regardless of working directory
             abs_path = parquet_file.resolve().as_posix()
+            where_clause = "" if include_null else " WHERE value IS NOT NULL"
             conn.execute(
-                f"CREATE VIEW {scanner_name} AS SELECT * FROM read_parquet('{abs_path}')"
+                f"CREATE VIEW {scanner_name} AS SELECT * FROM read_parquet('{abs_path}'){where_clause}"
             )
 
         # create the transcripts table from the snapshot

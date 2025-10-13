@@ -1,7 +1,6 @@
 from ._recorder.recorder import (
     ScanResults,
     ScanResultsDB,
-    ScanResultsFilter,
     ScanStatus,
 )
 from ._scan import (
@@ -60,7 +59,6 @@ __all__ = [
     "ScanStatus",
     "scan_results",
     "ScanResults",
-    "ScanResultsFilter",
     "scan_results_db",
     "ScanResultsDB",
     "scan_status_async",

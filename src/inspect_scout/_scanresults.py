@@ -1,11 +1,9 @@
-import pandas as pd
 from inspect_ai._util._async import run_coroutine
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._recorder.recorder import (
     ScanResults,
     ScanResultsDB,
-    ScanResultsFilter,
     ScanStatus,
 )
 
@@ -19,37 +17,29 @@ async def scan_status_async(scan_location: str) -> ScanStatus:
     return await recorder.status(scan_location)
 
 
-def has_value(df: pd.DataFrame) -> pd.Series:
-    return df["value"].notnull()
-
-
 def scan_results(
-    scan_location: str,
-    *,
-    scanner: str | None = None,
-    filter: ScanResultsFilter | None = has_value,
+    scan_location: str, *, scanner: str | None = None, include_null: bool = False
 ) -> ScanResults:
     return run_coroutine(
-        scan_results_async(scan_location, scanner=scanner, filter=filter)
+        scan_results_async(scan_location, scanner=scanner, include_null=include_null)
     )
 
 
 async def scan_results_async(
-    scan_location: str,
-    *,
-    scanner: str | None = None,
-    filter: ScanResultsFilter | None = has_value,
+    scan_location: str, *, scanner: str | None = None, include_null: bool = False
 ) -> ScanResults:
     recorder = scan_recorder_type_for_location(scan_location)
-    return await recorder.results(scan_location, scanner=scanner, filter=filter)
+    return await recorder.results(
+        scan_location, scanner=scanner, include_null=include_null
+    )
 
 
-def scan_results_db(
-    scan_location: str,
-) -> ScanResultsDB:
+def scan_results_db(scan_location: str, include_null: bool = False) -> ScanResultsDB:
     return run_coroutine(scan_results_db_async(scan_location))
 
 
-async def scan_results_db_async(scan_location: str) -> ScanResultsDB:
+async def scan_results_db_async(
+    scan_location: str, include_null: bool = False
+) -> ScanResultsDB:
     recorder = scan_recorder_type_for_location(scan_location)
-    return await recorder.results_db(scan_location)
+    return await recorder.results_db(scan_location, include_null=include_null)

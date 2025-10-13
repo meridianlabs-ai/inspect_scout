@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Callable, Sequence, TypeAlias
+from typing import Sequence
 
 import duckdb
 import pandas as pd
@@ -31,9 +31,6 @@ class ScanResults(ScanStatus):
     ) -> None:
         super().__init__(status, spec, location)
         self.data = data
-
-
-ScanResultsFilter: TypeAlias = Callable[[pd.DataFrame], pd.Series]
 
 
 @dataclass
@@ -158,12 +155,11 @@ class ScanRecorder(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     async def results(
-        scan_location: str,
-        *,
-        scanner: str | None = None,
-        filter: ScanResultsFilter | None = None,
+        scan_location: str, *, scanner: str | None = None, include_null: bool = False
     ) -> ScanResults: ...
 
     @staticmethod
     @abc.abstractmethod
-    async def results_db(scan_location: str) -> ScanResultsDB: ...
+    async def results_db(
+        scan_location: str, include_null: bool = False
+    ) -> ScanResultsDB: ...

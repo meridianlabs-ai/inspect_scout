@@ -215,6 +215,9 @@ class EvalLogTranscriptsDB:
         # sqlite connection (starts out none)
         self._conn: sqlite3.Connection | None = None
 
+        # AsyncFilesystem (starts out none)
+        self._fs: AsyncFilesystem | None = None
+
         # cache for read_eval_log_sample_summaries results (source, summaries_dict)
         self._summaries_cache: tuple[str, dict[str, EvalSampleSummary]] | None = None
         self._summaries_cache_lock = anyio.Lock()
@@ -353,20 +356,26 @@ class EvalLogTranscriptsDB:
         summary = await self._get_eval_summary(t)
         sample_file_name = f"samples/{summary.id}_epoch_{summary.epoch}.json"
 
-        async with AsyncFilesystem() as fs:
-            zip_reader = AsyncZipReader(fs, t.source_uri)
-            json_iterator = await zip_reader.open_member(sample_file_name)
-            return await load_filtered_transcript(
-                json_iterator,
-                t,
-                content.messages,
-                content.events,
-            )
+        if not self._fs:
+            self._fs = AsyncFilesystem()
+
+        zip_reader = AsyncZipReader(self._fs, t.source_uri)
+        json_iterator = await zip_reader.open_member(sample_file_name)
+        return await load_filtered_transcript(
+            json_iterator,
+            t,
+            content.messages,
+            content.events,
+        )
 
     async def disconnect(self) -> None:
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+
+        if self._fs is not None:
+            await self._fs.close()
+            self._fs = None
 
     def _build_where_clause(self, where: list[Condition]) -> tuple[str, list[Any]]:
         """Build WHERE clause and parameters from conditions.

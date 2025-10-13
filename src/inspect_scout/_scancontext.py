@@ -28,8 +28,8 @@ from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
 from ._scanner.types import ScannerInput
 from ._scanspec import (
     ScanConfig,
-    ScanRevision,
     ScannerSpec,
+    ScanRevision,
     ScanSpec,
 )
 from ._transcript.database import transcripts_from_snapshot

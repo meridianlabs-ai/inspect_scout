@@ -13,7 +13,7 @@ from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.hash import mm3_hash
 from upath import UPath
 
-from .._scanner.result import ResultReport, Error
+from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 

@@ -4,7 +4,7 @@ from typing import Callable, Sequence, TypeAlias
 
 import pandas as pd
 
-from .._scanner.result import ResultReport, Error
+from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 

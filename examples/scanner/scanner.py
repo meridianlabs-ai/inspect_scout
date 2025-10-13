@@ -104,17 +104,20 @@ def print_results(location: str) -> None:
         print(s_cols)
 
         # Try a sample query joining transcripts and scanner results
-        # Note: transcript_id in scanner table = sample_id in transcripts table
+        # Note: transcript columns have been renamed for easier joins:
+        #   - id (was sample_id) matches scanner's transcript_id
+        #   - source_id (was eval_id) matches scanner's transcript_source_id
+        #   - source_uri (was log) matches scanner's transcript_source_uri
         print("\nSample query (first 5 results from target_word_scanner):")
         sample_results = db.conn.execute("""
             SELECT
-                t.sample_id,
+                t.id,
                 t.epoch,
                 t.task_name,
                 s.value,
                 s.explanation
             FROM transcripts t
-            JOIN target_word_scanner s ON t.sample_id = s.transcript_id
+            JOIN target_word_scanner s ON t.id = s.transcript_id
             LIMIT 5
         """).fetchdf()
         print(sample_results)
@@ -122,13 +125,13 @@ def print_results(location: str) -> None:
         print("\nSample query with both scanners:")
         both_scanners = db.conn.execute("""
             SELECT
-                t.sample_id,
+                t.id,
                 t.task_name,
                 tw.value as target_word_count,
                 llm.value as llm_deceptive
             FROM transcripts t
-            JOIN target_word_scanner tw ON t.sample_id = tw.transcript_id
-            JOIN llm_scanner llm ON t.sample_id = llm.transcript_id
+            JOIN target_word_scanner tw ON t.id = tw.transcript_id
+            JOIN llm_scanner llm ON t.id = llm.transcript_id
             LIMIT 5
         """).fetchdf()
         print(both_scanners)

@@ -415,10 +415,25 @@ async def transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
             raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
 
 
-async def transcripts_df_from_snapshot(snapshot: ScanTranscripts) -> pd.DataFrame:
+async def transcripts_df_for_results(snapshot: ScanTranscripts) -> pd.DataFrame:
+    """Get a DataFrame from a transcript snapshot with renamed columns.
+
+    Renames columns to match scanner table naming for easier joins:
+    - sample_id => id (matches scanner's transcript_id)
+    - eval_id => source_id (matches scanner's transcript_source_id)
+    - log => source_uri (matches scanner's transcript_source_uri)
+    """
     match snapshot.type:
         case "eval_log":
-            return EvalLogTranscripts._logs_df_from_snapshot(snapshot)
+            df = EvalLogTranscripts._logs_df_from_snapshot(snapshot)
+
+            # Rename columns for consistency with scanner tables
+            rename_map = {
+                "sample_id": "id",
+                "eval_id": "source_id",
+                "log": "source_uri",
+            }
+            return df.rename(columns=rename_map)
         case _:
             raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
 

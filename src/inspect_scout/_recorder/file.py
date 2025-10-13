@@ -9,7 +9,7 @@ from inspect_ai._util.json import to_json_str_safe
 from typing_extensions import override
 from upath import UPath
 
-from inspect_scout._transcript.database import transcripts_df_from_snapshot
+from inspect_scout._transcript.database import transcripts_df_for_results
 
 from .._recorder.buffer import RecorderBuffer
 from .._scanner.result import Error, ResultReport
@@ -163,7 +163,7 @@ class FileRecorder(ScanRecorder):
             data: dict[str, pd.DataFrame] = {}
 
             # include the original transcripts df
-            data["transcripts"] = await transcripts_df_from_snapshot(
+            data["transcripts"] = await transcripts_df_for_results(
                 status.spec.transcripts
             )
 
@@ -205,8 +205,8 @@ class FileRecorder(ScanRecorder):
                 f"CREATE VIEW {scanner_name} AS SELECT * FROM read_parquet('{abs_path}')"
             )
 
-        # Create the transcripts table from the snapshot
-        transcripts_df = await transcripts_df_from_snapshot(status.spec.transcripts)  # noqa: F841
+        # create the transcripts table from the snapshot
+        transcripts_df = await transcripts_df_for_results(status.spec.transcripts)  # noqa: F841
         conn.execute("CREATE TABLE transcripts AS SELECT * FROM transcripts_df")
 
         return ScanResultsDB(

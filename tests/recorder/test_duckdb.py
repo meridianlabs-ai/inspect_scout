@@ -27,6 +27,7 @@ def test_scan_results(test_logs_path, tmp_path):
         transcripts=transcripts(test_logs_path),
         max_transcripts=5,
         results=tmp_path.as_posix(),
+        model="mockllm/model",
     )
     return status
 
@@ -61,6 +62,17 @@ class TestResultsDB:
             # Check it has data
             count = db.conn.execute("SELECT COUNT(*) FROM transcripts").fetchone()[0]
             assert count > 0
+
+            # Check renamed columns exist
+            columns = db.conn.execute("DESCRIBE transcripts").fetchdf()
+            column_names = columns["column_name"].tolist()
+            assert "id" in column_names
+            assert "source_id" in column_names
+            assert "source_uri" in column_names
+            # Original names should NOT exist
+            assert "sample_id" not in column_names
+            assert "eval_id" not in column_names
+            assert "log" not in column_names
 
         finally:
             db.conn.close()
@@ -106,16 +118,16 @@ class TestResultsDB:
         db = scan_results_db(test_scan_results.location)
 
         try:
-            # Join transcripts with scanner results
+            # Join transcripts with scanner results using the renamed columns
             results = db.conn.execute("""
-                SELECT t.sample_id, s.value, s.explanation
+                SELECT t.id, s.value, s.explanation
                 FROM transcripts t
-                JOIN word_counter s ON t.sample_id = s.transcript_id
+                JOIN word_counter s ON t.id = s.transcript_id
                 LIMIT 5
             """).fetchdf()
 
             assert len(results) > 0
-            assert "sample_id" in results.columns
+            assert "id" in results.columns
             assert "value" in results.columns
             assert "explanation" in results.columns
 
@@ -129,15 +141,15 @@ class TestResultsDB:
         db = scan_results_db(test_scan_results.location)
 
         try:
-            # Join multiple scanners
+            # Join multiple scanners using the renamed columns
             results = db.conn.execute("""
                 SELECT
-                    t.sample_id,
+                    t.id,
                     wc.value as word_count,
                     ml.value as message_length
                 FROM transcripts t
-                JOIN word_counter wc ON t.sample_id = wc.transcript_id
-                JOIN message_length ml ON t.sample_id = ml.transcript_id
+                JOIN word_counter wc ON t.id = wc.transcript_id
+                JOIN message_length ml ON t.id = ml.transcript_id
                 LIMIT 5
             """).fetchdf()
 
@@ -317,16 +329,16 @@ class TestToFile:
         try:
             db.to_file(str(db_file))
 
-            # Open file and run complex query
+            # Open file and run complex query using the renamed columns
             verify_conn = duckdb.connect(str(db_file))
             results = verify_conn.execute("""
                 SELECT
-                    t.sample_id,
+                    t.id,
                     wc.value as word_count,
                     ml.value as message_length
                 FROM transcripts t
-                JOIN word_counter wc ON t.sample_id = wc.transcript_id
-                JOIN message_length ml ON t.sample_id = ml.transcript_id
+                JOIN word_counter wc ON t.id = wc.transcript_id
+                JOIN message_length ml ON t.id = ml.transcript_id
                 LIMIT 5
             """).fetchdf()
 
@@ -338,3 +350,25 @@ class TestToFile:
 
         finally:
             db.conn.close()
+
+
+class TestResults:
+    """Tests for the results() function (DataFrame-based results)."""
+
+    @pytest.mark.asyncio
+    async def test_results_has_renamed_columns(self, test_scan_results):
+        """Test that results() also has the renamed transcript columns."""
+        from inspect_scout._scanresults import scan_results_async
+
+        results = await scan_results_async(test_scan_results.location)
+
+        # Check that transcripts DataFrame has renamed columns
+        transcripts_df = results.data["transcripts"]
+        assert "id" in transcripts_df.columns
+        assert "source_id" in transcripts_df.columns
+        assert "source_uri" in transcripts_df.columns
+
+        # Original names should NOT exist
+        assert "sample_id" not in transcripts_df.columns
+        assert "eval_id" not in transcripts_df.columns
+        assert "log" not in transcripts_df.columns

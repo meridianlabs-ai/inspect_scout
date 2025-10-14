@@ -16,7 +16,9 @@ def create_test_dataframe(num_samples: int = 10) -> pd.DataFrame:
     for i in range(num_samples):
         data.append(
             {
-                "sample_id": f"sample_{i:03d}_{uuid.uuid4().hex[:8]}",
+                "sample_id": f"sample_{uuid.uuid4().hex[:8]}",
+                "id": f"id_{i:03d}",
+                "epoch": 1,
                 "eval_id": f"eval_{uuid.uuid4().hex[:8]}",  # Add eval_id
                 "log": f"/path/to/log_{i:03d}.json",
                 "model": ["gpt-4", "gpt-3.5-turbo", "claude"][i % 3],
@@ -778,7 +780,7 @@ async def test_transcripts_query_integration():
 @pytest.mark.asyncio
 async def test_empty_dataframe():
     """Test with empty DataFrame."""
-    df = pd.DataFrame(columns=["sample_id", "eval_id", "log"])
+    df = pd.DataFrame(columns=["sample_id", "id", "epoch", "eval_id", "log"])
     db = EvalLogTranscriptsDB(df)
     await db.connect()
 
@@ -798,6 +800,8 @@ async def test_missing_required_columns():
     df = pd.DataFrame(
         {
             "sample_id": [None],  # Missing sample_id value
+            "id": "myid",
+            "epoch": 1,
             "eval_id": ["eval_123"],
             "log": ["/path/to/log.json"],
             "model": ["gpt-4"],

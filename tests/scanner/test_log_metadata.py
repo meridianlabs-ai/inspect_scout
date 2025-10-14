@@ -681,7 +681,7 @@ def test_chaining_operations():
 @pytest.mark.asyncio
 async def test_empty_dataframe_with_log_metadata():
     """Test LogMetadata works with empty DataFrames."""
-    df = pd.DataFrame(columns=["sample_id", "eval_id", "log", "model", "epoch"])
+    df = pd.DataFrame(columns=["sample_id", "id", "eval_id", "log", "model", "epoch"])
     db = EvalLogTranscriptsDB(df)
     await db.connect()
 

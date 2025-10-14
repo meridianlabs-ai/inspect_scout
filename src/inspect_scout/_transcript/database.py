@@ -15,13 +15,11 @@ from typing import (
     overload,
 )
 
-import anyio
 import pandas as pd
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai.analysis._dataframe.columns import Column
 from inspect_ai.analysis._dataframe.evals.columns import (
     EvalColumn,
-    EvalColumns,
     EvalId,
     EvalLogPath,
 )
@@ -32,9 +30,8 @@ from inspect_ai.analysis._dataframe.extract import (
     score_value,
     score_values,
 )
-from inspect_ai.analysis._dataframe.samples.columns import SampleColumn, SampleSummary
+from inspect_ai.analysis._dataframe.samples.columns import SampleColumn
 from inspect_ai.analysis._dataframe.samples.extract import (
-    auto_sample_id,
     sample_total_tokens,
 )
 from inspect_ai.analysis._dataframe.samples.table import SAMPLE_ID, samples_df
@@ -43,9 +40,7 @@ from inspect_ai.analysis._dataframe.util import (
 )
 from inspect_ai.log._file import (
     EvalLogInfo,
-    read_eval_log_sample_summaries_async,
 )
-from inspect_ai.log._log import EvalSampleSummary
 from typing_extensions import override
 
 from inspect_scout._util.async_zip import AsyncZipReader
@@ -208,8 +203,12 @@ class EvalLogTranscriptsDB:
             # if there is no sample id then we need to blow out the samples from the logs
             if SAMPLE_ID not in logs.columns:
                 logs = logs[EVAL_LOG_PATH].to_list()
-                self._transcripts_df = samples_df(logs, EvalColumns + SampleSummary)
+                self._transcripts_df = samples_df(logs, TranscriptColumns)
             else:
+                if "id" not in logs.columns or "epoch" not in logs.columns:
+                    raise ValueError(
+                        "Transcripts data frame must contain both 'id' and 'epoch' columns."
+                    )
                 self._transcripts_df = logs
 
         # sqlite connection (starts out none)
@@ -217,10 +216,6 @@ class EvalLogTranscriptsDB:
 
         # AsyncFilesystem (starts out none)
         self._fs: AsyncFilesystem | None = None
-
-        # cache for read_eval_log_sample_summaries results (source, summaries_dict)
-        self._summaries_cache: tuple[str, dict[str, EvalSampleSummary]] | None = None
-        self._summaries_cache_lock = anyio.Lock()
 
     async def connect(self) -> None:
         # Skip if already connected
@@ -319,42 +314,11 @@ class EvalLogTranscriptsDB:
 
         return iter(results)
 
-    async def _get_eval_summary(self, t: TranscriptInfo) -> EvalSampleSummary:
-        """Get the eval summary for a transcript, using cache if available.
-
-        This cache assumes that the typical usage pattern will scan through a single
-        source rather than jumping across sources randomly.
-        """
-        # TODO: Add a fast path/cache hit path without the lock - maybe
-        async with self._summaries_cache_lock:
-            if (
-                self._summaries_cache is None
-                or self._summaries_cache[0] != t.source_uri
-            ):
-                summaries = [
-                    summary
-                    if summary.uuid is not None
-                    else summary.model_copy(
-                        update={"uuid": auto_sample_id(t.source_id, summary)}
-                    )
-                    for summary in await read_eval_log_sample_summaries_async(
-                        t.source_uri
-                    )
-                ]
-
-                self._summaries_cache = (
-                    t.source_uri,
-                    {
-                        summary.uuid: summary
-                        for summary in summaries
-                        if summary.uuid is not None
-                    },
-                )
-            return self._summaries_cache[1][t.id]
-
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
-        summary = await self._get_eval_summary(t)
-        sample_file_name = f"samples/{summary.id}_epoch_{summary.epoch}.json"
+        id_, epoch = self._transcripts_df[
+            self._transcripts_df["sample_id"] == t.id
+        ].iloc[0][["id", "epoch"]]
+        sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
 
         if not self._fs:
             self._fs = AsyncFilesystem()

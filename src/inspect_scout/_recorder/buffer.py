@@ -25,7 +25,7 @@ class RecorderBuffer:
     Parquet-backed buffer compatible with the previous RecorderBuffer API.
 
     Layout on disk:
-      inspect_data_dir("scout_scan_buffer") / "<hash_of_scan_location>" /
+      inspect_data_dir("scout_scanbuffer") / "<hash_of_scan_location>" /
           scanner=<scanner_name> /
               <transcript_id>.parquet
 
@@ -38,7 +38,7 @@ class RecorderBuffer:
     def buffer_dir(scan_location: str) -> UPath:
         scan_path = UPath(scan_location).resolve()
         return UPath(
-            inspect_data_dir("scout_scan_buffer") / f"{mm3_hash(scan_path.as_posix())}"
+            inspect_data_dir("scout_scanbuffer") / f"{mm3_hash(scan_path.as_posix())}"
         )
 
     def __init__(self, scan_location: str, spec: ScanSpec):
@@ -315,9 +315,12 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
 
 
 def read_scan_errors(error_file: str) -> list[Error]:
-    with open(error_file, "r") as f:
-        errors: list[Error] = []
-        reader = jsonlines.Reader(f)
-        for error in reader.iter(type=dict):
-            errors.append(Error(**error))
-        return errors
+    try:
+        with open(error_file, "r") as f:
+            errors: list[Error] = []
+            reader = jsonlines.Reader(f)
+            for error in reader.iter(type=dict):
+                errors.append(Error(**error))
+            return errors
+    except FileNotFoundError:
+        return []

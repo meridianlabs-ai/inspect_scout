@@ -136,6 +136,7 @@ class FileRecorder(ScanRecorder):
             errors=_read_scan_errors(scan_dir),
         )
 
+    @override
     @staticmethod
     async def status(scan_location: str) -> ScanStatus:
         buffer_dir = RecorderBuffer.buffer_dir(scan_location)
@@ -148,6 +149,7 @@ class FileRecorder(ScanRecorder):
             else _read_scan_errors(UPath(scan_location)),
         )
 
+    @override
     @staticmethod
     async def results(
         scan_location: str,
@@ -206,6 +208,7 @@ class FileRecorder(ScanRecorder):
                 data=data,
             )
 
+    @override
     @staticmethod
     async def results_db(
         scan_location: str, *, include_null: bool = False
@@ -240,6 +243,15 @@ class FileRecorder(ScanRecorder):
             errors=status.errors,
             conn=conn,
         )
+
+    @override
+    @staticmethod
+    async def list(scans_location: str) -> list[ScanStatus]:
+        scans_dir = UPath(scans_location)
+        return [
+            await FileRecorder.status(scan_dir.as_posix())
+            for scan_dir in scans_dir.glob("scan_id=*")
+        ]
 
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:

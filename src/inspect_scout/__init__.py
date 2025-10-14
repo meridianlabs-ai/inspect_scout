@@ -12,6 +12,7 @@ from ._scan import (
     scan_resume_async,
 )
 from ._scanjob import ScanJob, scanjob
+from ._scanlist import scan_list, scan_list_async
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Result
 from ._scanner.scanner import Scanner, scanner
@@ -45,9 +46,6 @@ __all__ = [
     "scan",
     "scan_resume",
     "scan_complete",
-    "scan_async",
-    "scan_resume_async",
-    "scan_complete_async",
     "scanjob",
     "ScanJob",
     "ScanSpec",
@@ -55,15 +53,13 @@ __all__ = [
     "ScanTranscripts",
     "ScanScanner",
     # results
+    "scan_list",
     "scan_status",
     "ScanStatus",
     "scan_results",
     "ScanResults",
     "scan_results_db",
     "ScanResultsDB",
-    "scan_status_async",
-    "scan_results_async",
-    "scan_results_db_async",
     # transcript
     "transcripts",
     "Transcripts",
@@ -85,6 +81,14 @@ __all__ = [
     "TranscriptInfo",
     "EventType",
     "MessageType",
+    # async
+    "scan_async",
+    "scan_resume_async",
+    "scan_complete_async",
+    "scan_list_async",
+    "scan_status_async",
+    "scan_results_async",
+    "scan_results_db_async",
     # version
     "__version__",
 ]

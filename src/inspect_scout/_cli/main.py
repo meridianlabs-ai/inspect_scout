@@ -1,6 +1,7 @@
 import click
 from inspect_ai._util.error import set_exception_hook
 
+from inspect_scout._cli.scan_list import scan_list_command
 from inspect_scout._cli.trace import trace_command
 from inspect_scout._scan import init_environment
 
@@ -35,6 +36,7 @@ def scout(ctx: click.Context, version: bool) -> None:
 scout.add_command(scan_command)
 scan_command.add_command(scan_resume_command)
 scan_command.add_command(scan_complete_command)
+scan_command.add_command(scan_list_command)
 
 scout.add_command(trace_command)
 

@@ -1,0 +1,13 @@
+from inspect_ai._util._async import run_coroutine
+
+from inspect_scout._recorder.factory import scan_recorder_type_for_location
+from inspect_scout._recorder.recorder import ScanStatus
+
+
+def scan_list(scans_location: str) -> list[ScanStatus]:
+    return run_coroutine(scan_list_async(scans_location))
+
+
+async def scan_list_async(scans_location: str) -> ScanStatus:
+    recorder = scan_recorder_type_for_location(scans_location)
+    return await recorder.list(scans_location)

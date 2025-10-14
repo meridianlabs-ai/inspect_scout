@@ -167,3 +167,7 @@ class ScanRecorder(abc.ABC):
     async def results_db(
         scan_location: str, *, include_null: bool = False
     ) -> ScanResultsDB: ...
+
+    @staticmethod
+    @abc.abstractmethod
+    async def list(scans_location: str) -> list[ScanStatus]: ...

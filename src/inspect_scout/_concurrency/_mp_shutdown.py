@@ -2,7 +2,7 @@ import time
 from multiprocessing.context import ForkProcess
 from multiprocessing.queues import Queue as MPQueue
 from queue import Empty
-from typing import Any, Callable, cast
+from typing import Any, Callable
 
 import anyio
 
@@ -13,7 +13,7 @@ async def shutdown_subprocesses(
     processes: list[ForkProcess],
     ctx: _mp_common.IPCContext,
     print_diagnostics: Callable[[str, object], None],
-    shutdown_sentinel: object,
+    shutdown_sentinel: _mp_common.ShutdownSentinel,
 ) -> None:
     """Unified shutdown sequence for both clean exit and Ctrl-C.
 
@@ -84,8 +84,7 @@ async def shutdown_subprocesses(
     # PHASE 5: Inject shutdown sentinel to wake collector
     print_diagnostics("SubprocessShutdown", "Phase 5: Injecting shutdown sentinel")
     try:
-        # Cast sentinel to queue's type - at runtime it's just an object identity check
-        ctx.upstream_queue.put(cast(_mp_common.UpstreamQueueItem, shutdown_sentinel))
+        ctx.upstream_queue.put(shutdown_sentinel)
         print_diagnostics("SubprocessShutdown", "Injected upstream queue sentinel")
     except (ValueError, OSError) as e:
         # Queue already closed - collector likely already exited via cancellation

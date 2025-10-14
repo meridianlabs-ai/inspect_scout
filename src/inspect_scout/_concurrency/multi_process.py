@@ -25,13 +25,23 @@ from typing import AsyncIterator, Awaitable, Callable, cast
 import anyio
 from anyio import create_task_group
 from inspect_ai.util._anyio import inner_exception
+from inspect_ai.util._concurrency import init_concurrency
 
 from inspect_scout._display._display import display
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
-from ._mp_common import run_sync_on_thread
+from ._mp_common import (
+    IPCContext,
+    MetricsItem,
+    ResultItem,
+    SemaphoreRequest,
+    ShutdownSentinel,
+    WorkerComplete,
+    run_sync_on_thread,
+)
+from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
 from ._mp_subprocess import subprocess_main
 from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob, sum_metrics
@@ -39,13 +49,14 @@ from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob, sum_
 # Sentinel value to signal collectors to shut down during Ctrl-C.
 #
 # MUST be a sentinel: During Ctrl-C shutdown, workers are terminated before they can
-# send their normal completion sentinels (None). The collectors are blocked waiting on
-# queue.get() in a thread (via run_sync_on_thread). To wake them up and allow them to
-# exit, we inject this shutdown sentinel into their queues from the main process.
+# send their normal completion sentinels (WorkerComplete). The collectors are blocked
+# waiting on queue.get() in a thread (via run_sync_on_thread). To wake them up and
+# allow them to exit, we inject this shutdown sentinel into their queues from the main
+# process.
 #
-# Uses object() for unique identity - cannot be created by user code, ensuring it's
-# distinguishable from any legitimate queue item.
-_SHUTDOWN_SENTINEL = object()
+# Uses a dedicated ShutdownSentinel dataclass to maintain type safety while still
+# providing a distinct sentinel value for emergency shutdown.
+_SHUTDOWN_SENTINEL = ShutdownSentinel()
 
 
 def multi_process_strategy(
@@ -91,6 +102,14 @@ def multi_process_strategy(
             raise RuntimeError(
                 "Another multi_process_strategy is already running. Only one instance can be active at a time."
             )
+        # Create Manager and parent registry for cross-process semaphore coordination
+        manager = multiprocessing.Manager()
+        parent_registry = ParentSemaphoreRegistry(manager)
+
+        # Initialize parent's concurrency system with cross-process registry
+        # This ensures parent creates ManagerSemaphore instances in shared registry
+        # when it receives SemaphoreRequest from children
+        init_concurrency(parent_registry)
 
         # Block SIGINT before creating processes - workers will inherit SIG_IGN
         original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -100,7 +119,7 @@ def multi_process_strategy(
             hack_factor = 1
             tasks_per_process = hack_factor * max(1, task_count // process_count)
             # Initialize shared IPC context that will be inherited by forked workers
-            _mp_common.ipc_context = _mp_common.IPCContext(
+            _mp_common.ipc_context = IPCContext(
                 parse_function=parse_function,
                 scan_function=scan_function,
                 tasks_per_process=tasks_per_process,
@@ -109,7 +128,9 @@ def multi_process_strategy(
                 overall_start_time=time.time(),
                 parse_job_queue=multiprocessing.Queue(),
                 upstream_queue=multiprocessing.Queue(),
-                shutdown_condition=multiprocessing.Condition(),
+                shutdown_condition=manager.Condition(),
+                semaphore_registry=parent_registry.sync_manager_dict,
+                semaphore_condition=parent_registry.sync_manager_condition,
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:
@@ -138,7 +159,7 @@ def multi_process_strategy(
                         parse_job_queue.put(item)
                         print_diagnostics(
                             "MP Producer",
-                            f"Added ParseJob {_mp_common.parse_job_info(item)}",
+                            f"Added ParseJob {item.transcript_info.id, item.scanner_indices}",
                         )
                 finally:
                     # Send sentinel values to signal worker tasks to stop (one per task)
@@ -158,8 +179,7 @@ def multi_process_strategy(
                     item = await run_sync_on_thread(upstream_queue.get)
 
                     match item:
-                        # Result item: (TranscriptInfo, str, list[ResultReport])
-                        case (transcript_info, scanner_name, results):
+                        case ResultItem(transcript_info, scanner_name, results):
                             await record_results(transcript_info, scanner_name, results)
                             items_processed += 1
                             print_diagnostics(
@@ -167,22 +187,32 @@ def multi_process_strategy(
                                 f"Recorded results for {transcript_info.id} (total: {items_processed})",
                             )
 
-                        # Metrics item: (int, ScanMetrics)
-                        case (worker_id, metrics):
+                        case MetricsItem(worker_id, metrics):
                             all_metrics[worker_id] = metrics
                             if update_metrics:
                                 update_metrics(sum_metrics(all_metrics.values()))
 
+                        case SemaphoreRequest(name, concurrency, visible):
+                            # Use parent registry to create and register semaphore
+                            # This creates the ManagerSemaphore in the shared DictProxy
+                            await parent_registry.get_or_create(
+                                name, concurrency, None, visible
+                            )
+
+                            print_diagnostics(
+                                "MP Collector",
+                                f"Created semaphore '{name}' with concurrency={concurrency}",
+                            )
+
                         # Shutdown signal from ourself - exit collector immediately
-                        case _ if item is _SHUTDOWN_SENTINEL:
+                        case ShutdownSentinel():
                             print_diagnostics(
                                 "MP Collector",
                                 f"Received shutdown sentinel (got {workers_finished}/{process_count} worker completions)",
                             )
                             break
 
-                        # Sentinel from a worker process indicating it's done
-                        case None:
+                        case WorkerComplete():
                             workers_finished += 1
                             print_diagnostics(
                                 "MP Collector",
@@ -193,11 +223,11 @@ def multi_process_strategy(
                             raise item
 
                         # Should never happen - defensive check
-                        case _:
-                            print_diagnostics(
-                                "MP Collector",
-                                f"WARNING: Unexpected item: {item!r}",
-                            )
+                        # case _:
+                        #     print_diagnostics(
+                        #         "MP Collector",
+                        #         f"WARNING: Unexpected item: {item!r}",
+                        #     )
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 
@@ -256,6 +286,6 @@ def multi_process_strategy(
         finally:
             # Always restore signal handler and reset IPC context
             signal.signal(signal.SIGINT, original_sigint_handler)
-            _mp_common.ipc_context = cast(_mp_common.IPCContext, None)
+            _mp_common.ipc_context = cast(IPCContext, None)
 
     return the_func

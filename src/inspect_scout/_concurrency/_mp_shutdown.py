@@ -1,8 +1,8 @@
 import time
 from multiprocessing.context import ForkProcess
-from multiprocessing.queues import Queue as MPQueue
+from multiprocessing.queues import Queue
 from queue import Empty
-from typing import Any, Callable, cast
+from typing import Any, Callable
 
 import anyio
 
@@ -13,7 +13,7 @@ async def shutdown_subprocesses(
     processes: list[ForkProcess],
     ctx: _mp_common.IPCContext,
     print_diagnostics: Callable[[str, object], None],
-    shutdown_sentinel: object,
+    shutdown_sentinel: _mp_common.ShutdownSentinel,
 ) -> None:
     """Unified shutdown sequence for both clean exit and Ctrl-C.
 
@@ -84,8 +84,7 @@ async def shutdown_subprocesses(
     # PHASE 5: Inject shutdown sentinel to wake collector
     print_diagnostics("SubprocessShutdown", "Phase 5: Injecting shutdown sentinel")
     try:
-        # Cast sentinel to queue's type - at runtime it's just an object identity check
-        ctx.upstream_queue.put(cast(_mp_common.UpstreamQueueItem, shutdown_sentinel))
+        ctx.upstream_queue.put(shutdown_sentinel)
         print_diagnostics("SubprocessShutdown", "Injected upstream queue sentinel")
     except (ValueError, OSError) as e:
         # Queue already closed - collector likely already exited via cancellation
@@ -94,7 +93,7 @@ async def shutdown_subprocesses(
     # PHASE 6: Drain queues (collector should have exited by now)
     print_diagnostics("SubprocessShutdown", "Phase 6: Draining queues")
 
-    def drain_queue(queue: MPQueue[Any], name: str) -> int:
+    def drain_queue(queue: Queue[Any], name: str) -> int:
         """Drain a queue and return count of items removed."""
         count = 0
         while True:
@@ -123,7 +122,7 @@ async def shutdown_subprocesses(
     # PHASE 7: Close queues (sends sentinel to feeder threads)
     print_diagnostics("SubprocessShutdown", "Phase 7: Closing queues")
 
-    queues_to_close: list[tuple[MPQueue[Any], str]] = [
+    queues_to_close: list[tuple[Queue[Any], str]] = [
         (ctx.parse_job_queue, "parse_job_queue"),
         (ctx.upstream_queue, "upstream_queue"),
     ]
@@ -143,7 +142,7 @@ async def shutdown_subprocesses(
     # PHASE 9: Cancel join threads (orphan any stuck feeder threads)
     print_diagnostics("SubprocessShutdown", "Phase 9: Cancelling join threads")
 
-    queues_to_cancel: list[tuple[MPQueue[Any], str]] = [
+    queues_to_cancel: list[tuple[Queue[Any], str]] = [
         (ctx.parse_job_queue, "parse_job_queue"),
         (ctx.upstream_queue, "upstream_queue"),
     ]

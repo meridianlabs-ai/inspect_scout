@@ -9,10 +9,11 @@ via a single multiplexed upstream queue.
 from __future__ import annotations
 
 import time
-from multiprocessing.synchronize import Condition as MPCondition
+from threading import Condition
 from typing import Callable
 
 import anyio
+from inspect_ai.util._concurrency import init_concurrency
 
 from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._display._display import display
@@ -20,19 +21,20 @@ from inspect_scout._display._display import display
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
-from ._iterator import iterator_from_mp_queue
+from ._iterator import iterator_from_queue
 from ._mp_common import run_sync_on_thread
+from ._mp_registry import ChildSemaphoreRegistry
 from .single_process import single_process_strategy
 
 
 async def _shutdown_monitor_task(
-    condition: MPCondition,
+    condition: Condition,
     cancel_scope: anyio.CancelScope,
     print_diagnostics: Callable[[str, object], None],
 ) -> None:
     """Monitor shutdown condition and cancel worker when signaled.
 
-    This task burns one thread waiting on the MPCondition. When the parent process
+    This task burns one thread waiting on the Condition. When the parent process
     signals shutdown, this cancels the entire worker via the cancel_scope, enabling
     immediate shutdown response.
 
@@ -81,6 +83,13 @@ def subprocess_main(
 
     async def _worker_main() -> None:
         """Main async function for worker process."""
+        # Initialize concurrency with cross-process semaphore registry
+        # This allows workers to request semaphores from the parent via IPC
+        init_concurrency(
+            ChildSemaphoreRegistry(
+                ctx.semaphore_registry, ctx.semaphore_condition, ctx.upstream_queue
+            )
+        )
 
         def print_diagnostics(actor_name: str, *message_parts: object) -> None:
             if ctx.diagnostics:
@@ -107,10 +116,10 @@ def subprocess_main(
         async def _record_to_queue(
             transcript: TranscriptInfo, scanner: str, results: list[ResultReport]
         ) -> None:
-            ctx.upstream_queue.put((transcript, scanner, results))
+            ctx.upstream_queue.put(_mp_common.ResultItem(transcript, scanner, results))
 
         def _update_worker_metrics(metrics: ScanMetrics) -> None:
-            ctx.upstream_queue.put((worker_id, metrics))
+            ctx.upstream_queue.put(_mp_common.MetricsItem(worker_id, metrics))
 
         # Run everything in a task group with shutdown monitor
         shutdown_monitor_scope: anyio.CancelScope | None = None
@@ -136,7 +145,7 @@ def subprocess_main(
                     try:
                         await strategy(
                             record_results=_record_to_queue,
-                            parse_jobs=iterator_from_mp_queue(ctx.parse_job_queue),
+                            parse_jobs=iterator_from_queue(ctx.parse_job_queue),
                             parse_function=ctx.parse_function,
                             scan_function=ctx.scan_function,
                             update_metrics=_update_worker_metrics,
@@ -179,7 +188,7 @@ def subprocess_main(
             # except blocks above would catch and handle it, making control flow unclear.
             # With else:, it's explicit: sentinel is sent ONLY on clean completion.
             print_diagnostics("Worker main", "Sending completion sentinel")
-            ctx.upstream_queue.put(None)
+            ctx.upstream_queue.put(_mp_common.WorkerComplete())
 
         print_diagnostics("Worker main", "exiting")
 

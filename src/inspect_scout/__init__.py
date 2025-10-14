@@ -5,22 +5,17 @@ from ._recorder.recorder import (
 )
 from ._scan import (
     scan,
-    scan_async,
     scan_complete,
-    scan_complete_async,
     scan_resume,
-    scan_resume_async,
 )
 from ._scanjob import ScanJob, scanjob
-from ._scanlist import scan_list, scan_list_async
+from ._scanlist import scan_list
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanresults import (
     scan_results,
-    scan_results_async,
     scan_status,
-    scan_status_async,
 )
 from ._scanspec import ScanOptions, ScanScanner, ScanSpec, ScanTranscripts
 from ._transcript.database import transcripts
@@ -81,14 +76,6 @@ __all__ = [
     "TranscriptInfo",
     "EventType",
     "MessageType",
-    # async
-    "scan_async",
-    "scan_resume_async",
-    "scan_complete_async",
-    "scan_list_async",
-    "scan_status_async",
-    "scan_results_async",
-    "scan_results_db_async",
     # version
     "__version__",
 ]

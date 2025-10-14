@@ -10,13 +10,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from multiprocessing.queues import Queue as MPQueue
 from multiprocessing.synchronize import Condition as MPCondition
-from typing import Awaitable, Callable, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
 
 import anyio
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from .common import ParseJob, ScanMetrics, ScannerJob
+
+if TYPE_CHECKING:
+    from ._mp_semaphore import SemaphoreProvider
 
 ResultItem: TypeAlias = tuple[TranscriptInfo, str, list[ResultReport]]
 MetricsItem: TypeAlias = tuple[int, ScanMetrics]
@@ -45,6 +48,7 @@ class IPCContext:
     parse_job_queue: MPQueue[ParseJob | None]
     upstream_queue: MPQueue[UpstreamQueueItem]
     shutdown_condition: MPCondition
+    semaphore_provider: SemaphoreProvider
 
 
 # Global IPC context shared between main process and forked subprocesses.

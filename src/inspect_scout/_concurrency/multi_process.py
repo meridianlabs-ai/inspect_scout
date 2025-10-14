@@ -25,6 +25,7 @@ from typing import AsyncIterator, Awaitable, Callable, cast
 import anyio
 from anyio import create_task_group
 from inspect_ai.util._anyio import inner_exception
+from inspect_ai.util._concurrency import init_concurrency
 
 from inspect_scout._display._display import display
 
@@ -33,6 +34,7 @@ from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._mp_common import run_sync_on_thread
 from ._mp_shutdown import shutdown_subprocesses
+from ._mp_semaphore import SemaphoreProvider, mp_semaphore_factory
 from ._mp_subprocess import subprocess_main
 from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob, sum_metrics
 
@@ -91,6 +93,10 @@ def multi_process_strategy(
             raise RuntimeError(
                 "Another multi_process_strategy is already running. Only one instance can be active at a time."
             )
+        init_concurrency(mp_semaphore_factory)
+        # Create Manager and SemaphoreProvider for cross-process semaphore coordination
+        manager = multiprocessing.Manager()
+        semaphore_provider = SemaphoreProvider(manager)
 
         # Block SIGINT before creating processes - workers will inherit SIG_IGN
         original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -110,6 +116,7 @@ def multi_process_strategy(
                 parse_job_queue=multiprocessing.Queue(),
                 upstream_queue=multiprocessing.Queue(),
                 shutdown_condition=multiprocessing.Condition(),
+            semaphore_provider=semaphore_provider,
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:
@@ -224,6 +231,11 @@ def multi_process_strategy(
                 async with create_task_group() as tg:
                     tg.start_soon(_producer)
                     tg.start_soon(_upstream_collector)
+                    tg.start_soon(
+                        semaphore_provider.run_provider_task,
+                        diagnostics,
+                        print_diagnostics,
+                    )
 
                 # If we get here, everything completed normally
                 print_diagnostics("MP Main", "Task group exited normally")

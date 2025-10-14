@@ -3,10 +3,10 @@ import shlex
 
 import click
 from inspect_ai._util.path import pretty_path
-from rich import print
 from rich.table import Column, Table
 from typing_extensions import Unpack
 
+from .._display import display
 from .._scanlist import scan_list
 from .common import CommonOptions, common_options, process_common_options
 
@@ -52,4 +52,4 @@ def scan_list_command(
         )
 
     # print
-    print(table)
+    display().print(table)

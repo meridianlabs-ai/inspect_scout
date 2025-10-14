@@ -3,11 +3,10 @@ from typing import Any, Callable, Literal, cast
 
 import click
 from inspect_ai._util.constants import ALL_LOG_LEVELS, DEFAULT_LOG_LEVEL
-from rich import print
 from typing_extensions import TypedDict
 
 from inspect_scout._util.constants import DEFAULT_DISPLAY
-from inspect_scout._util.display import DisplayType, init_display_type
+from inspect_scout._display._display import DisplayType, display, init_display_type
 
 
 class CommonOptions(TypedDict):
@@ -56,14 +55,14 @@ def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
 
 def process_common_options(options: CommonOptions) -> None:
     # propagate display
-    display = cast(DisplayType, options["display"].lower().strip())
-    init_display_type(display)
+    display_type = cast(DisplayType, options["display"].lower().strip())
+    init_display_type(display_type)
 
     # attach debugger if requested
     if options["debug"]:
         import debugpy  # type: ignore
 
         debugpy.listen(options["debug_port"])
-        print("Waiting for debugger attach")
+        display().print("Waiting for debugger attach")
         debugpy.wait_for_client()
-        print("Debugger attached")
+        display().print("Debugger attached")

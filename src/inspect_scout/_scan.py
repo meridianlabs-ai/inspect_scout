@@ -25,7 +25,6 @@ from inspect_ai.model._model_config import (
     model_roles_config_to_model_roles,
 )
 from inspect_ai.util._anyio import inner_exception
-from rich import print
 from rich.console import RenderableType
 from rich.progress import (
     BarColumn,
@@ -35,12 +34,13 @@ from rich.progress import (
 )
 from typing_extensions import Literal
 
-from inspect_scout._util.display import DisplayType
+from inspect_scout._display._display import DisplayType
 from inspect_scout._util.log import init_log
 
 from ._concurrency.common import ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
+from ._display._display import display, display_type_initialized, init_display_type
 from ._progress_utils import UtilizationColumn
 from ._recorder.factory import (
     scan_recorder_for_location,
@@ -56,7 +56,6 @@ from ._scanspec import ScanOptions, ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.util import filter_transcript, union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
-from ._util.display import display_type_initialized, init_display_type
 
 logger = getLogger(__name__)
 
@@ -531,14 +530,14 @@ async def handle_scan_interruped(
 ) -> ScanStatus:
     theme = rich_theme()
 
-    print(message)
+    display().print(message)
 
     location = await recorder.location()
     resume_message = (
         f"\n[bold][{theme.error}]Scan interrupted. Resume scan with:[/{theme.error}]\n\n"
         + f'[bold][{theme.light}]scout scan-resume "{pretty_path(location)}"[/{theme.light}][/bold]\n'
     )
-    print(resume_message)
+    display().print(resume_message)
 
     return ScanStatus(
         complete=False, spec=spec, location=location, errors=await recorder.errors()
@@ -576,15 +575,15 @@ async def _parse_jobs(
 
 
 def print_scan_complete(scan_dir: str) -> None:
-    print(f'\n[bold]Scan complete:[/bold] "{pretty_path(scan_dir)}"\n')
+    display().print(f'\n[bold]Scan complete:[/bold] "{pretty_path(scan_dir)}"\n')
 
 
 def print_scan_errors(errors: list[Error], scan_dir: str) -> None:
     theme = rich_theme()
-    print(f"\n[bold]{len(errors)} scan errors occurred![/bold]\n")
-    print(
+    display().print(f"\n[bold]{len(errors)} scan errors occurred![/bold]\n")
+    display().print(
         f'Resume (retrying errors):   [bold][{theme.light}]scout scan resume "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
     )
-    print(
+    display().print(
         f'Complete (ignoring errors): [bold][{theme.light}]scout scan complete "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
     )

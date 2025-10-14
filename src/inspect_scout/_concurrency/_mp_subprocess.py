@@ -12,6 +12,7 @@ import time
 import anyio
 
 from inspect_scout._concurrency.common import ScanMetrics
+from inspect_scout._display._display import display
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -40,7 +41,9 @@ def subprocess_main(
         def print_diagnostics(actor_name: str, *message_parts: object) -> None:
             if ctx.diagnostics:
                 running_time = f"+{time.time() - ctx.overall_start_time:.3f}s"
-                print(running_time, f"P{worker_id} ", f"{actor_name}:", *message_parts)
+                display().print(
+                    running_time, f"P{worker_id} ", f"{actor_name}:", *message_parts
+                )
 
         print_diagnostics(
             "worker main",

@@ -22,6 +22,8 @@ import anyio
 from anyio import create_task_group
 from inspect_ai.util._anyio import inner_exception
 
+from inspect_scout._display._display import display
+
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
@@ -95,7 +97,7 @@ def multi_process_strategy(
                 running_time = (
                     f"+{time.time() - _mp_common.ipc_context.overall_start_time:.3f}s"
                 )
-                print(running_time, f"{actor_name}:", *message_parts)
+                display().print(running_time, f"{actor_name}:", *message_parts)
 
         print_diagnostics(
             "Setup",
@@ -197,7 +199,7 @@ def multi_process_strategy(
                             "Main", f"Spawned worker process #{worker_id}"
                         )
                     except Exception as ex:
-                        print(ex)
+                        display().print(ex)
                         raise
 
                 # Run producer and collectors concurrently

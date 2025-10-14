@@ -5,7 +5,11 @@ from typing import Literal, cast
 from inspect_ai._display.core.rich import rich_initialise
 from inspect_ai._util.thread import is_main_thread
 
-from .constants import DEFAULT_DISPLAY
+from .._util.constants import DEFAULT_DISPLAY
+from .none import DisplayNone
+from .plain import DisplayPlain
+from .protocol import Display
+from .rich import DisplayRich
 
 logger = getLogger(__name__)
 
@@ -13,7 +17,14 @@ DisplayType = Literal["rich", "plain", "none"]
 """Console display type."""
 
 
-_display_type: DisplayType | None = None
+def display() -> Display:
+    match display_type():
+        case "none":
+            return DisplayNone()
+        case "plain":
+            return DisplayPlain()
+        case "rich":
+            return DisplayRich()
 
 
 def init_display_type(display: DisplayType | None = None) -> DisplayType:
@@ -73,5 +84,7 @@ def display_type_initialized() -> bool:
     global _display_type
     return _display_type is not None
 
+
+_display_type: DisplayType | None = None
 
 PLAIN_DISPLAY_TYPES = ["plain"]

@@ -1,4 +1,4 @@
-from typing import Protocol, Sequence
+from typing import Any, Protocol, Sequence
 
 from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._recorder.recorder import ScanStatus
@@ -8,7 +8,14 @@ from inspect_scout._transcript.types import TranscriptInfo
 
 
 class Display(Protocol):
-    def print(self, message: str) -> None: ...
+    def print(
+        self,
+        *objects: Any,
+        sep: str = " ",
+        end: str = "\n",
+        markup: bool | None = None,
+        highlight: bool | None = None,
+    ) -> None: ...
 
     def start(self, can: ScanContext, scan_location: str) -> None: ...
 

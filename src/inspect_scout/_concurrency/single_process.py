@@ -5,8 +5,8 @@ from typing import AsyncIterator, Awaitable, Callable, Literal
 import anyio
 from anyio import create_task_group
 from inspect_ai.util._anyio import inner_exception
-from rich import print
 
+from .._display import display
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from ._iterator import SerializedAsyncIterator
@@ -132,7 +132,9 @@ def single_process_strategy(
         def print_diagnostics(actor_name: str, *message_parts: object) -> None:
             if diagnostics:
                 running_time = f"+{time.time() - overall_start_time:.3f}s"
-                print(running_time, diag_prefix, f"{actor_name}:", *message_parts)
+                display().print(
+                    running_time, diag_prefix, f"{actor_name}:", *message_parts
+                )
 
         def _scanner_job_info(item: ScannerJob) -> str:
             return f"{item.union_transcript.id, item.scanner_name}"

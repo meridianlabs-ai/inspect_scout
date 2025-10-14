@@ -23,8 +23,10 @@ def target_word_scanner(target_word: str) -> Scanner[Transcript]:
     target_word = target_word.lower()
 
     async def execute(transcript: Transcript) -> Result:
-        # if random.random() < 0.2:
-        #     raise ValueError("Random error occurred!")
+        import random
+
+        if random.random() < 0.05:
+            raise ValueError("Random error occurred!")
 
         count = sum(
             msg.text.lower().count(target_word)

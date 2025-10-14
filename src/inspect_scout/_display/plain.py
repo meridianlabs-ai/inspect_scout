@@ -1,13 +1,17 @@
 from typing import Any, Sequence
 
 import rich
+from rich.console import RenderableType
 from typing_extensions import override
+
+from inspect_scout._display.messages import scan_interrupted_messages
 
 from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import ScanStatus
 from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
+from .messages import scan_complete_message, scan_errors_message
 from .protocol import Display
 
 
@@ -39,5 +43,12 @@ class DisplayPlain(Display):
         pass
 
     @override
+    def interrupted(self, message: RenderableType, scan_location: str) -> None:
+        self.print(*scan_interrupted_messages(message, scan_location))
+
+    @override
     def complete(self, status: ScanStatus) -> None:
-        pass
+        if status.complete:
+            self.print(scan_complete_message(status))
+        else:
+            self.print(scan_errors_message(status))

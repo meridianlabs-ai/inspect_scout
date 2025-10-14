@@ -1,5 +1,7 @@
 from typing import Any, Protocol, Sequence
 
+from rich.console import RenderableType
+
 from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._recorder.recorder import ScanStatus
 from inspect_scout._scancontext import ScanContext
@@ -24,5 +26,7 @@ class Display(Protocol):
     ) -> None: ...
 
     def metrics(self, metrics: ScanMetrics) -> None: ...
+
+    def interrupted(self, message: RenderableType, scan_location: str) -> None: ...
 
     def complete(self, status: ScanStatus) -> None: ...

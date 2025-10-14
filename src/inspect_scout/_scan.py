@@ -8,7 +8,6 @@ from typing import Any, AsyncIterator, Mapping, Sequence
 import anyio
 from anyio.abc import TaskGroup
 from dotenv import find_dotenv, load_dotenv
-from inspect_ai._display.core.rich import rich_theme
 from inspect_ai._eval.context import init_model_context
 from inspect_ai._eval.task.task import resolve_model_roles
 from inspect_ai._util._async import run_coroutine
@@ -242,7 +241,7 @@ async def scan_complete_async(
 
     # complete the scan
     status = await recorder_type.complete(scan_dir)
-    print_scan_complete(status.location)
+    display().complete(status)
     return status
 
 
@@ -450,19 +449,20 @@ async def _scan_async_inner(
                 # report status
                 errors = await recorder.errors()
                 if len(errors) > 0:
-                    print_scan_errors(errors, await recorder.location())
-                    return ScanStatus(
+                    scan_status = ScanStatus(
                         complete=False,
                         spec=scan.spec,
                         location=await recorder.location(),
                         errors=errors,
                     )
                 else:
-                    scan_info = await recorder.complete(await recorder.location())
-                    print_scan_complete(scan_info.location)
+                    scan_status = await recorder.complete(await recorder.location())
 
-        # return scan_info
-        return scan_info
+        # report scan complete
+        display().complete(scan_status)
+
+        # return status
+        return scan_status
 
     except Exception as ex:
         type, value, tb = sys.exc_info()
@@ -528,16 +528,8 @@ def init_scan_model_context(
 async def handle_scan_interruped(
     message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
 ) -> ScanStatus:
-    theme = rich_theme()
-
-    display().print(message)
-
     location = await recorder.location()
-    resume_message = (
-        f"\n[bold][{theme.error}]Scan interrupted. Resume scan with:[/{theme.error}]\n\n"
-        + f'[bold][{theme.light}]scout scan-resume "{pretty_path(location)}"[/{theme.light}][/bold]\n'
-    )
-    display().print(resume_message)
+    display().interrupted(message, location)
 
     return ScanStatus(
         complete=False, spec=spec, location=location, errors=await recorder.errors()
@@ -572,18 +564,3 @@ async def _parse_jobs(
             transcript_info=transcript_info,
             scanner_indices=set(scanner_indices_for_transcript),
         )
-
-
-def print_scan_complete(scan_dir: str) -> None:
-    display().print(f'\n[bold]Scan complete:[/bold] "{pretty_path(scan_dir)}"\n')
-
-
-def print_scan_errors(errors: list[Error], scan_dir: str) -> None:
-    theme = rich_theme()
-    display().print(f"\n[bold]{len(errors)} scan errors occurred![/bold]\n")
-    display().print(
-        f'Resume (retrying errors):   [bold][{theme.light}]scout scan resume "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
-    )
-    display().print(
-        f'Complete (ignoring errors): [bold][{theme.light}]scout scan complete "{pretty_path(scan_dir)}"[/{theme.light}][/bold]\n'
-    )

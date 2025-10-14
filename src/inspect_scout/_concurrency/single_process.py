@@ -3,6 +3,7 @@ from collections import deque
 from typing import AsyncIterator, Awaitable, Callable, Literal
 
 import anyio
+import psutil
 from anyio import create_task_group
 from inspect_ai.util._anyio import inner_exception
 
@@ -119,6 +120,7 @@ def single_process_strategy(
         )
 
         scanner_job_deque: deque[ScannerJob] = deque()
+        process = psutil.Process()
 
         # CRITICAL: Serialize access to the parse_jobs iterator.
         #
@@ -141,6 +143,10 @@ def single_process_strategy(
 
         def _update_metrics() -> None:
             if update_metrics:
+                # USS - Unique Set Size
+                metrics.memory_usage = process.memory_full_info().uss
+                metrics.cpu_use = process.cpu_percent()
+                # print(f"{diag_prefix} CPU {metrics.cpu_use}")
                 metrics.buffered_scanner_jobs = len(scanner_job_deque)
                 update_metrics(metrics)
 

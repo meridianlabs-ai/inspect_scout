@@ -1,6 +1,7 @@
 import contextlib
 from typing import Any, Iterator, Sequence
 
+import psutil
 import rich
 from inspect_ai._display.core.footer import task_counters, task_resources
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
@@ -98,6 +99,7 @@ class ScanDisplayRich(
             auto_refresh=False,
         )
         self._live.start()
+        self._total_memory = psutil.virtual_memory().total
 
         self._progress = Progress(
             TextColumn("Scanning"),
@@ -164,8 +166,13 @@ class ScanDisplayRich(
             resources.add_row("waiting:", f"{self._metrics.tasks_waiting:,}")
             resources.add_row()
             resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
-            resources.add_row("cpu %:", "80%")
-            resources.add_row("memory", "2.12gb")
+            resources.add_row(
+                "cpu %:", f"{self._metrics.cpu_use / self._metrics.process_count:.1f}%"
+            )
+            resources.add_row(
+                "memory",
+                f"{bytes_to_gigabytes(self._metrics.memory_usage)} / {bytes_to_gigabytes(self._total_memory)}",
+            )
 
         # scanners
         scanners = Table.grid(expand=True)
@@ -223,3 +230,8 @@ class ScanDisplayRich(
             expand=True,
         )
         self._live.update(panel, refresh=True)
+
+
+def bytes_to_gigabytes(input: int) -> str:
+    value = f"{input / 1024 / 1024 / 1024:.1f}".rstrip("0").rstrip(".")
+    return f"{value}gb"

@@ -287,16 +287,17 @@ async def _scan_async_inner(
         set_background_task_group(tg)
 
         # resolve options
+        max_processes = (
+            scan.spec.options.max_processes
+            if isinstance(scan.spec.options.max_processes, int)
+            # TODO: Of course we can tweak this logic
+            else int(1.0 * multiprocessing.cpu_count())
+        )
         options = scan.spec.options.model_copy(
             update={
                 "max_transcripts": scan.spec.options.max_transcripts
                 or DEFAULT_MAX_TRANSCRIPTS,
-                "max_processes": (
-                    scan.spec.options.max_processes
-                    if isinstance(scan.spec.options.max_processes, int)
-                    # TODO: Of course we can tweak this logic
-                    else int(1.0 * multiprocessing.cpu_count())
-                ),
+                "max_processes": max_processes,
             }
         )
 
@@ -407,9 +408,9 @@ async def _scan_async_inner(
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if True or options.max_processes == 1
+                    if options.max_processes == 1
                     else multi_process_strategy(
-                        process_count=options.max_processes,
+                        process_count=max_processes,
                         task_count=max_tasks,
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,

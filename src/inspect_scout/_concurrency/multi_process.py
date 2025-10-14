@@ -156,11 +156,28 @@ def multi_process_strategy(
                     f"Recorded results for {transcript_info.id} (total: {items_processed})",
                 )
 
+            print_diagnostics("MP Collector", "Finished collecting all results")
+
         async def _metrics_collector() -> None:
-            while True:
-                worker_id, metrics = await run_sync_on_thread(metrics_queue.get)
+            workers_finished = 0
+            while workers_finished < process_count:
+                item = await run_sync_on_thread(metrics_queue.get)
+
+                if item is None:
+                    # Sentinel from a worker indicating it's done sending metrics
+                    workers_finished += 1
+                    print_diagnostics(
+                        "MP Metrics",
+                        f"Worker metrics done ({workers_finished}/{process_count})",
+                    )
+                    continue
+
+                worker_id, metrics = item
                 all_metrics[worker_id] = metrics
-                update_metrics(sum_metrics(all_metrics.values()))
+                if update_metrics:
+                    update_metrics(sum_metrics(all_metrics.values()))
+
+            print_diagnostics("MP Metrics", "Finished collecting all metrics")
 
         try:
             # Start worker processes
@@ -183,11 +200,12 @@ def multi_process_strategy(
                         print(ex)
                         raise
 
-                # Run producer and result collector concurrently
+                # Run producer and collectors concurrently
                 async with create_task_group() as tg:
                     tg.start_soon(_producer)
                     tg.start_soon(_result_collector)
-                    tg.start_soon(_metrics_collector)
+                    if update_metrics:
+                        tg.start_soon(_metrics_collector)
 
                 # Wait for all worker processes to complete
                 for future in futures:

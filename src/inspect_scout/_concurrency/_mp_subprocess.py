@@ -10,7 +10,6 @@ from __future__ import annotations
 import time
 
 import anyio
-from rich import print
 
 from inspect_scout._concurrency.common import ScanMetrics
 
@@ -81,8 +80,9 @@ def subprocess_main(
 
         print_diagnostics("All tasks completed")
 
-        # Send completion sentinel to result collector
+        # Send completion sentinels to both collectors
         ctx.result_queue.put(None)
+        ctx.metrics_queue.put(None)
 
     # Run the async event loop in this worker process
     anyio.run(_worker_main)

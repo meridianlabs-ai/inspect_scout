@@ -19,7 +19,7 @@ from .common import ParseJob, ScanMetrics, ScannerJob
 
 ResultItem: TypeAlias = tuple[TranscriptInfo, str, list[ResultReport]]
 ResultQueueItem: TypeAlias = ResultItem | Exception | None
-MetricsQueueItem: TypeAlias = tuple[int, ScanMetrics]
+MetricsQueueItem: TypeAlias = tuple[int, ScanMetrics] | None
 
 
 @dataclass

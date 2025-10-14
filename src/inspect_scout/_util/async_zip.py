@@ -250,11 +250,18 @@ class AsyncZipReader:
         self._entries: list[ZipEntry] | None = None
         self._entries_lock = anyio.Lock()
 
-    async def open_member(self, member_name: str) -> AsyncIterator[bytes]:
+    async def get_member_entry(self, member_name: str) -> ZipEntry:
+        entries = await _get_central_directory(self._filesystem, self._filename)
+        entry = next((e for e in entries if e.filename == member_name), None)
+        if entry is None:
+            raise KeyError(member_name)
+        return entry
+
+    async def open_member(self, member: str | ZipEntry) -> AsyncIterator[bytes]:
         """Open a ZIP member and stream its decompressed contents.
 
         Args:
-            member_name: Name of the member file within the archive
+            member: Name or ZipEntry of the member file within the archive
 
         Returns:
             AsyncIterator of decompressed data chunks
@@ -263,28 +270,29 @@ class AsyncZipReader:
             KeyError: If member_name not found in archive
             NotImplementedError: If compression method is not supported
         """
-        offset, end, method = await self._get_member_range_and_method(member_name)
+        offset, end, method = await self._get_member_range_and_method(member)
         return self._decompress_stream(
             await self._filesystem.read_file_bytes(self._filename, offset, end),
             method,
         )
 
     async def _get_member_range_and_method(
-        self, member_name: str
+        self, member: str | ZipEntry
     ) -> tuple[int, int, int]:
-        entries = await _get_central_directory(self._filesystem, self._filename)
-        entry = next((e for e in entries if e.filename == member_name), None)
-        if entry is None:
-            raise KeyError(member_name)
+        entry = (
+            member
+            if isinstance(member, ZipEntry)
+            else await self.get_member_entry(member)
+        )
 
         # Read local file header to determine actual data offset
-        hdr = await self._filesystem.read_file_bytes_fully(
+        local_header = await self._filesystem.read_file_bytes_fully(
             self._filename,
             entry.local_header_offset,
             entry.local_header_offset + 30,
         )
         _, _, _, _, _, _, _, _, _, name_len, extra_len = struct.unpack_from(
-            "<4sHHHHHIIIHH", hdr
+            "<4sHHHHHIIIHH", local_header
         )
 
         data_offset = entry.local_header_offset + 30 + name_len + extra_len

@@ -3,7 +3,6 @@ from inspect_ai._util.path import pretty_path
 from rich.console import RenderableType
 
 from inspect_scout._recorder.recorder import ScanStatus
-from inspect_scout._scanner.result import Error
 
 
 def scan_interrupted_messages(

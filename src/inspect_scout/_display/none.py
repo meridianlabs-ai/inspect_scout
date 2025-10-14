@@ -1,5 +1,6 @@
 from typing import Any, Sequence
 
+from rich.console import RenderableType
 from typing_extensions import override
 
 from .._concurrency.common import ScanMetrics
@@ -34,6 +35,10 @@ class DisplayNone(Display):
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
+        pass
+
+    @override
+    def interrupted(self, message: RenderableType, scan_location: str) -> None:
         pass
 
     @override

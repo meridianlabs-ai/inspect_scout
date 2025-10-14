@@ -310,7 +310,9 @@ def _ensure_scans_dir(scans_dir: UPath) -> None:
     scans_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _get_uniform_value_type(conn: duckdb.DuckDBPyConnection, parquet_path: str) -> str | None:
+def _get_uniform_value_type(
+    conn: duckdb.DuckDBPyConnection, parquet_path: str
+) -> str | None:
     """
     Check if value_type is uniform across all rows in a parquet file.
 
@@ -326,7 +328,7 @@ def _get_uniform_value_type(conn: duckdb.DuckDBPyConnection, parquet_path: str) 
     ).fetchall()
 
     if len(result) == 1:
-        return result[0][0]
+        return str(result[0][0])
     else:
         return None
 

@@ -5,8 +5,8 @@ import click
 from inspect_ai._util.constants import ALL_LOG_LEVELS, DEFAULT_LOG_LEVEL
 from typing_extensions import TypedDict
 
-from inspect_scout._util.constants import DEFAULT_DISPLAY
 from inspect_scout._display._display import DisplayType, display, init_display_type
+from inspect_scout._util.constants import DEFAULT_DISPLAY
 
 
 class CommonOptions(TypedDict):

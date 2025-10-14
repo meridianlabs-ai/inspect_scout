@@ -1,0 +1,44 @@
+---
+title: "Untitled"
+format: html
+---
+## target
+- target scan file / scanners
+- target transcripts
+- total scans
+- result dir
+
+## options:
+- model
+- max_transcripts
+- max_processes
+- limit
+- shuffle
+
+<header>
+<progress/scanners> | <resources>
+<footer>
+
+
+## progress
+
+- simple progress bar count / timing
+
+- "hits" per scanner
+- "errors" per scanner
+- total tokens
+- tokens/transcript
+
+## concurrency (footer or 'resources' panel)
+
+cpu and memory utilization
+
+- jobs:
+   - parsing
+   - scanning
+   - waiting
+
+- model concurrency, subprocesses, etc.
+
+
+

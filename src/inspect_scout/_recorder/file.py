@@ -227,9 +227,18 @@ class FileRecorder(ScanRecorder):
             # Create a view that references the parquet file
             # Use absolute path to ensure it works regardless of working directory
             abs_path = parquet_file.resolve().as_posix()
+
+            # Check if value_type is uniform and needs casting
+            uniform_type = _get_uniform_value_type(conn, abs_path)
+            if uniform_type in ("boolean", "number"):
+                cast_expr = _cast_value_sql(uniform_type)
+                select_clause = f"SELECT * REPLACE ({cast_expr} AS value)"
+            else:
+                select_clause = "SELECT *"
+
             where_clause = "" if include_null else " WHERE value IS NOT NULL"
             conn.execute(
-                f"CREATE VIEW {scanner_name} AS SELECT * FROM read_parquet('{abs_path}'){where_clause}"
+                f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}'){where_clause}"
             )
 
         # create the transcripts table from the snapshot
@@ -299,6 +308,50 @@ def _ensure_scan_dir(scans_path: UPath, scan_id: str) -> UPath:
 
 def _ensure_scans_dir(scans_dir: UPath) -> None:
     scans_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _get_uniform_value_type(conn: duckdb.DuckDBPyConnection, parquet_path: str) -> str | None:
+    """
+    Check if value_type is uniform across all rows in a parquet file.
+
+    Args:
+        conn: DuckDB connection
+        parquet_path: Path to the parquet file
+
+    Returns:
+        The uniform value_type if all rows have the same type, None otherwise
+    """
+    result = conn.execute(
+        f"SELECT DISTINCT value_type FROM read_parquet('{parquet_path}') WHERE value_type IS NOT NULL"
+    ).fetchall()
+
+    if len(result) == 1:
+        return result[0][0]
+    else:
+        return None
+
+
+def _cast_value_sql(value_type: str) -> str:
+    """
+    Generate SQL CASE expression to cast the value column based on value_type.
+
+    Args:
+        value_type: The uniform value type ('boolean', 'number', etc.)
+
+    Returns:
+        SQL CASE expression for casting the value column
+    """
+    if value_type == "boolean":
+        return """CASE
+            WHEN value IN ('true', 'True') THEN TRUE
+            WHEN value IN ('false', 'False') THEN FALSE
+            ELSE NULL
+        END"""
+    elif value_type == "number":
+        return "TRY_CAST(value AS DOUBLE)"
+    else:
+        # For string, null, array, object - keep as-is
+        return "value"
 
 
 def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:

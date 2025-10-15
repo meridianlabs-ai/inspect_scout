@@ -400,7 +400,7 @@ async def _scan_async_inner(
                     / (1 + prefetch_multiple)
                 )
 
-                diagnostics = True
+                diagnostics = False
                 strategy = (
                     single_process_strategy(
                         task_count=max_tasks,

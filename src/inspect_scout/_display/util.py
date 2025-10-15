@@ -57,7 +57,7 @@ def scan_config(spec: ScanSpec, options: ScanOptions) -> RenderableType:
 
 
 def scan_config_str(spec: ScanSpec, options: ScanOptions) -> str:
-    scan_args = dict(spec.scan_args)
+    scan_args = dict(spec.scan_args or {})
     for key in scan_args.keys():
         value = scan_args[key]
         if is_registry_dict(value):

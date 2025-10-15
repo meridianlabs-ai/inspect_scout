@@ -2,14 +2,17 @@ import contextlib
 from typing import Any, Iterator, Sequence
 
 import rich
+from inspect_ai._display.core.footer import task_counters, task_resources
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
 from inspect_ai._util.constants import CONSOLE_DISPLAY_WIDTH
+from inspect_ai._util.path import pretty_path
 from inspect_ai.util import throttle
 from rich.console import Group, RenderableType
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
 from rich.table import Table
+from rich.text import Text
 from typing_extensions import override
 
 from inspect_scout._display.protocol import Display, ScanDisplay
@@ -20,7 +23,6 @@ from inspect_scout._display.util import (
     scan_interrupted_messages,
     scan_title,
 )
-from inspect_scout._progress_utils import UtilizationColumn
 from inspect_scout._scanspec import ScanOptions
 
 from .._concurrency.common import ScanMetrics
@@ -86,6 +88,7 @@ class ScanDisplayRich(
         self._total_scans = transcripts * len(scan.scanners)
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
+        self._metrics: ScanMetrics | None = None
         self._live = Live(
             None,
             console=rich.get_console(),
@@ -96,10 +99,8 @@ class ScanDisplayRich(
 
         self._progress = Progress(
             TextColumn("Scanning"),
-            BarColumn(),
+            BarColumn(bar_width=None),
             TextColumn("{task.completed}/{task.total}"),
-            TextColumn("(processes/parsing/scanning/waiting) (buffered scan jobs)"),
-            UtilizationColumn(),
             TimeElapsedColumn(),
             console=rich.get_console(),
             transient=True,
@@ -128,10 +129,10 @@ class ScanDisplayRich(
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
+        self._metrics = metrics
         self._completed_scans = self._skipped_scans + metrics.completed_scans
         self._progress.update(
             self._task_id,
-            metrics=metrics,
             completed=self._completed_scans,
         )
         self._update()
@@ -147,9 +148,61 @@ class ScanDisplayRich(
 
         # scan config
         table.add_row(scan_config(self._scan.spec, self._options), style=theme.light)
+        table.add_row()
 
-        # progress
-        table.add_row(Group("", self._progress))
+        # resources
+        resources = Table.grid(expand=True)
+        resources.add_column()
+        resources.add_column(justify="right")
+        if self._metrics:
+            resources.add_row("[bold]workers[/bold]", "", style=theme.meta)
+            resources.add_row("parsing:", str(self._metrics.tasks_parsing))
+            resources.add_row("scanning:", str(self._metrics.tasks_scanning))
+            resources.add_row("waiting:", str(self._metrics.tasks_waiting))
+            resources.add_row()
+            resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
+            resources.add_row("cpu %:", "80%")
+            resources.add_row("memory", "2.12gb")
+
+        # scanners
+        scanners = Table.grid(expand=True)
+        scanners.add_column()  # scanner
+        scanners.add_column(justify="right")  # results
+        scanners.add_column(justify="right")  # erorrs
+        scanners.add_column(justify="right")  # tokens/transcript
+        scanners.add_column(justify="right")  # total tokens
+        scanners.add_row(
+            "[bold]scanner[/bold]",
+            "[bold]results[/bold]",
+            "[bold]errors[/bold]",
+            "[bold]tokens per scan[/bold]",
+            "[bold]total tokens[/bold]",
+            style=theme.meta,
+        )
+        for scanner in self._scan.spec.scanners.keys():
+            scanners.add_row(scanner, "5", "1", "1,200", "10,000")
+
+        # results
+        results = f"[bold][{theme.meta}]scan:[/{theme.meta}][/bold] {pretty_path(self._scan_location)}"
+
+        # body
+        body = Table.grid(expand=True)
+        body.add_column()  # progress/scanners/results
+        body.add_column(width=5)
+        body.add_column(justify="right", width=30)  # resources
+        body.add_row(Group(self._progress, "", scanners, "", results), "", resources)
+        table.add_row(body)
+
+        # footer
+        footer = Table.grid(expand=True)
+        footer.add_column()
+        footer.add_column(justify="right")
+        footer.add_row()
+        footer.add_row(
+            Text.from_markup(task_resources(), style=theme.light),
+            Text.from_markup(task_counters({}), style=theme.light),
+        )
+        table.add_row(footer)
 
         # create main panel and update
         panel = Panel(

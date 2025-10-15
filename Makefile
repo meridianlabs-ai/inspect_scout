@@ -9,4 +9,4 @@ check: mypy
 
 .PHONY: test
 test:
-	run pytest
+	pytest

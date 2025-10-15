@@ -13,8 +13,8 @@ from .._recorder.recorder import ScanStatus
 from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
-from .util import scan_complete_message, scan_errors_message
 from .protocol import Display, ScanDisplay
+from .util import scan_complete_message, scan_errors_message
 
 
 class DisplayPlain(Display):

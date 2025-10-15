@@ -396,7 +396,7 @@ async def _scan_async_inner(
 
                 prefetch_multiple = 1.0
                 max_tasks = int(
-                    (options.max_transcripts * len(scan.scanners))
+                    ((options.max_transcripts or 0) * len(scan.scanners))
                     / (1 + prefetch_multiple)
                 )
 
@@ -407,7 +407,7 @@ async def _scan_async_inner(
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if options.max_processes == 1
+                    if True or options.max_processes == 1
                     else multi_process_strategy(
                         process_count=options.max_processes,
                         task_count=max_tasks,

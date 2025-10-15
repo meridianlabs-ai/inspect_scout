@@ -1,8 +1,9 @@
 import abc
 import contextlib
-from typing import Any, Iterator, Sequence, override
+from typing import Any, Iterator, Sequence
 
 from rich.console import RenderableType
+from typing_extensions import override
 
 from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._recorder.recorder import ScanStatus

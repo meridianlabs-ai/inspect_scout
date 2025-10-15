@@ -3,6 +3,7 @@ from inspect_ai._util.path import pretty_path
 from inspect_ai._util.registry import is_model_dict, is_registry_dict
 from inspect_ai._util.text import truncate_text
 from rich.console import RenderableType
+from rich.text import Text
 
 from inspect_scout._recorder.recorder import ScanStatus
 from inspect_scout._scanspec import ScanOptions, ScanSpec
@@ -45,6 +46,16 @@ def scan_title(spec: ScanSpec) -> str:
         return SCAN
 
 
+def scan_config(spec: ScanSpec, options: ScanOptions) -> RenderableType:
+    config = scan_config_str(spec, options)
+    if config:
+        config_text = Text(config)
+        config_text.truncate(500, overflow="ellipsis")
+        return config_text
+    else:
+        return ""
+
+
 def scan_config_str(spec: ScanSpec, options: ScanOptions) -> str:
     scan_args = dict(spec.scan_args)
     for key in scan_args.keys():
@@ -59,8 +70,8 @@ def scan_config_str(spec: ScanSpec, options: ScanOptions) -> str:
     config = scan_args | scan_options
 
     if spec.model:
-        config["model"] = spec.model.model
         config = config | dict(spec.model.config.model_dump(exclude_none=True))
+        config["model"] = spec.model.model
 
     if spec.tags:
         config["tags"] = ",".join(spec.tags)
@@ -77,4 +88,4 @@ def scan_config_str(spec: ScanSpec, options: ScanOptions) -> str:
             value = value.replace("[", "\\[")
         config_str.append(f"{name}: {value}")
 
-    return config_str
+    return ", ".join(config_str)

@@ -9,11 +9,13 @@ from rich.console import Group, RenderableType
 from rich.live import Live
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
+from rich.table import Table
 from typing_extensions import override
 
 from inspect_scout._display.protocol import Display, ScanDisplay
 from inspect_scout._display.util import (
     scan_complete_message,
+    scan_config,
     scan_errors_message,
     scan_interrupted_messages,
     scan_title,
@@ -138,8 +140,20 @@ class ScanDisplayRich(
     def _update(self) -> None:
         theme = rich_theme()
         console = rich.get_console()
+
+        # root table
+        table = Table.grid(expand=True)
+        table.add_column()
+
+        # scan config
+        table.add_row(scan_config(self._scan.spec, self._options), style=theme.light)
+
+        # progress
+        table.add_row(Group("", self._progress))
+
+        # create main panel and update
         panel = Panel(
-            Group("", self._progress),
+            table,
             title=f"[bold][{theme.meta}]{scan_title(self._scan.spec)}[/{theme.meta}][/bold]",
             title_align="left",
             width=CONSOLE_DISPLAY_WIDTH if is_vscode_notebook(console) else None,

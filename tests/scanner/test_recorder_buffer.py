@@ -14,6 +14,7 @@ def recorder_buffer():
     """Create a temporary RecorderBuffer for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         spec = ScanSpec(
+            scan_name="myscan",
             transcripts=ScanTranscripts(
                 type="eval_log",
                 fields=[],

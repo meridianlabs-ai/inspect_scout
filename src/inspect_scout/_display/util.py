@@ -1,12 +1,57 @@
+from typing import Sequence
+
 from inspect_ai._display.core.rich import rich_theme
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.registry import is_model_dict, is_registry_dict
 from inspect_ai._util.text import truncate_text
+from pydantic import BaseModel, Field
 from rich.console import RenderableType
 from rich.text import Text
 
 from inspect_scout._recorder.recorder import ScanStatus
+from inspect_scout._scanner.result import ResultReport
 from inspect_scout._scanspec import ScanOptions, ScanSpec
+from inspect_scout._transcript.types import TranscriptInfo
+
+
+class ScannerResults(BaseModel):
+    scans: int = Field(default=0)
+    results: int = Field(default=0)
+    errors: int = Field(default=0)
+    tokens: int = Field(default=0)
+
+
+class ScanResults:
+    def __init__(self, scanners: list[str]) -> None:
+        self._results: dict[str, ScannerResults] = {
+            k: ScannerResults() for k in scanners
+        }
+
+    def report(
+        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+    ) -> None:
+        # aggregate over all results
+        agg_results = ScannerResults()
+        for result in results:
+            agg_results.results += 1 if result.result.value is not None else 0
+            agg_results.errors += 1 if result.error is not None else 0
+            agg_results.tokens += sum(
+                [usage.total_tokens for usage in result.model_usage.values()]
+            )
+
+        # insert if required
+        if scanner not in self._results:
+            self._results[scanner] = ScannerResults()
+
+        # further aggregate
+        tot_results = self._results[scanner]
+        tot_results.scans += 1
+        tot_results.results += agg_results.results
+        tot_results.errors += agg_results.errors
+        tot_results.tokens += agg_results.tokens
+
+    def __getitem__(self, scanner: str) -> ScannerResults:
+        return self._results[scanner]
 
 
 def scan_interrupted_messages(

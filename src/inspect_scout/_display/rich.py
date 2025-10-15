@@ -16,6 +16,7 @@ from typing_extensions import override
 
 from inspect_scout._display.protocol import Display, ScanDisplay
 from inspect_scout._display.util import (
+    ScanResults,
     scan_complete_message,
     scan_config,
     scan_errors_message,
@@ -89,6 +90,7 @@ class ScanDisplayRich(
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
         self._metrics: ScanMetrics | None = None
+        self._scan_results = ScanResults(scan.scanners.keys())
         self._live = Live(
             None,
             console=rich.get_console(),
@@ -123,8 +125,7 @@ class ScanDisplayRich(
     def results(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
     ) -> None:
-        # not yet doing anything w/ results
-        pass
+        self._scan_results.report(transcript, scanner, results)
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
@@ -181,8 +182,18 @@ class ScanDisplayRich(
             "[bold]total tokens[/bold]",
             style=theme.meta,
         )
+        NONE = f"[{theme.light}]-[/{theme.light}]"
         for scanner in self._scan.spec.scanners.keys():
-            scanners.add_row(scanner, f"{5:,}", f"{1:,}", f"{1200:,}", f"{10000:,}")
+            results = self._scan_results[scanner]
+            scanners.add_row(
+                scanner,
+                f"{results.results:,}" if results.results else NONE,
+                f"{results.errors:,}" if results.errors else NONE,
+                f"{results.tokens // results.scans:,}"
+                if results.tokens and results.scans
+                else NONE,
+                f"{results.tokens:,}" if results.tokens else NONE,
+            )
 
         # body
         body = Table.grid(expand=True)

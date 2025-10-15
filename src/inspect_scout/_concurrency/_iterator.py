@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import sys
 from multiprocessing.queues import Queue as MPQueue
 from typing import AsyncIterator, Generic, TypeVar
 
@@ -6,6 +9,12 @@ import anyio
 from ._mp_common import run_sync_on_thread
 
 T = TypeVar("T")
+
+# Python 3.10 doesn't support generic MPQueue at runtime, but with
+# `from __future__ import annotations`, the subscript becomes a string
+# and won't be evaluated at runtime
+if sys.version_info < (3, 11):
+    MPQueue = MPQueue
 
 
 class SerializedAsyncIterator(Generic[T]):

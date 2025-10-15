@@ -114,8 +114,7 @@ class ScanDisplayRich(
         self._task_id = self._progress.add_task("Scan", total=self._total_scans)
 
         # skip already completed scans
-        if self._completed_scans > 0:
-            self._progress.update(self._task_id, completed=self._completed_scans)
+        self._progress.update(self._task_id, completed=self._completed_scans or 1)
 
     def __exit__(self, *excinfo: Any) -> None:
         self._progress.stop()
@@ -136,9 +135,12 @@ class ScanDisplayRich(
             self._task_id,
             completed=self._completed_scans,
         )
-        self._update()
+        self._update_throttled()
 
     @throttle(1)
+    def _update_throttled(self) -> None:
+        self._update()
+
     def _update(self) -> None:
         theme = rich_theme()
         console = rich.get_console()

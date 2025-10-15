@@ -13,11 +13,14 @@ from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.hash import mm3_hash
 from upath import UPath
 
+from inspect_scout._recorder.summary import ScanSummary
+
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
 SCAN_ERRORS = "_errors.jsonl"
+SCAN_SUMMARY = "_summary.json"
 
 
 class RecorderBuffer:
@@ -45,6 +48,17 @@ class RecorderBuffer:
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
+
+        # establish scan summary if required
+        scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
+        if not scan_summary_file.exists():
+            self._scan_summary = ScanSummary(list(spec.scanners.keys()))
+            with open(scan_summary_file.as_posix(), "w") as f:
+                f.write(self._scan_summary.model_dump_json())
+        else:
+            self._scan_summary = read_scan_summary(self._buffer_dir, spec)
+
+        # truncate errors
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
         with self._error_file.open("w"):
             pass  # truncates existing file
@@ -97,6 +111,11 @@ class RecorderBuffer:
         )
         os.replace(tmp_path.as_posix(), final_path.as_posix())
 
+        # update and write summary
+        self._scan_summary.report(transcript, scanner, results)
+        with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
+            f.write(self._scan_summary.model_dump_json())
+
         # record errors
         for result in results:
             if result.error is not None:
@@ -122,6 +141,9 @@ class RecorderBuffer:
     def errors_bytes(self) -> bytes:
         with open(str(self._error_file), "rb") as f:
             return f.read()
+
+    def scan_summary(self) -> ScanSummary:
+        return read_scan_summary(self._buffer_dir, self._spec)
 
     def cleanup(self) -> None:
         """Remove the buffer directory for this scan (best-effort)."""
@@ -324,3 +346,11 @@ def read_scan_errors(error_file: str) -> list[Error]:
             return errors
     except FileNotFoundError:
         return []
+
+
+def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> ScanSummary:
+    try:
+        with open(scan_dir.joinpath(SCAN_SUMMARY).as_posix(), "r") as f:
+            return ScanSummary.model_validate_json(f.read())
+    except FileNotFoundError:
+        return ScanSummary(list(spec.scanners.keys()))

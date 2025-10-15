@@ -325,6 +325,7 @@ async def _scan_async_inner(
             with display().scan_display(
                 scan=scan,
                 scan_location=await recorder.location(),
+                summary=await recorder.summary(),
                 options=options,
                 transcripts=await transcripts.count(),
                 skipped=skipped_scans,
@@ -440,6 +441,7 @@ async def _scan_async_inner(
                         complete=False,
                         spec=scan.spec,
                         location=await recorder.location(),
+                        summary=await recorder.summary(),
                         errors=errors,
                     )
                 else:
@@ -515,12 +517,17 @@ def init_scan_model_context(
 async def handle_scan_interruped(
     message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
 ) -> ScanStatus:
-    location = await recorder.location()
-    display().scan_interrupted(message, location)
-
-    return ScanStatus(
-        complete=False, spec=spec, location=location, errors=await recorder.errors()
+    status = ScanStatus(
+        complete=False,
+        spec=spec,
+        location=await recorder.location(),
+        summary=await recorder.summary(),
+        errors=await recorder.errors(),
     )
+
+    display().scan_interrupted(message, status)
+
+    return status
 
 
 async def _parse_jobs(

@@ -9,13 +9,16 @@ from inspect_ai._util.json import to_json_str_safe
 from typing_extensions import override
 from upath import UPath
 
+from inspect_scout._recorder.summary import ScanSummary
 from inspect_scout._transcript.database import transcripts_df_for_results
 
 from .._recorder.buffer import (
     SCAN_ERRORS,
+    SCAN_SUMMARY,
     RecorderBuffer,
     cleanup_buffer_dir,
     read_scan_errors,
+    read_scan_summary,
     scanner_table,
 )
 from .._scanner.result import Error, ResultReport
@@ -88,6 +91,10 @@ class FileRecorder(ScanRecorder):
     async def errors(self) -> list[Error]:
         return self._scan_buffer.errors()
 
+    @override
+    async def summary(self) -> ScanSummary:
+        return self._scan_buffer.scan_summary()
+
     @property
     def scan_dir(self) -> UPath:
         if self._scan_dir is None:
@@ -121,6 +128,10 @@ class FileRecorder(ScanRecorder):
                         _scanner_parquet_file(scan_dir, scanner), parquet_bytes
                     )
 
+        # copy scan summary
+        with file((scan_dir / SCAN_SUMMARY).as_posix(), "w") as f:
+            f.write(read_scan_summary(scan_buffer_dir, scan_spec).model_dump_json())
+
         # copy errors
         with file((scan_dir / SCAN_ERRORS).as_posix(), "w") as f:
             for error in _read_scan_errors(scan_buffer_dir):
@@ -133,6 +144,7 @@ class FileRecorder(ScanRecorder):
             complete=True,
             spec=scan_spec,
             location=scan_dir.as_posix(),
+            summary=read_scan_summary(scan_dir, scan_spec),
             errors=_read_scan_errors(scan_dir),
         )
 
@@ -140,10 +152,14 @@ class FileRecorder(ScanRecorder):
     @staticmethod
     async def status(scan_location: str) -> ScanStatus:
         buffer_dir = RecorderBuffer.buffer_dir(scan_location)
+        spec = _read_scan_spec(UPath(scan_location))
         return ScanStatus(
             complete=False if buffer_dir.exists() else True,
-            spec=_read_scan_spec(UPath(scan_location)),
+            spec=spec,
             location=scan_location,
+            summary=read_scan_summary(buffer_dir, spec)
+            if buffer_dir.exists()
+            else read_scan_summary(UPath(scan_location), spec),
             errors=_read_scan_errors(buffer_dir)
             if buffer_dir.exists()
             else _read_scan_errors(UPath(scan_location)),
@@ -204,6 +220,7 @@ class FileRecorder(ScanRecorder):
                 status=status.complete,
                 spec=status.spec,
                 location=status.location,
+                summary=status.summary,
                 errors=status.errors,
                 data=data,
             )
@@ -249,6 +266,7 @@ class FileRecorder(ScanRecorder):
             status=status.complete,
             spec=status.spec,
             location=status.location,
+            summary=status.summary,
             errors=status.errors,
             conn=conn,
         )

@@ -3,6 +3,7 @@ from ._recorder.recorder import (
     ScanResultsDB,
     ScanStatus,
 )
+from ._recorder.summary import ScanSummary
 from ._scan import (
     scan,
     scan_complete,
@@ -55,6 +56,7 @@ __all__ = [
     "ScanResults",
     "scan_results_db",
     "ScanResultsDB",
+    "ScanSummary",
     # transcript
     "transcripts",
     "Transcripts",

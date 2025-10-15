@@ -7,6 +7,7 @@ from typing_extensions import override
 
 from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._recorder.recorder import ScanStatus
+from inspect_scout._recorder.summary import ScanSummary
 from inspect_scout._scancontext import ScanContext
 from inspect_scout._scanner.result import ResultReport
 from inspect_scout._scanspec import ScanOptions
@@ -30,13 +31,14 @@ class Display(abc.ABC):
         scan: ScanContext,
         scan_location: str,
         options: ScanOptions,
+        summary: ScanSummary,
         transcripts: int,
         skipped: int,
     ) -> Iterator["ScanDisplay"]:
         yield ScanDisplayNone()
 
     @abc.abstractmethod
-    def scan_interrupted(self, message: RenderableType, scan_location: str) -> None: ...
+    def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None: ...
 
     @abc.abstractmethod
     def scan_complete(self, status: ScanStatus) -> None: ...

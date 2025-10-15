@@ -9,6 +9,7 @@ import pandas as pd
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
+from .summary import ScanSummary
 
 
 @dataclass
@@ -16,6 +17,7 @@ class ScanStatus:
     complete: bool
     spec: ScanSpec
     location: str
+    summary: ScanSummary
     errors: list[Error]
 
 
@@ -28,10 +30,11 @@ class ScanResults(ScanStatus):
         status: bool,
         spec: ScanSpec,
         location: str,
+        summary: ScanSummary,
         errors: list[Error],
         data: dict[str, pd.DataFrame],
     ) -> None:
-        super().__init__(status, spec, location, errors)
+        super().__init__(status, spec, location, summary, errors)
         self.data = data
 
 
@@ -44,10 +47,11 @@ class ScanResultsDB(ScanStatus):
         status: bool,
         spec: ScanSpec,
         location: str,
+        summary: ScanSummary,
         errors: list[Error],
         conn: duckdb.DuckDBPyConnection,
     ) -> None:
-        super().__init__(status, spec, location, errors)
+        super().__init__(status, spec, location, summary, errors)
         self.conn = conn
 
     def __enter__(self) -> "ScanResultsDB":
@@ -147,6 +151,9 @@ class ScanRecorder(abc.ABC):
 
     @abc.abstractmethod
     async def errors(self) -> list[Error]: ...
+
+    @abc.abstractmethod
+    async def summary(self) -> ScanSummary: ...
 
     @staticmethod
     @abc.abstractmethod

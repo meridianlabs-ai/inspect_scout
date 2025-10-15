@@ -17,13 +17,13 @@ from typing_extensions import override
 
 from inspect_scout._display.protocol import Display, ScanDisplay
 from inspect_scout._display.util import (
-    ScanResults,
     scan_complete_message,
     scan_config,
     scan_errors_message,
     scan_interrupted_messages,
     scan_title,
 )
+from inspect_scout._recorder.summary import ScanSummary
 from inspect_scout._scanspec import ScanOptions
 
 from .._concurrency.common import ScanMetrics
@@ -52,17 +52,18 @@ class DisplayRich(Display):
         scan: ScanContext,
         scan_location: str,
         options: ScanOptions,
+        summary: ScanSummary,
         transcripts: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
         with ScanDisplayRich(
-            scan, scan_location, options, transcripts, skipped
+            scan, scan_location, summary, options, transcripts, skipped
         ) as scan_display:
             yield scan_display
 
     @override
-    def scan_interrupted(self, message: RenderableType, scan_location: str) -> None:
-        self.print(*scan_interrupted_messages(message, scan_location))
+    def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None:
+        self.print(*scan_interrupted_messages(message, status))
 
     @override
     def scan_complete(self, status: ScanStatus) -> None:
@@ -79,6 +80,7 @@ class ScanDisplayRich(
         self,
         scan: ScanContext,
         scan_location: str,
+        summary: ScanSummary,
         options: ScanOptions,
         transcripts: int,
         skipped: int,
@@ -91,7 +93,7 @@ class ScanDisplayRich(
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
         self._metrics: ScanMetrics | None = None
-        self._scan_results = ScanResults(scan.scanners.keys())
+        self._scan_summary = summary
         self._live = Live(
             None,
             console=rich.get_console(),
@@ -127,7 +129,7 @@ class ScanDisplayRich(
     def results(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
     ) -> None:
-        self._scan_results.report(transcript, scanner, results)
+        self._scan_summary.report(transcript, scanner, results)
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
@@ -191,7 +193,7 @@ class ScanDisplayRich(
         )
         NONE = f"[{theme.light}]-[/{theme.light}]"
         for scanner in self._scan.spec.scanners.keys():
-            results = self._scan_results[scanner]
+            results = self._scan_summary[scanner]
             scanners.add_row(
                 scanner,
                 f"{results.results:,}" if results.results else NONE,

@@ -24,7 +24,7 @@ class DisplayNone(Display):
         pass
 
     @override
-    def start(self, can: ScanContext, scan_location: str) -> None:
+    def start(self, scan: ScanContext, scan_location: str) -> None:
         pass
 
     @override

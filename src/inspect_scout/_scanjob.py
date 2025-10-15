@@ -143,10 +143,9 @@ def scanjob(
             # if its not from an installed package then it is a "local"
             # module import, so set its task file and run dir
             if get_installed_package_name(scanjob_type) is None:
-                module = inspect.getmodule(scanjob_type)
-                if module and hasattr(module, "__file__") and module.__file__:
-                    file = Path(module.__file__)
-                    setattr(scanjob_instance, SCANJOB_FILE_ATTR, file.as_posix())
+                file = inspect.getfile(scanjob_type)
+                if file:
+                    setattr(scanjob_instance, SCANJOB_FILE_ATTR, Path(file).as_posix())
 
             # Return the task instance
             return scanjob_instance

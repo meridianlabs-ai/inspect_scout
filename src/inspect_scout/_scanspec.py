@@ -82,11 +82,11 @@ class ScanSpec(BaseModel):
     scan_id: str = Field(default_factory=uuid)
     """Globally unique id for scan job."""
 
+    scan_name: str
+    """Scan job name."""
+
     scan_file: str | None = Field(default=None)
     """Source file for scan job."""
-
-    scan_name: str | None = Field(default=None)
-    """Scan job name."""
 
     scan_args: dict[str, Any] | None = Field(default=None)
     """Arguments used for invoking the scan job."""

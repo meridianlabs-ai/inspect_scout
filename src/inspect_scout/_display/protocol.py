@@ -8,6 +8,7 @@ from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._recorder.recorder import ScanStatus
 from inspect_scout._scancontext import ScanContext
 from inspect_scout._scanner.result import ResultReport
+from inspect_scout._scanspec import ScanOptions
 from inspect_scout._transcript.types import TranscriptInfo
 
 
@@ -24,7 +25,12 @@ class Display(abc.ABC):
 
     @contextlib.contextmanager
     def scan_display(
-        self, scan: ScanContext, scan_location: str, transcripts: int, skipped: int
+        self,
+        scan: ScanContext,
+        scan_location: str,
+        options: ScanOptions,
+        transcripts: int,
+        skipped: int,
     ) -> Iterator["ScanDisplay"]:
         yield ScanDisplayNone()
 

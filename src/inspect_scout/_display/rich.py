@@ -2,17 +2,24 @@ import contextlib
 from typing import Any, Iterator, Sequence
 
 import rich
-from rich.console import RenderableType
+from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
+from inspect_ai._util.constants import CONSOLE_DISPLAY_WIDTH
+from inspect_ai.util import throttle
+from rich.console import Group, RenderableType
+from rich.live import Live
+from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
 from typing_extensions import override
 
-from inspect_scout._display.messages import (
+from inspect_scout._display.protocol import Display, ScanDisplay
+from inspect_scout._display.util import (
     scan_complete_message,
     scan_errors_message,
     scan_interrupted_messages,
+    scan_title,
 )
-from inspect_scout._display.protocol import Display, ScanDisplay
 from inspect_scout._progress_utils import UtilizationColumn
+from inspect_scout._scanspec import ScanOptions
 
 from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import ScanStatus
@@ -36,9 +43,16 @@ class DisplayRich(Display):
 
     @contextlib.contextmanager
     def scan_display(
-        self, scan: ScanContext, scan_location: str, transcripts: int, skipped: int
+        self,
+        scan: ScanContext,
+        scan_location: str,
+        options: ScanOptions,
+        transcripts: int,
+        skipped: int,
     ) -> Iterator[ScanDisplay]:
-        with ScanDisplayRich(scan, scan_location, transcripts, skipped) as scan_display:
+        with ScanDisplayRich(
+            scan, scan_location, options, transcripts, skipped
+        ) as scan_display:
             yield scan_display
 
     @override
@@ -57,8 +71,27 @@ class ScanDisplayRich(
     ScanDisplay, contextlib.AbstractContextManager["ScanDisplayRich"]
 ):
     def __init__(
-        self, scan: ScanContext, scan_location: str, transcripts: int, skipped: int
+        self,
+        scan: ScanContext,
+        scan_location: str,
+        options: ScanOptions,
+        transcripts: int,
+        skipped: int,
     ) -> None:
+        self._scan = scan
+        self._scan_location = scan_location
+        self._options = options
+        self._total_scans = transcripts * len(scan.scanners)
+        self._skipped_scans = skipped
+        self._completed_scans = self._skipped_scans
+        self._live = Live(
+            None,
+            console=rich.get_console(),
+            transient=True,
+            auto_refresh=False,
+        )
+        self._live.start()
+
         self._progress = Progress(
             TextColumn("Scanning"),
             BarColumn(),
@@ -66,21 +99,23 @@ class ScanDisplayRich(
             TextColumn("(processes/parsing/scanning/waiting) (buffered scan jobs)"),
             UtilizationColumn(),
             TimeElapsedColumn(),
+            console=rich.get_console(),
             transient=True,
         )
 
-        self._progress.start()
-        scans_per_transcript = len(scan.scanners)
-        total_ticks = transcripts * scans_per_transcript
-        self._task_id = self._progress.add_task("Scan", total=total_ticks)
+        # initial update
+        self._update()
+
+        # add task
+        self._task_id = self._progress.add_task("Scan", total=self._total_scans)
 
         # skip already completed scans
-        self._skipped = skipped
-        if self._skipped > 0:
-            self._progress.update(self._task_id, completed=self._skipped)
+        if self._completed_scans > 0:
+            self._progress.update(self._task_id, completed=self._completed_scans)
 
     def __exit__(self, *excinfo: Any) -> None:
         self._progress.stop()
+        self._live.stop()
 
     @override
     def results(
@@ -91,8 +126,23 @@ class ScanDisplayRich(
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
+        self._completed_scans = self._skipped_scans + metrics.completed_scans
         self._progress.update(
             self._task_id,
             metrics=metrics,
-            completed=self._skipped + metrics.completed_scans,
+            completed=self._completed_scans,
         )
+        self._update()
+
+    @throttle(1)
+    def _update(self) -> None:
+        theme = rich_theme()
+        console = rich.get_console()
+        panel = Panel(
+            Group("", self._progress),
+            title=f"[bold][{theme.meta}]{scan_title(self._scan.spec)}[/{theme.meta}][/bold]",
+            title_align="left",
+            width=CONSOLE_DISPLAY_WIDTH if is_vscode_notebook(console) else None,
+            expand=True,
+        )
+        self._live.update(panel, refresh=True)

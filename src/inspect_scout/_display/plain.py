@@ -5,14 +5,15 @@ import rich
 from rich.console import RenderableType
 from typing_extensions import override
 
-from inspect_scout._display.messages import scan_interrupted_messages
+from inspect_scout._display.util import scan_interrupted_messages
+from inspect_scout._scanspec import ScanOptions
 
 from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import ScanStatus
 from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
-from .messages import scan_complete_message, scan_errors_message
+from .util import scan_complete_message, scan_errors_message
 from .protocol import Display, ScanDisplay
 
 
@@ -31,7 +32,12 @@ class DisplayPlain(Display):
 
     @contextlib.contextmanager
     def scan_display(
-        self, scan: ScanContext, scan_location: str, transcripts: int, skipped: int
+        self,
+        scan: ScanContext,
+        scan_location: str,
+        options: ScanOptions,
+        transcripts: int,
+        skipped: int,
     ) -> Iterator[ScanDisplay]:
         yield ScanDisplayPlain()
 

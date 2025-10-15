@@ -286,13 +286,18 @@ async def _scan_async_inner(
         # set background task group for this coroutine (used by batching)
         set_background_task_group(tg)
 
-        # establish max_transcripts
-        max_transcripts = scan.spec.options.max_transcripts or DEFAULT_MAX_TRANSCRIPTS
-        max_processes = (
-            scan.spec.options.max_processes
-            if isinstance(scan.spec.options.max_processes, int)
-            # TODO: Of course we can tweak this logic
-            else int(1.0 * multiprocessing.cpu_count())
+        # resolve options
+        options = scan.spec.options.model_copy(
+            update={
+                "max_transcripts": scan.spec.options.max_transcripts
+                or DEFAULT_MAX_TRANSCRIPTS,
+                "max_processes": (
+                    scan.spec.options.max_processes
+                    if isinstance(scan.spec.options.max_processes, int)
+                    # TODO: Of course we can tweak this logic
+                    else int(1.0 * multiprocessing.cpu_count())
+                ),
+            }
         )
 
         transcripts = scan.transcripts
@@ -317,10 +322,11 @@ async def _scan_async_inner(
 
             # start scan
             with display().scan_display(
-                scan,
-                await recorder.location(),
-                await transcripts.count(),
-                skipped_scans,
+                scan=scan,
+                scan_location=await recorder.location(),
+                options=options,
+                transcripts=await transcripts.count(),
+                skipped=skipped_scans,
             ) as scan_display:
                 # Build scanner list and union content for index resolution
                 scanners_list = list(scan.scanners.values())
@@ -390,7 +396,8 @@ async def _scan_async_inner(
 
                 prefetch_multiple = 1.0
                 max_tasks = int(
-                    (max_transcripts * len(scan.scanners)) / (1 + prefetch_multiple)
+                    (options.max_transcripts * len(scan.scanners))
+                    / (1 + prefetch_multiple)
                 )
 
                 diagnostics = True
@@ -400,9 +407,9 @@ async def _scan_async_inner(
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if max_processes == 1
+                    if options.max_processes == 1
                     else multi_process_strategy(
-                        process_count=max_processes,
+                        process_count=options.max_processes,
                         task_count=max_tasks,
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,

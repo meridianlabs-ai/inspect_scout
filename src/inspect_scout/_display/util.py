@@ -44,7 +44,7 @@ def scan_title(spec: ScanSpec, transcripts: int) -> str:
         title = f"{SCAN}: {spec.scan_name}"
     else:
         title = SCAN
-    return f"{title} ({transcripts} transcripts)"
+    return f"{title} ({transcripts:,} transcripts)"
 
 
 def scan_config(spec: ScanSpec, options: ScanOptions) -> RenderableType:

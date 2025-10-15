@@ -158,9 +158,9 @@ class ScanDisplayRich(
         resources.add_column(justify="right")
         if self._metrics:
             resources.add_row("[bold]workers[/bold]", "", style=theme.meta)
-            resources.add_row("parsing:", str(self._metrics.tasks_parsing))
-            resources.add_row("scanning:", str(self._metrics.tasks_scanning))
-            resources.add_row("waiting:", str(self._metrics.tasks_waiting))
+            resources.add_row("parsing:", f"{self._metrics.tasks_parsing:,}")
+            resources.add_row("scanning:", f"{self._metrics.tasks_scanning:,}")
+            resources.add_row("waiting:", f"{self._metrics.tasks_waiting:,}")
             resources.add_row()
             resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
             resources.add_row("cpu %:", "80%")
@@ -182,7 +182,7 @@ class ScanDisplayRich(
             style=theme.meta,
         )
         for scanner in self._scan.spec.scanners.keys():
-            scanners.add_row(scanner, "5", "1", "1,200", "10,000")
+            scanners.add_row(scanner, f"{5:,}", f"{1:,}", f"{1200:,}", f"{10000:,}")
 
         # body
         body = Table.grid(expand=True)

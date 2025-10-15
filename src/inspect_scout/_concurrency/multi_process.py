@@ -203,7 +203,7 @@ def multi_process_strategy(
                     tg.start_soon(_metrics_collector)
 
             # If we get here, everything completed normally
-            print(f"[{time.time():.3f}] [MP Main] Task group exited normally")
+            print_diagnostics("MP Main", "Task group exited normally")
             # Wait for workers to finish gracefully
             print_diagnostics("MP Main", "Waiting for worker processes to complete")
             for p in processes:

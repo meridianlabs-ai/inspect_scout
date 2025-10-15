@@ -168,9 +168,12 @@ class ScanDisplayRich(
             resources.add_row("waiting:", f"{self._metrics.tasks_waiting:,}")
             resources.add_row()
             resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
-            resources.add_row(
-                "cpu %:", f"{self._metrics.cpu_use / self._metrics.process_count:.1f}%"
+            cpu_utilization = (
+                self._metrics.cpu_use / self._metrics.process_count
+                if self._metrics.process_count
+                else 0
             )
+            resources.add_row("cpu %:", f"{cpu_utilization:.1f}%")
             resources.add_row(
                 "memory",
                 f"{bytes_to_gigabytes(self._metrics.memory_usage)} / {bytes_to_gigabytes(self._total_memory)}",

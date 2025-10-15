@@ -5,7 +5,6 @@ import rich
 from inspect_ai._display.core.footer import task_counters, task_resources
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
 from inspect_ai._util.constants import CONSOLE_DISPLAY_WIDTH
-from inspect_ai._util.path import pretty_path
 from inspect_ai.util import throttle
 from rich.console import Group, RenderableType
 from rich.live import Live

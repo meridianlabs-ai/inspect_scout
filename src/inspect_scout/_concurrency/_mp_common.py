@@ -69,4 +69,4 @@ async def run_sync_on_thread(func: Callable[[], T]) -> T:
     Returns:
         The return value of func, with proper type information preserved
     """
-    return await anyio.to_thread.run_sync(func)
+    return await anyio.to_thread.run_sync(func, abandon_on_cancel=True)

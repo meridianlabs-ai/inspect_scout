@@ -158,9 +158,8 @@ if __name__ == "__main__":
     # otherwise normal flow
     else:
         LOGS = Path(__file__).parent / "logs"
+        # LOGS = "s3://slow-tests/swe_bench.eval"
         SCANS_DIR = Path(__file__).parent / "scans"
-        # LOGS = Path("/Users/ericpatey/code/parsing/logs/swe_bench.eval")
-        # LOGS = Path("/Users/ericpatey/code/parsing/logs")
 
         status = scan(
             scanners=[

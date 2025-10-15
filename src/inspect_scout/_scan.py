@@ -393,29 +393,21 @@ async def _scan_async_inner(
                     (max_transcripts * len(scan.scanners)) / (1 + prefetch_multiple)
                 )
 
-                # TODO: Plumb this
-                disable_multi_process = True
-                diagnostics = False
+                diagnostics = True
                 strategy = (
-                    multi_process_strategy(
+                    single_process_strategy(
+                        task_count=max_tasks,
+                        prefetch_multiple=prefetch_multiple,
+                        diagnostics=diagnostics,
+                    )
+                    if max_processes == 1
+                    else multi_process_strategy(
                         process_count=max_processes,
                         task_count=max_tasks,
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if not disable_multi_process
-                    and (isinstance(max_processes, float) or max_processes != 1)
-                    else single_process_strategy(
-                        task_count=max_tasks,
-                        prefetch_multiple=prefetch_multiple,
-                        diagnostics=diagnostics,
-                    )
                 )
-
-                # For multi-process strategy, set context (scanners + union_content)
-                # TODO: Follow up with JJ on this stuff. I'm missing something.
-                if hasattr(strategy, "set_context"):
-                    strategy.set_context(scanners_list, union_content)
 
                 async def record_results(
                     transcript: TranscriptInfo,

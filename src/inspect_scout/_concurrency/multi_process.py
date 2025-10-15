@@ -1,7 +1,7 @@
 """Multi-process work pool implementation for scanner operations.
 
 This module provides a process-based concurrency strategy using fork-based
-ProcessPoolExecutor. Each worker process runs its own async event loop with
+multiprocessing. Each worker process runs its own async event loop with
 multiple concurrent tasks, allowing efficient parallel execution of scanner work.
 
 Note: multiprocessing.Queue.get() is blocking with no async support, so we use
@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import multiprocessing
 import time
-from concurrent.futures import ProcessPoolExecutor
 from typing import AsyncIterator, Awaitable, Callable, cast
 
 import anyio
@@ -115,19 +114,20 @@ def multi_process_strategy(
 
         async def _producer() -> None:
             """Producer task that feeds work items into the queue."""
-            async for item in parse_jobs:
-                parse_job_queue.put(item)
-                print_diagnostics(
-                    "MP Producer",
-                    f"Added ParseJob {_mp_common.parse_job_info(item)}",
-                )
+            try:
+                async for item in parse_jobs:
+                    parse_job_queue.put(item)
+                    print_diagnostics(
+                        "MP Producer",
+                        f"Added ParseJob {_mp_common.parse_job_info(item)}",
+                    )
+            finally:
+                # Send sentinel values to signal worker tasks to stop (one per task)
+                # This runs even if cancelled, allowing graceful shutdown
+                for _ in range(process_count * tasks_per_process):
+                    parse_job_queue.put(None)
 
-            # Send sentinel values to signal worker tasks to stop (one per task)
-            sentinel_count = process_count * tasks_per_process
-            for _ in range(sentinel_count):
-                parse_job_queue.put(None)
-
-            print_diagnostics("MP Producer", "FINISHED PRODUCING ALL WORK")
+                print_diagnostics("MP Producer", "FINISHED PRODUCING ALL WORK")
 
         async def _result_collector() -> None:
             """Collector task that receives results and records them."""
@@ -181,43 +181,69 @@ def multi_process_strategy(
 
             print_diagnostics("MP Metrics", "Finished collecting all metrics")
 
+        # Start worker processes directly
+        ctx = multiprocessing.get_context("fork")
+        processes = []
+        for worker_id in range(process_count):
+            try:
+                p = ctx.Process(target=subprocess_main, args=(worker_id,))
+                p.start()
+                processes.append(p)
+                print_diagnostics("Main", f"Spawned worker process #{worker_id}")
+            except Exception as ex:
+                display().print(ex)
+                raise
+
         try:
-            # Start worker processes
-            ctx = multiprocessing.get_context("fork")
-            with ProcessPoolExecutor(
-                max_workers=process_count, mp_context=ctx
-            ) as executor:
-                # Submit worker processes
-                futures = []
-                for worker_id in range(process_count):
-                    try:
-                        # The only arguments passed to subprocess_main via this
-                        # .submit should be subprocess specific. All subprocess invariant
-                        # data used by the subprocess should be in the IPCContext
-                        futures.append(executor.submit(subprocess_main, worker_id))
-                        print_diagnostics(
-                            "Main", f"Spawned worker process #{worker_id}"
-                        )
-                    except Exception as ex:
-                        display().print(ex)
-                        raise
+            # Run producer and collectors concurrently - all in one cancel scope
+            async with create_task_group() as tg:
+                tg.start_soon(_producer)
+                tg.start_soon(_result_collector)
+                if update_metrics:
+                    tg.start_soon(_metrics_collector)
 
-                # Run producer and collectors concurrently
-                async with create_task_group() as tg:
-                    tg.start_soon(_producer)
-                    tg.start_soon(_result_collector)
-                    if update_metrics:
-                        tg.start_soon(_metrics_collector)
+            # If we get here, everything completed normally
+            print(f"[{time.time():.3f}] [MP Main] Task group exited normally")
+            # Wait for workers to finish gracefully
+            print_diagnostics("MP Main", "Waiting for worker processes to complete")
+            for p in processes:
+                await anyio.to_thread.run_sync(p.join)
 
-                # Wait for all worker processes to complete
-                for future in futures:
-                    await anyio.to_thread.run_sync(future.result)
-
-                print_diagnostics("MP Main", "All worker processes completed")
+            print_diagnostics("MP Main", "All worker processes completed")
 
         except Exception as ex:
             raise inner_exception(ex) from ex
+        except anyio.get_cancelled_exc_class() as ex:
+            print_diagnostics("MP Main", f"Caught {type(ex).__name__}")
+            raise
         finally:
+            for p in [p for p in processes if p.is_alive()]:
+                print_diagnostics("MP Cleanup", f"Terminating process {p.pid}")
+                p.terminate()
+
+            # Wait briefly for termination, then force kill if needed
+            for p in processes:
+                p.join(timeout=1.0)
+                if p.is_alive():
+                    print_diagnostics("MP Cleanup", f"Force killing process {p.pid}")
+                    p.kill()
+
+            # Unblock any abandoned collector threads still waiting on queue.get()
+            # When using abandon_on_cancel=True, threads continue running but are abandoned
+            # We need to unblock them so Python can exit cleanly
+            print_diagnostics("MP Cleanup", "Unblocking abandoned collector threads")
+            for _ in range(process_count):
+                try:
+                    result_queue.put(None, block=False)
+                except Exception:
+                    pass  # Queue might be full or closed, that's fine
+                try:
+                    metrics_queue.put(None, block=False)
+                except Exception:
+                    pass  # Queue might be full or closed, that's fine
+
+            print_diagnostics("MP Cleanup", "Process cleanup complete")
+
             # Reset IPC context to None to indicate no strategy is active
             # This also prevents leakage between runs and releases the implicit
             # lock. See comment in _mp_common.py for the need for/value of the cast.

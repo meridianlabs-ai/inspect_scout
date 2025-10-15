@@ -1,4 +1,6 @@
-from typing import Any, Protocol, Sequence
+import abc
+import contextlib
+from typing import Any, Iterator, Sequence, override
 
 from rich.console import RenderableType
 
@@ -9,7 +11,8 @@ from inspect_scout._scanner.result import ResultReport
 from inspect_scout._transcript.types import TranscriptInfo
 
 
-class Display(Protocol):
+class Display(abc.ABC):
+    @abc.abstractmethod
     def print(
         self,
         *objects: Any,
@@ -19,14 +22,36 @@ class Display(Protocol):
         highlight: bool | None = None,
     ) -> None: ...
 
-    def start(self, scan: ScanContext, scan_location: str) -> None: ...
+    @contextlib.contextmanager
+    def scan_display(
+        self, scan: ScanContext, scan_location: str, transcripts: int, skipped: int
+    ) -> Iterator["ScanDisplay"]:
+        yield ScanDisplayNone()
 
+    @abc.abstractmethod
+    def scan_interrupted(self, message: RenderableType, scan_location: str) -> None: ...
+
+    @abc.abstractmethod
+    def scan_complete(self, status: ScanStatus) -> None: ...
+
+
+class ScanDisplay(abc.ABC):
+    @abc.abstractmethod
     def results(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
     ) -> None: ...
 
+    @abc.abstractmethod
     def metrics(self, metrics: ScanMetrics) -> None: ...
 
-    def interrupted(self, message: RenderableType, scan_location: str) -> None: ...
 
-    def complete(self, status: ScanStatus) -> None: ...
+class ScanDisplayNone(ScanDisplay):
+    @override
+    def results(
+        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+    ) -> None:
+        pass
+
+    @override
+    def metrics(self, metrics: ScanMetrics) -> None:
+        pass

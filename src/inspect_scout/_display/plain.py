@@ -1,4 +1,5 @@
-from typing import Any, Sequence
+import contextlib
+from typing import Any, Iterator, Sequence
 
 import rich
 from rich.console import RenderableType
@@ -12,7 +13,7 @@ from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from .messages import scan_complete_message, scan_errors_message
-from .protocol import Display
+from .protocol import Display, ScanDisplay
 
 
 class DisplayPlain(Display):
@@ -28,10 +29,25 @@ class DisplayPlain(Display):
         console = rich.get_console()
         console.print(*objects, sep=sep, end=end, markup=markup, highlight=False)
 
-    @override
-    def start(self, scan: ScanContext, scan_location: str) -> None:
-        pass
+    @contextlib.contextmanager
+    def scan_display(
+        self, scan: ScanContext, scan_location: str, transcripts: int, skipped: int
+    ) -> Iterator[ScanDisplay]:
+        yield ScanDisplayPlain()
 
+    @override
+    def scan_interrupted(self, message: RenderableType, scan_location: str) -> None:
+        self.print(*scan_interrupted_messages(message, scan_location))
+
+    @override
+    def scan_complete(self, status: ScanStatus) -> None:
+        if status.complete:
+            self.print(scan_complete_message(status))
+        else:
+            self.print(scan_errors_message(status))
+
+
+class ScanDisplayPlain(ScanDisplay):
     @override
     def results(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
@@ -41,14 +57,3 @@ class DisplayPlain(Display):
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
         pass
-
-    @override
-    def interrupted(self, message: RenderableType, scan_location: str) -> None:
-        self.print(*scan_interrupted_messages(message, scan_location))
-
-    @override
-    def complete(self, status: ScanStatus) -> None:
-        if status.complete:
-            self.print(scan_complete_message(status))
-        else:
-            self.print(scan_errors_message(status))

@@ -18,13 +18,17 @@ DisplayType = Literal["rich", "plain", "none"]
 
 
 def display() -> Display:
-    match display_type():
-        case "none":
-            return DisplayNone()
-        case "plain":
-            return DisplayPlain()
-        case "rich":
-            return DisplayRich()
+    global _display
+    if _display is None:
+        match display_type():
+            case "none":
+                _display = DisplayNone()
+            case "plain":
+                _display = DisplayPlain()
+            case "rich":
+                _display = DisplayRich()
+
+    return _display
 
 
 def init_display_type(display: DisplayType | None = None) -> DisplayType:
@@ -84,6 +88,8 @@ def display_type_initialized() -> bool:
     global _display_type
     return _display_type is not None
 
+
+_display: Display | None = None
 
 _display_type: DisplayType | None = None
 

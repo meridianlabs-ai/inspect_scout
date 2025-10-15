@@ -25,22 +25,16 @@ from inspect_ai.model._model_config import (
 )
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
-from rich.progress import (
-    BarColumn,
-    Progress,
-    TextColumn,
-    TimeElapsedColumn,
-)
 from typing_extensions import Literal
 
 from inspect_scout._display._display import DisplayType
+from inspect_scout._transcript.types import TranscriptInfo
 from inspect_scout._util.log import init_log
 
-from ._concurrency.common import ParseJob, ScanMetrics, ScannerJob
+from ._concurrency.common import ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
 from ._display._display import display, display_type_initialized, init_display_type
-from ._progress_utils import UtilizationColumn
 from ._recorder.factory import (
     scan_recorder_for_location,
     scan_recorder_type_for_location,
@@ -241,7 +235,7 @@ async def scan_complete_async(
 
     # complete the scan
     status = await recorder_type.complete(scan_dir)
-    display().complete(status)
+    display().scan_complete(status)
     return status
 
 
@@ -313,21 +307,22 @@ async def _scan_async_inner(
             )
 
         async with transcripts:
-            with Progress(
-                TextColumn("Scanning"),
-                BarColumn(),
-                TextColumn("{task.completed}/{task.total}"),
-                TextColumn("(processes/parsing/scanning/waiting) (buffered scan jobs)"),
-                UtilizationColumn(),
-                TimeElapsedColumn(),
-                transient=True,
-            ) as progress:
-                scans_per_transcript = len(scan.scanners)
-                total_ticks = (await transcripts.count()) * scans_per_transcript
-                task_id = progress.add_task("Scan", total=total_ticks)
+            # Count already-completed scans to initialize progress
+            scanner_names_list = list(scan.scanners.keys())
+            skipped_scans = 0
+            for transcript_info in await transcripts.index():
+                for name in scanner_names_list:
+                    if await recorder.is_recorded(transcript_info, name):
+                        skipped_scans += 1
 
+            # start scan
+            with display().scan_display(
+                scan,
+                await recorder.location(),
+                await transcripts.count(),
+                skipped_scans,
+            ) as scan_display:
                 # Build scanner list and union content for index resolution
-                scanner_names_list = list(scan.scanners.keys())
                 scanners_list = list(scan.scanners.values())
                 union_content = union_transcript_contents(
                     [
@@ -395,7 +390,7 @@ async def _scan_async_inner(
 
                 prefetch_multiple = 1.0
                 max_tasks = int(
-                    (max_transcripts * scans_per_transcript) / (1 + prefetch_multiple)
+                    (max_transcripts * len(scan.scanners)) / (1 + prefetch_multiple)
                 )
 
                 # TODO: Plumb this
@@ -422,28 +417,20 @@ async def _scan_async_inner(
                 if hasattr(strategy, "set_context"):
                     strategy.set_context(scanners_list, union_content)
 
-                # Count already-completed scans to advance progress bar
-                skipped_scans = 0
-                for transcript_info in await transcripts.index():
-                    for name in scanner_names_list:
-                        if await recorder.is_recorded(transcript_info, name):
-                            skipped_scans += 1
-                if skipped_scans > 0:
-                    progress.update(task_id, completed=skipped_scans)
-
-                def update_metrics(metrics: ScanMetrics) -> None:
-                    progress.update(
-                        task_id,
-                        metrics=metrics,
-                        completed=skipped_scans + metrics.completed_scans,
-                    )
+                async def record_results(
+                    transcript: TranscriptInfo,
+                    scanner: str,
+                    results: Sequence[ResultReport],
+                ) -> None:
+                    await recorder.record(transcript, scanner, results)
+                    scan_display.results(transcript, scanner, results)
 
                 await strategy(
                     parse_jobs=_parse_jobs(scan, recorder, transcripts),
                     parse_function=_parse_function,
                     scan_function=_scan_function,
-                    record_results=recorder.record,
-                    update_metrics=update_metrics,
+                    record_results=record_results,
+                    update_metrics=scan_display.metrics,
                 )
 
                 # report status
@@ -459,7 +446,7 @@ async def _scan_async_inner(
                     scan_status = await recorder.complete(await recorder.location())
 
         # report scan complete
-        display().complete(scan_status)
+        display().scan_complete(scan_status)
 
         # return status
         return scan_status
@@ -529,7 +516,7 @@ async def handle_scan_interruped(
     message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
 ) -> ScanStatus:
     location = await recorder.location()
-    display().interrupted(message, location)
+    display().scan_interrupted(message, location)
 
     return ScanStatus(
         complete=False, spec=spec, location=location, errors=await recorder.errors()

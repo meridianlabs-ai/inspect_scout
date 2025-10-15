@@ -85,6 +85,7 @@ class ScanDisplayRich(
         self._scan = scan
         self._scan_location = scan_location
         self._options = options
+        self._transcripts = transcripts
         self._total_scans = transcripts * len(scan.scanners)
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
@@ -175,22 +176,19 @@ class ScanDisplayRich(
             "[bold]scanner[/bold]",
             "[bold]results[/bold]",
             "[bold]errors[/bold]",
-            "[bold]tokens per scan[/bold]",
+            "[bold]tokens/scan[/bold]",
             "[bold]total tokens[/bold]",
             style=theme.meta,
         )
         for scanner in self._scan.spec.scanners.keys():
             scanners.add_row(scanner, "5", "1", "1,200", "10,000")
 
-        # results
-        results = f"[bold][{theme.meta}]scan:[/{theme.meta}][/bold] {pretty_path(self._scan_location)}"
-
         # body
         body = Table.grid(expand=True)
         body.add_column()  # progress/scanners/results
         body.add_column(width=5)
         body.add_column(justify="right", width=30)  # resources
-        body.add_row(Group(self._progress, "", scanners, "", results), "", resources)
+        body.add_row(Group(self._progress, "", scanners), "", resources)
         table.add_row(body)
 
         # footer
@@ -207,7 +205,7 @@ class ScanDisplayRich(
         # create main panel and update
         panel = Panel(
             table,
-            title=f"[bold][{theme.meta}]{scan_title(self._scan.spec)}[/{theme.meta}][/bold]",
+            title=f"[bold][{theme.meta}]{scan_title(self._scan.spec, self._transcripts)}[/{theme.meta}][/bold]",
             title_align="left",
             width=CONSOLE_DISPLAY_WIDTH if is_vscode_notebook(console) else None,
             expand=True,

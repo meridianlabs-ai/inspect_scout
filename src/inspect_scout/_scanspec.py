@@ -11,6 +11,9 @@ from pydantic import (
 from shortuuid import uuid
 from typing_extensions import Literal, NotRequired, Required, TypedDict
 
+from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+from ._util.process import default_max_processes
+
 
 class ScanScanner(BaseModel):
     name: str
@@ -39,16 +42,11 @@ class ScanRevision(BaseModel):
 class ScanOptions(BaseModel):
     """Options used for scan."""
 
-    max_transcripts: int | None = Field(default=None)
-    """Maximum number of concurrent transcripts (defaults to 10)."""
+    max_transcripts: int = Field(default=DEFAULT_MAX_TRANSCRIPTS)
+    """Maximum number of concurrent transcripts (defaults to 25)."""
 
-    max_processes: Literal["auto"] | int | None = Field(default=None)
-    """
-      Number of worker processes. Can be specified as:
-        - "auto": automatically pick an appropriate number based on the CPU count
-        - int: Absolute number of processes (must be >= 1)
-        (defaults to "auto")
-    """
+    max_processes: int = Field(default_factory=default_max_processes)
+    """Number of worker processes. Defaults to `multiprocessing.cpu_count()`."""
 
     limit: int | None = Field(default=None)
     """Transcript limit (maximum number of transcripts to read)."""

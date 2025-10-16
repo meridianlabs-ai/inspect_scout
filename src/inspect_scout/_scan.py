@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import sys
 import traceback
@@ -25,11 +24,11 @@ from inspect_ai.model._model_config import (
 )
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
-from typing_extensions import Literal
 
 from inspect_scout._display._display import DisplayType
 from inspect_scout._transcript.types import TranscriptInfo
 from inspect_scout._util.log import init_log
+from inspect_scout._util.process import default_max_processes
 
 from ._concurrency.common import ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
@@ -65,7 +64,7 @@ def scan(
     model_args: dict[str, Any] | str | None = None,
     model_roles: dict[str, str | Model] | None = None,
     max_transcripts: int | None = None,
-    max_processes: Literal["auto"] | int | None = None,
+    max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
     tags: list[str] | None = None,
@@ -108,7 +107,7 @@ async def scan_async(
     model_args: dict[str, Any] | str | None = None,
     model_roles: dict[str, str | Model] | None = None,
     max_transcripts: int | None = None,
-    max_processes: Literal["auto"] | int | None = None,
+    max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
     tags: list[str] | None = None,
@@ -134,7 +133,7 @@ async def scan_async(
     # initialize scan config
     scan_options = ScanOptions(
         max_transcripts=max_transcripts or DEFAULT_MAX_TRANSCRIPTS,
-        max_processes=max_processes,
+        max_processes=max_processes or default_max_processes(),
         limit=limit,
         shuffle=shuffle,
     )
@@ -286,21 +285,6 @@ async def _scan_async_inner(
         # set background task group for this coroutine (used by batching)
         set_background_task_group(tg)
 
-        # resolve options
-        max_processes = (
-            scan.spec.options.max_processes
-            if isinstance(scan.spec.options.max_processes, int)
-            # TODO: Of course we can tweak this logic
-            else int(1.0 * multiprocessing.cpu_count())
-        )
-        options = scan.spec.options.model_copy(
-            update={
-                "max_transcripts": scan.spec.options.max_transcripts
-                or DEFAULT_MAX_TRANSCRIPTS,
-                "max_processes": max_processes,
-            }
-        )
-
         transcripts = scan.transcripts
         # apply limits/shuffle
         if scan.spec.options.limit is not None:
@@ -326,7 +310,6 @@ async def _scan_async_inner(
                 scan=scan,
                 scan_location=await recorder.location(),
                 summary=await recorder.summary(),
-                options=options,
                 transcripts=await transcripts.count(),
                 skipped=skipped_scans,
             ) as scan_display:
@@ -398,7 +381,7 @@ async def _scan_async_inner(
 
                 prefetch_multiple = 1.0
                 max_tasks = int(
-                    ((options.max_transcripts or 0) * len(scan.scanners))
+                    ((scan.spec.options.max_transcripts or 0) * len(scan.scanners))
                     / (1 + prefetch_multiple)
                 )
 
@@ -409,9 +392,9 @@ async def _scan_async_inner(
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if options.max_processes == 1
+                    if scan.spec.options.max_processes == 1
                     else multi_process_strategy(
-                        process_count=max_processes,
+                        process_count=scan.spec.options.max_processes,
                         task_count=max_tasks,
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,

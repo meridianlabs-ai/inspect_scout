@@ -17,7 +17,7 @@ from .._scan import scan
 from .._scanjob import ScanJob, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
 from .._transcript.database import transcripts as transcripts_from
-from .._util.constants import DEFAULT_BATCH_SIZE
+from .._util.constants import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TRANSCRIPTS
 from .common import CommonOptions, common_options, process_common_options
 
 
@@ -135,8 +135,14 @@ class ScanGroup(click.Group):
 @click.option(
     "--max-transcripts",
     type=int,
-    help="Maximum number of transcripts to scan concurrently.",
+    help=f"Maximum number of transcripts to scan concurrently (defaults to {DEFAULT_MAX_TRANSCRIPTS})",
     envvar="SCOUT_SCAN_MAX_TRANSCRIPTS",
+)
+@click.option(
+    "--max-processes",
+    type=int,
+    help="Number of worker processes. Defaults to `multiprocessing.cpu_count()`.",
+    envvar="SCOUT_SCAN_MAX_PROCESSES",
 )
 @click.option(
     "--limit",
@@ -206,6 +212,7 @@ def scan_command(
     model_config: str | None,
     model_role: tuple[str, ...] | None,
     max_transcripts: int | None,
+    max_processes: int | None,
     limit: int | None,
     shuffle: int | None,
     tags: str | None,
@@ -292,6 +299,7 @@ def scan_command(
         model_args=scan_model_args,
         model_roles=scan_model_roles,
         max_transcripts=max_transcripts,
+        max_processes=max_processes,
         limit=limit,
         shuffle=scan_suffle,
         tags=scan_tags,

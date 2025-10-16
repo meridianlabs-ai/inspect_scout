@@ -351,6 +351,10 @@ def read_scan_errors(error_file: str) -> list[Error]:
 def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> ScanSummary:
     try:
         with open(scan_dir.joinpath(SCAN_SUMMARY).as_posix(), "r") as f:
-            return ScanSummary.model_validate_json(f.read())
+            summary = f.read().strip()
+            if summary:
+                return ScanSummary.model_validate_json(summary)
+            else:
+                return ScanSummary(list(spec.scanners.keys()))
     except FileNotFoundError:
         return ScanSummary(list(spec.scanners.keys()))

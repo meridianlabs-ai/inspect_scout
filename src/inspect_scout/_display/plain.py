@@ -7,7 +7,6 @@ from typing_extensions import override
 
 from inspect_scout._display.util import scan_interrupted_messages
 from inspect_scout._recorder.summary import ScanSummary
-from inspect_scout._scanspec import ScanOptions
 
 from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import ScanStatus
@@ -36,7 +35,6 @@ class DisplayPlain(Display):
         self,
         scan: ScanContext,
         scan_location: str,
-        options: ScanOptions,
         summary: ScanSummary,
         transcripts: int,
         skipped: int,

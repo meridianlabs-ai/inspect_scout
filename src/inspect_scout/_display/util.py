@@ -6,7 +6,7 @@ from rich.console import RenderableType
 from rich.text import Text
 
 from inspect_scout._recorder.recorder import ScanStatus
-from inspect_scout._scanspec import ScanOptions, ScanSpec
+from inspect_scout._scanspec import ScanSpec
 
 
 def scan_interrupted_messages(
@@ -47,8 +47,8 @@ def scan_title(spec: ScanSpec, transcripts: int) -> str:
     return f"{title} ({transcripts:,} transcripts)"
 
 
-def scan_config(spec: ScanSpec, options: ScanOptions) -> RenderableType:
-    config = scan_config_str(spec, options)
+def scan_config(spec: ScanSpec) -> RenderableType:
+    config = scan_config_str(spec)
     if config:
         config_text = Text(config)
         config_text.truncate(500, overflow="ellipsis")
@@ -57,7 +57,7 @@ def scan_config(spec: ScanSpec, options: ScanOptions) -> RenderableType:
         return ""
 
 
-def scan_config_str(spec: ScanSpec, options: ScanOptions) -> str:
+def scan_config_str(spec: ScanSpec) -> str:
     scan_args = dict(spec.scan_args or {})
     for key in scan_args.keys():
         value = scan_args[key]
@@ -66,7 +66,7 @@ def scan_config_str(spec: ScanSpec, options: ScanOptions) -> str:
         if is_model_dict(value):
             scan_args[key] = value["model"]
 
-    scan_options = options.model_dump(exclude_none=True)
+    scan_options = spec.options.model_dump(exclude_none=True)
 
     config = scan_args | scan_options
 

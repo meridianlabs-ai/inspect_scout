@@ -10,7 +10,6 @@ from inspect_scout._recorder.recorder import ScanStatus
 from inspect_scout._recorder.summary import ScanSummary
 from inspect_scout._scancontext import ScanContext
 from inspect_scout._scanner.result import ResultReport
-from inspect_scout._scanspec import ScanOptions
 from inspect_scout._transcript.types import TranscriptInfo
 
 
@@ -30,7 +29,6 @@ class Display(abc.ABC):
         self,
         scan: ScanContext,
         scan_location: str,
-        options: ScanOptions,
         summary: ScanSummary,
         transcripts: int,
         skipped: int,

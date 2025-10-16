@@ -24,7 +24,6 @@ from inspect_scout._display.util import (
     scan_title,
 )
 from inspect_scout._recorder.summary import ScanSummary
-from inspect_scout._scanspec import ScanOptions
 
 from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import ScanStatus
@@ -51,13 +50,12 @@ class DisplayRich(Display):
         self,
         scan: ScanContext,
         scan_location: str,
-        options: ScanOptions,
         summary: ScanSummary,
         transcripts: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
         with ScanDisplayRich(
-            scan, scan_location, summary, options, transcripts, skipped
+            scan, scan_location, summary, transcripts, skipped
         ) as scan_display:
             yield scan_display
 
@@ -81,13 +79,11 @@ class ScanDisplayRich(
         scan: ScanContext,
         scan_location: str,
         summary: ScanSummary,
-        options: ScanOptions,
         transcripts: int,
         skipped: int,
     ) -> None:
         self._scan = scan
         self._scan_location = scan_location
-        self._options = options
         self._transcripts = transcripts
         self._total_scans = transcripts * len(scan.scanners)
         self._skipped_scans = skipped
@@ -154,7 +150,7 @@ class ScanDisplayRich(
         table.add_column()
 
         # scan config
-        table.add_row(scan_config(self._scan.spec, self._options), style=theme.light)
+        table.add_row(scan_config(self._scan.spec), style=theme.light)
         table.add_row()
 
         # resources

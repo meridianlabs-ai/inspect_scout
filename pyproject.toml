@@ -48,6 +48,15 @@ dev = [
     "pyarrow-stubs>=20.0.0.20250928",
     "types-psutil",
 ]
+doc = [
+    "quarto-cli==1.8.25",
+    "jupyter",
+    "panflute",
+    "markdown",
+    "griffe",
+    "pyyaml",
+]
+dist = ["twine", "build"]
 
 
 [tool.hatch.build]

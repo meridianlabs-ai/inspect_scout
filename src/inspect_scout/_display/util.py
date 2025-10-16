@@ -36,7 +36,7 @@ def scan_errors_message(status: ScanStatus) -> str:
     )
 
 
-def scan_title(spec: ScanSpec, transcripts: int) -> str:
+def scan_title(spec: ScanSpec) -> str:
     SCAN = "scan"
     if spec.scan_file is not None:
         title = f"{SCAN}: {pretty_path(spec.scan_file)}"
@@ -44,7 +44,7 @@ def scan_title(spec: ScanSpec, transcripts: int) -> str:
         title = f"{SCAN}: {spec.scan_name}"
     else:
         title = SCAN
-    return f"{title} ({transcripts:,} transcripts)"
+    return f"{title} ({spec.transcripts.count:,} transcripts)"
 
 
 def scan_config(spec: ScanSpec) -> RenderableType:

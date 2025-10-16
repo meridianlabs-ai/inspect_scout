@@ -118,6 +118,7 @@ class EvalLogTranscripts(Transcripts):
         return ScanTranscripts(
             type="eval_log",
             fields=fields,
+            count=len(df),
             data=data,
         )
 

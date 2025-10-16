@@ -70,6 +70,9 @@ class ScanTranscripts(BaseModel):
     fields: list[TranscriptField]
     """Data types of transcripts fields."""
 
+    count: int = Field(default=0)
+    """Trancript count."""
+
     data: str
     """Transcript data as a csv."""
 

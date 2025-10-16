@@ -18,6 +18,7 @@ def recorder_buffer():
             transcripts=ScanTranscripts(
                 type="eval_log",
                 fields=[],
+                count=0,
                 data="",
             ),
             scanners={

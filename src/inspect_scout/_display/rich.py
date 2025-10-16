@@ -1,4 +1,5 @@
 import contextlib
+from functools import lru_cache
 from typing import Any, Iterator, Sequence
 
 import psutil
@@ -24,6 +25,7 @@ from inspect_scout._display.util import (
     scan_title,
 )
 from inspect_scout._recorder.summary import ScanSummary
+from inspect_scout._scanspec import ScanSpec
 
 from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import ScanStatus
@@ -97,7 +99,6 @@ class ScanDisplayRich(
             auto_refresh=False,
         )
         self._live.start()
-        self._total_memory = psutil.virtual_memory().total
 
         self._progress = Progress(
             TextColumn("Scanning"),
@@ -142,76 +143,95 @@ class ScanDisplayRich(
         self._update()
 
     def _update(self) -> None:
-        theme = rich_theme()
-        console = rich.get_console()
+        panel = scan_panel(
+            self._scan.spec, self._scan_summary, self._progress, self._metrics
+        )
+        self._live.update(
+            panel,
+            refresh=True,
+        )
 
-        # root table
-        table = Table.grid(expand=True)
-        table.add_column()
 
-        # scan config
-        table.add_row(scan_config(self._scan.spec), style=theme.light)
-        table.add_row()
+def scan_panel(
+    spec: ScanSpec,
+    summary: ScanSummary,
+    progress: Progress | None,
+    metrics: ScanMetrics | None,
+) -> RenderableType:
+    theme = rich_theme()
+    console = rich.get_console()
 
-        # resources
+    # root table
+    table = Table.grid(expand=True)
+    table.add_column()
+
+    # scan config
+    table.add_row(scan_config(spec), style=theme.light)
+    table.add_row()
+
+    # resources
+    resources: Table | None = None
+    if metrics:
         resources = Table.grid(expand=True)
         resources.add_column()
         resources.add_column(justify="right")
-        if self._metrics:
-            resources.add_row("[bold]workers[/bold]", "", style=theme.meta)
-            resources.add_row("parsing:", f"{self._metrics.tasks_parsing:,}")
-            resources.add_row("scanning:", f"{self._metrics.tasks_scanning:,}")
-            resources.add_row("waiting:", f"{self._metrics.tasks_waiting:,}")
-            resources.add_row()
-            resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
-            cpu_utilization = (
-                self._metrics.cpu_use / self._metrics.process_count
-                if self._metrics.process_count
-                else 0
-            )
-            resources.add_row("cpu %:", f"{cpu_utilization:.1f}%")
-            resources.add_row(
-                "memory",
-                f"{bytes_to_gigabytes(self._metrics.memory_usage)} / {bytes_to_gigabytes(self._total_memory)}",
-            )
-
-        # scanners
-        scanners = Table.grid(expand=True)
-        scanners.add_column()  # scanner
-        scanners.add_column(justify="right")  # results
-        scanners.add_column(justify="right")  # erorrs
-        scanners.add_column(justify="right")  # tokens/transcript
-        scanners.add_column(justify="right")  # total tokens
-        scanners.add_row(
-            "[bold]scanner[/bold]",
-            "[bold]results[/bold]",
-            "[bold]errors[/bold]",
-            "[bold]tokens/scan[/bold]",
-            "[bold]total tokens[/bold]",
-            style=theme.meta,
+        resources.add_row("[bold]workers[/bold]", "", style=theme.meta)
+        resources.add_row("parsing:", f"{metrics.tasks_parsing:,}")
+        resources.add_row("scanning:", f"{metrics.tasks_scanning:,}")
+        resources.add_row("waiting:", f"{metrics.tasks_waiting:,}")
+        resources.add_row()
+        resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
+        cpu_utilization = (
+            metrics.cpu_use / metrics.process_count if metrics.process_count else 0
         )
-        NONE = f"[{theme.light}]-[/{theme.light}]"
-        for scanner in self._scan.spec.scanners.keys():
-            results = self._scan_summary[scanner]
-            scanners.add_row(
-                scanner,
-                f"{results.results:,}" if results.results else NONE,
-                f"{results.errors:,}" if results.errors else NONE,
-                f"{results.tokens // results.scans:,}"
-                if results.tokens and results.scans
-                else NONE,
-                f"{results.tokens:,}" if results.tokens else NONE,
-            )
+        resources.add_row("cpu %:", f"{cpu_utilization:.1f}%")
+        resources.add_row(
+            "memory",
+            f"{bytes_to_gigabytes(metrics.memory_usage)} / {bytes_to_gigabytes(total_memory())}",
+        )
 
-        # body
-        body = Table.grid(expand=True)
-        body.add_column()  # progress/scanners/results
-        body.add_column(width=5)
-        body.add_column(justify="right", width=30)  # resources
-        body.add_row(Group(self._progress, "", scanners), "", resources)
-        table.add_row(body)
+    # scanners
+    scanners = Table.grid(expand=True)
+    scanners.add_column()  # scanner
+    scanners.add_column(justify="right")  # results
+    scanners.add_column(justify="right")  # erorrs
+    scanners.add_column(justify="right")  # tokens/transcript
+    scanners.add_column(justify="right")  # total tokens
+    scanners.add_row(
+        "[bold]scanner[/bold]",
+        "[bold]results[/bold]",
+        "[bold]errors[/bold]",
+        "[bold]tokens/scan[/bold]",
+        "[bold]total tokens[/bold]",
+        style=theme.meta,
+    )
+    NONE = f"[{theme.light}]-[/{theme.light}]"
+    for scanner in spec.scanners.keys():
+        results = summary[scanner]
+        scanners.add_row(
+            scanner,
+            f"{results.results:,}" if results.results else NONE,
+            f"{results.errors:,}" if results.errors else NONE,
+            f"{results.tokens // results.scans:,}"
+            if results.tokens and results.scans
+            else NONE,
+            f"{results.tokens:,}" if results.tokens else NONE,
+        )
 
-        # footer
+    # body
+    body = Table.grid(expand=True)
+    body.add_column()  # progress/scanners/results
+    body.add_column(width=5)
+    body.add_column(justify="right", width=30)  # resources
+    scanning_group: list[RenderableType] = []
+    if progress:
+        scanning_group.extend([progress, ""])
+    scanning_group.append(scanners)
+    body.add_row(Group(*scanning_group), "", resources or "")
+    table.add_row(body)
+
+    # footer (if running)
+    if progress is not None:
         footer = Table.grid(expand=True)
         footer.add_column()
         footer.add_column(justify="right")
@@ -222,15 +242,21 @@ class ScanDisplayRich(
         )
         table.add_row(footer)
 
-        # create main panel and update
-        panel = Panel(
-            table,
-            title=f"[bold][{theme.meta}]{scan_title(self._scan.spec, self._transcripts)}[/{theme.meta}][/bold]",
-            title_align="left",
-            width=CONSOLE_DISPLAY_WIDTH if is_vscode_notebook(console) else None,
-            expand=True,
-        )
-        self._live.update(panel, refresh=True)
+    # create main panel and update
+    panel = Panel(
+        table,
+        title=f"[bold][{theme.meta}]{scan_title(spec)}[/{theme.meta}][/bold]",
+        title_align="left",
+        width=CONSOLE_DISPLAY_WIDTH if is_vscode_notebook(console) else None,
+        expand=True,
+    )
+
+    return panel
+
+
+@lru_cache(maxsize=None)
+def total_memory() -> int:
+    return psutil.virtual_memory().total
 
 
 def bytes_to_gigabytes(input: int) -> str:

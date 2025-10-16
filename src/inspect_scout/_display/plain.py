@@ -1,7 +1,8 @@
 import contextlib
-from typing import Any, Iterator, Sequence
+from typing import Any, Callable, Iterator, Sequence
 
 import rich
+from inspect_ai.util import throttle
 from rich.console import RenderableType
 from typing_extensions import override
 
@@ -13,7 +14,13 @@ from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from .protocol import Display, ScanDisplay
-from .util import scan_complete_message, scan_errors_message, scan_interrupted_message
+from .util import (
+    scan_complete_message,
+    scan_config,
+    scan_errors_message,
+    scan_interrupted_message,
+    scan_title,
+)
 
 
 class DisplayPlain(Display):
@@ -38,7 +45,7 @@ class DisplayPlain(Display):
         transcripts: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
-        yield ScanDisplayPlain()
+        yield ScanDisplayPlain(scan, summary, transcripts, skipped, self.print)
 
     @override
     def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None:
@@ -54,6 +61,23 @@ class DisplayPlain(Display):
 
 
 class ScanDisplayPlain(ScanDisplay):
+    def __init__(
+        self,
+        scan: ScanContext,
+        summary: ScanSummary,
+        transcripts: int,
+        skipped: int,
+        print: Callable[..., None],
+    ) -> None:
+        self._print = print
+        self._print(
+            f"{scan_title(scan.spec)}",
+        )
+        self._print(scan_config(scan.spec), "\n")
+        self._total_scans = transcripts * len(scan.scanners)
+        self._skipped_scans = skipped
+        self._completed_scans = self._skipped_scans
+
     @override
     def results(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
@@ -62,4 +86,15 @@ class ScanDisplayPlain(ScanDisplay):
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
-        pass
+        self._completed_scans = self._skipped_scans + metrics.completed_scans
+        self._update_throttled()
+
+    def _update(self) -> None:
+        percent = 100.0 * self._completed_scans / self._total_scans
+        self._print(
+            f"scanning: {percent:3.0f}% ({self._completed_scans:,}/{self._total_scans:,})"
+        )
+
+    @throttle(8)
+    def _update_throttled(self) -> None:
+        self._update()

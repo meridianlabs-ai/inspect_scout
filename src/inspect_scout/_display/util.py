@@ -12,13 +12,13 @@ from inspect_scout._scanspec import ScanSpec
 def scan_interrupted_message(status: ScanStatus) -> str:
     theme = rich_theme()
     return (
-        f"\n[bold][{theme.error}]Scan interrupted. Resume scan with:[/{theme.error}]\n\n"
+        f"\n[bold][{theme.error}]scan interrupted, resume scan with:[/{theme.error}]\n\n"
         + f'[bold][{theme.light}]scout scan resume "{pretty_path(status.location)}"[/{theme.light}][/bold]\n'
     )
 
 
 def scan_complete_message(status: ScanStatus) -> str:
-    return f'\n[bold]Scan complete:[/bold] "{pretty_path(status.location)}"\n'
+    return f'\n[bold]scan complete:[/bold] "{pretty_path(status.location)}"\n'
 
 
 def scan_errors_message(status: ScanStatus) -> str:

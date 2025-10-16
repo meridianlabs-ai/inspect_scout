@@ -385,7 +385,11 @@ async def _scan_async_inner(
                     / (1 + prefetch_multiple)
                 )
 
-                diagnostics = False
+                diagnostics = os.getenv("SCOUT_DIAGNOSTICS", "false").lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
                 strategy = (
                     single_process_strategy(
                         task_count=max_tasks,

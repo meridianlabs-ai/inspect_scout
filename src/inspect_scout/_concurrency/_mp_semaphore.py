@@ -22,9 +22,9 @@ class SemaphoreProvider:
 
     def __init__(self, manager: SyncManager) -> None:
         self.registry: DictProxy[str, MPSemaphore] = manager.dict()
-        self.request_queue: multiprocessing.Queue[
-            tuple[str, int, bool] | None
-        ] = multiprocessing.Queue()
+        self.request_queue: multiprocessing.Queue[tuple[str, int, bool] | None] = (
+            multiprocessing.Queue()
+        )
         self.condition: ThreadingCondition = manager.Condition()
 
     async def run_provider_task(

@@ -33,8 +33,8 @@ from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._mp_common import run_sync_on_thread
-from ._mp_shutdown import shutdown_subprocesses
 from ._mp_semaphore import SemaphoreProvider, mp_semaphore_factory
+from ._mp_shutdown import shutdown_subprocesses
 from ._mp_subprocess import subprocess_main
 from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob, sum_metrics
 
@@ -116,7 +116,7 @@ def multi_process_strategy(
                 parse_job_queue=multiprocessing.Queue(),
                 upstream_queue=multiprocessing.Queue(),
                 shutdown_condition=multiprocessing.Condition(),
-            semaphore_provider=semaphore_provider,
+                semaphore_provider=semaphore_provider,
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:

@@ -444,7 +444,7 @@ async def _scan_async_inner(
         return await handle_scan_interruped(rich_tb, scan.spec, recorder)
 
     except anyio.get_cancelled_exc_class():
-        return await handle_scan_interruped("Cancelled!", scan.spec, recorder)
+        return await handle_scan_interruped("Aborted!", scan.spec, recorder)
 
 
 def top_level_sync_init(display: DisplayType | None) -> None:

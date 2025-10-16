@@ -5,7 +5,6 @@ import rich
 from rich.console import RenderableType
 from typing_extensions import override
 
-from inspect_scout._display.util import scan_interrupted_messages
 from inspect_scout._recorder.summary import ScanSummary
 
 from .._concurrency.common import ScanMetrics
@@ -14,7 +13,7 @@ from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from .protocol import Display, ScanDisplay
-from .util import scan_complete_message, scan_errors_message
+from .util import scan_complete_message, scan_errors_message, scan_interrupted_message
 
 
 class DisplayPlain(Display):
@@ -43,7 +42,8 @@ class DisplayPlain(Display):
 
     @override
     def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None:
-        self.print(*scan_interrupted_messages(message, status))
+        self.print(message)
+        self.print(scan_interrupted_message(status))
 
     @override
     def scan_complete(self, status: ScanStatus) -> None:

@@ -21,7 +21,7 @@ from inspect_scout._display.util import (
     scan_complete_message,
     scan_config,
     scan_errors_message,
-    scan_interrupted_messages,
+    scan_interrupted_message,
     scan_title,
 )
 from inspect_scout._recorder.summary import ScanSummary
@@ -63,14 +63,24 @@ class DisplayRich(Display):
 
     @override
     def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None:
-        self.print(*scan_interrupted_messages(message, status))
+        self.print(message)
+        panel = scan_panel(
+            spec=status.spec,
+            summary=status.summary,
+            message=scan_interrupted_message(status),
+        )
+        self.print(panel)
 
     @override
     def scan_complete(self, status: ScanStatus) -> None:
-        if status.complete:
-            self.print(scan_complete_message(status))
-        else:
-            self.print(scan_errors_message(status))
+        panel = scan_panel(
+            spec=status.spec,
+            summary=status.summary,
+            message=scan_complete_message(status)
+            if status.complete
+            else scan_errors_message(status),
+        )
+        self.print(panel)
 
 
 class ScanDisplayRich(
@@ -144,7 +154,10 @@ class ScanDisplayRich(
 
     def _update(self) -> None:
         panel = scan_panel(
-            self._scan.spec, self._scan_summary, self._progress, self._metrics
+            spec=self._scan.spec,
+            summary=self._scan_summary,
+            progress=self._progress,
+            metrics=self._metrics,
         )
         self._live.update(
             panel,
@@ -153,10 +166,12 @@ class ScanDisplayRich(
 
 
 def scan_panel(
+    *,
     spec: ScanSpec,
     summary: ScanSummary,
-    progress: Progress | None,
-    metrics: ScanMetrics | None,
+    progress: Progress | None = None,
+    metrics: ScanMetrics | None = None,
+    message: RenderableType | None = None,
 ) -> RenderableType:
     theme = rich_theme()
     console = rich.get_console()
@@ -229,6 +244,10 @@ def scan_panel(
     scanning_group.append(scanners)
     body.add_row(Group(*scanning_group), "", resources or "")
     table.add_row(body)
+
+    # message (if provided)
+    if message is not None:
+        table.add_row(message)
 
     # footer (if running)
     if progress is not None:

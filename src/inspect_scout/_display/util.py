@@ -9,16 +9,12 @@ from inspect_scout._recorder.recorder import ScanStatus
 from inspect_scout._scanspec import ScanSpec
 
 
-def scan_interrupted_messages(
-    message: RenderableType, status: ScanStatus
-) -> list[RenderableType]:
+def scan_interrupted_message(status: ScanStatus) -> str:
     theme = rich_theme()
-
-    return [
-        message,
+    return (
         f"\n[bold][{theme.error}]Scan interrupted. Resume scan with:[/{theme.error}]\n\n"
-        + f'[bold][{theme.light}]scout scan resume "{pretty_path(status.location)}"[/{theme.light}][/bold]\n',
-    ]
+        + f'[bold][{theme.light}]scout scan resume "{pretty_path(status.location)}"[/{theme.light}][/bold]\n'
+    )
 
 
 def scan_complete_message(status: ScanStatus) -> str:

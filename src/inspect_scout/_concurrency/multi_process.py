@@ -4,6 +4,9 @@ This module provides a process-based concurrency strategy using fork-based
 multiprocessing. Each worker process runs its own async event loop with
 multiple concurrent tasks, allowing efficient parallel execution of scanner work.
 
+Workers communicate with the main process via a single multiplexed upstream queue
+that carries both results and metrics, simplifying the collection architecture.
+
 Note: multiprocessing.Queue.get() is blocking with no async support, so we use
 anyio.to_thread.run_sync to wrap .get() calls to prevent blocking the event loop.
 Queue.put() on unbounded queues (our case) only blocks briefly for lock contention,
@@ -105,8 +108,7 @@ def multi_process_strategy(
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
                 parse_job_queue=multiprocessing.Queue(),
-                result_queue=multiprocessing.Queue(),
-                metrics_queue=multiprocessing.Queue(),
+                upstream_queue=multiprocessing.Queue(),
                 shutdown_condition=multiprocessing.Condition(),
             )
 
@@ -125,9 +127,9 @@ def multi_process_strategy(
             # ParseJob queue is unbounded - ParseJobs are tiny metadata objects with
             # no backpressure needed. Real backpressure happens inside each worker via
             # single-process strategy's ScannerJob buffer.
+            # Upstream queue is also unbounded and multiplexes both results and metrics.
             parse_job_queue = _mp_common.ipc_context.parse_job_queue
-            result_queue = _mp_common.ipc_context.result_queue
-            metrics_queue = _mp_common.ipc_context.metrics_queue
+            upstream_queue = _mp_common.ipc_context.upstream_queue
 
             async def _producer() -> None:
                 """Producer task that feeds work items into the queue."""
@@ -146,77 +148,58 @@ def multi_process_strategy(
 
                     print_diagnostics("MP Producer", "FINISHED PRODUCING ALL WORK")
 
-            async def _result_collector() -> None:
-                """Collector task that receives results and records them."""
+            async def _upstream_collector() -> None:
+                """Collector task that receives results and metrics."""
                 items_processed = 0
                 workers_finished = 0
 
                 while workers_finished < process_count:
-                    # Use blocking get() - no timeout, no polling
                     # Thread sleeps in kernel until data arrives or shutdown sentinel injected
-                    result = await run_sync_on_thread(result_queue.get)
+                    item = await run_sync_on_thread(upstream_queue.get)
 
-                    if result is _SHUTDOWN_SENTINEL:
-                        # Shutdown signal from parent - exit immediately
-                        print_diagnostics(
-                            "MP Collector",
-                            f"Received shutdown sentinel (got {workers_finished}/{process_count} worker completions)",
-                        )
-                        break
+                    match item:
+                        # Result item: (TranscriptInfo, str, list[ResultReport])
+                        case (transcript_info, scanner_name, results):
+                            await record_results(transcript_info, scanner_name, results)
+                            items_processed += 1
+                            print_diagnostics(
+                                "MP Collector",
+                                f"Recorded results for {transcript_info.id} (total: {items_processed})",
+                            )
 
-                    if result is None:
+                        # Metrics item: (int, ScanMetrics)
+                        case (worker_id, metrics):
+                            all_metrics[worker_id] = metrics
+                            if update_metrics:
+                                update_metrics(sum_metrics(all_metrics.values()))
+
+                        # Shutdown signal from ourself - exit collector immediately
+                        case _ if item is _SHUTDOWN_SENTINEL:
+                            print_diagnostics(
+                                "MP Collector",
+                                f"Received shutdown sentinel (got {workers_finished}/{process_count} worker completions)",
+                            )
+                            break
+
                         # Sentinel from a worker process indicating it's done
-                        workers_finished += 1
-                        print_diagnostics(
-                            "MP Collector",
-                            f"Worker finished ({workers_finished}/{process_count})",
-                        )
-                        continue
+                        case None:
+                            workers_finished += 1
+                            print_diagnostics(
+                                "MP Collector",
+                                f"Worker finished ({workers_finished}/{process_count})",
+                            )
 
-                    if isinstance(result, Exception):
-                        raise result
+                        case Exception():
+                            raise item
 
-                    transcript_info, scanner_name, results = result
-                    await record_results(transcript_info, scanner_name, results)
+                        # Should never happen - defensive check
+                        case _:
+                            print_diagnostics(
+                                "MP Collector",
+                                f"WARNING: Unexpected item: {item!r}",
+                            )
 
-                    items_processed += 1
-                    print_diagnostics(
-                        "MP Collector",
-                        f"Recorded results for {transcript_info.id} (total: {items_processed})",
-                    )
-
-                print_diagnostics("MP Collector", "Finished collecting all results")
-
-            async def _metrics_collector() -> None:
-                workers_finished = 0
-                while workers_finished < process_count:
-                    # Use blocking get() - no timeout, no polling
-                    # Thread sleeps in kernel until data arrives or shutdown sentinel injected
-                    item = await run_sync_on_thread(metrics_queue.get)
-
-                    if item is _SHUTDOWN_SENTINEL:
-                        # Shutdown signal from parent - exit immediately
-                        print_diagnostics(
-                            "MP Metrics",
-                            f"Received shutdown sentinel (got {workers_finished}/{process_count} worker completions)",
-                        )
-                        break
-
-                    if item is None:
-                        # Sentinel from a worker indicating it's done sending metrics
-                        workers_finished += 1
-                        print_diagnostics(
-                            "MP Metrics",
-                            f"Worker metrics done ({workers_finished}/{process_count})",
-                        )
-                        continue
-
-                    worker_id, metrics = item
-                    all_metrics[worker_id] = metrics
-                    if update_metrics:
-                        update_metrics(sum_metrics(all_metrics.values()))
-
-                print_diagnostics("MP Metrics", "Finished collecting all metrics")
+                print_diagnostics("MP Collector", "Finished collecting all items")
 
             # Start worker processes directly
             ctx = multiprocessing.get_context("fork")
@@ -237,12 +220,10 @@ def multi_process_strategy(
             signal.signal(signal.SIGINT, original_sigint_handler)
 
             try:
-                # Run producer and collectors concurrently - all in one cancel scope
+                # Run producer and collector concurrently - all in one cancel scope
                 async with create_task_group() as tg:
                     tg.start_soon(_producer)
-                    tg.start_soon(_result_collector)
-                    if update_metrics:
-                        tg.start_soon(_metrics_collector)
+                    tg.start_soon(_upstream_collector)
 
                 # If we get here, everything completed normally
                 print_diagnostics("MP Main", "Task group exited normally")

@@ -19,8 +19,8 @@ from .._transcript.types import TranscriptInfo
 from .common import ParseJob, ScanMetrics, ScannerJob
 
 ResultItem: TypeAlias = tuple[TranscriptInfo, str, list[ResultReport]]
-ResultQueueItem: TypeAlias = ResultItem | Exception | None
-MetricsQueueItem: TypeAlias = tuple[int, ScanMetrics] | None
+MetricsItem: TypeAlias = tuple[int, ScanMetrics]
+UpstreamQueueItem: TypeAlias = ResultItem | Exception | MetricsItem | None
 
 
 @dataclass
@@ -31,6 +31,9 @@ class IPCContext:
     For consistency, it should contain ALL data used by subprocesses that is invariant
     across subprocesses. The `executor.submit` should only pass subprocess specific
     arguments.
+
+    The upstream_queue is a multiplexed channel carrying both results and metrics
+    from workers to the main process.
     """
 
     parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]]
@@ -40,8 +43,7 @@ class IPCContext:
     diagnostics: bool
     overall_start_time: float
     parse_job_queue: MPQueue[ParseJob | None]
-    result_queue: MPQueue[ResultQueueItem]
-    metrics_queue: MPQueue[MetricsQueueItem]
+    upstream_queue: MPQueue[UpstreamQueueItem]
     shutdown_condition: MPCondition
 
 

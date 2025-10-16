@@ -1,8 +1,9 @@
 """Worker subprocess entry point for multiprocessing scanner execution.
 
 This module contains the code that runs in forked worker processes. The main
-process spawns these workers via ProcessPoolExecutor, and they inherit shared
-state from _mp_context through fork.
+process spawns these workers, and they inherit shared state from _mp_common
+through fork. Workers send both results and metrics back to the main process
+via a single multiplexed upstream queue.
 """
 
 from __future__ import annotations
@@ -102,14 +103,14 @@ def subprocess_main(
             overall_start_time=ctx.overall_start_time,
         )
 
-        # Define callback to send results back to main process via queue
+        # Define callbacks to send results and metrics back to main process via upstream queue
         async def _record_to_queue(
             transcript: TranscriptInfo, scanner: str, results: list[ResultReport]
         ) -> None:
-            ctx.result_queue.put((transcript, scanner, results))
+            ctx.upstream_queue.put((transcript, scanner, results))
 
         def _update_worker_metrics(metrics: ScanMetrics) -> None:
-            ctx.metrics_queue.put((worker_id, metrics))
+            ctx.upstream_queue.put((worker_id, metrics))
 
         # Run everything in a task group with shutdown monitor
         shutdown_monitor_scope: anyio.CancelScope | None = None
@@ -130,7 +131,7 @@ def subprocess_main(
 
                 tg.start_soon(_monitor_wrapper)
 
-                # Run actual work
+                # Run actual work - sends results and metrics via upstream queue
                 async def _work_task() -> None:
                     try:
                         await strategy(
@@ -143,15 +144,15 @@ def subprocess_main(
                         print_diagnostics("Worker main", "All tasks completed normally")
                     except Exception as ex:
                         print_diagnostics("Worker main", f"Work task error: {ex}")
-                        # Send exception back to main process
-                        ctx.result_queue.put(ex)
+                        # Send exception back to main process via upstream queue
+                        ctx.upstream_queue.put(ex)
                         raise
                     finally:
                         # CRITICAL: Cancel the shutdown monitor to prevent hang.
                         # The monitor blocks indefinitely on condition.wait(), so
                         # if we don't cancel it when work completes, the task group
-                        # will never exit and sentinels will never be sent, causing
-                        # collectors to wait forever.
+                        # will never exit and the sentinel will never be sent, causing
+                        # the collector to wait forever.
                         if shutdown_monitor_scope:
                             print_diagnostics(
                                 "Worker main", "Cancelling shutdown monitor"
@@ -171,15 +172,14 @@ def subprocess_main(
             raise
 
         else:
-            # Clean completion - send sentinels
+            # Clean completion - send completion sentinel
             # The else clause runs only if NO exception was raised in the try block.
-            # We use else: instead of putting these at the end of the try block because
-            # an exception in _work_task would prevent these from running, but the
+            # We use else: instead of putting this at the end of the try block because
+            # an exception in _work_task would prevent this from running, but the
             # except blocks above would catch and handle it, making control flow unclear.
-            # With else:, it's explicit: sentinels are sent ONLY on clean completion.
-            print_diagnostics("Worker main", "Sending completion sentinels")
-            ctx.result_queue.put(None)
-            ctx.metrics_queue.put(None)
+            # With else:, it's explicit: sentinel is sent ONLY on clean completion.
+            print_diagnostics("Worker main", "Sending completion sentinel")
+            ctx.upstream_queue.put(None)
 
         print_diagnostics("Worker main", "exiting")
 

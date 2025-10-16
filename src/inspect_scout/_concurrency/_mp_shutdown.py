@@ -18,13 +18,13 @@ async def shutdown_subprocesses(
     """Unified shutdown sequence for both clean exit and Ctrl-C.
 
     This function is idempotent and can be called multiple times safely. Performs
-    phased shutdown: signal → wait → terminate → kill → inject sentinels → drain → close.
+    phased shutdown: signal → wait → terminate → kill → inject sentinel → drain → close.
 
     Args:
         processes: List of worker processes
         ctx: IPC context with queues and shutdown condition
         print_diagnostics: Function to print diagnostic messages
-        shutdown_sentinel: Sentinel value to inject into queues to wake collectors
+        shutdown_sentinel: Sentinel value to inject into upstream queue to wake collector
     """
     # PHASE 1: Signal workers to stop (non-blocking)
     print_diagnostics("SubprocessShutdown", "Phase 1: Signaling workers")
@@ -81,25 +81,17 @@ async def shutdown_subprocesses(
             "Phase 4: Force Killing workers. Skipping - no living workers",
         )
 
-    # PHASE 5: Inject shutdown sentinels to wake collectors
-    print_diagnostics("SubprocessShutdown", "Phase 5: Injecting shutdown sentinels")
+    # PHASE 5: Inject shutdown sentinel to wake collector
+    print_diagnostics("SubprocessShutdown", "Phase 5: Injecting shutdown sentinel")
     try:
         # Cast sentinel to queue's type - at runtime it's just an object identity check
-        ctx.result_queue.put(cast(_mp_common.ResultQueueItem, shutdown_sentinel))
-        print_diagnostics("SubprocessShutdown", "Injected result queue sentinel")
+        ctx.upstream_queue.put(cast(_mp_common.UpstreamQueueItem, shutdown_sentinel))
+        print_diagnostics("SubprocessShutdown", "Injected upstream queue sentinel")
     except (ValueError, OSError) as e:
-        # Queue already closed - collectors likely already exited via cancellation
-        print_diagnostics("SubprocessShutdown", f"Result queue closed: {e}")
+        # Queue already closed - collector likely already exited via cancellation
+        print_diagnostics("SubprocessShutdown", f"Upstream queue closed: {e}")
 
-    try:
-        # Cast sentinel to queue's type - at runtime it's just an object identity check
-        ctx.metrics_queue.put(cast(_mp_common.MetricsQueueItem, shutdown_sentinel))
-        print_diagnostics("SubprocessShutdown", "Injected metrics queue sentinel")
-    except (ValueError, OSError) as e:
-        # Queue already closed - collectors likely already exited via cancellation
-        print_diagnostics("SubprocessShutdown", f"Metrics queue closed: {e}")
-
-    # PHASE 6: Drain queues (collectors should have exited by now)
+    # PHASE 6: Drain queues (collector should have exited by now)
     print_diagnostics("SubprocessShutdown", "Phase 6: Draining queues")
 
     def drain_queue(queue: MPQueue[Any], name: str) -> int:
@@ -121,12 +113,11 @@ async def shutdown_subprocesses(
         return count
 
     parse_count = drain_queue(ctx.parse_job_queue, "parse_job_queue")
-    result_count = drain_queue(ctx.result_queue, "result_queue")
-    metrics_count = drain_queue(ctx.metrics_queue, "metrics_queue")
+    upstream_count = drain_queue(ctx.upstream_queue, "upstream_queue")
 
     print_diagnostics(
         "SubprocessShutdown",
-        f"Drained: parse={parse_count}, result={result_count}, metrics={metrics_count}",
+        f"Drained: parse={parse_count}, upstream={upstream_count}",
     )
 
     # PHASE 7: Close queues (sends sentinel to feeder threads)
@@ -134,8 +125,7 @@ async def shutdown_subprocesses(
 
     queues_to_close: list[tuple[MPQueue[Any], str]] = [
         (ctx.parse_job_queue, "parse_job_queue"),
-        (ctx.result_queue, "result_queue"),
-        (ctx.metrics_queue, "metrics_queue"),
+        (ctx.upstream_queue, "upstream_queue"),
     ]
     for queue, name in queues_to_close:
         try:
@@ -155,8 +145,7 @@ async def shutdown_subprocesses(
 
     queues_to_cancel: list[tuple[MPQueue[Any], str]] = [
         (ctx.parse_job_queue, "parse_job_queue"),
-        (ctx.result_queue, "result_queue"),
-        (ctx.metrics_queue, "metrics_queue"),
+        (ctx.upstream_queue, "upstream_queue"),
     ]
     for queue, name in queues_to_cancel:
         try:

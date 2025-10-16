@@ -180,6 +180,17 @@ def multi_process_strategy(
                             if update_metrics:
                                 update_metrics(sum_metrics(all_metrics.values()))
 
+                        # Semaphore request: ("semaphore_request", name, concurrency, visible)
+                        case ("semaphore_request", name, concurrency, _):
+                            # Create semaphore in a thread to avoid blocking event loop
+                            await run_sync_on_thread(
+                                lambda: semaphore_provider.create_semaphore(name, concurrency)
+                            )
+                            print_diagnostics(
+                                "MP Collector",
+                                f"Created semaphore '{name}' with concurrency={concurrency}",
+                            )
+
                         # Shutdown signal from ourself - exit collector immediately
                         case _ if item is _SHUTDOWN_SENTINEL:
                             print_diagnostics(
@@ -231,11 +242,6 @@ def multi_process_strategy(
                 async with create_task_group() as tg:
                     tg.start_soon(_producer)
                     tg.start_soon(_upstream_collector)
-                    tg.start_soon(
-                        semaphore_provider.run_provider_task,
-                        diagnostics,
-                        print_diagnostics,
-                    )
 
                 # If we get here, everything completed normally
                 print_diagnostics("MP Main", "Task group exited normally")

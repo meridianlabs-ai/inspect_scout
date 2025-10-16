@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from multiprocessing.queues import Queue as MPQueue
 from multiprocessing.synchronize import Condition as MPCondition
-from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Awaitable, Callable, Literal, TypeAlias, TypeVar, cast
 
 import anyio
 
@@ -23,7 +23,8 @@ if TYPE_CHECKING:
 
 ResultItem: TypeAlias = tuple[TranscriptInfo, str, list[ResultReport]]
 MetricsItem: TypeAlias = tuple[int, ScanMetrics]
-UpstreamQueueItem: TypeAlias = ResultItem | Exception | MetricsItem | None
+SemaphoreRequest: TypeAlias = tuple[Literal["semaphore_request"], str, int, bool]
+UpstreamQueueItem: TypeAlias = ResultItem | Exception | MetricsItem | SemaphoreRequest | None
 
 
 @dataclass

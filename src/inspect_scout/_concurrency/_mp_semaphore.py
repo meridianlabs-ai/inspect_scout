@@ -4,7 +4,7 @@ from multiprocessing.managers import DictProxy, SyncManager
 from multiprocessing.synchronize import Semaphore as MPSemaphore
 from threading import Condition as ThreadingCondition
 from types import TracebackType
-from typing import Any, Callable
+from typing import Any
 
 import anyio
 from inspect_ai.util._concurrency import ConcurrencySemaphore
@@ -15,79 +15,32 @@ from . import _mp_common
 class SemaphoreProvider:
     """Manages cross-process semaphore creation and distribution.
 
-    Encapsulates both the parent-side provider task (which creates semaphores)
-    and the child-side factory logic (which requests and retrieves them).
-    Uses a Condition variable for efficient notification instead of polling.
+    The parent process calls create_semaphore() when it receives requests
+    from the upstream queue. Child processes call get_or_create_semaphore()
+    which sends requests via the upstream queue and waits on a Condition
+    variable for efficient notification (no polling).
     """
 
     def __init__(self, manager: SyncManager) -> None:
         self.registry: DictProxy[str, MPSemaphore] = manager.dict()
-        self.request_queue: multiprocessing.Queue[tuple[str, int, bool] | None] = (
-            multiprocessing.Queue()
-        )
         self.condition: ThreadingCondition = manager.Condition()
 
-    async def run_provider_task(
-        self,
-        diagnostics: bool,
-        print_diagnostics: Callable[[str, object], None],
-    ) -> None:
-        """Parent-side: Run the semaphore creation task.
+    def create_semaphore(self, name: str, concurrency: int) -> None:
+        """Parent-side: Create a semaphore and notify waiters (synchronous).
 
-        Should be started as an async task in the main process.
-        Listens for requests and creates semaphores on demand.
+        Called by the upstream collector when it receives a semaphore request.
+        Must be called from a thread context (via run_sync_on_thread) since it
+        acquires the condition lock.
 
         Args:
-            diagnostics: Whether diagnostics are enabled
-            print_diagnostics: Function to print diagnostic messages
+            name: Semaphore name
+            concurrency: Maximum concurrent holders
         """
-        while True:
-            request = await _mp_common.run_sync_on_thread(self.request_queue.get)
-
-            if request is None:  # Shutdown sentinel
-                if diagnostics:
-                    print_diagnostics("MP Semaphore Provider", "Shutting down")
-                break
-
-            name, concurrency, visible = request
-
-            # Create semaphore under lock and notify waiters
-            def create_fn(
-                n: str = name, c: int = concurrency, v: bool = visible
-            ) -> None:
-                self._create_and_notify(n, c, v, diagnostics, print_diagnostics)
-
-            await _mp_common.run_sync_on_thread(create_fn)
-
-    def _create_and_notify(
-        self,
-        name: str,
-        concurrency: int,
-        visible: bool,
-        diagnostics: bool,
-        print_diagnostics: Callable[[str, object], None],
-    ) -> None:
-        """Internal: Create semaphore and notify waiters (synchronous)."""
         with self.condition:
             if name not in self.registry:
                 sem = multiprocessing.Semaphore(concurrency)
                 self.registry[name] = sem
-                if diagnostics:
-                    print_diagnostics(
-                        "MP Semaphore Provider",
-                        f"Created semaphore '{name}' with concurrency={concurrency}",
-                    )
-            else:
-                if diagnostics:
-                    print_diagnostics(
-                        "MP Semaphore Provider",
-                        f"Semaphore '{name}' already exists, reusing",
-                    )
             self.condition.notify_all()
-
-    def shutdown(self) -> None:
-        """Signal provider task to shutdown."""
-        self.request_queue.put(None)
 
     async def get_or_create_semaphore(
         self, name: str, concurrency: int, visible: bool
@@ -100,7 +53,7 @@ class SemaphoreProvider:
         Args:
             name: Semaphore name
             concurrency: Maximum concurrent holders
-            visible: Whether visible in status display
+            visible: Whether visible in status display (not used currently)
 
         Returns:
             The multiprocessing.Semaphore instance
@@ -110,8 +63,11 @@ class SemaphoreProvider:
             """Synchronous function to run in thread."""
             with self.condition:
                 if name not in self.registry:
-                    # Request creation (outside the condition wait)
-                    self.request_queue.put((name, concurrency, visible))
+                    # Request creation via upstream queue
+                    ctx = _mp_common.ipc_context
+                    ctx.upstream_queue.put(
+                        ("semaphore_request", name, concurrency, visible)
+                    )
 
                 # Wait for parent to create it
                 while name not in self.registry:

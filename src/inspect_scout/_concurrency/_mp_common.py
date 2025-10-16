@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from multiprocessing.queues import Queue as MPQueue
+from multiprocessing.synchronize import Condition as MPCondition
 from typing import Awaitable, Callable, TypeAlias, TypeVar, cast
 
 import anyio
@@ -41,6 +42,7 @@ class IPCContext:
     parse_job_queue: MPQueue[ParseJob | None]
     result_queue: MPQueue[ResultQueueItem]
     metrics_queue: MPQueue[MetricsQueueItem]
+    shutdown_condition: MPCondition
 
 
 # Global IPC context shared between main process and forked subprocesses.
@@ -69,4 +71,4 @@ async def run_sync_on_thread(func: Callable[[], T]) -> T:
     Returns:
         The return value of func, with proper type information preserved
     """
-    return await anyio.to_thread.run_sync(func, abandon_on_cancel=True)
+    return await anyio.to_thread.run_sync(func, cancellable=True)

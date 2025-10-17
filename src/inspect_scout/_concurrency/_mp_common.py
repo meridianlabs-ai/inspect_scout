@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from multiprocessing.queues import Queue as MPQueue
 from multiprocessing.synchronize import Condition as MPCondition
-from typing import TYPE_CHECKING, Awaitable, Callable, Literal, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
 
 import anyio
 
@@ -21,10 +21,55 @@ from .common import ParseJob, ScanMetrics, ScannerJob
 if TYPE_CHECKING:
     from ._mp_semaphore import SemaphoreProvider
 
-ResultItem: TypeAlias = tuple[TranscriptInfo, str, list[ResultReport]]
-MetricsItem: TypeAlias = tuple[int, ScanMetrics]
-SemaphoreRequest: TypeAlias = tuple[Literal["semaphore_request"], str, int, bool]
-UpstreamQueueItem: TypeAlias = ResultItem | Exception | MetricsItem | SemaphoreRequest | None
+
+@dataclass(frozen=True)
+class ResultItem:
+    """Scan results from a worker process."""
+
+    transcript_info: TranscriptInfo
+    scanner_name: str
+    results: list[ResultReport]
+
+
+@dataclass(frozen=True)
+class MetricsItem:
+    """Metrics update from a worker process."""
+
+    worker_id: int
+    metrics: ScanMetrics
+
+
+@dataclass(frozen=True)
+class SemaphoreRequest:
+    """Request to create a cross-process semaphore."""
+
+    name: str
+    concurrency: int
+    visible: bool
+
+
+@dataclass(frozen=True)
+class WorkerComplete:
+    """Sentinel indicating a worker has finished all work."""
+
+    pass
+
+
+@dataclass(frozen=True)
+class ShutdownSentinel:
+    """Emergency shutdown signal injected by parent during forced termination."""
+
+    pass
+
+
+UpstreamQueueItem: TypeAlias = (
+    ResultItem
+    | MetricsItem
+    | SemaphoreRequest
+    | WorkerComplete
+    | ShutdownSentinel
+    | Exception
+)
 
 
 @dataclass
@@ -56,11 +101,6 @@ class IPCContext:
 # Initialized by multi_process strategy, inherited by workers via fork.
 # Type is non-None but runtime starts as None (cast) to avoid | None everywhere.
 ipc_context = cast(IPCContext, None)
-
-
-def parse_job_info(job: "ParseJob") -> str:
-    """Format ParseJob info for diagnostic messages."""
-    return f"{job.transcript_info.id, job.scanner_indices}"
 
 
 T = TypeVar("T")

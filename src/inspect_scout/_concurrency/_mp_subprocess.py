@@ -107,10 +107,10 @@ def subprocess_main(
         async def _record_to_queue(
             transcript: TranscriptInfo, scanner: str, results: list[ResultReport]
         ) -> None:
-            ctx.upstream_queue.put((transcript, scanner, results))
+            ctx.upstream_queue.put(_mp_common.ResultItem(transcript, scanner, results))
 
         def _update_worker_metrics(metrics: ScanMetrics) -> None:
-            ctx.upstream_queue.put((worker_id, metrics))
+            ctx.upstream_queue.put(_mp_common.MetricsItem(worker_id, metrics))
 
         # Run everything in a task group with shutdown monitor
         shutdown_monitor_scope: anyio.CancelScope | None = None
@@ -179,7 +179,7 @@ def subprocess_main(
             # except blocks above would catch and handle it, making control flow unclear.
             # With else:, it's explicit: sentinel is sent ONLY on clean completion.
             print_diagnostics("Worker main", "Sending completion sentinel")
-            ctx.upstream_queue.put(None)
+            ctx.upstream_queue.put(_mp_common.WorkerComplete())
 
         print_diagnostics("Worker main", "exiting")
 

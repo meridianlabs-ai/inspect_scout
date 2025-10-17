@@ -1,7 +1,5 @@
-import multiprocessing
 from contextlib import AbstractAsyncContextManager
-from multiprocessing.managers import DictProxy, SyncManager
-from multiprocessing.synchronize import Semaphore as MPSemaphore
+from multiprocessing.managers import DictProxy, SyncManager, ValueProxy
 from threading import Condition as ThreadingCondition
 from types import TracebackType
 from typing import Any
@@ -10,6 +8,44 @@ import anyio
 from inspect_ai.util._concurrency import ConcurrencySemaphore
 
 from . import _mp_common
+
+
+class ManagerSemaphore:
+    """Cross-process semaphore using Manager primitives.
+
+    Unlike multiprocessing.Semaphore, this can be stored in a DictProxy
+    because it's built from Manager proxy objects that can be pickled.
+    This enables lazy/dynamic semaphore creation after process forking.
+
+    Uses a Condition variable for efficient blocking (no polling).
+    """
+
+    def __init__(self, manager: SyncManager, value: int) -> None:
+        """Initialize semaphore with given capacity.
+
+        Args:
+            manager: SyncManager instance to create proxy objects
+            value: Initial semaphore value (max concurrent holders)
+        """
+        self._value: ValueProxy[int] = manager.Value("i", value)
+        self._condition: ThreadingCondition = manager.Condition()
+
+    def acquire(self) -> None:
+        """Acquire the semaphore, blocking until available."""
+        with self._condition:
+            while self._value.value <= 0:
+                self._condition.wait()
+            self._value.value -= 1
+
+    def release(self) -> None:
+        """Release the semaphore, waking one waiting acquirer."""
+        with self._condition:
+            self._value.value += 1
+            self._condition.notify()
+
+    def get_value(self) -> int:
+        """Get current semaphore value (available slots)."""
+        return self._value.value
 
 
 class SemaphoreProvider:
@@ -22,15 +58,15 @@ class SemaphoreProvider:
     """
 
     def __init__(self, manager: SyncManager) -> None:
-        self.registry: DictProxy[str, MPSemaphore] = manager.dict()
+        self.manager = manager
+        self.registry: DictProxy[str, ManagerSemaphore] = manager.dict()
         self.condition: ThreadingCondition = manager.Condition()
 
-    def create_semaphore(self, name: str, concurrency: int) -> None:
-        """Parent-side: Create a semaphore and notify waiters (synchronous).
+    def _create_semaphore_sync(self, name: str, concurrency: int) -> None:
+        """Internal: Create a semaphore and notify waiters (synchronous).
 
-        Called by the upstream collector when it receives a semaphore request.
-        Must be called from a thread context (via run_sync_on_thread) since it
-        acquires the condition lock.
+        This is the synchronous implementation that runs in a thread.
+        Callers should use the async create_semaphore() method instead.
 
         Args:
             name: Semaphore name
@@ -38,13 +74,28 @@ class SemaphoreProvider:
         """
         with self.condition:
             if name not in self.registry:
-                sem = multiprocessing.Semaphore(concurrency)
+                sem = ManagerSemaphore(self.manager, concurrency)
                 self.registry[name] = sem
             self.condition.notify_all()
 
+    async def create_semaphore(self, name: str, concurrency: int) -> None:
+        """Parent-side: Create a semaphore and notify waiters (async).
+
+        Called by the upstream collector when it receives a semaphore request.
+        Runs the synchronous creation logic in a thread to avoid blocking the
+        event loop.
+
+        Args:
+            name: Semaphore name
+            concurrency: Maximum concurrent holders
+        """
+        await _mp_common.run_sync_on_thread(
+            lambda: self._create_semaphore_sync(name, concurrency)
+        )
+
     async def get_or_create_semaphore(
         self, name: str, concurrency: int, visible: bool
-    ) -> MPSemaphore:
+    ) -> ManagerSemaphore:
         """Child-side: Get semaphore from registry, requesting creation if needed.
 
         Called by worker processes. Blocks until semaphore is available.
@@ -56,17 +107,17 @@ class SemaphoreProvider:
             visible: Whether visible in status display (not used currently)
 
         Returns:
-            The multiprocessing.Semaphore instance
+            The ManagerSemaphore instance
         """
 
-        def wait_for_semaphore() -> MPSemaphore:
+        def wait_for_semaphore() -> ManagerSemaphore:
             """Synchronous function to run in thread."""
             with self.condition:
                 if name not in self.registry:
                     # Request creation via upstream queue
                     ctx = _mp_common.ipc_context
                     ctx.upstream_queue.put(
-                        ("semaphore_request", name, concurrency, visible)
+                        _mp_common.SemaphoreRequest(name, concurrency, visible)
                     )
 
                 # Wait for parent to create it
@@ -80,13 +131,13 @@ class SemaphoreProvider:
 
 
 class _AsyncSemaphoreWrapper(AbstractAsyncContextManager[None]):
-    """Async context manager wrapper for multiprocessing.Semaphore.
+    """Async context manager wrapper for ManagerSemaphore.
 
-    Since multiprocessing.Semaphore is synchronous, we run its acquire/release
+    Since ManagerSemaphore is synchronous, we run its acquire/release
     operations in a thread to avoid blocking the async event loop.
     """
 
-    def __init__(self, sem: MPSemaphore) -> None:
+    def __init__(self, sem: ManagerSemaphore) -> None:
         self._sem = sem
 
     async def __aenter__(self) -> None:
@@ -108,7 +159,7 @@ async def mp_semaphore_factory(
 
     Delegates to the SemaphoreProvider in the IPC context to get or create
     the semaphore. The provider ensures all processes share the same
-    multiprocessing.Semaphore instance for a given name.
+    ManagerSemaphore instance for a given name.
 
     Args:
         name: Semaphore name

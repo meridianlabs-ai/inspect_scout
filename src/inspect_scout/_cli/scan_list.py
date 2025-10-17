@@ -9,9 +9,10 @@ from typing_extensions import Unpack
 from .._display import display
 from .._scanlist import scan_list
 from .common import CommonOptions, common_options, process_common_options
+from .scan import scan_command
 
 
-@click.command("list")
+@scan_command.command("list")
 @click.argument("scans_dir", default=os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
 @common_options
 def scan_list_command(

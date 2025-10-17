@@ -25,10 +25,22 @@ def make_command_docs(
 ) -> Iterator[str]:
     """Create the Markdown lines for a command and its sub-commands."""
     command = command.replace("-", "_")
-    module = "eval" if command.startswith("eval") else command
+    module = command
+
+    # Load the command
+    cmd = load_command(f"inspect_scout._cli.{module}", f"{command}_command")
+
+    # For commands with subcommands, we need to ensure the subcommands are imported
+    # This is necessary because subcommands may be registered in separate modules
+    if command == "scan":
+        # Import the subcommand modules to trigger their registration
+        importlib.import_module("inspect_scout._cli.scan_resume")
+        importlib.import_module("inspect_scout._cli.scan_complete")
+        importlib.import_module("inspect_scout._cli.scan_list")
+
     for line in _recursively_make_command_docs(
         f"scout {command}",
-        load_command(f"inspect_scout._cli.{module}", f"{command}_command"),
+        cmd,
         depth=depth,
         style=style,
         remove_ascii_art=remove_ascii_art,
@@ -102,7 +114,7 @@ def _get_sub_commands(command: click.Command, ctx: click.Context) -> list[click.
     if subcommands:
         return list(subcommands.values())
 
-    if not isinstance(command, click.MultiCommand):
+    if not isinstance(command, click.Group):
         return []
 
     subcommands = []
@@ -373,7 +385,7 @@ def load_command(module: str, attribute: str) -> click.BaseCommand:
     """
     command = _load_obj(module, attribute)
 
-    if not isinstance(command, click.BaseCommand):
+    if not isinstance(command, click.Command):
         raise RuntimeError(
             f"{attribute!r} must be a 'click.BaseCommand' object, got {type(command)}"
         )
@@ -391,3 +403,7 @@ def _load_obj(module: str, attribute: str) -> Any:
         return getattr(mod, attribute)
     except AttributeError:
         raise RuntimeError(f"Module {module!r} has no attribute {attribute!r}")
+    
+
+if __name__ == "__main__":
+    print("\n".join(list(make_command_docs("scan"))))

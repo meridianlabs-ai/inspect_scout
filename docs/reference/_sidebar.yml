@@ -16,3 +16,8 @@ website:
         contents:
         - text: scan_resume_async
           href: reference/inspect_scout.async.qmd#scan_resume_async
+    - section: Scout CLI
+      href: reference/scout_scan.qmd
+      contents:
+      - text: scout scan
+        href: reference/scout_scan.qmd

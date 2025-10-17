@@ -27,7 +27,12 @@ website:
         - reference/index.qmd
         - section: Python API
           href: reference/inspect_scout.qmd
-          contents: []                           
+          contents: []    
+        - section: Scout CLI
+          href: reference/scout_scan.qmd
+          contents:
+            - text: scout scan
+              href: reference/scout_scan.qmd                       
 """)
 contents_yaml = sidebar["website"]["sidebar"][0]["contents"][1]["contents"]
 

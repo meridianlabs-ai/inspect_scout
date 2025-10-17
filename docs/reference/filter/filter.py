@@ -59,7 +59,7 @@ def main() -> Any:
                 doc.content.append(pf.RawBlock(docs, "markdown"))
                
 
-    return pf.run_filters([python_api])
+    return pf.run_filters([python_api, click_cli])
 
 
 if __name__ == "__main__":

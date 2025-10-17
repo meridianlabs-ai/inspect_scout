@@ -1,21 +1,84 @@
 project:
-  type: website
+   type: website
+   resources: 
+      - llms.txt
+   pre-render: 
+      - reference/filter/sidebar.py
+   post-render:
+      - scripts/post-render.sh
+
+metadata-files:
+  - reference/_sidebar.yml
+
+filters:
+  - at: pre-quarto
+    path: reference/filter/interlink.lua
 
 website:
-  title: "Inspect Scout"
-  navbar:
-    left:
-      - href: index.qmd
-        text: Home
-      - about.qmd
+   title: "Inspect Scout"
+   bread-crumbs: true
+   page-navigation: true
+   repo-url: https://github.com/meridianlabs-ai/inspect_scout
+   site-url: https://meridianlabs-ai.github.io/inspect_scout
+   repo-actions: [issue]
+   twitter-card:
+      title: "Inspect Scout"
+      description: "Transcript analysis for Inspect AI"
+   open-graph: 
+      title: "Inspect Scout"
+      description: "Transcript analysis for Inspect AI"
+   navbar:
+      title: "Inspect Scout"
+      background: light
+      search: true
+      left:
+          - text: "Getting Started"
+            href: index.qmd
+          - text: "About"
+            href: about.qmd
+          - text: "Reference"
+            href: reference/index.qmd
+
+      right:
+          - icon: github
+            href: https://github.com/meridianlabs-ai/inspect_scout
+
+
+   sidebar:
+      - title: Main
+        style: docked
+        contents:
+           - text: Getting Started
+             contents:
+               - href: index.qmd
+                 text: Welcome
+           - text: About
+             href: about.qmd
+          
+   page-footer:
+      left:
+         - text: Meridian Labs
+           href: https://github.com/meridianlabs-ai/
+      center:
+         - text: Code
+           href: https://github.com/meridianlabs-ai/inspect_scout
+         - text: License
+           href: https://github.com/meridianlabs-ai/inspect_scout/blob/main/LICENSE
+         - text: Issues
+           href: https://github.com/meridianlabs-ai/inspect_scout/issues
+
+      right:
+         - icon: github
+           href: https://github.com/meridianlabs-ai/inspect_scout
+           aria-label: Inspect Scout on GitHub
 
 format:
-  html:
-    theme:
-      - cosmo
-      - brand
-    css: styles.css
-    toc: true
-
-
+   html:
+     theme: [cosmo, theme.scss]
+     toc: true
+     toc-depth: 3
+     code-overflow: wrap
+     code-annotations: select
+     fig-width: 8
+     fig-height: 4
 

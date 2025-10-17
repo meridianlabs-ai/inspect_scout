@@ -1,0 +1,18 @@
+website:
+  sidebar:
+  - title: Reference
+    style: docked
+    collapse-level: 2
+    contents:
+    - reference/index.qmd
+    - section: Python API
+      href: reference/inspect_scout.qmd
+      contents:
+      - section: inspect_scout
+        href: reference/inspect_scout.qmd
+        contents: []
+      - section: inspect_scout.async
+        href: reference/inspect_scout.async.qmd
+        contents:
+        - text: scan_resume_async
+          href: reference/inspect_scout.async.qmd#scan_resume_async

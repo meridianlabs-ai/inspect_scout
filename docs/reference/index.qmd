@@ -1,0 +1,11 @@
+---
+title: "Reference"
+tbl-colwidths: [25,75]
+page-layout: full
+toc-depth: 4
+---
+
+|  |  |
+|----|----|
+| [inspect_scout](inspect_scout.qmd) | Core API |
+| [inspect_scout.async](inspect_scout.async.qmd) | Async API |

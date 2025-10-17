@@ -180,6 +180,16 @@ def scan_resume(
 
 
 async def scan_resume_async(scan_dir: str, log_level: str | None = None) -> ScanStatus:
+    """Resume a previous scan.
+
+    Args:
+       scan_dir: Scan directory to resume from.
+       log_level: Level for logging to the console: "debug", "http", "sandbox",
+            "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+
+    Returns:
+       ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
+    """
     top_level_async_init(log_level)
 
     # resume job

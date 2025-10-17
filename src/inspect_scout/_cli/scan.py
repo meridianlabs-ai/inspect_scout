@@ -74,6 +74,7 @@ class ScanGroup(click.Group):
 
 
 @click.group(
+    name="scan",
     cls=ScanGroup,
     invoke_without_command=True,
     context_settings={"ignore_unknown_options": True, "allow_extra_args": True},

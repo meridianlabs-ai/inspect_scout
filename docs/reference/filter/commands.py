@@ -11,6 +11,7 @@ from contextlib import ExitStack, contextmanager
 from typing import Any, Iterator, cast
 
 import click
+from click._utils import UNSET
 from markdown.extensions.toc import slugify
 
 
@@ -313,8 +314,8 @@ def _format_table_option_row(option: click.Option) -> str:
     description = option.help if option.help is not None else "N/A"
 
     # -> `False`
-    none_default_msg = "_required" if option.required else "None"
-    default = f"`{option.default}`" if option.default is not None else none_default_msg
+    none_default_msg = "_required" if option.required else ""
+    default = f"`{option.default}`" if (option.default is not None and option.default != UNSET) else none_default_msg
 
     # -> "| `-V`, `--version` / `--show-version` | boolean | Show version info. | `False` |"
     return f"| {names} | {value_type} | {description} | {default} |"

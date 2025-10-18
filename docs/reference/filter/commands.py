@@ -26,21 +26,9 @@ def make_command_docs(
     """Create the Markdown lines for a command and its sub-commands."""
     command = command.replace("-", "_")
     module = command
-
-    # Load the command
-    cmd = load_command(f"inspect_scout._cli.{module}", f"{command}_command")
-
-    # For commands with subcommands, we need to ensure the subcommands are imported
-    # This is necessary because subcommands may be registered in separate modules
-    if command == "scan":
-        # Import the subcommand modules to trigger their registration
-        importlib.import_module("inspect_scout._cli.scan_resume")
-        importlib.import_module("inspect_scout._cli.scan_complete")
-        importlib.import_module("inspect_scout._cli.scan_list")
-
     for line in _recursively_make_command_docs(
         f"scout {command}",
-        cmd,
+        load_command(f"inspect_scout._cli.{module}", f"{command}_command"),
         depth=depth,
         style=style,
         remove_ascii_art=remove_ascii_art,

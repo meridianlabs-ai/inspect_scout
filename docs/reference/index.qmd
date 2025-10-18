@@ -5,7 +5,17 @@ page-layout: full
 toc-depth: 4
 ---
 
+#### Python API
+
 |  |  |
 |----|----|
 | [inspect_scout](inspect_scout.qmd) | Core API |
 | [inspect_scout.async](inspect_scout.async.qmd) | Async API |
+
+
+#### Scount CLI
+
+|  |  |
+|------------------------------------|------------------------------------|
+| [scout scan](scout_scan.qmd) | Scan transcripts and read results. |
+| [scout trace](scout_trace.qmd) | List and read execution traces.|

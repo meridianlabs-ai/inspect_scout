@@ -32,7 +32,9 @@ website:
           href: reference/scout_scan.qmd
           contents:
             - text: scout scan
-              href: reference/scout_scan.qmd                       
+              href: reference/scout_scan.qmd  
+            - text: scout trace 
+              href: reference/scout_trace.qmd                     
 """)
 contents_yaml = sidebar["website"]["sidebar"][0]["contents"][1]["contents"]
 

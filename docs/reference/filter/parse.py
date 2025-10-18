@@ -107,13 +107,13 @@ def parse_attribute_docs(attrib: Attribute, options: DocParseOptions) -> DocObje
 
 def parse_class_docs(clz: Class, options: DocParseOptions) -> DocObject:
     # if this is a protocol then amend the declaration w/ the __call__
-    is_protocol = clz.bases and str(clz.bases[0]) == "Protocol"
+    is_protocol = clz.bases and str(clz.bases[0]).startswith("Protocol")
     if is_protocol and "__call__" in clz.members:
         # read from call (substituting the protocol name)
         call = cast(Function, clz.members["__call__"])
         call_docs = parse_function_docs(call, options)
         call_docs.name = clz.name
-        call_docs.declaration = f"class {clz.name}(Protocol):\n{call_docs.declaration}"
+        call_docs.declaration = f"class {clz.name}({str(clz.bases[0])}):\n{call_docs.declaration}"
         return call_docs
     else:
         # read source

@@ -24,14 +24,10 @@ def main() -> Any:
 
     # python api -- convert h3 into reference
     def python_api(elem: pf.Element, doc: pf.Doc) -> Any:
-        if isinstance(elem, pf.Header) and (elem.level == 3 or "reference" in elem.attributes):
-            # resolve namespace -- if we are doing this based on a "reference" metadat
-            # element then we only resolve headers with a "reference" attribute.
+        if isinstance(elem, pf.Header) and elem.level == 3:
             title = pf.stringify(doc.metadata["title"])
             if not title.startswith("inspect_scout"):
                 title =  pf.stringify(doc.metadata["reference"])
-                if "reference" not in elem.attributes:
-                    return elem
                 
             if title.startswith("inspect_scout"):
 
@@ -48,6 +44,9 @@ def main() -> Any:
 
                 # render docs
                 return render_docs(elem, docs)
+            
+            else:
+                return elem
             
     # click cli
     def click_cli(elem: pf.Element, doc: pf.Doc) -> None:

@@ -12,7 +12,7 @@ from ._scan import (
 from ._scanjob import ScanJob, scanjob
 from ._scanlist import scan_list
 from ._scanner.loader import Loader, loader
-from ._scanner.result import Error, Result
+from ._scanner.result import ScanError, ScanResult
 from ._scanner.scanner import Scanner, scanner
 from ._scanresults import (
     scan_results,
@@ -68,9 +68,9 @@ __all__ = [
     "LogMetadata",
     "log_metadata",
     # scanner
-    "Error",
+    "ScanError",
     "Scanner",
-    "Result",
+    "ScanResult",
     "scanner",
     "Loader",
     "loader",

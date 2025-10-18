@@ -10,7 +10,7 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 from inspect_scout._scanner.loader import LOADER_CONFIG, loader
-from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.result import ScanResult
 from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -127,8 +127,8 @@ def test_scanner_with_custom_loader():
 
     @scanner(loader=loader_instance)
     def user_scanner() -> Scanner[ChatMessageUser]:
-        async def scan(message: ChatMessageUser) -> Result:
-            return Result(value={"user_content": message.text})
+        async def scan(message: ChatMessageUser) -> ScanResult:
+            return ScanResult(value={"user_content": message.text})
 
         return scan
 
@@ -157,8 +157,8 @@ def test_loader_type_transformation():
 
     @scanner(loader=loader_instance)
     def event_scanner() -> Scanner[Event]:
-        async def scan(event: Event) -> Result:
-            return Result(value={"event_type": event.event})
+        async def scan(event: Event) -> ScanResult:
+            return ScanResult(value={"event_type": event.event})
 
         return scan
 
@@ -192,8 +192,8 @@ def test_loader_with_custom_logic():
 
     @scanner(loader=loader_instance)
     def long_message_scanner() -> Scanner[ChatMessage]:
-        async def scan(message: ChatMessage) -> Result:
-            return Result(value={"length": len(message.text)})
+        async def scan(message: ChatMessage) -> ScanResult:
+            return ScanResult(value={"length": len(message.text)})
 
         return scan
 

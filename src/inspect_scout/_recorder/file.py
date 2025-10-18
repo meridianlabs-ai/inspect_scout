@@ -21,7 +21,7 @@ from .._recorder.buffer import (
     read_scan_summary,
     scanner_table,
 )
-from .._scanner.result import Error, ResultReport
+from .._scanner.result import ResultReport, ScanError
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .recorder import (
@@ -88,7 +88,7 @@ class FileRecorder(ScanRecorder):
         pass
 
     @override
-    async def errors(self) -> list[Error]:
+    async def errors(self) -> list[ScanError]:
         return self._scan_buffer.errors()
 
     @override
@@ -297,7 +297,7 @@ def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
         return ScanSpec.model_validate_json(f.read())
 
 
-def _read_scan_errors(scan_dir: UPath) -> list[Error]:
+def _read_scan_errors(scan_dir: UPath) -> list[ScanError]:
     scan_errors = scan_dir / SCAN_ERRORS
     return read_scan_errors(str(scan_errors))
 

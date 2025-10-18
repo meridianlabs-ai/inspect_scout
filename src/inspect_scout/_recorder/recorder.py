@@ -6,7 +6,7 @@ from typing import Sequence
 import duckdb
 import pandas as pd
 
-from .._scanner.result import Error, ResultReport
+from .._scanner.result import ResultReport, ScanError
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .summary import ScanSummary
@@ -18,7 +18,7 @@ class ScanStatus:
     spec: ScanSpec
     location: str
     summary: ScanSummary
-    errors: list[Error]
+    errors: list[ScanError]
 
 
 @dataclass
@@ -31,7 +31,7 @@ class ScanResults(ScanStatus):
         spec: ScanSpec,
         location: str,
         summary: ScanSummary,
-        errors: list[Error],
+        errors: list[ScanError],
         data: dict[str, pd.DataFrame],
     ) -> None:
         super().__init__(status, spec, location, summary, errors)
@@ -48,7 +48,7 @@ class ScanResultsDB(ScanStatus):
         spec: ScanSpec,
         location: str,
         summary: ScanSummary,
-        errors: list[Error],
+        errors: list[ScanError],
         conn: duckdb.DuckDBPyConnection,
     ) -> None:
         super().__init__(status, spec, location, summary, errors)
@@ -150,7 +150,7 @@ class ScanRecorder(abc.ABC):
     async def flush(self) -> None: ...
 
     @abc.abstractmethod
-    async def errors(self) -> list[Error]: ...
+    async def errors(self) -> list[ScanError]: ...
 
     @abc.abstractmethod
     async def summary(self) -> ScanSummary: ...

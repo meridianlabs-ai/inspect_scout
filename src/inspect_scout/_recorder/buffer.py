@@ -15,7 +15,7 @@ from upath import UPath
 
 from inspect_scout._recorder.summary import ScanSummary
 
-from .._scanner.result import Error, ResultReport
+from .._scanner.result import ResultReport, ScanError
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
@@ -135,7 +135,7 @@ class RecorderBuffer:
         else:
             return False
 
-    def errors(self) -> list[Error]:
+    def errors(self) -> list[ScanError]:
         return read_scan_errors(str(self._error_file))
 
     def errors_bytes(self) -> bytes:
@@ -336,13 +336,13 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     return pa.Table.from_pylist(norm)
 
 
-def read_scan_errors(error_file: str) -> list[Error]:
+def read_scan_errors(error_file: str) -> list[ScanError]:
     try:
         with open(error_file, "r") as f:
-            errors: list[Error] = []
+            errors: list[ScanError] = []
             reader = jsonlines.Reader(f)
             for error in reader.iter(type=dict):
-                errors.append(Error(**error))
+                errors.append(ScanError(**error))
             return errors
     except FileNotFoundError:
         return []

@@ -16,11 +16,11 @@ class Reference(BaseModel):
     """Reference id (message or event id)"""
 
 
-class Result(BaseModel):
-    """Scanner result."""
+class ScanResult(BaseModel):
+    """Scan result."""
 
     value: JsonValue
-    """Scanner value."""
+    """Scan value (can be `None` if the scan didn't find what is was looking for)."""
 
     answer: str | None = Field(default=None)
     """Answer extracted from model output (optional)"""
@@ -29,17 +29,26 @@ class Result(BaseModel):
     """Explanation of result (optional)."""
 
     metadata: dict[str, Any] | None = Field(default=None)
-    """Additional metadata related to the result"""
+    """Additional metadata related to the result (optional)"""
 
     references: list[Reference] = Field(default_factory=list)
     """References to relevant messages or events."""
 
 
-class Error(BaseModel):
+class ScanError(BaseModel):
+    """Scan error (runtime error which occurred during scan)."""
+
     transcript_id: str
+    """Target transcript id."""
+
     scanner: str
+    """Scanner name."""
+
     error: str
+    """Error message."""
+
     traceback: str
+    """Error traceback."""
 
 
 class ResultReport(BaseModel):
@@ -49,9 +58,9 @@ class ResultReport(BaseModel):
 
     input_id: str
 
-    result: Result | None
+    result: ScanResult | None
 
-    error: Error | None
+    error: ScanError | None
 
     events: Sequence[Event]
 

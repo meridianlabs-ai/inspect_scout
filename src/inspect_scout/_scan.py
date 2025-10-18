@@ -41,7 +41,7 @@ from ._recorder.factory import (
 from ._recorder.recorder import ScanRecorder, ScanStatus
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob
-from ._scanner.result import Error, Result, ResultReport
+from ._scanner.result import ResultReport, ScanError, ScanResult
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
 from ._scanspec import ScanOptions, ScanSpec
@@ -354,8 +354,8 @@ async def _scan_async_inner(
                     transcript = Transcript()
                     init_transcript(transcript)
 
-                    result: Result | None = None
-                    error: Error | None = None
+                    result: ScanResult | None = None
+                    error: ScanError | None = None
 
                     try:
                         result = await job.scanner(
@@ -366,7 +366,7 @@ async def _scan_async_inner(
                         )
                     except Exception as ex:
                         logger.error(f"Error in '{job.scanner_name}': {ex}")
-                        error = Error(
+                        error = ScanError(
                             transcript_id=job.union_transcript.id,
                             scanner=job.scanner_name,
                             error=str(ex),

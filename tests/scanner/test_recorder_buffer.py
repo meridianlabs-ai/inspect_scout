@@ -4,7 +4,7 @@ import tempfile
 
 import pytest
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
-from inspect_scout._scanner.result import Reference, Result, ResultReport
+from inspect_scout._scanner.result import Reference, ResultReport, ScanResult
 from inspect_scout._scanspec import ScanScanner, ScanSpec, ScanTranscripts
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -51,7 +51,7 @@ def sample_results():
         ResultReport(
             input_type="transcript",
             input_id="",
-            result=Result(
+            result=ScanResult(
                 value="correct",
                 answer="42",
                 explanation="The answer to everything",
@@ -65,7 +65,7 @@ def sample_results():
         ResultReport(
             input_type="transcript",
             input_id="",
-            result=Result(
+            result=ScanResult(
                 value=True,
                 answer="yes",
                 explanation="Affirmative response",
@@ -79,7 +79,7 @@ def sample_results():
         ResultReport(
             input_type="transcript",
             input_id="",
-            result=Result(
+            result=ScanResult(
                 value=3.14159,
                 answer=None,
                 explanation="Pi value",

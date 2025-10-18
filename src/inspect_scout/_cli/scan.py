@@ -224,7 +224,7 @@ def scan_command(
     max_connections: int | None,
     **common: Unpack[CommonOptions],
 ) -> None:
-    """Scan transcripts."""
+    """Scan transcripts and read results."""
     # Process common options
     process_common_options(common)
 

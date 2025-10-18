@@ -12,7 +12,7 @@ from ._scan import (
 from ._scanjob import ScanJob, scanjob
 from ._scanlist import scan_list
 from ._scanner.loader import Loader, loader
-from ._scanner.result import ScanError, ScanResult, Reference
+from ._scanner.result import Reference, ScanError, ScanResult
 from ._scanner.scanner import Scanner, scanner
 from ._scanner.types import ScannerInput
 from ._scanresults import (

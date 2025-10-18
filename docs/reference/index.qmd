@@ -10,6 +10,7 @@ toc-depth: 4
 |  |  |
 |----|----|
 | [inspect_scout](inspect_scout.qmd) | Core API |
+| [Scanner](scanner.qmd) | Scanner API |
 | [inspect_scout.async](inspect_scout.async.qmd) | Async API |
 
 

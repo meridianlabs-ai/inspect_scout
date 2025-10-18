@@ -1,0 +1,6 @@
+---
+title: Scanner
+reference: "inspect_scout"
+---
+
+### Result {reference="Result"}

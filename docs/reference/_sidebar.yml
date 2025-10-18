@@ -11,6 +11,11 @@ website:
       - section: inspect_scout
         href: reference/inspect_scout.qmd
         contents: []
+      - section: scanner
+        href: reference/scanner.qmd
+        contents:
+        - text: Result
+          href: reference/scanner.qmd#result
       - section: inspect_scout.async
         href: reference/inspect_scout.async.qmd
         contents:

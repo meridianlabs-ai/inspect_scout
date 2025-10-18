@@ -9,11 +9,10 @@ if "reference/inspect_scout" not in input_files:
     exit(0)
 
 # register reference docs (this defines their sidebar order)
-reference_docs = ["reference/inspect_scout.qmd"] + [
-    f"reference/inspect_scout.{doc}"
-    for doc in [
-        "async.qmd",
-    ]
+reference_docs = [
+    "reference/inspect_scout.qmd",
+    "reference/scanner.qmd",
+    "reference/inspect_scout.async.qmd"
 ]
 
 # build sidebar yaml

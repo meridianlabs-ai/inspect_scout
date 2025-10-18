@@ -60,6 +60,8 @@ class Scanner(Protocol[ScannerInput]):
 
 # scanner result
 class ScannerResult(BaseModel):
+    """Result from scanning a transcript."""
+
     value: JsonValue
     """Scanner value."""
 

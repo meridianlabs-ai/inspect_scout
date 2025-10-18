@@ -38,11 +38,22 @@ P = ParamSpec("P")
 
 
 class Loader(Protocol[T]):
+    """Custom loader for transcript data."""
+
     def __call__(
         self,
         input: Transcript,
         /,
-    ) -> AsyncGenerator[T, None]: ...
+    ) -> AsyncGenerator[T, None]:
+        """Load transcript data.
+
+        Args:
+           input: Transcript to yield from.
+
+        Returns:
+           AsyncGenerator: Generator which returns transcript data.
+        """
+        ...
 
 
 @dataclass
@@ -59,6 +70,16 @@ def loader(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
 ) -> Callable[[LoaderFactory[P, T]], LoaderFactory[P, T]]:
+    """Decorator for registering laoders.
+
+    Args:
+       name: Loader name (defaults to function name).
+       messages: Message types to load from.
+       events: Event types to load from.
+
+    Returns:
+        Loader with registry info.
+    """
     messages = normalize_messages_filter(messages) if messages is not None else None
     events = normalize_events_filter(events) if events is not None else None
 

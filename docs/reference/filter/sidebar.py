@@ -12,7 +12,7 @@ if "reference/inspect_scout" not in input_files:
 reference_docs = [
     "reference/inspect_scout.qmd",
     "reference/scanner.qmd",
-    "reference/inspect_scout.async.qmd"
+    "reference/async.qmd"
 ]
 
 # build sidebar yaml

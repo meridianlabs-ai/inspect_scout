@@ -7,9 +7,6 @@ from inspect_ai.model._chat_message import ChatMessage
 
 from .._transcript.types import Transcript
 
-# Define the union of all valid scanner/loader input types
-# This constrains scanners and loaders to only accept/yield these types
-# Using Sequence instead of list for covariance and broader compatibility
 ScannerInput = Union[
     Transcript,
     ChatMessage,
@@ -17,6 +14,8 @@ ScannerInput = Union[
     Event,
     Sequence[Event],
 ]
+"""Union of all valid scanner input types."""
+
 
 # Additional TypeVars for specific overloads (maintaining existing behavior)
 # These are used in the overload signatures for type narrowing

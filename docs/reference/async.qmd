@@ -1,0 +1,6 @@
+---
+title: Async API
+reference: inspect_scout.async
+---
+
+### scan_resume_async

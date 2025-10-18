@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, JsonValue
 from .metadata import Condition
 
 MessageType = Literal["system", "user", "assistant", "tool"]
+"""Message types."""
+
 EventType = Literal[
     "model",
     "tool",
@@ -19,6 +21,7 @@ EventType = Literal[
     "span_begin",
     "span_end",
 ]
+"""Event types."""
 
 MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None

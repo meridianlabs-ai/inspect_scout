@@ -57,7 +57,18 @@ P = ParamSpec("P")
 
 
 class Scanner(Protocol[T]):
-    def __call__(self, input: T, /) -> Awaitable[ScanResult]: ...
+    """Scanner protocol."""
+
+    def __call__(self, input: T, /) -> Awaitable[ScanResult]:
+        """Scan transcript content.
+
+        Args:
+           input: Input to scan.
+
+        Returns:
+           ScanResult: Result of scan (value and related metadata).
+        """
+        ...
 
 
 @dataclass
@@ -172,6 +183,18 @@ def scanner(
     | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]
     | Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]
 ):
+    """Decorator for registering scanners.
+
+    Args:
+       factory: Decorated scanner function.
+       loader: Custom data loader for scanner.
+       messages: Message types to scan.
+       events: Event types to scan.
+       name: Scanner name (defaults to function name).
+
+    Returns:
+        Scanner with registry info.
+    """
     # Handle direct decoration without parentheses
     if factory is not None:
         # Called as @scanner (without parentheses)

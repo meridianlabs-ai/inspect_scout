@@ -14,13 +14,29 @@ website:
       - section: scanner
         href: reference/scanner.qmd
         contents:
-        - text: Result
-          href: reference/scanner.qmd#result
-      - section: inspect_scout.async
-        href: reference/inspect_scout.async.qmd
+        - text: Scanner
+          href: reference/scanner.qmd#scanner
+        - text: ScannerInput
+          href: reference/scanner.qmd#scannerinput
+        - text: ScanResult
+          href: reference/scanner.qmd#scanresult
+        - text: ScanError
+          href: reference/scanner.qmd#scanerror
+        - text: Loader
+          href: reference/scanner.qmd#loader
+        - text: scanner
+          href: reference/scanner.qmd#scanner
+        - text: loader
+          href: reference/scanner.qmd#loader
+        - text: MessageType
+          href: reference/scanner.qmd#messagetype
+        - text: EventType
+          href: reference/scanner.qmd#eventtype
+      - section: async
+        href: reference/async.qmd
         contents:
         - text: scan_resume_async
-          href: reference/inspect_scout.async.qmd#scan_resume_async
+          href: reference/async.qmd#scan_resume_async
     - section: Scout CLI
       href: reference/scout_scan.qmd
       contents:

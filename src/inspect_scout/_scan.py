@@ -175,6 +175,16 @@ def scan_resume(
     display: DisplayType | None = None,
     log_level: str | None = None,
 ) -> ScanStatus:
+    """Resume a previous scan.
+
+    Args:
+       scan_dir: Scan directory to resume from.
+       log_level: Level for logging to the console: "debug", "http", "sandbox",
+            "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+
+    Returns:
+       ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
+    """
     top_level_sync_init(display)
     return run_coroutine(scan_resume_async(scan_dir, log_level=log_level))
 
@@ -333,7 +343,7 @@ async def _scan_async_inner(
                 )
 
                 async def _parse_function(job: ParseJob) -> list[ScannerJob]:
-                    union_transcript = await transcripts.read(
+                    union_transcript = await transcripts._read(
                         job.transcript_info, union_content
                     )
                     return [

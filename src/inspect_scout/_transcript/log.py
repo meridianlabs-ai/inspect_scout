@@ -21,7 +21,7 @@ class LogMetadata(Metadata):
         filter = m.model == "gpt-4"
         filter = (m.task_name == "math") & (m.epochs > 1)
 
-        # Dynamic access to custom fields still works
+        # Dynamic access to custom fields
         filter = m["custom_field"] > 100
     """
 
@@ -146,5 +146,20 @@ class LogMetadata(Metadata):
         return Column("limit")
 
 
-# Singleton instance for the DSL
 log_metadata = LogMetadata()
+"""Log metadata selector for where expressions.
+
+Typically aliased to a more compact expression (e.g. `m`)
+for use in queries). For example:
+
+```python
+from inspect_scout import log_metadata as m
+
+# typed access to standard fields
+filter = m.model == "gpt-4"
+filter = (m.task_name == "math") & (m.epochs > 1)
+
+# dynamic access to custom fields
+filter = m["custom_field"] > 100
+```
+"""

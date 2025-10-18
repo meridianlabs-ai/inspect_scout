@@ -1,6 +1,6 @@
 #!/bin/bash
 
-files=("index" "about" "reference/inspect_scout" "reference/scanner" "reference/async") 
+files=("index" "about" "reference/scanning" "reference/transcript" "reference/scanner" "reference/async") 
 
 
 if [ "$QUARTO_PROJECT_RENDER_ALL" = "1" ]; then

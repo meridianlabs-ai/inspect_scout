@@ -61,15 +61,14 @@ __all__ = [
     # transcript
     "transcripts",
     "Transcripts",
-    "TranscriptContent",
+    "Transcript",
+    "TranscriptInfo",
     "Column",
     "Condition",
     "Metadata",
     "metadata",
     "LogMetadata",
     "log_metadata",
-    "Transcript",
-    "TranscriptInfo",
     # scanner
     "ScanError",
     "Scanner",

@@ -62,7 +62,7 @@ class LogicalOperator(Enum):
 
 
 class Condition:
-    """Represents a WHERE clause condition that can be combined with others."""
+    """WHERE clause condition that can be combined with others."""
 
     def __init__(
         self,
@@ -519,12 +519,17 @@ class Condition:
 
 
 class Column:
-    """Represents a database column with comparison operators."""
+    """Database column with comparison operators.
+
+    Supports various predicate functions including `like()`, `not_like()`, `between()`, etc.
+    Additionally supports standard python equality and comparison operators (e.g. `==`, '>`, etc.
+    """
 
     def __init__(self, name: str):
         self.name = name
 
     def __eq__(self, other: Any) -> Condition:  # type: ignore[override]
+        """Equal to."""
         return Condition(
             self.name,
             Operator.IS_NULL if other is None else Operator.EQ,
@@ -532,6 +537,7 @@ class Column:
         )
 
     def __ne__(self, other: Any) -> Condition:  # type: ignore[override]
+        """Not equal to."""
         return Condition(
             self.name,
             Operator.IS_NOT_NULL if other is None else Operator.NE,
@@ -643,5 +649,15 @@ class Metadata:
         return Column(name)
 
 
-# Singleton instance for the DSL
 metadata = Metadata()
+"""Metadata selector for where expressions.
+
+Typically aliased to a more compact expression (e.g. `m`)
+for use in queries). For example:
+
+```python
+from inspect_scout import metadata as m
+filter = m.model == "gpt-4"
+filter = (m.task_name == "math") & (m.epochs > 1)
+```
+"""

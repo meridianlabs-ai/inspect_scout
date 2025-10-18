@@ -6,11 +6,41 @@ website:
     contents:
     - reference/index.qmd
     - section: Python API
-      href: reference/inspect_scout.qmd
+      href: reference/scanning.qmd
       contents:
-      - section: inspect_scout
-        href: reference/inspect_scout.qmd
-        contents: []
+      - section: scanning
+        href: reference/scanning.qmd
+        contents:
+        - text: scan_resume
+          href: reference/scanning.qmd#scan_resume
+      - section: results
+        href: reference/results.qmd
+        contents:
+        - text: scan_list
+          href: reference/results.qmd#scan_list
+      - section: transcript
+        href: reference/transcript.qmd
+        contents:
+        - text: transcripts
+          href: reference/transcript.qmd#transcripts
+        - text: Transcripts
+          href: reference/transcript.qmd#transcripts
+        - text: TranscriptInfo
+          href: reference/transcript.qmd#transcriptinfo
+        - text: Transcript
+          href: reference/transcript.qmd#transcript
+        - text: Column
+          href: reference/transcript.qmd#column
+        - text: Condition
+          href: reference/transcript.qmd#condition
+        - text: Metadata
+          href: reference/transcript.qmd#metadata
+        - text: metadata
+          href: reference/transcript.qmd#metadata
+        - text: LogMetadata
+          href: reference/transcript.qmd#logmetadata
+        - text: log_metadata
+          href: reference/transcript.qmd#log_metadata
       - section: scanner
         href: reference/scanner.qmd
         contents:
@@ -20,6 +50,8 @@ website:
           href: reference/scanner.qmd#scannerinput
         - text: ScanResult
           href: reference/scanner.qmd#scanresult
+        - text: Reference
+          href: reference/scanner.qmd#reference
         - text: ScanError
           href: reference/scanner.qmd#scanerror
         - text: Loader
@@ -37,6 +69,8 @@ website:
         contents:
         - text: scan_resume_async
           href: reference/async.qmd#scan_resume_async
+        - text: scan_list_async
+          href: reference/async.qmd#scan_list_async
     - section: Scout CLI
       href: reference/scout_scan.qmd
       contents:

@@ -5,12 +5,14 @@ import yaml # type: ignore
 
 # only execute if a reference doc is in the inputs
 input_files = os.getenv("QUARTO_PROJECT_INPUT_FILES", "")
-if "reference/inspect_scout" not in input_files:
+if "reference/scanning.qmd" not in input_files:
     exit(0)
 
 # register reference docs (this defines their sidebar order)
 reference_docs = [
-    "reference/inspect_scout.qmd",
+    "reference/scanning.qmd",
+    "reference/results.qmd",
+    "reference/transcript.qmd",
     "reference/scanner.qmd",
     "reference/async.qmd"
 ]
@@ -25,7 +27,7 @@ website:
       contents:
         - reference/index.qmd
         - section: Python API
-          href: reference/inspect_scout.qmd
+          href: reference/scanning.qmd
           contents: []    
         - section: Scout CLI
           href: reference/scout_scan.qmd

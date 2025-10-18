@@ -4,3 +4,4 @@ reference: inspect_scout.async
 ---
 
 ### scan_resume_async
+### scan_list_async

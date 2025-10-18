@@ -93,7 +93,7 @@ class EvalLogTranscripts(Transcripts):
         return await self.db.query(self._where, self._limit, self._shuffle)
 
     @override
-    async def read(
+    async def _read(
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> Transcript:
         return await self.db.read(transcript, content)
@@ -369,6 +369,16 @@ def transcripts(logs: pd.DataFrame) -> Transcripts: ...
 
 
 def transcripts(logs: LogPaths | pd.DataFrame) -> Transcripts:
+    """Read sample transcripts from eval logs.
+
+    Logs can be specified by file or directory path(s) or alternatively an [evals_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df) or [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df)
+
+    Args:
+        logs: Log paths as file(s), directories, or data frame.
+
+    Returns:
+        Transcripts: Collection of transcripts for scanning.
+    """
     return EvalLogTranscripts(logs)
 
 

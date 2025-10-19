@@ -136,7 +136,7 @@ class ScanDisplayRich(
     def results(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
     ) -> None:
-        self._scan_summary.report(transcript, scanner, results)
+        self._scan_summary._report(transcript, scanner, results)
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:

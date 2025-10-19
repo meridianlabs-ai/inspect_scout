@@ -5,7 +5,10 @@ import uuid
 import pandas as pd
 import pytest
 import pytest_asyncio
-from inspect_scout._transcript.database import EvalLogTranscriptsDB, transcripts
+from inspect_scout._transcript.database import (
+    EvalLogTranscriptsDB,
+    transcripts_from_logs,
+)
 from inspect_scout._transcript.metadata import metadata as m
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -758,7 +761,7 @@ async def test_null_value_handling(db):
 async def test_transcripts_query_integration():
     """Test end-to-end query through transcripts API."""
     df = create_test_dataframe(15)
-    t = transcripts(df)
+    t = transcripts_from_logs(df)
 
     await t.db.connect()
 

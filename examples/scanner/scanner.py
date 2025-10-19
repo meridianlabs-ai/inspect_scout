@@ -10,7 +10,7 @@ from inspect_scout import (
     scan,
     scan_resume,
     scanner,
-    transcripts,
+    transcripts_from_logs,
 )
 from inspect_scout._scanjob import ScanJob, scanjob
 from inspect_scout._scanresults import scan_results_db
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                 target_word_scanner("perfect"),  # FAST NON-BLOCKING
                 llm_scanner(),  # SLOWISH - BLOCKING ON IO
             ],
-            transcripts=transcripts(LOGS),
+            transcripts=transcripts_from_logs(LOGS),
             limit=20,
             # max_transcripts=4,
             max_transcripts=50,

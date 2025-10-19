@@ -21,8 +21,8 @@ class Transcripts(abc.ABC):
     ```python
     from inspect_scout import transcripts, log_metadata as m
 
-    tr = transcripts("./logs")
-    tr = tr.where(m.task_name == "cybench")
+    transcripts = transcripts_from_logs("./logs")
+    transcripts = transcripts.where(m.task_name == "cybench")
     ```
     """
 

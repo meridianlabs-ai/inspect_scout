@@ -112,7 +112,7 @@ class RecorderBuffer:
         os.replace(tmp_path.as_posix(), final_path.as_posix())
 
         # update and write summary
-        self._scan_summary.report(transcript, scanner, results)
+        self._scan_summary._report(transcript, scanner, results)
         with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
             f.write(self._scan_summary.model_dump_json())
 

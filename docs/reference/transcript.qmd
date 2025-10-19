@@ -3,7 +3,7 @@ title: Transcript API
 reference: "inspect_scout"
 ---
 
-### transcripts
+### transcripts_from_logs
 ### Transcripts
 ### TranscriptInfo
 ### Transcript

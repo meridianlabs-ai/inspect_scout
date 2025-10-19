@@ -361,14 +361,14 @@ class EvalLogTranscriptsDB:
 
 
 @overload
-def transcripts(logs: LogPaths) -> Transcripts: ...
+def transcripts_from_logs(logs: LogPaths) -> Transcripts: ...
 
 
 @overload
-def transcripts(logs: pd.DataFrame) -> Transcripts: ...
+def transcripts_from_logs(logs: pd.DataFrame) -> Transcripts: ...
 
 
-def transcripts(logs: LogPaths | pd.DataFrame) -> Transcripts:
+def transcripts_from_logs(logs: LogPaths | pd.DataFrame) -> Transcripts:
     """Read sample transcripts from eval logs.
 
     Logs can be specified by file or directory path(s) or alternatively an [evals_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df) or [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df)

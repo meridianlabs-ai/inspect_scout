@@ -30,11 +30,11 @@ class ScanSummary(BaseModel):
 
     def __init__(self, scanners: list[str] | None = None, **data: Any):
         if scanners is not None and not data:
-            super().__init__(results={k: ScannerSummary() for k in scanners})
+            super().__init__(scanners={k: ScannerSummary() for k in scanners})
         else:
             super().__init__(**data)
 
-    def report(
+    def _report(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
     ) -> None:
         # aggregate over all results

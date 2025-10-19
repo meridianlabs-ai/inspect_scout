@@ -28,7 +28,7 @@ from ._scanspec import (
     ScanTranscripts,
     TranscriptField,
 )
-from ._transcript.database import transcripts
+from ._transcript.database import transcripts_from_logs
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
 from ._transcript.transcripts import Transcripts
@@ -68,7 +68,7 @@ __all__ = [
     "ScanResultsDB",
     "ScanSummary",
     # transcript
-    "transcripts",
+    "transcripts_from_logs",
     "Transcripts",
     "Transcript",
     "TranscriptInfo",

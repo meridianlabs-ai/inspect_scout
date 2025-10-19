@@ -26,6 +26,8 @@ from ._transcript.transcripts import Transcripts
 
 
 class ScanJob:
+    """Scan job definition."""
+
     def __init__(
         self,
         *,
@@ -67,6 +69,7 @@ class ScanJob:
 
     @property
     def name(self) -> str:
+        """Name of scan job (defaults to @scanjob function name)."""
         if self._name is not None:
             return self._name
         elif is_registry_object(self):
@@ -76,10 +79,12 @@ class ScanJob:
 
     @property
     def transcripts(self) -> Transcripts | None:
+        """Trasnscripts to scan."""
         return self._trancripts
 
     @property
     def scanners(self) -> dict[str, Scanner[ScannerInput]]:
+        """Scanners to apply to transcripts."""
         return self._scanners
 
 
@@ -105,12 +110,8 @@ def scanjob(
     r"""Decorator for registering scan jobs.
 
     Args:
-      func: Function returning `ScanJob` targeted by
-        plain task decorator without attributes (e.g. `@scanjob`)
-      name:
-        Optional name for scanjob. If the decorator has no name
-        argument then the name of the function
-        will be used to automatically assign a name.
+      func: Function returning `ScanJob`.
+      name: Optional name for scanjob (defaults to function name).
 
     Returns:
         ScanJob with registry attributes.

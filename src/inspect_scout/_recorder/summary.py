@@ -7,14 +7,26 @@ from inspect_scout._transcript.types import TranscriptInfo
 
 
 class ScannerSummary(BaseModel):
+    """Summary of scanner results."""
+
     scans: int = Field(default=0)
+    """Number of scans."""
+
     results: int = Field(default=0)
+    """Scans which returned not `None` results."""
+
     errors: int = Field(default=0)
+    """Scans which resulted in errors."""
+
     tokens: int = Field(default=0)
+    """Totoal tokens used for scanner."""
 
 
 class ScanSummary(BaseModel):
-    results: dict[str, ScannerSummary] = Field(default_factory=dict)
+    """Summary of scan results."""
+
+    scanners: dict[str, ScannerSummary] = Field(default_factory=dict)
+    """Summary for each scanner."""
 
     def __init__(self, scanners: list[str] | None = None, **data: Any):
         if scanners is not None and not data:
@@ -37,15 +49,15 @@ class ScanSummary(BaseModel):
             )
 
         # insert if required
-        if scanner not in self.results:
-            self.results[scanner] = ScannerSummary()
+        if scanner not in self.scanners:
+            self.scanners[scanner] = ScannerSummary()
 
         # further aggregate
-        tot_results = self.results[scanner]
+        tot_results = self.scanners[scanner]
         tot_results.scans += 1
         tot_results.results += agg_results.results
         tot_results.errors += agg_results.errors
         tot_results.tokens += agg_results.tokens
 
     def __getitem__(self, scanner: str) -> ScannerSummary:
-        return self.results[scanner]
+        return self.scanners[scanner]

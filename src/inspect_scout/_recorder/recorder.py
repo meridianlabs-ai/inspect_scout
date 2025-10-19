@@ -14,16 +14,30 @@ from .summary import ScanSummary
 
 @dataclass
 class ScanStatus:
+    """Status of scan job."""
+
     complete: bool
+    """Is the job complete (all transcripts scanned)."""
+
     spec: ScanSpec
+    """Scan spec (transcripts, scanners, options)."""
+
     location: str
+    """Location of scan directory."""
+
     summary: ScanSummary
+    """Summary of scan (results, errors, tokens, etc.) """
+
     errors: list[ScanError]
+    """Errors during last scan attempt."""
 
 
 @dataclass
 class ScanResults(ScanStatus):
+    """Scan results as pandas data frames."""
+
     data: dict[str, pd.DataFrame]
+    """Dict of scanner name to pandas data frame."""
 
     def __init__(
         self,
@@ -40,7 +54,16 @@ class ScanResults(ScanStatus):
 
 @dataclass
 class ScanResultsDB(ScanStatus):
+    """Scan results as DuckDB database.
+
+    Use `ScanResultsDB` as a context manager to close the DuckDb connection
+    when you are finished using it.
+
+    Use the `to_file()` method to create a DuckDB database file for the results.
+    """
+
     conn: duckdb.DuckDBPyConnection
+    """Connection to DuckDB database."""
 
     def __init__(
         self,
@@ -73,14 +96,8 @@ class ScanResultsDB(ScanStatus):
         into a persistent DuckDB database file.
 
         Args:
-            file:    File where the DuckDB database file should be written.
-                     Supports local paths, S3 URIs (s3://bucket/path), and
-                     GCS URIs (gs://bucket/path or gcs://bucket/path).
-            overwrite: If True, overwrite existing file. If False (default),
-                      raise FileExistsError if file already exists.
-
-        Returns:
-            The path to the created database file (same as input db_path)
+            file: File where the DuckDB database file should be written. Supports local paths, S3 URIs (s3://bucket/path), and GCS URIs (gs://bucket/path or gcs://bucket/path).
+            overwrite: If True, overwrite existing file. If False (default), raise FileExistsError if file already exists.
 
         Raises:
             FileExistsError: If the file exists and overwrite is False

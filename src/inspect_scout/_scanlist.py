@@ -12,7 +12,6 @@ def scan_list(scans_location: str) -> list[ScanStatus]:
 
     Returns:
         List of `ScanStatus`.
-
     """
     return run_coroutine(scan_list_async(scans_location))
 

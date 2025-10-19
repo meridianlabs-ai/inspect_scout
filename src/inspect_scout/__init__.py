@@ -17,9 +17,17 @@ from ._scanner.scanner import Scanner, scanner
 from ._scanner.types import ScannerInput
 from ._scanresults import (
     scan_results,
+    scan_results_db,
     scan_status,
 )
-from ._scanspec import ScanOptions, ScanScanner, ScanSpec, ScanTranscripts
+from ._scanspec import (
+    ScanOptions,
+    ScanRevision,
+    ScanScanner,
+    ScanSpec,
+    ScanTranscripts,
+    TranscriptField,
+)
 from ._transcript.database import transcripts
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
@@ -28,7 +36,6 @@ from ._transcript.types import (
     EventType,
     MessageType,
     Transcript,
-    TranscriptContent,
     TranscriptInfo,
 )
 
@@ -43,19 +50,21 @@ __all__ = [
     "scan",
     "scan_resume",
     "scan_complete",
-    "scanjob",
-    "ScanJob",
     "ScanSpec",
     "ScanOptions",
-    "ScanTranscripts",
     "ScanScanner",
+    "ScanRevision",
+    "ScanTranscripts",
+    "TranscriptField",
+    "scanjob",
+    "ScanJob",
     # results
     "scan_list",
     "scan_status",
-    "ScanStatus",
     "scan_results",
-    "ScanResults",
     "scan_results_db",
+    "ScanStatus",
+    "ScanResults",
     "ScanResultsDB",
     "ScanSummary",
     # transcript

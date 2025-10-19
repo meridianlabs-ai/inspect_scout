@@ -3,5 +3,16 @@ title: Async API
 reference: inspect_scout.async
 ---
 
+::: {.callout-note}
+The Async API is available for async programs that want to use `inspect_scout` as an embedded library. Normal usage of Scout (e.g. in a script or notebook) should prefer the corresponding sync functions (e.g. `scan()`, `scan_resume().`, etc.)
+:::
+
+### scan_async
 ### scan_resume_async
+### scan_complete_async
 ### scan_list_async
+### scan_status_async
+### scan_results_async
+### scan_results_db_async
+
+

@@ -72,6 +72,37 @@ def scan(
     display: DisplayType | None = None,
     log_level: str | None = None,
 ) -> ScanStatus:
+    """Scan transcripts.
+
+    Scan transcripts using one or more scanners. Note that scanners must each
+    have a unique name. If you have more than one instance of a scanner
+    with the same name, numbered prefixes will be automatically assigned.
+    Alternatively, you can pass tuples of (name,scanner) or a dict with
+    explicit names for each scanner.
+
+    Args:
+        scanners: Scanners to apply to transcripts.
+        transcripts: Transcripts to scan.
+        results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        model: Model to use for scanning by default (individual scanners can always
+            call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
+        model_config: `GenerationConfig` for calls to the model.
+        model_base_url: Base URL for communicating with the model API.
+        model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
+        model_roles: Named roles for use in `get_model()`.
+        max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
+        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to `multiprocessing.cpu_count()`.
+        limit: Limit the number of transcripts processed.
+        shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        tags: One or more tags for this scan.
+        metadata: Metadata for this scan.
+        display: Display type: "rich", "plain", or "none" (defaults to "rich").
+        log_level: Level for logging to the console: "debug", "http", "sandbox",
+            "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+
+    Returns:
+        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
+    """
     top_level_sync_init(display)
 
     return run_coroutine(
@@ -114,6 +145,36 @@ async def scan_async(
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
 ) -> ScanStatus:
+    """Scan transcripts.
+
+    Scan transcripts using one or more scanners. Note that scanners must each
+    have a unique name. If you have more than one instance of a scanner
+    with the same name, numbered prefixes will be automatically assigned.
+    Alternatively, you can pass tuples of (name,scanner) or a dict with
+    explicit names for each scanner.
+
+    Args:
+        scanners: Scanners to apply to transcripts.
+        transcripts: Transcripts to scan.
+        results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        model: Model to use for scanning by default (individual scanners can always
+            call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
+        model_config: `GenerationConfig` for calls to the model.
+        model_base_url: Base URL for communicating with the model API.
+        model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
+        model_roles: Named roles for use in `get_model()`.
+        max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
+        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to `multiprocessing.cpu_count()`.
+        limit: Limit the number of transcripts processed.
+        shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        tags: One or more tags for this scan.
+        metadata: Metadata for this scan.
+        log_level: Level for logging to the console: "debug", "http", "sandbox",
+            "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+
+    Returns:
+        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
+    """
     top_level_async_init(log_level)
 
     # resolve scanjob
@@ -171,14 +232,15 @@ async def scan_async(
 
 
 def scan_resume(
-    scan_dir: str,
+    scan_location: str,
     display: DisplayType | None = None,
     log_level: str | None = None,
 ) -> ScanStatus:
     """Resume a previous scan.
 
     Args:
-       scan_dir: Scan directory to resume from.
+       scan_location: Scan location to resume from.
+       display: Display type: "rich", "plain", or "none" (defaults to "rich").
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
 
@@ -186,14 +248,16 @@ def scan_resume(
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
     top_level_sync_init(display)
-    return run_coroutine(scan_resume_async(scan_dir, log_level=log_level))
+    return run_coroutine(scan_resume_async(scan_location, log_level=log_level))
 
 
-async def scan_resume_async(scan_dir: str, log_level: str | None = None) -> ScanStatus:
+async def scan_resume_async(
+    scan_location: str, log_level: str | None = None
+) -> ScanStatus:
     """Resume a previous scan.
 
     Args:
-       scan_dir: Scan directory to resume from.
+       scan_location: Scan location to resume from.
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
 
@@ -203,7 +267,7 @@ async def scan_resume_async(scan_dir: str, log_level: str | None = None) -> Scan
     top_level_async_init(log_level)
 
     # resume job
-    scan = await resume_scan(scan_dir)
+    scan = await resume_scan(scan_location)
 
     # can't resume a job with non-deterministic shuffling
     if scan.spec.options.shuffle is True:
@@ -224,36 +288,63 @@ async def scan_resume_async(scan_dir: str, log_level: str | None = None) -> Scan
     )
 
     # create recorder and scan
-    recorder = scan_recorder_for_location(scan_dir)
-    await recorder.resume(scan_dir)
+    recorder = scan_recorder_for_location(scan_location)
+    await recorder.resume(scan_location)
     return await _scan_async(scan=scan, recorder=recorder)
 
 
 def scan_complete(
-    scan_dir: str,
+    scan_location: str,
     display: DisplayType | None = None,
     log_level: str | None = None,
 ) -> ScanStatus:
+    """Complete a scan.
+
+    This function is used to indicate that a scan with errors in some
+    transcripts should be completed in spite of the errors.
+
+    Args:
+       scan_location: Scan location to complete.
+       display: Display type: "rich", "plain", or "none" (defaults to "rich").
+       log_level: Level for logging to the console: "debug", "http", "sandbox",
+            "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+
+    Returns:
+       ScanStatus: Status of scan (spec, summary, errors, etc.)
+    """
     top_level_sync_init(display)
 
-    return run_coroutine(scan_complete_async(scan_dir, log_level=log_level))
+    return run_coroutine(scan_complete_async(scan_location, log_level=log_level))
 
 
 async def scan_complete_async(
-    scan_dir: str, log_level: str | None = None
+    scan_location: str, log_level: str | None = None
 ) -> ScanStatus:
+    """Complete a scan.
+
+    This function is used to indicate that a scan with errors in some
+    transcripts should be completed in spite of the errors.
+
+    Args:
+       scan_location: Scan location to complete.
+       log_level: Level for logging to the console: "debug", "http", "sandbox",
+            "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+
+    Returns:
+       ScanStatus: Status of scan (spec, summary, errors, etc.)
+    """
     top_level_async_init(log_level)
 
     # check if the scan is already complete
-    recorder_type = scan_recorder_type_for_location(scan_dir)
-    status = await recorder_type.status(scan_dir)
+    recorder_type = scan_recorder_type_for_location(scan_location)
+    status = await recorder_type.status(scan_location)
     if status.complete:
         raise PrerequisiteError(
-            f"Scan at '{pretty_path(scan_dir)}' is already complete."
+            f"Scan at '{pretty_path(scan_location)}' is already complete."
         )
 
     # complete the scan
-    status = await recorder_type.complete(scan_dir)
+    status = await recorder_type.complete(scan_location)
     display().scan_complete(status)
     return status
 

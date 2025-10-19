@@ -11,8 +11,28 @@ website:
       - section: scanning
         href: reference/scanning.qmd
         contents:
+        - text: scan
+          href: reference/scanning.qmd#scan
         - text: scan_resume
           href: reference/scanning.qmd#scan_resume
+        - text: scan_complete
+          href: reference/scanning.qmd#scan_complete
+        - text: ScanStatus
+          href: reference/scanning.qmd#scanstatus
+        - text: ScanOptions
+          href: reference/scanning.qmd#scanoptions
+        - text: ScanScanner
+          href: reference/scanning.qmd#scanscanner
+        - text: ScanRevision
+          href: reference/scanning.qmd#scanrevision
+        - text: ScanTranscripts
+          href: reference/scanning.qmd#scantranscripts
+        - text: TranscriptField
+          href: reference/scanning.qmd#transcriptfield
+        - text: scanjob
+          href: reference/scanning.qmd#scanjob
+        - text: ScanJob
+          href: reference/scanning.qmd#scanjob
       - section: results
         href: reference/results.qmd
         contents:
@@ -67,8 +87,12 @@ website:
       - section: async
         href: reference/async.qmd
         contents:
+        - text: scan_async
+          href: reference/async.qmd#scan_async
         - text: scan_resume_async
           href: reference/async.qmd#scan_resume_async
+        - text: scan_complete_async
+          href: reference/async.qmd#scan_complete_async
         - text: scan_list_async
           href: reference/async.qmd#scan_list_async
     - section: Scout CLI

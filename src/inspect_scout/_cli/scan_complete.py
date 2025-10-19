@@ -8,14 +8,14 @@ from .scan import scan_command
 
 
 @scan_command.command("complete")
-@click.argument("scan_dir", nargs=1)
+@click.argument("scan_location", nargs=1)
 @common_options
 def scan_complete_command(
-    scan_dir: str,
+    scan_location: str,
     **common: Unpack[CommonOptions],
 ) -> None:
     """Complete a scan which is incomplete due to errors (errors are not retried)."""
     # Process common options
     process_common_options(common)
 
-    scan_complete(scan_dir)
+    scan_complete(scan_location)

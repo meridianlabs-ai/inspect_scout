@@ -16,6 +16,8 @@ from ._util.process import default_max_processes
 
 
 class ScanScanner(BaseModel):
+    """Scanner used by scan."""
+
     name: str
     """Scanner name."""
 
@@ -56,9 +58,16 @@ class ScanOptions(BaseModel):
 
 
 class TranscriptField(TypedDict, total=False):
+    """Field in transcript data frame."""
+
     name: Required[str]
+    """Field name."""
+
     type: Required[str]
+    """Field type ("integer", "number", "boolean", "string", or "datetime")"""
+
     tz: NotRequired[str]
+    """Timezone (for "datetime" fields)."""
 
 
 class ScanTranscripts(BaseModel):
@@ -78,6 +87,8 @@ class ScanTranscripts(BaseModel):
 
 
 class ScanSpec(BaseModel):
+    """Scan specification (scanners, transcripts, config)."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     scan_id: str = Field(default_factory=uuid)

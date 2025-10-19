@@ -11,11 +11,11 @@ from .scan import scan_command
 @click.argument("scan_dir", nargs=1)
 @common_options
 def scan_resume_command(
-    scan_dir: str,
+    scan_location: str,
     **common: Unpack[CommonOptions],
 ) -> None:
     """Resume a scan which is incomplete due to interruption or errors (errors are retried)."""
     # Process common options
     process_common_options(common)
 
-    scan_resume(scan_dir)
+    scan_resume(scan_location)

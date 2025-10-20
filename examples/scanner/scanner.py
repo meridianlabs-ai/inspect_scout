@@ -66,76 +66,6 @@ def job() -> ScanJob:
     return ScanJob(scanners=[target_word_scanner("perfect"), llm_scanner()])
 
 
-def print_results(location: str) -> None:
-    db = scan_results_db(location)
-
-    with db.conn:
-        # Test the database
-        print("\n=== Testing DuckDB Database ===")
-
-        # List all tables and views
-        print("\nTables and Views:")
-        tables = db.conn.execute("SHOW TABLES").fetchall()
-        for table in tables:
-            print(f"  - {table[0]}")
-
-        # Check transcripts table
-        print("\nTranscripts table info:")
-        transcript_count = db.conn.execute(
-            "SELECT COUNT(*) FROM transcripts"
-        ).fetchone()[0]
-        print(f"  Total transcripts: {transcript_count}")
-
-        # Check scanner views
-        print("\nScanner results:")
-        for table in tables:
-            table_name = table[0]
-            if table_name != "transcripts":
-                count = db.conn.execute(
-                    f"SELECT COUNT(*) FROM {table_name}"
-                ).fetchone()[0]
-                print(f"  {table_name}: {count} results")
-
-        # Debug: Check what columns exist in each table
-        print("\nDEBUG - Transcripts table columns:")
-        t_cols = db.conn.execute("DESCRIBE transcripts").fetchdf()
-        print(t_cols)
-
-        print("\nDEBUG - Scanner table columns:")
-        s_cols = db.conn.execute("DESCRIBE target_word_scanner").fetchdf()
-        print(s_cols)
-
-        # Try a sample query joining transcripts and scanner results
-        print("\nSample query (first 10 results from llm_scanner):")
-        sample_results = db.conn.execute("""
-            SELECT
-                t.id,
-                t.epoch,
-                t.task_name,
-                s.value,
-                s.explanation
-            FROM transcripts t
-            JOIN llm_scanner s ON t.id = s.transcript_id
-            LIMIT 10
-        """).fetchdf()
-        print(sample_results)
-
-        # Test writing to file
-        print("\nWriting database to file...")
-        db_file_path = "examples/scanner/scan_results.duckdb"
-        db.to_file(db_file_path, overwrite=True)
-        print(f"Database written to: {db_file_path}")
-
-        # Verify the file by opening it and checking tables
-        print("\nVerifying database file...")
-        verify_conn = duckdb.connect(db_file_path)
-        tables = verify_conn.execute("SHOW TABLES").fetchall()
-        print(f"Tables in file: {[t[0] for t in tables]}")
-        count = verify_conn.execute("SELECT COUNT(*) FROM transcripts").fetchone()[0]
-        print(f"Transcripts count in file: {count}")
-        verify_conn.close()
-
-
 if __name__ == "__main__":
     # check for a resume
     if len(sys.argv) > 1 and sys.argv[1] == "resume":
@@ -150,7 +80,6 @@ if __name__ == "__main__":
     elif len(sys.argv) > 1 and sys.argv[1] == "results":
         if len(sys.argv) > 2:
             results_path = sys.argv[2]
-            print_results(results_path)
         else:
             print("Error: Please provide a path after 'results'")
             sys.exit(1)

@@ -1,4 +1,4 @@
 ---
-title: Scan Results
+title: Results
 ---
 

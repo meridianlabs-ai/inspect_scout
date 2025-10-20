@@ -8,8 +8,11 @@ description: "Transcript analysis for AI agents."
 Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. Scout is built to work with transcripts from the [Inspect AI](https://inspect.aisi.org.uk/) LLM evaluation framework, and has the following core features:
 
 1. Write scanners that target full sample transcripts or individual messages or events.
-2. Highly parallel, streaming pipeline for reading and processing transcript content. 
+
+2. High performance parallel pipeline for reading and processing transcript content. 
+
 3. Resume scans that are stopped due to errors or interruptions.
+
 4. Tightly integrated with Inspect [data frames](https://inspect.aisi.org.uk/dataframe.html) for both input and analysis.
 
 ## Tutorial
@@ -28,8 +31,10 @@ We'll start by creating an LLM-based scanner and run a scan on transcripts from 
 
 - `Results` --- Data frame(s) that includes the results of scanners applied to transcripts.
 
-Note that there are other variants of scanner that take a `ChatMessage` or `Event`, but we'll get to those later.
+Create a file named `scanner.py` with the following contents:
 
-Create a file named `scanner.py` 
+```{.python filename="scanner.py"}
 
+
+```
 

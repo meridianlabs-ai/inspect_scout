@@ -15,6 +15,7 @@ from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Reference, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanner.types import ScannerInput
+from ._scanner.util import messages_as_str
 from ._scanresults import (
     scan_results,
     scan_results_db,
@@ -82,6 +83,7 @@ __all__ = [
     "Error",
     "Scanner",
     "ScannerInput",
+    "messages_as_str",
     "Result",
     "Reference",
     "scanner",

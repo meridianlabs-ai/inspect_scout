@@ -3,13 +3,26 @@ title: Scanner API
 reference: "inspect_scout"
 ---
 
+## Scanner
+
 ### Scanner
 ### ScannerInput
 ### Result
 ### Reference
 ### Error
 ### Loader
-### scanner
-### loader
+
+## Utils
+
+### messages_as_str
+
+
+## Types
+
 ### MessageType
 ### EventType
+
+## Decorators
+
+### scanner
+### loader

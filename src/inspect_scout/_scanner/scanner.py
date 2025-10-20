@@ -143,7 +143,7 @@ def scanner(
     events: None = ...,
     loader: Loader[ChatMessage] | None = ...,
     name: str | None = ...,
-) -> Callable[[ScannerFactory[P, TMessage]], ScannerFactory[P, ScannerInput]]: ...
+) -> Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]: ...
 @overload
 def scanner(
     *,
@@ -151,7 +151,7 @@ def scanner(
     messages: None = ...,
     loader: Loader[Event] | None = ...,
     name: str | None = ...,
-) -> Callable[[ScannerFactory[P, TEvent]], ScannerFactory[P, ScannerInput]]: ...
+) -> Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]: ...
 
 
 # overload for direct decoration without parentheses (will infer from types)

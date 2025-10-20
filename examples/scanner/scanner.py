@@ -16,7 +16,7 @@ from inspect_scout._transcript.types import Transcript
 from rich import print
 
 
-@scanner(messages=["user", "assistant", "tool"])
+@scanner(messages="all")
 def deception() -> Scanner[Transcript]:
     async def execute(transcript: Transcript) -> Result:
         result = await get_model().generate(

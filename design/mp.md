@@ -82,14 +82,3 @@ SIGINT delivered only to parent (workers have `SIGINT=SIG_IGN`). Parent's task g
 4. **Cleanup**: Drain and close queues, wait for feeder threads
 
 **Key design:** Workers ignore SIGINT to avoid races. Parent coordinates shutdown via condition variable + phased process termination. Shutdown sentinel injection prevents collector deadlock when workers are forcibly terminated.
-
-## Key Design Decisions
-
-### Signal Handling
-Workers inherit `SIGINT=SIG_IGN` before fork, so only parent receives SIGINT on Ctrl-C. This prevents races and gives parent full control over the shutdown sequence. Parent blocks SIGINT, forks workers, then restores handler.
-
-### Sentinel Pattern
-Queue coordination uses strongly-typed dataclass sentinels (`WorkerComplete`, `ShutdownSentinel`) instead of magic values like `None` or `object()`. Provides type safety, works with pattern matching, and self-documents intent.
-
-### Shutdown Monitor
-Each worker runs a dedicated monitor task that blocks on `shutdown_condition` in a thread. When signaled, it cancels the work task group for fast shutdown response. **Critical:** The work task must cancel the monitor in its `finally` block, otherwise the monitor blocks forever, preventing the task group from exiting and the completion sentinel from being sent.

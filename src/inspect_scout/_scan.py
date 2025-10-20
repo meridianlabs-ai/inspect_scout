@@ -505,7 +505,7 @@ async def _scan_async_inner(
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if scan.spec.options.max_processes == 1
+                    if scan.spec.options.max_processes == 1 or os.name == "nt"
                     else multi_process_strategy(
                         process_count=scan.spec.options.max_processes,
                         task_count=max_tasks,

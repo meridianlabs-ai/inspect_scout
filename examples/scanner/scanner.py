@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-import duckdb
 from inspect_ai.analysis._dataframe.extract import messages_as_str
 from inspect_ai.model import get_model
 from inspect_scout import (
@@ -13,7 +12,6 @@ from inspect_scout import (
     transcripts_from_logs,
 )
 from inspect_scout._scanjob import ScanJob, scanjob
-from inspect_scout._scanresults import scan_results_db
 from inspect_scout._transcript.types import Transcript
 from rich import print
 

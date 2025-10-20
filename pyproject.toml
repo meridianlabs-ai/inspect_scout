@@ -16,7 +16,7 @@ dependencies = [
     "duckdb>=1.4.0",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect-ai>=0.3.140",
+    "inspect-ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai.git",
     "jsonlines>=3.0.0",
     "pandas>=2.0.0",
     "pyarrow>=10.0.1",

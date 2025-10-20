@@ -1,8 +1,8 @@
 """Shared context for multiprocessing communication.
 
-This module contains the module-level globals that are shared between the main process
-and worker subprocesses via fork. The main process initializes these values, and
-forked workers inherit them through copy-on-write memory.
+This module contains theglobals that are shared between the main process and worker
+subprocesses via fork. The main process initializes these values, and forked workers
+inherit them through copy-on-write memory.
 """
 
 from __future__ import annotations
@@ -87,16 +87,16 @@ class IPCContext:
     """
 
     parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]]
-    """Async function that parses a job into scanner jobs."""
+    """Function that executes a parse job yielding scanner jobs."""
 
     scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]
-    """Async function that executes a scanner job and returns results."""
+    """Function that executes a scanner job and returns results."""
 
     tasks_per_process: int
     """Maximum number of concurrent tasks per worker process."""
 
     prefetch_multiple: float | None
-    """Multiplier for prefetching parse jobs; None disables prefetching."""
+    """Multiplier for scanner job queue size (base=task_count)."""
 
     diagnostics: bool
     """Whether to enable diagnostic output during execution."""

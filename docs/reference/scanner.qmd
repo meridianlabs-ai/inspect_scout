@@ -5,9 +5,9 @@ reference: "inspect_scout"
 
 ### Scanner
 ### ScannerInput
-### ScanResult
+### Result
 ### Reference
-### ScanError
+### Error
 ### Loader
 ### scanner
 ### loader

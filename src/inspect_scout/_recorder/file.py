@@ -9,7 +9,7 @@ from inspect_ai._util.json import to_json_str_safe
 from typing_extensions import override
 from upath import UPath
 
-from inspect_scout._recorder.summary import ScanSummary
+from inspect_scout._recorder.summary import Summary
 from inspect_scout._transcript.database import transcripts_df_for_results
 
 from .._recorder.buffer import (
@@ -21,7 +21,7 @@ from .._recorder.buffer import (
     read_scan_summary,
     scanner_table,
 )
-from .._scanner.result import ResultReport, ScanError
+from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .recorder import (
@@ -88,11 +88,11 @@ class FileRecorder(ScanRecorder):
         pass
 
     @override
-    async def errors(self) -> list[ScanError]:
+    async def errors(self) -> list[Error]:
         return self._scan_buffer.errors()
 
     @override
-    async def summary(self) -> ScanSummary:
+    async def summary(self) -> Summary:
         return self._scan_buffer.scan_summary()
 
     @property
@@ -297,7 +297,7 @@ def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
         return ScanSpec.model_validate_json(f.read())
 
 
-def _read_scan_errors(scan_dir: UPath) -> list[ScanError]:
+def _read_scan_errors(scan_dir: UPath) -> list[Error]:
     scan_errors = scan_dir / SCAN_ERRORS
     return read_scan_errors(str(scan_errors))
 

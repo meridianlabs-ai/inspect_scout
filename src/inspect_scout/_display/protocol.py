@@ -7,7 +7,7 @@ from typing_extensions import override
 
 from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._recorder.recorder import Status
-from inspect_scout._recorder.summary import ScanSummary
+from inspect_scout._recorder.summary import Summary
 from inspect_scout._scancontext import ScanContext
 from inspect_scout._scanner.result import ResultReport
 from inspect_scout._transcript.types import TranscriptInfo
@@ -29,7 +29,7 @@ class Display(abc.ABC):
         self,
         scan: ScanContext,
         scan_location: str,
-        summary: ScanSummary,
+        summary: Summary,
         transcripts: int,
         skipped: int,
     ) -> Iterator["ScanDisplay"]:

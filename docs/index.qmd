@@ -24,7 +24,7 @@ We'll start by creating an LLM-based scanner and run a scan on transcripts from 
 
 - `Transcript` --- LLM conversation to analyze (often a complete Inspect sample trajectory).
 
-- `Scanner` --- Function that takes an input from a `Transcript` and returns a `ScanResult` (conceptually very similar to an Inspect `Scorer`). 
+- `Scanner` --- Function that takes an input from a `Transcript` and returns a `Result` (conceptually very similar to an Inspect `Scorer`). 
 
 - `Results` --- Data frame(s) that includes the results of scanners applied to transcripts.
 

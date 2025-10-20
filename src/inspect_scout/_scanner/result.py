@@ -16,7 +16,7 @@ class Reference(BaseModel):
     """Reference id (message or event id)"""
 
 
-class ScanResult(BaseModel):
+class Result(BaseModel):
     """Scan result."""
 
     value: JsonValue
@@ -35,7 +35,7 @@ class ScanResult(BaseModel):
     """References to relevant messages or events."""
 
 
-class ScanError(BaseModel):
+class Error(BaseModel):
     """Scan error (runtime error which occurred during scan)."""
 
     transcript_id: str
@@ -58,9 +58,9 @@ class ResultReport(BaseModel):
 
     input_id: str
 
-    result: ScanResult | None
+    result: Result | None
 
-    error: ScanError | None
+    error: Error | None
 
     events: Sequence[Event]
 

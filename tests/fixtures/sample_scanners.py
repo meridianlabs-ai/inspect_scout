@@ -10,7 +10,7 @@ from inspect_ai.model._chat_message import (
     ChatMessageSystem,
     ChatMessageUser,
 )
-from inspect_scout._scanner.result import ScanResult
+from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -21,8 +21,8 @@ from inspect_scout._transcript.types import Transcript
 def valid_system_scanner() -> Scanner[ChatMessageSystem]:
     """Scanner that correctly handles only system messages."""
 
-    async def scan(message: ChatMessageSystem) -> ScanResult:
-        return ScanResult(value={"type": "system", "content": message.text})
+    async def scan(message: ChatMessageSystem) -> Result:
+        return Result(value={"type": "system", "content": message.text})
 
     return scan
 
@@ -31,8 +31,8 @@ def valid_system_scanner() -> Scanner[ChatMessageSystem]:
 def valid_union_scanner() -> Scanner[ChatMessageSystem | ChatMessageUser]:
     """Scanner that correctly handles a union of message types."""
 
-    async def scan(message: ChatMessageSystem | ChatMessageUser) -> ScanResult:
-        return ScanResult(value={"role": message.role})
+    async def scan(message: ChatMessageSystem | ChatMessageUser) -> Result:
+        return Result(value={"role": message.role})
 
     return scan
 
@@ -41,8 +41,8 @@ def valid_union_scanner() -> Scanner[ChatMessageSystem | ChatMessageUser]:
 def valid_assistant_scanner() -> Scanner[ChatMessageAssistant]:
     """Scanner that correctly handles assistant messages."""
 
-    async def scan(message: ChatMessageAssistant) -> ScanResult:
-        return ScanResult(value={"model": message.model})
+    async def scan(message: ChatMessageAssistant) -> Result:
+        return Result(value={"model": message.model})
 
     return scan
 
@@ -51,8 +51,8 @@ def valid_assistant_scanner() -> Scanner[ChatMessageAssistant]:
 def valid_all_messages_scanner() -> Scanner[ChatMessage]:
     """Scanner that accepts all message types."""
 
-    async def scan(message: ChatMessage) -> ScanResult:
-        return ScanResult(value={"role": message.role})
+    async def scan(message: ChatMessage) -> Result:
+        return Result(value={"role": message.role})
 
     return scan
 
@@ -61,8 +61,8 @@ def valid_all_messages_scanner() -> Scanner[ChatMessage]:
 def valid_event_union_scanner() -> Scanner[ModelEvent | ToolEvent]:
     """Scanner that handles specific event types."""
 
-    async def scan(event: ModelEvent | ToolEvent) -> ScanResult:
-        return ScanResult(value={"event": event.event})
+    async def scan(event: ModelEvent | ToolEvent) -> Result:
+        return Result(value={"event": event.event})
 
     return scan
 
@@ -71,8 +71,8 @@ def valid_event_union_scanner() -> Scanner[ModelEvent | ToolEvent]:
 def valid_transcript_scanner() -> Scanner[Transcript]:
     """Scanner that requires both messages and events."""
 
-    async def scan(transcript: Transcript) -> ScanResult:
-        return ScanResult(value={"id": transcript.id})
+    async def scan(transcript: Transcript) -> Result:
+        return Result(value={"id": transcript.id})
 
     return scan
 
@@ -81,8 +81,8 @@ def valid_transcript_scanner() -> Scanner[Transcript]:
 def valid_base_type_scanner() -> Scanner[ChatMessage]:
     """Scanner using base type with specific filter."""
 
-    async def scan(message: ChatMessage) -> ScanResult:
-        return ScanResult(value={"text": message.text})
+    async def scan(message: ChatMessage) -> Result:
+        return Result(value={"text": message.text})
 
     return scan
 
@@ -91,8 +91,8 @@ def valid_base_type_scanner() -> Scanner[ChatMessage]:
 def valid_list_scanner() -> Scanner[list[ChatMessageAssistant]]:
     """Scanner that handles lists of messages."""
 
-    async def scan(messages: list[ChatMessageAssistant]) -> ScanResult:
-        return ScanResult(value={"count": len(messages)})
+    async def scan(messages: list[ChatMessageAssistant]) -> Result:
+        return Result(value={"count": len(messages)})
 
     return scan
 
@@ -105,8 +105,8 @@ def create_invalid_subset_scanner():
 
     @scanner(messages=["system", "user"])
     def invalid_scanner() -> Scanner[ChatMessageSystem]:
-        async def scan(message: ChatMessageSystem) -> ScanResult:
-            return ScanResult(value={"error": "invalid"})
+        async def scan(message: ChatMessageSystem) -> Result:
+            return Result(value={"error": "invalid"})
 
         return scan
 
@@ -118,8 +118,8 @@ def create_invalid_wrong_type_scanner():
 
     @scanner(messages=["user"])
     def invalid_scanner() -> Scanner[ChatMessageAssistant]:
-        async def scan(message: ChatMessageAssistant) -> ScanResult:
-            return ScanResult(value={"error": "wrong type"})
+        async def scan(message: ChatMessageAssistant) -> Result:
+            return Result(value={"error": "wrong type"})
 
         return scan
 
@@ -131,8 +131,8 @@ def create_invalid_all_filter_scanner():
 
     @scanner(messages="all")
     def invalid_scanner() -> Scanner[ChatMessageAssistant]:
-        async def scan(message: ChatMessageAssistant) -> ScanResult:
-            return ScanResult(value={"error": "all filter"})
+        async def scan(message: ChatMessageAssistant) -> Result:
+            return Result(value={"error": "all filter"})
 
         return scan
 

@@ -6,7 +6,7 @@ from inspect_ai.util import throttle
 from rich.console import RenderableType
 from typing_extensions import override
 
-from inspect_scout._recorder.summary import ScanSummary
+from inspect_scout._recorder.summary import Summary
 
 from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import Status
@@ -41,7 +41,7 @@ class DisplayPlain(Display):
         self,
         scan: ScanContext,
         scan_location: str,
-        summary: ScanSummary,
+        summary: Summary,
         transcripts: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
@@ -64,7 +64,7 @@ class ScanDisplayPlain(ScanDisplay):
     def __init__(
         self,
         scan: ScanContext,
-        summary: ScanSummary,
+        summary: Summary,
         transcripts: int,
         skipped: int,
         print: Callable[..., None],

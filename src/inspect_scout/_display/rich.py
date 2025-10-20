@@ -24,7 +24,7 @@ from inspect_scout._display.util import (
     scan_interrupted_message,
     scan_title,
 )
-from inspect_scout._recorder.summary import ScanSummary
+from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanspec import ScanSpec
 
 from .._concurrency.common import ScanMetrics
@@ -52,7 +52,7 @@ class DisplayRich(Display):
         self,
         scan: ScanContext,
         scan_location: str,
-        summary: ScanSummary,
+        summary: Summary,
         transcripts: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
@@ -90,7 +90,7 @@ class ScanDisplayRich(
         self,
         scan: ScanContext,
         scan_location: str,
-        summary: ScanSummary,
+        summary: Summary,
         transcripts: int,
         skipped: int,
     ) -> None:
@@ -168,7 +168,7 @@ class ScanDisplayRich(
 def scan_panel(
     *,
     spec: ScanSpec,
-    summary: ScanSummary,
+    summary: Summary,
     progress: Progress | None = None,
     metrics: ScanMetrics | None = None,
     message: RenderableType | None = None,

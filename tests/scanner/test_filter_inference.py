@@ -10,7 +10,7 @@ from inspect_ai.model._chat_message import (
     ChatMessageSystem,
     ChatMessageUser,
 )
-from inspect_scout import Scanner, ScanResult, Transcript, scanner
+from inspect_scout import Result, Scanner, Transcript, scanner
 from inspect_scout._scanner.scanner import SCANNER_CONFIG
 
 
@@ -19,8 +19,8 @@ def test_infer_single_message_type():
 
     @scanner()  # No explicit messages filter
     def user_scanner() -> Scanner[ChatMessageUser]:
-        async def scan(message: ChatMessageUser) -> ScanResult:
-            return ScanResult(value={"text": message.text})
+        async def scan(message: ChatMessageUser) -> Result:
+            return Result(value={"text": message.text})
 
         return scan
 
@@ -33,8 +33,8 @@ def test_infer_union_message_types():
 
     @scanner()  # No explicit filters
     def multi_scanner() -> Scanner[ChatMessageSystem | ChatMessageUser]:
-        async def scan(message: ChatMessageSystem | ChatMessageUser) -> ScanResult:
-            return ScanResult(value={"role": message.role})
+        async def scan(message: ChatMessageSystem | ChatMessageUser) -> Result:
+            return Result(value={"role": message.role})
 
         return scan
 
@@ -50,8 +50,8 @@ def test_infer_assistant_type():
 
     @scanner()
     def assistant_scanner() -> Scanner[ChatMessageAssistant]:
-        async def scan(message: ChatMessageAssistant) -> ScanResult:
-            return ScanResult(value={"model": message.model})
+        async def scan(message: ChatMessageAssistant) -> Result:
+            return Result(value={"model": message.model})
 
         return scan
 
@@ -66,8 +66,8 @@ def test_infer_list_message_type():
 
     @scanner()
     def batch_scanner() -> Scanner[list[ChatMessageAssistant]]:
-        async def scan(messages: list[ChatMessageAssistant]) -> ScanResult:
-            return ScanResult(value={"count": len(messages)})
+        async def scan(messages: list[ChatMessageAssistant]) -> Result:
+            return Result(value={"count": len(messages)})
 
         return scan
 
@@ -82,8 +82,8 @@ def test_infer_event_type():
 
     @scanner()
     def model_scanner() -> Scanner[ModelEvent]:
-        async def scan(event: ModelEvent) -> ScanResult:
-            return ScanResult(value={"model": event.model})
+        async def scan(event: ModelEvent) -> Result:
+            return Result(value={"model": event.model})
 
         return scan
 
@@ -96,8 +96,8 @@ def test_infer_union_event_types():
 
     @scanner()
     def event_scanner() -> Scanner[ModelEvent | ToolEvent]:
-        async def scan(event: ModelEvent | ToolEvent) -> ScanResult:
-            return ScanResult(value={"event": event.event})
+        async def scan(event: ModelEvent | ToolEvent) -> Result:
+            return Result(value={"event": event.event})
 
         return scan
 
@@ -114,8 +114,8 @@ def test_no_inference_for_base_message_type():
 
         @scanner()  # No filter, can't infer from base type
         def base_scanner() -> Scanner[ChatMessage]:
-            async def scan(message: ChatMessage) -> ScanResult:
-                return ScanResult(value={"role": message.role})
+            async def scan(message: ChatMessage) -> Result:
+                return Result(value={"role": message.role})
 
             return scan
 
@@ -128,8 +128,8 @@ def test_no_inference_for_transcript():
 
         @scanner()  # No filters, can't infer for Transcript
         def transcript_scanner() -> Scanner[Transcript]:
-            async def scan(transcript: Transcript) -> ScanResult:
-                return ScanResult(value={"id": transcript.id})
+            async def scan(transcript: Transcript) -> Result:
+                return Result(value={"id": transcript.id})
 
             return scan
 
@@ -141,8 +141,8 @@ def test_explicit_filter_overrides_inference():
 
     @scanner(messages=["system"])  # Explicit filter
     def explicit_scanner() -> Scanner[ChatMessageSystem]:  # Must match filter
-        async def scan(message: ChatMessageSystem) -> ScanResult:
-            return ScanResult(value={"text": message.text})
+        async def scan(message: ChatMessageSystem) -> Result:
+            return Result(value={"text": message.text})
 
         return scan
 
@@ -158,8 +158,8 @@ def test_inference_with_custom_name():
 
     @scanner(name="custom_inferred")
     def named_scanner() -> Scanner[ChatMessageAssistant]:
-        async def scan(message: ChatMessageAssistant) -> ScanResult:
-            return ScanResult(value={"model": message.model})
+        async def scan(message: ChatMessageAssistant) -> Result:
+            return Result(value={"model": message.model})
 
         return scan
 
@@ -175,10 +175,10 @@ def test_inference_with_factory_pattern():
 
     @scanner()
     def parameterized_scanner(threshold: int = 10) -> Scanner[ChatMessageAssistant]:
-        async def scan(message: ChatMessageAssistant) -> ScanResult:
+        async def scan(message: ChatMessageAssistant) -> Result:
             if len(message.text) > threshold:
-                return ScanResult(value={"long": True})
-            return ScanResult(value={"short": True})
+                return Result(value={"long": True})
+            return Result(value={"short": True})
 
         return scan
 
@@ -205,8 +205,8 @@ def test_no_inference_with_loader():
     # Should work without filters when loader is provided
     @scanner(loader=loader_instance)
     def loader_scanner() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> ScanResult:
-            return ScanResult(value={"id": transcript.id})
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value={"id": transcript.id})
 
         return scan
 
@@ -223,11 +223,11 @@ def test_no_inference_with_mixed_message_event_union():
 
         @scanner()  # Can't infer when mixing messages and events
         def mixed_scanner() -> Scanner[ChatMessageUser | ModelEvent]:
-            async def scan(item: ChatMessageUser | ModelEvent) -> ScanResult:
+            async def scan(item: ChatMessageUser | ModelEvent) -> Result:
                 if isinstance(item, ChatMessageUser):
-                    return ScanResult(value={"type": "message", "content": item.text})
+                    return Result(value={"type": "message", "content": item.text})
                 else:
-                    return ScanResult(value={"type": "event", "model": item.model})
+                    return Result(value={"type": "event", "model": item.model})
 
             return scan
 
@@ -241,7 +241,7 @@ def test_no_inference_without_type_hints():
         @scanner()
         def untyped_scanner():  # No type annotation
             async def scan(message):  # No type annotation
-                return ScanResult(value={"ok": True})
+                return Result(value={"ok": True})
 
             return scan
 
@@ -253,8 +253,8 @@ def test_decorator_without_parentheses():
 
     @scanner  # No parentheses!
     def user_scanner() -> Scanner[ChatMessageUser]:
-        async def scan(message: ChatMessageUser) -> ScanResult:
-            return ScanResult(value={"text": message.text})
+        async def scan(message: ChatMessageUser) -> Result:
+            return Result(value={"text": message.text})
 
         return scan
 
@@ -267,8 +267,8 @@ def test_decorator_without_parentheses_with_union():
 
     @scanner  # No parentheses!
     def multi_scanner() -> Scanner[ChatMessageSystem | ChatMessageUser]:
-        async def scan(message: ChatMessageSystem | ChatMessageUser) -> ScanResult:
-            return ScanResult(value={"role": message.role})
+        async def scan(message: ChatMessageSystem | ChatMessageUser) -> Result:
+            return Result(value={"role": message.role})
 
         return scan
 
@@ -285,8 +285,8 @@ def test_decorator_without_parentheses_fails_for_base_type():
 
         @scanner  # No parentheses, but base type needs explicit filter
         def base_scanner() -> Scanner[ChatMessage]:
-            async def scan(message: ChatMessage) -> ScanResult:
-                return ScanResult(value={"role": message.role})
+            async def scan(message: ChatMessage) -> Result:
+                return Result(value={"role": message.role})
 
             return scan
 

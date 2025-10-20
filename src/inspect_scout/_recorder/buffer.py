@@ -13,9 +13,9 @@ from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.hash import mm3_hash
 from upath import UPath
 
-from inspect_scout._recorder.summary import ScanSummary
+from inspect_scout._recorder.summary import Summary
 
-from .._scanner.result import ResultReport, ScanError
+from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
@@ -52,7 +52,7 @@ class RecorderBuffer:
         # establish scan summary if required
         scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
         if not scan_summary_file.exists():
-            self._scan_summary = ScanSummary(list(spec.scanners.keys()))
+            self._scan_summary = Summary(list(spec.scanners.keys()))
             with open(scan_summary_file.as_posix(), "w") as f:
                 f.write(self._scan_summary.model_dump_json())
         else:
@@ -135,14 +135,14 @@ class RecorderBuffer:
         else:
             return False
 
-    def errors(self) -> list[ScanError]:
+    def errors(self) -> list[Error]:
         return read_scan_errors(str(self._error_file))
 
     def errors_bytes(self) -> bytes:
         with open(str(self._error_file), "rb") as f:
             return f.read()
 
-    def scan_summary(self) -> ScanSummary:
+    def scan_summary(self) -> Summary:
         return read_scan_summary(self._buffer_dir, self._spec)
 
     def cleanup(self) -> None:
@@ -336,25 +336,25 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     return pa.Table.from_pylist(norm)
 
 
-def read_scan_errors(error_file: str) -> list[ScanError]:
+def read_scan_errors(error_file: str) -> list[Error]:
     try:
         with open(error_file, "r") as f:
-            errors: list[ScanError] = []
+            errors: list[Error] = []
             reader = jsonlines.Reader(f)
             for error in reader.iter(type=dict):
-                errors.append(ScanError(**error))
+                errors.append(Error(**error))
             return errors
     except FileNotFoundError:
         return []
 
 
-def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> ScanSummary:
+def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> Summary:
     try:
         with open(scan_dir.joinpath(SCAN_SUMMARY).as_posix(), "r") as f:
             summary = f.read().strip()
             if summary:
-                return ScanSummary.model_validate_json(summary)
+                return Summary.model_validate_json(summary)
             else:
-                return ScanSummary(list(spec.scanners.keys()))
+                return Summary(list(spec.scanners.keys()))
     except FileNotFoundError:
-        return ScanSummary(list(spec.scanners.keys()))
+        return Summary(list(spec.scanners.keys()))

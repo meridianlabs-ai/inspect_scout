@@ -3,7 +3,7 @@ from ._recorder.recorder import (
     ResultsDB,
     Status,
 )
-from ._recorder.summary import ScanSummary
+from ._recorder.summary import Summary
 from ._scan import (
     scan,
     scan_complete,
@@ -12,7 +12,7 @@ from ._scan import (
 from ._scanjob import ScanJob, scanjob
 from ._scanlist import scan_list
 from ._scanner.loader import Loader, loader
-from ._scanner.result import Reference, ScanError, ScanResult
+from ._scanner.result import Error, Reference, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanner.types import ScannerInput
 from ._scanresults import (
@@ -66,7 +66,7 @@ __all__ = [
     "Status",
     "Results",
     "ResultsDB",
-    "ScanSummary",
+    "Summary",
     # transcript
     "transcripts_from_logs",
     "Transcripts",
@@ -79,10 +79,10 @@ __all__ = [
     "LogMetadata",
     "log_metadata",
     # scanner
-    "ScanError",
+    "Error",
     "Scanner",
     "ScannerInput",
-    "ScanResult",
+    "Result",
     "Reference",
     "scanner",
     "Loader",

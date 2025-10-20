@@ -7,7 +7,7 @@ reference: inspect_scout
 ### scan_status
 ### scan_results
 ### scan_results_db
-### ScanStatus
-### ScanSummary
-### ScanResults
-### ScanResultsDB
+### Status
+### Summary
+### Results
+### ResultsDB

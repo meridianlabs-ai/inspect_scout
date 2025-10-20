@@ -42,7 +42,7 @@ from .filter import (
     normalize_messages_filter,
 )
 from .loader import Loader
-from .result import ScanResult
+from .result import Result
 from .types import ScannerInput, TEvent, TMessage
 from .validate import infer_filters_from_type, validate_scanner_signature
 
@@ -59,7 +59,7 @@ P = ParamSpec("P")
 class Scanner(Protocol[T]):
     """Scanner protocol."""
 
-    def __call__(self, input: T, /) -> Awaitable[ScanResult]:
+    def __call__(self, input: T, /) -> Awaitable[Result]:
         """Scan transcript content.
 
         Args:

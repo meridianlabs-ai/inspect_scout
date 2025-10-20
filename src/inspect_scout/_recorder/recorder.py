@@ -6,10 +6,10 @@ from typing import Sequence
 import duckdb
 import pandas as pd
 
-from .._scanner.result import ResultReport, ScanError
+from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
-from .summary import ScanSummary
+from .summary import Summary
 
 
 @dataclass
@@ -25,10 +25,10 @@ class Status:
     location: str
     """Location of scan directory."""
 
-    summary: ScanSummary
+    summary: Summary
     """Summary of scan (results, errors, tokens, etc.) """
 
-    errors: list[ScanError]
+    errors: list[Error]
     """Errors during last scan attempt."""
 
 
@@ -44,8 +44,8 @@ class Results(Status):
         status: bool,
         spec: ScanSpec,
         location: str,
-        summary: ScanSummary,
-        errors: list[ScanError],
+        summary: Summary,
+        errors: list[Error],
         data: dict[str, pd.DataFrame],
     ) -> None:
         super().__init__(status, spec, location, summary, errors)
@@ -70,8 +70,8 @@ class ResultsDB(Status):
         status: bool,
         spec: ScanSpec,
         location: str,
-        summary: ScanSummary,
-        errors: list[ScanError],
+        summary: Summary,
+        errors: list[Error],
         conn: duckdb.DuckDBPyConnection,
     ) -> None:
         super().__init__(status, spec, location, summary, errors)
@@ -167,10 +167,10 @@ class ScanRecorder(abc.ABC):
     async def flush(self) -> None: ...
 
     @abc.abstractmethod
-    async def errors(self) -> list[ScanError]: ...
+    async def errors(self) -> list[Error]: ...
 
     @abc.abstractmethod
-    async def summary(self) -> ScanSummary: ...
+    async def summary(self) -> Summary: ...
 
     @staticmethod
     @abc.abstractmethod

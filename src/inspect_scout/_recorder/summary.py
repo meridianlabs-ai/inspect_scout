@@ -22,7 +22,7 @@ class ScannerSummary(BaseModel):
     """Totoal tokens used for scanner."""
 
 
-class ScanSummary(BaseModel):
+class Summary(BaseModel):
     """Summary of scan results."""
 
     scanners: dict[str, ScannerSummary] = Field(default_factory=dict)

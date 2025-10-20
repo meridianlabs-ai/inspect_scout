@@ -5,6 +5,9 @@ child processes that coordinate cross-process semaphore creation and access via 
 Manager primitives.
 """
 
+from __future__ import annotations
+
+import sys
 from collections.abc import Iterable
 from multiprocessing.managers import DictProxy, SyncManager
 from multiprocessing.queues import Queue
@@ -18,6 +21,12 @@ from inspect_ai.util._concurrency import (
 
 from ._mp_common import SemaphoreRequest, UpstreamQueueItem, run_sync_on_thread
 from ._mp_semaphore import MPConcurrencySemaphore, PicklableMPSemaphore
+
+# Python 3.12 doesn't support generic Queue at runtime, but with
+# `from __future__ import annotations`, the subscript becomes a string
+# and won't be evaluated at runtime
+if sys.version_info < (3, 13):
+    DictProxy = DictProxy
 
 
 class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):

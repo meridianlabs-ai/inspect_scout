@@ -34,6 +34,7 @@ from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._mp_common import (
     IPCContext,
+    LoggingItem,
     MetricsItem,
     ResultItem,
     SemaphoreRequest,
@@ -41,6 +42,7 @@ from ._mp_common import (
     WorkerComplete,
     run_sync_on_thread,
 )
+from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
 from ._mp_subprocess import subprocess_main
@@ -110,6 +112,8 @@ def multi_process_strategy(
         # This ensures parent creates ManagerSemaphore instances in shared registry
         # when it receives SemaphoreRequest from children
         init_concurrency(parent_registry)
+
+        inspect_log_handler = find_inspect_log_handler()
 
         # Block SIGINT before creating processes - workers will inherit SIG_IGN
         original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -191,6 +195,9 @@ def multi_process_strategy(
                             all_metrics[worker_id] = metrics
                             if update_metrics:
                                 update_metrics(sum_metrics(all_metrics.values()))
+
+                        case LoggingItem(record):
+                            inspect_log_handler.emit(record)
 
                         case SemaphoreRequest(name, concurrency, visible):
                             # Use parent registry to create and register semaphore

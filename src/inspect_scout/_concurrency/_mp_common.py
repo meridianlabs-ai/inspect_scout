@@ -8,6 +8,7 @@ inherit them through copy-on-write memory.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from logging import LogRecord
 from multiprocessing.managers import DictProxy
 from multiprocessing.queues import Queue
 from threading import Condition
@@ -41,6 +42,13 @@ class MetricsItem:
 
 
 @dataclass(frozen=True)
+class LoggingItem:
+    """Logging call from a worker process."""
+
+    record: LogRecord
+
+
+@dataclass(frozen=True)
 class SemaphoreRequest:
     """Request to create a cross-process semaphore."""
 
@@ -66,6 +74,7 @@ class ShutdownSentinel:
 UpstreamQueueItem: TypeAlias = (
     ResultItem
     | MetricsItem
+    | LoggingItem
     | SemaphoreRequest
     | WorkerComplete
     | ShutdownSentinel

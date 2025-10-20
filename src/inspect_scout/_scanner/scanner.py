@@ -43,7 +43,7 @@ from .filter import (
 )
 from .loader import Loader
 from .result import Result
-from .types import ScannerInput, TEvent, TMessage
+from .types import ScannerInput
 from .validate import infer_filters_from_type, validate_scanner_signature
 
 SCANNER_CONFIG = "scanner_config"

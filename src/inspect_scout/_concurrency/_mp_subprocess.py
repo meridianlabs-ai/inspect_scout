@@ -8,6 +8,7 @@ via a single multiplexed upstream queue.
 
 from __future__ import annotations
 
+import logging
 import time
 from threading import Condition
 from typing import Callable
@@ -15,15 +16,16 @@ from typing import Callable
 import anyio
 from inspect_ai.util._concurrency import init_concurrency
 
-from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._display._display import display
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._iterator import iterator_from_queue
-from ._mp_common import run_sync_on_thread
+from ._mp_common import LoggingItem, run_sync_on_thread
+from ._mp_logging import patch_inspect_log_handler
 from ._mp_registry import ChildSemaphoreRegistry
+from .common import ScanMetrics
 from .single_process import single_process_strategy
 
 
@@ -80,6 +82,11 @@ def subprocess_main(
     """
     # Access IPC context inherited from parent process via fork
     ctx = _mp_common.ipc_context
+
+    def _log_in_parent(record: logging.LogRecord) -> None:
+        ctx.upstream_queue.put(LoggingItem(record))
+
+    patch_inspect_log_handler(_log_in_parent)
 
     async def _worker_main() -> None:
         """Main async function for worker process."""

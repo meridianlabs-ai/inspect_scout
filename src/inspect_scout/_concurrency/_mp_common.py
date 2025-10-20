@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from multiprocessing.managers import DictProxy
-from multiprocessing.queues import Queue as MPQueue
-from threading import Condition as ThreadingCondition
+from multiprocessing.queues import Queue
+from threading import Condition
 from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
 
 import anyio
@@ -104,13 +104,13 @@ class IPCContext:
     overall_start_time: float
     """Timestamp when the overall scan started, for timing metrics."""
 
-    parse_job_queue: MPQueue[ParseJob | None]
+    parse_job_queue: Queue[ParseJob | None]
     """Queue of parse jobs sent from main process to workers; None signals completion."""
 
-    upstream_queue: MPQueue[UpstreamQueueItem]
+    upstream_queue: Queue[UpstreamQueueItem]
     """Multiplexed queue carrying results, metrics, and control messages from workers to main."""
 
-    shutdown_condition: ThreadingCondition
+    shutdown_condition: Condition
     """
     Cross-process condition variable for coordinating shutdown.
 
@@ -133,7 +133,7 @@ class IPCContext:
     requests arrive from workers.
     """
 
-    semaphore_condition: ThreadingCondition
+    semaphore_condition: Condition
     """
     Cross-process condition variable for synchronizing semaphore registry access.
 

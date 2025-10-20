@@ -1,6 +1,6 @@
 import time
 from multiprocessing.context import ForkProcess
-from multiprocessing.queues import Queue as MPQueue
+from multiprocessing.queues import Queue
 from queue import Empty
 from typing import Any, Callable
 
@@ -93,7 +93,7 @@ async def shutdown_subprocesses(
     # PHASE 6: Drain queues (collector should have exited by now)
     print_diagnostics("SubprocessShutdown", "Phase 6: Draining queues")
 
-    def drain_queue(queue: MPQueue[Any], name: str) -> int:
+    def drain_queue(queue: Queue[Any], name: str) -> int:
         """Drain a queue and return count of items removed."""
         count = 0
         while True:
@@ -122,7 +122,7 @@ async def shutdown_subprocesses(
     # PHASE 7: Close queues (sends sentinel to feeder threads)
     print_diagnostics("SubprocessShutdown", "Phase 7: Closing queues")
 
-    queues_to_close: list[tuple[MPQueue[Any], str]] = [
+    queues_to_close: list[tuple[Queue[Any], str]] = [
         (ctx.parse_job_queue, "parse_job_queue"),
         (ctx.upstream_queue, "upstream_queue"),
     ]
@@ -142,7 +142,7 @@ async def shutdown_subprocesses(
     # PHASE 9: Cancel join threads (orphan any stuck feeder threads)
     print_diagnostics("SubprocessShutdown", "Phase 9: Cancelling join threads")
 
-    queues_to_cancel: list[tuple[MPQueue[Any], str]] = [
+    queues_to_cancel: list[tuple[Queue[Any], str]] = [
         (ctx.parse_job_queue, "parse_job_queue"),
         (ctx.upstream_queue, "upstream_queue"),
     ]

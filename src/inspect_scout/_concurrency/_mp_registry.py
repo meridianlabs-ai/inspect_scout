@@ -1,14 +1,14 @@
 """Cross-process semaphore registry implementations.
 
-This module provides registry implementations for parent and child processes
-that coordinate cross-process semaphore creation and access via shared Manager
-primitives.
+This module provides `ConcurrencySemaphoreRegistry` implementations for parent and
+child processes that coordinate cross-process semaphore creation and access via shared
+Manager primitives.
 """
 
 from collections.abc import Iterable
 from multiprocessing.managers import DictProxy, SyncManager
-from multiprocessing.queues import Queue as MPQueue
-from threading import Condition as ThreadingCondition
+from multiprocessing.queues import Queue
+from threading import Condition
 
 import anyio
 from inspect_ai.util._concurrency import (
@@ -21,7 +21,7 @@ from ._mp_semaphore import MPConcurrencySemaphore, PicklableMPSemaphore
 
 
 class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
-    """Registry for parent process - creates ManagerSemaphores in shared DictProxy.
+    """Registry for parent process - creates PicklableMPSemaphore in shared DictProxy.
 
     The parent process uses this registry to create semaphores in the shared
     registry (DictProxy) when requested by children via IPC.
@@ -32,7 +32,7 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         self.sync_manager_dict: DictProxy[str, PicklableMPSemaphore] = (
             sync_manager.dict()
         )
-        self.sync_manager_condition: ThreadingCondition = sync_manager.Condition()
+        self.sync_manager_condition: Condition = sync_manager.Condition()
         self._lock = anyio.Lock()
         self._semaphores: dict[str, ConcurrencySemaphore] = {}
 
@@ -40,7 +40,6 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         """Create a semaphore and notify waiters (synchronous).
 
         This is the synchronous implementation that runs in a thread.
-        Callers should use the async _create_semaphore() method instead.
 
         Args:
             name: Semaphore name
@@ -69,8 +68,8 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
     ) -> ConcurrencySemaphore:
         """Get or create a cross-process semaphore.
 
-        Creates the underlying ManagerSemaphore in the shared registry
-        if it doesn't exist, then wraps it in a ConcurrencySemaphore.
+        Creates the underlying ManagerSemaphore in the shared registry if it doesn't
+        exist, then wraps it in a ConcurrencySemaphore.
 
         Args:
             name: Semaphore display name
@@ -99,13 +98,6 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         """Return all registered semaphores for status display."""
         return self._semaphores.values()
 
-    def clear(self) -> None:
-        """Clear the local wrapper cache.
-
-        Note: Does not clear the shared provider.registry.
-        """
-        self._semaphores.clear()
-
 
 class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
     """Registry for child process - requests ManagerSemaphores via IPC.
@@ -118,8 +110,8 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
     def __init__(
         self,
         registry: DictProxy[str, PicklableMPSemaphore],
-        condition: ThreadingCondition,
-        upstream_queue: MPQueue[UpstreamQueueItem],
+        condition: Condition,
+        upstream_queue: Queue[UpstreamQueueItem],
     ) -> None:
         self.registry = registry
         self.condition = condition
@@ -195,10 +187,3 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
     def values(self) -> Iterable[ConcurrencySemaphore]:
         """Return all registered semaphores for status display."""
         return self._wrappers.values()
-
-    def clear(self) -> None:
-        """Clear the local wrapper cache.
-
-        Note: Does not clear the shared provider.registry.
-        """
-        self._wrappers.clear()

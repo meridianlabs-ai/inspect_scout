@@ -9,7 +9,7 @@ via a single multiplexed upstream queue.
 from __future__ import annotations
 
 import time
-from multiprocessing.synchronize import Condition as MPCondition
+from threading import Condition
 from typing import Callable
 
 import anyio
@@ -21,20 +21,20 @@ from inspect_scout._display._display import display
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
-from ._iterator import iterator_from_mp_queue
+from ._iterator import iterator_from_queue
 from ._mp_common import run_sync_on_thread
 from ._mp_registry import ChildSemaphoreRegistry
 from .single_process import single_process_strategy
 
 
 async def _shutdown_monitor_task(
-    condition: MPCondition,
+    condition: Condition,
     cancel_scope: anyio.CancelScope,
     print_diagnostics: Callable[[str, object], None],
 ) -> None:
     """Monitor shutdown condition and cancel worker when signaled.
 
-    This task burns one thread waiting on the MPCondition. When the parent process
+    This task burns one thread waiting on the Condition. When the parent process
     signals shutdown, this cancels the entire worker via the cancel_scope, enabling
     immediate shutdown response.
 
@@ -145,7 +145,7 @@ def subprocess_main(
                     try:
                         await strategy(
                             record_results=_record_to_queue,
-                            parse_jobs=iterator_from_mp_queue(ctx.parse_job_queue),
+                            parse_jobs=iterator_from_queue(ctx.parse_job_queue),
                             parse_function=ctx.parse_function,
                             scan_function=ctx.scan_function,
                             update_metrics=_update_worker_metrics,

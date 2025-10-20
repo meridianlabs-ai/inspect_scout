@@ -34,7 +34,14 @@ def display() -> Display:
 def init_display_type(display: DisplayType | None = None) -> DisplayType:
     global _display_type
     if _display_type is None:
-        # determine display
+        # determine display (force 'plain' if in diagnostics mode)
+        if os.getenv("SCOUT_DIAGNOSTICS", "false").lower() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            display = "plain"
+
         display = cast(
             DisplayType,
             display or os.environ.get("SCOUT_DISPLAY", DEFAULT_DISPLAY).lower().strip(),

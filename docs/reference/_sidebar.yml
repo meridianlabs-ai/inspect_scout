@@ -17,8 +17,8 @@ website:
           href: reference/scanning.qmd#scan_resume
         - text: scan_complete
           href: reference/scanning.qmd#scan_complete
-        - text: ScanStatus
-          href: reference/scanning.qmd#scanstatus
+        - text: Status
+          href: reference/scanning.qmd#status
         - text: ScanOptions
           href: reference/scanning.qmd#scanoptions
         - text: ScanScanner
@@ -44,14 +44,14 @@ website:
           href: reference/results.qmd#scan_results
         - text: scan_results_db
           href: reference/results.qmd#scan_results_db
-        - text: ScanStatus
-          href: reference/results.qmd#scanstatus
-        - text: ScanSummary
-          href: reference/results.qmd#scansummary
-        - text: ScanResults
-          href: reference/results.qmd#scanresults
-        - text: ScanResultsDB
-          href: reference/results.qmd#scanresultsdb
+        - text: Status
+          href: reference/results.qmd#status
+        - text: Summary
+          href: reference/results.qmd#summary
+        - text: Results
+          href: reference/results.qmd#results
+        - text: ResultsDB
+          href: reference/results.qmd#resultsdb
       - section: transcript
         href: reference/transcript.qmd
         contents:
@@ -82,12 +82,12 @@ website:
           href: reference/scanner.qmd#scanner
         - text: ScannerInput
           href: reference/scanner.qmd#scannerinput
-        - text: ScanResult
-          href: reference/scanner.qmd#scanresult
+        - text: Result
+          href: reference/scanner.qmd#result
         - text: Reference
           href: reference/scanner.qmd#reference
-        - text: ScanError
-          href: reference/scanner.qmd#scanerror
+        - text: Error
+          href: reference/scanner.qmd#error
         - text: Loader
           href: reference/scanner.qmd#loader
         - text: scanner

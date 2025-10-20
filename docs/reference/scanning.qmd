@@ -11,7 +11,7 @@ reference: inspect_scout
 
 ## Status
 
-### ScanStatus
+### Status
 ### ScanOptions
 ### ScanScanner
 ### ScanRevision

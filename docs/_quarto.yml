@@ -34,8 +34,14 @@ website:
       left:
           - text: "Getting Started"
             href: index.qmd
-          - text: "About"
-            href: about.qmd
+          - text: "Using Scout"
+            menu:
+                - href: workflow.qmd
+                - href: scanners.qmd
+                - href: results.qmd
+                - href: transcripts.qmd
+                - href: parallelism.qmd 
+                - href: options.qmd 
           - text: "Reference"
             href: reference/index.qmd
 
@@ -49,11 +55,21 @@ website:
         style: docked
         contents:
            - text: Getting Started
+             href: index.qmd
              contents:
-               - href: index.qmd
-                 text: Welcome
-           - text: About
-             href: about.qmd
+                - text: Welcome
+                  href: index.qmd
+                - text: Tutorial
+                  href: index.qmd#tutorial
+           - text: Using Scout
+             href: workflow.qmd
+             contents:
+                - href: workflow.qmd
+                - href: scanners.qmd
+                - href: results.qmd
+                - href: transcripts.qmd
+                - href: parallelism.qmd 
+                - href: options.qmd
           
    page-footer:
       left:

@@ -1,7 +1,7 @@
 from ._recorder.recorder import (
-    ScanResults,
-    ScanResultsDB,
-    ScanStatus,
+    Results,
+    ResultsDB,
+    Status,
 )
 from ._recorder.summary import ScanSummary
 from ._scan import (
@@ -63,9 +63,9 @@ __all__ = [
     "scan_status",
     "scan_results",
     "scan_results_db",
-    "ScanStatus",
-    "ScanResults",
-    "ScanResultsDB",
+    "Status",
+    "Results",
+    "ResultsDB",
     "ScanSummary",
     # transcript
     "transcripts_from_logs",

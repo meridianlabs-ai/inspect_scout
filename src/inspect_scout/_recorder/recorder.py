@@ -13,7 +13,7 @@ from .summary import ScanSummary
 
 
 @dataclass
-class ScanStatus:
+class Status:
     """Status of scan job."""
 
     complete: bool
@@ -33,7 +33,7 @@ class ScanStatus:
 
 
 @dataclass
-class ScanResults(ScanStatus):
+class Results(Status):
     """Scan results as pandas data frames."""
 
     data: dict[str, pd.DataFrame]
@@ -53,7 +53,7 @@ class ScanResults(ScanStatus):
 
 
 @dataclass
-class ScanResultsDB(ScanStatus):
+class ResultsDB(Status):
     """Scan results as DuckDB database.
 
     Use `ScanResultsDB` as a context manager to close the DuckDb connection
@@ -77,7 +77,7 @@ class ScanResultsDB(ScanStatus):
         super().__init__(status, spec, location, summary, errors)
         self.conn = conn
 
-    def __enter__(self) -> "ScanResultsDB":
+    def __enter__(self) -> "ResultsDB":
         """Enter the async context manager."""
         return self
 
@@ -174,24 +174,24 @@ class ScanRecorder(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    async def complete(scan_location: str) -> ScanStatus: ...
+    async def complete(scan_location: str) -> Status: ...
 
     @staticmethod
     @abc.abstractmethod
-    async def status(scan_location: str) -> ScanStatus: ...
+    async def status(scan_location: str) -> Status: ...
 
     @staticmethod
     @abc.abstractmethod
     async def results(
         scan_location: str, *, scanner: str | None = None, include_null: bool = False
-    ) -> ScanResults: ...
+    ) -> Results: ...
 
     @staticmethod
     @abc.abstractmethod
     async def results_db(
         scan_location: str, *, include_null: bool = False
-    ) -> ScanResultsDB: ...
+    ) -> ResultsDB: ...
 
     @staticmethod
     @abc.abstractmethod
-    async def list(scans_location: str) -> list[ScanStatus]: ...
+    async def list(scans_location: str) -> list[Status]: ...

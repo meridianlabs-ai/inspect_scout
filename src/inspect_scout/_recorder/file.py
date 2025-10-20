@@ -25,10 +25,10 @@ from .._scanner.result import ResultReport, ScanError
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .recorder import (
+    Results,
+    ResultsDB,
     ScanRecorder,
-    ScanResults,
-    ScanResultsDB,
-    ScanStatus,
+    Status,
 )
 
 SCAN_JSON = "_scan.json"
@@ -113,7 +113,7 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def complete(scan_location: str) -> ScanStatus:
+    async def complete(scan_location: str) -> Status:
         # get state
         scan_dir = UPath(scan_location)
         scan_spec = _read_scan_spec(scan_dir)
@@ -140,7 +140,7 @@ class FileRecorder(ScanRecorder):
         # cleanup scan buffer
         cleanup_buffer_dir(scan_buffer_dir)
 
-        return ScanStatus(
+        return Status(
             complete=True,
             spec=scan_spec,
             location=scan_dir.as_posix(),
@@ -150,10 +150,10 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def status(scan_location: str) -> ScanStatus:
+    async def status(scan_location: str) -> Status:
         buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         spec = _read_scan_spec(UPath(scan_location))
-        return ScanStatus(
+        return Status(
             complete=False if buffer_dir.exists() else True,
             spec=spec,
             location=scan_location,
@@ -172,7 +172,7 @@ class FileRecorder(ScanRecorder):
         *,
         scanner: str | None = None,
         include_null: bool = False,
-    ) -> ScanResults:
+    ) -> Results:
         import pyarrow.parquet as pq
         from upath import UPath
 
@@ -216,7 +216,7 @@ class FileRecorder(ScanRecorder):
                     name = parquet_file.stem
                     data[name] = await scanner_df(parquet_file)
 
-            return ScanResults(
+            return Results(
                 status=status.complete,
                 spec=status.spec,
                 location=status.location,
@@ -229,7 +229,7 @@ class FileRecorder(ScanRecorder):
     @staticmethod
     async def results_db(
         scan_location: str, *, include_null: bool = False
-    ) -> ScanResultsDB:
+    ) -> ResultsDB:
         from upath import UPath
 
         scan_dir = UPath(scan_location)
@@ -262,7 +262,7 @@ class FileRecorder(ScanRecorder):
         transcripts_df = await transcripts_df_for_results(status.spec.transcripts)  # noqa: F841
         conn.execute("CREATE TABLE transcripts AS SELECT * FROM transcripts_df")
 
-        return ScanResultsDB(
+        return ResultsDB(
             status=status.complete,
             spec=status.spec,
             location=status.location,
@@ -273,7 +273,7 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def list(scans_location: str) -> list[ScanStatus]:
+    async def list(scans_location: str) -> list[Status]:
         scans_dir = UPath(scans_location)
         return [
             await FileRecorder.status(scan_dir.as_posix())

@@ -38,7 +38,7 @@ from ._recorder.factory import (
     scan_recorder_for_location,
     scan_recorder_type_for_location,
 )
-from ._recorder.recorder import ScanRecorder, ScanStatus
+from ._recorder.recorder import ScanRecorder, Status
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob
 from ._scanner.result import ResultReport, ScanError, ScanResult
@@ -71,7 +71,7 @@ def scan(
     metadata: dict[str, Any] | None = None,
     display: DisplayType | None = None,
     log_level: str | None = None,
-) -> ScanStatus:
+) -> Status:
     """Scan transcripts.
 
     Scan transcripts using one or more scanners. Note that scanners must each
@@ -144,7 +144,7 @@ async def scan_async(
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
-) -> ScanStatus:
+) -> Status:
     """Scan transcripts.
 
     Scan transcripts using one or more scanners. Note that scanners must each
@@ -235,7 +235,7 @@ def scan_resume(
     scan_location: str,
     display: DisplayType | None = None,
     log_level: str | None = None,
-) -> ScanStatus:
+) -> Status:
     """Resume a previous scan.
 
     Args:
@@ -251,9 +251,7 @@ def scan_resume(
     return run_coroutine(scan_resume_async(scan_location, log_level=log_level))
 
 
-async def scan_resume_async(
-    scan_location: str, log_level: str | None = None
-) -> ScanStatus:
+async def scan_resume_async(scan_location: str, log_level: str | None = None) -> Status:
     """Resume a previous scan.
 
     Args:
@@ -297,7 +295,7 @@ def scan_complete(
     scan_location: str,
     display: DisplayType | None = None,
     log_level: str | None = None,
-) -> ScanStatus:
+) -> Status:
     """Complete a scan.
 
     This function is used to indicate that a scan with errors in some
@@ -319,7 +317,7 @@ def scan_complete(
 
 async def scan_complete_async(
     scan_location: str, log_level: str | None = None
-) -> ScanStatus:
+) -> Status:
     """Complete a scan.
 
     This function is used to indicate that a scan with errors in some
@@ -349,8 +347,8 @@ async def scan_complete_async(
     return status
 
 
-async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> ScanStatus:
-    result: ScanStatus | None = None
+async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> Status:
+    result: Status | None = None
 
     async def run(tg: TaskGroup) -> None:
         try:
@@ -375,7 +373,7 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> ScanStatu
 
 async def _scan_async_inner(
     *, scan: ScanContext, recorder: ScanRecorder, tg: TaskGroup
-) -> ScanStatus:
+) -> Status:
     """Execute a scan by orchestrating concurrent scanner execution across transcripts.
 
     This function is the orchestration layer that coordinates scanner execution
@@ -535,7 +533,7 @@ async def _scan_async_inner(
                 # report status
                 errors = await recorder.errors()
                 if len(errors) > 0:
-                    scan_status = ScanStatus(
+                    scan_status = Status(
                         complete=False,
                         spec=scan.spec,
                         location=await recorder.location(),
@@ -614,8 +612,8 @@ def init_scan_model_context(
 
 async def handle_scan_interruped(
     message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
-) -> ScanStatus:
-    status = ScanStatus(
+) -> Status:
+    status = Status(
         complete=False,
         spec=spec,
         location=await recorder.location(),

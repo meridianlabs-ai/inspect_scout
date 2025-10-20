@@ -38,11 +38,25 @@ website:
         contents:
         - text: scan_list
           href: reference/results.qmd#scan_list
+        - text: scan_status
+          href: reference/results.qmd#scan_status
+        - text: scan_results
+          href: reference/results.qmd#scan_results
+        - text: scan_results_db
+          href: reference/results.qmd#scan_results_db
+        - text: ScanStatus
+          href: reference/results.qmd#scanstatus
+        - text: ScanSummary
+          href: reference/results.qmd#scansummary
+        - text: ScanResults
+          href: reference/results.qmd#scanresults
+        - text: ScanResultsDB
+          href: reference/results.qmd#scanresultsdb
       - section: transcript
         href: reference/transcript.qmd
         contents:
-        - text: transcripts
-          href: reference/transcript.qmd#transcripts
+        - text: transcripts_from_logs
+          href: reference/transcript.qmd#transcripts_from_logs
         - text: Transcripts
           href: reference/transcript.qmd#transcripts
         - text: TranscriptInfo
@@ -95,6 +109,12 @@ website:
           href: reference/async.qmd#scan_complete_async
         - text: scan_list_async
           href: reference/async.qmd#scan_list_async
+        - text: scan_status_async
+          href: reference/async.qmd#scan_status_async
+        - text: scan_results_async
+          href: reference/async.qmd#scan_results_async
+        - text: scan_results_db_async
+          href: reference/async.qmd#scan_results_db_async
     - section: Scout CLI
       href: reference/scout_scan.qmd
       contents:

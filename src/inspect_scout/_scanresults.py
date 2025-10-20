@@ -2,13 +2,13 @@ from inspect_ai._util._async import run_coroutine
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._recorder.recorder import (
-    ScanResults,
-    ScanResultsDB,
-    ScanStatus,
+    Results,
+    ResultsDB,
+    Status,
 )
 
 
-def scan_status(scan_location: str) -> ScanStatus:
+def scan_status(scan_location: str) -> Status:
     """Status of scan.
 
     Args:
@@ -20,7 +20,7 @@ def scan_status(scan_location: str) -> ScanStatus:
     return run_coroutine(scan_status_async(scan_location))
 
 
-async def scan_status_async(scan_location: str) -> ScanStatus:
+async def scan_status_async(scan_location: str) -> Status:
     """Status of scan.
 
     Args:
@@ -35,7 +35,7 @@ async def scan_status_async(scan_location: str) -> ScanStatus:
 
 def scan_results(
     scan_location: str, *, scanner: str | None = None, include_null: bool = False
-) -> ScanResults:
+) -> Results:
     """Scan results as Pandas data frames.
 
     Args:
@@ -53,7 +53,7 @@ def scan_results(
 
 async def scan_results_async(
     scan_location: str, *, scanner: str | None = None, include_null: bool = False
-) -> ScanResults:
+) -> Results:
     """Scan results as Pandas data frames.
 
     Args:
@@ -70,7 +70,7 @@ async def scan_results_async(
     )
 
 
-def scan_results_db(scan_location: str, include_null: bool = False) -> ScanResultsDB:
+def scan_results_db(scan_location: str, include_null: bool = False) -> ResultsDB:
     """Scan results as DuckDB database.
 
     Args:
@@ -85,7 +85,7 @@ def scan_results_db(scan_location: str, include_null: bool = False) -> ScanResul
 
 async def scan_results_db_async(
     scan_location: str, include_null: bool = False
-) -> ScanResultsDB:
+) -> ResultsDB:
     """Scan results as DuckDB database.
 
     Args:

@@ -6,7 +6,7 @@ from rich.console import RenderableType
 from typing_extensions import override
 
 from inspect_scout._concurrency.common import ScanMetrics
-from inspect_scout._recorder.recorder import ScanStatus
+from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import ScanSummary
 from inspect_scout._scancontext import ScanContext
 from inspect_scout._scanner.result import ResultReport
@@ -36,10 +36,10 @@ class Display(abc.ABC):
         yield ScanDisplayNone()
 
     @abc.abstractmethod
-    def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None: ...
+    def scan_interrupted(self, message: RenderableType, status: Status) -> None: ...
 
     @abc.abstractmethod
-    def scan_complete(self, status: ScanStatus) -> None: ...
+    def scan_complete(self, status: Status) -> None: ...
 
 
 class ScanDisplay(abc.ABC):

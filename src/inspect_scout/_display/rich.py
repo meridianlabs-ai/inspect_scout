@@ -28,7 +28,7 @@ from inspect_scout._recorder.summary import ScanSummary
 from inspect_scout._scanspec import ScanSpec
 
 from .._concurrency.common import ScanMetrics
-from .._recorder.recorder import ScanStatus
+from .._recorder.recorder import Status
 from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -62,7 +62,7 @@ class DisplayRich(Display):
             yield scan_display
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None:
+    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
         self.print(message)
         panel = scan_panel(
             spec=status.spec,
@@ -72,7 +72,7 @@ class DisplayRich(Display):
         self.print(panel)
 
     @override
-    def scan_complete(self, status: ScanStatus) -> None:
+    def scan_complete(self, status: Status) -> None:
         panel = scan_panel(
             spec=status.spec,
             summary=status.summary,

@@ -9,7 +9,7 @@ from typing_extensions import override
 from inspect_scout._recorder.summary import ScanSummary
 
 from .._concurrency.common import ScanMetrics
-from .._recorder.recorder import ScanStatus
+from .._recorder.recorder import Status
 from .._scancontext import ScanContext
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -48,12 +48,12 @@ class DisplayPlain(Display):
         yield ScanDisplayPlain(scan, summary, transcripts, skipped, self.print)
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: ScanStatus) -> None:
+    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
         self.print(message)
         self.print(scan_interrupted_message(status))
 
     @override
-    def scan_complete(self, status: ScanStatus) -> None:
+    def scan_complete(self, status: Status) -> None:
         if status.complete:
             self.print(scan_complete_message(status))
         else:

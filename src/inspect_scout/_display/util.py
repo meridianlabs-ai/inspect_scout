@@ -5,11 +5,11 @@ from inspect_ai._util.text import truncate_text
 from rich.console import RenderableType
 from rich.text import Text
 
-from inspect_scout._recorder.recorder import ScanStatus
+from inspect_scout._recorder.recorder import Status
 from inspect_scout._scanspec import ScanSpec
 
 
-def scan_interrupted_message(status: ScanStatus) -> str:
+def scan_interrupted_message(status: Status) -> str:
     theme = rich_theme()
     return (
         f"\n[bold][{theme.error}]scan interrupted, resume scan with:[/{theme.error}]\n\n"
@@ -17,11 +17,11 @@ def scan_interrupted_message(status: ScanStatus) -> str:
     )
 
 
-def scan_complete_message(status: ScanStatus) -> str:
+def scan_complete_message(status: Status) -> str:
     return f'\n[bold]scan complete:[/bold] "{pretty_path(status.location)}"\n'
 
 
-def scan_errors_message(status: ScanStatus) -> str:
+def scan_errors_message(status: Status) -> str:
     theme = rich_theme()
     return "\n".join(
         [

@@ -34,7 +34,10 @@ def display() -> Display:
 def init_display_type(display: DisplayType | None = None) -> DisplayType:
     global _display_type
     if _display_type is None:
-        # determine display
+        # determine display (force 'plain' if in diganotics mode)
+        if os.environ.get("SCOUT_DIAGNOSTICS"):
+            display = "plain"
+
         display = cast(
             DisplayType,
             display or os.environ.get("SCOUT_DISPLAY", DEFAULT_DISPLAY).lower().strip(),

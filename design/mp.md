@@ -39,15 +39,15 @@ Both conditions are created via `SyncManager.Condition()` for consistency. Despi
 
 **Solution:** A three-tier architecture (see `_mp_registry.py`, `_mp_semaphore.py`):
 
-1. **PicklableMPSemaphore**: Custom semaphore built from SyncManager proxy objects (Value, Condition) that can be stored in a DictProxy. Unlike standard `multiprocessing.Semaphore`, this can be pickled, enabling lazy creation after forking.
+1. **PicklableMPSemaphore**: Custom semaphore built from SyncManager proxy objects (Value, Condition) that can be stored in a `DictProxy`. Unlike standard `multiprocessing.Semaphore`, this can be pickled, enabling lazy creation after forking.
 
 2. **Registry implementations**:
-   - **ParentSemaphoreRegistry**: Creates `PicklableMPSemaphore` instances in shared DictProxy when requested
+   - **ParentSemaphoreRegistry**: Creates `PicklableMPSemaphore` instances in shared `DictProxy` when requested
    - **ChildSemaphoreRegistry**: Sends `SemaphoreRequest` via upstream_queue, waits on `semaphore_condition` until parent creates it
 
 3. **MPConcurrencySemaphore**: Wraps manager semaphores to provide async `ConcurrencySemaphore` interface (runs blocking acquire/release in threads)
 
-**Flow:** Worker checks local cache → checks shared registry → sends `SemaphoreRequest` → waits on condition → parent creates semaphore in DictProxy → notifies condition → worker retrieves and caches. Subsequent accesses find semaphore directly in shared registry.
+**Flow:** Worker checks local cache → checks shared registry → sends `SemaphoreRequest` → waits on condition → parent creates semaphore in `DictProxy` → notifies condition → worker retrieves and caches. Subsequent accesses find semaphore directly in shared registry.
 
 Both parent and child call `init_concurrency()` with their respective registries, ensuring transparent use of the appropriate implementation.
 

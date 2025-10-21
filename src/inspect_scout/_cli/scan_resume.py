@@ -8,7 +8,7 @@ from .scan import scan_command
 
 
 @scan_command.command("resume")
-@click.argument("scan_dir", nargs=1)
+@click.argument("scan_location", nargs=1)
 @common_options
 def scan_resume_command(
     scan_location: str,

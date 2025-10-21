@@ -447,6 +447,14 @@ async def _scan_async_inner(
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
                     from inspect_ai.log._transcript import Transcript, init_transcript
 
+                    # the code below might get called many times (e.g. if the scanner
+                    # task message or event or list[message], list[event] or if it has
+                    # a custom loader:
+                    # 1) Is there a loader? If so it's a generator that will yield
+                    #    scanner inputs.
+                    # 2) We need to reflect the signature of the scanner fn -- either
+                    #    by introspecting or by synthesizing a loader
+
                     # initialize model_usage tracking for this coroutine
                     init_model_usage()
 
@@ -471,6 +479,10 @@ async def _scan_async_inner(
                             error=str(ex),
                             traceback=traceback.format_exc(),
                         )
+
+                    # this needs to specify input_type = "message", "event", etc.
+                    # also, need to think about lists and input_id -- does that
+                    # need to be plural
 
                     return [
                         ResultReport(

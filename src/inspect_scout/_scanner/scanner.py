@@ -54,6 +54,10 @@ SCANNER_FILE_ATTR = "___scanner_file___"
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
 T = TypeVar("T", bound=ScannerInput, contravariant=True)
+TM = TypeVar(
+    "TM", bound=Transcript | ChatMessage | list[ChatMessage], contravariant=True
+)
+TE = TypeVar("TE", bound=Transcript | Event | list[Event], contravariant=True)
 P = ParamSpec("P")
 
 
@@ -136,7 +140,7 @@ def scanner(
     events: None = ...,
     loader: Loader[list[ChatMessage]] | None = ...,
     name: str | None = ...,
-) -> Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]: ...
+) -> Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]: ...
 @overload
 def scanner(
     *,
@@ -144,7 +148,7 @@ def scanner(
     messages: None = ...,
     loader: Loader[list[Event]] | None = ...,
     name: str | None = ...,
-) -> Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]: ...
+) -> Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]: ...
 
 
 # overloads for "all": scanner can take T or list[T] or Transcript
@@ -155,7 +159,7 @@ def scanner(
     events: None = ...,
     loader: Loader[ChatMessage] | None = ...,
     name: str | None = ...,
-) -> Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]: ...
+) -> Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]: ...
 @overload
 def scanner(
     *,
@@ -163,7 +167,7 @@ def scanner(
     messages: None = ...,
     loader: Loader[Event] | None = ...,
     name: str | None = ...,
-) -> Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]: ...
+) -> Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]: ...
 
 
 # overload for direct decoration without parentheses (will infer from types)
@@ -193,7 +197,8 @@ def scanner(
 ) -> (
     ScannerFactory[P, T]
     | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]
-    | Callable[[ScannerFactory[P, Any]], ScannerFactory[P, ScannerInput]]
+    | Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]
+    | Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]
 ):
     """Decorator for registering scanners.
 

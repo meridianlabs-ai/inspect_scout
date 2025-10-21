@@ -90,14 +90,16 @@ website:
           href: reference/scanner.qmd#error
         - text: Loader
           href: reference/scanner.qmd#loader
-        - text: scanner
-          href: reference/scanner.qmd#scanner
-        - text: loader
-          href: reference/scanner.qmd#loader
+        - text: messages_as_str
+          href: reference/scanner.qmd#messages_as_str
         - text: MessageType
           href: reference/scanner.qmd#messagetype
         - text: EventType
           href: reference/scanner.qmd#eventtype
+        - text: scanner
+          href: reference/scanner.qmd#scanner
+        - text: loader
+          href: reference/scanner.qmd#loader
       - section: async
         href: reference/async.qmd
         contents:

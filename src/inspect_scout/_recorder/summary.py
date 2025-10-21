@@ -28,11 +28,13 @@ class Summary(BaseModel):
     scanners: dict[str, ScannerSummary] = Field(default_factory=dict)
     """Summary for each scanner."""
 
-    def __init__(self, scanners: list[str] | None = None, **data: Any):
-        if scanners is not None and not data:
+    def __init__(
+        self, scanners: list[str] | dict[str, ScannerSummary] | None = None, **data: Any
+    ):
+        if isinstance(scanners, list):
             super().__init__(scanners={k: ScannerSummary() for k in scanners})
         else:
-            super().__init__(**data)
+            super().__init__(scanners=scanners, **data)
 
     def _report(
         self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]

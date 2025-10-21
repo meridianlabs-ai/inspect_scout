@@ -138,12 +138,8 @@ class RecorderBuffer:
     def errors(self) -> list[Error]:
         return read_scan_errors(str(self._error_file))
 
-    def errors_bytes(self) -> bytes:
-        with open(str(self._error_file), "rb") as f:
-            return f.read()
-
     def scan_summary(self) -> Summary:
-        return read_scan_summary(self._buffer_dir, self._spec)
+        return self._scan_summary
 
     def cleanup(self) -> None:
         """Remove the buffer directory for this scan (best-effort)."""

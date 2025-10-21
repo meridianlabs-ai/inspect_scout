@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
-    AsyncGenerator,
+    AsyncIterator,
     Callable,
     Literal,
     ParamSpec,
@@ -33,25 +33,25 @@ from .types import ScannerInput
 LOADER_CONFIG = "loader_config"
 
 # Use bounded TypeVar (covariant for loader output)
-T = TypeVar("T", bound=ScannerInput, covariant=True)
+TLoaderResult = TypeVar("TLoaderResult", bound=ScannerInput, covariant=True)
 P = ParamSpec("P")
 
 
-class Loader(Protocol[T]):
+class Loader(Protocol[TLoaderResult]):
     """Custom loader for transcript data."""
 
     def __call__(
         self,
         input: Transcript,
         /,
-    ) -> AsyncGenerator[T, None]:
+    ) -> AsyncIterator[TLoaderResult]:
         """Load transcript data.
 
         Args:
            input: Transcript to yield from.
 
         Returns:
-           AsyncGenerator: Generator which returns transcript data.
+           AsyncIterator: Iterator that returns transcript data.
         """
         ...
 
@@ -61,7 +61,7 @@ class LoaderConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
 
 
-LoaderFactory = Callable[P, Loader[T]]
+LoaderFactory = Callable[P, Loader[TLoaderResult]]
 
 
 def loader(
@@ -69,7 +69,7 @@ def loader(
     name: str | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
-) -> Callable[[LoaderFactory[P, T]], LoaderFactory[P, T]]:
+) -> Callable[[LoaderFactory[P, TLoaderResult]], LoaderFactory[P, TLoaderResult]]:
     """Decorator for registering laoders.
 
     Args:
@@ -83,13 +83,15 @@ def loader(
     messages = normalize_messages_filter(messages) if messages is not None else None
     events = normalize_events_filter(events) if events is not None else None
 
-    def decorate(factory: LoaderFactory[P, T]) -> LoaderFactory[P, T]:
+    def decorate(
+        factory: LoaderFactory[P, TLoaderResult],
+    ) -> LoaderFactory[P, TLoaderResult]:
         loader_name = registry_name(
             factory, name or str(getattr(factory, "__name__", "loader"))
         )
 
         @wraps(factory)
-        def factory_wrapper(*args: P.args, **kwargs: P.kwargs) -> Loader[T]:
+        def factory_wrapper(*args: P.args, **kwargs: P.kwargs) -> Loader[TLoaderResult]:
             loader_fn = factory(*args, **kwargs)
 
             if not is_callable_coroutine(loader_fn):
@@ -120,6 +122,6 @@ def loader(
             factory,
             RegistryInfo(type="loader", name=loader_name),
         )
-        return cast(LoaderFactory[P, T], factory_wrapper)
+        return cast(LoaderFactory[P, TLoaderResult], factory_wrapper)
 
     return decorate

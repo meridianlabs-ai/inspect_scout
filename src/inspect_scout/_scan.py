@@ -26,7 +26,8 @@ from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
 
 from inspect_scout._display._display import DisplayType
-from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._scanner.loader import Loader
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
 from inspect_scout._util.log import init_log
 from inspect_scout._util.process import default_max_processes
 
@@ -445,7 +446,10 @@ async def _scan_async_inner(
                     ]
 
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
-                    from inspect_ai.log._transcript import Transcript, init_transcript
+                    from inspect_ai.log._transcript import (
+                        Transcript as InspectTranscript,
+                    )
+                    from inspect_ai.log._transcript import init_transcript
 
                     # the code below might get called many times (e.g. if the scanner
                     # task message or event or list[message], list[event] or if it has
@@ -458,42 +462,45 @@ async def _scan_async_inner(
                     # initialize model_usage tracking for this coroutine
                     init_model_usage()
 
-                    transcript = Transcript()
-                    init_transcript(transcript)
+                    inspect_transcript = InspectTranscript()
+                    init_transcript(inspect_transcript)
 
-                    result: Result | None = None
-                    error: Error | None = None
+                    results: list[ResultReport] = []
 
-                    try:
-                        result = await job.scanner(
-                            filter_transcript(
-                                job.union_transcript,
-                                config_for_scanner(job.scanner).content,
+                    scanner_config = config_for_scanner(job.scanner)
+                    filtered_transcript = filter_transcript(
+                        job.union_transcript,
+                        scanner_config.content,
+                    )
+                    # Need to use typing magic rather than this case
+                    loader: Loader[Transcript] = scanner_config.loader
+
+                    async for loaded_transcript in loader(filtered_transcript):
+                        try:
+                            result: Result | None = await job.scanner(loaded_transcript)
+                            error: Error | None = None
+
+                        except Exception as ex:
+                            logger.error(f"Error in '{job.scanner_name}': {ex}")
+                            result = None
+                            error = Error(
+                                transcript_id=job.union_transcript.id,
+                                scanner=job.scanner_name,
+                                error=str(ex),
+                                traceback=traceback.format_exc(),
+                            )
+                        results.append(
+                            ResultReport(
+                                input_type="transcript",
+                                input_id=job.union_transcript.id,
+                                result=result,
+                                error=error,
+                                events=inspect_transcript.events,
+                                model_usage=model_usage(),
                             )
                         )
-                    except Exception as ex:
-                        logger.error(f"Error in '{job.scanner_name}': {ex}")
-                        error = Error(
-                            transcript_id=job.union_transcript.id,
-                            scanner=job.scanner_name,
-                            error=str(ex),
-                            traceback=traceback.format_exc(),
-                        )
 
-                    # this needs to specify input_type = "message", "event", etc.
-                    # also, need to think about lists and input_id -- does that
-                    # need to be plural
-
-                    return [
-                        ResultReport(
-                            input_type="transcript",
-                            input_id=job.union_transcript.id,
-                            result=result,
-                            error=error,
-                            events=transcript.events,
-                            model_usage=model_usage(),
-                        )
-                    ]
+                    return results
 
                 # transform knobs
                 # For now, let's say that:

@@ -4,6 +4,7 @@ from functools import wraps
 from pathlib import Path
 from typing import (
     Any,
+    AsyncGenerator,
     Awaitable,
     Callable,
     Literal,
@@ -71,10 +72,21 @@ class Scanner(Protocol[T]):
         ...
 
 
+class _IdentityLoader(Loader[Transcript]):
+    """Private noop loader that returns the transcript unchanged."""
+
+    async def __call__(
+        self,
+        input: Transcript,
+        /,
+    ) -> AsyncGenerator[Transcript, None]:
+        yield input
+
+
 @dataclass
 class ScannerConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
-    loader: Loader[Any] | None = field(default=None)
+    loader: Loader[Any] = field(default_factory=_IdentityLoader)
 
 
 ScannerFactory = Callable[P, Scanner[T]]

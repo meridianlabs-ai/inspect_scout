@@ -71,6 +71,7 @@ async def _shutdown_monitor_task(
 
 def subprocess_main(
     worker_id: int,
+    task_count: int,
 ) -> None:
     """Worker subprocess main function.
 
@@ -79,6 +80,7 @@ def subprocess_main(
 
     Args:
         worker_id: Unique identifier for this worker process
+        task_count: Number of concurrent tasks for this worker process
     """
     # Access IPC context inherited from parent process via fork
     ctx = _mp_common.ipc_context
@@ -107,12 +109,12 @@ def subprocess_main(
 
         print_diagnostics(
             "Worker main",
-            f"Starting with {ctx.tasks_per_process} max concurrent scans",
+            f"Starting with {task_count} max concurrent scans",
         )
 
         # Use single_process_strategy to coordinate the async tasks
         strategy = single_process_strategy(
-            task_count=ctx.tasks_per_process,
+            task_count=task_count,
             prefetch_multiple=ctx.prefetch_multiple,
             diagnostics=ctx.diagnostics,
             diag_prefix=f"P{worker_id}",

@@ -119,14 +119,14 @@ def multi_process_strategy(
         original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         try:
-            # TODO: Obviously, hack_factor is just for exploration for now
-            hack_factor = 1
-            tasks_per_process = hack_factor * max(1, task_count // process_count)
+            # Distribute tasks evenly: some processes get base+1, others get base
+            # This ensures we use exactly task_count total tasks
+            base_tasks = task_count // process_count
+            remainder_tasks = task_count % process_count
             # Initialize shared IPC context that will be inherited by forked workers
             _mp_common.ipc_context = IPCContext(
                 parse_function=parse_function,
                 scan_function=scan_function,
-                tasks_per_process=tasks_per_process,
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
@@ -144,8 +144,8 @@ def multi_process_strategy(
 
             print_diagnostics(
                 "Setup",
-                f"Multi-process strategy: {process_count} processes × "
-                f"{tasks_per_process} scans = {process_count * tasks_per_process} total concurrency",
+                f"Multi-process strategy: {process_count} processes with "
+                f"{task_count} total concurrency",
             )
 
             # Queues are part of IPC context and inherited by forked processes.
@@ -168,7 +168,7 @@ def multi_process_strategy(
                 finally:
                     # Send sentinel values to signal worker tasks to stop (one per task)
                     # This runs even if cancelled, allowing graceful shutdown
-                    for _ in range(process_count * tasks_per_process):
+                    for _ in range(task_count):
                         parse_job_queue.put(None)
 
                     print_diagnostics("MP Producer", "FINISHED PRODUCING ALL WORK")
@@ -242,12 +242,20 @@ def multi_process_strategy(
             ctx = multiprocessing.get_context("fork")
             processes: list[ForkProcess] = []
             for worker_id in range(process_count):
+                task_count_for_worker = base_tasks + (
+                    1 if worker_id < remainder_tasks else 0
+                )
                 try:
-                    p = ctx.Process(target=subprocess_main, args=(worker_id,))
+                    p = ctx.Process(
+                        target=subprocess_main,
+                        args=(worker_id, task_count_for_worker),
+                    )
                     p.start()
                     processes.append(p)
                     print_diagnostics(
-                        "Main", f"Spawned worker process #{worker_id} {p.pid}"
+                        "Main",
+                        f"Spawned worker process #{worker_id} {p.pid} "
+                        f"with {task_count_for_worker} tasks",
                     )
                 except Exception as ex:
                     display().print(ex)

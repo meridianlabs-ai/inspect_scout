@@ -201,7 +201,6 @@ def single_process_strategy(
             _update_metrics()
             await anyio.sleep(current_wait_duration)
             metrics.tasks_waiting -= 1
-            _update_metrics()
             return 1.0 if current_wait_duration == 0 else 1.0
 
         async def _perform_parse(worker_id: int) -> bool:
@@ -229,7 +228,6 @@ def single_process_strategy(
                 return True
             finally:
                 metrics.tasks_parsing -= 1
-                _update_metrics()
 
         async def _perform_scan(worker_id: int) -> bool:
             """Perform the scan action. Returns True if scan completed, False otherwise."""
@@ -239,13 +237,6 @@ def single_process_strategy(
                 return False
 
             scanner_job = scanner_job_deque.popleft()
-            _update_metrics()
-
-            # print_diagnostics(
-            #     f"Worker #{worker_id:02d}",
-            #     f"Starting scan on {_scanner_job_info(scanner_job)}",
-            # )
-
             exec_start_time = time.time()
             metrics.tasks_scanning += 1
             _update_metrics()
@@ -264,7 +255,6 @@ def single_process_strategy(
                 return True
             finally:
                 metrics.tasks_scanning -= 1
-                _update_metrics()
 
         async def _worker_task(
             worker_id: int,

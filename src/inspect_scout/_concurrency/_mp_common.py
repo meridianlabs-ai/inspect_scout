@@ -101,9 +101,6 @@ class IPCContext:
     scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]
     """Function that executes a scanner job and returns results."""
 
-    tasks_per_process: int
-    """Maximum number of concurrent tasks per worker process."""
-
     prefetch_multiple: float | None
     """Multiplier for scanner job queue size (base=task_count)."""
 

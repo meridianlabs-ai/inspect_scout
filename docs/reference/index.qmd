@@ -5,20 +5,4 @@ page-layout: full
 toc-depth: 4
 ---
 
-#### Python API
-
-|  |  |
-|----|----|
-| [Scanning](scanning.qmd) | Scan transcripts and manage scan jobs. |
-| [Results](results.qmd) | Status and results of scan jobs.|
-| [Transcripts](scanner.qmd) | Read and filter transcripts. |
-| [Scanners](scanner.qmd) | Implement scanners and loaders. |
-| [Async](async.qmd) | Async functions for scanning. |
-
-
-#### Scount CLI
-
-|  |  |
-|------------------------------------|------------------------------------|
-| [scout scan](scout_scan.qmd) | Scan transcripts and read results. |
-| [scout trace](scout_trace.qmd) | List and read execution traces.|
+{{< include _reference.md >}}

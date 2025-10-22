@@ -7,22 +7,24 @@ description: "Transcript analysis for AI agents."
 
 Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. Scout is built to work with transcripts from the [Inspect AI](https://inspect.aisi.org.uk/) evaluation framework, and has the following core features:
 
-1. Write scanners that target full sample transcripts or individual messages or events.
-
-2. High performance parallel pipeline for reading and processing transcript content. 
-
+1. Scan full sample transcripts or individual messages or events.
+2. High performance parallel processing of transcript content. 
 3. Resume scans that are stopped due to errors or interruptions.
-
-4. Tightly integrated with Inspect [data frames](https://inspect.aisi.org.uk/dataframe.html) for both input and analysis.
+4. Tightly integrated with Inspect [data frames](https://inspect.aisi.org.uk/dataframe.html) for input and analysis.
 
 ## Tutorial
+ 
+::: {.callout-caution}
+The tutorial below is intended to illustrate the basic API and usage of Scout. However, the code doesn't currently work! For the time being please use this for design review only rather than direct experimentation.
+:::
 
-First, install the `inspect_scout` package from GitHub: 
+
+First, install the `inspect_scout` package from GitHub as follows: 
 
 ```bash
 pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ```
- 
+
 We'll start by creating an LLM-based scanner and run a scan on transcripts from a SWE-Bench log. There are a few components we'll make use of here:
 
 - `Transcript` --- LLM conversation to analyze (e.g. an Inspect sample trajectory).
@@ -30,6 +32,8 @@ We'll start by creating an LLM-based scanner and run a scan on transcripts from 
 - `Scanner` --- Function that takes an input from a `Transcript` and returns a `Result` (conceptually very similar to an Inspect `Scorer`). 
 
 - `Results` --- Data frame(s) that includes the results of scanners applied to transcripts.
+
+### Creating a Scanner
 
 Create a file named `scanner.py` with the following contents (click on the numbers at right for further explanation):
 
@@ -82,11 +86,89 @@ def deception() -> Scanner[Transcript]:
 
 5. As with scorers, results also include additional context (here the full model completion, arbitrary metadata is also supported).
 
+### Running a Scan
+
 We can now run that scanner on a SWE Bench log---the log is stored on S3 and by default the `Scanner` will be called once for each sample trajectory in the log (total samples * epochs). In this case we use the `--limit` option to scan only 10 transcripts:
 
 ```bash
 scout scan scanner.py \
    --transcripts s3://slow-tests/swe_bench.eval \
-   --limit 10 \
-   --model openai/gpt-5
+   --limit 10 --model openai/gpt-4.1-nano
+```
+
+### Adding a Scanner
+
+Let's add another scanner that looks for tool call errors. Add the following code to `scanners.py`:
+
+```python
+from inspect_ai.event import ToolEvent
+
+@scanner(events=["tool"]) 
+def tool_errors() -> Scanner[ToolEvent]:
+    
+    async def scan(event: ToolEvent) -> Result:
+        if event.error is not None:
+            return Result(
+                value=True, 
+                explanation=str(event.error)
+            )
+        else:
+            return Result(value=None)
+       
+    return scan
+```
+
+Note that we specify `events=["tool"]` to constrain reading to only tool events, and that our function takes an individual event rather than a `Transcript`.
+
+We can now run again and both scanners will be executed:
+
+```bash
+scout scan scanner.py \
+   --transcripts s3://slow-tests/swe_bench.eval \
+   --limit 10 --model openai/gpt-4.1-nano
+```
+
+### Scan Jobs
+
+You may want to import scanners from other modules and compose them into a `ScanJob`. To do this, add a `@scanjob` decorated function to your source file (it will be used in preference to `@scanner` decorated functions).
+
+```python
+from inspect_scout import ScanJob, scanjob
+
+@scanjob
+def job() -> ScanJob:
+    return ScanJob(
+        scanners=[deception(), tool_errors()]
+    )
+```
+
+You can then use the same command to run the job:
+
+```bash
+scout scan scanner.py \
+   --transcripts s3://slow-tests/swe_bench.eval \
+   --limit 10 --model openai/gpt-4.1-nano
+```
+
+### Scan Results
+
+By default, the results of scans are written into the `./scans` directory. You can override this using the `--results` option---both file paths and S3 buckets are supported.
+
+Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database. There are data frames (or tables) for each scanner, as well as a "transcripts" entry for the core transcripts passed to scan:
+
+```python
+# results as pandas data frames
+results = scan_results("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
+transcripts_df = results.data["transcripts"]
+deception_df = results.data["deception"]
+tool_errors_df = results.data["tool_errors"]
+
+# results as duckdb database 
+results = scan_results_db("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
+with results:
+    # run queries to get data frames
+    df = results.conn.execute("SELECT ...").fetch_df()
+
+    # export entire database as file
+    results.to_file("results.duckdb")
 ```

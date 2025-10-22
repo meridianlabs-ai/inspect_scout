@@ -5,6 +5,8 @@ from inspect_ai.event import Event
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
+from inspect_scout._scanner.types import ScannerInput
+
 
 class Reference(BaseModel):
     """Reference to scanned content."""
@@ -58,6 +60,8 @@ class ResultReport(BaseModel):
 
     input_id: str
 
+    input: ScannerInput
+
     result: Result | None
 
     error: Error | None
@@ -72,6 +76,7 @@ class ResultReport(BaseModel):
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
         columns["input_id"] = self.input_id
+        columns["input"] = to_json_str_safe(self.input)
 
         if self.result is not None:
             # result

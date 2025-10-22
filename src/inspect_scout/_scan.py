@@ -493,6 +493,7 @@ async def _scan_async_inner(
                             ResultReport(
                                 input_type="transcript",
                                 input_id=job.union_transcript.id,
+                                input=loader_result,
                                 result=result,
                                 error=error,
                                 events=inspect_transcript.events,

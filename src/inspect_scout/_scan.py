@@ -502,15 +502,9 @@ async def _scan_async_inner(
 
                     return results
 
-                # transform knobs
-                # For now, let's say that:
-                # - max_transcripts is limit of how many parsed transcripts we'll keep in memory
-                # - we want a buffer multiple of 1.0 so that we could feed all active tasks at once if they all finished at the same time.
-
                 prefetch_multiple = 1.0
-                max_tasks = int(
-                    ((scan.spec.options.max_transcripts or 0) * len(scan.scanners))
-                    / (1 + prefetch_multiple)
+                max_tasks = (scan.spec.options.max_transcripts or 25) * len(
+                    scan.scanners
                 )
 
                 diagnostics = os.getenv("SCOUT_DIAGNOSTICS", "false").lower() in (

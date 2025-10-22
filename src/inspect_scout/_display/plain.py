@@ -77,6 +77,7 @@ class ScanDisplayPlain(ScanDisplay):
         self._total_scans = transcripts * len(scan.scanners)
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
+        self._parsing = self._scanning = self._idle = self._buffered = 0
 
     @override
     def results(
@@ -87,12 +88,16 @@ class ScanDisplayPlain(ScanDisplay):
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
         self._completed_scans = self._skipped_scans + metrics.completed_scans
+        self._parsing = metrics.tasks_parsing
+        self._scanning = metrics.tasks_scanning
+        self._idle = metrics.tasks_idle
+        self._buffered = metrics.buffered_scanner_jobs
         self._update_throttled()
 
     def _update(self) -> None:
         percent = 100.0 * self._completed_scans / self._total_scans
         self._print(
-            f"scanning: {percent:3.0f}% ({self._completed_scans:,}/{self._total_scans:,})"
+            f"scanning: {percent:3.0f}% ({self._completed_scans:,}/{self._total_scans:,}) {self._parsing}/{self._scanning}/{self._idle} ({self._buffered})"
         )
 
     @throttle(8)

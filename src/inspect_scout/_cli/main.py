@@ -39,7 +39,6 @@ scan_command.add_command(scan_resume_command)
 scan_command.add_command(scan_complete_command)
 scan_command.add_command(scan_list_command)
 scout.add_command(view_command)
-
 scout.add_command(trace_command)
 
 

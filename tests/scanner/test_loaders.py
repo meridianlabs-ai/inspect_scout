@@ -5,6 +5,9 @@ from datetime import datetime
 from typing import Any
 
 import pytest
+from inspect_ai._util.registry import (
+    registry_unqualified_name,
+)
 from inspect_ai.event import Event, ModelEvent, ToolEvent
 from inspect_ai.model._chat_message import (
     ChatMessage,
@@ -40,7 +43,7 @@ async def _transcript(input: Transcript) -> Any:
     pass
 
 
-async def _no_hint(input) -> Any:
+async def _no_hint(input) -> Any:  # type:ignore
     pass
 
 
@@ -103,28 +106,28 @@ async def _list_union_event(
 @pytest.mark.parametrize(
     "scanner_fn,expected_loader_type",
     [
-        (_transcript, IdentityLoader),
-        (_no_hint, IdentityLoader),
-        (_message, _ListItemLoader),
-        (_specific_message, _ListItemLoader),
-        (_union_message, _ListItemLoader),
-        (_list_message, _ListLoader),
-        (_list_specific_message, _ListLoader),
-        (_list_union_message, _ListLoader),
-        (_event, _ListItemLoader),
-        (_specific_event, _ListItemLoader),
-        (_union_event, _ListItemLoader),
-        (_list_event, _ListLoader),
-        (_list_specific_event, _ListLoader),
-        (_list_union_event, _ListLoader),
+        (_transcript, "IdentityLoader"),
+        (_no_hint, "IdentityLoader"),
+        (_message, "ListItemLoader"),
+        (_specific_message, "ListItemLoader"),
+        (_union_message, "ListItemLoader"),
+        (_list_message, "ListLoader"),
+        (_list_specific_message, "ListLoader"),
+        (_list_union_message, "ListLoader"),
+        (_event, "ListItemLoader"),
+        (_specific_event, "ListItemLoader"),
+        (_union_event, "ListItemLoader"),
+        (_list_event, "ListLoader"),
+        (_list_specific_event, "ListLoader"),
+        (_list_union_event, "ListLoader"),
     ],
 )
 def test_create_loader_returns_correct_type(
-    scanner_fn: Any, expected_loader_type: type
+    scanner_fn: Any, expected_loader_type: str
 ) -> None:
     """create_loader_for_scanner returns correct loader type for each input annotation."""
     loader = create_loader_for_scanner(scanner_fn)
-    assert isinstance(loader, expected_loader_type)
+    assert registry_unqualified_name(loader) == expected_loader_type
 
 
 @pytest.mark.asyncio

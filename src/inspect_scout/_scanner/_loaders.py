@@ -16,49 +16,47 @@ from typing_extensions import Literal
 from .._transcript.types import (
     Transcript,
 )
-from .loader import Loader
+from .loader import Loader, loader
 
 
-class IdentityLoader(Loader[Transcript]):
+@loader(name="IdentityLoader")
+def IdentityLoader() -> Loader[Transcript]:
     """Private noop loader that returns the transcript unchanged."""
 
-    async def __call__(
-        self,
+    async def the_loader(
         input: Transcript,
         /,
     ) -> AsyncGenerator[Transcript, None]:
         yield input
 
+    return the_loader
 
-class _ListLoader(Loader[list[ChatMessage] | list[Event]]):
+
+@loader(name="ListLoader")
+def _ListLoader(message_or_event: Literal["message", "event"]) -> Loader:
     """Private loader that yields the entire message or event list."""
 
-    def __init__(self, message_or_event: Literal["message", "event"]) -> None:
-        self.is_message = message_or_event == "message"
-
-    async def __call__(
-        self,
+    async def the_loader(
         input: Transcript,
         /,
     ) -> AsyncGenerator[list[ChatMessage] | list[Event], None]:
-        if len(input.messages if self.is_message else input.events) > 1:
-            print("asdf")
-        yield input.messages if self.is_message else input.events
+        yield input.messages if message_or_event == "message" else input.events
+
+    return the_loader
 
 
-class _ListItemLoader(Loader[ChatMessage | Event]):
+@loader(name="ListItemLoader")
+def _ListItemLoader(message_or_event: Literal["message", "event"]) -> Loader:
     """Private loader that yields individual messages or events."""
 
-    def __init__(self, message_or_event: Literal["message", "event"]) -> None:
-        self.is_message = message_or_event == "message"
-
-    async def __call__(
-        self,
+    async def the_loader(
         input: Transcript,
         /,
     ) -> AsyncGenerator[ChatMessage | Event, None]:
-        for item in input.messages if self.is_message else input.events:
+        for item in input.messages if message_or_event == "message" else input.events:
             yield item
+
+    return the_loader
 
 
 def create_loader_for_scanner(scanner_fn: Callable[..., Any]) -> Loader[Any]:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import tempfile
+from typing import Generator
 
 import pytest
+from inspect_ai.model import ChatMessageUser
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
 from inspect_scout._scanner.result import Reference, Result, ResultReport
 from inspect_scout._scanspec import ScanScanner, ScanSpec, ScanTranscripts
@@ -10,7 +12,7 @@ from inspect_scout._transcript.types import TranscriptInfo
 
 
 @pytest.fixture
-def recorder_buffer():
+def recorder_buffer() -> Generator[RecorderBuffer]:
     """Create a temporary RecorderBuffer for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         spec = ScanSpec(
@@ -34,7 +36,7 @@ def recorder_buffer():
 
 
 @pytest.fixture
-def sample_transcript():
+def sample_transcript() -> TranscriptInfo:
     """Create a sample TranscriptInfo for testing."""
     return TranscriptInfo(
         id="test-transcript-123",
@@ -45,7 +47,7 @@ def sample_transcript():
 
 
 @pytest.fixture
-def sample_results():
+def sample_results() -> list[ResultReport]:
     """Create sample Results for testing."""
     return [
         ResultReport(
@@ -98,7 +100,7 @@ async def test_is_recorded(
     recorder_buffer: RecorderBuffer,
     sample_transcript: TranscriptInfo,
     sample_results: list[ResultReport],
-):
+) -> None:
     """Test is_recorded method."""
     scanner_name = "test_scanner"
 
@@ -126,7 +128,7 @@ async def test_sanitize_table_names(
     recorder_buffer: RecorderBuffer,
     sample_transcript: TranscriptInfo,
     sample_results: list[ResultReport],
-):
+) -> None:
     """Test that table names with special characters are sanitized."""
     scanner_name = "test-scanner.with:special/chars"
 

@@ -34,18 +34,10 @@ def deception() -> Scanner[Transcript]:
 
 
 @scanner(messages=["assistant"])
-def target_word_scanner(target_word: str) -> Scanner[Transcript]:
+def target_word_scanner(target_word: str) -> Scanner[ChatMessageAssistant]:
     target_word = target_word.lower()
 
     async def execute(message: ChatMessageAssistant) -> Result:
-        # import random
-
-        # if random.random() < 0.05:
-        #     raise ValueError("Random error occurred!")
-
-        # messages = transcript.messages
-        assert message.role == "assistant"
-
         count = message.text.lower().count(target_word)
         return Result(
             value=count if count > 0 else None,

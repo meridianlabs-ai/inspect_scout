@@ -306,7 +306,7 @@ async def test_loaders_handle_empty_transcript() -> None:
 def test_bare_list_type_should_raise_error() -> None:
     """Scanner with bare list type (no type parameters) should raise RuntimeError."""
 
-    async def _bare_list(input: list) -> Any:
+    async def _bare_list(input: list[Any]) -> Any:
         """Scanner with bare list type - ambiguous whether messages or events."""
         pass
 

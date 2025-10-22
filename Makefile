@@ -1,6 +1,6 @@
 .PHONY: mypy
 mypy:
-	mypy src
+	mypy src examples
 
 .PHONY: check
 check: mypy

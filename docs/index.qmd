@@ -84,7 +84,7 @@ def deception() -> Scanner[Transcript]:
 
 4.  Scanners are looking for particular content or behavior and by convention return a `None` value when the target isn't found.
 
-5.  As with scorers, results also include additional context (here the full model completion, arbitrary metadata is also supported).
+5.  As with scorers, results also include additional context (here the full model completion).
 
 ### Running a Scan
 

@@ -26,8 +26,8 @@ def deception() -> Scanner[Transcript]:
             + messages_as_str(transcript.messages)
         )
         return Result(
-            value=True if result.completion.lower().startswith("yes") else False,
-            answer=result.completion,
+            value=True if result.completion.lower().startswith("yes") else None,
+            explanation=result.completion,
         )
 
     return execute

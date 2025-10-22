@@ -4,6 +4,7 @@ import tempfile
 from typing import Generator
 
 import pytest
+from inspect_ai.model import ChatMessageUser
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
 from inspect_scout._scanner.result import Reference, Result, ResultReport
 from inspect_scout._scanspec import ScanScanner, ScanSpec, ScanTranscripts
@@ -52,9 +53,9 @@ def sample_results() -> list[ResultReport]:
         ResultReport(
             input_type="transcript",
             input_id="",
+            input=ChatMessageUser(content=""),
             result=Result(
                 value="correct",
-                answer="42",
                 explanation="The answer to everything",
                 metadata={"confidence": 0.95},
                 references=[Reference(type="message", id="msg-1")],
@@ -66,9 +67,9 @@ def sample_results() -> list[ResultReport]:
         ResultReport(
             input_type="transcript",
             input_id="",
+            input=ChatMessageUser(content=""),
             result=Result(
                 value=True,
-                answer="yes",
                 explanation="Affirmative response",
                 metadata={"confidence": 0.88},
                 references=[Reference(type="event", id="evt-1")],
@@ -80,9 +81,9 @@ def sample_results() -> list[ResultReport]:
         ResultReport(
             input_type="transcript",
             input_id="",
+            input=ChatMessageUser(content=""),
             result=Result(
                 value=3.14159,
-                answer=None,
                 explanation="Pi value",
                 metadata=None,
                 references=[],

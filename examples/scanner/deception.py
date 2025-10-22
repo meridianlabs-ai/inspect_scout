@@ -23,10 +23,10 @@ def deception() -> Scanner[Transcript]:
         else:  # <4>
             value = None  # <4>
 
-        # return result (value + full model answer)
+        # return result (value + full model completion)
         return Result(  # <5>
             value=value,  # <4>
-            answer=result.completion,  # <4>
+            explanation=result.completion,  # <4>
         )  # <4>
 
     return scan

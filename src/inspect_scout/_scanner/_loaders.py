@@ -13,57 +13,74 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
-from .._transcript.types import (
-    Transcript,
-)
+from .._transcript.types import Transcript, TranscriptContent
 from .loader import Loader, loader
 
 
-@loader(name="IdentityLoader")
-def IdentityLoader() -> Loader[Transcript]:
-    """Private noop loader that returns the transcript unchanged."""
+def _IdentityLoader(
+    content: TranscriptContent,
+) -> Loader[Transcript]:
+    @loader(name="IdentityLoader", content=content)
+    def the_factory() -> Loader[Transcript]:
+        async def the_loader(
+            transcript: Transcript,
+        ) -> AsyncGenerator[Transcript, None]:
+            yield transcript
 
-    async def the_loader(
-        input: Transcript,
-        /,
-    ) -> AsyncGenerator[Transcript, None]:
-        yield input
+        return the_loader
 
-    return the_loader
-
-
-@loader(name="ListLoader")
-def _ListLoader(message_or_event: Literal["message", "event"]) -> Loader:
-    """Private loader that yields the entire message or event list."""
-
-    async def the_loader(
-        input: Transcript,
-        /,
-    ) -> AsyncGenerator[list[ChatMessage] | list[Event], None]:
-        yield input.messages if message_or_event == "message" else input.events
-
-    return the_loader
+    return the_factory()
 
 
-@loader(name="ListItemLoader")
-def _ListItemLoader(message_or_event: Literal["message", "event"]) -> Loader:
-    """Private loader that yields individual messages or events."""
+def _ListLoader(
+    message_or_event: Literal["message", "event"],
+    content: TranscriptContent,
+) -> Loader[Any]:
+    @loader(name="ListLoader", content=content)
+    def the_factory() -> Loader[Any]:
+        async def the_loader(
+            transcript: Transcript,
+        ) -> AsyncGenerator[list[ChatMessage] | list[Event], None]:
+            yield (
+                transcript.messages
+                if message_or_event == "message"
+                else transcript.events
+            )
 
-    async def the_loader(
-        input: Transcript,
-        /,
-    ) -> AsyncGenerator[ChatMessage | Event, None]:
-        for item in input.messages if message_or_event == "message" else input.events:
-            yield item
+        return the_loader
 
-    return the_loader
+    return the_factory()
 
 
-def create_loader_for_scanner(scanner_fn: Callable[..., Any]) -> Loader[Any]:
+def _ListItemLoader(
+    message_or_event: Literal["message", "event"],
+    content: TranscriptContent,
+) -> Loader[Any]:
+    @loader(name="ListItemLoader", content=content)
+    def the_factory() -> Loader[Any]:
+        async def the_loader(
+            transcript: Transcript,
+        ) -> AsyncGenerator[ChatMessage | Event, None]:
+            for item in (
+                transcript.messages
+                if message_or_event == "message"
+                else transcript.events
+            ):
+                yield item
+
+        return the_loader
+
+    return the_factory()
+
+
+def create_implicit_loader(
+    scanner_fn: Callable[..., Any], content: TranscriptContent
+) -> Loader[Any]:
     """Create appropriate loader based on scanner function's input type annotation.
 
     Args:
         scanner_fn: The scanner function to analyze.
+        content: The scanner's content filter to be adopted by the loader.
 
     Returns:
         Appropriate loader for the scanner's input type.
@@ -73,7 +90,7 @@ def create_loader_for_scanner(scanner_fn: Callable[..., Any]) -> Loader[Any]:
         iter(inspect.signature(scanner_fn).parameters.values())
     ).annotation
     if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
-        return IdentityLoader()
+        return _IdentityLoader(content)
 
     # Check if it's a list type
     origin = get_origin(input_annotation)
@@ -83,11 +100,11 @@ def create_loader_for_scanner(scanner_fn: Callable[..., Any]) -> Loader[Any]:
         assert args, "Scanner input list type annotation must not be bare"
         element_type = args[0]
         # Return list loader (yields entire list)
-        return _ListLoader(_message_or_event(element_type))
+        return _ListLoader(_message_or_event(element_type), content)
 
     # Otherwise it's a single item type (ChatMessage or Event)
     # Return item loader (yields individual items)
-    return _ListItemLoader(_message_or_event(input_annotation))
+    return _ListItemLoader(_message_or_event(input_annotation), content)
 
 
 def _matches_union_type(type_annotation: Any, union_type: Any) -> bool:

@@ -37,7 +37,7 @@ from .._transcript.types import (
     Transcript,
     TranscriptContent,
 )
-from ._loaders import IdentityLoader, create_loader_for_scanner
+from ._loaders import create_implicit_loader
 from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
@@ -79,7 +79,8 @@ class Scanner(Protocol[T]):
 @dataclass
 class ScannerConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
-    loader: Loader[Any] = field(default_factory=IdentityLoader)
+    # TODO: I want to make loader non-optional, but this obviously isn't right
+    loader: Loader[Any] = field(default=cast(Loader[Any], None))
 
 
 ScannerFactory = Callable[P, Scanner[T]]
@@ -265,9 +266,14 @@ def scanner(
             if inferred_events is not None:
                 scanner_config.content.events = inferred_events
             if loader is not None:
+                # TODO: how are we ensuring that the writer of a custom loader sets
+                # the proper content filter? We could do it for them, but I'm not
+                # sure how - syntactically
                 scanner_config.loader = cast(Loader[Any], loader)
             else:
-                scanner_config.loader = create_loader_for_scanner(scanner_fn)
+                scanner_config.loader = create_implicit_loader(
+                    scanner_fn, scanner_config.content
+                )
 
             registry_tag(
                 factory_fn,

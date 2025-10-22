@@ -25,16 +25,15 @@ from inspect_ai.model._model_config import (
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
 
-from inspect_scout._display._display import DisplayType
-from inspect_scout._scanner.loader import Loader
-from inspect_scout._transcript.types import Transcript, TranscriptInfo
-from inspect_scout._util.log import init_log
-from inspect_scout._util.process import default_max_processes
-
 from ._concurrency.common import ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
-from ._display._display import display, display_type_initialized, init_display_type
+from ._display._display import (
+    DisplayType,
+    display,
+    display_type_initialized,
+    init_display_type,
+)
 from ._recorder.factory import (
     scan_recorder_for_location,
     scan_recorder_type_for_location,
@@ -42,13 +41,21 @@ from ._recorder.factory import (
 from ._recorder.recorder import ScanRecorder, Status
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob
+from ._scanner.loader import Loader, config_for_loader
 from ._scanner.result import Error, Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
 from ._scanspec import ScanOptions, ScanSpec
 from ._transcript.transcripts import Transcripts
+from ._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
 from ._transcript.util import filter_transcript, union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+from ._util.log import init_log
+from ._util.process import default_max_processes
 
 logger = getLogger(__name__)
 
@@ -427,7 +434,7 @@ async def _scan_async_inner(
                 scanners_list = list(scan.scanners.values())
                 union_content = union_transcript_contents(
                     [
-                        config_for_scanner(scanner).content
+                        _content_for_scanner(scanner)
                         for scanner in scan.scanners.values()
                     ]
                 )
@@ -469,8 +476,7 @@ async def _scan_async_inner(
 
                     scanner_config = config_for_scanner(job.scanner)
                     filtered_transcript = filter_transcript(
-                        job.union_transcript,
-                        scanner_config.content,
+                        job.union_transcript, _content_for_scanner(job.scanner)
                     )
                     # Need to use typing magic rather than this case
                     loader: Loader[Transcript] = scanner_config.loader
@@ -668,3 +674,13 @@ async def _parse_jobs(
             transcript_info=transcript_info,
             scanner_indices=set(scanner_indices_for_transcript),
         )
+
+
+def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
+    """
+    Grab the TranscriptContent for the passed scanner
+
+    This logic relies on the fact that the loader used alongside this scanner has
+    adopted the filter from the scanner as appropriate.
+    """
+    return config_for_loader(config_for_scanner(scanner).loader).content

@@ -16,12 +16,9 @@ from inspect_ai.model._chat_message import (
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_scout._scanner._loaders import (
-    IdentityLoader,
-    _ListItemLoader,
-    _ListLoader,
-    create_loader_for_scanner,
+    create_implicit_loader,
 )
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 
 def create_test_transcript(
@@ -103,6 +100,9 @@ async def _list_union_event(
     pass
 
 
+does_not_matter_filter = TranscriptContent(["tool"], None)
+
+
 @pytest.mark.parametrize(
     "scanner_fn,expected_loader_type",
     [
@@ -126,14 +126,14 @@ def test_create_loader_returns_correct_type(
     scanner_fn: Any, expected_loader_type: str
 ) -> None:
     """create_loader_for_scanner returns correct loader type for each input annotation."""
-    loader = create_loader_for_scanner(scanner_fn)
+    loader = create_implicit_loader(scanner_fn, does_not_matter_filter)
     assert registry_unqualified_name(loader) == expected_loader_type
 
 
 @pytest.mark.asyncio
 async def test_identity_loader_yields_transcript() -> None:
     """IdentityLoader returns transcript unchanged."""
-    loader = create_loader_for_scanner(_transcript)
+    loader = create_implicit_loader(_transcript, does_not_matter_filter)
     transcript = create_test_transcript()
 
     results = [item async for item in loader(transcript)]
@@ -145,7 +145,7 @@ async def test_identity_loader_yields_transcript() -> None:
 @pytest.mark.asyncio
 async def test_list_loader_yields_entire_message_list() -> None:
     """ListLoader for messages yields entire message list."""
-    loader = create_loader_for_scanner(_list_message)
+    loader = create_implicit_loader(_list_message, does_not_matter_filter)
     messages: list[ChatMessage] = [
         ChatMessageUser(content="msg1"),
         ChatMessageUser(content="msg2"),
@@ -161,7 +161,7 @@ async def test_list_loader_yields_entire_message_list() -> None:
 @pytest.mark.asyncio
 async def test_list_loader_yields_entire_event_list() -> None:
     """ListLoader for events yields entire event list."""
-    loader = create_loader_for_scanner(_list_event)
+    loader = create_implicit_loader(_list_event, does_not_matter_filter)
     events: list[Event] = [
         ToolEvent(
             event="tool",
@@ -189,7 +189,7 @@ async def test_list_loader_yields_entire_event_list() -> None:
 @pytest.mark.asyncio
 async def test_list_item_loader_yields_individual_messages() -> None:
     """ListItemLoader for messages yields messages one at a time."""
-    loader = create_loader_for_scanner(_message)
+    loader = create_implicit_loader(_message, does_not_matter_filter)
     messages: list[ChatMessage] = [
         ChatMessageUser(content="msg1"),
         ChatMessageUser(content="msg2"),
@@ -208,7 +208,7 @@ async def test_list_item_loader_yields_individual_events() -> None:
     """ListItemLoader for events yields events one at a time."""
     from inspect_ai.model import ModelOutput
 
-    loader = create_loader_for_scanner(_event)
+    loader = create_implicit_loader(_event, does_not_matter_filter)
     events: list[Event] = [
         ModelEvent(
             event="model",
@@ -252,25 +252,19 @@ async def test_list_item_loader_yields_individual_events() -> None:
 @pytest.mark.asyncio
 async def test_union_message_type_should_be_detected_as_message() -> None:
     """Union message type (ChatMessageAssistant | ChatMessageUser) should be detected as message type."""
-    loader = create_loader_for_scanner(_union_message)
+    loader = create_implicit_loader(_union_message, does_not_matter_filter)
 
     # Should create a ListItemLoader
-    assert isinstance(loader, _ListItemLoader)
-
-    # Union of message types should be detected as a message type
-    assert loader.is_message is True
+    assert registry_unqualified_name(loader) == "ListItemLoader"
 
 
 @pytest.mark.asyncio
 async def test_union_message_list_should_be_detected_as_message() -> None:
     """Union message list type should be detected as message type."""
-    loader = create_loader_for_scanner(_list_union_message)
+    loader = create_implicit_loader(_list_union_message, does_not_matter_filter)
 
     # Should create a ListLoader
-    assert isinstance(loader, _ListLoader)
-
-    # Union of message types should be detected as a message type
-    assert loader.is_message is True
+    assert registry_unqualified_name(loader) == "ListLoader"
 
 
 @pytest.mark.asyncio
@@ -279,32 +273,32 @@ async def test_loaders_handle_empty_transcript() -> None:
     empty_transcript = create_test_transcript()
 
     # IdentityLoader should yield the empty transcript
-    identity_loader = create_loader_for_scanner(_transcript)
+    identity_loader = create_implicit_loader(_transcript, does_not_matter_filter)
     identity_results = [item async for item in identity_loader(empty_transcript)]
     assert len(identity_results) == 1
     assert identity_results[0] is empty_transcript
 
     # List loaders should yield empty lists
-    message_list_loader = create_loader_for_scanner(_list_message)
+    message_list_loader = create_implicit_loader(_list_message, does_not_matter_filter)
     message_list_results = [
         item async for item in message_list_loader(empty_transcript)
     ]
     assert len(message_list_results) == 1
     assert message_list_results[0] == []
 
-    event_list_loader = create_loader_for_scanner(_list_event)
+    event_list_loader = create_implicit_loader(_list_event, does_not_matter_filter)
     event_list_results = [item async for item in event_list_loader(empty_transcript)]
     assert len(event_list_results) == 1
     assert event_list_results[0] == []
 
     # Item loaders should yield nothing
-    message_item_loader = create_loader_for_scanner(_message)
+    message_item_loader = create_implicit_loader(_message, does_not_matter_filter)
     message_item_results = [
         item async for item in message_item_loader(empty_transcript)
     ]
     assert len(message_item_results) == 0
 
-    event_item_loader = create_loader_for_scanner(_event)
+    event_item_loader = create_implicit_loader(_event, does_not_matter_filter)
     event_item_results = [item async for item in event_item_loader(empty_transcript)]
     assert len(event_item_results) == 0
 
@@ -318,4 +312,4 @@ def test_bare_list_type_should_raise_error() -> None:
 
     # Should raise RuntimeError because element_type cannot be determined
     with pytest.raises(RuntimeError):
-        create_loader_for_scanner(_bare_list)
+        create_implicit_loader(_bare_list, does_not_matter_filter)

@@ -14,6 +14,7 @@ from inspect_ai._util._async import is_callable_coroutine
 from inspect_ai._util.registry import (
     RegistryInfo,
     registry_add,
+    registry_info,
     registry_name,
     registry_tag,
 )
@@ -69,19 +70,30 @@ def loader(
     name: str | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
+    content: TranscriptContent | None = None,
 ) -> Callable[[LoaderFactory[P, TLoaderResult]], LoaderFactory[P, TLoaderResult]]:
-    """Decorator for registering laoders.
+    """Decorator for registering loaders.
 
     Args:
        name: Loader name (defaults to function name).
        messages: Message types to load from.
        events: Event types to load from.
+       content: Transcript content filter.
 
     Returns:
         Loader with registry info.
     """
-    messages = normalize_messages_filter(messages) if messages is not None else None
-    events = normalize_events_filter(events) if events is not None else None
+    if content is None:
+        # TODO: Enable this assertion in a later commit. It will take some work.
+        # assert messages or events, "Must filter on messages or events"
+        content = TranscriptContent(
+            normalize_messages_filter(messages) if messages is not None else None,
+            normalize_events_filter(events) if events is not None else None,
+        )
+    else:
+        assert messages is None and events is None, (
+            "Don't pass messages or events if you pass content"
+        )
 
     def decorate(
         factory: LoaderFactory[P, TLoaderResult],
@@ -99,11 +111,7 @@ def loader(
                     f"'{loader_name}' is not declared as an async callable."
                 )
 
-            loader_config = LoaderConfig()
-            if messages is not None:
-                loader_config.content.messages = messages
-            if events is not None:
-                loader_config.content.events = events
+            loader_config = LoaderConfig(content)
 
             registry_tag(
                 factory,
@@ -125,3 +133,7 @@ def loader(
         return cast(LoaderFactory[P, TLoaderResult], factory_wrapper)
 
     return decorate
+
+
+def config_for_loader(loader: Loader[ScannerInput]) -> LoaderConfig:
+    return cast(LoaderConfig, registry_info(loader).metadata[LOADER_CONFIG])

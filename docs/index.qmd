@@ -218,7 +218,7 @@ def cybench_job(logs: str = "./logs") -> ScanJob:
 
 Then from the CLI:
 
-``` python
+``` bash
 scout scan cybench_scan.py \
     -S logs=./logs \
     --model openai/gpt-4.1-nano

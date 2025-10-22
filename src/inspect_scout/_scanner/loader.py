@@ -1,0 +1,127 @@
+from dataclasses import dataclass, field
+from functools import wraps
+from typing import (
+    AsyncIterator,
+    Callable,
+    Literal,
+    ParamSpec,
+    Protocol,
+    TypeVar,
+    cast,
+)
+
+from inspect_ai._util._async import is_callable_coroutine
+from inspect_ai._util.registry import (
+    RegistryInfo,
+    registry_add,
+    registry_name,
+    registry_tag,
+)
+
+from .._transcript.types import (
+    EventType,
+    MessageType,
+    Transcript,
+    TranscriptContent,
+)
+from .filter import (
+    normalize_events_filter,
+    normalize_messages_filter,
+)
+from .types import ScannerInput
+
+LOADER_CONFIG = "loader_config"
+
+# Use bounded TypeVar (covariant for loader output)
+TLoaderResult = TypeVar("TLoaderResult", bound=ScannerInput, covariant=True)
+P = ParamSpec("P")
+
+
+class Loader(Protocol[TLoaderResult]):
+    """Custom loader for transcript data."""
+
+    def __call__(
+        self,
+        input: Transcript,
+        /,
+    ) -> AsyncIterator[TLoaderResult]:
+        """Load transcript data.
+
+        Args:
+           input: Transcript to yield from.
+
+        Returns:
+           AsyncIterator: Iterator that returns transcript data.
+        """
+        ...
+
+
+@dataclass
+class LoaderConfig:
+    content: TranscriptContent = field(default_factory=TranscriptContent)
+
+
+LoaderFactory = Callable[P, Loader[TLoaderResult]]
+
+
+def loader(
+    *,
+    name: str | None = None,
+    messages: list[MessageType] | Literal["all"] | None = None,
+    events: list[EventType] | Literal["all"] | None = None,
+) -> Callable[[LoaderFactory[P, TLoaderResult]], LoaderFactory[P, TLoaderResult]]:
+    """Decorator for registering laoders.
+
+    Args:
+       name: Loader name (defaults to function name).
+       messages: Message types to load from.
+       events: Event types to load from.
+
+    Returns:
+        Loader with registry info.
+    """
+    messages = normalize_messages_filter(messages) if messages is not None else None
+    events = normalize_events_filter(events) if events is not None else None
+
+    def decorate(
+        factory: LoaderFactory[P, TLoaderResult],
+    ) -> LoaderFactory[P, TLoaderResult]:
+        loader_name = registry_name(
+            factory, name or str(getattr(factory, "__name__", "loader"))
+        )
+
+        @wraps(factory)
+        def factory_wrapper(*args: P.args, **kwargs: P.kwargs) -> Loader[TLoaderResult]:
+            loader_fn = factory(*args, **kwargs)
+
+            if not is_callable_coroutine(loader_fn):
+                raise TypeError(
+                    f"'{loader_name}' is not declared as an async callable."
+                )
+
+            loader_config = LoaderConfig()
+            if messages is not None:
+                loader_config.content.messages = messages
+            if events is not None:
+                loader_config.content.events = events
+
+            registry_tag(
+                factory,
+                loader_fn,
+                RegistryInfo(
+                    type="loader",
+                    name=loader_name,
+                    metadata={LOADER_CONFIG: loader_config},
+                ),
+                *args,
+                **kwargs,
+            )
+            return loader_fn
+
+        registry_add(
+            factory,
+            RegistryInfo(type="loader", name=loader_name),
+        )
+        return cast(LoaderFactory[P, TLoaderResult], factory_wrapper)
+
+    return decorate

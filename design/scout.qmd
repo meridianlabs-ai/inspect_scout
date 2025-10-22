@@ -1,0 +1,332 @@
+---
+title: "Scout Design Notes"
+format: typst
+---
+
+## Overview
+
+Inspect Scout is tool for analyzing LLM agent transcripts. It has three central constructs:
+
+1.  **Transcripts** – The messages, events, metadata, and source information for an agent trajectory. Transcripts can come from many sources (e.g. Inspect eval logs, W&B Weave traces, OpenAI Agent SDK traces, Claude Code message logs, etc.).
+2.  **Loaders** – Code which extracts data from the transcript database for analysis.
+3.  **Scanners** – Code which analyzes some transcript content to produce a result (mapped to row in a data frame). Scanners might be looking for reward hacking, environment misconfigurations, tool usage, common error states, etc.
+4.  **Results** – Cumulative data frame of results (one per scanner invocation) from transcript scanning.
+
+Below is a surface level walkthrough of these constructs along with simple examples of their use. Subsequent sections delve further into system design and architecture.
+
+### Transcripts
+
+Transcripts represent a single set of agent interactions focused on some goal or task (in Inspect evals this would map to a sample, in OpenAI Agents this would map to a trace, etc.):
+
+``` python
+class Transcript:
+    id: str
+    """Globally unique id for transcript (e.g. sample uuid)."""
+    
+    source: str
+    """URI for source data (e.g. log file path)""" 
+
+    metadata: dict[str, JsonValue]  
+    """e.g. eval config (model, scores, task params, etc.).""" 
+
+    messages: list[ChatMessage]
+    """Main message thread."""
+    
+    events: list[Event]
+    """Events from transcript."""
+```
+
+Transcripts are imported from eval logs, agent framework traces, or custom sources and stored in a *transcript database* for analysis (more details on this below).
+
+### Scanners
+
+Scanners are functions which take a **ScannerInput** and return a **ScannerResult**
+
+``` python
+# scanner input type
+ScannerInput = TypeVar(
+    "ScannerInput",
+    bound=Transcript
+    | Sequence[Transcript]
+    | ChatMessage
+    | Sequence[ChatMessage]
+    | Event
+    | Sequence[Event],
+)
+
+# scanner protocol
+class Scanner(Protocol[ScannerInput]):
+    async def __call__(self, input: ScannerInput) -> ScannerResult | None: ...
+
+# scanner result
+class ScannerResult(BaseModel):
+    """Result from scanning a transcript."""
+
+    value: JsonValue
+    """Scanner value."""
+
+    answer: str | None = Field(default=None)
+    """Answer extracted from model output (optional)"""
+
+    explanation: str | None = Field(default=None)
+    """Explanation of score (optional)."""
+
+    metadata: dict[str, Any] | None = Field(default=None)
+    """Additional metadata related to the result"""
+
+    references: list[Reference] = Field(default=list)
+    """References to relevant messages or events."""
+```
+
+Scanners can many "shapes" of input (everything from entire transcripts to single messages or events). The desired shape is mostly derived from how results will be analyzed, as each input is mapped to a row in a data frame.
+
+Scanner results bear some resemblance to Inspect scorers—this is not a coincidence, as scanners which take a `Transcript` can also be used as scorers should they prove generally useful. Scanners also include the notion of a **Reference**, which we'll describe in more depth below.
+
+### Example
+
+Here's how we might define a reward hacking scanner. Note that scanners by default don't read all sample data (this is to increase read performance) so need to opt-in explicitly to see all of the messages.
+
+``` python
+@scanner(messages="all")
+def reward_hacking() -> Scanner:
+    async def scan(input: Transcript) -> ScannerResult:
+
+        # TODO: prepare reward hacking prompt and send it to the model,
+        # then encode the model's answer into a result 
+        
+        return ScannerResult(value=True, explanation=...)
+
+    return scan
+```
+
+Here's how you might use this in a full pipeline:
+
+``` python
+from inspect_scout import analyze, transcripts_from_logs
+
+transcripts = transcripts_from_logs("./logs")
+results = await analyze(
+    transcripts=transcripts, 
+    scanners=[reward_hacking()]
+)
+```
+
+Here we run a single scanner but we could also run many scanners in parallel. The `results` are printed to the screen in summary form, written to results database for later retrieval, and returned for immediate computation.
+
+## Transcripts
+
+Transcripts are the fundamental unit of analysis and are stored in a transcript database. The database enables high performance filtering, querying, and content loading during analysis, and also provides a durable record of the source of data analyzed.
+
+The transcript database has a straightforward interface that enables writing an arbitrary number of transcripts and then reading selected transcripts in an efficient fashion:
+
+``` python
+class TranscriptDB:
+    async def write(transcripts: list[Transcript]):
+        """Write transcript(s) into database.
+        
+        Args:
+           transcript: Transcript to write.
+        """
+        ...
+
+    async def read(
+        transcripts: list[str] | None,
+        metadata_filter: str | None = None,
+        content: TranscriptContent | None = None,
+        """Streaming read of one or more transcripts.
+        
+        Args:
+           transcripts: Specific transcripts to read (defaults to all)
+           filter: Filter on metadata values (e.g. model, agent, etc.)
+           content: Content to load from transcript.
+        """
+    ) -> AsyncGenerator[Transcript, None]:
+        ...
+```
+
+The `TranscriptContent` class indicates exactly which pieces of content you want to load (by default nothing is loaded, you can request some or all messages and events):
+
+``` python
+class TranscriptContent:
+    messages: str | list[str] | Literal["all"] | None
+    events: str | list[str] | Literal["all"] | None
+```
+
+Content is requested explicitly to keep load performance high (as transcripts can be tens or hundreds of megabytes in size). Note that while this function reads `Transcript`, there will be additional logic present which takes the transcripts and cleaves out the right content for serving up to scanners.
+
+The workflow is generally to *import* transcripts you want to analyze a single time and then subsequently load them from the database. So the above example might be revised as:
+
+``` python
+from inspect_scout import analyze, transcripts_from_logs
+
+# do this once before analysis
+db = transcript_db("scout/transcripts")
+await db.write(transcripts_from_logs("./logs"))
+
+# subseuqently read transcripts from db
+results = await analyze(
+    transcripts=db.read(), 
+    scanners=[reward_hacking()]
+)
+```
+
+Transcript databases can be stored as parquet files either in the local filesystem or on S3 or alternatively in a remote SQL database.
+
+## Scanners
+
+Let's take a closer look at our example scanner usage from above:
+
+``` python
+@scanner(messages="all")
+def reward_hacking() -> Scanner:
+    async def scan(input: Transcript) -> ScannerResult:
+
+        # TODO: prepare reward hacking prompt and send it to the model,
+        # then encode the model's answer into a result 
+        
+        return Result(value=True, explanation=...)
+
+    return scan
+```
+
+The `@scanner` decorator serves two purposes:
+
+1.  It provides metadata about what transcript content should be loaded for the scanner, as the `analyze()` function wants to minimize content loading time (as it can be slow due to the size of some transcripts)
+2.  To register the scanner with the system so that it can be detected from the filesystem or used from within configuration (both useful for UI front ends or other config based invocations).
+
+Scanners will often but not always use LLMs, and a default LLM scanner with customizable prompts and pre/post-processing filters will be provided so that often they won't require code.
+
+#### Loaders
+
+The `@scanners(messages="all")` decorator implicitly creates a loader that retrieves all messages in the transcript. Scanners can also specify custom loaders that yield the exact shape of their input. For example:
+
+``` python
+# yields pairs of messages from the transcript
+async def load_message_pairs(
+    transcript: Transcript
+) -> AsyncGenerator[list[ChatMessage], None]:
+    ...
+
+
+@scanner(loader=load_message_pairs)
+def duplicate_messages() -> Scanner:    
+    async def scan(input: list[ChatMessage]) -> ScannerResult | None:
+
+        # TODO: asses whether messages are duplicates
+        
+        if duplicates:
+            return Result(value=[m.id for m in input])
+        else:
+            return None
+         
+    return scan
+```
+
+#### References
+
+One important requirement for scanners are specific reference to the messages and/or events that influenced their output. This is done using a `references` field on the `Result` which has these pointers:
+
+``` python
+class Reference(BaseModel):
+    type: Literal["message", "event"]
+    id: str
+```
+
+#### Scanners as Scorers
+
+Scanners which take `Transcript` also fulfill the basic contract of Inspect scorers, so can be used as is within Inspect evals:
+
+``` python
+from inspect_scout import as_scorer
+
+@task
+def mytask():
+    return Task(
+        dataset=json_dataset("dataset.jsonl"),
+        solver=react(tools=[bash()]),
+        scorer=as_scorer(reward_hacking())
+    )
+```
+
+## Results
+
+Results from running scanners are:
+
+1.  Displayed realtime on screen during analysis;
+2.  Written to a results database for future retrieval; and
+3.  Returned directly for immediate computation.
+
+An API for enumerating result sets and reading data frames from the results database will also be provided.
+
+As with the transcripts database, the results database can use local or S3 parquet files, or can be a remote SQL database.
+
+Results are immediately written to the results database during the run so if a run is interrupted by an error it is possible to resume from the error point without losing any of the existing work.
+
+## Projects
+
+One system feature that might not be evident from the discussion above is that we want to be able to conduct analysis directly from the CLI or from a dedicated interactive UI. For these workflows we need to have some implicit or explicit configuration of database location(s) and scanners available. This is done using a `scout.toml` project file (note that this file is not at all required if you only use Scout via the Python API).
+
+For example, this is the default configuration if none is specified:
+
+``` toml
+transcripts = "scout/transcripts"
+results = "scout/results"
+```
+
+With this configuration, import functions and analysis functions know where to read from and write to:
+
+``` python
+# these know to write to scout/transcripts from the config
+import_inspect_logs("./logs")
+import_weave_traces(weave_id=...)
+
+# knows to read from scout/transcripts and write to scout/results from config
+await analyze(scanners=[reward_hacking()]) 
+```
+
+From the CLI, we can implement a default LLM scanner that can take its prompt as an argument (again, reading transcripts and writing results based on the project config):
+
+``` bash
+scout analyze "can you find examples of reward hacking in these transcripts"
+```
+
+You can also imagine an interactive UI that has tools for refining prompts, sampling from transcripts to test prompts, and saving prompts as proper scanners.
+
+## Appendix
+
+``` python
+
+@scanner(messages="tool", events="model")
+def count_tool_usages() -> Scanner:
+    async def scan(input: Transcript) -> ScannerResult:
+        return ScannerResult(value=input.function)
+
+    return scan
+
+@scanner(messages="tool")
+def count_tool_usages() -> Scanner:
+    async def scan(input: list[ChatMessageTool]) -> ScannerResult:
+        tools: dict[str, int] = {}
+        
+        return ScannerResult(value=tools)
+
+    return scan
+
+
+async def analyze(
+    transcripts: TranscriptSource,
+    scanners: Sequence[Scanner]
+):
+    # look at each scanner and compute it's predicate
+    # then union all of the predicates for the transcript read
+    # stream the transcripts using json streaming in some fast / magical fashion
+    # as the transcripts are available, call the scanners in turn (apply their predicate) 
+
+    # setup two queues for reading and scanning (allow both to process 'n' in parallel)
+    
+    
+    ...
+
+def transcripts_predicate(queries: list[TranscriptContent]) -> TranscriptContent:
+    ...
+```

@@ -4,7 +4,6 @@ from functools import wraps
 from pathlib import Path
 from typing import (
     Any,
-    AsyncGenerator,
     Awaitable,
     Callable,
     Literal,
@@ -38,6 +37,7 @@ from .._transcript.types import (
     Transcript,
     TranscriptContent,
 )
+from ._loaders import IdentityLoader, create_loader_for_scanner
 from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
@@ -76,21 +76,10 @@ class Scanner(Protocol[T]):
         ...
 
 
-class _IdentityLoader(Loader[Transcript]):
-    """Private noop loader that returns the transcript unchanged."""
-
-    async def __call__(
-        self,
-        input: Transcript,
-        /,
-    ) -> AsyncGenerator[Transcript, None]:
-        yield input
-
-
 @dataclass
 class ScannerConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
-    loader: Loader[Any] = field(default_factory=_IdentityLoader)
+    loader: Loader[Any] = field(default_factory=IdentityLoader)
 
 
 ScannerFactory = Callable[P, Scanner[T]]
@@ -277,6 +266,8 @@ def scanner(
                 scanner_config.content.events = inferred_events
             if loader is not None:
                 scanner_config.loader = cast(Loader[Any], loader)
+            else:
+                scanner_config.loader = create_loader_for_scanner(scanner_fn)
 
             registry_tag(
                 factory_fn,

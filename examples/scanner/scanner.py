@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from inspect_ai.analysis._dataframe.extract import messages_as_str
-from inspect_ai.model import get_model
+from inspect_ai.model import ChatMessageAssistant, get_model
 from inspect_scout import (
     Result,
     Scanner,
@@ -37,17 +37,16 @@ def deception() -> Scanner[Transcript]:
 def target_word_scanner(target_word: str) -> Scanner[Transcript]:
     target_word = target_word.lower()
 
-    async def execute(transcript: Transcript) -> Result:
+    async def execute(message: ChatMessageAssistant) -> Result:
         # import random
 
         # if random.random() < 0.05:
         #     raise ValueError("Random error occurred!")
 
-        count = sum(
-            msg.text.lower().count(target_word)
-            for msg in transcript.messages
-            if msg.role == "assistant"
-        )
+        # messages = transcript.messages
+        assert message.role == "assistant"
+
+        count = message.text.lower().count(target_word)
         return Result(
             value=count if count > 0 else None,
             explanation=f"Found '{target_word}' {count} times in in assistant messages",

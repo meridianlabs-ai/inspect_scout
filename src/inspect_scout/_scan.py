@@ -475,9 +475,9 @@ async def _scan_async_inner(
                     # Need to use typing magic rather than this case
                     loader: Loader[Transcript] = scanner_config.loader
 
-                    async for loaded_transcript in loader(filtered_transcript):
+                    async for loader_result in loader(filtered_transcript):
                         try:
-                            result: Result | None = await job.scanner(loaded_transcript)
+                            result: Result | None = await job.scanner(loader_result)
                             error: Error | None = None
 
                         except Exception as ex:

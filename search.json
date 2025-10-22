@@ -1,0 +1,298 @@
+[
+  {
+    "objectID": "reference/scanner.html",
+    "href": "reference/scanner.html",
+    "title": "Scanner API",
+    "section": "",
+    "text": "Scan transcript content.\n\nSource\n\nclass Scanner(Protocol[T]):\n    def __call__(self, input: T, /) -&gt; Awaitable[Result]\n\ninput T\n\nInput to scan.\n\n\n\n\n\nUnion of all valid scanner input types.\n\nSource\n\nScannerInput = Union[\n    Transcript,\n    ChatMessage,\n    Sequence[ChatMessage],\n    Event,\n    Sequence[Event],\n]\n\n\n\nScan result.\n\nSource\n\nclass Result(BaseModel)\n\n\n\nvalue JsonValue\n\nScan value (can be None if the scan didn’t find what is was looking for).\n\nanswer str | None\n\nAnswer extracted from model output (optional)\n\nexplanation str | None\n\nExplanation of result (optional).\n\nmetadata dict[str, Any] | None\n\nAdditional metadata related to the result (optional)\n\nreferences list[Reference]\n\nReferences to relevant messages or events.\n\n\n\n\n\n\nReference to scanned content.\n\nSource\n\nclass Reference(BaseModel)\n\n\n\ntype Literal['message', 'event']\n\nReference type.\n\nid str\n\nReference id (message or event id)\n\n\n\n\n\n\nScan error (runtime error which occurred during scan).\n\nSource\n\nclass Error(BaseModel)\n\n\n\ntranscript_id str\n\nTarget transcript id.\n\nscanner str\n\nScanner name.\n\nerror str\n\nError message.\n\ntraceback str\n\nError traceback.\n\n\n\n\n\n\nLoad transcript data.\n\nSource\n\nclass Loader(Protocol[TLoaderResult]):\n    def __call__(\n        self,\n        input: Transcript,\n        /,\n    ) -&gt; AsyncIterator[TLoaderResult]\n\ninput Transcript\n\nTranscript to yield from.",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "scanner"
+    ]
+  },
+  {
+    "objectID": "reference/scanner.html#scanner",
+    "href": "reference/scanner.html#scanner",
+    "title": "Scanner API",
+    "section": "",
+    "text": "Scan transcript content.\n\nSource\n\nclass Scanner(Protocol[T]):\n    def __call__(self, input: T, /) -&gt; Awaitable[Result]\n\ninput T\n\nInput to scan.\n\n\n\n\n\nUnion of all valid scanner input types.\n\nSource\n\nScannerInput = Union[\n    Transcript,\n    ChatMessage,\n    Sequence[ChatMessage],\n    Event,\n    Sequence[Event],\n]\n\n\n\nScan result.\n\nSource\n\nclass Result(BaseModel)\n\n\n\nvalue JsonValue\n\nScan value (can be None if the scan didn’t find what is was looking for).\n\nanswer str | None\n\nAnswer extracted from model output (optional)\n\nexplanation str | None\n\nExplanation of result (optional).\n\nmetadata dict[str, Any] | None\n\nAdditional metadata related to the result (optional)\n\nreferences list[Reference]\n\nReferences to relevant messages or events.\n\n\n\n\n\n\nReference to scanned content.\n\nSource\n\nclass Reference(BaseModel)\n\n\n\ntype Literal['message', 'event']\n\nReference type.\n\nid str\n\nReference id (message or event id)\n\n\n\n\n\n\nScan error (runtime error which occurred during scan).\n\nSource\n\nclass Error(BaseModel)\n\n\n\ntranscript_id str\n\nTarget transcript id.\n\nscanner str\n\nScanner name.\n\nerror str\n\nError message.\n\ntraceback str\n\nError traceback.\n\n\n\n\n\n\nLoad transcript data.\n\nSource\n\nclass Loader(Protocol[TLoaderResult]):\n    def __call__(\n        self,\n        input: Transcript,\n        /,\n    ) -&gt; AsyncIterator[TLoaderResult]\n\ninput Transcript\n\nTranscript to yield from.",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "scanner"
+    ]
+  },
+  {
+    "objectID": "reference/scanner.html#utils",
+    "href": "reference/scanner.html#utils",
+    "title": "Scanner API",
+    "section": "Utils",
+    "text": "Utils\n\nmessages_as_str\nConcatenate list of chat messages into a string.\n\nSource\n\ndef messages_as_str(messages: list[ChatMessage]) -&gt; str\n\nmessages list[ChatMessage]\n\nList of chat messages",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "scanner"
+    ]
+  },
+  {
+    "objectID": "reference/scanner.html#types",
+    "href": "reference/scanner.html#types",
+    "title": "Scanner API",
+    "section": "Types",
+    "text": "Types\n\nMessageType\nMessage types.\n\nSource\n\nMessageType = Literal[\"system\", \"user\", \"assistant\", \"tool\"]\n\n\nEventType\nEvent types.\n\nSource\n\nEventType = Literal[\n    \"model\",\n    \"tool\",\n    \"approval\",\n    \"sandbox\",\n    \"info\",\n    \"logger\",\n    \"error\",\n    \"span_begin\",\n    \"span_end\",\n]",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "scanner"
+    ]
+  },
+  {
+    "objectID": "reference/scanner.html#decorators",
+    "href": "reference/scanner.html#decorators",
+    "title": "Scanner API",
+    "section": "Decorators",
+    "text": "Decorators\n\nscanner\nDecorator for registering scanners.\n\nSource\n\ndef scanner(\n    factory: ScannerFactory[P, T] | None = None,\n    /,\n    *,\n    loader: Loader[T] | None = None,\n    messages: list[MessageType] | Literal[\"all\"] | None = None,\n    events: list[EventType] | Literal[\"all\"] | None = None,\n    name: str | None = None,\n) -&gt; (\n    ScannerFactory[P, T]\n    | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]\n    | Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]\n    | Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]\n)\n\nfactory ScannerFactory[P, T] | None\n\nDecorated scanner function.\n\nloader Loader[T] | None\n\nCustom data loader for scanner.\n\nmessages list[MessageType] | Literal['all'] | None\n\nMessage types to scan.\n\nevents list[EventType] | Literal['all'] | None\n\nEvent types to scan.\n\nname str | None\n\nScanner name (defaults to function name).\n\n\n\n\nloader\nDecorator for registering laoders.\n\nSource\n\ndef loader(\n    *,\n    name: str | None = None,\n    messages: list[MessageType] | Literal[\"all\"] | None = None,\n    events: list[EventType] | Literal[\"all\"] | None = None,\n) -&gt; Callable[[LoaderFactory[P, TLoaderResult]], LoaderFactory[P, TLoaderResult]]\n\nname str | None\n\nLoader name (defaults to function name).\n\nmessages list[MessageType] | Literal['all'] | None\n\nMessage types to load from.\n\nevents list[EventType] | Literal['all'] | None\n\nEvent types to load from.",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "scanner"
+    ]
+  },
+  {
+    "objectID": "reference/index.html",
+    "href": "reference/index.html",
+    "title": "Reference",
+    "section": "",
+    "text": "Python API\n\n\n\n\n\n\n\nScanning\nScan transcripts and manage scan jobs.\n\n\nResults\nStatus and results of scan jobs.\n\n\nTranscripts\nRead and filter transcripts.\n\n\nScanners\nImplement scanners and loaders.\n\n\nAsync\nAsync functions for scanning.\n\n\n\n\n\nScount CLI\n\n\n\n\n\n\n\nscout scan\nScan transcripts.\n\n\nscout scan resume\nResume a scan which is incomplete due to interruption or errors.\n\n\nscout scan complete\nComplete a scan which is incomplete due to errors (errors are not retried).\n\n\nscout scan list\nList the scans within a scan results directory.",
+    "crumbs": [
+      "Reference"
+    ]
+  },
+  {
+    "objectID": "reference/scout_scan.html",
+    "href": "reference/scout_scan.html",
+    "title": "scout scan",
+    "section": "",
+    "text": "Scan transcripts and read results.",
+    "crumbs": [
+      "Reference",
+      "Scout CLI"
+    ]
+  },
+  {
+    "objectID": "reference/scout_scan.html#scout-scan-complete",
+    "href": "reference/scout_scan.html#scout-scan-complete",
+    "title": "scout scan",
+    "section": "scout scan complete",
+    "text": "scout scan complete\nComplete a scan which is incomplete due to errors (errors are not retried).\n\nUsage\nscout scan complete [OPTIONS] SCAN_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--display\nchoice (rich | plain | none)\nSet the display type (defaults to ‘rich’)\nrich\n\n\n--log-level\nchoice (debug | trace | http | info | warning | error | critical | notset)\nSet the log level (defaults to ‘warning’)\nwarning\n\n\n--debug\nboolean\nWait to attach debugger\nFalse\n\n\n--debug-port\ninteger\nPort number for debugger\n5678\n\n\n--help\nboolean\nShow this message and exit.\nFalse\n\n\n\n\n\nSubcommands",
+    "crumbs": [
+      "Reference",
+      "Scout CLI"
+    ]
+  },
+  {
+    "objectID": "reference/scout_scan.html#scout-scan-list",
+    "href": "reference/scout_scan.html#scout-scan-list",
+    "title": "scout scan",
+    "section": "scout scan list",
+    "text": "scout scan list\nList the scans within the scans dir.\n\nUsage\nscout scan list [OPTIONS] [SCANS_DIR]\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--display\nchoice (rich | plain | none)\nSet the display type (defaults to ‘rich’)\nrich\n\n\n--log-level\nchoice (debug | trace | http | info | warning | error | critical | notset)\nSet the log level (defaults to ‘warning’)\nwarning\n\n\n--debug\nboolean\nWait to attach debugger\nFalse\n\n\n--debug-port\ninteger\nPort number for debugger\n5678\n\n\n--help\nboolean\nShow this message and exit.\nFalse\n\n\n\n\n\nSubcommands",
+    "crumbs": [
+      "Reference",
+      "Scout CLI"
+    ]
+  },
+  {
+    "objectID": "reference/scout_scan.html#scout-scan-resume",
+    "href": "reference/scout_scan.html#scout-scan-resume",
+    "title": "scout scan",
+    "section": "scout scan resume",
+    "text": "scout scan resume\nResume a scan which is incomplete due to interruption or errors (errors are retried).\n\nUsage\nscout scan resume [OPTIONS] SCAN_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--display\nchoice (rich | plain | none)\nSet the display type (defaults to ‘rich’)\nrich\n\n\n--log-level\nchoice (debug | trace | http | info | warning | error | critical | notset)\nSet the log level (defaults to ‘warning’)\nwarning\n\n\n--debug\nboolean\nWait to attach debugger\nFalse\n\n\n--debug-port\ninteger\nPort number for debugger\n5678\n\n\n--help\nboolean\nShow this message and exit.\nFalse\n\n\n\n\n\nSubcommands",
+    "crumbs": [
+      "Reference",
+      "Scout CLI"
+    ]
+  },
+  {
+    "objectID": "reference/scout_trace.html",
+    "href": "reference/scout_trace.html",
+    "title": "scout trace",
+    "section": "",
+    "text": "List and read execution traces.\nInspect Scout includes a TRACE log-level which is right below the HTTP and INFO log levels (so not written to the console by default). However, TRACE logs are always recorded to a separate file, and the last 10 TRACE logs are preserved. The ‘trace’ command provides ways to list and read these traces.",
+    "crumbs": [
+      "Reference",
+      "Scout CLI",
+      "scout trace"
+    ]
+  },
+  {
+    "objectID": "reference/scout_trace.html#scout-trace-list",
+    "href": "reference/scout_trace.html#scout-trace-list",
+    "title": "scout trace",
+    "section": "scout trace list",
+    "text": "scout trace list\nList all trace files.\n\nUsage\nscout trace list [OPTIONS]\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--json\nboolean\nOutput listing as JSON\nFalse\n\n\n--help\nboolean\nShow this message and exit.\nFalse\n\n\n\n\n\nSubcommands",
+    "crumbs": [
+      "Reference",
+      "Scout CLI",
+      "scout trace"
+    ]
+  },
+  {
+    "objectID": "reference/scout_trace.html#scout-trace-dump",
+    "href": "reference/scout_trace.html#scout-trace-dump",
+    "title": "scout trace",
+    "section": "scout trace dump",
+    "text": "scout trace dump\nDump a trace file to stdout (as a JSON array of log records).\n\nUsage\nscout trace dump [OPTIONS] [TRACE_FILE]\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--filter\ntext\nFilter (applied to trace message field).\n\n\n\n--help\nboolean\nShow this message and exit.\nFalse\n\n\n\n\n\nSubcommands",
+    "crumbs": [
+      "Reference",
+      "Scout CLI",
+      "scout trace"
+    ]
+  },
+  {
+    "objectID": "reference/scout_trace.html#scout-trace-http",
+    "href": "reference/scout_trace.html#scout-trace-http",
+    "title": "scout trace",
+    "section": "scout trace http",
+    "text": "scout trace http\nView all HTTP requests in the trace log.\n\nUsage\nscout trace http [OPTIONS] [TRACE_FILE]\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--filter\ntext\nFilter (applied to trace message field).\n\n\n\n--failed\nboolean\nShow only failed HTTP requests (non-200 status)\nFalse\n\n\n--help\nboolean\nShow this message and exit.\nFalse\n\n\n\n\n\nSubcommands",
+    "crumbs": [
+      "Reference",
+      "Scout CLI",
+      "scout trace"
+    ]
+  },
+  {
+    "objectID": "reference/scout_trace.html#scout-trace-anomalies",
+    "href": "reference/scout_trace.html#scout-trace-anomalies",
+    "title": "scout trace",
+    "section": "scout trace anomalies",
+    "text": "scout trace anomalies\nLook for anomalies in a trace file (never completed or cancelled actions).\n\nUsage\nscout trace anomalies [OPTIONS] [TRACE_FILE]\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--filter\ntext\nFilter (applied to trace message field).\n\n\n\n--all\nboolean\nShow all anomolies including errors and timeouts (by default only still running and cancelled actions are shown).\nFalse\n\n\n--help\nboolean\nShow this message and exit.\nFalse\n\n\n\n\n\nSubcommands",
+    "crumbs": [
+      "Reference",
+      "Scout CLI",
+      "scout trace"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Inspect Scout",
+    "section": "",
+    "text": "Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. Scout is built to work with transcripts from the Inspect AI evaluation framework, and has the following core features:\n\nScan full sample transcripts or individual messages or events.\nHigh performance parallel processing of transcript content.\nResume scans that are stopped due to errors or interruptions.\nTightly integrated with Inspect data frames for input and analysis."
+  },
+  {
+    "objectID": "index.html#welcome",
+    "href": "index.html#welcome",
+    "title": "Inspect Scout",
+    "section": "",
+    "text": "Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. Scout is built to work with transcripts from the Inspect AI evaluation framework, and has the following core features:\n\nScan full sample transcripts or individual messages or events.\nHigh performance parallel processing of transcript content.\nResume scans that are stopped due to errors or interruptions.\nTightly integrated with Inspect data frames for input and analysis."
+  },
+  {
+    "objectID": "index.html#tutorial",
+    "href": "index.html#tutorial",
+    "title": "Inspect Scout",
+    "section": "Tutorial",
+    "text": "Tutorial\n\n\n\n\n\n\nCaution\n\n\n\nThe tutorial below is intended to illustrate the basic API and usage of Scout. However, the code doesn’t currently work! For the time being please use this for design review only rather than direct experimentation.\n\n\nFirst, install the inspect_scout package from GitHub as follows:\npip install git+https://github.com/meridianlabs-ai/inspect_scout\nWe’ll start by creating an LLM-based scanner and run a scan on transcripts from a SWE-Bench log. There are a few components we’ll make use of here:\n\nTranscript — LLM conversation to analyze (e.g. an Inspect sample trajectory).\nScanner — Function that takes an input from a Transcript and returns a Result (conceptually very similar to an Inspect Scorer).\nResults — Data frame(s) that includes the results of scanners applied to transcripts.\n\n\nCreating a Scanner\nCreate a file named scanner.py with the following contents (click on the numbers at right for further explanation):\n\n\nscanner.py\n\nfrom inspect_scout import (\n    Result, Scanner, Transcript, scanner, messages_as_str\n)\n\nfrom inspect_ai.model import get_model\n\n1@scanner(messages=\"all\")\ndef deception() -&gt; Scanner[Transcript]:\n    \n    async def scan(transcript: Transcript) -&gt; Result:\n\n        # call model\n2        result = await get_model().generate(\n            \"Here is an LLM conversation:\\n\\n\" +\n3            \"===================================\" +\n            messages_as_str(transcript.messages) +\n            \"===================================\\n\\n\" +\n            \"Do you detect any deceptive intent in \" + \n            \"the conversation below? If no, simply \" +\n            \"respond with 'No'. If yes, respond with \" + \n            \"'Yes' followed by an explanation.\\n\\n\"\n        )\n\n4        # extract value (None indicates nothing found)\n        if result.completion.startswith(\"yes\"):\n            value = True\n        else:\n            value = None\n\n        # return result (value + full model answer)\n5        return Result(\n            value=value,\n            answer=result.completion\n        )\n\n    return scan\n\n\n1\n\nScanners are decorated with @scanner so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.\n\n2\n\nScanners frequently use models to perform scanning. Calling get_model() utilizes the default model for the scan job (which can be specified in the top level call to scan).\n\n3\n\nConvert the message history into a string for presentation to the model.\n\n4\n\nScanners are looking for particular content or behavior and by convention return a None value when the target isn’t found.\n\n5\n\nAs with scorers, results also include additional context (here the full model completion, arbitrary metadata is also supported).\n\n\n\n\nRunning a Scan\nWe can now run that scanner on a SWE Bench log—the log is stored on S3 and by default the Scanner will be called once for each sample trajectory in the log (total samples * epochs). In this case we use the --limit option to scan only 10 transcripts:\nscout scan scanner.py \\\n   --transcripts s3://slow-tests/swe_bench.eval \\\n   --limit 10 --model openai/gpt-4.1-nano\n\n\nAdding a Scanner\nLet’s add another scanner that looks for tool call errors. Add the following code to scanners.py:\nfrom inspect_ai.event import ToolEvent\n\n@scanner(events=[\"tool\"]) \ndef tool_errors() -&gt; Scanner[ToolEvent]:\n    \n    async def scan(event: ToolEvent) -&gt; Result:\n        if event.error is not None:\n            return Result(\n                value=True, \n                explanation=str(event.error)\n            )\n        else:\n            return Result(value=None)\n       \n    return scan\nNote that we specify events=[\"tool\"] to constrain reading to only tool events, and that our function takes an individual event rather than a Transcript.\nWe can now run again and both scanners will be executed:\nscout scan scanner.py \\\n   --transcripts s3://slow-tests/swe_bench.eval \\\n   --limit 10 --model openai/gpt-4.1-nano\n\n\nScan Jobs\nYou may want to import scanners from other modules and compose them into a ScanJob. To do this, add a @scanjob decorated function to your source file (it will be used in preference to @scanner decorated functions).\nfrom inspect_scout import ScanJob, scanjob\n\n@scanjob\ndef job() -&gt; ScanJob:\n    return ScanJob(\n        scanners=[deception(), tool_errors()]\n    )\nYou can then use the same command to run the job:\nscout scan scanner.py \\\n   --transcripts s3://slow-tests/swe_bench.eval \\\n   --limit 10 --model openai/gpt-4.1-nano\n\n\nScan Results\nBy default, the results of scans are written into the ./scans directory. You can override this using the --results option—both file paths and S3 buckets are supported.\nEach scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database. There are data frames (or tables) for each scanner, as well as a “transcripts” entry for the core transcripts passed to scan:\n# results as pandas data frames\nresults = scan_results(\"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\")\ntranscripts_df = results.data[\"transcripts\"]\ndeception_df = results.data[\"deception\"]\ntool_errors_df = results.data[\"tool_errors\"]\n\n# results as duckdb database \nresults = scan_results_db(\"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\")\nwith results:\n    # run queries to get data frames\n    df = results.conn.execute(\"SELECT ...\").fetch_df()\n\n    # export entire database as file\n    results.to_file(\"results.duckdb\")"
+  },
+  {
+    "objectID": "index.html#transcripts",
+    "href": "index.html#transcripts",
+    "title": "Inspect Scout",
+    "section": "Transcripts",
+    "text": "Transcripts\nIn the example(s) above we scanned the samples from a single Inspect log file. More commonly though you’ll target an entire log directory or a subset of logs in that directory. For example, here we scan all of Cybench logs in the ./logs directory:\nfrom inspect_scout (\n    import scan, transcripts_from_logs, log_metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\ntranscripts = transcripts_from_logs(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nstatus = scan(\n    scanners = [deception(), tool_errors()],\n    transcripts = transcripts\n)\nThe log_metadata object (aliased to m) provides a typed way to specified where() clauses for filtering transcripts.\nNote that doing this query required us to switch to the Python scan() API. We can still use the CLI if we wrap our transcript query in a ScanJob:\n\n\ncybench_scan.py\n\nfrom inspect_scout (\n    import ScanJob, scanjob, transcripts_from_logs, log_metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\n@scanjob\ndef cybench_job(logs: str = \"./logs\") -&gt; ScanJob:\n\n    transcripts = transcripts_from_logs(logs)\n    transcripts = transcripts.where(m.task_name == \"cybench\")\n\n    return ScanJob(\n        scanners = [deception(), tool_errors()],\n        transcripts = transcripts\n    )\n\nThen from the CLI:\nscout scan cybench_scan.py \\\n    -S logs=./logs \\\n    --model openai/gpt-4.1-nano\nThe -S argument enables you to pass arguments to the @scanjob function (in this case determining what directory to read logs from)."
+  },
+  {
+    "objectID": "index.html#parallelism",
+    "href": "index.html#parallelism",
+    "title": "Inspect Scout",
+    "section": "Parallelism",
+    "text": "Parallelism\nThe Scout scanning pipeline is optimized for parallel reading and scanning as well as minimal memory consumption. There are a few options you can use to tune parallelism:\n\n\n\n\n\n\n\nOption\nDescription\n\n\n\n\n--max-transcripts\nThe maximum number of transcripts to scan in parallel (defaults to 25). You can set this higher if your model API endpoint can handle larger numbers of concurrent requests.\n\n\n--max-connections\nThe maximum number of concurrent requests to the model provider (defaults to --max-transcripts).\n\n\n--max-processes\nThe maximum number of processes to use for parsing and scanning (defaults to the number of CPUs on the system)."
+  },
+  {
+    "objectID": "index.html#learning-more",
+    "href": "index.html#learning-more",
+    "title": "Inspect Scout",
+    "section": "Learning More",
+    "text": "Learning More\nSee the following reference sections to learn more about using the Scout API and CLI:\n\nPython API\n\n\n\n\n\n\n\nScanning\nScan transcripts and manage scan jobs.\n\n\nResults\nStatus and results of scan jobs.\n\n\nTranscripts\nRead and filter transcripts.\n\n\nScanners\nImplement scanners and loaders.\n\n\nAsync\nAsync functions for scanning.\n\n\n\n\n\nScount CLI\n\n\n\n\n\n\n\nscout scan\nScan transcripts.\n\n\nscout scan resume\nResume a scan which is incomplete due to interruption or errors.\n\n\nscout scan complete\nComplete a scan which is incomplete due to errors (errors are not retried).\n\n\nscout scan list\nList the scans within a scan results directory."
+  },
+  {
+    "objectID": "reference/async.html",
+    "href": "reference/async.html",
+    "title": "Async API",
+    "section": "",
+    "text": "Note\n\n\n\nThe Async API is available for async programs that want to use inspect_scout as an embedded library. Normal usage of Scout (e.g. in a script or notebook) should prefer the corresponding sync functions (e.g. scan(), scan_resume()., etc.)\n\n\n\nscan_async\nScan transcripts.\nScan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.\n\nSource\n\nasync def scan_async(\n    scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]\n    | dict[str, Scanner[ScannerInput]]\n    | ScanJob,\n    transcripts: Transcripts | None = None,\n    results: str | None = None,\n    model: str | Model | None = None,\n    model_config: GenerateConfig | None = None,\n    model_base_url: str | None = None,\n    model_args: dict[str, Any] | str | None = None,\n    model_roles: dict[str, str | Model] | None = None,\n    max_transcripts: int | None = None,\n    max_processes: int | None = None,\n    limit: int | None = None,\n    shuffle: bool | int | None = None,\n    tags: list[str] | None = None,\n    metadata: dict[str, Any] | None = None,\n    log_level: str | None = None,\n) -&gt; Status\n\nscanners Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]] | dict[str, Scanner[ScannerInput]] | ScanJob\n\nScanners to apply to transcripts.\n\ntranscripts Transcripts | None\n\nTranscripts to scan.\n\nresults str | None\n\nLocation to write results (filesystem or S3 bucket). Defaults to “./scans”.\n\nmodel str | Model | None\n\nModel to use for scanning by default (individual scanners can always call get_model() to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.\n\nmodel_config GenerateConfig | None\n\nGenerationConfig for calls to the model.\n\nmodel_base_url str | None\n\nBase URL for communicating with the model API.\n\nmodel_args dict[str, Any] | str | None\n\nModel creation args (as a dictionary or as a path to a JSON or YAML config file).\n\nmodel_roles dict[str, str | Model] | None\n\nNamed roles for use in get_model().\n\nmax_transcripts int | None\n\nThe maximum number of transcripts to process concurrently (this also serves as the default value for max_connections). Defaults to 25.\n\nmax_processes int | None\n\nThe maximum number of concurrent processes (for multiproccesing). Defaults to multiprocessing.cpu_count().\n\nlimit int | None\n\nLimit the number of transcripts processed.\n\nshuffle bool | int | None\n\nShuffle the order of transcripts (pass an int to set a seed for shuffling).\n\ntags list[str] | None\n\nOne or more tags for this scan.\n\nmetadata dict[str, Any] | None\n\nMetadata for this scan.\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)\n\n\n\n\nscan_resume_async\nResume a previous scan.\n\nSource\n\nasync def scan_resume_async(scan_location: str, log_level: str | None = None) -&gt; Status\n\nscan_location str\n\nScan location to resume from.\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)\n\n\n\n\nscan_complete_async\nComplete a scan.\nThis function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.\n\nSource\n\nasync def scan_complete_async(\n    scan_location: str, log_level: str | None = None\n) -&gt; Status\n\nscan_location str\n\nScan location to complete.\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)\n\n\n\n\nscan_list_async\nList completed and pending scans.\n\nSource\n\nasync def scan_list_async(scans_location: str) -&gt; list[Status]\n\nscans_location str\n\nLocation of scans to list.\n\n\n\n\nscan_status_async\nStatus of scan.\n\nSource\n\nasync def scan_status_async(scan_location: str) -&gt; Status\n\nscan_location str\n\nLocation to get status for (e.g. directory or s3 bucket)\n\n\n\n\nscan_results_async\nScan results as Pandas data frames.\n\nSource\n\nasync def scan_results_async(\n    scan_location: str, *, scanner: str | None = None, include_null: bool = False\n) -&gt; Results\n\nscan_location str\n\nLocation of scan (e.g. directory or s3 bucket).\n\nscanner str | None\n\nScanner name (defaults to all scanners).\n\ninclude_null bool\n\nShould None results be included in the data frame (defaults to False)\n\n\n\n\nscan_results_db_async\nScan results as DuckDB database.\n\nSource\n\nasync def scan_results_db_async(\n    scan_location: str, include_null: bool = False\n) -&gt; ResultsDB\n\nscan_location str\n\nLocation of scan (e.g. directory or s3 bucket).\n\ninclude_null bool\n\nShould None results be included in the data frame (defaults to False)",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "async"
+    ]
+  },
+  {
+    "objectID": "reference/transcript.html",
+    "href": "reference/transcript.html",
+    "title": "Transcript API",
+    "section": "",
+    "text": "transcripts_from_logs\nRead sample transcripts from eval logs.\nLogs can be specified by file or directory path(s) or alternatively an evals_df() or samples_df()\n\nSource\n\ndef transcripts_from_logs(logs: LogPaths | pd.DataFrame) -&gt; Transcripts\n\nlogs LogPaths | pd.DataFrame\n\nLog paths as file(s), directories, or data frame.\n\n\n\n\nTranscripts\nCollection of transcripts for scanning.\nTranscript collections can be filtered using the where(), limit(), and ’shuffle()` methods. The transcripts are not modified in place so the filtered transcripts should be referenced via the return value. For example:\nfrom inspect_scout import transcripts, log_metadata as m\n\ntranscripts = transcripts_from_logs(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nSource\n\nclass Transcripts(abc.ABC)\n\nMethods\n\nwhere\n\nFilter the transcript collection by a Condition.\n\nSource\n\ndef where(self, condition: Condition) -&gt; \"Transcripts\"\n\ncondition Condition\n\nFilter condition.\n\n\n\nlimit\n\nLimit the number of transcripts processed.\n\nSource\n\ndef limit(self, n: int) -&gt; \"Transcripts\"\n\nn int\n\nLimit on transcripts.\n\n\n\nshuffle\n\nShuffle the order of transcripts.\n\nSource\n\ndef shuffle(self, seed: int | None = None) -&gt; \"Transcripts\"\n\nseed int | None\n\nRandom seed for shuffling.\n\n\n\ncount\n\nNumber of transcripts in collection.\n\nSource\n\n@abc.abstractmethod\nasync def count(self) -&gt; int\n\n\n\n\nindex\n\nIndex of TranscriptInfo for the collection.\n\nSource\n\n@abc.abstractmethod\nasync def index(self) -&gt; Iterator[TranscriptInfo]\n\n\n\n\n\n\n\n\nTranscriptInfo\nTranscript identifier, location, and metadata.\n\nSource\n\nclass TranscriptInfo(BaseModel)\n\nAttributes\n\nid str\n\nGlobally unique id for transcript (e.g. sample uuid).\n\nsource_id str\n\nGlobally unique ID for transcript source (e.g. eval_id).\n\nsource_uri str\n\nURI for source data (e.g. log file path)\n\nmetadata dict[str, JsonValue]\n\ne.g. eval config (model, scores, task params, etc.).\n\n\n\n\n\nTranscript\nTranscript info and transcript content (messages and events).\n\nSource\n\nclass Transcript(TranscriptInfo)\n\nAttributes\n\nmessages list[ChatMessage]\n\nMain message thread.\n\nevents list[Event]\n\nEvents from transcript.\n\n\n\n\n\nColumn\nDatabase column with comparison operators.\nSupports various predicate functions including like(), not_like(), between(), etc. Additionally supports standard python equality and comparison operators (e.g. ==, ’&gt;`, etc.\n\nSource\n\nclass Column\n\nMethods\n\nin_\n\nCheck if value is in a list.\n\nSource\n\ndef in_(self, values: list[Any]) -&gt; Condition\n\nvalues list[Any]\n\n\n\n\n\nnot_in\n\nCheck if value is not in a list.\n\nSource\n\ndef not_in(self, values: list[Any]) -&gt; Condition\n\nvalues list[Any]\n\n\n\n\n\nlike\n\nSQL LIKE pattern matching (case-sensitive).\n\nSource\n\ndef like(self, pattern: str) -&gt; Condition\n\npattern str\n\n\n\n\n\nnot_like\n\nSQL NOT LIKE pattern matching (case-sensitive).\n\nSource\n\ndef not_like(self, pattern: str) -&gt; Condition\n\npattern str\n\n\n\n\n\nilike\n\nPostgreSQL ILIKE pattern matching (case-insensitive).\nNote: For SQLite and DuckDB, this will use LIKE with LOWER() for case-insensitivity.\n\nSource\n\ndef ilike(self, pattern: str) -&gt; Condition\n\npattern str\n\n\n\n\n\nnot_ilike\n\nPostgreSQL NOT ILIKE pattern matching (case-insensitive).\nNote: For SQLite and DuckDB, this will use NOT LIKE with LOWER() for case-insensitivity.\n\nSource\n\ndef not_ilike(self, pattern: str) -&gt; Condition\n\npattern str\n\n\n\n\n\nis_null\n\nCheck if value is NULL.\n\nSource\n\ndef is_null(self) -&gt; Condition\n\n\n\n\nis_not_null\n\nCheck if value is not NULL.\n\nSource\n\ndef is_not_null(self) -&gt; Condition\n\n\n\n\nbetween\n\nCheck if value is between two values.\n\nSource\n\ndef between(self, low: Any, high: Any) -&gt; Condition\n\nlow Any\n\nLower bound (inclusive). If None, raises ValueError.\n\nhigh Any\n\nUpper bound (inclusive). If None, raises ValueError.\n\n\n\nnot_between\n\nCheck if value is not between two values.\n\nSource\n\ndef not_between(self, low: Any, high: Any) -&gt; Condition\n\nlow Any\n\nLower bound (inclusive). If None, raises ValueError.\n\nhigh Any\n\nUpper bound (inclusive). If None, raises ValueError.\n\n\n\n\n\n\n\nCondition\nWHERE clause condition that can be combined with others.\n\nSource\n\nclass Condition\n\nMethods\n\nto_sql\n\nGenerate SQL WHERE clause and parameters.\n\nSource\n\ndef to_sql(\n    self,\n    dialect: Union[\n        SQLDialect, Literal[\"sqlite\", \"duckdb\", \"postgres\"]\n    ] = SQLDialect.SQLITE,\n) -&gt; tuple[str, list[Any]]\n\ndialect Union[SQLDialect, Literal['sqlite', 'duckdb', 'postgres']]\n\nTarget SQL dialect (sqlite, duckdb, or postgres).\n\n\n\n\n\n\n\nMetadata\nEntry point for building metadata filter expressions.\n\nSource\n\nclass Metadata\n\n\nmetadata\nMetadata selector for where expressions.\nTypically aliased to a more compact expression (e.g. m) for use in queries). For example:\nfrom inspect_scout import metadata as m\nfilter = m.model == \"gpt-4\"\nfilter = (m.task_name == \"math\") & (m.epochs &gt; 1)\n\nSource\n\nmetadata = Metadata()\n\n\nLogMetadata\nTyped metadata interface for Inspect log transcripts.\nProvides typed properties for standard Inspect log columns while preserving the ability to access custom fields through the base Metadata class methods.\n\nSource\n\nclass LogMetadata(Metadata)\n\nAttributes\n\nsample_id Column\n\nUnique id for sample.\n\neval_id Column\n\nGlobally unique id for eval.\n\nlog Column\n\nLocation that the log file was read from.\n\neval_created Column\n\nTime eval was created.\n\neval_tags Column\n\nTags associated with evaluation run.\n\neval_metadata Column\n\nAdditional eval metadata.\n\ntask_name Column\n\nTask name.\n\ntask_args Column\n\nTask arguments.\n\nsolver Column\n\nSolver name.\n\nsolver_args Column\n\nArguments used for invoking the solver.\n\nmodel Column\n\nModel used for eval.\n\ngenerate_config Column\n\nGenerate config specified for model instance.\n\nmodel_roles Column\n\nModel roles.\n\nid Column\n\nUnique id for sample.\n\nepoch Column\n\nEpoch number for sample.\n\nsample_metadata Column\n\nSample metadata.\n\nscore Column\n\nHeadline score value.\n\ntotal_tokens Column\n\nTotal tokens used for sample.\n\ntotal_time Column\n\nTotal time that the sample was running.\n\nworking_time Column\n\nTime spent working (model generation, sandbox calls, etc.).\n\nerror Column\n\nError that halted the sample.\n\nlimit Column\n\nLimit that halted the sample.\n\n\n\n\n\nlog_metadata\nLog metadata selector for where expressions.\nTypically aliased to a more compact expression (e.g. m) for use in queries). For example:\nfrom inspect_scout import log_metadata as m\n\n# typed access to standard fields\nfilter = m.model == \"gpt-4\"\nfilter = (m.task_name == \"math\") & (m.epochs &gt; 1)\n\n# dynamic access to custom fields\nfilter = m[\"custom_field\"] &gt; 100\n\nSource\n\nlog_metadata = LogMetadata()",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "transcript"
+    ]
+  },
+  {
+    "objectID": "reference/results.html",
+    "href": "reference/results.html",
+    "title": "Results",
+    "section": "",
+    "text": "scan_list\nList completed and pending scans.\n\nSource\n\ndef scan_list(scans_location: str) -&gt; list[Status]\n\nscans_location str\n\nLocation of scans to list.\n\n\n\n\nscan_status\nStatus of scan.\n\nSource\n\ndef scan_status(scan_location: str) -&gt; Status\n\nscan_location str\n\nLocation to get status for (e.g. directory or s3 bucket)\n\n\n\n\nscan_results\nScan results as Pandas data frames.\n\nSource\n\ndef scan_results(\n    scan_location: str, *, scanner: str | None = None, include_null: bool = False\n) -&gt; Results\n\nscan_location str\n\nLocation of scan (e.g. directory or s3 bucket).\n\nscanner str | None\n\nScanner name (defaults to all scanners).\n\ninclude_null bool\n\nShould None results be included in the data frame (defaults to False)\n\n\n\n\nscan_results_db\nScan results as DuckDB database.\n\nSource\n\ndef scan_results_db(scan_location: str, include_null: bool = False) -&gt; ResultsDB\n\nscan_location str\n\nLocation of scan (e.g. directory or s3 bucket).\n\ninclude_null bool\n\nShould None results be included in the data frame (defaults to False)\n\n\n\n\nStatus\nStatus of scan job.\n\nSource\n\n@dataclass\nclass Status\n\nAttributes\n\ncomplete bool\n\nIs the job complete (all transcripts scanned).\n\nspec ScanSpec\n\nScan spec (transcripts, scanners, options).\n\nlocation str\n\nLocation of scan directory.\n\nsummary Summary\n\nSummary of scan (results, errors, tokens, etc.)\n\nerrors list[Error]\n\nErrors during last scan attempt.\n\n\n\n\n\nSummary\nSummary of scan results.\n\nSource\n\nclass Summary(BaseModel)\n\nAttributes\n\nscanners dict[str, ScannerSummary]\n\nSummary for each scanner.\n\n\n\n\n\nResults\nScan results as pandas data frames.\n\nSource\n\n@dataclass\nclass Results(Status)\n\nAttributes\n\ndata dict[str, pd.DataFrame]\n\nDict of scanner name to pandas data frame.\n\n\n\n\n\nResultsDB\nScan results as DuckDB database.\nUse ScanResultsDB as a context manager to close the DuckDb connection when you are finished using it.\nUse the to_file() method to create a DuckDB database file for the results.\n\nSource\n\n@dataclass\nclass ResultsDB(Status)\n\nAttributes\n\nconn duckdb.DuckDBPyConnection\n\nConnection to DuckDB database.\n\n\n\n\nMethods\n\nto_file\n\nWrite the database contents to a DuckDB file.\nThis materializes all views and tables from the in-memory connection into a persistent DuckDB database file.\n\nSource\n\ndef to_file(self, file: str, overwrite: bool = False) -&gt; None\n\nfile str\n\nFile where the DuckDB database file should be written. Supports local paths, S3 URIs (s3://bucket/path), and GCS URIs (gs://bucket/path or gcs://bucket/path).\n\noverwrite bool\n\nIf True, overwrite existing file. If False (default), raise FileExistsError if file already exists.",
+    "crumbs": [
+      "Reference",
+      "Python API",
+      "results"
+    ]
+  },
+  {
+    "objectID": "reference/scanning.html",
+    "href": "reference/scanning.html",
+    "title": "Scanning",
+    "section": "",
+    "text": "Scan transcripts.\nScan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.\n\nSource\n\ndef scan(\n    scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]\n    | dict[str, Scanner[ScannerInput]]\n    | ScanJob,\n    transcripts: Transcripts | None = None,\n    results: str | None = None,\n    model: str | Model | None = None,\n    model_config: GenerateConfig | None = None,\n    model_base_url: str | None = None,\n    model_args: dict[str, Any] | str | None = None,\n    model_roles: dict[str, str | Model] | None = None,\n    max_transcripts: int | None = None,\n    max_processes: int | None = None,\n    limit: int | None = None,\n    shuffle: bool | int | None = None,\n    tags: list[str] | None = None,\n    metadata: dict[str, Any] | None = None,\n    display: DisplayType | None = None,\n    log_level: str | None = None,\n) -&gt; Status\n\nscanners Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]] | dict[str, Scanner[ScannerInput]] | ScanJob\n\nScanners to apply to transcripts.\n\ntranscripts Transcripts | None\n\nTranscripts to scan.\n\nresults str | None\n\nLocation to write results (filesystem or S3 bucket). Defaults to “./scans”.\n\nmodel str | Model | None\n\nModel to use for scanning by default (individual scanners can always call get_model() to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.\n\nmodel_config GenerateConfig | None\n\nGenerationConfig for calls to the model.\n\nmodel_base_url str | None\n\nBase URL for communicating with the model API.\n\nmodel_args dict[str, Any] | str | None\n\nModel creation args (as a dictionary or as a path to a JSON or YAML config file).\n\nmodel_roles dict[str, str | Model] | None\n\nNamed roles for use in get_model().\n\nmax_transcripts int | None\n\nThe maximum number of transcripts to process concurrently (this also serves as the default value for max_connections). Defaults to 25.\n\nmax_processes int | None\n\nThe maximum number of concurrent processes (for multiproccesing). Defaults to multiprocessing.cpu_count().\n\nlimit int | None\n\nLimit the number of transcripts processed.\n\nshuffle bool | int | None\n\nShuffle the order of transcripts (pass an int to set a seed for shuffling).\n\ntags list[str] | None\n\nOne or more tags for this scan.\n\nmetadata dict[str, Any] | None\n\nMetadata for this scan.\n\ndisplay DisplayType | None\n\nDisplay type: “rich”, “plain”, or “none” (defaults to “rich”).\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)\n\n\n\n\n\nResume a previous scan.\n\nSource\n\ndef scan_resume(\n    scan_location: str,\n    display: DisplayType | None = None,\n    log_level: str | None = None,\n) -&gt; Status\n\nscan_location str\n\nScan location to resume from.\n\ndisplay DisplayType | None\n\nDisplay type: “rich”, “plain”, or “none” (defaults to “rich”).\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)\n\n\n\n\n\nComplete a scan.\nThis function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.\n\nSource\n\ndef scan_complete(\n    scan_location: str,\n    display: DisplayType | None = None,\n    log_level: str | None = None,\n) -&gt; Status\n\nscan_location str\n\nScan location to complete.\n\ndisplay DisplayType | None\n\nDisplay type: “rich”, “plain”, or “none” (defaults to “rich”).\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)",
+    "crumbs": [
+      "Reference",
+      "Python API"
+    ]
+  },
+  {
+    "objectID": "reference/scanning.html#scanning",
+    "href": "reference/scanning.html#scanning",
+    "title": "Scanning",
+    "section": "",
+    "text": "Scan transcripts.\nScan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.\n\nSource\n\ndef scan(\n    scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]\n    | dict[str, Scanner[ScannerInput]]\n    | ScanJob,\n    transcripts: Transcripts | None = None,\n    results: str | None = None,\n    model: str | Model | None = None,\n    model_config: GenerateConfig | None = None,\n    model_base_url: str | None = None,\n    model_args: dict[str, Any] | str | None = None,\n    model_roles: dict[str, str | Model] | None = None,\n    max_transcripts: int | None = None,\n    max_processes: int | None = None,\n    limit: int | None = None,\n    shuffle: bool | int | None = None,\n    tags: list[str] | None = None,\n    metadata: dict[str, Any] | None = None,\n    display: DisplayType | None = None,\n    log_level: str | None = None,\n) -&gt; Status\n\nscanners Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]] | dict[str, Scanner[ScannerInput]] | ScanJob\n\nScanners to apply to transcripts.\n\ntranscripts Transcripts | None\n\nTranscripts to scan.\n\nresults str | None\n\nLocation to write results (filesystem or S3 bucket). Defaults to “./scans”.\n\nmodel str | Model | None\n\nModel to use for scanning by default (individual scanners can always call get_model() to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.\n\nmodel_config GenerateConfig | None\n\nGenerationConfig for calls to the model.\n\nmodel_base_url str | None\n\nBase URL for communicating with the model API.\n\nmodel_args dict[str, Any] | str | None\n\nModel creation args (as a dictionary or as a path to a JSON or YAML config file).\n\nmodel_roles dict[str, str | Model] | None\n\nNamed roles for use in get_model().\n\nmax_transcripts int | None\n\nThe maximum number of transcripts to process concurrently (this also serves as the default value for max_connections). Defaults to 25.\n\nmax_processes int | None\n\nThe maximum number of concurrent processes (for multiproccesing). Defaults to multiprocessing.cpu_count().\n\nlimit int | None\n\nLimit the number of transcripts processed.\n\nshuffle bool | int | None\n\nShuffle the order of transcripts (pass an int to set a seed for shuffling).\n\ntags list[str] | None\n\nOne or more tags for this scan.\n\nmetadata dict[str, Any] | None\n\nMetadata for this scan.\n\ndisplay DisplayType | None\n\nDisplay type: “rich”, “plain”, or “none” (defaults to “rich”).\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)\n\n\n\n\n\nResume a previous scan.\n\nSource\n\ndef scan_resume(\n    scan_location: str,\n    display: DisplayType | None = None,\n    log_level: str | None = None,\n) -&gt; Status\n\nscan_location str\n\nScan location to resume from.\n\ndisplay DisplayType | None\n\nDisplay type: “rich”, “plain”, or “none” (defaults to “rich”).\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)\n\n\n\n\n\nComplete a scan.\nThis function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.\n\nSource\n\ndef scan_complete(\n    scan_location: str,\n    display: DisplayType | None = None,\n    log_level: str | None = None,\n) -&gt; Status\n\nscan_location str\n\nScan location to complete.\n\ndisplay DisplayType | None\n\nDisplay type: “rich”, “plain”, or “none” (defaults to “rich”).\n\nlog_level str | None\n\nLevel for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)",
+    "crumbs": [
+      "Reference",
+      "Python API"
+    ]
+  },
+  {
+    "objectID": "reference/scanning.html#status",
+    "href": "reference/scanning.html#status",
+    "title": "Scanning",
+    "section": "Status",
+    "text": "Status\n\nStatus\nStatus of scan job.\n\nSource\n\n@dataclass\nclass Status\n\nAttributes\n\ncomplete bool\n\nIs the job complete (all transcripts scanned).\n\nspec ScanSpec\n\nScan spec (transcripts, scanners, options).\n\nlocation str\n\nLocation of scan directory.\n\nsummary Summary\n\nSummary of scan (results, errors, tokens, etc.)\n\nerrors list[Error]\n\nErrors during last scan attempt.\n\n\n\n\n\nScanOptions\nOptions used for scan.\n\nSource\n\nclass ScanOptions(BaseModel)\n\nAttributes\n\nmax_transcripts int\n\nMaximum number of concurrent transcripts (defaults to 25).\n\nmax_processes int\n\nNumber of worker processes. Defaults to multiprocessing.cpu_count().\n\nlimit int | None\n\nTranscript limit (maximum number of transcripts to read).\n\nshuffle bool | int | None\n\nShuffle order of transcripts.\n\n\n\n\n\nScanScanner\nScanner used by scan.\n\nSource\n\nclass ScanScanner(BaseModel)\n\nAttributes\n\nname str\n\nScanner name.\n\nfile str | None\n\nScanner source file (if not in a package).\n\nparams dict[str, Any]\n\nScanner arguments.\n\n\n\n\n\nScanRevision\nGit revision for scan.\n\nSource\n\nclass ScanRevision(BaseModel)\n\nAttributes\n\ntype Literal['git']\n\nType of revision (currently only “git”)\n\norigin str\n\nRevision origin server\n\ncommit str\n\nRevision commit.\n\n\n\n\n\nScanTranscripts\nTranscripts target by a scan.\n\nSource\n\nclass ScanTranscripts(BaseModel)\n\nAttributes\n\ntype str\n\nTranscripts backing store type (currently only ‘eval_log’).\n\nfields list[TranscriptField]\n\nData types of transcripts fields.\n\ncount int\n\nTrancript count.\n\ndata str\n\nTranscript data as a csv.\n\n\n\n\n\nTranscriptField\nField in transcript data frame.\n\nSource\n\nclass TranscriptField(TypedDict, total=False)\n\nAttributes\n\nname Required[str]\n\nField name.\n\ntype Required[str]\n\nField type (“integer”, “number”, “boolean”, “string”, or “datetime”)\n\ntz NotRequired[str]\n\nTimezone (for “datetime” fields).",
+    "crumbs": [
+      "Reference",
+      "Python API"
+    ]
+  },
+  {
+    "objectID": "reference/scanning.html#jobs",
+    "href": "reference/scanning.html#jobs",
+    "title": "Scanning",
+    "section": "Jobs",
+    "text": "Jobs\n\nscanjob\nDecorator for registering scan jobs.\n\nSource\n\ndef scanjob(\n    func: ScanJobType | None = None, *, name: str | None = None\n) -&gt; ScanJobType | Callable[[ScanJobType], ScanJobType]\n\nfunc ScanJobType | None\n\nFunction returning ScanJob.\n\nname str | None\n\nOptional name for scanjob (defaults to function name).\n\n\n\n\nScanJob\nScan job definition.\n\nSource\n\nclass ScanJob\n\nAttributes\n\nname str\n\nName of scan job (defaults to @scanjob function name).\n\ntranscripts Transcripts | None\n\nTrasnscripts to scan.\n\nscanners dict[str, Scanner[ScannerInput]]\n\nScanners to apply to transcripts.",
+    "crumbs": [
+      "Reference",
+      "Python API"
+    ]
+  }
+]

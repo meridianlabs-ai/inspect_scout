@@ -1,0 +1,4 @@
+# Inspect Scout
+
+> Welcome to Inspect Scout, a transcript analysis library for [Inspect
+AI](https://inspect.aisi.org.uk/).

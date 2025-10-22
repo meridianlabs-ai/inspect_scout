@@ -9,6 +9,7 @@ from .. import __version__
 from .scan import scan_command
 from .scan_complete import scan_complete_command
 from .scan_resume import scan_resume_command
+from .view import view_command
 
 
 @click.group(invoke_without_command=True)
@@ -37,6 +38,7 @@ scout.add_command(scan_command)
 scan_command.add_command(scan_resume_command)
 scan_command.add_command(scan_complete_command)
 scan_command.add_command(scan_list_command)
+scout.add_command(view_command)
 
 scout.add_command(trace_command)
 

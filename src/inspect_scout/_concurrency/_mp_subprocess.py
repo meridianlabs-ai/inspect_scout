@@ -45,8 +45,6 @@ async def _shutdown_monitor_task(
         cancel_scope: Cancel scope of the worker's task group
         print_diagnostics: Function to print diagnostic messages
     """
-    print_diagnostics("Shutdown Monitor", "Started monitoring shutdown condition")
-
     try:
 
         def _wait_for_shutdown() -> None:
@@ -107,11 +105,6 @@ def subprocess_main(
                     running_time, f"P{worker_id} ", f"{actor_name}:", *message_parts
                 )
 
-        print_diagnostics(
-            "Worker main",
-            f"Starting with {task_count} max concurrent scans",
-        )
-
         # Use single_process_strategy to coordinate the async tasks
         strategy = single_process_strategy(
             task_count=task_count,
@@ -129,6 +122,13 @@ def subprocess_main(
 
         def _update_worker_metrics(metrics: ScanMetrics) -> None:
             ctx.upstream_queue.put(_mp_common.MetricsItem(worker_id, metrics))
+
+        print_diagnostics(
+            "Worker main",
+            f"Initialized with {task_count} max tasks. Waiting for start...",
+        )
+        ctx.upstream_queue.put(_mp_common.WorkerReady(worker_id))
+        await run_sync_on_thread(ctx.workers_ready_event.wait)
 
         # Run everything in a task group with shutdown monitor
         shutdown_monitor_scope: anyio.CancelScope | None = None

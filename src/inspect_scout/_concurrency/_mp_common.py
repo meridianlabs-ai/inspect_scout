@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from logging import LogRecord
 from multiprocessing.managers import DictProxy
 from multiprocessing.queues import Queue
+from multiprocessing.synchronize import Event
 from threading import Condition
 from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
 
@@ -58,6 +59,13 @@ class SemaphoreRequest:
 
 
 @dataclass(frozen=True)
+class WorkerReady:
+    """Signal from worker that it's initialized and ready to consume parse jobs."""
+
+    worker_id: int
+
+
+@dataclass(frozen=True)
 class WorkerComplete:
     """Sentinel indicating a worker has finished all work."""
 
@@ -76,6 +84,7 @@ UpstreamQueueItem: TypeAlias = (
     | MetricsItem
     | LoggingItem
     | SemaphoreRequest
+    | WorkerReady
     | WorkerComplete
     | ShutdownSentinel
     | Exception
@@ -127,6 +136,16 @@ class IPCContext:
 
     Note: Don't be confused by the threading.Condition type - it works across processes
     because it's a manager proxy, not a raw threading primitive.
+    """
+
+    workers_ready_event: Event
+    """
+    Cross-process event for coordinating worker startup.
+
+    Created via SyncManager.Event(). Workers signal ready via upstream queue, then
+    block waiting on this event. Once the parent receives ready signals from all
+    workers, it sets this event, releasing all workers simultaneously to ensure
+    even distribution of parse jobs from the queue.
     """
 
     semaphore_registry: DictProxy[str, PicklableMPSemaphore]

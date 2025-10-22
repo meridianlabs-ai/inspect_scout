@@ -197,10 +197,10 @@ def single_process_strategy(
 
             Returns the next wait duration to use. First wait is 0s, subsequent waits are 1s.
             """
-            metrics.tasks_waiting += 1
+            metrics.tasks_idle += 1
             _update_metrics()
             await anyio.sleep(current_wait_duration)
-            metrics.tasks_waiting -= 1
+            metrics.tasks_idle -= 1
             return 1.0 if current_wait_duration == 0 else 1.0
 
         async def _perform_parse(worker_id: int) -> bool:
@@ -289,7 +289,7 @@ def single_process_strategy(
                     if (
                         parse_jobs_exhausted
                         and len(scanner_job_deque) == 0
-                        and metrics.tasks_waiting == metrics.task_count - 1
+                        and metrics.tasks_idle == metrics.task_count - 1
                     ):
                         break
 
@@ -325,10 +325,6 @@ def single_process_strategy(
                         worker_id_counter += 1
                         metrics.task_count += 1
                         tg.start_soon(_worker_task, worker_id_counter)
-                        print_diagnostics(
-                            "Initialization",
-                            f"Spawned initial worker #{worker_id_counter}",
-                        )
                     _update_metrics()
 
                 if progress_cancel_scope:
@@ -339,7 +335,7 @@ def single_process_strategy(
             metrics.process_count = 0
             metrics.tasks_parsing = 0
             metrics.tasks_scanning = 0
-            metrics.tasks_waiting = 0
+            metrics.tasks_idle = 0
             _update_metrics()
 
     return the_func

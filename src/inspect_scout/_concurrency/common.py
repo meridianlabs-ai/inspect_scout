@@ -22,7 +22,7 @@ class ScanMetrics:
 
     process_count: int = 0
     task_count: int = 0
-    tasks_waiting: int = 0
+    tasks_idle: int = 0
     tasks_parsing: int = 0
     tasks_scanning: int = 0
     buffered_scanner_jobs: int = 0

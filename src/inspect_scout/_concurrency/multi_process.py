@@ -133,6 +133,7 @@ def multi_process_strategy(
                 parse_job_queue=multiprocessing.Queue(),
                 upstream_queue=multiprocessing.Queue(),
                 shutdown_condition=manager.Condition(),
+                workers_ready_event=manager.Event(),
                 semaphore_registry=parent_registry.sync_manager_dict,
                 semaphore_condition=parent_registry.sync_manager_condition,
             )
@@ -156,25 +157,24 @@ def multi_process_strategy(
             parse_job_queue = _mp_common.ipc_context.parse_job_queue
             upstream_queue = _mp_common.ipc_context.upstream_queue
 
+            # Track worker ready signals for startup coordination
+            workers_ready_count = 0
+
             async def _producer() -> None:
                 """Producer task that feeds work items into the queue."""
                 try:
                     async for item in parse_jobs:
                         parse_job_queue.put(item)
-                        print_diagnostics(
-                            "MP Producer",
-                            f"Added ParseJob {item.transcript_info.id, item.scanner_indices}",
-                        )
                 finally:
                     # Send sentinel values to signal worker tasks to stop (one per task)
                     # This runs even if cancelled, allowing graceful shutdown
                     for _ in range(task_count):
                         parse_job_queue.put(None)
 
-                    print_diagnostics("MP Producer", "FINISHED PRODUCING ALL WORK")
-
             async def _upstream_collector() -> None:
                 """Collector task that receives results and metrics."""
+                nonlocal workers_ready_count
+
                 items_processed = 0
                 workers_finished = 0
 
@@ -183,6 +183,26 @@ def multi_process_strategy(
                     item = await run_sync_on_thread(upstream_queue.get)
 
                     match item:
+                        case _mp_common.WorkerReady(worker_id):
+                            # Should only receive these during startup phase
+                            assert workers_ready_count < process_count, (
+                                f"Received WorkerReady from worker {worker_id} but already got {workers_ready_count}/{process_count}"
+                            )
+
+                            workers_ready_count += 1
+                            print_diagnostics(
+                                "MP Collector",
+                                f"P{worker_id} ready. {workers_ready_count}/{process_count}",
+                            )
+
+                            # When all workers are ready, release them to start consuming
+                            if workers_ready_count == process_count:
+                                print_diagnostics(
+                                    "MP Collector",
+                                    "All workers ready - releasing workers to consume parse jobs",
+                                )
+                                _mp_common.ipc_context.workers_ready_event.set()
+
                         case ResultItem(transcript_info, scanner_name, results):
                             await record_results(transcript_info, scanner_name, results)
                             items_processed += 1
@@ -252,11 +272,6 @@ def multi_process_strategy(
                     )
                     p.start()
                     processes.append(p)
-                    print_diagnostics(
-                        "Main",
-                        f"Spawned worker process #{worker_id} {p.pid} "
-                        f"with {task_count_for_worker} tasks",
-                    )
                 except Exception as ex:
                     display().print(ex)
                     raise

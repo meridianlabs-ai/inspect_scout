@@ -193,7 +193,7 @@ def scan_panel(
         resources.add_row("[bold]workers[/bold]", "", style=theme.meta)
         resources.add_row("parsing:", f"{metrics.tasks_parsing:,}")
         resources.add_row("scanning:", f"{metrics.tasks_scanning:,}")
-        resources.add_row("waiting:", f"{metrics.tasks_waiting:,}")
+        resources.add_row("idle:", f"{metrics.tasks_idle:,}")
         resources.add_row()
         resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
         cpu_utilization = (

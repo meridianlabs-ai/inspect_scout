@@ -159,12 +159,11 @@ scout scan scanner.py \
 
 By default, the results of scans are written into the `./scans` directory. You can override this using the `--results` option---both file paths and S3 buckets are supported.
 
-Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database. There are data frames (or tables) for each scanner, as well as a "transcripts" entry for the core transcripts passed to scan:
+Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database (there will be a table for each scanner).
 
 ``` python
 # results as pandas data frames
 results = scan_results("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
-transcripts_df = results.data["transcripts"]
 deception_df = results.data["deception"]
 tool_errors_df = results.data["tool_errors"]
 

@@ -10,7 +10,6 @@ from typing_extensions import override
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
-from inspect_scout._transcript.database import transcripts_df_for_results
 
 from .._recorder.buffer import (
     SCAN_ERRORS,
@@ -200,11 +199,6 @@ class FileRecorder(ScanRecorder):
             # read data
             data: dict[str, pd.DataFrame] = {}
 
-            # include the original transcripts df
-            data["transcripts"] = await transcripts_df_for_results(
-                status.spec.transcripts
-            )
-
             # single scanner
             if scanner is not None:
                 parquet_file = scan_dir / f"{scanner}.parquet"
@@ -257,10 +251,6 @@ class FileRecorder(ScanRecorder):
             conn.execute(
                 f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}'){where_clause}"
             )
-
-        # create the transcripts table from the snapshot
-        transcripts_df = await transcripts_df_for_results(status.spec.transcripts)  # noqa: F841
-        conn.execute("CREATE TABLE transcripts AS SELECT * FROM transcripts_df")
 
         return ResultsDB(
             status=status.complete,

@@ -92,7 +92,7 @@ class FileRecorder(ScanRecorder):
 
     @override
     async def summary(self) -> Summary:
-        return self._scan_buffer.scan_summary()
+        return self._scan_buffer.scan_summary().model_copy(deep=True)
 
     @property
     def scan_dir(self) -> UPath:

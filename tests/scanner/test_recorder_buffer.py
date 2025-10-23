@@ -52,7 +52,7 @@ def sample_results() -> list[ResultReport]:
     return [
         ResultReport(
             input_type="transcript",
-            input_id="",
+            input_ids="",
             input=ChatMessageUser(content=""),
             result=Result(
                 value="correct",
@@ -66,7 +66,7 @@ def sample_results() -> list[ResultReport]:
         ),
         ResultReport(
             input_type="transcript",
-            input_id="",
+            input_ids="",
             input=ChatMessageUser(content=""),
             result=Result(
                 value=True,
@@ -80,7 +80,7 @@ def sample_results() -> list[ResultReport]:
         ),
         ResultReport(
             input_type="transcript",
-            input_id="",
+            input_ids="",
             input=ChatMessageUser(content=""),
             result=Result(
                 value=3.14159,

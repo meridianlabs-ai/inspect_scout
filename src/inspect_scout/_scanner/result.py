@@ -1,3 +1,4 @@
+import json
 from typing import Any, Literal, Sequence
 
 from inspect_ai._util.json import to_json_str_safe
@@ -5,7 +6,7 @@ from inspect_ai.event import Event
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from inspect_scout._scanner.types import ScannerInput
+from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 
 
 class Reference(BaseModel):
@@ -53,9 +54,9 @@ class Error(BaseModel):
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
-    input_type: Literal["transcript", "event", "message"]
+    input_type: ScannerInputNames
 
-    input_id: str
+    input_ids: str | list[str]
 
     input: ScannerInput
 
@@ -72,7 +73,13 @@ class ResultReport(BaseModel):
 
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
-        columns["input_id"] = self.input_id
+        columns["input_id"] = (
+            self.input_ids
+            if isinstance(self.input_ids, str)
+            # TODO: This is wonky. The asymmetry means that json.loads() can't be
+            # used blindly. Review with JJ
+            else json.dumps(self.input_ids)
+        )
         columns["input"] = to_json_str_safe(self.input)
 
         if self.result is not None:

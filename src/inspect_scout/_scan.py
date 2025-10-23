@@ -45,6 +45,7 @@ from ._scanner.loader import Loader, config_for_loader
 from ._scanner.result import Error, Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
+from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScanOptions, ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.types import (
@@ -440,7 +441,7 @@ async def _scan_async_inner(
                 )
 
                 async def _parse_function(job: ParseJob) -> list[ScannerJob]:
-                    union_transcript = await transcripts._read(
+                    union_transcript = await transcripts._read(  # pylint: disable=protected-access
                         job.transcript_info, union_content
                     )
                     return [
@@ -479,6 +480,10 @@ async def _scan_async_inner(
                     loader: Loader[Transcript] = scanner_config.loader
 
                     async for loader_result in loader(job.union_transcript):
+                        type_and_ids = get_input_type_and_ids(loader_result)
+                        if type_and_ids is None:
+                            continue
+
                         try:
                             result: Result | None = await job.scanner(loader_result)
                             error: Error | None = None
@@ -494,8 +499,8 @@ async def _scan_async_inner(
                             )
                         results.append(
                             ResultReport(
-                                input_type="transcript",
-                                input_id=job.union_transcript.id,
+                                input_type=type_and_ids[0],
+                                input_ids=type_and_ids[1],
                                 input=loader_result,
                                 result=result,
                                 error=error,

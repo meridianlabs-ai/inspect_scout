@@ -2,7 +2,7 @@ from functools import reduce
 from typing import Iterable, TypeVar
 
 from inspect_ai.event._event import Event
-from inspect_ai.model._chat_message import ChatMessage
+from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
 
 from .types import (
     EventFilter,
@@ -105,7 +105,7 @@ def _matches_filter(
 
     attr = (
         getattr(obj, "role", None)
-        if hasattr(obj, "role")
+        if isinstance(obj, ChatMessageBase)
         else getattr(obj, "event", None)
     )
     assert isinstance(attr, str)

@@ -1,48 +1,12 @@
-import atexit
-import logging
-import os
-from pathlib import Path
-
-import psutil
-from inspect_scout._display._display import display
-from inspect_scout._util.appdirs import app_data_dir
-from inspect_scout._view.server import view_server
-
-logger = logging.getLogger(__name__)
-
-DEFAULT_VIEW_PORT = 7576
-DEFAULT_SERVER_HOST = "127.0.0.1"
-
-
-def view(
-    results_dir: str,
-    host: str = DEFAULT_SERVER_HOST,
-    port: int = DEFAULT_VIEW_PORT,
-) -> None:
-    # acquire the port
-    _acquire_port(DEFAULT_VIEW_PORT)
-
-    # start the server
-    view_server(
-        results_dir=results_dir,
-        host=host,
-        port=port,
-    )
-
-
-def view_data_dir() -> Path:
-    return app_data_dir("view")
-
-
-def _port_pid_file(port: int) -> Path:
+def view_port_pid_file(port: int) -> Path:
     ports_dir = view_data_dir() / "ports"
     ports_dir.mkdir(parents=True, exist_ok=True)
     return ports_dir / str(port)
 
 
-def _acquire_port(port: int) -> None:
+def view_acquire_port(port: int) -> None:
     # pid file name
-    pid_file = _port_pid_file(port)
+    pid_file = view_port_pid_file(port)
 
     # does it already exist? if so terminate that process
     if pid_file.exists():
@@ -52,7 +16,9 @@ def _acquire_port(port: int) -> None:
         try:
             p = psutil.Process(pid)
             p.terminate()
-            display().print(f"Terminating existing view command using port {port}")
+            display().print(
+                f"Terminating existing inspect view command using port {port}"
+            )
             p.wait(WAIT_SECONDS)
 
         except psutil.NoSuchProcess:
@@ -69,7 +35,8 @@ def _acquire_port(port: int) -> None:
             )
         except Exception as ex:
             logger.warning(
-                f"Attempted to kill existing view command on port {port} but failed with error\n\n{ex}"
+                "Attempted to kill existing view command on "
+                + f"port {port} but error occurred: {exception_message(ex)}"
             )
 
     # write our pid to the file

@@ -2,6 +2,7 @@
 title: "Inspect Scout"
 description: "Transcript analysis for AI agents."
 tbl-colwidths: [30,70]
+tutorial: "https://gist.github.com/jjallaire/fdf98c3fcedb0e7d833f39f2e929055d"
 ---
 
 ## Welcome
@@ -235,7 +236,7 @@ The `-S` argument enables you to pass arguments to the `@scanjob` function (in t
 The Scout scanning pipeline is optimized for parallel reading and scanning as well as minimal memory consumption. There are a few options you can use to tune parallelism:
 
 | Option | Description |
-|-------------------------|-----------------------------------------------|
+|--------------------------|----------------------------------------------|
 | `--max-transcripts` | The maximum number of transcripts to scan in parallel (defaults to 25). You can set this higher if your model API endpoint can handle larger numbers of concurrent requests. |
 | `--max-connections` | The maximum number of concurrent requests to the model provider (defaults to `--max-transcripts`). |
 | `--max-processes` | The maximum number of processes to use for parsing and scanning (defaults to the number of CPUs on the system). |

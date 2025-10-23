@@ -52,7 +52,7 @@ from ._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from ._transcript.util import filter_transcript, union_transcript_contents
+from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.log import init_log
 from ._util.process import default_max_processes
@@ -475,13 +475,10 @@ async def _scan_async_inner(
                     results: list[ResultReport] = []
 
                     scanner_config = config_for_scanner(job.scanner)
-                    filtered_transcript = filter_transcript(
-                        job.union_transcript, _content_for_scanner(job.scanner)
-                    )
                     # Need to use typing magic rather than this case
                     loader: Loader[Transcript] = scanner_config.loader
 
-                    async for loader_result in loader(filtered_transcript):
+                    async for loader_result in loader(job.union_transcript):
                         try:
                             result: Result | None = await job.scanner(loader_result)
                             error: Error | None = None

@@ -13,6 +13,8 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
+from inspect_scout._transcript.util import filter_list, filter_transcript
+
 from .._transcript.types import Transcript, TranscriptContent
 from .loader import Loader, loader
 
@@ -25,7 +27,7 @@ def _IdentityLoader(
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncGenerator[Transcript, None]:
-            yield transcript
+            yield filter_transcript(transcript, content)
 
         return the_loader
 
@@ -41,11 +43,7 @@ def _ListLoader(
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncGenerator[list[ChatMessage] | list[Event], None]:
-            yield (
-                transcript.messages
-                if message_or_event == "message"
-                else transcript.events
-            )
+            yield _get_filtered_list(transcript, content, message_or_event)
 
         return the_loader
 
@@ -61,11 +59,8 @@ def _ListItemLoader(
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncGenerator[ChatMessage | Event, None]:
-            for item in (
-                transcript.messages
-                if message_or_event == "message"
-                else transcript.events
-            ):
+            filtered_list = _get_filtered_list(transcript, content, message_or_event)
+            for item in filtered_list:
                 yield item
 
         return the_loader
@@ -184,3 +179,16 @@ def _message_or_event(type_annotation: Any) -> Literal["message", "event"]:
     raise RuntimeError(
         f"Type annotation must conform to ChatMessage or Event, got {type_annotation}"
     )
+
+
+def _get_filtered_list(
+    transcript: Transcript,
+    content: TranscriptContent,
+    message_or_event: Literal["message", "event"],
+) -> list[ChatMessage] | list[Event]:
+    # TODO: The generic typing used by apply_filter_to_list is confounding the inference
+    # engine - preventing this from being more concise.
+    if message_or_event == "message":
+        return filter_list(transcript.messages, content.messages)
+    else:
+        return filter_list(transcript.events, content.events)

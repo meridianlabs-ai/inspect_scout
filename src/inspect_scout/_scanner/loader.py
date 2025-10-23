@@ -85,6 +85,9 @@ def loader(
     """
     if content is None:
         # TODO: Enable this assertion in a later commit. It will take some work.
+        if messages is None and events is None:
+            messages = "all"
+            events = "all"
         # assert messages or events, "Must filter on messages or events"
         content = TranscriptContent(
             normalize_messages_filter(messages) if messages is not None else None,

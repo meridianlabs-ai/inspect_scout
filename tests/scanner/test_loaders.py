@@ -101,6 +101,11 @@ async def _list_union_event(
 
 
 does_not_matter_filter = TranscriptContent(["tool"], None)
+user_filter = TranscriptContent(["user"], None)
+assistant_filter = TranscriptContent(["assistant"], None)
+model_event_filter = TranscriptContent(None, ["model"])
+tool_event_filter = TranscriptContent(None, ["tool"])
+all_filter = TranscriptContent("all", "all")
 
 
 @pytest.mark.parametrize(
@@ -133,19 +138,19 @@ def test_create_loader_returns_correct_type(
 @pytest.mark.asyncio
 async def test_identity_loader_yields_transcript() -> None:
     """IdentityLoader returns transcript unchanged."""
-    loader = create_implicit_loader(_transcript, does_not_matter_filter)
+    loader = create_implicit_loader(_transcript, all_filter)
     transcript = create_test_transcript()
 
     results = [item async for item in loader(transcript)]
 
     assert len(results) == 1
-    assert results[0] is transcript
+    assert isinstance(results[0], Transcript)
 
 
 @pytest.mark.asyncio
 async def test_list_loader_yields_entire_message_list() -> None:
     """ListLoader for messages yields entire message list."""
-    loader = create_implicit_loader(_list_message, does_not_matter_filter)
+    loader = create_implicit_loader(_list_message, user_filter)
     messages: list[ChatMessage] = [
         ChatMessageUser(content="msg1"),
         ChatMessageUser(content="msg2"),
@@ -161,7 +166,7 @@ async def test_list_loader_yields_entire_message_list() -> None:
 @pytest.mark.asyncio
 async def test_list_loader_yields_entire_event_list() -> None:
     """ListLoader for events yields entire event list."""
-    loader = create_implicit_loader(_list_event, does_not_matter_filter)
+    loader = create_implicit_loader(_list_event, tool_event_filter)
     events: list[Event] = [
         ToolEvent(
             event="tool",
@@ -189,7 +194,7 @@ async def test_list_loader_yields_entire_event_list() -> None:
 @pytest.mark.asyncio
 async def test_list_item_loader_yields_individual_messages() -> None:
     """ListItemLoader for messages yields messages one at a time."""
-    loader = create_implicit_loader(_message, does_not_matter_filter)
+    loader = create_implicit_loader(_message, user_filter)
     messages: list[ChatMessage] = [
         ChatMessageUser(content="msg1"),
         ChatMessageUser(content="msg2"),
@@ -208,7 +213,7 @@ async def test_list_item_loader_yields_individual_events() -> None:
     """ListItemLoader for events yields events one at a time."""
     from inspect_ai.model import ModelOutput
 
-    loader = create_implicit_loader(_event, does_not_matter_filter)
+    loader = create_implicit_loader(_event, model_event_filter)
     events: list[Event] = [
         ModelEvent(
             event="model",
@@ -273,32 +278,34 @@ async def test_loaders_handle_empty_transcript() -> None:
     empty_transcript = create_test_transcript()
 
     # IdentityLoader should yield the empty transcript
-    identity_loader = create_implicit_loader(_transcript, does_not_matter_filter)
+    identity_loader = create_implicit_loader(_transcript, all_filter)
     identity_results = [item async for item in identity_loader(empty_transcript)]
     assert len(identity_results) == 1
-    assert identity_results[0] is empty_transcript
+    assert isinstance(identity_results[0], Transcript)
+    assert not identity_results[0].messages
+    assert not identity_results[0].events
 
     # List loaders should yield empty lists
-    message_list_loader = create_implicit_loader(_list_message, does_not_matter_filter)
+    message_list_loader = create_implicit_loader(_list_message, all_filter)
     message_list_results = [
         item async for item in message_list_loader(empty_transcript)
     ]
     assert len(message_list_results) == 1
     assert message_list_results[0] == []
 
-    event_list_loader = create_implicit_loader(_list_event, does_not_matter_filter)
+    event_list_loader = create_implicit_loader(_list_event, all_filter)
     event_list_results = [item async for item in event_list_loader(empty_transcript)]
     assert len(event_list_results) == 1
     assert event_list_results[0] == []
 
     # Item loaders should yield nothing
-    message_item_loader = create_implicit_loader(_message, does_not_matter_filter)
+    message_item_loader = create_implicit_loader(_message, all_filter)
     message_item_results = [
         item async for item in message_item_loader(empty_transcript)
     ]
     assert len(message_item_results) == 0
 
-    event_item_loader = create_implicit_loader(_event, does_not_matter_filter)
+    event_item_loader = create_implicit_loader(_event, all_filter)
     event_item_results = [item async for item in event_item_loader(empty_transcript)]
     assert len(event_item_results) == 0
 

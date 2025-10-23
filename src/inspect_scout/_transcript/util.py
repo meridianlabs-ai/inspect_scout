@@ -52,8 +52,8 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         source_id=transcript.source_id,
         source_uri=transcript.source_uri,
         metadata=transcript.metadata,
-        messages=_apply_filter_to_list(transcript.messages, content.messages),
-        events=_apply_filter_to_list(transcript.events, content.events),
+        messages=filter_list(transcript.messages, content.messages),
+        events=filter_list(transcript.events, content.events),
     )
 
 
@@ -80,7 +80,7 @@ def _union_filters(a: T, b: T) -> T:
 TMessageOrEvent = TypeVar("TMessageOrEvent", ChatMessage, Event)
 
 
-def _apply_filter_to_list(
+def filter_list(
     items: list[TMessageOrEvent],
     filter_value: MessageFilter | EventFilter,
 ) -> list[TMessageOrEvent]:

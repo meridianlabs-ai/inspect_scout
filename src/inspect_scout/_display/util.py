@@ -40,7 +40,7 @@ def scan_title(spec: ScanSpec) -> str:
         title = f"{SCAN}: {spec.scan_name}"
     else:
         title = SCAN
-    return f"{title} ({spec.transcripts.count:,} transcripts)"
+    return f"{title} ({spec.options.limit or spec.transcripts.count:,} transcripts)"
 
 
 def scan_config(spec: ScanSpec) -> RenderableType:

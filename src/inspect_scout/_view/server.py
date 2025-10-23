@@ -1,43 +1,20 @@
-import json
 from pathlib import Path
-from typing import Any, Protocol, override
+from typing import Any
 
 import anyio
-from fastapi.responses import JSONResponse
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import filesystem
+from inspect_ai._view.fastapi_server import (
+    AccessPolicy,
+    InspectJsonResponse,
+    OnlyDirAccessPolicy,
+)
 from inspect_scout._display._display import display
 from starlette.status import (
     HTTP_403_FORBIDDEN,
 )
-
-
-class AccessPolicy(Protocol):
-    async def can_read(self, request: Request, file: str) -> bool: ...
-
-    async def can_delete(self, request: Request, file: str) -> bool: ...
-
-    async def can_list(self, request: Request, dir: str) -> bool: ...
-
-
-class OnlyLogDirAccessPolicy(AccessPolicy):
-    def __init__(self, log_dir: str) -> None:
-        super().__init__()
-        self.log_dir = log_dir
-
-    def _validate_log_dir(self, file: str) -> bool:
-        return file.startswith(self.log_dir) and ".." not in file
-
-    async def can_read(self, request: Request, file: str) -> bool:
-        return self._validate_log_dir(file)
-
-    async def can_delete(self, request: Request, file: str) -> bool:
-        return self._validate_log_dir(file)
-
-    async def can_list(self, request: Request, dir: str) -> bool:
-        return self._validate_log_dir(dir)
 
 
 def view_server(
@@ -54,7 +31,7 @@ def view_server(
     results_dir = fs.info(results_dir).name
 
     api = view_server_app(
-        access_policy=OnlyLogDirAccessPolicy(results_dir),
+        access_policy=OnlyDirAccessPolicy(results_dir),
         results_dir=results_dir,
     )
 
@@ -85,20 +62,6 @@ def view_server(
             await server.serve()
 
     anyio.run(run_server)
-
-
-class InspectJsonResponse(JSONResponse):
-    """Like the standard starlette JSON, but allows NaN."""
-
-    @override
-    def render(self, content: Any) -> bytes:
-        return json.dumps(
-            content,
-            ensure_ascii=False,
-            allow_nan=True,
-            indent=None,
-            separators=(",", ":"),
-        ).encode("utf-8")
 
 
 def view_server_app(

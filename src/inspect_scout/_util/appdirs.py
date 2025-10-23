@@ -1,20 +1,9 @@
 from pathlib import Path
 
-from inspect_ai._util.constants import PKG_NAME
-from platformdirs import user_cache_path, user_data_path
+from inspect_ai._util.appdirs import package_data_dir
+
+from inspect_scout._util.constants import PKG_NAME
 
 
-def app_data_dir(subdir: str | None) -> Path:
-    data_dir = user_data_path(PKG_NAME)
-    if subdir:
-        data_dir = data_dir / subdir
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir
-
-
-def app_cache_dir(subdir: str | None) -> Path:
-    cache_dir = user_cache_path(PKG_NAME)
-    if subdir:
-        cache_dir = cache_dir / subdir
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
+def scout_data_dir(subdir: str) -> Path:
+    return package_data_dir(PKG_NAME, subdir)

@@ -1,11 +1,7 @@
-import atexit
 import logging
-import os
-from pathlib import Path
 
-import psutil
-from inspect_scout._display._display import display
-from inspect_scout._util.appdirs import app_data_dir
+from inspect_ai._view.view import view_acquire_port
+from inspect_scout._util.appdirs import scout_data_dir
 from inspect_scout._view.server import view_server
 
 logger = logging.getLogger(__name__)
@@ -20,7 +16,7 @@ def view(
     port: int = DEFAULT_VIEW_PORT,
 ) -> None:
     # acquire the port
-    _acquire_port(DEFAULT_VIEW_PORT)
+    view_acquire_port(scout_data_dir("view"), DEFAULT_VIEW_PORT)
 
     # start the server
     view_server(
@@ -28,59 +24,3 @@ def view(
         host=host,
         port=port,
     )
-
-
-def view_data_dir() -> Path:
-    return app_data_dir("view")
-
-
-def _port_pid_file(port: int) -> Path:
-    ports_dir = view_data_dir() / "ports"
-    ports_dir.mkdir(parents=True, exist_ok=True)
-    return ports_dir / str(port)
-
-
-def _acquire_port(port: int) -> None:
-    # pid file name
-    pid_file = _port_pid_file(port)
-
-    # does it already exist? if so terminate that process
-    if pid_file.exists():
-        WAIT_SECONDS = 5
-        with open(pid_file, "r", encoding="utf-8") as f:
-            pid = int(f.read().strip())
-        try:
-            p = psutil.Process(pid)
-            p.terminate()
-            display().print(f"Terminating existing view command using port {port}")
-            p.wait(WAIT_SECONDS)
-
-        except psutil.NoSuchProcess:
-            # expected error for crufty pid files
-            pass
-        except psutil.TimeoutExpired:
-            logger.warning(
-                f"Timed out waiting for process to exit for {WAIT_SECONDS} seconds."
-            )
-        except psutil.AccessDenied:
-            logger.warning(
-                "Attempted to kill existing view command on "
-                + f"port {port} but access was denied."
-            )
-        except Exception as ex:
-            logger.warning(
-                f"Attempted to kill existing view command on port {port} but failed with error\n\n{ex}"
-            )
-
-    # write our pid to the file
-    with open(pid_file, "w", encoding="utf-8") as f:
-        f.write(str(os.getpid()))
-
-    # arrange to release on exit
-    def release_lock_file() -> None:
-        try:
-            pid_file.unlink(True)
-        except Exception:
-            pass
-
-    atexit.register(release_lock_file)

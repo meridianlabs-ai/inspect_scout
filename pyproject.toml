@@ -51,7 +51,6 @@ dev = [
     "types-psutil",
 ]
 doc = [
-    "quarto-cli==1.8.25",
     "jupyter",
     "panflute",
     "markdown",

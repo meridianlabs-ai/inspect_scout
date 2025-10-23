@@ -125,7 +125,7 @@ def test_scanner_with_loader():
     from inspect_scout._scanner.loader import loader
     from inspect_scout._transcript.types import Transcript
 
-    @loader(name="test_loader")
+    @loader(name="test_loader", messages="all")
     def test_loader():
         async def load(transcripts):
             for t in transcripts:

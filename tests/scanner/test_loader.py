@@ -20,7 +20,7 @@ from inspect_scout._transcript.types import Transcript
 def test_loader_creates_config():
     """Loader decorator should add config."""
 
-    @loader(name="test_loader")
+    @loader(name="test_loader", messages="all")
     def test_loader():
         async def load(
             transcript: Transcript,
@@ -78,10 +78,27 @@ def test_loader_requires_async():
     """Loader must be async."""
     with pytest.raises(TypeError, match="not declared as an async callable"):
 
-        @loader(name="bad_loader")
+        @loader(name="bad_loader", messages="all")
         def test_loader():
             def load(transcripts):  # Not async!
                 return transcripts
+
+            return load
+
+        test_loader()
+
+
+def test_loader_requires_filter():
+    """Loader must specify at least one filter."""
+    with pytest.raises(RuntimeError):
+
+        @loader(name="no_filter_loader")
+        def test_loader():
+            async def load(
+                transcript: Transcript,
+            ) -> AsyncGenerator[ChatMessage, None]:
+                for msg in transcript.messages:
+                    yield msg
 
             return load
 
@@ -143,7 +160,7 @@ def test_loader_type_transformation():
     """Loader can transform transcript data types."""
     from inspect_ai.event._event import Event
 
-    @loader(name="event_extractor")
+    @loader(name="event_extractor", events="all")
     def event_loader():
         async def load(
             transcript: Transcript,
@@ -169,7 +186,7 @@ def test_loader_type_transformation():
 def test_loader_with_custom_logic():
     """Loader can implement custom filtering/transformation logic."""
 
-    @loader(name="long_message_loader")
+    @loader(name="long_message_loader", messages="all")
     def long_message_loader(min_length: int = 100):
         async def load(
             transcript: Transcript,
@@ -207,7 +224,7 @@ def test_loader_with_custom_logic():
 def test_loader_added_to_registry():
     """Loader should be added to registry."""
 
-    @loader(name="registry_test_loader")
+    @loader(name="registry_test_loader", messages="all")
     def test_loader():
         async def load(
             transcript: Transcript,

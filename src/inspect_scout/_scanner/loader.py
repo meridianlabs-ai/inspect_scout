@@ -43,13 +43,12 @@ class Loader(Protocol[TLoaderResult]):
 
     def __call__(
         self,
-        input: Transcript,
-        /,
+        transcript: Transcript,
     ) -> AsyncIterator[TLoaderResult]:
         """Load transcript data.
 
         Args:
-           input: Transcript to yield from.
+           transcript: Transcript to yield from.
 
         Returns:
            AsyncIterator: Iterator that returns transcript data.
@@ -84,11 +83,8 @@ def loader(
         Loader with registry info.
     """
     if content is None:
-        # TODO: Enable this assertion in a later commit. It will take some work.
         if messages is None and events is None:
-            messages = "all"
-            events = "all"
-        # assert messages or events, "Must filter on messages or events"
+            raise RuntimeError("Must filter on messages or events")
         content = TranscriptContent(
             normalize_messages_filter(messages) if messages is not None else None,
             normalize_events_filter(events) if events is not None else None,

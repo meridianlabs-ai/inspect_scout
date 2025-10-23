@@ -178,7 +178,6 @@ def scanner(
 
 def scanner(
     factory: ScannerFactory[P, T] | None = None,
-    /,
     *,
     loader: Loader[T] | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,

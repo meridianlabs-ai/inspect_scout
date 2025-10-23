@@ -331,7 +331,7 @@ def test_scanner_without_filters_but_with_loader():
     """Scanner with only a custom loader should work."""
     from inspect_scout._scanner.loader import loader
 
-    @loader(name="test_loader")
+    @loader(name="test_loader", messages="all")
     def test_loader():
         async def load(transcripts):
             for t in transcripts:

@@ -192,7 +192,7 @@ def test_no_inference_with_loader():
     """No filter inference when loader is provided."""
     from inspect_scout import loader
 
-    @loader(name="test_loader")
+    @loader(name="test_loader", messages="all")
     def test_loader():
         async def load(transcripts):
             for t in transcripts:

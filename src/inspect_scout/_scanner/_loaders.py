@@ -2,7 +2,7 @@ import inspect
 import types
 from typing import (
     Any,
-    AsyncGenerator,
+    AsyncIterator,
     Callable,
     Union,
     get_args,
@@ -26,7 +26,7 @@ def _IdentityLoader(
     def the_factory() -> Loader[Transcript]:
         async def the_loader(
             transcript: Transcript,
-        ) -> AsyncGenerator[Transcript, None]:
+        ) -> AsyncIterator[Transcript]:
             yield filter_transcript(transcript, content)
 
         return the_loader
@@ -42,7 +42,7 @@ def _ListLoader(
     def the_factory() -> Loader[Any]:
         async def the_loader(
             transcript: Transcript,
-        ) -> AsyncGenerator[list[ChatMessage] | list[Event], None]:
+        ) -> AsyncIterator[list[ChatMessage] | list[Event]]:
             yield _get_filtered_list(transcript, content, message_or_event)
 
         return the_loader
@@ -58,7 +58,7 @@ def _ListItemLoader(
     def the_factory() -> Loader[Any]:
         async def the_loader(
             transcript: Transcript,
-        ) -> AsyncGenerator[ChatMessage | Event, None]:
+        ) -> AsyncIterator[ChatMessage | Event]:
             filtered_list = _get_filtered_list(transcript, content, message_or_event)
             for item in filtered_list:
                 yield item

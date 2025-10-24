@@ -197,18 +197,18 @@ class FileRecorder(ScanRecorder):
                 return df
 
             # read data
-            data: dict[str, pd.DataFrame] = {}
+            scanners: dict[str, pd.DataFrame] = {}
 
             # single scanner
             if scanner is not None:
                 parquet_file = scan_dir / f"{scanner}.parquet"
-                data[scanner] = await scanner_df(parquet_file)
+                scanners[scanner] = await scanner_df(parquet_file)
 
             # all scanners
             else:
                 for parquet_file in sorted(scan_dir.glob("*.parquet")):
                     name = parquet_file.stem
-                    data[name] = await scanner_df(parquet_file)
+                    scanners[name] = await scanner_df(parquet_file)
 
             return Results(
                 status=status.complete,
@@ -216,7 +216,7 @@ class FileRecorder(ScanRecorder):
                 location=status.location,
                 summary=status.summary,
                 errors=status.errors,
-                data=data,
+                scanners=scanners,
             )
 
     @override

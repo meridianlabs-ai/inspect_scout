@@ -160,8 +160,8 @@ Each scan is stored in its own directory and has both metadata about the scan (c
 ``` python
 # results as pandas data frames
 results = scan_results("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
-deception_df = results.data["deception"]
-tool_errors_df = results.data["tool_errors"]
+deception_df = results.scanners["deception"]
+tool_errors_df = results.scanners["tool_errors"]
 
 # results as duckdb database 
 results = scan_results_db("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
@@ -172,6 +172,21 @@ with results:
     # export entire database as file
     results.to_file("results.duckdb")
 ```
+
+### Resuming Scans
+
+If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the `scan resume` command. For example:
+
+```bash
+scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
+```
+
+### Handling Errors
+
+If errors occur during a scan, you can either retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
+
+![](images/scan-resume.png)
+
 
 ## Transcripts
 

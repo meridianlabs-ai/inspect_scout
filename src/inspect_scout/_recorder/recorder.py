@@ -36,7 +36,7 @@ class Status:
 class Results(Status):
     """Scan results as pandas data frames."""
 
-    data: dict[str, pd.DataFrame]
+    scanners: dict[str, pd.DataFrame]
     """Dict of scanner name to pandas data frame."""
 
     def __init__(
@@ -46,10 +46,10 @@ class Results(Status):
         location: str,
         summary: Summary,
         errors: list[Error],
-        data: dict[str, pd.DataFrame],
+        scanners: dict[str, pd.DataFrame],
     ) -> None:
         super().__init__(status, spec, location, summary, errors)
-        self.data = data
+        self.scanners = scanners
 
 
 @dataclass

@@ -25,10 +25,6 @@ Inspect Scout also depends on the development version of Inspect AI, which will 
 
 ## Scout Basics
 
-::: callout-caution
-The code below is intended to illustrate the basic API and usage of Scout. However, the code doesn't currently work! For the time being please use this for design review only rather than direct experimentation.
-:::
-
 Below we'll provide some simple examples of creating and using Scout scanners. Some core components we'll make use of here include:
 
 -   `Transcript` --- LLM conversation to analyze (e.g. an Inspect sample trajectory).

@@ -21,7 +21,7 @@ from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
 )
-from inspect_ai.model._util import resolve_model, resolve_model_roles
+from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
 

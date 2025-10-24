@@ -74,5 +74,3 @@ scan(
 ```
 
 If you want to do transcript filtering and then invoke your scan from the CLI using `scout scan`, then perform the filtering inside a `@scanjob`. For example:
-
-{{< include _scanjob-transcripts.md >}}

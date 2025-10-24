@@ -8,7 +8,6 @@
 - [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/transcripts.html.md): Reading and filtering transcripts for scanning.
 - [Scanners](https://meridianlabs-ai.github.io/inspect_scout/scanners.html.md): Implementing custom scanners and loaders.
 - [Results](https://meridianlabs-ai.github.io/inspect_scout/results.html.md): Collecting and analyzing scanner results.
-- [Options](https://meridianlabs-ai.github.io/inspect_scout/options.html.md): Options available to customize scanning.
 
 ## Reference
 

@@ -233,4 +233,5 @@ See the following articles to learn more about using Scout:
 
 - [Results](results.qmd): Collecting and analyzing scanner results.
 
-- [Options](options.qmd): Options available to customize scanning.
+- [Reference](reference/index.qmd): Detailed documentation on the Scout Python API and CLI commands.
+

@@ -39,7 +39,6 @@ website:
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: results.qmd
-                - href: options.qmd 
           - text: "Reference"
             href: reference/index.qmd
 
@@ -65,7 +64,6 @@ website:
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: results.qmd
-                - href: options.qmd
           
    page-footer:
       left:

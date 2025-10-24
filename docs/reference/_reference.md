@@ -5,7 +5,7 @@
 |----|----|
 | [Scanning](/reference/scanning.qmd) | Scan transcripts and manage scan jobs. |
 | [Results](/reference/results.qmd) | Status and results of scan jobs.|
-| [Transcripts](/reference/scanner.qmd) | Read and filter transcripts. |
+| [Transcripts](/reference/transcript.qmd) | Read and filter transcripts. |
 | [Scanners](/reference/scanner.qmd) | Implement scanners and loaders. |
 | [Async](/reference/async.qmd) | Async functions for scanning. |
 

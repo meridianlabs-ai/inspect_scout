@@ -1,4 +1,19 @@
 # Inspect Scout
 
-> Welcome to Inspect Scout, a transcript analysis library for [Inspect
-AI](https://inspect.aisi.org.uk/).
+> Inspect Scout is a tool for in-depth analysis of AI agent transcripts. Scout is built to work with transcripts from the [Inspect AI](https://inspect.aisi.org.uk/) evaluation framework, and has the following core features: (1) Scan full sample transcripts or individual messages or events; (2) High performance parallel processing of transcript content; (3) Resume scans that are stopped due to errors or interruptions; (4) Tightly integrated with Inspect [data frames](https://inspect.aisi.org.uk/dataframe.html) for input and analysis.
+
+## Docs
+
+- [Welcome](https://meridianlabs-ai.github.io/inspect_scout/index.html.md): Installation and tutorial on basic usage.
+- [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/transcripts.html.md): Reading and filtering transcripts for scanning.
+- [Scanners](https://meridianlabs-ai.github.io/inspect_scout/scanners.html.md): Implementing custom scanners and loaders.
+- [Results](https://meridianlabs-ai.github.io/inspect_scout/results.html.md): Collecting and analyzing scanner results.
+- [Options](https://meridianlabs-ai.github.io/inspect_scout/options.html.md): Options available to customize scanning.
+
+## Reference
+
+- [Scanning](https://meridianlabs-ai.github.io/inspect_scout/reference/scanning.html.md): Scan transcripts and manage scan jobs.
+- [Results](https://meridianlabs-ai.github.io/inspect_scout/reference/results.html.md): Status and results of scan jobs.
+- [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/reference/transcript.html.md): Read and filter transcripts.
+- [Scanners](https://meridianlabs-ai.github.io/inspect_scout/reference/scanner.html.md): Implement scanners and loaders.
+- [Async](https://meridianlabs-ai.github.io/inspect_scout/reference/async.html.md): Async functions for scanning.

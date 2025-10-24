@@ -249,6 +249,12 @@ The Scout scanning pipeline is optimized for parallel reading and scanning as we
 
 ## Learning More
 
-See the following reference sections to learn more about using the Scout API and CLI:
+See the following articles to learn more about using Scout:
 
-{{< include reference/_reference.md >}}
+- [Transcripts](transcripts.qmd): Reading and filtering transcripts for scanning.
+
+- [Scanners](scanners.qmd): Implementing custom scanners and loaders.
+
+- [Results](results.qmd): Collecting and analyzing scanner results.
+
+- [Options](options.qmd): Options available to customize scanning.

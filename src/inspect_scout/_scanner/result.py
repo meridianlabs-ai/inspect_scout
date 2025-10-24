@@ -82,10 +82,10 @@ class ResultReport(BaseModel):
                 columns["value"] = self.result.value
                 if isinstance(self.result.value, str):
                     columns["value_type"] = "string"
-                elif isinstance(self.result.value, int | float):
-                    columns["value_type"] = "number"
                 elif isinstance(self.result.value, bool):
                     columns["value_type"] = "boolean"
+                elif isinstance(self.result.value, int | float):
+                    columns["value_type"] = "number"
                 else:
                     columns["value_type"] = "null"
 

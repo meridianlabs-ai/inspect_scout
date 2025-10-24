@@ -18,3 +18,4 @@
 | [scout scan resume](/reference/scout_scan.qmd#scout-scan-resume) | Resume a scan which is incomplete due to interruption or errors. |
 | [scout scan complete](/reference/scout_scan.qmd#scout-scan-complete) | Complete a scan which is incomplete due to errors (errors are not retried). |
 | [scout scan list](/reference/scout_scan.qmd#scout-scan-resume) | List the scans within a scan results directory. |
+| [scout scan status](/reference/scout_scan.qmd#scout-scan-status) | Print the status of a scan. |

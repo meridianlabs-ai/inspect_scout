@@ -59,6 +59,15 @@ class DisplayPlain(Display):
         else:
             self.print(scan_errors_message(status))
 
+    @override
+    def scan_status(self, status: Status) -> None:
+        if status.complete:
+            self.print(scan_complete_message(status))
+        elif len(status.errors) > 0:
+            self.print(scan_errors_message(status))
+        else:
+            self.print(scan_interrupted_message(status))
+
 
 class ScanDisplayPlain(ScanDisplay):
     def __init__(

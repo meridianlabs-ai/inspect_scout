@@ -65,7 +65,8 @@ class DisplayRich(Display):
 
     @override
     def scan_interrupted(self, message: RenderableType, status: Status) -> None:
-        self.print(message)
+        if message:
+            self.print(message)
         panel = scan_panel(
             spec=status.spec,
             summary=status.summary,
@@ -85,6 +86,13 @@ class DisplayRich(Display):
             model_usage=True,
         )
         self.print(panel)
+
+    @override
+    def scan_status(self, status: Status) -> None:
+        if status.complete or len(status.errors) > 0:
+            self.scan_complete(status)
+        else:
+            self.scan_interrupted("", status)
 
 
 class ScanDisplayRich(

@@ -200,6 +200,60 @@ class ScanGroup(click.Group):
     help="Model API request timeout in seconds (defaults to no timeout)",
     envvar="SCOUT_SCAN_TIMEOUT",
 )
+@click.option(
+    "--max-tokens",
+    type=int,
+    help="The maximum number of tokens that can be generated in the completion (default is model specific)",
+    envvar="SCOUT_SCAN_MAX_TOKENS",
+)
+@click.option(
+    "--temperature",
+    type=float,
+    help="What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+    envvar="SCOUT_SCAN_TEMPERATURE",
+)
+@click.option(
+    "--top-p",
+    type=float,
+    help="An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass.",
+    envvar="SCOUT_SCAN_TOP_P",
+)
+@click.option(
+    "--top-k",
+    type=int,
+    help="Randomly sample the next word from the top_k most likely next words. Anthropic, Google, HuggingFace, and vLLM only.",
+    envvar="SCOUT_SCAN_TOP_K",
+)
+@click.option(
+    "--reasoning-effort",
+    type=click.Choice(["minimal", "low", "medium", "high"]),
+    help="Constrains effort on reasoning for reasoning models (defaults to `medium`). Open AI o-series and gpt-5 models only.",
+    envvar="SCOUT_SCAN_REASONING_EFFORT",
+)
+@click.option(
+    "--reasoning-tokens",
+    type=int,
+    help="Maximum number of tokens to use for reasoning. Anthropic Claude models only.",
+    envvar="SCOUT_SCAN_REASONING_TOKENS",
+)
+@click.option(
+    "--reasoning-summary",
+    type=click.Choice(["concise", "detailed", "auto"]),
+    help="Provide summary of reasoning steps (defaults to no summary). Use 'auto' to access the most detailed summarizer available for the current model. OpenAI reasoning models only.",
+    envvar="SCOUT_SCAN_REASONING_SUMMARY",
+)
+@click.option(
+    "--reasoning-history",
+    type=click.Choice(["none", "all", "last", "auto"]),
+    help='Include reasoning in chat message history sent to generate (defaults to "auto", which uses the recommended default for each provider)',
+    envvar="SCOUT_SCAN_REASONING_HISTORY",
+)
+@click.option(
+    "--response-schema",
+    type=str,
+    help="JSON schema for desired response format (output should still be validated). OpenAI, Google, and Mistral only.",
+    envvar="SCOUT_SCAN_RESPONSE_SCHEMA",
+)
 @common_options
 @click.pass_context
 def scan_command(
@@ -222,6 +276,14 @@ def scan_command(
     max_retries: int | None,
     timeout: int | None,
     max_connections: int | None,
+    max_tokens: int | None,
+    temperature: float | None,
+    top_p: float | None,
+    top_k: int | None,
+    reasoning_effort: Literal["minimal", "low", "medium", "high"] | None,
+    reasoning_tokens: int | None,
+    reasoning_summary: Literal["concise", "detailed", "auto"] | None,
+    reasoning_history: Literal["none", "all", "last", "auto"] | None,
     **common: Unpack[CommonOptions],
 ) -> None:
     """Scan transcripts and read results."""
@@ -287,6 +349,14 @@ def scan_command(
         timeout=timeout,
         max_connections=max_connections,
         batch=batch_config,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        reasoning_effort=reasoning_effort,
+        reasoning_tokens=reasoning_tokens,
+        reasoning_summary=reasoning_summary,
+        reasoning_history=reasoning_history,
     )
 
     # run scan

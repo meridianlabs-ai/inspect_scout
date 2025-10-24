@@ -9,6 +9,13 @@ reference: inspect_scout
 ### scan_resume
 ### scan_complete
 
+
+## Jobs
+
+### scanjob
+### ScanJob
+### ScanJobConfig
+
 ## Status
 
 ### Status
@@ -17,8 +24,3 @@ reference: inspect_scout
 ### ScanRevision
 ### ScanTranscripts
 ### TranscriptField
-
-## Jobs
-
-### scanjob
-### ScanJob

@@ -9,7 +9,7 @@ from ._scan import (
     scan_complete,
     scan_resume,
 )
-from ._scanjob import ScanJob, scanjob
+from ._scanjob import ScanJob, ScanJobConfig, scanjob
 from ._scanlist import scan_list
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Reference, Result
@@ -59,6 +59,7 @@ __all__ = [
     "TranscriptField",
     "scanjob",
     "ScanJob",
+    "ScanJobConfig",
     # results
     "scan_list",
     "scan_status",

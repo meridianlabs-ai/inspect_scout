@@ -297,8 +297,8 @@ def scan_command(
     # Get the file argument from extra args
     if not ctx.args or len(ctx.args) == 0:
         raise click.UsageError("Missing argument 'FILE'.")
-
     file = ctx.args[0]
+
     # model args and role
     scan_model_args = parse_cli_config(m, model_config)
     scan_model_roles = parse_model_role_cli_args(model_role)

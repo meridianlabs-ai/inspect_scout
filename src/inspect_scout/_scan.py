@@ -198,7 +198,7 @@ async def scan_async(
 
     # see if we are overriding the scanjob with additional args
     scanjob._transcripts = transcripts or scanjob.transcripts
-    if transcripts is None:
+    if scanjob._transcripts is None:
         raise ValueError("No 'transcripts' specified for scan.")
 
     # resolve results

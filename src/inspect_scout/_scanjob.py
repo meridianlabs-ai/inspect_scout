@@ -19,10 +19,71 @@ from inspect_ai._util.registry import (
     registry_tag,
     registry_unqualified_name,
 )
+from inspect_ai.model import GenerateConfig, Model, ModelConfig
+from inspect_ai.model._util import resolve_model, resolve_model_roles
+from pydantic import BaseModel, Field
+
+from inspect_scout._scanspec import ScanScanner
+from inspect_scout._transcript.database import transcripts_from_logs
 
 from ._scanner.scanner import Scanner
 from ._scanner.types import ScannerInput
 from ._transcript.transcripts import Transcripts
+
+
+class ScanJobConfig(BaseModel):
+    """Scan job configuration."""
+
+    name: str = Field(default="job")
+    """Name of scan job (defaults to "job")."""
+
+    transcripts: str | list[str] | None = Field(default=None)
+    """Trasnscripts to scan."""
+
+    scanners: list[ScanScanner] | dict[str, ScanScanner] | None = Field(default=None)
+    """Scanners to apply to transcripts."""
+
+    results: str | None = Field(default=None)
+    """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
+
+    model: str | None = Field(default=None)
+    """Model to use for scanning by default (individual scanners can always call `get_model()` to us arbitrary models).
+
+    If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
+    """
+
+    model_generate_config: GenerateConfig | None = Field(default=None)
+    """`GenerationConfig` for calls to the model."""
+
+    model_base_url: str | None = Field(default=None)
+    """Base URL for communicating with the model API."""
+
+    model_args: dict[str, Any] | str | None = Field(default=None)
+    """Model creation args (as a dictionary or as a path to a JSON or YAML config file)."""
+
+    model_roles: dict[str, ModelConfig | str] | None = Field(default=None)
+    """Named roles for use in `get_model()`."""
+
+    max_transcripts: int | None = Field(default=None)
+    """The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25."""
+
+    max_processes: int | None = Field(default=None)
+    """The maximum number of concurrent processes (for multiproccesing). Defaults to `multiprocessing.cpu_count()`."""
+
+    limit: int | None = Field(default=None)
+    """Limit the number of transcripts processed."""
+
+    shuffle: bool | int | None = Field(default=None)
+    """Shuffle the order of transcripts (pass an `int` to set a seed for shuffling)."""
+
+    tags: list[str] | None = Field(default=None)
+    """One or more tags for this scan."""
+
+    metadata: dict[str, Any] | None = Field(default=None)
+    """Metadata for this scan."""
+
+    log_level: str | None = Field(default=None)
+    """Level for logging to the console: "debug", "http", "sandbox", "info", "warning", "error", "critical", or "notset" (defaults to "warning")."""
 
 
 class ScanJob:
@@ -34,11 +95,37 @@ class ScanJob:
         transcripts: Transcripts | None = None,
         scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
         | dict[str, Scanner[ScannerInput]],
+        results: str | None = None,
+        model: str | Model | None = None,
+        model_config: GenerateConfig | None = None,
+        model_base_url: str | None = None,
+        model_args: dict[str, Any] | None = None,
+        model_roles: dict[str, str | Model] | None = None,
+        max_transcripts: int | None = None,
+        max_processes: int | None = None,
+        limit: int | None = None,
+        shuffle: bool | int | None = None,
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        log_level: str | None = None,
         name: str | None = None,
     ):
         # save transcripts and name
-        self._trancripts = transcripts
+        self._transcripts = transcripts
         self._name = name
+        self._results = results
+        self._model = resolve_model(model)
+        self._model_config = model_config
+        self._model_base_url = model_base_url
+        self._model_args = model_args
+        self._model_roles = resolve_model_roles(model_roles)
+        self._max_transcripts = max_transcripts
+        self._max_processes = max_processes
+        self._limit = limit
+        self._shuffle = shuffle
+        self._tags = tags
+        self._metadata = metadata
+        self._log_level = log_level
 
         # resolve scanners and candidate names (we will ensure no duplicates)
         if isinstance(scanners, dict):
@@ -63,6 +150,27 @@ class ScanJob:
                 name = f"{name}_{current_counts[name]}"
             self._scanners[name] = scanner
 
+    @staticmethod
+    def from_config(config: ScanJobConfig) -> "ScanJob":
+        from inspect_scout._scancontext import _scanners_from_spec, scanner_from_spec
+
+        # base config
+        kwargs = config.model_dump(exclude_none=True)
+
+        # realize scanners
+        if isinstance(config.scanners, list):
+            kwargs["scanners"] = [
+                scanner_from_spec(scanner) for scanner in config.scanners
+            ]
+        elif isinstance(config.scanners, dict):
+            kwargs["scanners"] = _scanners_from_spec(config.scanners)
+
+        # realize transcripts
+        if config.transcripts is not None:
+            kwargs["transcripts"] = transcripts_from_logs(config.transcripts)
+
+        return ScanJob(**kwargs)
+
     @property
     def name(self) -> str:
         """Name of scan job (defaults to @scanjob function name)."""
@@ -76,12 +184,80 @@ class ScanJob:
     @property
     def transcripts(self) -> Transcripts | None:
         """Trasnscripts to scan."""
-        return self._trancripts
+        return self._transcripts
 
     @property
     def scanners(self) -> dict[str, Scanner[ScannerInput]]:
         """Scanners to apply to transcripts."""
         return self._scanners
+
+    @property
+    def results(self) -> str | None:
+        """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
+        return self._results
+
+    @property
+    def model(self) -> Model | None:
+        """Model to use for scanning by default (individual scanners can always call `get_model()` to us arbitrary models).
+
+        If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
+        """
+        return self._model
+
+    @property
+    def model_config(self) -> GenerateConfig | None:
+        """`GenerationConfig` for calls to the model."""
+        return self._model_config
+
+    @property
+    def model_base_url(self) -> str | None:
+        """Base URL for communicating with the model API."""
+        return self._model_base_url
+
+    @property
+    def model_args(self) -> dict[str, Any] | None:
+        """Model creation args (as a dictionary or as a path to a JSON or YAML config file)."""
+        return self._model_args
+
+    @property
+    def model_roles(self) -> dict[str, Model] | None:
+        """Named roles for use in `get_model()`."""
+        return self._model_roles
+
+    @property
+    def max_transcripts(self) -> int | None:
+        """The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25."""
+        return self._max_transcripts
+
+    @property
+    def max_processes(self) -> int | None:
+        """The maximum number of concurrent processes (for multiproccesing). Defaults to `multiprocessing.cpu_count()`."""
+        return self._max_processes
+
+    @property
+    def limit(self) -> int | None:
+        """Limit the number of transcripts processed."""
+        return self._limit
+
+    @property
+    def shuffle(self) -> bool | int | None:
+        """Shuffle the order of transcripts (pass an `int` to set a seed for shuffling)."""
+        return self._shuffle
+
+    @property
+    def tags(self) -> list[str] | None:
+        """One or more tags for this scan."""
+        return self._tags
+
+    @property
+    def metadata(self) -> dict[str, Any] | None:
+        """Metadata for this scan."""
+        return self._metadata
+
+    @property
+    def log_level(self) -> str | None:
+        """Level for logging to the console: "debug", "http", "sandbox", "info", "warning", "error", "critical", or "notset" (defaults to "warning")."""
+        return self._log_level
 
 
 ScanJobType = TypeVar("ScanJobType", bound=Callable[..., ScanJob])

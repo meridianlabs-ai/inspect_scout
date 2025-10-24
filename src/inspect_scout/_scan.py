@@ -8,7 +8,6 @@ import anyio
 from anyio.abc import TaskGroup
 from dotenv import find_dotenv, load_dotenv
 from inspect_ai._eval.context import init_model_context
-from inspect_ai._eval.task.task import resolve_model_roles
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
@@ -22,6 +21,7 @@ from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
 )
+from inspect_ai.model._util import resolve_model, resolve_model_roles
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
 
@@ -40,13 +40,13 @@ from ._recorder.factory import (
 )
 from ._recorder.recorder import ScanRecorder, Status
 from ._scancontext import ScanContext, create_scan, resume_scan
-from ._scanjob import ScanJob
+from ._scanjob import ScanJob, ScanJobConfig
 from ._scanner.loader import Loader, config_for_loader
 from ._scanner.result import Error, Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
 from ._scanner.util import get_input_type_and_ids
-from ._scanspec import ScanOptions, ScanSpec
+from ._scanspec import ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.types import (
     Transcript,
@@ -64,7 +64,8 @@ logger = getLogger(__name__)
 def scan(
     scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
     | dict[str, Scanner[ScannerInput]]
-    | ScanJob,
+    | ScanJob
+    | ScanJobConfig,
     transcripts: Transcripts | None = None,
     results: str | None = None,
     model: str | Model | None = None,
@@ -90,7 +91,7 @@ def scan(
     explicit names for each scanner.
 
     Args:
-        scanners: Scanners to apply to transcripts.
+        scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
         model: Model to use for scanning by default (individual scanners can always
@@ -138,7 +139,8 @@ def scan(
 async def scan_async(
     scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
     | dict[str, Scanner[ScannerInput]]
-    | ScanJob,
+    | ScanJob
+    | ScanJobConfig,
     transcripts: Transcripts | None = None,
     results: str | None = None,
     model: str | Model | None = None,
@@ -163,7 +165,7 @@ async def scan_async(
     explicit names for each scanner.
 
     Args:
-        scanners: Scanners to apply to transcripts.
+        scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
         model: Model to use for scanning by default (individual scanners can always
@@ -189,52 +191,52 @@ async def scan_async(
     # resolve scanjob
     if isinstance(scanners, ScanJob):
         scanjob = scanners
+    elif isinstance(scanners, ScanJobConfig):
+        scanjob = ScanJob.from_config(scanners)
     else:
         scanjob = ScanJob(scanners=scanners)
 
-    # resolve transcripts
-    transcripts = transcripts or scanjob.transcripts
+    # see if we are overriding the scanjob with additional args
+    scanjob._transcripts = transcripts or scanjob.transcripts
     if transcripts is None:
         raise ValueError("No 'transcripts' specified for scan.")
 
     # resolve results
-    results = results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
-
-    # initialize scan config
-    scan_options = ScanOptions(
-        max_transcripts=max_transcripts or DEFAULT_MAX_TRANSCRIPTS,
-        max_processes=max_processes or default_max_processes(),
-        limit=limit,
-        shuffle=shuffle,
+    scanjob._results = (
+        results or scanjob._results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
     )
 
+    # initialize scan config
+    scanjob._max_transcripts = (
+        max_transcripts or scanjob._max_transcripts or DEFAULT_MAX_TRANSCRIPTS
+    )
+    scanjob._max_processes = (
+        max_processes or scanjob._max_processes or default_max_processes()
+    )
+    scanjob._limit = limit or scanjob._limit
+    scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
+
     # derive max_connections if not specified
-    model_config = model_config or GenerateConfig()
-    if model_config.max_connections is None:
-        model_config.max_connections = scan_options.max_transcripts
+    scanjob._model_config = model_config or scanjob._model_config or GenerateConfig()
+    if scanjob._model_config.max_connections is None:
+        scanjob._model_config.max_connections = scanjob._max_transcripts
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
-        model=model,
-        model_config=model_config,
-        model_base_url=model_base_url,
-        model_args=model_args,
-        model_roles=model_roles,
+        model=model or scanjob._model,
+        model_config=model_config or scanjob._model_config,
+        model_base_url=model_base_url or scanjob._model_base_url,
+        model_args=model_args or scanjob._model_base_url,
+        model_roles=model_roles or scanjob._model_roles,
     )
+    scanjob._model = resolved_model
+    scanjob._model_args = resolved_model_args
+    scanjob._model_roles = resolved_model_roles
 
     # create job and recorder
-    scan = await create_scan(
-        scanjob=scanjob,
-        transcripts=transcripts,
-        model=resolved_model,
-        model_args=resolved_model_args,
-        model_roles=resolved_model_roles,
-        options=scan_options,
-        tags=tags,
-        metadata=metadata,
-    )
-    recorder = scan_recorder_for_location(results)
-    await recorder.init(scan.spec, results)
+    scan = await create_scan(scanjob)
+    recorder = scan_recorder_for_location(scanjob._results)
+    await recorder.init(scan.spec, scanjob._results)
 
     # run the scan
     return await _scan_async(scan=scan, recorder=recorder)

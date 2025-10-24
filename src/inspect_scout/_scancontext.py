@@ -13,14 +13,15 @@ from inspect_ai._util.registry import (
     registry_log_name,
     registry_params,
 )
-from inspect_ai.model._model import Model, ModelName
+from inspect_ai.model._model import ModelName
 from inspect_ai.model._model_config import (
     ModelConfig,
     model_args_for_log,
     model_roles_to_model_roles_config,
 )
 
-from inspect_scout._util.constants import PKG_NAME
+from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
+from inspect_scout._util.process import default_max_processes
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
@@ -48,20 +49,9 @@ class ScanContext:
     """Scanners to apply to transcripts."""
 
 
-async def create_scan(
-    scanjob: ScanJob,
-    transcripts: Transcripts | None,
-    model: Model,
-    model_args: dict[str, Any],
-    model_roles: dict[str, Model] | None,
-    tags: list[str] | None,
-    metadata: dict[str, Any] | None,
-    options: ScanOptions | None,
-) -> ScanContext:
-    # resolve transcripts
-    transcripts = transcripts or scanjob.transcripts
-    if transcripts is None:
-        raise ValueError("No 'transcripts' specified for scan.")
+async def create_scan(scanjob: ScanJob) -> ScanContext:
+    if scanjob.transcripts is None:
+        raise PrerequisiteError("No transcripts specified for scan.")
 
     # get revision and package version
     git = git_context()
@@ -73,29 +63,44 @@ async def create_scan(
         PKG_NAME: importlib_metadata.version(PKG_NAME),
     }
 
+    # create options
+    options = ScanOptions(
+        max_transcripts=scanjob.max_transcripts or DEFAULT_MAX_TRANSCRIPTS,
+        max_processes=scanjob.max_processes or default_max_processes(),
+        limit=scanjob.limit,
+        shuffle=scanjob.shuffle,
+    )
+
+    # resolve model
+    model = scanjob.model or None
+
     # create scan spec
-    async with transcripts:
+    async with scanjob.transcripts:
         spec = ScanSpec(
             scan_file=job_file(scanjob),
             scan_name=scanjob.name,
             scan_args=job_args(scanjob),
             options=options or ScanOptions(),
-            transcripts=await transcripts.snapshot(),
+            transcripts=await scanjob.transcripts.snapshot(),
             scanners=_spec_scanners(scanjob.scanners),
-            tags=tags,
-            metadata=metadata,
+            tags=scanjob.tags,
+            metadata=scanjob.metadata,
             model=ModelConfig(
                 model=str(ModelName(model)),
                 config=model.config,
                 base_url=model.api.base_url,
-                args=model_args_for_log(model_args),
-            ),
-            model_roles=model_roles_to_model_roles_config(model_roles),
+                args=model_args_for_log(scanjob.model_args or {}),
+            )
+            if model is not None
+            else None,
+            model_roles=model_roles_to_model_roles_config(scanjob.model_roles),
             revision=revision,
             packages=packages,
         )
 
-    return ScanContext(spec=spec, transcripts=transcripts, scanners=scanjob.scanners)
+    return ScanContext(
+        spec=spec, transcripts=scanjob.transcripts, scanners=scanjob.scanners
+    )
 
 
 async def resume_scan(scan_location: str) -> ScanContext:
@@ -109,7 +114,7 @@ async def resume_scan(scan_location: str) -> ScanContext:
     return ScanContext(
         spec=spec,
         transcripts=await transcripts_from_snapshot(spec.transcripts),
-        scanners=_scanners_from_spec(spec),
+        scanners=_scanners_from_spec(spec.scanners),
     )
 
 
@@ -124,10 +129,12 @@ def _spec_scanners(
     }
 
 
-def _scanners_from_spec(spec: ScanSpec) -> dict[str, Scanner[ScannerInput]]:
+def _scanners_from_spec(
+    scanner_specs: dict[str, ScanScanner],
+) -> dict[str, Scanner[ScannerInput]]:
     loaded: Set[str] = set()
     scanners: dict[str, Scanner[ScannerInput]] = {}
-    for name, scanner in spec.scanners.items():
+    for name, scanner in scanner_specs.items():
         # we need to ensure that any files scanners were defined in have been loaded/parsed
         if scanner.file is not None and scanner.file not in loaded:
             load_module(Path(scanner.file))
@@ -137,6 +144,12 @@ def _scanners_from_spec(spec: ScanSpec) -> dict[str, Scanner[ScannerInput]]:
         scanners[name] = scanner_create(scanner.name, scanner.params)
 
     return scanners
+
+
+def scanner_from_spec(scanner: ScanScanner) -> Scanner[ScannerInput]:
+    if scanner.file is not None:
+        load_module(Path(scanner.file))
+    return scanner_create(scanner.name, scanner.params)
 
 
 def scanner_file(scanner: Scanner[ScannerInput]) -> str | None:

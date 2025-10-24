@@ -222,4 +222,4 @@ scans/
 /.luarc.json
 
 # node
-node_modules/
+/src/inspect_scout/_view/www/node_modules

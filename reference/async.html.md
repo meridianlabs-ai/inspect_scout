@@ -18,13 +18,14 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scan.py#L138)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L139)
 
 ``` python
 async def scan_async(
     scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
     | dict[str, Scanner[ScannerInput]]
-    | ScanJob,
+    | ScanJob
+    | ScanJobConfig,
     transcripts: Transcripts | None = None,
     results: str | None = None,
     model: str | Model | None = None,
@@ -42,8 +43,10 @@ async def scan_async(
 ) -> Status
 ```
 
-`scanners` Sequence\[[Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\] \| tuple\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\]\] \| dict\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\] \| [ScanJob](scanning.qmd#scanjob)  
-Scanners to apply to transcripts.
+`scanners` Sequence\[[Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\] \| tuple\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\]\] \| dict\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\] \| [ScanJob](scanning.qmd#scanjob) \| [ScanJobConfig](scanning.qmd#scanjobconfig)  
+Scanners to execute (list, dict with explicit names, or ScanJob). If a
+`ScanJob` or `ScanJobConfig` is specified, then its options are used as
+the default options for the scan.
 
 `transcripts` [Transcripts](transcript.qmd#transcripts) \| None  
 Transcripts to scan.
@@ -99,7 +102,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scan.py#L263)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L265)
 
 ``` python
 async def scan_resume_async(scan_location: str, log_level: str | None = None) -> Status
@@ -119,7 +122,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scan.py#L327)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L329)
 
 ``` python
 async def scan_complete_async(
@@ -138,7 +141,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanlist.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanlist.py#L19)
 
 ``` python
 async def scan_list_async(scans_location: str) -> list[Status]
@@ -151,7 +154,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanresults.py#L23)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanresults.py#L23)
 
 ``` python
 async def scan_status_async(scan_location: str) -> Status
@@ -164,7 +167,7 @@ Location to get status for (e.g. directory or s3 bucket)
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanresults.py#L54)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanresults.py#L54)
 
 ``` python
 async def scan_results_async(
@@ -186,7 +189,7 @@ Should `None` results be included in the data frame (defaults to
 
 Scan results as DuckDB database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanresults.py#L86)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanresults.py#L86)
 
 ``` python
 async def scan_results_db_async(

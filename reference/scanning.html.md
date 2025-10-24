@@ -13,13 +13,14 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scan.py#L64)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L64)
 
 ``` python
 def scan(
     scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
     | dict[str, Scanner[ScannerInput]]
-    | ScanJob,
+    | ScanJob
+    | ScanJobConfig,
     transcripts: Transcripts | None = None,
     results: str | None = None,
     model: str | Model | None = None,
@@ -38,8 +39,10 @@ def scan(
 ) -> Status
 ```
 
-`scanners` Sequence\[[Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\] \| tuple\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\]\] \| dict\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\] \| [ScanJob](scanning.qmd#scanjob)  
-Scanners to apply to transcripts.
+`scanners` Sequence\[[Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\] \| tuple\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\]\] \| dict\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\] \| [ScanJob](scanning.qmd#scanjob) \| [ScanJobConfig](scanning.qmd#scanjobconfig)  
+Scanners to execute (list, dict with explicit names, or ScanJob). If a
+`ScanJob` or `ScanJobConfig` is specified, then its options are used as
+the default options for the scan.
 
 `transcripts` [Transcripts](transcript.qmd#transcripts) \| None  
 Transcripts to scan.
@@ -98,7 +101,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scan.py#L243)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L245)
 
 ``` python
 def scan_resume(
@@ -125,7 +128,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scan.py#L303)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L305)
 
 ``` python
 def scan_complete(
@@ -145,13 +148,194 @@ Display type: “rich”, “plain”, or “none” (defaults to “rich”).
 Level for logging to the console: “debug”, “http”, “sandbox”, “info”,
 “warning”, “error”, “critical”, or “notset” (defaults to “warning”)
 
+## Jobs
+
+### scanjob
+
+Decorator for registering scan jobs.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanjob.py#L279)
+
+``` python
+def scanjob(
+    func: ScanJobType | None = None, *, name: str | None = None
+) -> ScanJobType | Callable[[ScanJobType], ScanJobType]
+```
+
+`func` ScanJobType \| None  
+Function returning `ScanJob`.
+
+`name` str \| None  
+Optional name for scanjob (defaults to function name).
+
+### ScanJob
+
+Scan job definition.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanjob.py#L89)
+
+``` python
+class ScanJob
+```
+
+#### Attributes
+
+`name` str  
+Name of scan job (defaults to @scanjob function name).
+
+`transcripts` [Transcripts](transcript.qmd#transcripts) \| None  
+Trasnscripts to scan.
+
+`scanners` dict\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\]  
+Scanners to apply to transcripts.
+
+`results` str \| None  
+Location to write results (filesystem or S3 bucket). Defaults to
+“./scans”.
+
+`model` Model \| None  
+Model to use for scanning by default (individual scanners can always
+call `get_model()` to us arbitrary models).
+
+If not specified use the value of the SCOUT_SCAN_MODEL environment
+variable.
+
+`model_config` GenerateConfig \| None  
+`GenerationConfig` for calls to the model.
+
+`model_base_url` str \| None  
+Base URL for communicating with the model API.
+
+`model_args` dict\[str, Any\] \| None  
+Model creation args (as a dictionary or as a path to a JSON or YAML
+config file).
+
+`model_roles` dict\[str, Model\] \| None  
+Named roles for use in `get_model()`.
+
+`max_transcripts` int \| None  
+The maximum number of transcripts to process concurrently (this also
+serves as the default value for `max_connections`). Defaults to 25.
+
+`max_processes` int \| None  
+The maximum number of concurrent processes (for multiproccesing).
+Defaults to `multiprocessing.cpu_count()`.
+
+`limit` int \| None  
+Limit the number of transcripts processed.
+
+`shuffle` bool \| int \| None  
+Shuffle the order of transcripts (pass an `int` to set a seed for
+shuffling).
+
+`tags` list\[str\] \| None  
+One or more tags for this scan.
+
+`metadata` dict\[str, Any\] \| None  
+Metadata for this scan.
+
+`log_level` str \| None  
+Level for logging to the console: “debug”, “http”, “sandbox”, “info”,
+“warning”, “error”, “critical”, or “notset” (defaults to “warning”).
+
+### ScanJobConfig
+
+Scan job configuration.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanjob.py#L34)
+
+``` python
+class ScanJobConfig(BaseModel)
+```
+
+#### Attributes
+
+`name` str  
+Name of scan job (defaults to “job”).
+
+`transcripts` str \| list\[str\] \| None  
+Trasnscripts to scan.
+
+`scanners` list\[[ScannerSpec](scanning.qmd#scannerspec)\] \| dict\[str, [ScannerSpec](scanning.qmd#scannerspec)\] \| None  
+Scanners to apply to transcripts.
+
+`results` str \| None  
+Location to write results (filesystem or S3 bucket). Defaults to
+“./scans”.
+
+`model` str \| None  
+Model to use for scanning by default (individual scanners can always
+call `get_model()` to us arbitrary models).
+
+If not specified use the value of the SCOUT_SCAN_MODEL environment
+variable.
+
+`model_generate_config` GenerateConfig \| None  
+`GenerationConfig` for calls to the model.
+
+`model_base_url` str \| None  
+Base URL for communicating with the model API.
+
+`model_args` dict\[str, Any\] \| str \| None  
+Model creation args (as a dictionary or as a path to a JSON or YAML
+config file).
+
+`model_roles` dict\[str, ModelConfig \| str\] \| None  
+Named roles for use in `get_model()`.
+
+`max_transcripts` int \| None  
+The maximum number of transcripts to process concurrently (this also
+serves as the default value for `max_connections`). Defaults to 25.
+
+`max_processes` int \| None  
+The maximum number of concurrent processes (for multiproccesing).
+Defaults to `multiprocessing.cpu_count()`.
+
+`limit` int \| None  
+Limit the number of transcripts processed.
+
+`shuffle` bool \| int \| None  
+Shuffle the order of transcripts (pass an `int` to set a seed for
+shuffling).
+
+`tags` list\[str\] \| None  
+One or more tags for this scan.
+
+`metadata` dict\[str, Any\] \| None  
+Metadata for this scan.
+
+`log_level` str \| None  
+Level for logging to the console: “debug”, “http”, “sandbox”, “info”,
+“warning”, “error”, “critical”, or “notset” (defaults to “warning”).
+
+### ScannerSpec
+
+Scanner used by scan.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanspec.py#L18)
+
+``` python
+class ScannerSpec(BaseModel)
+```
+
+#### Attributes
+
+`name` str  
+Scanner name.
+
+`file` str \| None  
+Scanner source file (if not in a package).
+
+`params` dict\[str, Any\]  
+Scanner arguments.
+
 ## Status
 
 ### Status
 
 Status of scan job.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_recorder/recorder.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_recorder/recorder.py#L15)
 
 ``` python
 @dataclass
@@ -179,7 +363,7 @@ Errors during last scan attempt.
 
 Options used for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanspec.py#L44)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanspec.py#L44)
 
 ``` python
 class ScanOptions(BaseModel)
@@ -199,32 +383,11 @@ Transcript limit (maximum number of transcripts to read).
 `shuffle` bool \| int \| None  
 Shuffle order of transcripts.
 
-### ScanScanner
-
-Scanner used by scan.
-
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanspec.py#L18)
-
-``` python
-class ScanScanner(BaseModel)
-```
-
-#### Attributes
-
-`name` str  
-Scanner name.
-
-`file` str \| None  
-Scanner source file (if not in a package).
-
-`params` dict\[str, Any\]  
-Scanner arguments.
-
 ### ScanRevision
 
 Git revision for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanspec.py#L31)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanspec.py#L31)
 
 ``` python
 class ScanRevision(BaseModel)
@@ -245,7 +408,7 @@ Revision commit.
 
 Transcripts target by a scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanspec.py#L73)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanspec.py#L73)
 
 ``` python
 class ScanTranscripts(BaseModel)
@@ -269,7 +432,7 @@ Transcript data as a csv.
 
 Field in transcript data frame.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanspec.py#L60)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanspec.py#L60)
 
 ``` python
 class TranscriptField(TypedDict, total=False)
@@ -285,44 +448,3 @@ Field type (“integer”, “number”, “boolean”, “string”, or “date
 
 `tz` NotRequired\[str\]  
 Timezone (for “datetime” fields).
-
-## Jobs
-
-### scanjob
-
-Decorator for registering scan jobs.
-
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanjob.py#L103)
-
-``` python
-def scanjob(
-    func: ScanJobType | None = None, *, name: str | None = None
-) -> ScanJobType | Callable[[ScanJobType], ScanJobType]
-```
-
-`func` ScanJobType \| None  
-Function returning `ScanJob`.
-
-`name` str \| None  
-Optional name for scanjob (defaults to function name).
-
-### ScanJob
-
-Scan job definition.
-
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/a6b037ebf03680c99951a94a1b8287bfd2c987a7/src/inspect_scout/_scanjob.py#L28)
-
-``` python
-class ScanJob
-```
-
-#### Attributes
-
-`name` str  
-Name of scan job (defaults to @scanjob function name).
-
-`transcripts` [Transcripts](transcript.qmd#transcripts) \| None  
-Trasnscripts to scan.
-
-`scanners` dict\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\]  
-Scanners to apply to transcripts.

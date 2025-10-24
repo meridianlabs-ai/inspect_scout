@@ -7,7 +7,7 @@ import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
 from inspect_scout._scanner.result import Reference, Result, ResultReport
-from inspect_scout._scanspec import ScanScanner, ScanSpec, ScanTranscripts
+from inspect_scout._scanspec import ScannerSpec, ScanSpec, ScanTranscripts
 from inspect_scout._transcript.types import TranscriptInfo
 
 
@@ -24,8 +24,8 @@ def recorder_buffer() -> Generator[RecorderBuffer]:
                 data="",
             ),
             scanners={
-                "test_scanner": ScanScanner(name="test_scanner"),
-                "test-scanner.with:special/chars": ScanScanner(
+                "test_scanner": ScannerSpec(name="test_scanner"),
+                "test-scanner.with:special/chars": ScannerSpec(
                     name="test-scanner.with:special/chars"
                 ),
             },

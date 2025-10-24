@@ -23,7 +23,7 @@ from inspect_ai.model import GenerateConfig, Model, ModelConfig
 from inspect_ai.model._util import resolve_model, resolve_model_roles
 from pydantic import BaseModel, Field
 
-from inspect_scout._scanspec import ScanScanner
+from inspect_scout._scanspec import ScannerSpec
 from inspect_scout._transcript.database import transcripts_from_logs
 
 from ._scanner.scanner import Scanner
@@ -40,7 +40,7 @@ class ScanJobConfig(BaseModel):
     transcripts: str | list[str] | None = Field(default=None)
     """Trasnscripts to scan."""
 
-    scanners: list[ScanScanner] | dict[str, ScanScanner] | None = Field(default=None)
+    scanners: list[ScannerSpec] | dict[str, ScannerSpec] | None = Field(default=None)
     """Scanners to apply to transcripts."""
 
     results: str | None = Field(default=None)

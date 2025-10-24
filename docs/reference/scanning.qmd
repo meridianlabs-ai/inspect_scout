@@ -9,18 +9,17 @@ reference: inspect_scout
 ### scan_resume
 ### scan_complete
 
-
 ## Jobs
 
 ### scanjob
 ### ScanJob
 ### ScanJobConfig
+### ScannerSpec
 
 ## Status
 
 ### Status
 ### ScanOptions
-### ScanScanner
 ### ScanRevision
 ### ScanTranscripts
 ### TranscriptField

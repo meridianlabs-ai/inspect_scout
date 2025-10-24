@@ -28,9 +28,9 @@ from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
 from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
 from ._scanner.types import ScannerInput
 from ._scanspec import (
+    ScannerSpec,
     ScanOptions,
     ScanRevision,
-    ScanScanner,
     ScanSpec,
 )
 from ._transcript.database import transcripts_from_snapshot
@@ -120,9 +120,9 @@ async def resume_scan(scan_location: str) -> ScanContext:
 
 def _spec_scanners(
     scanners: dict[str, Scanner[ScannerInput]],
-) -> dict[str, ScanScanner]:
+) -> dict[str, ScannerSpec]:
     return {
-        k: ScanScanner(
+        k: ScannerSpec(
             name=registry_log_name(v), file=scanner_file(v), params=registry_params(v)
         )
         for k, v in scanners.items()
@@ -130,7 +130,7 @@ def _spec_scanners(
 
 
 def _scanners_from_spec(
-    scanner_specs: dict[str, ScanScanner],
+    scanner_specs: dict[str, ScannerSpec],
 ) -> dict[str, Scanner[ScannerInput]]:
     loaded: Set[str] = set()
     scanners: dict[str, Scanner[ScannerInput]] = {}
@@ -146,7 +146,7 @@ def _scanners_from_spec(
     return scanners
 
 
-def scanner_from_spec(scanner: ScanScanner) -> Scanner[ScannerInput]:
+def scanner_from_spec(scanner: ScannerSpec) -> Scanner[ScannerInput]:
     if scanner.file is not None:
         load_module(Path(scanner.file))
     return scanner_create(scanner.name, scanner.params)

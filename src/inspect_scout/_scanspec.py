@@ -15,7 +15,7 @@ from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.process import default_max_processes
 
 
-class ScanScanner(BaseModel):
+class ScannerSpec(BaseModel):
     """Scanner used by scan."""
 
     name: str
@@ -130,7 +130,7 @@ class ScanSpec(BaseModel):
     transcripts: ScanTranscripts
     """Transcripts to scan."""
 
-    scanners: dict[str, ScanScanner]
+    scanners: dict[str, ScannerSpec]
     """Scanners to apply to transcripts."""
 
     @field_serializer("timestamp")

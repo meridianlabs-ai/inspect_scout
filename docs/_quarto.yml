@@ -32,16 +32,14 @@ website:
       background: light
       search: true
       left:
-          - text: "Using"
+          - text: "Getting Started"
             href: index.qmd
-          # - text: "Using"
-          #   menu:
-          #       - href: workflow.qmd
-          #       - href: scanners.qmd
-          #       - href: results.qmd
-          #       - href: transcripts.qmd
-          #       - href: parallelism.qmd 
-          #       - href: options.qmd 
+          - text: "Using"
+            menu:
+                - href: transcripts.qmd
+                - href: scanners.qmd
+                - href: results.qmd
+                - href: options.qmd 
           - text: "Reference"
             href: reference/index.qmd
 
@@ -50,26 +48,24 @@ website:
             href: https://github.com/meridianlabs-ai/inspect_scout
 
 
-  #  sidebar:
-  #     - title: Main
-  #       style: docked
-  #       contents:
-  #          - text: Getting Started
-  #            href: index.qmd
-  #            contents:
-  #               - text: Welcome
-  #                 href: index.qmd
-  #               - text: Tutorial
-  #                 href: index.qmd#tutorial
-  #          - text: Using Scout
-  #            href: workflow.qmd
-  #            contents:
-  #               - href: workflow.qmd
-  #               - href: scanners.qmd
-  #               - href: results.qmd
-  #               - href: transcripts.qmd
-  #               - href: parallelism.qmd 
-  #               - href: options.qmd
+   sidebar:
+      - title: Main
+        style: docked
+        contents:
+           - text: Getting Started
+             href: index.qmd
+             contents:
+                - text: Welcome
+                  href: index.qmd
+                - text: Scout Basics
+                  href: index.qmd#scout-basics
+           - text: Using Scout
+             href: transcripts.qmd
+             contents:
+                - href: transcripts.qmd
+                - href: scanners.qmd
+                - href: results.qmd
+                - href: options.qmd
           
    page-footer:
       left:

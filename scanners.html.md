@@ -1,3 +1,22 @@
 # Scanners
 
 
+## Overview
+
+Transcripts are the fundamental input to scanners, and are read from one
+or more Inspect logs. A `Transcript` represents a single epoch from an
+Inspect sample—so each Inspect log file will have `samples * epochs`
+transcripts.
+
+Each `Transcript` has the following fields:
+
+| Field | Type | Description |
+|----|----|----|
+| `id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log). |
+| `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log) |
+| `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
+| `metadata` | dict\[str, JsonValue\] | Eval configuration metadata (e.g. task, model, scores, etc.). See `LogMetadata` for details. |
+| `messages` | list\[ChatMessage\] | Message history from `EvalSample` |
+| `events` | list\[Event\] | Event history from `EvalSample` |
+
+:

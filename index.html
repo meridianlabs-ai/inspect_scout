@@ -66,6 +66,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
+<link href="./index.qmd#scout-basics" rel="next">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -76,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-59dc61dbda01f0d41eb7d616beb363ad.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-290d29a218d448eebf7ee577e7fb57c9.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -108,13 +109,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript analysis for Inspect AI">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scan-resume.png">
 <meta property="og:site_name" content="Inspect Scout">
+<meta property="og:image:height" content="389">
+<meta property="og:image:width" content="1606">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript analysis for Inspect AI">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scan-resume.png">
+<meta name="twitter:image-height" content="389">
+<meta name="twitter:image-width" content="1606">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 
-<body class="nav-fixed quarto-light">
+<body class="nav-sidebar docked nav-fixed quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -135,8 +142,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
     <a class="nav-link active" href="./index.html" aria-current="page"> 
-<span class="menu-text">Using</span></a>
+<span class="menu-text">Getting Started</span></a>
   </li>  
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Using</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="./transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./results.html">
+ <span class="dropdown-text">Results</span></a>
+  </li>  
+    </ul>
+  </li>
   <li class="nav-item">
     <a class="nav-link" href="./reference/index.html"> 
 <span class="menu-text">Reference</span></a>
@@ -154,10 +180,83 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
       </div> <!-- /container-fluid -->
     </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Getting Started</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="./index.html" class="sidebar-logo-link">
+      </a>
+      </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="./index.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Getting Started</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Welcome</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html#scout-basics" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scout Basics</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="./transcripts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Using Scout</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./transcripts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcripts</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanners</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./results.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Results</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active">
@@ -175,6 +274,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#adding-a-scanner" id="toc-adding-a-scanner" class="nav-link" data-scroll-target="#adding-a-scanner">Adding a Scanner</a></li>
   <li><a href="#scan-jobs" id="toc-scan-jobs" class="nav-link" data-scroll-target="#scan-jobs">Scan Jobs</a></li>
   <li><a href="#scan-results" id="toc-scan-results" class="nav-link" data-scroll-target="#scan-results">Scan Results</a></li>
+  <li><a href="#handling-errors" id="toc-handling-errors" class="nav-link" data-scroll-target="#handling-errors">Handling Errors</a></li>
   </ul></li>
   <li><a href="#transcripts" id="toc-transcripts" class="nav-link" data-scroll-target="#transcripts">Transcripts</a></li>
   <li><a href="#parallelism" id="toc-parallelism" class="nav-link" data-scroll-target="#parallelism">Parallelism</a></li>
@@ -227,19 +327,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="scout-basics" class="level2">
 <h2 class="anchored" data-anchor-id="scout-basics">Scout Basics</h2>
-<div class="callout callout-style-default callout-caution callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Caution
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>The code below is intended to illustrate the basic API and usage of Scout. However, the code doesn’t currently work! For the time being please use this for design review only rather than direct experimentation.</p>
-</div>
-</div>
 <p>Below we’ll provide some simple examples of creating and using Scout scanners. Some core components we’ll make use of here include:</p>
 <ul>
 <li><p><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> — LLM conversation to analyze (e.g.&nbsp;an Inspect sample trajectory).</p></li>
@@ -372,8 +459,8 @@ Caution
 <p>Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database (there will be a table for each scanner).</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># results as pandas data frames</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.data[<span class="st">"deception"</span>]</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.data[<span class="st">"tool_errors"</span>]</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co"># results as duckdb database </span></span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_db(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
@@ -384,48 +471,55 @@ Caution
 <span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
 <span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
+<section id="handling-errors" class="level3">
+<h3 class="anchored" data-anchor-id="handling-errors">Handling Errors</h3>
+<p>If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the <code>scan resume</code> command. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan resume <span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>If errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with <code>scan resume</code> or complete the scan (ignoring errors) with <code>scan complete</code>:</p>
+<p><img src="images/scan-resume.png" class="img-fluid"></p>
+</section>
 </section>
 <section id="transcripts" class="level2">
 <h2 class="anchored" data-anchor-id="transcripts">Transcripts</h2>
 <p>In the example(s) above we scanned the samples from a single Inspect log file. More commonly though you’ll target an entire log directory or a subset of logs in that directory. For example, here we scan all of Cybench logs in the <code>./logs</code> directory:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> scan, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(<span class="st">"./logs"</span>)</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>status <span class="op">=</span> scan(</span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    scanners <span class="op">=</span> [ctf_environment(), tool_errors()],</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> scan, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(<span class="st">"./logs"</span>)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>status <span class="op">=</span> scan(</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    scanners <span class="op">=</span> [ctf_environment(), tool_errors()],</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The <code>log_metadata</code> object (aliased to <code>m</code>) provides a typed way to specified <code>where()</code> clauses for filtering transcripts.</p>
 <p>Note that doing this query required us to switch to the Python <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> API. We can still use the CLI if we wrap our transcript query in a <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scanjob">ScanJob</a></span>:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>cybench_scan.py</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from_logs(logs)</span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts</span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from_logs(logs)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Then from the CLI:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The <code>-S</code> argument enables you to pass arguments to the <code>@scanjob</code> function (in this case determining what directory to read logs from).</p>
 </section>
 <section id="parallelism" class="level2">
@@ -460,67 +554,15 @@ Caution
 </section>
 <section id="learning-more" class="level2">
 <h2 class="anchored" data-anchor-id="learning-more">Learning More</h2>
-<p>See the following reference sections to learn more about using the Scout API and CLI:</p>
-<section id="python-api" class="level4">
-<h4 class="anchored" data-anchor-id="python-api">Python API</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 30%">
-<col style="width: 70%">
-</colgroup>
-<tbody>
-<tr class="odd">
-<td><a href="./reference/scanning.html">Scanning</a></td>
-<td>Scan transcripts and manage scan jobs.</td>
-</tr>
-<tr class="even">
-<td><a href="./reference/results.html">Results</a></td>
-<td>Status and results of scan jobs.</td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/scanner.html">Transcripts</a></td>
-<td>Read and filter transcripts.</td>
-</tr>
-<tr class="even">
-<td><a href="./reference/scanner.html">Scanners</a></td>
-<td>Implement scanners and loaders.</td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/async.html">Async</a></td>
-<td>Async functions for scanning.</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="scount-cli" class="level4">
-<h4 class="anchored" data-anchor-id="scount-cli">Scount CLI</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 30%">
-<col style="width: 70%">
-</colgroup>
-<tbody>
-<tr class="odd">
-<td><a href="./reference/scout_scan.html">scout scan</a></td>
-<td>Scan transcripts.</td>
-</tr>
-<tr class="even">
-<td><a href="./reference/scout_scan.html#scout-scan-resume">scout scan resume</a></td>
-<td>Resume a scan which is incomplete due to interruption or errors.</td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/scout_scan.html#scout-scan-complete">scout scan complete</a></td>
-<td>Complete a scan which is incomplete due to errors (errors are not retried).</td>
-</tr>
-<tr class="even">
-<td><a href="./reference/scout_scan.html#scout-scan-resume">scout scan list</a></td>
-<td>List the scans within a scan results directory.</td>
-</tr>
-</tbody>
-</table>
+<p>See the following articles to learn more about using Scout:</p>
+<ul>
+<li><p><a href="./transcripts.html">Transcripts</a>: Reading and filtering transcripts for scanning.</p></li>
+<li><p><a href="./scanners.html">Scanners</a>: Implementing custom scanners and loaders.</p></li>
+<li><p><a href="./results.html">Results</a>: Collecting and analyzing scanner results.</p></li>
+<li><p><a href="./reference/index.html">Reference</a>: Detailed documentation on the Scout Python API and CLI commands.</p></li>
+</ul>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
@@ -965,6 +1007,15 @@ Caution
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./index.html#scout-basics" class="pagination-link" aria-label="Scout Basics">
+        <span class="nav-page-text">Scout Basics</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
 <footer class="footer">
   <div class="nav-footer">

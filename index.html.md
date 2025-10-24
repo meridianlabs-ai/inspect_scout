@@ -28,13 +28,6 @@ which will be installed automatically when you install Scout.
 
 ## Scout Basics
 
-> [!CAUTION]
->
-> The code below is intended to illustrate the basic API and usage of
-> Scout. However, the code doesn’t currently work! For the time being
-> please use this for design review only rather than direct
-> experimentation.
-
 Below we’ll provide some simple examples of creating and using Scout
 scanners. Some core components we’ll make use of here include:
 
@@ -207,8 +200,8 @@ table for each scanner).
 ``` python
 # results as pandas data frames
 results = scan_results("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
-deception_df = results.data["deception"]
-tool_errors_df = results.data["tool_errors"]
+deception_df = results.scanners["deception"]
+tool_errors_df = results.scanners["tool_errors"]
 
 # results as duckdb database 
 results = scan_results_db("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
@@ -219,6 +212,22 @@ with results:
     # export entire database as file
     results.to_file("results.duckdb")
 ```
+
+### Handling Errors
+
+If a scan job is interrupted either due to cancellation (Ctrl+C) or a
+runtime error, you can resume the scan from where it left off using the
+`scan resume` command. For example:
+
+``` bash
+scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
+```
+
+If errors occur during an individual scan, they are caught and reported.
+You can then either retry the failed scans with `scan resume` or
+complete the scan (ignoring errors) with `scan complete`:
+
+![](images/scan-resume.png)
 
 ## Transcripts
 
@@ -294,24 +303,14 @@ you can use to tune parallelism:
 
 ## Learning More
 
-See the following reference sections to learn more about using the Scout
-API and CLI:
+See the following articles to learn more about using Scout:
 
-#### Python API
+- [Transcripts](transcripts.qmd): Reading and filtering transcripts for
+  scanning.
 
-|  |  |
-|----|----|
-| [Scanning](./reference/scanning.qmd) | Scan transcripts and manage scan jobs. |
-| [Results](./reference/results.qmd) | Status and results of scan jobs. |
-| [Transcripts](./reference/scanner.qmd) | Read and filter transcripts. |
-| [Scanners](./reference/scanner.qmd) | Implement scanners and loaders. |
-| [Async](./reference/async.qmd) | Async functions for scanning. |
+- [Scanners](scanners.qmd): Implementing custom scanners and loaders.
 
-#### Scount CLI
+- [Results](results.qmd): Collecting and analyzing scanner results.
 
-|  |  |
-|----|----|
-| [scout scan](./reference/scout_scan.qmd) | Scan transcripts. |
-| [scout scan resume](./reference/scout_scan.qmd#scout-scan-resume) | Resume a scan which is incomplete due to interruption or errors. |
-| [scout scan complete](./reference/scout_scan.qmd#scout-scan-complete) | Complete a scan which is incomplete due to errors (errors are not retried). |
-| [scout scan list](./reference/scout_scan.qmd#scout-scan-resume) | List the scans within a scan results directory. |
+- [Reference](reference/index.qmd): Detailed documentation on the Scout
+  Python API and CLI commands.

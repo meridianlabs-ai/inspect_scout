@@ -17,4 +17,4 @@ Each `Transcript` has the following fields:
 | `messages` | list\[ChatMessage\] | Message history from `EvalSample` |
 | `events` | list\[Event\] | Event history from `EvalSample` |
 
-: : {tbl-colwidths=\[20,30,50\]}
+: {tbl-colwidths=\[20,30,50\]}

@@ -75,7 +75,7 @@ class RecorderBuffer:
                     "transcript_id": transcript.id,
                     "transcript_source_id": transcript.source_id,
                     "transcript_source_uri": transcript.source_uri,
-                    "timestamp": datetime.now().astimezone().isoformat(),
+                    "transcript_metadata": transcript.metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
                     "scan_metadata": self._spec.metadata or {},
@@ -85,8 +85,8 @@ class RecorderBuffer:
                     "scanner_params": self._spec.scanners[scanner].params,
                 },
             )
-            | transcript.metadata
             | result.to_df_columns()
+            | {"timestamp": datetime.now().astimezone().isoformat()}
             for result in results
         ]
         if not records:

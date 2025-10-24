@@ -85,7 +85,7 @@ The `Results` object returned from `scan_results()` includes both metadata about
 +------------+---------------------------+---------------------------------------------------------------------------------------------+
 | `errors`   | list\[Error\]             | Errors during last scan attempt.                                                            |
 +------------+---------------------------+---------------------------------------------------------------------------------------------+
-| `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#scanner-data) for details) |
+| `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#scanner-data) for details)
 +------------+---------------------------+---------------------------------------------------------------------------------------------+
 
 : {tbl-colwidths=\[20,20,60\]}

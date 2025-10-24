@@ -6,6 +6,7 @@ from typing import (
     Awaitable,
     Callable,
     Iterable,
+    Literal,
     NamedTuple,
     Protocol,
 )
@@ -72,6 +73,11 @@ class ScannerJob(NamedTuple):
     """The name of the scanner within the scan job."""
 
 
+ParseFunctionResult = (
+    tuple[Literal[True], list[ScannerJob]] | tuple[Literal[False], list[ResultReport]]
+)
+
+
 class ConcurrencyStrategy(Protocol):
     """Callable strategy interface (Strategy Pattern) for executing scanner work.
 
@@ -86,7 +92,7 @@ class ConcurrencyStrategy(Protocol):
         self,
         *,
         parse_jobs: AsyncIterator[ParseJob],
-        parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]],
+        parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         record_results: Callable[
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]

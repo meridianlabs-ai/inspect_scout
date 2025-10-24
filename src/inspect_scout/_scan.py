@@ -25,7 +25,7 @@ from inspect_ai.model._model_config import (
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
 
-from ._concurrency.common import ParseJob, ScannerJob
+from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
 from ._display._display import (
@@ -440,18 +440,28 @@ async def _scan_async_inner(
                     ]
                 )
 
-                async def _parse_function(job: ParseJob) -> list[ScannerJob]:
-                    union_transcript = await transcripts._read(  # pylint: disable=protected-access
-                        job.transcript_info, union_content
-                    )
-                    return [
-                        ScannerJob(
-                            union_transcript=union_transcript,
-                            scanner=scanners_list[idx],
-                            scanner_name=scanner_names_list[idx],
+                async def _parse_function(job: ParseJob) -> ParseFunctionResult:
+                    try:
+                        union_transcript = await transcripts._read(  # pylint: disable=protected-access
+                            job.transcript_info, union_content
                         )
-                        for idx in job.scanner_indices
-                    ]
+                        return (
+                            True,
+                            [
+                                ScannerJob(
+                                    union_transcript=union_transcript,
+                                    scanner=scanners_list[idx],
+                                    scanner_name=scanner_names_list[idx],
+                                )
+                                for idx in job.scanner_indices
+                            ],
+                        )
+                    except Exception as ex:  # pylint: disable=W0718
+                        # Create error ResultReport for each affected scanner
+                        return (
+                            False,
+                            _reports_for_parse_error(job, ex, scanner_names_list),
+                        )
 
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
                     from inspect_ai.log._transcript import (
@@ -480,34 +490,35 @@ async def _scan_async_inner(
                     loader: Loader[Transcript] = scanner_config.loader
 
                     async for loader_result in loader(job.union_transcript):
-                        type_and_ids = get_input_type_and_ids(loader_result)
-                        if type_and_ids is None:
-                            continue
-
                         try:
+                            type_and_ids = get_input_type_and_ids(loader_result)
+                            if type_and_ids is None:
+                                continue
+
                             result: Result | None = await job.scanner(loader_result)
                             error: Error | None = None
 
-                        except Exception as ex:
-                            logger.error(f"Error in '{job.scanner_name}': {ex}")
-                            result = None
+                        except Exception as ex:  # pylint: disable=W0718
                             error = Error(
                                 transcript_id=job.union_transcript.id,
                                 scanner=job.scanner_name,
                                 error=str(ex),
                                 traceback=traceback.format_exc(),
                             )
-                        results.append(
-                            ResultReport(
-                                input_type=type_and_ids[0],
-                                input_ids=type_and_ids[1],
-                                input=loader_result,
-                                result=result,
-                                error=error,
-                                events=inspect_transcript.events,
-                                model_usage=model_usage(),
+
+                        # Always append a result (success or error) if we have type_and_ids
+                        if type_and_ids is not None:
+                            results.append(
+                                ResultReport(
+                                    input_type=type_and_ids[0],
+                                    input_ids=type_and_ids[1],
+                                    input=loader_result,
+                                    result=result,
+                                    error=error,
+                                    events=inspect_transcript.events,
+                                    model_usage=model_usage(),
+                                )
                             )
-                        )
 
                     return results
 
@@ -576,10 +587,10 @@ async def _scan_async_inner(
         type = type if type else BaseException
         value = value if value else ex
         rich_tb = rich_traceback(type, value, tb)
-        return await handle_scan_interruped(rich_tb, scan.spec, recorder)
+        return await handle_scan_interrupted(rich_tb, scan.spec, recorder)
 
     except anyio.get_cancelled_exc_class():
-        return await handle_scan_interruped("Aborted!", scan.spec, recorder)
+        return await handle_scan_interrupted("Aborted!", scan.spec, recorder)
 
 
 def top_level_sync_init(display: DisplayType | None) -> None:
@@ -632,7 +643,7 @@ def init_scan_model_context(
     return model, resolved_model_args, resolved_model_roles
 
 
-async def handle_scan_interruped(
+async def handle_scan_interrupted(
     message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
     status = Status(
@@ -686,3 +697,34 @@ def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
     adopted the filter from the scanner as appropriate.
     """
     return config_for_loader(config_for_scanner(scanner).loader).content
+
+
+def _reports_for_parse_error(
+    job: ParseJob, exception: Exception, scanner_names: list[str]
+) -> list[ResultReport]:
+    # Create placeholder transcript since parse failed
+    placeholder_transcript = Transcript(
+        id=job.transcript_info.id,
+        source_id=job.transcript_info.source_id,
+        source_uri=job.transcript_info.source_uri,
+        metadata=job.transcript_info.metadata,
+        messages=[],
+        events=[],
+    )
+    return [
+        ResultReport(
+            input_type="transcript",
+            input_ids=[job.transcript_info.id],
+            input=placeholder_transcript,
+            result=None,
+            error=Error(
+                transcript_id=job.transcript_info.id,
+                scanner=scanner_names[idx],
+                error=str(exception),
+                traceback=traceback.format_exc(),
+            ),
+            events=[],
+            model_usage={},
+        )
+        for idx in job.scanner_indices
+    ]

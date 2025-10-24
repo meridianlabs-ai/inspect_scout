@@ -82,8 +82,9 @@ if __name__ == "__main__":
                 deception(),  # SLOWISH - BLOCKING ON IO
             ],
             transcripts=transcripts_from_logs(LOGS),
-            limit=20,
+            limit=1,
             # max_transcripts=4,
             max_transcripts=50,
+            max_processes=2,
             results=SCANS_DIR.as_posix(),
         )

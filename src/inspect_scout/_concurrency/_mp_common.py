@@ -19,7 +19,7 @@ import anyio
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
-from .common import ParseJob, ScanMetrics, ScannerJob
+from .common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
 
 if TYPE_CHECKING:
     from ._mp_semaphore import PicklableMPSemaphore
@@ -104,7 +104,7 @@ class IPCContext:
     from workers to the main process.
     """
 
-    parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]]
+    parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]]
     """Function that executes a parse job yielding scanner jobs."""
 
     scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]

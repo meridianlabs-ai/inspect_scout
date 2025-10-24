@@ -11,7 +11,13 @@ from .._display import display
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from ._iterator import SerializedAsyncIterator
-from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob
+from .common import (
+    ConcurrencyStrategy,
+    ParseFunctionResult,
+    ParseJob,
+    ScanMetrics,
+    ScannerJob,
+)
 
 # Module-level counter for assigning unique worker IDs
 worker_id_counter: int = 0
@@ -42,9 +48,9 @@ def single_process_strategy(
 
     Architecture
     ------------
-    Spawns initial_workers at startup (default: min(10, task_count)), then
-    workers spawn additional workers dynamically up to task_count as they
-    complete tasks. Workers are identical and execute in a loop where each iteration:
+    Spawns initial_workers at startup (default: min(10, task_count)), then workers
+    spawn additional workers dynamically up to task_count as they complete tasks.
+    Workers execute in a loop where in each iteration they:
     1. Consult the scheduler to determine next action (parse, scan, or wait)
     2. Execute the chosen action
     3. Update metrics
@@ -56,46 +62,11 @@ def single_process_strategy(
     - Scanner job queue fullness (backpressure indicator)
     - Number of workers currently parsing vs scanning
 
-    Scheduling Algorithm
-    --------------------
-    Priority order for action selection (note: "parse jobs remain" means the parse_jobs
-    iterator has not yet been exhausted):
-
-    1. If scan queue full → SCAN
-    2. If scan queue empty AND parse jobs remain → PARSE (refill pipeline)
-    3. If scan queue low (<20% capacity) AND few parsers (<2) AND parse jobs remain
-       → PARSE (prevent starvation from slow parsers)
-    4. If someone parsing AND queue not empty → SCAN (prefer consumption)
-    5. If NO ONE parsing AND parse jobs remain AND queue not near full (<80% capacity)
-       → PARSE (fill production gap, anti-stampede protection)
-    6. If scanner jobs available → SCAN (consume remaining work)
-    7. Otherwise → WAIT (check for exit condition)
-
-    Edge Cases Handled
-    ------------------
-    - **Simultaneous Parser Completion**: Rule 5's 80% threshold prevents all workers
-      from bursting into PARSE when multiple parsers finish at once and workers_parsing
-      momentarily drops to 0. Workers only parse if queue genuinely needs filling.
-
-    - **Slow Parser Starvation**: Rule 3 detects when a single slow parser can't keep
-      up with fast scanners (queue <20%, only 1 parser active). Spawns a second parser
-      to prevent queue from draining to empty and stalling workers.
-
-    - **Fast Parser → Scanner Transition**: When the lone parser finishes and switches
-      to scanning, Rule 5 ensures another worker quickly picks up parsing (queue <80%),
-      maintaining continuous production without oscillation.
-
-    - **Ramp-up Burst Parsing**: During startup when queue is empty, Rule 2 correctly
-      allows multiple workers to parse simultaneously to quickly fill the pipeline.
-
     Args:
         task_count: Number of worker tasks.
         prefetch_multiple: Multiplier for scanner job queue size (base=task_count).
-            Default 1.0 provides one buffered job per worker. Higher values increase
-            memory usage without improving throughput if parsing is fast. Lower values
-            risk parser stalls if scans complete in bursts.
-        diagnostics: Enable detailed logging of worker actions, queue state, and timing.
-            Useful for performance analysis and debugging scheduler behavior.
+        diagnostics: Enable detailed logging of worker actions, queue state, and
+            timing. Useful for performance analysis and debugging scheduler behavior.
         diag_prefix: Optional prefix for diagnostic messages (internal use).
         overall_start_time: Optional start time for relative timestamps (internal use).
     """
@@ -107,7 +78,7 @@ def single_process_strategy(
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
         parse_jobs: AsyncIterator[ParseJob],
-        parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]],
+        parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
     ) -> None:
@@ -204,7 +175,7 @@ def single_process_strategy(
             return 1.0 if current_wait_duration == 0 else 1.0
 
         async def _perform_parse(worker_id: int) -> bool:
-            """Perform the parse action. Returns True if parse completed, False if there was no parse job to perform."""
+            """Perform the parse action. Returns True if parse job was pulled from the queue, False if there was no parse job to perform."""
             # Pull from parse_jobs iterator and create scanner jobs
             try:
                 parse_job = await anext(parse_jobs)
@@ -216,14 +187,27 @@ def single_process_strategy(
             _update_metrics()
 
             try:
-                scanner_jobs = await parse_function(parse_job)
+                result = await parse_function(parse_job)
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",
                     f"Parsed  ({(time.time() - exec_start_time):.3f}s) - ('{parse_job.transcript_info.id}')",
                 )
 
-                for scanner_job in scanner_jobs:
-                    scanner_job_deque.append(scanner_job)
+                # Check success/failure tag
+                if result[0]:
+                    # Success: enqueue scanner jobs
+                    for scanner_job in result[1]:
+                        scanner_job_deque.append(scanner_job)
+                else:
+                    # Error: record error results
+                    for result_report in result[1]:
+                        assert result_report.error is not None
+                        await record_results(
+                            parse_job.transcript_info,
+                            result_report.error.scanner,
+                            [result_report],
+                        )
+
                 _update_metrics()
                 return True
             finally:
@@ -302,35 +286,17 @@ def single_process_strategy(
                 _update_metrics()
 
         try:
-            async with create_task_group():
-                progress_cancel_scope = None
+            async with create_task_group() as tg:
+                # Spawn initial workers for faster ramp-up
+                global worker_id_counter
+                for _ in range(task_count):
+                    worker_id_counter += 1
+                    metrics.task_count += 1
+                    tg.start_soon(_worker_task, worker_id_counter)
+                _update_metrics()
 
-                async def progress_task() -> None:
-                    nonlocal progress_cancel_scope
-                    with anyio.CancelScope() as cancel_scope:
-                        progress_cancel_scope = cancel_scope
-                        while True:
-                            print_diagnostics(
-                                "HelloTask",
-                                f"hello at {time.time()} queue={len(scanner_job_deque)}",
-                            )
-                            await anyio.sleep(2)
-
-                # outer_tg.start_soon(progress_task)
-
-                async with create_task_group() as tg:
-                    # Spawn initial workers for faster ramp-up
-                    global worker_id_counter
-                    for _ in range(task_count):
-                        worker_id_counter += 1
-                        metrics.task_count += 1
-                        tg.start_soon(_worker_task, worker_id_counter)
-                    _update_metrics()
-
-                if progress_cancel_scope:
-                    progress_cancel_scope.cancel()
         except Exception as ex:
-            raise inner_exception(ex) from ex
+            raise inner_exception(ex) from None
         finally:
             metrics.process_count = 0
             metrics.tasks_parsing = 0

@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -73,10 +108,16 @@ ul.task-list li input[type="checkbox"] {
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript analysis for Inspect AI">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scan-complete.png">
 <meta property="og:site_name" content="Inspect Scout">
+<meta property="og:image:height" content="362">
+<meta property="og:image:width" content="1606">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript analysis for Inspect AI">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scan-complete.png">
+<meta name="twitter:image-height" content="362">
+<meta name="twitter:image-width" content="1606">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body class="nav-sidebar docked nav-fixed quarto-light">
@@ -216,8 +257,24 @@ ul.task-list li input[type="checkbox"] {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#workflow" id="toc-workflow" class="nav-link" data-scroll-target="#workflow">Workflow</a>
+  <ul class="collapse">
+  <li><a href="#scout-cli" id="toc-scout-cli" class="nav-link" data-scroll-target="#scout-cli">Scout CLI</a></li>
+  <li><a href="#python-api" id="toc-python-api" class="nav-link" data-scroll-target="#python-api">Python API</a></li>
+  <li><a href="#duckdb" id="toc-duckdb" class="nav-link" data-scroll-target="#duckdb">DuckDB</a></li>
+  </ul></li>
+  <li><a href="#results-data" id="toc-results-data" class="nav-link" data-scroll-target="#results-data">Results Data</a>
+  <ul class="collapse">
+  <li><a href="#scanner-data" id="toc-scanner-data" class="nav-link" data-scroll-target="#scanner-data">Data Frames</a></li>
+  </ul></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -241,8 +298,268 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>The results of scans are stored in directory on the local filesystem (by default <code>./scans</code>) or in a remote S3 bucket. When a scan job is completed its directory is printed, and you can also use the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_list">scan_list()</a></span> function or <code>scout scan list</code> command to enumerate scan jobs.</p>
+<p>Scan results include the following:</p>
+<ul>
+<li><p>Scan configuration (e.g.&nbsp;options passed to <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> or to <code>scout scan</code>).</p></li>
+<li><p>Transcripts scanned and scanners executed and errors which occurred during the last scan.</p></li>
+<li><p>A set of <a href="https://parquet.apache.org/docs/">Parquet</a> files with scan results (one for each scanner). There are functions available to interface with these files as Pandas data frames or DuckDB databases.</p></li>
+</ul>
+</section>
+<section id="workflow" class="level2">
+<h2 class="anchored" data-anchor-id="workflow">Workflow</h2>
+<section id="scout-cli" class="level3">
+<h3 class="anchored" data-anchor-id="scout-cli">Scout CLI</h3>
+<p>The <code>scout scan</code> command will print its status at the end of its run. If all of the scanners completed without errors you’ll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:</p>
+<p><img src="images/scan-complete.png" class="img-fluid"></p>
+<p>You can then pass that directory to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results">scan_results()</a></span> function to get access to the underlying data frames for each scanner:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan_results</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results(<span class="st">"scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="python-api" class="level3">
+<h3 class="anchored" data-anchor-id="python-api">Python API</h3>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> function returns a <span class="element-type-name ref-interlink"><a href="./reference/results.html#status">Status</a></span> object which indicates whether the scan completed successfully (in which case the scanner results are available for analysis). You’ll therefore want to check the <code>.completed</code> field before proceeding to read the results. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> (</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    scan, scan_results, transcripts_from_logs</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> ctf_environment, java_tool_calls</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>status <span class="op">=</span> scan(</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span>transcripts_from_logs(<span class="st">"./logs"</span>),</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    scanners<span class="op">=</span>[ctf_environment(), java_tool_calls()]</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> status.complete:</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    results <span class="op">=</span> scan_results(status.location)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="duckdb" class="level3">
+<h3 class="anchored" data-anchor-id="duckdb">DuckDB</h3>
+<p>The above examples demonstrated reading scanner output as Pandas data frames. If you prefer, you can also read scanner data from a DuckDB database as follows:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_db(<span class="st">"scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8"</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> results:</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># run queries to read data frames</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> results.conn.execute(<span class="st">"SELECT ..."</span>).fetch_df()</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="results-data" class="level2">
+<h2 class="anchored" data-anchor-id="results-data">Results Data</h2>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/results.html#results">Results</a></span> object returned from <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results">scan_results()</a></span> includes both metadata about the scan as well as the scanner data frames:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>complete</code></td>
+<td>bool</td>
+<td>Is the job complete? (all transcripts scanned)</td>
+</tr>
+<tr class="even">
+<td><code>spec</code></td>
+<td>ScanSpec</td>
+<td>Scan specification (transcripts, scanners, options, etc.)</td>
+</tr>
+<tr class="odd">
+<td><code>location</code></td>
+<td>str</td>
+<td>Location of scan directory</td>
+</tr>
+<tr class="even">
+<td><code>summary</code></td>
+<td>Summary</td>
+<td>Summary of scan (results, errors, tokens, etc.)</td>
+</tr>
+<tr class="odd">
+<td><code>errors</code></td>
+<td>list[Error]</td>
+<td>Errors during last scan attempt.</td>
+</tr>
+<tr class="even">
+<td><code>scanners</code></td>
+<td>dict[str, pd.DataFrame]</td>
+<td>Results data for each scanner (see <a href="#scanner-data">Data Frames</a> for details)</td>
+</tr>
+</tbody>
+</table>
+<section id="scanner-data" class="level3">
+<h3 class="anchored" data-anchor-id="scanner-data">Data Frames</h3>
+<style type="text/css">
+#scanner-data td:nth-child(2) {
+  font-size: 0.9em;
+  line-height: 1.2;
+}
+#scanner-data small {
+  font-size: x-small;
+}
+</style>
+<p>The data frames available for each scanner contain information about the source evaluation and transcript, the results found for each transcript, as well as data on token usage, model calls, and errors which may have occurred during the scan.</p>
+<p>The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below):</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>transcript_id</code></td>
+<td>str</td>
+<td>Globally unique identifier for a transcript (maps to <code>EvalSample.uuid</code> in the Inspect log)</td>
+</tr>
+<tr class="even">
+<td><code>transcript_source_id</code></td>
+<td>str</td>
+<td>Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log)</td>
+</tr>
+<tr class="odd">
+<td><code>transcript_source_uri</code></td>
+<td>str</td>
+<td>URI for source data (e.g.&nbsp;full path to the Inspect log file).</td>
+</tr>
+<tr class="even">
+<td><code>transcript_metadata</code></td>
+<td>LogMetadata <small>JSON</small></td>
+<td>Eval configuration metadata (e.g.&nbsp;task, model, scores, etc.). See <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#logmetadata">LogMetadata</a></span> for details.</td>
+</tr>
+<tr class="odd">
+<td><code>scan_id</code></td>
+<td>str</td>
+<td>Globally unique identifier for scan.</td>
+</tr>
+<tr class="even">
+<td><code>scan_tags</code></td>
+<td>list[str]<br>
+<small>JSON</small></td>
+<td>Tags associated with the scan.</td>
+</tr>
+<tr class="odd">
+<td><code>scan_metadata</code></td>
+<td>dict<br><small>JSON</small></td>
+<td>Additional scan metadata.</td>
+</tr>
+<tr class="even">
+<td><code>scanner_key</code></td>
+<td>str</td>
+<td>Unique key for scan within scan job (defaults to <code>scanner_name</code>).</td>
+</tr>
+<tr class="odd">
+<td><code>scanner_name</code></td>
+<td>str</td>
+<td>Scanner name.</td>
+</tr>
+<tr class="even">
+<td><code>scanner_file</code></td>
+<td>str</td>
+<td>Source file for scanner.</td>
+</tr>
+<tr class="odd">
+<td><code>scanner_params</code></td>
+<td>dict<br><small>JSON</small></td>
+<td>Params used to create scanner.</td>
+</tr>
+<tr class="even">
+<td><code>input_type</code></td>
+<td>transcript | message | messages | event | events</td>
+<td>Input type received by scanner.</td>
+</tr>
+<tr class="odd">
+<td><code>input_ids</code></td>
+<td>list[str]<br><small>JSON</small></td>
+<td>Unique ids of scanner input.</td>
+</tr>
+<tr class="even">
+<td><code>input</code></td>
+<td>ScannerInput<br><small>JSON</small></td>
+<td>Scanner input value.</td>
+</tr>
+<tr class="odd">
+<td><code>value</code></td>
+<td>JsonValue<br><small>JSON</small></td>
+<td>Value returned by scanner.</td>
+</tr>
+<tr class="even">
+<td><code>value_type</code></td>
+<td>string | boolean | number | array | object | null</td>
+<td>Type of value returned by scanner.</td>
+</tr>
+<tr class="odd">
+<td><code>explanation</code></td>
+<td>str</td>
+<td>Explanation for scan result.</td>
+</tr>
+<tr class="even">
+<td><code>metadata</code></td>
+<td>dict<br><small>JSON</small></td>
+<td>Metadata for scan result.</td>
+</tr>
+<tr class="odd">
+<td><code>message_references</code></td>
+<td>list[str]<br><small>JSON</small></td>
+<td>Messages referenced by scanner.</td>
+</tr>
+<tr class="even">
+<td><code>event_references</code></td>
+<td>list[str]<br><small>JSON</small></td>
+<td>Events referenced by scanner.</td>
+</tr>
+<tr class="odd">
+<td><code>scan_error</code></td>
+<td>str</td>
+<td>Error which occurred during scan.</td>
+</tr>
+<tr class="even">
+<td><code>scan_error_traceback</code></td>
+<td>str</td>
+<td>Traceback for error (if any)</td>
+</tr>
+<tr class="odd">
+<td><code>scan_total_tokens</code></td>
+<td>number</td>
+<td>Total tokens used by scan.</td>
+</tr>
+<tr class="even">
+<td><code>scan_model_usage</code></td>
+<td>dict [str, ModelUsage]<br><small>JSON</small></td>
+<td>Token usage by model for scan.</td>
+</tr>
+<tr class="odd">
+<td><code>scan_events</code></td>
+<td>list[Event]<br><small>JSON</small></td>
+<td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
+</tr>
+</tbody>
+</table>
 
 
+</section>
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -725,7 +1042,7 @@ ul.task-list li input[type="checkbox"] {
 </a>
   </li>  
 </ul>
-    <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
     <div class="nav-footer-right">
       <ul class="footer-items list-unstyled">
     <li class="nav-item compact">

@@ -5,8 +5,10 @@ from typing import Any, Iterator, Sequence
 import psutil
 import rich
 from inspect_ai._display.core.footer import task_counters, task_resources
+from inspect_ai._display.core.results import model_usage_summary
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
 from inspect_ai._util.constants import CONSOLE_DISPLAY_WIDTH
+from inspect_ai.model import ModelUsage
 from inspect_ai.util import throttle
 from rich.console import Group, RenderableType
 from rich.live import Live
@@ -24,7 +26,7 @@ from inspect_scout._display.util import (
     scan_interrupted_message,
     scan_title,
 )
-from inspect_scout._recorder.summary import Summary
+from inspect_scout._recorder.summary import Summary, add_model_usage
 from inspect_scout._scanspec import ScanSpec
 
 from .._concurrency.common import ScanMetrics
@@ -68,6 +70,7 @@ class DisplayRich(Display):
             spec=status.spec,
             summary=status.summary,
             message=scan_interrupted_message(status),
+            model_usage=True,
         )
         self.print(panel)
 
@@ -79,6 +82,7 @@ class DisplayRich(Display):
             message=scan_complete_message(status)
             if status.complete
             else scan_errors_message(status),
+            model_usage=True,
         )
         self.print(panel)
 
@@ -172,6 +176,7 @@ def scan_panel(
     progress: Progress | None = None,
     metrics: ScanMetrics | None = None,
     message: RenderableType | None = None,
+    model_usage: bool = False,
 ) -> RenderableType:
     theme = rich_theme()
     console = rich.get_console()
@@ -234,6 +239,28 @@ def scan_panel(
     body.add_column()  # progress/scanners/results
     body.add_column(width=5)
     body.add_column(justify="right", width=30)  # resources
+
+    # model usage
+    if model_usage:
+        # first aggregate over all scanners
+        total_usage: dict[str, ModelUsage] = {}
+        for scanner_summary in summary.scanners.values():
+            for m, usage in scanner_summary.model_usage.items():
+                if m not in total_usage:
+                    total_usage[m] = ModelUsage()
+                total_usage[m] = add_model_usage(total_usage[m], usage)
+
+        usage_table = Table.grid(expand=False)
+        usage_table.add_column()
+        usage_table.add_column()
+        for model, usage in total_usage.items():
+            usage_table.add_row(
+                *model_usage_summary(model, usage),
+                style=theme.light,
+            )
+        body.add_row(usage_table, "", "")
+        body.add_row()
+
     scanning_group: list[RenderableType] = []
     if progress:
         scanning_group.extend([progress, ""])

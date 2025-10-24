@@ -196,10 +196,6 @@ def scan_panel(
         resources.add_row("idle:", f"{metrics.tasks_idle:,}")
         resources.add_row()
         resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
-        cpu_utilization = (
-            metrics.cpu_use / metrics.process_count if metrics.process_count else 0
-        )
-        resources.add_row("cpu %:", f"{cpu_utilization:.1f}%")
         resources.add_row(
             "memory",
             f"{bytes_to_gigabytes(metrics.memory_usage)} / {bytes_to_gigabytes(total_memory())}",

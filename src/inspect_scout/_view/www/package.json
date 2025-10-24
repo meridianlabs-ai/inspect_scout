@@ -1,0 +1,28 @@
+{
+  "name": "@meridianlabs/inspect-scout-viewer",
+  "version": "0.0.1",
+  "description": "Inspect Scout viewer for evaluation logs.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^7.1.5"
+  },
+  "dependencies": {
+    "@popperjs/core": "^2.11.8",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.12.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.1.1"
+  }
+}

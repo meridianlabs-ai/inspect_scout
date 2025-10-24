@@ -173,7 +173,7 @@ with results:
     results.to_file("results.duckdb")
 ```
 
-### Resuming Scans
+### Handling Errors
 
 If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the `scan resume` command. For example:
 
@@ -181,9 +181,7 @@ If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime er
 scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
 ```
 
-### Handling Errors
-
-If errors occur during a scan, you can either retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
+If errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
 
 ![](images/scan-resume.png)
 

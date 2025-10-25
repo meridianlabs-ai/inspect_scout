@@ -77,8 +77,10 @@ Producer sends sentinels → workers complete and send `WorkerComplete` → coll
 SIGINT delivered only to parent (workers have `SIGINT=SIG_IGN`). Parent's task group cancelled, triggering shutdown sequence (see `_mp_shutdown.py`):
 
 1. **Signal workers**: Notify `shutdown_condition` → shutdown monitors cancel work tasks
-2. **Phased termination**: Wait for graceful exit, then SIGTERM stragglers, then SIGKILL survivors
-3. **Inject shutdown sentinel**: Put `ShutdownSentinel` into `upstream_queue` to wake collector (workers terminated before sending normal completion sentinels, so collector would block forever otherwise)
-4. **Cleanup**: Drain and close queues, wait for feeder threads
+2. **Drain while waiting**: Actively drain both queues while waiting for workers to exit cleanly. This is critical: when the collector is cancelled, it stops reading from queues, causing OS pipes to fill. Workers trying to exit get stuck waiting for their feeder threads to finish, but feeder threads are blocked writing to full pipes. By draining in Phase 2, we unblock feeder threads and allow workers to exit cleanly without termination.
+3. **Phased termination**: SIGTERM stragglers that didn't exit, then SIGKILL survivors (typically none needed if Phase 2 succeeds)
+4. **Inject shutdown sentinel**: Put `ShutdownSentinel` into `upstream_queue` to wake collector if it's still blocked (workers terminated before sending normal completion sentinels)
+5. **Final drain**: Drain any remaining items (typically small since Phase 2 drained most)
+6. **Cleanup**: Close queues, wait for feeder threads, cancel join threads
 
-**Key design:** Workers ignore SIGINT to avoid races. Parent coordinates shutdown via condition variable + phased process termination. Shutdown sentinel injection prevents collector deadlock when workers are forcibly terminated.
+**Key design:** Workers ignore SIGINT to avoid races. Parent coordinates shutdown via condition variable + drain-while-waiting to unblock feeder threads. Most queue items are drained during Phase 2 while workers exit, preventing feeder thread deadlock. Shutdown sentinel injection prevents collector deadlock if workers are forcibly terminated.

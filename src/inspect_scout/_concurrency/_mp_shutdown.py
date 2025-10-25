@@ -18,7 +18,11 @@ async def shutdown_subprocesses(
     """Unified shutdown sequence for both clean exit and Ctrl-C.
 
     This function is idempotent and can be called multiple times safely. Performs
-    phased shutdown: signal → wait → terminate → kill → inject sentinel → drain → close.
+    phased shutdown: signal → drain-while-waiting → terminate → kill → inject sentinel → drain remaining → close.
+
+    During Ctrl-C, the collector stops reading from queues, causing worker feeder threads
+    to block on full pipes. Phase 2 actively drains queues while waiting for workers to
+    exit, unblocking feeder threads and enabling clean worker shutdown.
 
     Args:
         processes: List of worker processes
@@ -31,14 +35,48 @@ async def shutdown_subprocesses(
     with ctx.shutdown_condition:
         ctx.shutdown_condition.notify_all()  # Wake all shutdown monitors
 
-    # PHASE 2: Wait briefly for graceful shutdown
-    print_diagnostics("SubprocessShutdown", "Phase 2: Joining workers (with timeout)")
+    # PHASE 2: Wait for graceful shutdown while draining queues
+    # Actively drain queues to unblock worker feeder threads, allowing clean exit.
+    # When Ctrl-C cancels the collector, it stops reading from queues. Workers trying
+    # to exit get stuck because their feeder threads are blocked writing to full pipes.
+    # By draining here, we unblock those feeder threads so workers can exit cleanly.
+    print_diagnostics(
+        "SubprocessShutdown", "Phase 2: Joining workers while draining queues"
+    )
     deadline = time.time() + 2.0  # 2 second grace period
+    drained_parse = 0
+    drained_upstream = 0
 
-    for p in processes:
-        remaining = deadline - time.time()
-        if remaining > 0 and p.is_alive():
-            p.join(timeout=remaining)
+    while time.time() < deadline:
+        # Drain both queues to unblock worker feeder threads
+        try:
+            ctx.parse_job_queue.get_nowait()
+            drained_parse += 1
+        except Empty:
+            pass
+
+        try:
+            ctx.upstream_queue.get_nowait()
+            drained_upstream += 1
+        except Empty:
+            pass
+
+        # Check if all workers have exited
+        if all(not p.is_alive() for p in processes):
+            print_diagnostics(
+                "SubprocessShutdown",
+                f"All workers exited cleanly (drained parse={drained_parse}, upstream={drained_upstream})",
+            )
+            break
+
+        # Brief sleep to avoid tight CPU loop
+        await anyio.sleep(0.01)
+    else:
+        # Timeout reached with some workers still alive
+        print_diagnostics(
+            "SubprocessShutdown",
+            f"Timeout waiting for workers (drained parse={drained_parse}, upstream={drained_upstream})",
+        )
 
     # PHASE 3: Terminate any still-running workers
     still_alive = [p for p in processes if p.is_alive()]

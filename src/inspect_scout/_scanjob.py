@@ -1,10 +1,12 @@
 import inspect
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Counter, Sequence, TypeVar, cast, overload
+from typing import Any, Callable, Counter, Literal, Sequence, TypeVar, cast, overload
 
+from inspect_ai._util.config import read_config_object
 from inspect_ai._util.decorator import parse_decorators
 from inspect_ai._util.error import PrerequisiteError
+from inspect_ai._util.file import file
 from inspect_ai._util.module import load_module
 from inspect_ai._util.package import get_installed_package_name
 from inspect_ai._util.path import chdir_python, pretty_path
@@ -21,7 +23,8 @@ from inspect_ai._util.registry import (
 )
 from inspect_ai.model import GenerateConfig, Model, ModelConfig
 from inspect_ai.model._util import resolve_model, resolve_model_roles
-from pydantic import BaseModel, Field
+from jsonschema import Draft7Validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from inspect_scout._scanspec import ScannerSpec
 from inspect_scout._transcript.database import transcripts_from_logs
@@ -82,8 +85,15 @@ class ScanJobConfig(BaseModel):
     metadata: dict[str, Any] | None = Field(default=None)
     """Metadata for this scan."""
 
-    log_level: str | None = Field(default=None)
+    log_level: (
+        Literal[
+            "debug", "http", "sandbox", "info", "warning", "error", "critical", "notset"
+        ]
+        | None
+    ) = Field(default=None)
     """Level for logging to the console: "debug", "http", "sandbox", "info", "warning", "error", "critical", or "notset" (defaults to "warning")."""
+
+    model_config = ConfigDict(extra="forbid", protected_namespaces=())
 
 
 class ScanJob:
@@ -357,19 +367,23 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
     if not scanjob_path.exists():
         raise PrerequisiteError(f"The file '{pretty_path(file)}' does not exist.")
 
-    # switch contexts for load
-    with chdir_python(scanjob_path.parent.as_posix()):
-        # create scanjob
-        load_module(scanjob_path)
-        scanjob_decorators = parse_decorators(scanjob_path, "scanjob")
-        if len(scanjob_decorators) > 1:
-            raise PrerequisiteError(
-                f"More than one @scanjob decorated function found in '{file}"
-            )
-        elif len(scanjob_decorators) == 1:
-            return scanjob_create(scanjob_decorators[0][0], scanjob_args)
-        else:
-            return None
+    # load from config or python decorated functions
+    if scanjob_path.suffix in [".json", ".yml", ".yaml"]:
+        return scanjob_from_config_file(scanjob_path)
+    else:
+        # switch contexts for load
+        with chdir_python(scanjob_path.parent.as_posix()):
+            # create scanjob
+            load_module(scanjob_path)
+            scanjob_decorators = parse_decorators(scanjob_path, "scanjob")
+            if len(scanjob_decorators) > 1:
+                raise PrerequisiteError(
+                    f"More than one @scanjob decorated function found in '{file}"
+                )
+            elif len(scanjob_decorators) == 1:
+                return scanjob_create(scanjob_decorators[0][0], scanjob_args)
+            else:
+                return None
 
 
 def scanjob_create(name: str, params: dict[str, Any]) -> ScanJob:
@@ -377,3 +391,24 @@ def scanjob_create(name: str, params: dict[str, Any]) -> ScanJob:
     assert callable(obj)
     kwargs = registry_kwargs(**params)
     return cast(ScanJob, obj(**kwargs))
+
+
+def scanjob_from_config_file(config: Path) -> ScanJob:
+    # read config object
+    with file(config.as_posix(), "r") as f:
+        scanjob_config = read_config_object(f.read())
+
+    # validate schema before deserializing
+    schema = ScanJobConfig.model_json_schema(mode="validation")
+    validator = Draft7Validator(schema)
+    errors = list(validator.iter_errors(scanjob_config))
+    if errors:
+        message = "\n".join(
+            [
+                f"Found validation errors parsing scan job config from {pretty_path(config.as_posix())}:"
+            ]
+            + [f"- {error.message}" for error in errors]
+        )
+        raise PrerequisiteError(message)
+
+    return ScanJob.from_config(ScanJobConfig.model_validate(scanjob_config))

@@ -1,0 +1,16 @@
+scanners:
+  - name: deception
+    file: scanner.py
+  - name: target_word_scanner
+    file: scanner.py
+    params: { "target_word": "perfect" }
+
+transcripts: logs
+
+max_transcripts: 10
+max_processes: 4
+
+limit: 10
+
+log_level: "warning"
+

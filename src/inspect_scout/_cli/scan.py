@@ -286,7 +286,10 @@ def scan_command(
     reasoning_history: Literal["none", "all", "last", "auto"] | None,
     **common: Unpack[CommonOptions],
 ) -> None:
-    """Scan transcripts and read results."""
+    """Scan transcripts and read results.
+
+    Pass a FILE which is either a Python script that contains @scanner or @scanjob decorated functions or a config file (YAML or JSON) that adheres to the `ScanJobConfig` schema.
+    """
     # Process common options
     process_common_options(common)
 

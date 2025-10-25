@@ -41,6 +41,9 @@ class Display(abc.ABC):
     @abc.abstractmethod
     def scan_complete(self, status: Status) -> None: ...
 
+    @abc.abstractmethod
+    def scan_status(self, status: Status) -> None: ...
+
 
 class ScanDisplay(abc.ABC):
     @abc.abstractmethod

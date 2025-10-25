@@ -17,22 +17,24 @@ website:
           href: reference/scanning.qmd#scan_resume
         - text: scan_complete
           href: reference/scanning.qmd#scan_complete
+        - text: scanjob
+          href: reference/scanning.qmd#scanjob
+        - text: ScanJob
+          href: reference/scanning.qmd#scanjob
+        - text: ScanJobConfig
+          href: reference/scanning.qmd#scanjobconfig
+        - text: ScannerSpec
+          href: reference/scanning.qmd#scannerspec
         - text: Status
           href: reference/scanning.qmd#status
         - text: ScanOptions
           href: reference/scanning.qmd#scanoptions
-        - text: ScanScanner
-          href: reference/scanning.qmd#scanscanner
         - text: ScanRevision
           href: reference/scanning.qmd#scanrevision
         - text: ScanTranscripts
           href: reference/scanning.qmd#scantranscripts
         - text: TranscriptField
           href: reference/scanning.qmd#transcriptfield
-        - text: scanjob
-          href: reference/scanning.qmd#scanjob
-        - text: ScanJob
-          href: reference/scanning.qmd#scanjob
       - section: results
         href: reference/results.qmd
         contents:

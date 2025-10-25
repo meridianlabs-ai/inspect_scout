@@ -46,7 +46,14 @@ from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
 from ._mp_subprocess import subprocess_main
-from .common import ConcurrencyStrategy, ParseJob, ScanMetrics, ScannerJob, sum_metrics
+from .common import (
+    ConcurrencyStrategy,
+    ParseFunctionResult,
+    ParseJob,
+    ScanMetrics,
+    ScannerJob,
+    sum_metrics,
+)
 
 # Sentinel value to signal collectors to shut down during Ctrl-C.
 #
@@ -92,7 +99,7 @@ def multi_process_strategy(
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
         parse_jobs: AsyncIterator[ParseJob],
-        parse_function: Callable[[ParseJob], Awaitable[list[ScannerJob]]],
+        parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
     ) -> None:
@@ -248,13 +255,6 @@ def multi_process_strategy(
 
                         case Exception():
                             raise item
-
-                        # Should never happen - defensive check
-                        # case _:
-                        #     print_diagnostics(
-                        #         "MP Collector",
-                        #         f"WARNING: Unexpected item: {item!r}",
-                        #     )
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 

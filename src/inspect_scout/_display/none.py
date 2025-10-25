@@ -26,3 +26,7 @@ class DisplayNone(Display):
     @override
     def scan_complete(self, status: Status) -> None:
         pass
+
+    @override
+    def scan_status(self, status: Status) -> None:
+        pass

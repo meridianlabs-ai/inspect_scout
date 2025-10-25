@@ -502,6 +502,10 @@ async def _scan_async_inner(
                             result: Result | None = await job.scanner(loader_result)
                             error: Error | None = None
 
+                        # Special case for errors that should bring down the scan
+                        except PrerequisiteError:
+                            raise
+
                         except Exception as ex:  # pylint: disable=W0718
                             error = Error(
                                 transcript_id=job.union_transcript.id,

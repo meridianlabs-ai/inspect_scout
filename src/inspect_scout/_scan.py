@@ -217,14 +217,16 @@ async def scan_async(
     scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
 
     # derive max_connections if not specified
-    scanjob._model_config = model_config or scanjob._model_config or GenerateConfig()
-    if scanjob._model_config.max_connections is None:
-        scanjob._model_config.max_connections = scanjob._max_transcripts
+    scanjob._generate_config = (
+        model_config or scanjob._generate_config or GenerateConfig()
+    )
+    if scanjob._generate_config.max_connections is None:
+        scanjob._generate_config.max_connections = scanjob._max_transcripts
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
         model=model or scanjob._model,
-        model_config=model_config or scanjob._model_config,
+        model_config=model_config or scanjob._generate_config,
         model_base_url=model_base_url or scanjob._model_base_url,
         model_args=model_args or scanjob._model_base_url,
         model_roles=model_roles or scanjob._model_roles,
@@ -499,6 +501,10 @@ async def _scan_async_inner(
 
                             result: Result | None = await job.scanner(loader_result)
                             error: Error | None = None
+
+                        # Special case for errors that should bring down the scan
+                        except PrerequisiteError:
+                            raise
 
                         except Exception as ex:  # pylint: disable=W0718
                             error = Error(

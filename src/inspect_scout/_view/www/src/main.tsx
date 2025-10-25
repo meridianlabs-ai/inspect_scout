@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { scoutServerClient } from "./api/api";
 
 // Find the root element and render into it
 const containerId = "app";
@@ -14,5 +15,10 @@ if (!container) {
 }
 
 // Render into the root
-const root = createRoot(container as HTMLElement);
-root.render(<App />);
+const root = createRoot(container);
+
+// Select the API client
+const api = scoutServerClient();
+
+// Render the app
+root.render(<App api={api}/>);

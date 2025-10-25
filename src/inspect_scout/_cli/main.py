@@ -1,15 +1,15 @@
 import click
 from inspect_ai._util.error import set_exception_hook
 
-from inspect_scout._cli.scan_list import scan_list_command
-from inspect_scout._cli.scan_status import scan_status_command
-from inspect_scout._cli.trace import trace_command
-from inspect_scout._scan import init_environment
-
 from .. import __version__
+from .._scan import init_environment
+from .info import info_command
 from .scan import scan_command
 from .scan_complete import scan_complete_command
+from .scan_list import scan_list_command
 from .scan_resume import scan_resume_command
+from .scan_status import scan_status_command
+from .trace import trace_command
 from .view import view_command
 
 
@@ -42,6 +42,7 @@ scan_command.add_command(scan_list_command)
 scan_command.add_command(scan_status_command)
 scout.add_command(view_command)
 scout.add_command(trace_command)
+scout.add_command(info_command)
 
 
 def main() -> None:

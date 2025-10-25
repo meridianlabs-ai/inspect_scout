@@ -168,13 +168,20 @@ a `ScanJob`. To do this, add a `@scanjob` decorated function to your
 source file (it will be used in preference to `@scanner` decorated
 functions).
 
+A `ScanJob` can also include `transcripts` or any other option that you
+can pass to `scout scan` (e.g. `model`). For example:
+
+**scanner.py**
+
 ``` python
 from inspect_scout import ScanJob, scanjob
 
 @scanjob
 def job() -> ScanJob:
     return ScanJob(
-        scanners=[ctf_environment(), java_tool_usages()]
+        scanners=[ctf_environment(), java_tool_usages()],
+        transcripts="./logs",
+        model="openai/gpt-5"
     )
 ```
 
@@ -182,7 +189,30 @@ You can then use the same command to run the job (`scout scan` will
 prefer a @scanjob defined in a file to individual scanners):
 
 ``` bash
-scout scan scanner.py --transcripts ./logs -model openai/gpt-5
+scout scan scanner.py
+```
+
+You can also specify a scan job using YAML or JSON. For example, the
+following is equivalent to the example above:
+
+**scan.yaml**
+
+``` yaml
+scanners:
+  - name: deception
+    file: scanner.py
+  - name: java_tool_usages
+    file: scanner.py
+
+transcripts: logs
+
+model: openai/gpt-5
+```
+
+Which can be executed with:
+
+``` bash
+scout scan scan.yaml
 ```
 
 ### Scan Results
@@ -349,6 +379,23 @@ transcripts = transcripts_from_logs(
 )
 ```
 
+You can also specify transcripts using an
+[evals_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df)
+or
+[samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df)
+read using the Inspect log data frame functions:
+
+``` python
+from inspect_ai.analysis import samples_df
+from inspect_scout import transcripts_from_logs
+
+# read samples, filter as required, etc.
+samples = samples_df("./logs")
+
+# transcripts
+transcripts = transcripts_from_logs(samples)
+```
+
 ## Filtering Transcripts
 
 If you want to scan only a subset of transcripts, you can use the
@@ -404,6 +451,36 @@ scan(
 If you want to do transcript filtering and then invoke your scan from
 the CLI using `scout scan`, then perform the filtering inside a
 `@scanjob`. For example:
+
+**cybench_scan.py**
+
+``` python
+from inspect_scout (
+    import ScanJob, scanjob, transcripts_from_logs, log_metadata as m
+)
+
+from .scanners import deception, tool_errors
+
+@scanjob
+def cybench_job(logs: str = "./logs") -> ScanJob:
+
+    transcripts = transcripts_from_logs(logs)
+    transcripts = transcripts.where(m.task_name == "cybench")
+
+    return ScanJob(
+        scanners = [deception(), java_tool_usages()],
+        transcripts = transcripts
+    )
+```
+
+Then from the CLI:
+
+``` bash
+scout scan cybench.py -S logs=./logs --model openai/gpt-5
+```
+
+The `-S` argument enables you to pass arguments to the `@scanjob`
+function (in this case determining what directory to read logs from).
 
 # Scanners
 
@@ -806,4 +883,17 @@ The data frame includes the following fields (note that some fields
 included embedded JSON data, these are all noted below):
 
 [TABLE]
+
+Several of these fields can be used to link back to the source eval log
+and sample for the transcript:
+
+- `transcript_id` — This is the same as the `EvalSample.uuid` in the
+  Inspect log or the `sample_id` in data frames created by
+  [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df).
+
+- `transcript_source_id` — This is the same as the `eval_id` in both the
+  Inspect log and Inspect data frames.
+
+- `transcript_source_uri` — This is the full path (filesystem or S3) to
+  the actual log file where the transcript was read from.
 

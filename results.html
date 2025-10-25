@@ -431,12 +431,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>transcript_id</code></td>
 <td>str</td>
-<td>Globally unique identifier for a transcript (maps to <code>EvalSample.uuid</code> in the Inspect log)</td>
+<td>Globally unique identifier for a transcript (maps to <code>EvalSample.uuid</code> in the Inspect log or <code>sample_id</code> in Inspect analysis data frames).</td>
 </tr>
 <tr class="even">
 <td><code>transcript_source_id</code></td>
 <td>str</td>
-<td>Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log)</td>
+<td>Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log and analysis data frames).</td>
 </tr>
 <tr class="odd">
 <td><code>transcript_source_uri</code></td>
@@ -445,8 +445,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>transcript_metadata</code></td>
-<td>LogMetadata <small>JSON</small></td>
-<td>Eval configuration metadata (e.g.&nbsp;task, model, scores, etc.). See <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#logmetadata">LogMetadata</a></span> for details.</td>
+<td>dict <br><small>JSON</small></td>
+<td>Eval configuration metadata (e.g.&nbsp;task, model, scores, etc.).</td>
 </tr>
 <tr class="odd">
 <td><code>scan_id</code></td>
@@ -455,7 +455,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>scan_tags</code></td>
-<td>list[str]<br>
+<td>list[str]<br><br>
 <small>JSON</small></td>
 <td>Tags associated with the scan.</td>
 </tr>
@@ -556,6 +556,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+<p>Several of these fields can be used to link back to the source eval log and sample for the transcript:</p>
+<ul>
+<li><p><code>transcript_id</code> — This is the same as the <code>EvalSample.uuid</code> in the Inspect log or the <code>sample_id</code> in data frames created by <a href="https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df">samples_df()</a>.</p></li>
+<li><p><code>transcript_source_id</code> — This is the same as the <code>eval_id</code> in both the Inspect log and Inspect data frames.</p></li>
+<li><p><code>transcript_source_uri</code> — This is the full path (filesystem or S3) to the actual log file where the transcript was read from.</p></li>
+</ul>
 
 
 </section>

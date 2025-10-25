@@ -119,3 +119,16 @@ The data frame includes the following fields (note that some fields
 included embedded JSON data, these are all noted below):
 
 [TABLE]
+
+Several of these fields can be used to link back to the source eval log
+and sample for the transcript:
+
+- `transcript_id` — This is the same as the `EvalSample.uuid` in the
+  Inspect log or the `sample_id` in data frames created by
+  [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df).
+
+- `transcript_source_id` — This is the same as the `eval_id` in both the
+  Inspect log and Inspect data frames.
+
+- `transcript_source_uri` — This is the full path (filesystem or S3) to
+  the actual log file where the transcript was read from.

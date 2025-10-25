@@ -32,6 +32,23 @@ transcripts = transcripts_from_logs(
 )
 ```
 
+You can also specify transcripts using an
+[evals_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df)
+or
+[samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df)
+read using the Inspect log data frame functions:
+
+``` python
+from inspect_ai.analysis import samples_df
+from inspect_scout import transcripts_from_logs
+
+# read samples, filter as required, etc.
+samples = samples_df("./logs")
+
+# transcripts
+transcripts = transcripts_from_logs(samples)
+```
+
 ## Filtering Transcripts
 
 If you want to scan only a subset of transcripts, you can use the
@@ -87,3 +104,33 @@ scan(
 If you want to do transcript filtering and then invoke your scan from
 the CLI using `scout scan`, then perform the filtering inside a
 `@scanjob`. For example:
+
+**cybench_scan.py**
+
+``` python
+from inspect_scout (
+    import ScanJob, scanjob, transcripts_from_logs, log_metadata as m
+)
+
+from .scanners import deception, tool_errors
+
+@scanjob
+def cybench_job(logs: str = "./logs") -> ScanJob:
+
+    transcripts = transcripts_from_logs(logs)
+    transcripts = transcripts.where(m.task_name == "cybench")
+
+    return ScanJob(
+        scanners = [deception(), java_tool_usages()],
+        transcripts = transcripts
+    )
+```
+
+Then from the CLI:
+
+``` bash
+scout scan cybench.py -S logs=./logs --model openai/gpt-5
+```
+
+The `-S` argument enables you to pass arguments to the `@scanjob`
+function (in this case determining what directory to read logs from).

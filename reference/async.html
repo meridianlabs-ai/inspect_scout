@@ -638,7 +638,7 @@ Note
 <p>Scan transcripts.</p>
 <p>Scan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L139">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6d0db9a53cf7f7190b7eb097d80fece3e1c1b0a4/src/inspect_scout/_scan.py#L139">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_async(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    scanners: Sequence[Scanner[ScannerInput] <span class="op">|</span> <span class="bu">tuple</span>[<span class="bu">str</span>, Scanner[ScannerInput]]]</span>
@@ -727,7 +727,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_resume_async">scan_resume_async</h3>
 <p>Resume a previous scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L265">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6d0db9a53cf7f7190b7eb097d80fece3e1c1b0a4/src/inspect_scout/_scan.py#L265">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_resume_async(scan_location: <span class="bu">str</span>, log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -746,7 +746,7 @@ Note
 <p>Complete a scan.</p>
 <p>This function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scan.py#L329">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6d0db9a53cf7f7190b7eb097d80fece3e1c1b0a4/src/inspect_scout/_scan.py#L329">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_complete_async(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>, log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span></span>
@@ -766,7 +766,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_list_async">scan_list_async</h3>
 <p>List completed and pending scans.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanlist.py#L19">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6d0db9a53cf7f7190b7eb097d80fece3e1c1b0a4/src/inspect_scout/_scanlist.py#L19">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_list_async(scans_location: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[Status]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -780,7 +780,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_status_async">scan_status_async</h3>
 <p>Status of scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanresults.py#L23">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6d0db9a53cf7f7190b7eb097d80fece3e1c1b0a4/src/inspect_scout/_scanresults.py#L23">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_status_async(scan_location: <span class="bu">str</span>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -794,7 +794,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_results_async">scan_results_async</h3>
 <p>Scan results as Pandas data frames.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanresults.py#L54">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6d0db9a53cf7f7190b7eb097d80fece3e1c1b0a4/src/inspect_scout/_scanresults.py#L54">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_results_async(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>, <span class="op">*</span>, scanner: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>, include_null: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
@@ -818,7 +818,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_results_db_async">scan_results_db_async</h3>
 <p>Scan results as DuckDB database.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/2a5fda0b05b78c0b0b9cbb2bbfcd61b2278c2f4b/src/inspect_scout/_scanresults.py#L86">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6d0db9a53cf7f7190b7eb097d80fece3e1c1b0a4/src/inspect_scout/_scanresults.py#L86">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_results_db_async(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>, include_null: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>

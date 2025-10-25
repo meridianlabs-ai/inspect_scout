@@ -21,8 +21,8 @@ from inspect_ai._util.registry import (
     registry_tag,
     registry_unqualified_name,
 )
-from inspect_ai.model import GenerateConfig, Model, ModelConfig
-from inspect_ai.model._util import resolve_model, resolve_model_roles
+from inspect_ai.model import GenerateConfig, Model, ModelConfig, get_model
+from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -124,7 +124,16 @@ class ScanJob:
         self._transcripts = transcripts
         self._name = name
         self._results = results
-        self._model = resolve_model(model)
+        self._model = (
+            get_model(
+                model,
+                config=generate_config or GenerateConfig(),
+                base_url=model_base_url,
+                **(model_args or {}),
+            )
+            if model is not None
+            else None
+        )
         self._model_base_url = model_base_url
         self._model_args = model_args
         self._generate_config = generate_config

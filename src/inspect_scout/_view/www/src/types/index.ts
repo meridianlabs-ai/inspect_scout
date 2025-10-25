@@ -8,7 +8,7 @@ export interface Scan {
 export interface Scanner {
     name: string;
     file: string;
-    params: Record<string, any>;
+    params: Record<string, unknown>;
 }
 
 export interface ScannerResultSummary{

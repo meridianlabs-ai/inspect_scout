@@ -1,16 +1,17 @@
-import React from "react";
+import { FC, useEffect } from "react";
+import { RouterProvider } from "react-router-dom";
+import { AppRouter } from "./AppRouter";
+import { ScanApi } from "./api/api";
+import { useStore } from "./store/store";
 
-export const App: React.FC = () => {
-  return (
-    <div className="container mt-5">
-      <div className="row">
-        <div className="col">
-          <h1 className="mb-4">
-            <i className="bi bi-search me-2"></i>
-            Inspect Scout
-          </h1>
-        </div>
-      </div>
-    </div>
-  );
+export interface AppProps {
+  api: ScanApi;
+}
+
+export const App: FC<AppProps> = ({api}) => {
+  useEffect(() => {
+    useStore.getState().setApi(api);
+  }, [api])
+
+  return <RouterProvider router={AppRouter} />;
 };

@@ -15,10 +15,9 @@ from inspect_ai._view.fastapi_server import (
 )
 from inspect_scout._display._display import display
 from inspect_scout._scanlist import scan_list_async
+from inspect_scout._scanresults import scan_results
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 from upath import UPath
-
-from inspect_scout._scanresults import scan_results
 
 
 class InspectPydanticJSONResponse(JSONResponse):
@@ -34,7 +33,7 @@ def view_server(
     host: str,
     port: int,
     authorization: str | None = None,
-    fs_options: dict[str, Any] = {},
+    fs_options: dict[str, Any] | None = None,
 ) -> None:
     # get filesystem and resolve scan_dir to full path
     fs = filesystem(results_dir)

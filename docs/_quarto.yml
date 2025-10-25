@@ -16,6 +16,7 @@ filters:
 
 website:
    title: "Inspect Scout"
+   description: "Transcript analysis for Inspect AI"
    bread-crumbs: true
    page-navigation: true
    repo-url: https://github.com/meridianlabs-ai/inspect_scout

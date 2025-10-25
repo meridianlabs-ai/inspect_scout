@@ -55,14 +55,14 @@ class ScanJobConfig(BaseModel):
     If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
     """
 
-    model_generate_config: GenerateConfig | None = Field(default=None)
-    """`GenerationConfig` for calls to the model."""
-
     model_base_url: str | None = Field(default=None)
     """Base URL for communicating with the model API."""
 
     model_args: dict[str, Any] | str | None = Field(default=None)
     """Model creation args (as a dictionary or as a path to a JSON or YAML config file)."""
+
+    generate_config: GenerateConfig | None = Field(default=None)
+    """`GenerationConfig` for calls to the model."""
 
     model_roles: dict[str, ModelConfig | str] | None = Field(default=None)
     """Named roles for use in `get_model()`."""
@@ -107,9 +107,9 @@ class ScanJob:
         | dict[str, Scanner[ScannerInput]],
         results: str | None = None,
         model: str | Model | None = None,
-        model_config: GenerateConfig | None = None,
         model_base_url: str | None = None,
         model_args: dict[str, Any] | None = None,
+        generate_config: GenerateConfig | None = None,
         model_roles: dict[str, str | Model] | None = None,
         max_transcripts: int | None = None,
         max_processes: int | None = None,
@@ -125,9 +125,9 @@ class ScanJob:
         self._name = name
         self._results = results
         self._model = resolve_model(model)
-        self._model_config = model_config
         self._model_base_url = model_base_url
         self._model_args = model_args
+        self._generate_config = generate_config
         self._model_roles = resolve_model_roles(model_roles)
         self._max_transcripts = max_transcripts
         self._max_processes = max_processes
@@ -215,11 +215,6 @@ class ScanJob:
         return self._model
 
     @property
-    def model_config(self) -> GenerateConfig | None:
-        """`GenerationConfig` for calls to the model."""
-        return self._model_config
-
-    @property
     def model_base_url(self) -> str | None:
         """Base URL for communicating with the model API."""
         return self._model_base_url
@@ -228,6 +223,11 @@ class ScanJob:
     def model_args(self) -> dict[str, Any] | None:
         """Model creation args (as a dictionary or as a path to a JSON or YAML config file)."""
         return self._model_args
+
+    @property
+    def generate_config(self) -> GenerateConfig | None:
+        """`GenerationConfig` for calls to the model."""
+        return self._generate_config
 
     @property
     def model_roles(self) -> dict[str, Model] | None:

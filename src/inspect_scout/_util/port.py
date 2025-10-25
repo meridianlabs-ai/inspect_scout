@@ -1,3 +1,17 @@
+import atexit
+import os
+from logging import getLogger
+from pathlib import Path
+
+import psutil
+from inspect_ai._util.error import exception_message
+from inspect_ai._view.notify import view_data_dir
+
+from inspect_scout._display._display import display
+
+logger = getLogger(__name__)
+
+
 def view_port_pid_file(port: int) -> Path:
     ports_dir = view_data_dir() / "ports"
     ports_dir.mkdir(parents=True, exist_ok=True)

@@ -141,7 +141,7 @@ def view_server_app(
         await _validate_read(request, scan_path)
 
         # read the results and return
-        result = scan_results(str(scan_path), include_null=True)
+        result = scan_results(str(scan_path))
         return InspectPydanticJSONResponse(
             content=result, media_type="application/json"
         )

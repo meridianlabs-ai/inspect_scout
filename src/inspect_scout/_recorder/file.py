@@ -170,7 +170,6 @@ class FileRecorder(ScanRecorder):
         scan_location: str,
         *,
         scanner: str | None = None,
-        include_null: bool = False,
     ) -> Results:
         import pyarrow.parquet as pq
         from upath import UPath
@@ -188,10 +187,6 @@ class FileRecorder(ScanRecorder):
 
                 # cast value column to appropriate type based on value_type
                 df = _cast_value_column(df)
-
-                # exclude nulls if requested
-                if not include_null:
-                    df = df[df["value"].notnull()]
 
                 # return
                 return df
@@ -221,9 +216,7 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def results_db(
-        scan_location: str, *, include_null: bool = False
-    ) -> ResultsDB:
+    async def results_db(scan_location: str) -> ResultsDB:
         from upath import UPath
 
         scan_dir = UPath(scan_location)
@@ -247,9 +240,8 @@ class FileRecorder(ScanRecorder):
             else:
                 select_clause = "SELECT *"
 
-            where_clause = "" if include_null else " WHERE value IS NOT NULL"
             conn.execute(
-                f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}'){where_clause}"
+                f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}')"
             )
 
         return ResultsDB(

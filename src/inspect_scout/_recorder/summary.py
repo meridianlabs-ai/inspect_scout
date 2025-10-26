@@ -46,9 +46,7 @@ class Summary(BaseModel):
         # aggregate over all results
         agg_results = ScannerSummary()
         for result in results:
-            agg_results.results += (
-                1 if result.result and result.result.value is not None else 0
-            )
+            agg_results.results += 1 if result.result and result.result.value else 0
             agg_results.errors += 1 if result.error is not None else 0
             agg_results.tokens += sum(
                 [usage.total_tokens for usage in result.model_usage.values()]

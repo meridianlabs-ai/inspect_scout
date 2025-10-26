@@ -407,8 +407,8 @@ async def _scan_async_inner(
         # set background task group for this coroutine (used by batching)
         set_background_task_group(tg)
 
-        transcripts = scan.transcripts
         # apply limits/shuffle
+        transcripts = scan.transcripts
         if scan.spec.options.limit is not None:
             transcripts = transcripts.limit(scan.spec.options.limit)
         if scan.spec.options.shuffle is not None:

@@ -30,7 +30,7 @@ def confusion() -> Scanner[Transcript]:
     async def scan(transcript: Transcript) -> Result:
 
         # call model
-        result = await get_model().generate(
+        output = await get_model().generate(
             "Here is a transcript of an LLM agent " +
             "solving a puzzle:\n\n" +
             "===================================" +
@@ -41,15 +41,9 @@ def confusion() -> Scanner[Transcript]:
             "or 'No', followed by an explanation."
         )
 
-        # extract value (None indicates nothing found)
-        if result.completion.lower().startswith("yes"):
-            value = True
-        else:
-            value = None 
-
         # return result (value + full model completion)
         return Result(
-            value=value,
+            value=output.completion.lower().startswith("yes"),
             explanation=result.completion
         )
 
@@ -271,7 +265,7 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
     async def scan(messages: list[ChatMessage]) -> Result:
         user, assistant = messages
         return Result(
-            value=True if is_refusal(assistant.text) else None, 
+            value=is_refusal(assistant.text), 
             explanation=messages_as_str(messages)
         )
 

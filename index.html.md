@@ -59,7 +59,7 @@ def ctf_environment() -> Scanner[Transcript]:
     async def scan(transcript: Transcript) -> Result:
 
         # call model
-        result = await get_model().generate(
+        output = await get_model().generate(
             "Here is a transcript of an LLM agent " +
             "solving a cybersecurity challenge:\n\n" +
             "===================================" +
@@ -73,15 +73,9 @@ def ctf_environment() -> Scanner[Transcript]:
             "explanation."
         )
 
-        # extract value (None indicates nothing found)
-        if result.completion.lower().startswith("yes"):
-            value = True
-        else:
-            value = None
-
         # return result (value + full model completion)
         return Result(
-            value=value,
+            value=output.completion.lower().startswith("yes"),
             explanation=result.completion
         )
 
@@ -101,26 +95,9 @@ specified in the top level call to scan).
 Lines 16-18  
 Convert the message history into a string for presentation to the model.
 
-Lines 27-31  
-Scanners are looking for particular content or behavior and by
-convention return a `None` value when the target isn’t found.
-
-Lines 34-37  
+Lines 28-31  
 As with scorers, results also include additional context (here the full
 model completion).
-
-> [!NOTE]
->
-> ### Scanner Results
->
-> One important concept illustrated above is handling of `Result` return
-> values from scanners. The nature of most scanners is that they are
-> looking for something in particular—if they don’t find it then their
-> return value is effectively `None` (nothing to see here). That said,
-> you may still want to capture contextual information about the scan
-> (e.g. the model’s output). Therefore, the convention is to return
-> `Result(value=None)` in cases where the scanner didn’t find what it
-> was looking for.
 
 ### Running a Scan
 
@@ -147,7 +124,7 @@ def java_tool_usages() -> Scanner[ToolEvent]:
                 explanation=str(event.arguments)
             )
         else:
-            return Result(value=None)
+            return Result(value=False)
        
     return scan
 ```

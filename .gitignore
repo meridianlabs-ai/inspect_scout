@@ -220,3 +220,6 @@ scans/
 **/.claude/settings.local.json
 
 /.luarc.json
+
+# node
+node_modules/

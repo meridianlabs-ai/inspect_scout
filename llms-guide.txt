@@ -733,17 +733,8 @@ def confusion() -> Scanner[Transcript]:
     
     async def scan(transcript: Transcript) -> Result:
 
-        # call model
-        output = await get_model().generate(
-            "Here is a transcript of an LLM agent " +
-            "solving a puzzle:\n\n" +
-            "===================================" +
-            messages_as_str(transcript.messages) +
-            "===================================\n\n" +
-            "In the transcript above do you see the agent " +
-            "becoming confused? Repond beginning with 'Yes' " +
-            "or 'No', followed by an explanation."
-        )
+        # model call eluded for brevity
+        output = get_model(...)
 
         # extract the first word
         match = re.match(r"^\w+", output.completion.strip())
@@ -762,10 +753,9 @@ def confusion() -> Scanner[Transcript]:
     return scan
 ```
 
-We can use this in Inspect `Task` as follows:
+We can use this directly in an Inspect `Task` as follows:
 
 ``` python
-
 from .scanners import confusion
 
 @task
@@ -774,6 +764,12 @@ def mytask():
         ...,
         scorer = confusion()
     )
+```
+
+We can also use it with the `inspect score` command:
+
+``` bash
+inspect score --scorer scanners.py@confusion <logfile.eval>
 ```
 
 The metrics used for the scorer will default to `accuracy()` and
@@ -785,9 +781,9 @@ The metrics used for the scorer will default to `accuracy()` and
 def confusion() -> Scanner[Transcript]: ...
 ```
 
-If you are interfacing with a library that expects only `Scorer`
-instances, you can also use the `as_scorer()` function from Inspect
-Scout to adapt your scanner:
+If you are interfacing with code that expects only `Scorer` instances,
+you can also use the `as_scorer()` function from Inspect Scout to
+explicitly convert your scanner to a scorer:
 
 ``` python
 from inspect_ai import eval

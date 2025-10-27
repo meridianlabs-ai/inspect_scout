@@ -24,7 +24,7 @@ def as_scorer(
     scanner: Scanner[Transcript],
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
-    | None,
+    | None = None,
 ) -> Scorer:
     """Convert a `Scanner` to an Inspect `Scorer`.
 

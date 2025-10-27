@@ -8,7 +8,7 @@ import {
   kScansRouteUrlPattern,
   kScanRouteUrlPattern,
 } from "./router/url";
-import { ScanList } from "./app/scans/ScanList";
+import { ScanList } from "./app/scan-list/ScanList";
 
 // Create a layout component that tracks route changes
 const AppLayout = () => {

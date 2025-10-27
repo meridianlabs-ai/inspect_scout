@@ -16,13 +16,13 @@ reference: "inspect_scout"
 
 ### messages_as_str
 
-
 ## Types
 
 ### MessageType
 ### EventType
 
-## Decorators
+## Registration
 
 ### scanner
 ### loader
+### as_scorer

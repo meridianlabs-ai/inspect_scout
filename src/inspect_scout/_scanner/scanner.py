@@ -7,8 +7,10 @@ from typing import (
     Awaitable,
     Callable,
     Literal,
+    Mapping,
     ParamSpec,
     Protocol,
+    Sequence,
     TypeVar,
     cast,
 )
@@ -29,6 +31,7 @@ from inspect_ai._util.registry import (
 )
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
+from inspect_ai.scorer import Metric
 from typing_extensions import overload
 
 from .._transcript.types import (
@@ -48,6 +51,7 @@ from .types import ScannerInput
 from .validate import infer_filters_from_type, validate_scanner_signature
 
 SCANNER_CONFIG = "scanner_config"
+SCANNER_METRICS = "scanner_metrics"
 
 SCANNER_FILE_ATTR = "___scanner_file___"
 
@@ -95,6 +99,9 @@ def scanner(
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, Transcript]], ScannerFactory[P, Transcript]]: ...
 @overload
 def scanner(
@@ -103,6 +110,9 @@ def scanner(
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, Transcript]], ScannerFactory[P, Transcript]]: ...
 @overload
 def scanner(
@@ -111,6 +121,9 @@ def scanner(
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, Transcript]], ScannerFactory[P, Transcript]]: ...
 @overload
 def scanner(
@@ -119,6 +132,9 @@ def scanner(
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, Transcript]], ScannerFactory[P, Transcript]]: ...
 
 
@@ -130,6 +146,9 @@ def scanner(
     events: None = ...,
     loader: Loader[list[ChatMessage]] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]: ...
 @overload
 def scanner(
@@ -138,6 +157,9 @@ def scanner(
     messages: None = ...,
     loader: Loader[list[Event]] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]: ...
 
 
@@ -149,6 +171,9 @@ def scanner(
     events: None = ...,
     loader: Loader[ChatMessage] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]: ...
 @overload
 def scanner(
@@ -157,6 +182,9 @@ def scanner(
     messages: None = ...,
     loader: Loader[Event] | None = ...,
     name: str | None = ...,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]: ...
 
 
@@ -173,6 +201,9 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
 ) -> Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]: ...
 
 
@@ -183,6 +214,9 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = None,
 ) -> (
     ScannerFactory[P, T]
     | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]
@@ -197,6 +231,8 @@ def scanner(
        messages: Message types to scan.
        events: Event types to scan.
        name: Scanner name (defaults to function name).
+       metrics: One or more metrics to calculate over the values
+           (only used if scanner is converted to a scorer via `as_scorer()`).
 
     Returns:
         Scanner with registry info.
@@ -280,7 +316,7 @@ def scanner(
                 RegistryInfo(
                     type="scanner",
                     name=scanner_name,
-                    metadata={SCANNER_CONFIG: scanner_config},
+                    metadata={SCANNER_CONFIG: scanner_config, SCANNER_METRICS: metrics},
                 ),
                 *args,
                 **kwargs,
@@ -299,8 +335,7 @@ def scanner(
         registry_add(
             scanner_factory_wrapper,
             RegistryInfo(
-                type="scanner",
-                name=scanner_name,
+                type="scanner", name=scanner_name, metadata={SCANNER_METRICS: metrics}
             ),
         )
         return scanner_factory_wrapper
@@ -310,6 +345,21 @@ def scanner(
 
 def config_for_scanner(scanner: Scanner[ScannerInput]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
+
+
+def metrics_for_scanner(
+    scanner: Scanner[Any],
+) -> (
+    Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None
+):
+    return cast(
+        Sequence[Metric | Mapping[str, Sequence[Metric]]]
+        | Mapping[str, Sequence[Metric]]
+        | None,
+        registry_info(scanner).metadata.get(SCANNER_METRICS, None),
+    )
 
 
 def scanners_from_file(

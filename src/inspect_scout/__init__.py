@@ -14,6 +14,7 @@ from ._scanlist import scan_list
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Reference, Result
 from ._scanner.scanner import Scanner, scanner
+from ._scanner.scorer import as_scorer
 from ._scanner.types import ScannerInput
 from ._scanner.util import messages_as_str
 from ._scanresults import (
@@ -92,6 +93,7 @@ __all__ = [
     "loader",
     "EventType",
     "MessageType",
+    "as_scorer",
     # version
     "__version__",
 ]

@@ -30,11 +30,19 @@ def confusion() -> Scanner[Transcript]:
             "or 'No', followed by an explanation."
         )
 
-        # return result (value + full model completion)
-        return Result(
-            value=output.completion.lower().startswith("yes"),
-            explanation=result.completion
-        )
+        # extract the first word
+        match = re.match(r"^\w+", output.completion.strip())
+
+        # return result
+        if match:
+            answer = match.group(0)
+            return Result(
+                value=answer.lower() == "yes",
+                answer=answer,
+                explanation=output.completion,
+            )
+        else:
+            return Result(value=False, explanation=output.completion)
 
     return scan
 ```
@@ -57,7 +65,7 @@ See the sections on [Transcripts](#transcripts), [Events](#events), [Messages](#
 
 One important principle of the Inspect Scout transcript pipeline is that only the precise data to be scanned should be read, and nothing more. This can dramatically improve performance as messages and events that won't be seen by scanners are never deserialized. Scanner input filters are specified as arguments to the `@scanner` decorator (you may have noticed the `messages="all"` attached to the scanner decorator in the example above).
 
-For example, here we are looking for instances of assistants swearing—for this task we only need to look at assistant messages so we specify `messages=["assistant"]`
+For example, here we are looking for instances of assistants swearing---for this task we only need to look at assistant messages so we specify `messages=["assistant"]`
 
 ``` python
 @scanner(messages=["assistant"])
@@ -70,7 +78,7 @@ def assistant_swearing() -> Scanner[Transcript]:
             for word in extract_swear_words(m.text)
         ]
         return Result(
-            value=swear_words if len(swear_words) > 0 else None,
+            value=len(swear_words),
             explanation=",".join(swear_words)
         )
 

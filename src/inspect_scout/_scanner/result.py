@@ -23,7 +23,10 @@ class Result(BaseModel):
     """Scan result."""
 
     value: JsonValue
-    """Scan value (can be `None` if the scan didn't find what is was looking for)."""
+    """Scan value."""
+
+    answer: str | None = Field(default=None)
+    """Answer extracted from model output (optional)"""
 
     explanation: str | None = Field(default=None)
     """Explanation of result (optional)."""

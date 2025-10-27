@@ -64,11 +64,19 @@ def ctf_environment() -> Scanner[Transcript]:
             "explanation."
         )
 
-        # return result (value + full model completion)
-        return Result( # <4> 
-            value=output.completion.lower().startswith("yes"), # <4> 
-            explanation=result.completion # <4> 
-        ) # <4> 
+        # extract the first word
+        match = re.match(r"^\w+", output.completion.strip())
+
+        # return result
+        if match:
+            answer = match.group(0)
+            return Result( # <4> 
+                value=answer.lower() == "yes", # <4> 
+                answer=answer, # <4> 
+                explanation=output.completion, # <4> 
+            ) # <4> 
+        else:
+            return Result(value=False, explanation=output.completion)
 
     return scan
 ```
@@ -79,7 +87,7 @@ def ctf_environment() -> Scanner[Transcript]:
 
 3.  Convert the message history into a string for presentation to the model.
 
-4.  As with scorers, results also include additional context (here the full model completion).
+4.  As with scorers, results also include additional context (here the extracted answer and full model completion).
 
 ### Running a Scan
 

@@ -73,11 +73,19 @@ def ctf_environment() -> Scanner[Transcript]:
             "explanation."
         )
 
-        # return result (value + full model completion)
-        return Result(
-            value=output.completion.lower().startswith("yes"),
-            explanation=result.completion
-        )
+        # extract the first word
+        match = re.match(r"^\w+", output.completion.strip())
+
+        # return result
+        if match:
+            answer = match.group(0)
+            return Result(
+                value=answer.lower() == "yes",
+                answer=answer,
+                explanation=output.completion,
+            )
+        else:
+            return Result(value=False, explanation=output.completion)
 
     return scan
 ```
@@ -95,9 +103,9 @@ specified in the top level call to scan).
 Lines 16-18  
 Convert the message history into a string for presentation to the model.
 
-Lines 28-31  
-As with scorers, results also include additional context (here the full
-model completion).
+Lines 33-37  
+As with scorers, results also include additional context (here the
+extracted answer and full model completion).
 
 ### Running a Scan
 
@@ -501,11 +509,19 @@ def confusion() -> Scanner[Transcript]:
             "or 'No', followed by an explanation."
         )
 
-        # return result (value + full model completion)
-        return Result(
-            value=output.completion.lower().startswith("yes"),
-            explanation=result.completion
-        )
+        # extract the first word
+        match = re.match(r"^\w+", output.completion.strip())
+
+        # return result
+        if match:
+            answer = match.group(0)
+            return Result(
+                value=answer.lower() == "yes",
+                answer=answer,
+                explanation=output.completion,
+            )
+        else:
+            return Result(value=False, explanation=output.completion)
 
     return scan
 ```
@@ -558,7 +574,7 @@ def assistant_swearing() -> Scanner[Transcript]:
             for word in extract_swear_words(m.text)
         ]
         return Result(
-            value=swear_words if len(swear_words) > 0 else None,
+            value=len(swear_words),
             explanation=",".join(swear_words)
         )
 

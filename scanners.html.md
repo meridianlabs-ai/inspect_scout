@@ -41,11 +41,19 @@ def confusion() -> Scanner[Transcript]:
             "or 'No', followed by an explanation."
         )
 
-        # return result (value + full model completion)
-        return Result(
-            value=output.completion.lower().startswith("yes"),
-            explanation=result.completion
-        )
+        # extract the first word
+        match = re.match(r"^\w+", output.completion.strip())
+
+        # return result
+        if match:
+            answer = match.group(0)
+            return Result(
+                value=answer.lower() == "yes",
+                answer=answer,
+                explanation=output.completion,
+            )
+        else:
+            return Result(value=False, explanation=output.completion)
 
     return scan
 ```
@@ -98,7 +106,7 @@ def assistant_swearing() -> Scanner[Transcript]:
             for word in extract_swear_words(m.text)
         ]
         return Result(
-            value=swear_words if len(swear_words) > 0 else None,
+            value=len(swear_words),
             explanation=",".join(swear_words)
         )
 

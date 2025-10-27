@@ -121,6 +121,8 @@ Note that we specify `events=["tool"]` to constrain reading to only tool events,
 
 If you add this scanner to the same source file as the `ctf_environment()` scanner then `scout scan` will run both of the scanners using the same `scout scan scanner.py` command,
 
+See the [Scanners](scanners.qmd) article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.
+
 ### Scan Jobs
 
 You may want to import scanners from other modules and compose them into a `ScanJob`. To do this, add a `@scanjob` decorated function to your source file (it will be used in preference to `@scanner` decorated functions).
@@ -187,6 +189,8 @@ with results:
     results.to_file("results.duckdb")
 ```
 
+See the [Results](results.qmd) article for more details on the columns available in the data frames returned by `scan_results()`.
+
 ### Handling Errors
 
 If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the `scan resume` command. For example:
@@ -198,6 +202,7 @@ scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
 If errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
 
 ![](images/scan-resume.png)
+
 
 
 ## Transcripts
@@ -226,6 +231,7 @@ Note that doing this query required us to switch to the Python `scan()` API. We 
 
 {{< include _scanjob-transcripts.md >}}
 
+See the article on [Transcripts](transcripts.qmd) to learn more about the various ways to read and filter transcripts.
 
 ## Parallelism
 

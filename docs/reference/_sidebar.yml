@@ -102,6 +102,8 @@ website:
           href: reference/scanner.qmd#scanner
         - text: loader
           href: reference/scanner.qmd#loader
+        - text: as_scorer
+          href: reference/scanner.qmd#as_scorer
       - section: async
         href: reference/async.qmd
         contents:

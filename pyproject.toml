@@ -17,7 +17,7 @@ dependencies = [
     "fastapi",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect-ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai.git",
+    "inspect-ai>=0.3.141",
     "jsonlines>=3.0.0",
     "jsonschema>3.1.1",
     "pandas>=2.0.0",

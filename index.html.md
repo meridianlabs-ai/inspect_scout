@@ -145,6 +145,10 @@ If you add this scanner to the same source file as the
 `ctf_environment()` scanner then `scout scan` will run both of the
 scanners using the same `scout scan scanner.py` command,
 
+See the [Scanners](scanners.qmd) article for more details on creating
+scanners, including how to write scanners that accept a variety of
+inputs and how to use scanners directly as Inspect scorers.
+
 ### Scan Jobs
 
 You may want to import scanners from other modules and compose them into
@@ -227,6 +231,9 @@ with results:
     results.to_file("results.duckdb")
 ```
 
+See the [Results](results.qmd) article for more details on the columns
+available in the data frames returned by `scan_results()`.
+
 ### Handling Errors
 
 If a scan job is interrupted either due to cancellation (Ctrl+C) or a
@@ -302,6 +309,9 @@ scout scan cybench.py -S logs=./logs --model openai/gpt-5
 
 The `-S` argument enables you to pass arguments to the `@scanjob`
 function (in this case determining what directory to read logs from).
+
+See the article on [Transcripts](transcripts.qmd) to learn more about
+the various ways to read and filter transcripts.
 
 ## Parallelism
 

@@ -145,6 +145,10 @@ If you add this scanner to the same source file as the
 `ctf_environment()` scanner then `scout scan` will run both of the
 scanners using the same `scout scan scanner.py` command,
 
+See the [Scanners](scanners.qmd) article for more details on creating
+scanners, including how to write scanners that accept a variety of
+inputs and how to use scanners directly as Inspect scorers.
+
 ### Scan Jobs
 
 You may want to import scanners from other modules and compose them into
@@ -227,6 +231,9 @@ with results:
     results.to_file("results.duckdb")
 ```
 
+See the [Results](results.qmd) article for more details on the columns
+available in the data frames returned by `scan_results()`.
+
 ### Handling Errors
 
 If a scan job is interrupted either due to cancellation (Ctrl+C) or a
@@ -302,6 +309,9 @@ scout scan cybench.py -S logs=./logs --model openai/gpt-5
 
 The `-S` argument enables you to pass arguments to the `@scanjob`
 function (in this case determining what directory to read logs from).
+
+See the article on [Transcripts](transcripts.qmd) to learn more about
+the various ways to read and filter transcripts.
 
 ## Parallelism
 
@@ -478,6 +488,9 @@ various types (`Transcript`, `Event`, or `ChatMessage`) as well as
 creating custom loaders which enable scanning of lists of events or
 messages.
 
+You can also use scanners directly as Inspect scorers (see [Scanners as
+Scorers](#scanners-as-scorers) for details).
+
 ## Scanner Basics
 
 A `Scanner` is a function that takes a `ScannerInput` (typically a
@@ -652,7 +665,7 @@ result = await get_model().generate(
 )
 ```
 
-## Events
+## Event Scanners
 
 To write a scanner that targets events, write a function that takes the
 event type(s) you want to process. For example, this scanner will see
@@ -680,7 +693,7 @@ def my_scanner() -> Scanner[ModelEvent | ToolEvent]:
     return scan
 ```
 
-## Messages
+## Message Scanners
 
 To write a scanner that targets messages, write a function that takes
 the message type(s) you want to process. For example, this scanner will
@@ -706,7 +719,87 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
     return scan
 ```
 
-## Loaders
+## Scanners as Scorers
+
+You have likely certainly that scanners are very simillar to Inspect
+[Scorers](https://inspect.aisi.org.uk/scorers.html). This is by design,
+and it is actually possible to use scanners directly as Inspect scorers.
+
+For example, for the `confusion()` scorer we implemented above:
+
+``` python
+@scanner(messages="all")
+def confusion() -> Scanner[Transcript]:
+    
+    async def scan(transcript: Transcript) -> Result:
+
+        # call model
+        output = await get_model().generate(
+            "Here is a transcript of an LLM agent " +
+            "solving a puzzle:\n\n" +
+            "===================================" +
+            messages_as_str(transcript.messages) +
+            "===================================\n\n" +
+            "In the transcript above do you see the agent " +
+            "becoming confused? Repond beginning with 'Yes' " +
+            "or 'No', followed by an explanation."
+        )
+
+        # extract the first word
+        match = re.match(r"^\w+", output.completion.strip())
+
+        # return result
+        if match:
+            answer = match.group(0)
+            return Result(
+                value=answer.lower() == "yes",
+                answer=answer,
+                explanation=output.completion,
+            )
+        else:
+            return Result(value=False, explanation=output.completion)
+
+    return scan
+```
+
+We can use this in Inspect `Task` as follows:
+
+``` python
+
+from .scanners import confusion
+
+@task
+def mytask():
+    return Task(
+        ...,
+        scorer = confusion()
+    )
+```
+
+The metrics used for the scorer will default to `accuracy()` and
+`stderr()`—however, you can also explicitly specify metrics on the
+`@scanner` decorator:
+
+``` python
+@scanner(messages="all", metrics=[accuracy(), bootstrap_stderr()])
+def confusion() -> Scanner[Transcript]: ...
+```
+
+If you are interfacing with a library that expects only `Scorer`
+instances, you can also use the `as_scorer()` function from Inspect
+Scout to adapt your scanner:
+
+``` python
+from inspect_ai import eval
+from inspect_scout import as_scorer
+
+from .mytasks import ctf_task
+from .scanners import confusion
+
+eval(ctf_task(scorer=as_scorer(confusion())))
+```
+
+## Custom Loaders
 
 When you want to process multiple discrete items from a `Transcript`
 this might not always fall neatly into single messages or events. For

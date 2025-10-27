@@ -424,6 +424,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Note that we specify <code>events=["tool"]</code> to constrain reading to only tool events, and that our function takes an individual event rather than a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>.</p>
 <p>If you add this scanner to the same source file as the <code>ctf_environment()</code> scanner then <code>scout scan</code> will run both of the scanners using the same <code>scout scan scanner.py</code> command,</p>
+<p>See the <a href="./scanners.html">Scanners</a> article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.</p>
 </section>
 <section id="scan-jobs" class="level3">
 <h3 class="anchored" data-anchor-id="scan-jobs">Scan Jobs</h3>
@@ -480,6 +481,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
 <span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="./results.html">Results</a> article for more details on the columns available in the data frames returned by <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results">scan_results()</a></span>.</p>
 </section>
 <section id="handling-errors" class="level3">
 <h3 class="anchored" data-anchor-id="handling-errors">Handling Errors</h3>
@@ -531,6 +533,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Then from the CLI:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The <code>-S</code> argument enables you to pass arguments to the <code>@scanjob</code> function (in this case determining what directory to read logs from).</p>
+<p>See the article on <a href="./transcripts.html">Transcripts</a> to learn more about the various ways to read and filter transcripts.</p>
 </section>
 <section id="parallelism" class="level2">
 <h2 class="anchored" data-anchor-id="parallelism">Parallelism</h2>

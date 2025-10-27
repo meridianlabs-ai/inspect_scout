@@ -7,7 +7,7 @@
 
 Scan transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/scanner.py#L67)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/scanner.py#L71)
 
 ``` python
 class Scanner(Protocol[T]):
@@ -21,7 +21,7 @@ Input to scan.
 
 Union of all valid scanner input types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/types.py#L11)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/types.py#L11)
 
 ``` python
 ScannerInput = Union[
@@ -37,7 +37,7 @@ ScannerInput = Union[
 
 Scan result.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/result.py#L22)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/result.py#L22)
 
 ``` python
 class Result(BaseModel)
@@ -64,7 +64,7 @@ References to relevant messages or events.
 
 Reference to scanned content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/result.py#L12)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/result.py#L12)
 
 ``` python
 class Reference(BaseModel)
@@ -82,7 +82,7 @@ Reference id (message or event id)
 
 Scan error (runtime error which occurred during scan).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/result.py#L41)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/result.py#L41)
 
 ``` python
 class Error(BaseModel)
@@ -106,7 +106,7 @@ Error traceback.
 
 Load transcript data.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/loader.py#L44)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/loader.py#L44)
 
 ``` python
 class Loader(Protocol[TLoaderResult]):
@@ -125,7 +125,7 @@ Transcript to yield from.
 
 Concatenate list of chat messages into a string.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/util.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/util.py#L15)
 
 ``` python
 def messages_as_str(messages: list[ChatMessage]) -> str
@@ -140,7 +140,7 @@ List of chat messages
 
 Message types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_transcript/types.py#L10)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_transcript/types.py#L10)
 
 ``` python
 MessageType = Literal["system", "user", "assistant", "tool"]
@@ -150,7 +150,7 @@ MessageType = Literal["system", "user", "assistant", "tool"]
 
 Event types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_transcript/types.py#L13)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_transcript/types.py#L13)
 
 ``` python
 EventType = Literal[
@@ -166,13 +166,13 @@ EventType = Literal[
 ]
 ```
 
-## Decorators
+## Registration
 
 ### scanner
 
 Decorator for registering scanners.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/scanner.py#L179)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/scanner.py#L210)
 
 ``` python
 def scanner(
@@ -182,6 +182,9 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = None,
 ) -> (
     ScannerFactory[P, T]
     | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]
@@ -205,11 +208,15 @@ Event types to scan.
 `name` str \| None  
 Scanner name (defaults to function name).
 
+`metrics` Sequence\[Metric \| Mapping\[str, Sequence\[Metric\]\]\] \| Mapping\[str, Sequence\[Metric\]\] \| None  
+One or more metrics to calculate over the values (only used if scanner
+is converted to a scorer via `as_scorer()`).
+
 ### loader
 
 Decorator for registering loaders.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0311ccc9e08e83d2b4a50dca3f6c3154d8b83141/src/inspect_scout/_scanner/loader.py#L67)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/loader.py#L67)
 
 ``` python
 def loader(
@@ -232,3 +239,25 @@ Event types to load from.
 
 `content` TranscriptContent \| None  
 Transcript content filter.
+
+### as_scorer
+
+Convert a `Scanner` to an Inspect `Scorer`.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/eb252382b119008d195b0e501b7c3341aa0750b3/src/inspect_scout/_scanner/scorer.py#L23)
+
+``` python
+def as_scorer(
+    scanner: Scanner[Transcript],
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = None,
+) -> Scorer
+```
+
+`scanner` [Scanner](scanner.qmd#scanner)\[[Transcript](transcript.qmd#transcript)\]  
+Scanner to convert (must take a `Transcript`).
+
+`metrics` Sequence\[Metric \| Mapping\[str, Sequence\[Metric\]\]\] \| Mapping\[str, Sequence\[Metric\]\] \| None  
+Metrics for scorer. Defaults to `metrics` specified on the `@scanner`
+decorator (or `[accuracy(), stderr()]` if none were specified).

@@ -1,6 +1,7 @@
 from functools import reduce
 from typing import Iterable
 
+from inspect_ai.analysis._dataframe.extract import message_as_str
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
@@ -8,19 +9,11 @@ from inspect_ai.model import (
     get_model,
 )
 
-from inspect_scout import (
-    Result,
-    Scanner,
-    scanner,
-)
-
+from .. import Result, Scanner, scanner
 from .._scanner.util import _message_id
 from .._transcript.types import Transcript
 from ._answer import answer_prompt_prefix_suffix, result_for_answer
 from ._types import AnswerType, Preprocessor
-
-deception_answer = AnswerType(type="bool")
-
 
 DEFAULT_SCANNER_TEMPLATE = """
 Here is an LLM conversation:
@@ -30,15 +23,12 @@ Here is an LLM conversation:
 ===================================
 
 {answer_prompt}
-
-Your explanation should include the appropriate message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
 """
 
 answer_text = """
 Your response should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to. The last line of your response should be of the following format:"""
 
 
-# TODO: How shall we specify the messages filter
 @scanner(messages="all")
 def llm_scanner(
     prompt: str,
@@ -47,8 +37,30 @@ def llm_scanner(
     model: str | Model | None = None,
     preprocessor: Preprocessor | None = None,
 ) -> Scanner[Transcript]:
-    # if model is None:
-    #     model = os.getenv("SCOUT_SCAN_MODEL", None)
+    """Create a scanner that uses an LLM to scan transcripts.
+
+    This scanner presents a conversation transcript to an LLM along with a custom
+    prompt and answer specification, enabling automated analysis of conversations
+    for specific patterns, behaviors, or outcomes.
+
+    Args:
+        prompt: The question or instruction to provide to the scanner LLM about
+            what to analyze in the conversation (e.g., "Did the assistant refuse
+            the request?")
+        answer: Specification of the expected answer format - can be a string for
+            direct answers, a list of strings for classification, or bool for yes/no questions
+        scanner_template: Optional custom template for formatting the prompt. Must
+            include {messages} and {answer_prompt} placeholders. Defaults to DEFAULT_SCANNER_TEMPLATE
+        model: Optional model specification - can be a model name string or Model
+            instance. If None, uses the default model
+        preprocessor: Optional Preprocessor to filter conversation messages before
+            analysis. Controls exclusion of system messages, reasoning tokens, and
+            tool calls. Defaults to no filtering
+
+    Returns:
+        A Scanner function that analyzes Transcript instances and returns Results based
+        on the LLM's assessment according to the specified prompt and answer format
+    """
     if preprocessor is None:
         preprocessor = Preprocessor()
     if scanner_template is None:
@@ -62,7 +74,6 @@ def llm_scanner(
         filtered_messages = _filter_messages(transcript.messages, preprocessor)
         message_id_map = [_message_id(msg) for msg in filtered_messages]
 
-        # Format messages with 1-based local IDs prepended
         resolved_prompt = scanner_template.format(
             messages=_messages_with_ids(filtered_messages),
             prompt=prompt,
@@ -85,14 +96,10 @@ def _messages_with_ids(messages: list[ChatMessage]) -> str:
     Returns:
         Formatted string with each message prefixed by [Message N] where N is 1-based
     """
-    from inspect_ai.analysis._dataframe.extract import message_as_str
-
-    formatted_messages = []
-    for idx, message in enumerate(messages, start=1):
-        message_str = message_as_str(message)
-        formatted_messages.append(f"[M{idx}] {message_str}")
-
-    return "\n\n".join(formatted_messages)
+    return "\n".join(
+        f"[M{idx}] {message_as_str(message)}"
+        for idx, message in enumerate(messages, start=1)
+    )
 
 
 def _filter_messages(

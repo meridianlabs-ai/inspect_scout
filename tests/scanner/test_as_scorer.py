@@ -13,7 +13,14 @@ def my_scanner() -> Scanner[Transcript]:
     return scan
 
 
-def test_scanner_as_scorer() -> None:
+def test_scanner_as_scorer_explicit() -> None:
     task = Task(scorer=as_scorer(my_scanner()))
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
+
+
+# comment out until we can depend on a more recent version of inspect
+# def test_scanner_as_scorer_implicit() -> None:
+#     task = Task(scorer=my_scanner())
+#     log = eval(tasks=task, model="mockllm/model")[0]
+#     assert log.status == "success"

@@ -36,7 +36,7 @@ def view_server(
     fs_options: dict[str, Any] | None = None,
 ) -> None:
     # get filesystem and resolve scan_dir to full path
-    fs = filesystem(results_dir)
+    fs = filesystem(results_dir, fs_options=fs_options or {})
     if not fs.exists(results_dir):
         fs.mkdir(results_dir, True)
     results_dir = fs.info(results_dir).name

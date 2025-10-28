@@ -16,6 +16,7 @@ from inspect_ai._view.fastapi_server import (
 from inspect_scout._display._display import display
 from inspect_scout._scanlist import scan_list_async
 from inspect_scout._scanresults import scan_results
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 from upath import UPath
 
@@ -42,8 +43,13 @@ def view_server(
     results_dir = fs.info(results_dir).name
 
     api = view_server_app(
-        access_policy=OnlyDirAccessPolicy(results_dir), results_dir=results_dir, fs=fs
+        access_policy=OnlyDirAccessPolicy(results_dir) if not authorization else None,
+        results_dir=results_dir,
+        fs=fs,
     )
+
+    if authorization:
+        api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
     app = FastAPI()
     app.mount("/api", api)
@@ -148,3 +154,17 @@ def view_server_app(
         )
 
     return app
+
+
+class AuthorizationMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: Any, authorization: str) -> None:
+        super().__init__(app)
+        self.authorization = authorization
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        auth_header = request.headers.get("authorization", None)
+        if auth_header != self.authorization:
+            return Response("Unauthorized", status_code=401)
+        return await call_next(request)

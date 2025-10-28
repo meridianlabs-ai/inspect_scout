@@ -129,7 +129,7 @@ def view_server_app(
         )
 
     # location is expected to be a path relative to the results_dir
-    @app.get("/scan/{location}")
+    @app.get("/scan/{location:path}")
     async def scan(request: Request, location: str) -> Response:
         validated_results_dir = _ensure_not_none(results_dir, "results_dir is required")
 

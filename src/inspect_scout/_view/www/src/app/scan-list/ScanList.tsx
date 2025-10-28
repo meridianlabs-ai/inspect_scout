@@ -22,7 +22,7 @@ export const ScanList: FC = () => {
 
   return (
     <>
-      <Navbar />
+      <Navbar bordered={false}/>
       <ExtendedFindProvider>
         <ScansGrid />
       </ExtendedFindProvider>

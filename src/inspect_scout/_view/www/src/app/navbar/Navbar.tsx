@@ -1,38 +1,38 @@
-import clsx from "clsx";
-import { FC, Fragment, ReactNode, useMemo, useRef } from "react";
-import { Link, useParams } from "react-router-dom";
+import clsx from 'clsx';
+import { FC, Fragment, ReactNode, useMemo, useRef } from 'react';
+import { Link, useParams } from 'react-router-dom';
 
-import { basename, dirname, ensureTrailingSlash } from "../../utils/path";
-import { prettyDirUri } from "../../utils/uri";
-import styles from "./Navbar.module.css";
-import { useStore } from "../../state/store";
-import { getRelativePathFromParams, scansRoute } from "../../router/url";
-import { useBreadcrumbTruncation } from "./useBreadcrumbTruncation";
-import { Icons } from "../theme/icons";
+import { basename, dirname, ensureTrailingSlash } from '../../utils/path';
+import { prettyDirUri } from '../../utils/uri';
+import styles from './Navbar.module.css';
+import { useStore } from '../../state/store';
+import { getRelativePathFromParams, scansRoute } from '../../router/url';
+import { useBreadcrumbTruncation } from './useBreadcrumbTruncation';
+import { Icons } from '../theme/icons';
 
 interface NavbarProps {
   children?: ReactNode;
+  bordered?: boolean;
 }
 
-export const Navbar: FC<NavbarProps> = ({ children }) => {
-
+export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
   const resultsDir = useStore((state) => state.resultsDir);
-  const baseResultsDir = dirname(resultsDir || "");
-  const baseResultsName = basename(resultsDir || "");
+  const baseResultsDir = dirname(resultsDir || '');
+  const baseResultsName = basename(resultsDir || '');
 
-  const params = useParams<{ "*": string }>();
+  const params = useParams<{ '*': string }>();
   const currentPath = getRelativePathFromParams(params);
 
   const pathContainerRef = useRef<HTMLDivElement>(null);
-  const backUrl = scansRoute(ensureTrailingSlash(dirname(currentPath || "")));
+  const backUrl = scansRoute(ensureTrailingSlash(dirname(currentPath || '')));
 
   const segments = useMemo(() => {
-    const pathSegments = currentPath ? currentPath.split("/") : [];
+    const pathSegments = currentPath ? currentPath.split('/') : [];
     const dirSegments: Array<{ text: string; url: string }> = [];
     const currentSegment = [];
     for (const pathSegment of pathSegments) {
       currentSegment.push(pathSegment);
-      const segmentUrl = scansRoute(currentSegment.join("/"));
+      const segmentUrl = scansRoute(currentSegment.join('/'));
       dirSegments.push({
         text: pathSegment,
         url: segmentUrl,
@@ -41,19 +41,24 @@ export const Navbar: FC<NavbarProps> = ({ children }) => {
 
     return [
       { text: prettyDirUri(baseResultsDir) },
-      { text: baseResultsName, url: scansRoute()},
+      { text: baseResultsName, url: scansRoute() },
       ...dirSegments,
     ];
   }, [baseResultsDir, baseResultsName, currentPath]);
 
   const { visibleSegments, showEllipsis } = useBreadcrumbTruncation(
     segments,
-    pathContainerRef,
+    pathContainerRef
   );
 
   return (
     <nav
-      className={clsx("text-size-smaller", "header-nav", styles.header)}
+      className={clsx(
+        'text-size-smaller',
+        'header-nav',
+        styles.header,
+        bordered ? styles.bordered : undefined
+      )}
       aria-label="breadcrumb"
       data-unsearchable={true}
     >
@@ -72,7 +77,7 @@ export const Navbar: FC<NavbarProps> = ({ children }) => {
         </Link>
         <div className={clsx(styles.pathContainer)} ref={pathContainerRef}>
           {resultsDir ? (
-            <ol className={clsx("breadcrumb", styles.breadcrumbs)}>
+            <ol className={clsx('breadcrumb', styles.breadcrumbs)}>
               {visibleSegments?.map((segment, index) => {
                 const isLast = index === visibleSegments.length - 1;
                 const shouldShowEllipsis =
@@ -81,15 +86,15 @@ export const Navbar: FC<NavbarProps> = ({ children }) => {
                 return (
                   <Fragment key={index}>
                     {shouldShowEllipsis && (
-                      <li className={clsx("breadcrumb-item", styles.ellipsis)}>
+                      <li className={clsx('breadcrumb-item', styles.ellipsis)}>
                         <span>...</span>
                       </li>
                     )}
                     <li
                       className={clsx(
                         styles.pathLink,
-                        "breadcrumb-item",
-                        isLast ? "active" : undefined,
+                        'breadcrumb-item',
+                        isLast ? 'active' : undefined
                       )}
                     >
                       {segment.url ? (
@@ -105,7 +110,7 @@ export const Navbar: FC<NavbarProps> = ({ children }) => {
               })}
             </ol>
           ) : (
-            ""
+            ''
           )}
         </div>
       </div>

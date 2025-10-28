@@ -19622,15 +19622,17 @@ const prettyDirUri = (uri) => {
     return uri;
   }
 };
-const header = "_header_tryin_1";
-const breadcrumbs = "_breadcrumbs_tryin_12";
-const ellipsis = "_ellipsis_tryin_23";
-const left = "_left_tryin_28";
-const right = "_right_tryin_38";
-const toolbarButton = "_toolbarButton_tryin_47";
-const pathContainer = "_pathContainer_tryin_55";
+const header = "_header_wkjps_1";
+const bordered = "_bordered_wkjps_11";
+const breadcrumbs = "_breadcrumbs_wkjps_15";
+const ellipsis = "_ellipsis_wkjps_26";
+const left = "_left_wkjps_31";
+const right = "_right_wkjps_41";
+const toolbarButton = "_toolbarButton_wkjps_50";
+const pathContainer = "_pathContainer_wkjps_58";
 const styles$1 = {
   header,
+  bordered,
   breadcrumbs,
   ellipsis,
   left,
@@ -19725,7 +19727,7 @@ const Icons = {
   back: "bi bi-arrow-left",
   home: "bi bi-house"
 };
-const Navbar = ({ children }) => {
+const Navbar = ({ bordered: bordered2 = true, children }) => {
   const resultsDir = useStore((state) => state.resultsDir);
   const baseResultsDir = dirname(resultsDir || "");
   const baseResultsName = basename(resultsDir || "");
@@ -19758,7 +19760,12 @@ const Navbar = ({ children }) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "nav",
     {
-      className: clsx("text-size-smaller", "header-nav", styles$1.header),
+      className: clsx(
+        "text-size-smaller",
+        "header-nav",
+        styles$1.header,
+        bordered2 ? styles$1.bordered : void 0
+      ),
       "aria-label": "breadcrumb",
       "data-unsearchable": true,
       children: [
@@ -76807,7 +76814,7 @@ const ScanList = () => {
     void fetchScans();
   }, [api2, setScans, setResultsDir]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, { bordered: false }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ExtendedFindProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScansGrid, {}) })
   ] });
 };

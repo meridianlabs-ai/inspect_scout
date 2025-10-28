@@ -40,6 +40,7 @@ from ._transcript.types import (
     Transcript,
     TranscriptInfo,
 )
+from .llm_scanner import AnswerType, Preprocessor, llm_scanner
 
 try:
     from ._version import __version__
@@ -94,6 +95,10 @@ __all__ = [
     "EventType",
     "MessageType",
     "as_scorer",
+    # llm_scanner
+    "llm_scanner",
+    "Preprocessor",
+    "AnswerType",
     # version
     "__version__",
 ]

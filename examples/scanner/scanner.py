@@ -12,8 +12,7 @@ from inspect_scout import (
 )
 from inspect_scout._scanjob import ScanJob, scanjob
 from inspect_scout._transcript.types import Transcript
-from inspect_scout.scanners._types import AnswerType
-from inspect_scout.scanners.llm_scanner import llm_scanner
+from inspect_scout.llm_scanner import AnswerType, llm_scanner
 from rich import print
 
 

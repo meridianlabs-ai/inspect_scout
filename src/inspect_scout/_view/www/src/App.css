@@ -185,6 +185,11 @@ body[class^="vscode-"] {
   --inspect-glass-opacity: 0.15;
 }
 
+body {
+    --ag-background-color: var(--bs-body-bg);
+    --ag-foreground-color: var(--bs-body-color);
+}
+
 html.vscode {
   font-size: 13px;
 }

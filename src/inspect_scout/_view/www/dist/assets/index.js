@@ -47,9 +47,9 @@ function requireReactJsxRuntime_production() {
   hasRequiredReactJsxRuntime_production = 1;
   var REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
   function jsxProd(type, config, maybeKey) {
-    var key = null;
-    void 0 !== maybeKey && (key = "" + maybeKey);
-    void 0 !== config.key && (key = "" + config.key);
+    var key2 = null;
+    void 0 !== maybeKey && (key2 = "" + maybeKey);
+    void 0 !== config.key && (key2 = "" + config.key);
     if ("key" in config) {
       maybeKey = {};
       for (var propName in config)
@@ -59,7 +59,7 @@ function requireReactJsxRuntime_production() {
     return {
       $$typeof: REACT_ELEMENT_TYPE,
       type,
-      key,
+      key: key2,
       ref: void 0 !== config ? config : null,
       props: maybeKey
     };
@@ -97,7 +97,7 @@ function requireScheduler_production() {
   if (hasRequiredScheduler_production) return scheduler_production;
   hasRequiredScheduler_production = 1;
   (function(exports) {
-    function push(heap, node) {
+    function push2(heap, node) {
       var index = heap.length;
       heap.push(node);
       a: for (; 0 < index; ) {
@@ -110,7 +110,7 @@ function requireScheduler_production() {
     function peek2(heap) {
       return 0 === heap.length ? null : heap[0];
     }
-    function pop(heap) {
+    function pop2(heap) {
       if (0 === heap.length) return null;
       var first = heap[0], last = heap.pop();
       if (last !== first) {
@@ -145,9 +145,9 @@ function requireScheduler_production() {
     var taskQueue = [], timerQueue = [], taskIdCounter = 1, currentTask = null, currentPriorityLevel = 3, isPerformingWork = false, isHostCallbackScheduled = false, isHostTimeoutScheduled = false, needsPaint = false, localSetTimeout = "function" === typeof setTimeout ? setTimeout : null, localClearTimeout = "function" === typeof clearTimeout ? clearTimeout : null, localSetImmediate = "undefined" !== typeof setImmediate ? setImmediate : null;
     function advanceTimers(currentTime) {
       for (var timer = peek2(timerQueue); null !== timer; ) {
-        if (null === timer.callback) pop(timerQueue);
+        if (null === timer.callback) pop2(timerQueue);
         else if (timer.startTime <= currentTime)
-          pop(timerQueue), timer.sortIndex = timer.expirationTime, push(taskQueue, timer);
+          pop2(timerQueue), timer.sortIndex = timer.expirationTime, push2(taskQueue, timer);
         else break;
         timer = peek2(timerQueue);
       }
@@ -197,9 +197,9 @@ function requireScheduler_production() {
                       hasMoreWork = true;
                       break b;
                     }
-                    currentTask === peek2(taskQueue) && pop(taskQueue);
+                    currentTask === peek2(taskQueue) && pop2(taskQueue);
                     advanceTimers(currentTime);
-                  } else pop(taskQueue);
+                  } else pop2(taskQueue);
                   currentTask = peek2(taskQueue);
                 }
                 if (null !== currentTask) hasMoreWork = true;
@@ -328,7 +328,7 @@ function requireScheduler_production() {
         expirationTime: timeout,
         sortIndex: -1
       };
-      options > currentTime ? (priorityLevel.sortIndex = options, push(timerQueue, priorityLevel), null === peek2(taskQueue) && priorityLevel === peek2(timerQueue) && (isHostTimeoutScheduled ? (localClearTimeout(taskTimeoutID), taskTimeoutID = -1) : isHostTimeoutScheduled = true, requestHostTimeout(handleTimeout, options - currentTime))) : (priorityLevel.sortIndex = timeout, push(taskQueue, priorityLevel), isHostCallbackScheduled || isPerformingWork || (isHostCallbackScheduled = true, isMessageLoopRunning || (isMessageLoopRunning = true, schedulePerformWorkUntilDeadline())));
+      options > currentTime ? (priorityLevel.sortIndex = options, push2(timerQueue, priorityLevel), null === peek2(taskQueue) && priorityLevel === peek2(timerQueue) && (isHostTimeoutScheduled ? (localClearTimeout(taskTimeoutID), taskTimeoutID = -1) : isHostTimeoutScheduled = true, requestHostTimeout(handleTimeout, options - currentTime))) : (priorityLevel.sortIndex = timeout, push2(taskQueue, priorityLevel), isHostCallbackScheduled || isPerformingWork || (isHostCallbackScheduled = true, isMessageLoopRunning || (isMessageLoopRunning = true, schedulePerformWorkUntilDeadline())));
       return priorityLevel;
     };
     exports.unstable_shouldYield = shouldYieldToHost;
@@ -422,12 +422,12 @@ function requireReact_production() {
   function noop() {
   }
   var ReactSharedInternals = { H: null, A: null, T: null, S: null }, hasOwnProperty = Object.prototype.hasOwnProperty;
-  function ReactElement(type, key, props) {
+  function ReactElement(type, key2, props) {
     var refProp = props.ref;
     return {
       $$typeof: REACT_ELEMENT_TYPE,
       type,
-      key,
+      key: key2,
       ref: void 0 !== refProp ? refProp : null,
       props
     };
@@ -438,15 +438,15 @@ function requireReact_production() {
   function isValidElement(object) {
     return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
   }
-  function escape(key) {
+  function escape2(key2) {
     var escaperLookup = { "=": "=0", ":": "=2" };
-    return "$" + key.replace(/[=:]/g, function(match) {
+    return "$" + key2.replace(/[=:]/g, function(match) {
       return escaperLookup[match];
     });
   }
   var userProvidedKeyEscapeRegex = /\/+/g;
   function getElementKey(element, index) {
-    return "object" === typeof element && null !== element && null != element.key ? escape("" + element.key) : index.toString(36);
+    return "object" === typeof element && null !== element && null != element.key ? escape2("" + element.key) : index.toString(36);
   }
   function resolveThenable(thenable) {
     switch (thenable.status) {
@@ -500,8 +500,8 @@ function requireReact_production() {
           }
       }
     if (invokeCallback)
-      return callback = callback(children), invokeCallback = "" === nameSoFar ? "." + getElementKey(children, 0) : nameSoFar, isArrayImpl(callback) ? (escapedPrefix = "", null != invokeCallback && (escapedPrefix = invokeCallback.replace(userProvidedKeyEscapeRegex, "$&/") + "/"), mapIntoArray(callback, array, escapedPrefix, "", function(c) {
-        return c;
+      return callback = callback(children), invokeCallback = "" === nameSoFar ? "." + getElementKey(children, 0) : nameSoFar, isArrayImpl(callback) ? (escapedPrefix = "", null != invokeCallback && (escapedPrefix = invokeCallback.replace(userProvidedKeyEscapeRegex, "$&/") + "/"), mapIntoArray(callback, array, escapedPrefix, "", function(c2) {
+        return c2;
       })) : null != callback && (isValidElement(callback) && (callback = cloneAndReplaceKey(
         callback,
         escapedPrefix + (null == callback.key || children && children.key === callback.key ? "" : ("" + callback.key).replace(
@@ -645,9 +645,9 @@ function requireReact_production() {
       throw Error(
         "The argument must be a React element, but you passed " + element + "."
       );
-    var props = assign({}, element.props), key = element.key;
+    var props = assign({}, element.props), key2 = element.key;
     if (null != config)
-      for (propName in void 0 !== config.key && (key = "" + config.key), config)
+      for (propName in void 0 !== config.key && (key2 = "" + config.key), config)
         !hasOwnProperty.call(config, propName) || "key" === propName || "__self" === propName || "__source" === propName || "ref" === propName && void 0 === config.ref || (props[propName] = config[propName]);
     var propName = arguments.length - 2;
     if (1 === propName) props.children = children;
@@ -656,7 +656,7 @@ function requireReact_production() {
         childArray[i] = arguments[i + 2];
       props.children = childArray;
     }
-    return ReactElement(element.type, key, props);
+    return ReactElement(element.type, key2, props);
   };
   react_production.createContext = function(defaultValue) {
     defaultValue = {
@@ -675,9 +675,9 @@ function requireReact_production() {
     return defaultValue;
   };
   react_production.createElement = function(type, config, children) {
-    var propName, props = {}, key = null;
+    var propName, props = {}, key2 = null;
     if (null != config)
-      for (propName in void 0 !== config.key && (key = "" + config.key), config)
+      for (propName in void 0 !== config.key && (key2 = "" + config.key), config)
         hasOwnProperty.call(config, propName) && "key" !== propName && "__self" !== propName && "__source" !== propName && (props[propName] = config[propName]);
     var childrenLength = arguments.length - 2;
     if (1 === childrenLength) props.children = children;
@@ -689,7 +689,7 @@ function requireReact_production() {
     if (type && type.defaultProps)
       for (propName in childrenLength = type.defaultProps, childrenLength)
         void 0 === props[propName] && (props[propName] = childrenLength[propName]);
-    return ReactElement(type, key, props);
+    return ReactElement(type, key2, props);
   };
   react_production.createRef = function() {
     return { current: null };
@@ -845,10 +845,10 @@ function requireReactDom_production() {
     findDOMNode: null
   }, REACT_PORTAL_TYPE = Symbol.for("react.portal");
   function createPortal$1(children, containerInfo, implementation) {
-    var key = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
+    var key2 = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
     return {
       $$typeof: REACT_PORTAL_TYPE,
-      key: null == key ? null : "" + key,
+      key: null == key2 ? null : "" + key2,
       children,
       containerInfo,
       implementation
@@ -862,10 +862,10 @@ function requireReactDom_production() {
   }
   reactDom_production.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = Internals;
   reactDom_production.createPortal = function(children, container2) {
-    var key = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
+    var key2 = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
     if (!container2 || 1 !== container2.nodeType && 9 !== container2.nodeType && 11 !== container2.nodeType)
       throw Error(formatProdErrorMessage(299));
-    return createPortal$1(children, container2, null, key);
+    return createPortal$1(children, container2, null, key2);
   };
   reactDom_production.flushSync = function(fn) {
     var previousTransition = ReactSharedInternals.T, previousUpdatePriority = Internals.p;
@@ -1176,19 +1176,19 @@ function requireReactDomClient_production() {
   function createCursor(defaultValue) {
     return { current: defaultValue };
   }
-  function pop(cursor) {
+  function pop2(cursor) {
     0 > index || (cursor.current = valueStack[index], valueStack[index] = null, index--);
   }
-  function push(cursor, value) {
+  function push2(cursor, value) {
     index++;
     valueStack[index] = cursor.current;
     cursor.current = value;
   }
   var contextStackCursor = createCursor(null), contextFiberStackCursor = createCursor(null), rootInstanceStackCursor = createCursor(null), hostTransitionProviderCursor = createCursor(null);
   function pushHostContainer(fiber, nextRootInstance) {
-    push(rootInstanceStackCursor, nextRootInstance);
-    push(contextFiberStackCursor, fiber);
-    push(contextStackCursor, null);
+    push2(rootInstanceStackCursor, nextRootInstance);
+    push2(contextFiberStackCursor, fiber);
+    push2(contextStackCursor, null);
     switch (nextRootInstance.nodeType) {
       case 9:
       case 11:
@@ -1209,23 +1209,23 @@ function requireReactDomClient_production() {
               fiber = 0;
           }
     }
-    pop(contextStackCursor);
-    push(contextStackCursor, fiber);
+    pop2(contextStackCursor);
+    push2(contextStackCursor, fiber);
   }
   function popHostContainer() {
-    pop(contextStackCursor);
-    pop(contextFiberStackCursor);
-    pop(rootInstanceStackCursor);
+    pop2(contextStackCursor);
+    pop2(contextFiberStackCursor);
+    pop2(rootInstanceStackCursor);
   }
   function pushHostContext(fiber) {
-    null !== fiber.memoizedState && push(hostTransitionProviderCursor, fiber);
+    null !== fiber.memoizedState && push2(hostTransitionProviderCursor, fiber);
     var context = contextStackCursor.current;
     var JSCompiler_inline_result = getChildHostContextProd(context, fiber.type);
-    context !== JSCompiler_inline_result && (push(contextFiberStackCursor, fiber), push(contextStackCursor, JSCompiler_inline_result));
+    context !== JSCompiler_inline_result && (push2(contextFiberStackCursor, fiber), push2(contextStackCursor, JSCompiler_inline_result));
   }
   function popHostContext(fiber) {
-    contextFiberStackCursor.current === fiber && (pop(contextStackCursor), pop(contextFiberStackCursor));
-    hostTransitionProviderCursor.current === fiber && (pop(hostTransitionProviderCursor), HostTransitionContext._currentValue = sharedNotPendingObject);
+    contextFiberStackCursor.current === fiber && (pop2(contextStackCursor), pop2(contextFiberStackCursor));
+    hostTransitionProviderCursor.current === fiber && (pop2(hostTransitionProviderCursor), HostTransitionContext._currentValue = sharedNotPendingObject);
   }
   var prefix, suffix;
   function describeBuiltInComponentFrame(name) {
@@ -2310,8 +2310,8 @@ function requireReactDomClient_production() {
   var KeyboardEventInterface = assign({}, UIEventInterface, {
     key: function(nativeEvent) {
       if (nativeEvent.key) {
-        var key = normalizeKey[nativeEvent.key] || nativeEvent.key;
-        if ("Unidentified" !== key) return key;
+        var key2 = normalizeKey[nativeEvent.key] || nativeEvent.key;
+        if ("Unidentified" !== key2) return key2;
       }
       return "keypress" === nativeEvent.type ? (nativeEvent = getEventCharCode(nativeEvent), 13 === nativeEvent ? "Enter" : String.fromCharCode(nativeEvent)) : "keydown" === nativeEvent.type || "keyup" === nativeEvent.type ? translateToKey[nativeEvent.keyCode] || "Unidentified" : "";
     },
@@ -2692,9 +2692,9 @@ function requireReactDomClient_production() {
     return 3 === sourceFiber.tag ? sourceFiber.stateNode : null;
   }
   var emptyContextObject = {};
-  function FiberNode(tag, pendingProps, key, mode) {
+  function FiberNode(tag, pendingProps, key2, mode) {
     this.tag = tag;
-    this.key = key;
+    this.key = key2;
     this.sibling = this.child = this.return = this.stateNode = this.type = this.elementType = null;
     this.index = 0;
     this.refCleanup = this.ref = null;
@@ -2706,8 +2706,8 @@ function requireReactDomClient_production() {
     this.childLanes = this.lanes = 0;
     this.alternate = null;
   }
-  function createFiberImplClass(tag, pendingProps, key, mode) {
-    return new FiberNode(tag, pendingProps, key, mode);
+  function createFiberImplClass(tag, pendingProps, key2, mode) {
+    return new FiberNode(tag, pendingProps, key2, mode);
   }
   function shouldConstruct(Component2) {
     Component2 = Component2.prototype;
@@ -2745,7 +2745,7 @@ function requireReactDomClient_production() {
     });
     return workInProgress2;
   }
-  function createFiberFromTypeAndProps(type, key, pendingProps, owner, mode, lanes) {
+  function createFiberFromTypeAndProps(type, key2, pendingProps, owner, mode, lanes) {
     var fiberTag = 0;
     owner = type;
     if ("function" === typeof type) shouldConstruct(type) && (fiberTag = 1);
@@ -2758,19 +2758,19 @@ function requireReactDomClient_production() {
     else
       a: switch (type) {
         case REACT_ACTIVITY_TYPE:
-          return type = createFiberImplClass(31, pendingProps, key, mode), type.elementType = REACT_ACTIVITY_TYPE, type.lanes = lanes, type;
+          return type = createFiberImplClass(31, pendingProps, key2, mode), type.elementType = REACT_ACTIVITY_TYPE, type.lanes = lanes, type;
         case REACT_FRAGMENT_TYPE:
-          return createFiberFromFragment(pendingProps.children, mode, lanes, key);
+          return createFiberFromFragment(pendingProps.children, mode, lanes, key2);
         case REACT_STRICT_MODE_TYPE:
           fiberTag = 8;
           mode |= 24;
           break;
         case REACT_PROFILER_TYPE:
-          return type = createFiberImplClass(12, pendingProps, key, mode | 2), type.elementType = REACT_PROFILER_TYPE, type.lanes = lanes, type;
+          return type = createFiberImplClass(12, pendingProps, key2, mode | 2), type.elementType = REACT_PROFILER_TYPE, type.lanes = lanes, type;
         case REACT_SUSPENSE_TYPE:
-          return type = createFiberImplClass(13, pendingProps, key, mode), type.elementType = REACT_SUSPENSE_TYPE, type.lanes = lanes, type;
+          return type = createFiberImplClass(13, pendingProps, key2, mode), type.elementType = REACT_SUSPENSE_TYPE, type.lanes = lanes, type;
         case REACT_SUSPENSE_LIST_TYPE:
-          return type = createFiberImplClass(19, pendingProps, key, mode), type.elementType = REACT_SUSPENSE_LIST_TYPE, type.lanes = lanes, type;
+          return type = createFiberImplClass(19, pendingProps, key2, mode), type.elementType = REACT_SUSPENSE_LIST_TYPE, type.lanes = lanes, type;
         default:
           if ("object" === typeof type && null !== type)
             switch (type.$$typeof) {
@@ -2797,14 +2797,14 @@ function requireReactDomClient_production() {
           );
           owner = null;
       }
-    key = createFiberImplClass(fiberTag, pendingProps, key, mode);
-    key.elementType = type;
-    key.type = owner;
-    key.lanes = lanes;
-    return key;
+    key2 = createFiberImplClass(fiberTag, pendingProps, key2, mode);
+    key2.elementType = type;
+    key2.type = owner;
+    key2.lanes = lanes;
+    return key2;
   }
-  function createFiberFromFragment(elements, mode, lanes, key) {
-    elements = createFiberImplClass(7, elements, key, mode);
+  function createFiberFromFragment(elements, mode, lanes, key2) {
+    elements = createFiberImplClass(7, elements, key2, mode);
     elements.lanes = lanes;
     return elements;
   }
@@ -2834,22 +2834,22 @@ function requireReactDomClient_production() {
     return mode;
   }
   var CapturedStacks = /* @__PURE__ */ new WeakMap();
-  function createCapturedValueAtFiber(value, source) {
+  function createCapturedValueAtFiber(value, source2) {
     if ("object" === typeof value && null !== value) {
       var existing = CapturedStacks.get(value);
       if (void 0 !== existing) return existing;
-      source = {
+      source2 = {
         value,
-        source,
-        stack: getStackByFiberInDevAndProd(source)
+        source: source2,
+        stack: getStackByFiberInDevAndProd(source2)
       };
-      CapturedStacks.set(value, source);
-      return source;
+      CapturedStacks.set(value, source2);
+      return source2;
     }
     return {
       value,
-      source,
-      stack: getStackByFiberInDevAndProd(source)
+      source: source2,
+      stack: getStackByFiberInDevAndProd(source2)
     };
   }
   var forkStack = [], forkStackIndex = 0, treeForkProvider = null, treeForkCount = 0, idStack = [], idStackIndex = 0, treeContextProvider = null, treeContextId = 1, treeContextOverflow = "";
@@ -3021,12 +3021,12 @@ function requireReactDomClient_production() {
   }
   var valueCursor = createCursor(null), currentlyRenderingFiber$1 = null, lastContextDependency = null;
   function pushProvider(providerFiber, context, nextValue) {
-    push(valueCursor, context._currentValue);
+    push2(valueCursor, context._currentValue);
     context._currentValue = nextValue;
   }
   function popProvider(context) {
     context._currentValue = valueCursor.current;
-    pop(valueCursor);
+    pop2(valueCursor);
   }
   function scheduleContextWorkOnParentPath(parent, renderLanes2, propagationRoot) {
     for (; null !== parent; ) {
@@ -3252,7 +3252,7 @@ function requireReactDomClient_production() {
     return null !== cacheResumedFromPreviousRender ? cacheResumedFromPreviousRender : workInProgressRoot.pooledCache;
   }
   function pushTransition(offscreenWorkInProgress, prevCachePool) {
-    null === prevCachePool ? push(resumedCache, resumedCache.current) : push(resumedCache, prevCachePool.pool);
+    null === prevCachePool ? push2(resumedCache, resumedCache.current) : push2(resumedCache, prevCachePool.pool);
   }
   function getSuspendedCache() {
     var cacheFromPool = peekCacheFromPool();
@@ -3426,13 +3426,13 @@ function requireReactDomClient_production() {
       current2.return = returnFiber;
       return current2;
     }
-    function updateFragment(returnFiber, current2, fragment, lanes, key) {
+    function updateFragment(returnFiber, current2, fragment, lanes, key2) {
       if (null === current2 || 7 !== current2.tag)
         return current2 = createFiberFromFragment(
           fragment,
           returnFiber.mode,
           lanes,
-          key
+          key2
         ), current2.return = returnFiber, current2;
       current2 = useFiber(current2, fragment);
       current2.return = returnFiber;
@@ -3485,20 +3485,20 @@ function requireReactDomClient_production() {
       return null;
     }
     function updateSlot(returnFiber, oldFiber, newChild, lanes) {
-      var key = null !== oldFiber ? oldFiber.key : null;
+      var key2 = null !== oldFiber ? oldFiber.key : null;
       if ("string" === typeof newChild && "" !== newChild || "number" === typeof newChild || "bigint" === typeof newChild)
-        return null !== key ? null : updateTextNode(returnFiber, oldFiber, "" + newChild, lanes);
+        return null !== key2 ? null : updateTextNode(returnFiber, oldFiber, "" + newChild, lanes);
       if ("object" === typeof newChild && null !== newChild) {
         switch (newChild.$$typeof) {
           case REACT_ELEMENT_TYPE:
-            return newChild.key === key ? updateElement(returnFiber, oldFiber, newChild, lanes) : null;
+            return newChild.key === key2 ? updateElement(returnFiber, oldFiber, newChild, lanes) : null;
           case REACT_PORTAL_TYPE:
-            return newChild.key === key ? updatePortal(returnFiber, oldFiber, newChild, lanes) : null;
+            return newChild.key === key2 ? updatePortal(returnFiber, oldFiber, newChild, lanes) : null;
           case REACT_LAZY_TYPE:
             return newChild = resolveLazy(newChild), updateSlot(returnFiber, oldFiber, newChild, lanes);
         }
         if (isArrayImpl(newChild) || getIteratorFn(newChild))
-          return null !== key ? null : updateFragment(returnFiber, oldFiber, newChild, lanes, null);
+          return null !== key2 ? null : updateFragment(returnFiber, oldFiber, newChild, lanes, null);
         if ("function" === typeof newChild.then)
           return updateSlot(
             returnFiber,
@@ -3649,10 +3649,10 @@ function requireReactDomClient_production() {
         switch (newChild.$$typeof) {
           case REACT_ELEMENT_TYPE:
             a: {
-              for (var key = newChild.key; null !== currentFirstChild; ) {
-                if (currentFirstChild.key === key) {
-                  key = newChild.type;
-                  if (key === REACT_FRAGMENT_TYPE) {
+              for (var key2 = newChild.key; null !== currentFirstChild; ) {
+                if (currentFirstChild.key === key2) {
+                  key2 = newChild.type;
+                  if (key2 === REACT_FRAGMENT_TYPE) {
                     if (7 === currentFirstChild.tag) {
                       deleteRemainingChildren(
                         returnFiber,
@@ -3666,7 +3666,7 @@ function requireReactDomClient_production() {
                       returnFiber = lanes;
                       break a;
                     }
-                  } else if (currentFirstChild.elementType === key || "object" === typeof key && null !== key && key.$$typeof === REACT_LAZY_TYPE && resolveLazy(key) === currentFirstChild.type) {
+                  } else if (currentFirstChild.elementType === key2 || "object" === typeof key2 && null !== key2 && key2.$$typeof === REACT_LAZY_TYPE && resolveLazy(key2) === currentFirstChild.type) {
                     deleteRemainingChildren(
                       returnFiber,
                       currentFirstChild.sibling
@@ -3699,8 +3699,8 @@ function requireReactDomClient_production() {
             return placeSingleChild(returnFiber);
           case REACT_PORTAL_TYPE:
             a: {
-              for (key = newChild.key; null !== currentFirstChild; ) {
-                if (currentFirstChild.key === key)
+              for (key2 = newChild.key; null !== currentFirstChild; ) {
+                if (currentFirstChild.key === key2)
                   if (4 === currentFirstChild.tag && currentFirstChild.stateNode.containerInfo === newChild.containerInfo && currentFirstChild.stateNode.implementation === newChild.implementation) {
                     deleteRemainingChildren(
                       returnFiber,
@@ -3738,9 +3738,9 @@ function requireReactDomClient_production() {
             lanes
           );
         if (getIteratorFn(newChild)) {
-          key = getIteratorFn(newChild);
-          if ("function" !== typeof key) throw Error(formatProdErrorMessage(150));
-          newChild = key.call(newChild);
+          key2 = getIteratorFn(newChild);
+          if ("function" !== typeof key2) throw Error(formatProdErrorMessage(150));
+          newChild = key2.call(newChild);
           return reconcileChildrenIterator(
             returnFiber,
             currentFirstChild,
@@ -3971,42 +3971,42 @@ function requireReactDomClient_production() {
   var currentTreeHiddenStackCursor = createCursor(null), prevEntangledRenderLanesCursor = createCursor(0);
   function pushHiddenContext(fiber, context) {
     fiber = entangledRenderLanes;
-    push(prevEntangledRenderLanesCursor, fiber);
-    push(currentTreeHiddenStackCursor, context);
+    push2(prevEntangledRenderLanesCursor, fiber);
+    push2(currentTreeHiddenStackCursor, context);
     entangledRenderLanes = fiber | context.baseLanes;
   }
   function reuseHiddenContextOnStack() {
-    push(prevEntangledRenderLanesCursor, entangledRenderLanes);
-    push(currentTreeHiddenStackCursor, currentTreeHiddenStackCursor.current);
+    push2(prevEntangledRenderLanesCursor, entangledRenderLanes);
+    push2(currentTreeHiddenStackCursor, currentTreeHiddenStackCursor.current);
   }
   function popHiddenContext() {
     entangledRenderLanes = prevEntangledRenderLanesCursor.current;
-    pop(currentTreeHiddenStackCursor);
-    pop(prevEntangledRenderLanesCursor);
+    pop2(currentTreeHiddenStackCursor);
+    pop2(prevEntangledRenderLanesCursor);
   }
   var suspenseHandlerStackCursor = createCursor(null), shellBoundary = null;
   function pushPrimaryTreeSuspenseHandler(handler) {
     var current2 = handler.alternate;
-    push(suspenseStackCursor, suspenseStackCursor.current & 1);
-    push(suspenseHandlerStackCursor, handler);
+    push2(suspenseStackCursor, suspenseStackCursor.current & 1);
+    push2(suspenseHandlerStackCursor, handler);
     null === shellBoundary && (null === current2 || null !== currentTreeHiddenStackCursor.current ? shellBoundary = handler : null !== current2.memoizedState && (shellBoundary = handler));
   }
   function pushDehydratedActivitySuspenseHandler(fiber) {
-    push(suspenseStackCursor, suspenseStackCursor.current);
-    push(suspenseHandlerStackCursor, fiber);
+    push2(suspenseStackCursor, suspenseStackCursor.current);
+    push2(suspenseHandlerStackCursor, fiber);
     null === shellBoundary && (shellBoundary = fiber);
   }
   function pushOffscreenSuspenseHandler(fiber) {
-    22 === fiber.tag ? (push(suspenseStackCursor, suspenseStackCursor.current), push(suspenseHandlerStackCursor, fiber), null === shellBoundary && (shellBoundary = fiber)) : reuseSuspenseHandlerOnStack();
+    22 === fiber.tag ? (push2(suspenseStackCursor, suspenseStackCursor.current), push2(suspenseHandlerStackCursor, fiber), null === shellBoundary && (shellBoundary = fiber)) : reuseSuspenseHandlerOnStack();
   }
   function reuseSuspenseHandlerOnStack() {
-    push(suspenseStackCursor, suspenseStackCursor.current);
-    push(suspenseHandlerStackCursor, suspenseHandlerStackCursor.current);
+    push2(suspenseStackCursor, suspenseStackCursor.current);
+    push2(suspenseHandlerStackCursor, suspenseHandlerStackCursor.current);
   }
   function popSuspenseHandler(fiber) {
-    pop(suspenseHandlerStackCursor);
+    pop2(suspenseHandlerStackCursor);
     shellBoundary === fiber && (shellBoundary = null);
-    pop(suspenseStackCursor);
+    pop2(suspenseStackCursor);
   }
   var suspenseStackCursor = createCursor(0);
   function findFirstSuspended(row) {
@@ -5365,9 +5365,9 @@ function requireReactDomClient_production() {
     null !== inst && "function" === typeof inst.componentDidCatch && (update.callback = function() {
       logCaughtError(root3, fiber, errorInfo);
       "function" !== typeof getDerivedStateFromError && (null === legacyErrorBoundariesThatAlreadyFailed ? legacyErrorBoundariesThatAlreadyFailed = /* @__PURE__ */ new Set([this]) : legacyErrorBoundariesThatAlreadyFailed.add(this));
-      var stack = errorInfo.stack;
+      var stack2 = errorInfo.stack;
       this.componentDidCatch(errorInfo.value, {
-        componentStack: null !== stack ? stack : ""
+        componentStack: null !== stack2 ? stack2 : ""
       });
     });
   }
@@ -5448,8 +5448,8 @@ function requireReactDomClient_production() {
     var ref = workInProgress2.ref;
     if ("ref" in nextProps) {
       var propsWithoutRef = {};
-      for (var key in nextProps)
-        "ref" !== key && (propsWithoutRef[key] = nextProps[key]);
+      for (var key2 in nextProps)
+        "ref" !== key2 && (propsWithoutRef[key2] = nextProps[key2]);
     } else propsWithoutRef = nextProps;
     prepareToReadContext(workInProgress2);
     nextProps = renderWithHooks(
@@ -5460,10 +5460,10 @@ function requireReactDomClient_production() {
       ref,
       renderLanes2
     );
-    key = checkDidRenderIdHook();
+    key2 = checkDidRenderIdHook();
     if (null !== current2 && !didReceiveUpdate)
       return bailoutHooks(current2, workInProgress2, renderLanes2), bailoutOnAlreadyFinishedWork(current2, workInProgress2, renderLanes2);
-    isHydrating && key && pushMaterializedTreeId(workInProgress2);
+    isHydrating && key2 && pushMaterializedTreeId(workInProgress2);
     workInProgress2.flags |= 1;
     reconcileChildren(current2, workInProgress2, nextProps, renderLanes2);
     return workInProgress2.child;
@@ -6038,7 +6038,7 @@ function requireReactDomClient_production() {
     nextProps = nextProps.children;
     var suspenseContext = suspenseStackCursor.current, shouldForceFallback = 0 !== (suspenseContext & 2);
     shouldForceFallback ? (suspenseContext = suspenseContext & 1 | 2, workInProgress2.flags |= 128) : suspenseContext &= 1;
-    push(suspenseStackCursor, suspenseContext);
+    push2(suspenseStackCursor, suspenseContext);
     reconcileChildren(current2, workInProgress2, nextProps, renderLanes2);
     nextProps = isHydrating ? treeForkCount : 0;
     if (!shouldForceFallback && null !== current2 && 0 !== (current2.flags & 128))
@@ -6208,7 +6208,7 @@ function requireReactDomClient_production() {
         }
         didSuspendBefore = workInProgress2.memoizedState;
         null !== didSuspendBefore && (didSuspendBefore.rendering = null, didSuspendBefore.tail = null, didSuspendBefore.lastEffect = null);
-        push(suspenseStackCursor, suspenseStackCursor.current);
+        push2(suspenseStackCursor, suspenseStackCursor.current);
         if (state$102) break;
         else return null;
       case 22:
@@ -6866,7 +6866,7 @@ function requireReactDomClient_production() {
       case 10:
         return popProvider(workInProgress2.type), bubbleProperties(workInProgress2), null;
       case 19:
-        pop(suspenseStackCursor);
+        pop2(suspenseStackCursor);
         newProps = workInProgress2.memoizedState;
         if (null === newProps) return bubbleProperties(workInProgress2), null;
         type = 0 !== (workInProgress2.flags & 128);
@@ -6887,7 +6887,7 @@ function requireReactDomClient_production() {
                   current2 = renderLanes2;
                   for (renderLanes2 = workInProgress2.child; null !== renderLanes2; )
                     resetWorkInProgress(renderLanes2, current2), renderLanes2 = renderLanes2.sibling;
-                  push(
+                  push2(
                     suspenseStackCursor,
                     suspenseStackCursor.current & 1 | 2
                   );
@@ -6908,7 +6908,7 @@ function requireReactDomClient_production() {
           newProps.isBackwards ? (nextResource.sibling = workInProgress2.child, workInProgress2.child = nextResource) : (current2 = newProps.last, null !== current2 ? current2.sibling = nextResource : workInProgress2.child = nextResource, newProps.last = nextResource);
         }
         if (null !== newProps.tail)
-          return current2 = newProps.tail, newProps.rendering = current2, newProps.tail = current2.sibling, newProps.renderingStartTime = now(), current2.sibling = null, renderLanes2 = suspenseStackCursor.current, push(
+          return current2 = newProps.tail, newProps.rendering = current2, newProps.tail = current2.sibling, newProps.renderingStartTime = now(), current2.sibling = null, renderLanes2 = suspenseStackCursor.current, push2(
             suspenseStackCursor,
             type ? renderLanes2 & 1 | 2 : renderLanes2 & 1
           ), isHydrating && pushTreeFork(workInProgress2, newProps.treeForkCount), current2;
@@ -6916,7 +6916,7 @@ function requireReactDomClient_production() {
         return null;
       case 22:
       case 23:
-        return popSuspenseHandler(workInProgress2), popHiddenContext(), newProps = null !== workInProgress2.memoizedState, null !== current2 ? null !== current2.memoizedState !== newProps && (workInProgress2.flags |= 8192) : newProps && (workInProgress2.flags |= 8192), newProps ? 0 !== (renderLanes2 & 536870912) && 0 === (workInProgress2.flags & 128) && (bubbleProperties(workInProgress2), workInProgress2.subtreeFlags & 6 && (workInProgress2.flags |= 8192)) : bubbleProperties(workInProgress2), renderLanes2 = workInProgress2.updateQueue, null !== renderLanes2 && scheduleRetryEffect(workInProgress2, renderLanes2.retryQueue), renderLanes2 = null, null !== current2 && null !== current2.memoizedState && null !== current2.memoizedState.cachePool && (renderLanes2 = current2.memoizedState.cachePool.pool), newProps = null, null !== workInProgress2.memoizedState && null !== workInProgress2.memoizedState.cachePool && (newProps = workInProgress2.memoizedState.cachePool.pool), newProps !== renderLanes2 && (workInProgress2.flags |= 2048), null !== current2 && pop(resumedCache), null;
+        return popSuspenseHandler(workInProgress2), popHiddenContext(), newProps = null !== workInProgress2.memoizedState, null !== current2 ? null !== current2.memoizedState !== newProps && (workInProgress2.flags |= 8192) : newProps && (workInProgress2.flags |= 8192), newProps ? 0 !== (renderLanes2 & 536870912) && 0 === (workInProgress2.flags & 128) && (bubbleProperties(workInProgress2), workInProgress2.subtreeFlags & 6 && (workInProgress2.flags |= 8192)) : bubbleProperties(workInProgress2), renderLanes2 = workInProgress2.updateQueue, null !== renderLanes2 && scheduleRetryEffect(workInProgress2, renderLanes2.retryQueue), renderLanes2 = null, null !== current2 && null !== current2.memoizedState && null !== current2.memoizedState.cachePool && (renderLanes2 = current2.memoizedState.cachePool.pool), newProps = null, null !== workInProgress2.memoizedState && null !== workInProgress2.memoizedState.cachePool && (newProps = workInProgress2.memoizedState.cachePool.pool), newProps !== renderLanes2 && (workInProgress2.flags |= 2048), null !== current2 && pop2(resumedCache), null;
       case 24:
         return renderLanes2 = null, null !== current2 && (renderLanes2 = current2.memoizedState.cache), workInProgress2.memoizedState.cache !== renderLanes2 && (workInProgress2.flags |= 2048), popProvider(CacheContext), bubbleProperties(workInProgress2), null;
       case 25:
@@ -6957,14 +6957,14 @@ function requireReactDomClient_production() {
         current2 = workInProgress2.flags;
         return current2 & 65536 ? (workInProgress2.flags = current2 & -65537 | 128, workInProgress2) : null;
       case 19:
-        return pop(suspenseStackCursor), null;
+        return pop2(suspenseStackCursor), null;
       case 4:
         return popHostContainer(), null;
       case 10:
         return popProvider(workInProgress2.type), null;
       case 22:
       case 23:
-        return popSuspenseHandler(workInProgress2), popHiddenContext(), null !== current2 && pop(resumedCache), current2 = workInProgress2.flags, current2 & 65536 ? (workInProgress2.flags = current2 & -65537 | 128, workInProgress2) : null;
+        return popSuspenseHandler(workInProgress2), popHiddenContext(), null !== current2 && pop2(resumedCache), current2 = workInProgress2.flags, current2 & 65536 ? (workInProgress2.flags = current2 & -65537 | 128, workInProgress2) : null;
       case 24:
         return popProvider(CacheContext), null;
       case 25:
@@ -6995,7 +6995,7 @@ function requireReactDomClient_production() {
         popSuspenseHandler(interruptedWork);
         break;
       case 19:
-        pop(suspenseStackCursor);
+        pop2(suspenseStackCursor);
         break;
       case 10:
         popProvider(interruptedWork.type);
@@ -7004,7 +7004,7 @@ function requireReactDomClient_production() {
       case 23:
         popSuspenseHandler(interruptedWork);
         popHiddenContext();
-        null !== current2 && pop(resumedCache);
+        null !== current2 && pop2(resumedCache);
         break;
       case 24:
         popProvider(CacheContext);
@@ -10218,8 +10218,8 @@ function requireReactDomClient_production() {
     clientText = normalizeMarkupForTextOrAttribute(clientText);
     return normalizeMarkupForTextOrAttribute(serverText) === clientText ? true : false;
   }
-  function setProp(domElement, tag, key, value, props, prevValue) {
-    switch (key) {
+  function setProp(domElement, tag, key2, value, props, prevValue) {
+    switch (key2) {
       case "children":
         "string" === typeof value ? "body" === tag || "textarea" === tag && "" === value || setTextContent(domElement, value) : ("number" === typeof value || "bigint" === typeof value) && "body" !== tag && setTextContent(domElement, "" + value);
         break;
@@ -10234,7 +10234,7 @@ function requireReactDomClient_production() {
       case "viewBox":
       case "width":
       case "height":
-        setValueForKnownAttribute(domElement, key, value);
+        setValueForKnownAttribute(domElement, key2, value);
         break;
       case "style":
         setValueForStyles(domElement, value, prevValue);
@@ -10246,27 +10246,27 @@ function requireReactDomClient_production() {
         }
       case "src":
       case "href":
-        if ("" === value && ("a" !== tag || "href" !== key)) {
-          domElement.removeAttribute(key);
+        if ("" === value && ("a" !== tag || "href" !== key2)) {
+          domElement.removeAttribute(key2);
           break;
         }
         if (null == value || "function" === typeof value || "symbol" === typeof value || "boolean" === typeof value) {
-          domElement.removeAttribute(key);
+          domElement.removeAttribute(key2);
           break;
         }
         value = sanitizeURL("" + value);
-        domElement.setAttribute(key, value);
+        domElement.setAttribute(key2, value);
         break;
       case "action":
       case "formAction":
         if ("function" === typeof value) {
           domElement.setAttribute(
-            key,
+            key2,
             "javascript:throw new Error('A React form was unexpectedly submitted. If you called form.submit() manually, consider using form.requestSubmit() instead. If you\\'re trying to use event.stopPropagation() in a submit event handler, consider also calling event.preventDefault().')"
           );
           break;
         } else
-          "function" === typeof prevValue && ("formAction" === key ? ("input" !== tag && setProp(domElement, tag, "name", props.name, props, null), setProp(
+          "function" === typeof prevValue && ("formAction" === key2 ? ("input" !== tag && setProp(domElement, tag, "name", props.name, props, null), setProp(
             domElement,
             tag,
             "formEncType",
@@ -10289,11 +10289,11 @@ function requireReactDomClient_production() {
             null
           )) : (setProp(domElement, tag, "encType", props.encType, props, null), setProp(domElement, tag, "method", props.method, props, null), setProp(domElement, tag, "target", props.target, props, null)));
         if (null == value || "symbol" === typeof value || "boolean" === typeof value) {
-          domElement.removeAttribute(key);
+          domElement.removeAttribute(key2);
           break;
         }
         value = sanitizeURL("" + value);
-        domElement.setAttribute(key, value);
+        domElement.setAttribute(key2, value);
         break;
       case "onClick":
         null != value && (domElement.onclick = noop$1);
@@ -10308,10 +10308,10 @@ function requireReactDomClient_production() {
         if (null != value) {
           if ("object" !== typeof value || !("__html" in value))
             throw Error(formatProdErrorMessage(61));
-          key = value.__html;
-          if (null != key) {
+          key2 = value.__html;
+          if (null != key2) {
             if (null != props.children) throw Error(formatProdErrorMessage(60));
-            domElement.innerHTML = key;
+            domElement.innerHTML = key2;
           }
         }
         break;
@@ -10335,11 +10335,11 @@ function requireReactDomClient_production() {
           domElement.removeAttribute("xlink:href");
           break;
         }
-        key = sanitizeURL("" + value);
+        key2 = sanitizeURL("" + value);
         domElement.setAttributeNS(
           "http://www.w3.org/1999/xlink",
           "xlink:href",
-          key
+          key2
         );
         break;
       case "contentEditable":
@@ -10350,7 +10350,7 @@ function requireReactDomClient_production() {
       case "externalResourcesRequired":
       case "focusable":
       case "preserveAlpha":
-        null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key, "" + value) : domElement.removeAttribute(key);
+        null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, "" + value) : domElement.removeAttribute(key2);
         break;
       case "inert":
       case "allowFullScreen":
@@ -10375,21 +10375,21 @@ function requireReactDomClient_production() {
       case "scoped":
       case "seamless":
       case "itemScope":
-        value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key, "") : domElement.removeAttribute(key);
+        value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, "") : domElement.removeAttribute(key2);
         break;
       case "capture":
       case "download":
-        true === value ? domElement.setAttribute(key, "") : false !== value && null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key, value) : domElement.removeAttribute(key);
+        true === value ? domElement.setAttribute(key2, "") : false !== value && null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, value) : domElement.removeAttribute(key2);
         break;
       case "cols":
       case "rows":
       case "size":
       case "span":
-        null != value && "function" !== typeof value && "symbol" !== typeof value && !isNaN(value) && 1 <= value ? domElement.setAttribute(key, value) : domElement.removeAttribute(key);
+        null != value && "function" !== typeof value && "symbol" !== typeof value && !isNaN(value) && 1 <= value ? domElement.setAttribute(key2, value) : domElement.removeAttribute(key2);
         break;
       case "rowSpan":
       case "start":
-        null == value || "function" === typeof value || "symbol" === typeof value || isNaN(value) ? domElement.removeAttribute(key) : domElement.setAttribute(key, value);
+        null == value || "function" === typeof value || "symbol" === typeof value || isNaN(value) ? domElement.removeAttribute(key2) : domElement.setAttribute(key2, value);
         break;
       case "popover":
         listenToNonDelegatedEvent("beforetoggle", domElement);
@@ -10475,12 +10475,12 @@ function requireReactDomClient_production() {
       case "textContent":
         break;
       default:
-        if (!(2 < key.length) || "o" !== key[0] && "O" !== key[0] || "n" !== key[1] && "N" !== key[1])
-          key = aliases.get(key) || key, setValueForAttribute(domElement, key, value);
+        if (!(2 < key2.length) || "o" !== key2[0] && "O" !== key2[0] || "n" !== key2[1] && "N" !== key2[1])
+          key2 = aliases.get(key2) || key2, setValueForAttribute(domElement, key2, value);
     }
   }
-  function setPropOnCustomElement(domElement, tag, key, value, props, prevValue) {
-    switch (key) {
+  function setPropOnCustomElement(domElement, tag, key2, value, props, prevValue) {
+    switch (key2) {
       case "style":
         setValueForStyles(domElement, value, prevValue);
         break;
@@ -10488,10 +10488,10 @@ function requireReactDomClient_production() {
         if (null != value) {
           if ("object" !== typeof value || !("__html" in value))
             throw Error(formatProdErrorMessage(61));
-          key = value.__html;
-          if (null != key) {
+          key2 = value.__html;
+          if (null != key2) {
             if (null != props.children) throw Error(formatProdErrorMessage(60));
-            domElement.innerHTML = key;
+            domElement.innerHTML = key2;
           }
         }
         break;
@@ -10516,14 +10516,14 @@ function requireReactDomClient_production() {
       case "textContent":
         break;
       default:
-        if (!registrationNameDependencies.hasOwnProperty(key))
+        if (!registrationNameDependencies.hasOwnProperty(key2))
           a: {
-            if ("o" === key[0] && "n" === key[1] && (props = key.endsWith("Capture"), tag = key.slice(2, props ? key.length - 7 : void 0), prevValue = domElement[internalPropsKey] || null, prevValue = null != prevValue ? prevValue[key] : null, "function" === typeof prevValue && domElement.removeEventListener(tag, prevValue, props), "function" === typeof value)) {
-              "function" !== typeof prevValue && null !== prevValue && (key in domElement ? domElement[key] = null : domElement.hasAttribute(key) && domElement.removeAttribute(key));
+            if ("o" === key2[0] && "n" === key2[1] && (props = key2.endsWith("Capture"), tag = key2.slice(2, props ? key2.length - 7 : void 0), prevValue = domElement[internalPropsKey] || null, prevValue = null != prevValue ? prevValue[key2] : null, "function" === typeof prevValue && domElement.removeEventListener(tag, prevValue, props), "function" === typeof value)) {
+              "function" !== typeof prevValue && null !== prevValue && (key2 in domElement ? domElement[key2] = null : domElement.hasAttribute(key2) && domElement.removeAttribute(key2));
               domElement.addEventListener(tag, value, props);
               break a;
             }
-            key in domElement ? domElement[key] = value : true === value ? domElement.setAttribute(key, "") : setValueForAttribute(domElement, key, value);
+            key2 in domElement ? domElement[key2] = value : true === value ? domElement.setAttribute(key2, "") : setValueForAttribute(domElement, key2, value);
           }
     }
   }
@@ -11335,29 +11335,29 @@ function requireReactDomClient_production() {
       ) + '"]', "string" === typeof options2.imageSizes && (preloadSelector += '[imagesizes="' + escapeSelectorAttributeValueInsideDoubleQuotes(
         options2.imageSizes
       ) + '"]')) : preloadSelector += '[href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]' : preloadSelector += '[href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]';
-      var key = preloadSelector;
+      var key2 = preloadSelector;
       switch (as) {
         case "style":
-          key = getStyleKey(href);
+          key2 = getStyleKey(href);
           break;
         case "script":
-          key = getScriptKey(href);
+          key2 = getScriptKey(href);
       }
-      preloadPropsMap.has(key) || (href = assign(
+      preloadPropsMap.has(key2) || (href = assign(
         {
           rel: "preload",
           href: "image" === as && options2 && options2.imageSrcSet ? void 0 : href,
           as
         },
         options2
-      ), preloadPropsMap.set(key, href), null !== ownerDocument.querySelector(preloadSelector) || "style" === as && ownerDocument.querySelector(getStylesheetSelectorFromKey(key)) || "script" === as && ownerDocument.querySelector(getScriptSelectorFromKey(key)) || (as = ownerDocument.createElement("link"), setInitialProperties(as, "link", href), markNodeAsHoistable(as), ownerDocument.head.appendChild(as)));
+      ), preloadPropsMap.set(key2, href), null !== ownerDocument.querySelector(preloadSelector) || "style" === as && ownerDocument.querySelector(getStylesheetSelectorFromKey(key2)) || "script" === as && ownerDocument.querySelector(getScriptSelectorFromKey(key2)) || (as = ownerDocument.createElement("link"), setInitialProperties(as, "link", href), markNodeAsHoistable(as), ownerDocument.head.appendChild(as)));
     }
   }
   function preloadModule(href, options2) {
     previousDispatcher.m(href, options2);
     var ownerDocument = globalDocument;
     if (ownerDocument && href) {
-      var as = options2 && "string" === typeof options2.as ? options2.as : "script", preloadSelector = 'link[rel="modulepreload"][as="' + escapeSelectorAttributeValueInsideDoubleQuotes(as) + '"][href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]', key = preloadSelector;
+      var as = options2 && "string" === typeof options2.as ? options2.as : "script", preloadSelector = 'link[rel="modulepreload"][as="' + escapeSelectorAttributeValueInsideDoubleQuotes(as) + '"][href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]', key2 = preloadSelector;
       switch (as) {
         case "audioworklet":
         case "paintworklet":
@@ -11365,9 +11365,9 @@ function requireReactDomClient_production() {
         case "sharedworker":
         case "worker":
         case "script":
-          key = getScriptKey(href);
+          key2 = getScriptKey(href);
       }
-      if (!preloadPropsMap.has(key) && (href = assign({ rel: "modulepreload", href }, options2), preloadPropsMap.set(key, href), null === ownerDocument.querySelector(preloadSelector))) {
+      if (!preloadPropsMap.has(key2) && (href = assign({ rel: "modulepreload", href }, options2), preloadPropsMap.set(key2, href), null === ownerDocument.querySelector(preloadSelector))) {
         switch (as) {
           case "audioworklet":
           case "paintworklet":
@@ -11375,7 +11375,7 @@ function requireReactDomClient_production() {
           case "sharedworker":
           case "worker":
           case "script":
-            if (ownerDocument.querySelector(getScriptSelectorFromKey(key)))
+            if (ownerDocument.querySelector(getScriptSelectorFromKey(key2)))
               return;
         }
         as = ownerDocument.createElement("link");
@@ -11389,13 +11389,13 @@ function requireReactDomClient_production() {
     previousDispatcher.S(href, precedence, options2);
     var ownerDocument = globalDocument;
     if (ownerDocument && href) {
-      var styles2 = getResourcesFromRoot(ownerDocument).hoistableStyles, key = getStyleKey(href);
+      var styles2 = getResourcesFromRoot(ownerDocument).hoistableStyles, key2 = getStyleKey(href);
       precedence = precedence || "default";
-      var resource = styles2.get(key);
+      var resource = styles2.get(key2);
       if (!resource) {
         var state = { loading: 0, preload: null };
         if (resource = ownerDocument.querySelector(
-          getStylesheetSelectorFromKey(key)
+          getStylesheetSelectorFromKey(key2)
         ))
           state.loading = 5;
         else {
@@ -11403,7 +11403,7 @@ function requireReactDomClient_production() {
             { rel: "stylesheet", href, "data-precedence": precedence },
             options2
           );
-          (options2 = preloadPropsMap.get(key)) && adoptPreloadPropsForStylesheet(href, options2);
+          (options2 = preloadPropsMap.get(key2)) && adoptPreloadPropsForStylesheet(href, options2);
           var link = resource = ownerDocument.createElement("link");
           markNodeAsHoistable(link);
           setInitialProperties(link, "link", href);
@@ -11426,7 +11426,7 @@ function requireReactDomClient_production() {
           count: 1,
           state
         };
-        styles2.set(key, resource);
+        styles2.set(key2, resource);
       }
     }
   }
@@ -11434,26 +11434,26 @@ function requireReactDomClient_production() {
     previousDispatcher.X(src, options2);
     var ownerDocument = globalDocument;
     if (ownerDocument && src) {
-      var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key = getScriptKey(src), resource = scripts.get(key);
-      resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key)), resource || (src = assign({ src, async: true }, options2), (options2 = preloadPropsMap.get(key)) && adoptPreloadPropsForScript(src, options2), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
+      var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key2 = getScriptKey(src), resource = scripts.get(key2);
+      resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key2)), resource || (src = assign({ src, async: true }, options2), (options2 = preloadPropsMap.get(key2)) && adoptPreloadPropsForScript(src, options2), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
         type: "script",
         instance: resource,
         count: 1,
         state: null
-      }, scripts.set(key, resource));
+      }, scripts.set(key2, resource));
     }
   }
   function preinitModuleScript(src, options2) {
     previousDispatcher.M(src, options2);
     var ownerDocument = globalDocument;
     if (ownerDocument && src) {
-      var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key = getScriptKey(src), resource = scripts.get(key);
-      resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key)), resource || (src = assign({ src, async: true, type: "module" }, options2), (options2 = preloadPropsMap.get(key)) && adoptPreloadPropsForScript(src, options2), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
+      var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key2 = getScriptKey(src), resource = scripts.get(key2);
+      resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key2)), resource || (src = assign({ src, async: true, type: "module" }, options2), (options2 = preloadPropsMap.get(key2)) && adoptPreloadPropsForScript(src, options2), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
         type: "script",
         instance: resource,
         count: 1,
         state: null
-      }, scripts.set(key, resource));
+      }, scripts.set(key2, resource));
     }
   }
   function getResource(type, currentProps, pendingProps, currentResource) {
@@ -11523,8 +11523,8 @@ function requireReactDomClient_production() {
   function getStyleKey(href) {
     return 'href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"';
   }
-  function getStylesheetSelectorFromKey(key) {
-    return 'link[rel="stylesheet"][' + key + "]";
+  function getStylesheetSelectorFromKey(key2) {
+    return 'link[rel="stylesheet"][' + key2 + "]";
   }
   function stylesheetPropsFromRawProps(rawProps) {
     return assign({}, rawProps, {
@@ -11532,18 +11532,18 @@ function requireReactDomClient_production() {
       precedence: null
     });
   }
-  function preloadStylesheet(ownerDocument, key, preloadProps, state) {
-    ownerDocument.querySelector('link[rel="preload"][as="style"][' + key + "]") ? state.loading = 1 : (key = ownerDocument.createElement("link"), state.preload = key, key.addEventListener("load", function() {
+  function preloadStylesheet(ownerDocument, key2, preloadProps, state) {
+    ownerDocument.querySelector('link[rel="preload"][as="style"][' + key2 + "]") ? state.loading = 1 : (key2 = ownerDocument.createElement("link"), state.preload = key2, key2.addEventListener("load", function() {
       return state.loading |= 1;
-    }), key.addEventListener("error", function() {
+    }), key2.addEventListener("error", function() {
       return state.loading |= 2;
-    }), setInitialProperties(key, "link", preloadProps), markNodeAsHoistable(key), ownerDocument.head.appendChild(key));
+    }), setInitialProperties(key2, "link", preloadProps), markNodeAsHoistable(key2), ownerDocument.head.appendChild(key2));
   }
   function getScriptKey(src) {
     return '[src="' + escapeSelectorAttributeValueInsideDoubleQuotes(src) + '"]';
   }
-  function getScriptSelectorFromKey(key) {
-    return "script[async]" + key;
+  function getScriptSelectorFromKey(key2) {
+    return "script[async]" + key2;
   }
   function acquireResource(hoistableRoot, resource, props) {
     resource.count++;
@@ -11692,8 +11692,8 @@ function requireReactDomClient_production() {
   function suspendResource(state, hoistableRoot, resource, props) {
     if ("stylesheet" === resource.type && ("string" !== typeof props.media || false !== matchMedia(props.media).matches) && 0 === (resource.state.loading & 4)) {
       if (null === resource.instance) {
-        var key = getStyleKey(props.href), instance = hoistableRoot.querySelector(
-          getStylesheetSelectorFromKey(key)
+        var key2 = getStyleKey(props.href), instance = hoistableRoot.querySelector(
+          getStylesheetSelectorFromKey(key2)
         );
         if (instance) {
           hoistableRoot = instance._p;
@@ -11705,7 +11705,7 @@ function requireReactDomClient_production() {
         }
         instance = hoistableRoot.ownerDocument || hoistableRoot;
         props = stylesheetPropsFromRawProps(props);
-        (key = preloadPropsMap.get(key)) && adoptPreloadPropsForStylesheet(props, key);
+        (key2 = preloadPropsMap.get(key2)) && adoptPreloadPropsForStylesheet(props, key2);
         instance = instance.createElement("link");
         markNodeAsHoistable(instance);
         var linkInstance = instance;
@@ -12255,8 +12255,8 @@ function requireReactDomClient_production() {
     }
     return true;
   }
-  function attemptReplayContinuousQueuedEventInMap(queuedEvent, key, map) {
-    attemptReplayContinuousQueuedEvent(queuedEvent) && map.delete(key);
+  function attemptReplayContinuousQueuedEventInMap(queuedEvent, key2, map) {
+    attemptReplayContinuousQueuedEvent(queuedEvent) && map.delete(key2);
   }
   function replayUnblockedEvents() {
     hasScheduledReplayAttempt = false;
@@ -12611,7 +12611,7 @@ function getHistoryState(location, index) {
     idx: index
   };
 }
-function createLocation(current2, to, state = null, key) {
+function createLocation(current2, to, state = null, key2) {
   let location = {
     pathname: typeof current2 === "string" ? current2 : current2.pathname,
     search: "",
@@ -12622,7 +12622,7 @@ function createLocation(current2, to, state = null, key) {
     // full Locations now and avoid the need to run through this flow at all
     // But that's a pretty big refactor to the current test suite so going to
     // keep as is for the time being and just let any incoming keys take precedence
-    key: to && to.key || key || createKey()
+    key: to && to.key || key2 || createKey()
   };
   return location;
 }
@@ -12679,7 +12679,7 @@ function getUrlBasedHistory(getLocation, createHref2, validateLocation, options 
       listener({ action, location: history.location, delta });
     }
   }
-  function push(to, state) {
+  function push2(to, state) {
     action = "PUSH";
     let location = createLocation(history.location, to, state);
     if (validateLocation) validateLocation(location, to);
@@ -12743,7 +12743,7 @@ function getUrlBasedHistory(getLocation, createHref2, validateLocation, options 
         hash: url.hash
       };
     },
-    push,
+    push: push2,
     replace: replace2,
     go(n) {
       return globalHistory.go(n);
@@ -12816,9 +12816,9 @@ var unsupportedLazyRouteObjectKeys = /* @__PURE__ */ new Set([
   "index",
   "children"
 ]);
-function isUnsupportedLazyRouteObjectKey(key) {
+function isUnsupportedLazyRouteObjectKey(key2) {
   return unsupportedLazyRouteObjectKeys.has(
-    key
+    key2
   );
 }
 var unsupportedLazyRouteFunctionKeys = /* @__PURE__ */ new Set([
@@ -12830,9 +12830,9 @@ var unsupportedLazyRouteFunctionKeys = /* @__PURE__ */ new Set([
   "middleware",
   "children"
 ]);
-function isUnsupportedLazyRouteFunctionKey(key) {
+function isUnsupportedLazyRouteFunctionKey(key2) {
   return unsupportedLazyRouteFunctionKeys.has(
-    key
+    key2
   );
 }
 function isIndexRoute(route) {
@@ -13511,8 +13511,8 @@ function createRouter(init) {
     }
     subscribers.clear();
     pendingNavigationController && pendingNavigationController.abort();
-    state.fetchers.forEach((_, key) => deleteFetcher(key));
-    state.blockers.forEach((_, key) => deleteBlocker(key));
+    state.fetchers.forEach((_, key2) => deleteFetcher(key2));
+    state.blockers.forEach((_, key2) => deleteBlocker(key2));
   }
   function subscribe(fn) {
     subscribers.add(fn);
@@ -13538,18 +13538,18 @@ function createRouter(init) {
     };
     let unmountedFetchers = [];
     let mountedFetchers = [];
-    state.fetchers.forEach((fetcher, key) => {
+    state.fetchers.forEach((fetcher, key2) => {
       if (fetcher.state === "idle") {
-        if (fetchersQueuedForDeletion.has(key)) {
-          unmountedFetchers.push(key);
+        if (fetchersQueuedForDeletion.has(key2)) {
+          unmountedFetchers.push(key2);
         } else {
-          mountedFetchers.push(key);
+          mountedFetchers.push(key2);
         }
       }
     });
-    fetchersQueuedForDeletion.forEach((key) => {
-      if (!state.fetchers.has(key) && !fetchControllers.has(key)) {
-        unmountedFetchers.push(key);
+    fetchersQueuedForDeletion.forEach((key2) => {
+      if (!state.fetchers.has(key2) && !fetchControllers.has(key2)) {
+        unmountedFetchers.push(key2);
       }
     });
     [...subscribers].forEach(
@@ -13559,8 +13559,8 @@ function createRouter(init) {
         flushSync: opts.flushSync === true
       })
     );
-    unmountedFetchers.forEach((key) => deleteFetcher(key));
-    mountedFetchers.forEach((key) => state.fetchers.delete(key));
+    unmountedFetchers.forEach((key2) => deleteFetcher(key2));
+    mountedFetchers.forEach((key2) => state.fetchers.delete(key2));
   }
   function completeNavigation(location, newState, { flushSync } = {}) {
     let isActionReload = state.actionData != null && state.navigation.formMethod != null && isMutationMethod(state.navigation.formMethod) && state.navigation.state === "loading" && location.state?._isRedirect !== true;
@@ -14211,8 +14211,8 @@ function createRouter(init) {
     });
     return new Map(state.fetchers);
   }
-  async function fetch2(key, routeId, href, opts) {
-    abortFetcher(key);
+  async function fetch2(key2, routeId, href, opts) {
+    abortFetcher(key2);
     let flushSync = (opts && opts.flushSync) === true;
     let routesToUse = inFlightDataRoutes || dataRoutes;
     let normalizedPath = normalizeTo(
@@ -14230,7 +14230,7 @@ function createRouter(init) {
     }
     if (!matches) {
       setFetcherError(
-        key,
+        key2,
         routeId,
         getInternalRouterError(404, { pathname: normalizedPath }),
         { flushSync }
@@ -14243,14 +14243,14 @@ function createRouter(init) {
       opts
     );
     if (error) {
-      setFetcherError(key, routeId, error, { flushSync });
+      setFetcherError(key2, routeId, error, { flushSync });
       return;
     }
     let scopedContext = init.getContext ? await init.getContext() : new RouterContextProvider();
     let preventScrollReset = (opts && opts.preventScrollReset) === true;
     if (submission && isMutationMethod(submission.formMethod)) {
       await handleFetcherAction(
-        key,
+        key2,
         routeId,
         path,
         matches,
@@ -14262,9 +14262,9 @@ function createRouter(init) {
       );
       return;
     }
-    fetchLoadMatches.set(key, { routeId, path });
+    fetchLoadMatches.set(key2, { routeId, path });
     await handleFetcherLoader(
-      key,
+      key2,
       routeId,
       path,
       matches,
@@ -14275,11 +14275,11 @@ function createRouter(init) {
       submission
     );
   }
-  async function handleFetcherAction(key, routeId, path, requestMatches, scopedContext, isFogOfWar, flushSync, preventScrollReset, submission) {
+  async function handleFetcherAction(key2, routeId, path, requestMatches, scopedContext, isFogOfWar, flushSync, preventScrollReset, submission) {
     interruptActiveLoads();
-    fetchLoadMatches.delete(key);
-    let existingFetcher = state.fetchers.get(key);
-    updateFetcherState(key, getSubmittingFetcher(submission, existingFetcher), {
+    fetchLoadMatches.delete(key2);
+    let existingFetcher = state.fetchers.get(key2);
+    updateFetcherState(key2, getSubmittingFetcher(submission, existingFetcher), {
       flushSync
     });
     let abortController = new AbortController();
@@ -14294,16 +14294,16 @@ function createRouter(init) {
         requestMatches,
         new URL(fetchRequest.url).pathname,
         fetchRequest.signal,
-        key
+        key2
       );
       if (discoverResult.type === "aborted") {
         return;
       } else if (discoverResult.type === "error") {
-        setFetcherError(key, routeId, discoverResult.error, { flushSync });
+        setFetcherError(key2, routeId, discoverResult.error, { flushSync });
         return;
       } else if (!discoverResult.matches) {
         setFetcherError(
-          key,
+          key2,
           routeId,
           getInternalRouterError(404, { pathname: path }),
           { flushSync }
@@ -14320,10 +14320,10 @@ function createRouter(init) {
         pathname: path,
         routeId
       });
-      setFetcherError(key, routeId, error, { flushSync });
+      setFetcherError(key2, routeId, error, { flushSync });
       return;
     }
-    fetchControllers.set(key, abortController);
+    fetchControllers.set(key2, abortController);
     let originatingLoadId = incrementingLoadId;
     let fetchMatches = getTargetedDataStrategyMatches(
       mapRouteProperties2,
@@ -14338,29 +14338,29 @@ function createRouter(init) {
       fetchRequest,
       fetchMatches,
       scopedContext,
-      key
+      key2
     );
     let actionResult = actionResults[match.route.id];
     if (fetchRequest.signal.aborted) {
-      if (fetchControllers.get(key) === abortController) {
-        fetchControllers.delete(key);
+      if (fetchControllers.get(key2) === abortController) {
+        fetchControllers.delete(key2);
       }
       return;
     }
-    if (fetchersQueuedForDeletion.has(key)) {
+    if (fetchersQueuedForDeletion.has(key2)) {
       if (isRedirectResult(actionResult) || isErrorResult(actionResult)) {
-        updateFetcherState(key, getDoneFetcher(void 0));
+        updateFetcherState(key2, getDoneFetcher(void 0));
         return;
       }
     } else {
       if (isRedirectResult(actionResult)) {
-        fetchControllers.delete(key);
+        fetchControllers.delete(key2);
         if (pendingNavigationLoadId > originatingLoadId) {
-          updateFetcherState(key, getDoneFetcher(void 0));
+          updateFetcherState(key2, getDoneFetcher(void 0));
           return;
         } else {
-          fetchRedirectIds.add(key);
-          updateFetcherState(key, getLoadingFetcher(submission));
+          fetchRedirectIds.add(key2);
+          updateFetcherState(key2, getLoadingFetcher(submission));
           return startRedirectNavigation(fetchRequest, actionResult, false, {
             fetcherSubmission: submission,
             preventScrollReset
@@ -14368,7 +14368,7 @@ function createRouter(init) {
         }
       }
       if (isErrorResult(actionResult)) {
-        setFetcherError(key, routeId, actionResult.error);
+        setFetcherError(key2, routeId, actionResult.error);
         return;
       }
     }
@@ -14382,9 +14382,9 @@ function createRouter(init) {
     let matches = state.navigation.state !== "idle" ? matchRoutes(routesToUse, state.navigation.location, basename2) : state.matches;
     invariant(matches, "Didn't find any matches after fetcher action");
     let loadId = ++incrementingLoadId;
-    fetchReloadIds.set(key, loadId);
+    fetchReloadIds.set(key2, loadId);
     let loadFetcher = getLoadingFetcher(submission, actionResult.data);
-    state.fetchers.set(key, loadFetcher);
+    state.fetchers.set(key2, loadFetcher);
     let { dsMatches, revalidatingFetchers } = getMatchesToLoad(
       revalidationRequest,
       scopedContext,
@@ -14407,7 +14407,7 @@ function createRouter(init) {
       init.patchRoutesOnNavigation != null,
       [match.route.id, actionResult]
     );
-    revalidatingFetchers.filter((rf) => rf.key !== key).forEach((rf) => {
+    revalidatingFetchers.filter((rf) => rf.key !== key2).forEach((rf) => {
       let staleKey = rf.key;
       let existingFetcher2 = state.fetchers.get(staleKey);
       let revalidatingFetcher = getLoadingFetcher(
@@ -14439,12 +14439,12 @@ function createRouter(init) {
       "abort",
       abortPendingFetchRevalidations
     );
-    fetchReloadIds.delete(key);
-    fetchControllers.delete(key);
+    fetchReloadIds.delete(key2);
+    fetchControllers.delete(key2);
     revalidatingFetchers.forEach((r2) => fetchControllers.delete(r2.key));
-    if (state.fetchers.has(key)) {
+    if (state.fetchers.has(key2)) {
       let doneFetcher = getDoneFetcher(actionResult.data);
-      state.fetchers.set(key, doneFetcher);
+      state.fetchers.set(key2, doneFetcher);
     }
     let redirect2 = findRedirect(loaderResults);
     if (redirect2) {
@@ -14497,10 +14497,10 @@ function createRouter(init) {
       isRevalidationRequired = false;
     }
   }
-  async function handleFetcherLoader(key, routeId, path, matches, scopedContext, isFogOfWar, flushSync, preventScrollReset, submission) {
-    let existingFetcher = state.fetchers.get(key);
+  async function handleFetcherLoader(key2, routeId, path, matches, scopedContext, isFogOfWar, flushSync, preventScrollReset, submission) {
+    let existingFetcher = state.fetchers.get(key2);
     updateFetcherState(
-      key,
+      key2,
       getLoadingFetcher(
         submission,
         existingFetcher ? existingFetcher.data : void 0
@@ -14518,16 +14518,16 @@ function createRouter(init) {
         matches,
         new URL(fetchRequest.url).pathname,
         fetchRequest.signal,
-        key
+        key2
       );
       if (discoverResult.type === "aborted") {
         return;
       } else if (discoverResult.type === "error") {
-        setFetcherError(key, routeId, discoverResult.error, { flushSync });
+        setFetcherError(key2, routeId, discoverResult.error, { flushSync });
         return;
       } else if (!discoverResult.matches) {
         setFetcherError(
-          key,
+          key2,
           routeId,
           getInternalRouterError(404, { pathname: path }),
           { flushSync }
@@ -14538,7 +14538,7 @@ function createRouter(init) {
       }
     }
     let match = getTargetMatch(matches, path);
-    fetchControllers.set(key, abortController);
+    fetchControllers.set(key2, abortController);
     let originatingLoadId = incrementingLoadId;
     let dsMatches = getTargetedDataStrategyMatches(
       mapRouteProperties2,
@@ -14553,25 +14553,25 @@ function createRouter(init) {
       fetchRequest,
       dsMatches,
       scopedContext,
-      key
+      key2
     );
     let result = results[match.route.id];
-    if (fetchControllers.get(key) === abortController) {
-      fetchControllers.delete(key);
+    if (fetchControllers.get(key2) === abortController) {
+      fetchControllers.delete(key2);
     }
     if (fetchRequest.signal.aborted) {
       return;
     }
-    if (fetchersQueuedForDeletion.has(key)) {
-      updateFetcherState(key, getDoneFetcher(void 0));
+    if (fetchersQueuedForDeletion.has(key2)) {
+      updateFetcherState(key2, getDoneFetcher(void 0));
       return;
     }
     if (isRedirectResult(result)) {
       if (pendingNavigationLoadId > originatingLoadId) {
-        updateFetcherState(key, getDoneFetcher(void 0));
+        updateFetcherState(key2, getDoneFetcher(void 0));
         return;
       } else {
-        fetchRedirectIds.add(key);
+        fetchRedirectIds.add(key2);
         await startRedirectNavigation(fetchRequest, result, false, {
           preventScrollReset
         });
@@ -14579,10 +14579,10 @@ function createRouter(init) {
       }
     }
     if (isErrorResult(result)) {
-      setFetcherError(key, routeId, result.error);
+      setFetcherError(key2, routeId, result.error);
       return;
     }
-    updateFetcherState(key, getDoneFetcher(result.data));
+    updateFetcherState(key2, getDoneFetcher(result.data));
   }
   async function startRedirectNavigation(request, redirect2, isNavigation, {
     submission,
@@ -14739,23 +14739,23 @@ function createRouter(init) {
   }
   function interruptActiveLoads() {
     isRevalidationRequired = true;
-    fetchLoadMatches.forEach((_, key) => {
-      if (fetchControllers.has(key)) {
-        cancelledFetcherLoads.add(key);
+    fetchLoadMatches.forEach((_, key2) => {
+      if (fetchControllers.has(key2)) {
+        cancelledFetcherLoads.add(key2);
       }
-      abortFetcher(key);
+      abortFetcher(key2);
     });
   }
-  function updateFetcherState(key, fetcher, opts = {}) {
-    state.fetchers.set(key, fetcher);
+  function updateFetcherState(key2, fetcher, opts = {}) {
+    state.fetchers.set(key2, fetcher);
     updateState(
       { fetchers: new Map(state.fetchers) },
       { flushSync: (opts && opts.flushSync) === true }
     );
   }
-  function setFetcherError(key, routeId, error, opts = {}) {
+  function setFetcherError(key2, routeId, error, opts = {}) {
     let boundaryMatch = findNearestBoundary(state.matches, routeId);
-    deleteFetcher(key);
+    deleteFetcher(key2);
     updateState(
       {
         errors: {
@@ -14766,62 +14766,62 @@ function createRouter(init) {
       { flushSync: (opts && opts.flushSync) === true }
     );
   }
-  function getFetcher(key) {
-    activeFetchers.set(key, (activeFetchers.get(key) || 0) + 1);
-    if (fetchersQueuedForDeletion.has(key)) {
-      fetchersQueuedForDeletion.delete(key);
+  function getFetcher(key2) {
+    activeFetchers.set(key2, (activeFetchers.get(key2) || 0) + 1);
+    if (fetchersQueuedForDeletion.has(key2)) {
+      fetchersQueuedForDeletion.delete(key2);
     }
-    return state.fetchers.get(key) || IDLE_FETCHER;
+    return state.fetchers.get(key2) || IDLE_FETCHER;
   }
-  function resetFetcher(key, opts) {
-    abortFetcher(key, opts?.reason);
-    updateFetcherState(key, getDoneFetcher(null));
+  function resetFetcher(key2, opts) {
+    abortFetcher(key2, opts?.reason);
+    updateFetcherState(key2, getDoneFetcher(null));
   }
-  function deleteFetcher(key) {
-    let fetcher = state.fetchers.get(key);
-    if (fetchControllers.has(key) && !(fetcher && fetcher.state === "loading" && fetchReloadIds.has(key))) {
-      abortFetcher(key);
+  function deleteFetcher(key2) {
+    let fetcher = state.fetchers.get(key2);
+    if (fetchControllers.has(key2) && !(fetcher && fetcher.state === "loading" && fetchReloadIds.has(key2))) {
+      abortFetcher(key2);
     }
-    fetchLoadMatches.delete(key);
-    fetchReloadIds.delete(key);
-    fetchRedirectIds.delete(key);
-    fetchersQueuedForDeletion.delete(key);
-    cancelledFetcherLoads.delete(key);
-    state.fetchers.delete(key);
+    fetchLoadMatches.delete(key2);
+    fetchReloadIds.delete(key2);
+    fetchRedirectIds.delete(key2);
+    fetchersQueuedForDeletion.delete(key2);
+    cancelledFetcherLoads.delete(key2);
+    state.fetchers.delete(key2);
   }
-  function queueFetcherForDeletion(key) {
-    let count = (activeFetchers.get(key) || 0) - 1;
+  function queueFetcherForDeletion(key2) {
+    let count = (activeFetchers.get(key2) || 0) - 1;
     if (count <= 0) {
-      activeFetchers.delete(key);
-      fetchersQueuedForDeletion.add(key);
+      activeFetchers.delete(key2);
+      fetchersQueuedForDeletion.add(key2);
     } else {
-      activeFetchers.set(key, count);
+      activeFetchers.set(key2, count);
     }
     updateState({ fetchers: new Map(state.fetchers) });
   }
-  function abortFetcher(key, reason) {
-    let controller = fetchControllers.get(key);
+  function abortFetcher(key2, reason) {
+    let controller = fetchControllers.get(key2);
     if (controller) {
       controller.abort(reason);
-      fetchControllers.delete(key);
+      fetchControllers.delete(key2);
     }
   }
   function markFetchersDone(keys) {
-    for (let key of keys) {
-      let fetcher = getFetcher(key);
+    for (let key2 of keys) {
+      let fetcher = getFetcher(key2);
       let doneFetcher = getDoneFetcher(fetcher.data);
-      state.fetchers.set(key, doneFetcher);
+      state.fetchers.set(key2, doneFetcher);
     }
   }
   function markFetchRedirectsDone() {
     let doneKeys = [];
     let updatedFetchers = false;
-    for (let key of fetchRedirectIds) {
-      let fetcher = state.fetchers.get(key);
-      invariant(fetcher, `Expected fetcher: ${key}`);
+    for (let key2 of fetchRedirectIds) {
+      let fetcher = state.fetchers.get(key2);
+      invariant(fetcher, `Expected fetcher: ${key2}`);
       if (fetcher.state === "loading") {
-        fetchRedirectIds.delete(key);
-        doneKeys.push(key);
+        fetchRedirectIds.delete(key2);
+        doneKeys.push(key2);
         updatedFetchers = true;
       }
     }
@@ -14830,39 +14830,39 @@ function createRouter(init) {
   }
   function abortStaleFetchLoads(landedId) {
     let yeetedKeys = [];
-    for (let [key, id] of fetchReloadIds) {
+    for (let [key2, id] of fetchReloadIds) {
       if (id < landedId) {
-        let fetcher = state.fetchers.get(key);
-        invariant(fetcher, `Expected fetcher: ${key}`);
+        let fetcher = state.fetchers.get(key2);
+        invariant(fetcher, `Expected fetcher: ${key2}`);
         if (fetcher.state === "loading") {
-          abortFetcher(key);
-          fetchReloadIds.delete(key);
-          yeetedKeys.push(key);
+          abortFetcher(key2);
+          fetchReloadIds.delete(key2);
+          yeetedKeys.push(key2);
         }
       }
     }
     markFetchersDone(yeetedKeys);
     return yeetedKeys.length > 0;
   }
-  function getBlocker(key, fn) {
-    let blocker = state.blockers.get(key) || IDLE_BLOCKER;
-    if (blockerFunctions.get(key) !== fn) {
-      blockerFunctions.set(key, fn);
+  function getBlocker(key2, fn) {
+    let blocker = state.blockers.get(key2) || IDLE_BLOCKER;
+    if (blockerFunctions.get(key2) !== fn) {
+      blockerFunctions.set(key2, fn);
     }
     return blocker;
   }
-  function deleteBlocker(key) {
-    state.blockers.delete(key);
-    blockerFunctions.delete(key);
+  function deleteBlocker(key2) {
+    state.blockers.delete(key2);
+    blockerFunctions.delete(key2);
   }
-  function updateBlocker(key, newBlocker) {
-    let blocker = state.blockers.get(key) || IDLE_BLOCKER;
+  function updateBlocker(key2, newBlocker) {
+    let blocker = state.blockers.get(key2) || IDLE_BLOCKER;
     invariant(
       blocker.state === "unblocked" && newBlocker.state === "blocked" || blocker.state === "blocked" && newBlocker.state === "blocked" || blocker.state === "blocked" && newBlocker.state === "proceeding" || blocker.state === "blocked" && newBlocker.state === "unblocked" || blocker.state === "proceeding" && newBlocker.state === "unblocked",
       `Invalid blocker state transition: ${blocker.state} -> ${newBlocker.state}`
     );
     let blockers = new Map(state.blockers);
-    blockers.set(key, newBlocker);
+    blockers.set(key2, newBlocker);
     updateState({ blockers });
   }
   function shouldBlockNavigation({
@@ -14911,24 +14911,24 @@ function createRouter(init) {
   }
   function getScrollKey(location, matches) {
     if (getScrollRestorationKey2) {
-      let key = getScrollRestorationKey2(
+      let key2 = getScrollRestorationKey2(
         location,
         matches.map((m) => convertRouteMatchToUiMatch(m, state.loaderData))
       );
-      return key || location.key;
+      return key2 || location.key;
     }
     return location.key;
   }
   function saveScrollPosition(location, matches) {
     if (savedScrollPositions2 && getScrollPosition) {
-      let key = getScrollKey(location, matches);
-      savedScrollPositions2[key] = getScrollPosition();
+      let key2 = getScrollKey(location, matches);
+      savedScrollPositions2[key2] = getScrollPosition();
     }
   }
   function getSavedScrollPosition(location, matches) {
     if (savedScrollPositions2) {
-      let key = getScrollKey(location, matches);
-      let y = savedScrollPositions2[key];
+      let key2 = getScrollKey(location, matches);
+      let y = savedScrollPositions2[key2];
       if (typeof y === "number") {
         return y;
       }
@@ -15310,11 +15310,11 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
     );
   });
   let revalidatingFetchers = [];
-  fetchLoadMatches.forEach((f, key) => {
-    if (initialHydration || !matches.some((m) => m.route.id === f.routeId) || fetchersQueuedForDeletion.has(key)) {
+  fetchLoadMatches.forEach((f, key2) => {
+    if (initialHydration || !matches.some((m) => m.route.id === f.routeId) || fetchersQueuedForDeletion.has(key2)) {
       return;
     }
-    let fetcher = state.fetchers.get(key);
+    let fetcher = state.fetchers.get(key2);
     let isMidInitialLoad = fetcher && fetcher.state !== "idle" && fetcher.data === void 0;
     let fetcherMatches = matchRoutes(routesToUse, f.path, basename2);
     if (!fetcherMatches) {
@@ -15322,7 +15322,7 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
         return;
       }
       revalidatingFetchers.push({
-        key,
+        key: key2,
         routeId: f.routeId,
         path: f.path,
         matches: null,
@@ -15332,7 +15332,7 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
       });
       return;
     }
-    if (fetchRedirectIds.has(key)) {
+    if (fetchRedirectIds.has(key2)) {
       return;
     }
     let fetcherMatch = getTargetMatch(fetcherMatches, f.path);
@@ -15343,8 +15343,8 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
       fetchController.signal
     );
     let fetcherDsMatches = null;
-    if (cancelledFetcherLoads.has(key)) {
-      cancelledFetcherLoads.delete(key);
+    if (cancelledFetcherLoads.has(key2)) {
+      cancelledFetcherLoads.delete(key2);
       fetcherDsMatches = getTargetedDataStrategyMatches(
         mapRouteProperties2,
         manifest,
@@ -15386,7 +15386,7 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
     }
     if (fetcherDsMatches) {
       revalidatingFetchers.push({
-        key,
+        key: key2,
         routeId: f.routeId,
         path: f.path,
         matches: fetcherDsMatches,
@@ -15518,7 +15518,7 @@ function isSameRoute(newRoute, existingRoute) {
 }
 var lazyRoutePropertyCache = /* @__PURE__ */ new WeakMap();
 var loadLazyRouteProperty = ({
-  key,
+  key: key2,
   route,
   manifest,
   mapRouteProperties: mapRouteProperties2
@@ -15528,7 +15528,7 @@ var loadLazyRouteProperty = ({
   if (!routeToUpdate.lazy || typeof routeToUpdate.lazy !== "object") {
     return;
   }
-  let lazyFn = routeToUpdate.lazy[key];
+  let lazyFn = routeToUpdate.lazy[key2];
   if (!lazyFn) {
     return;
   }
@@ -15537,40 +15537,40 @@ var loadLazyRouteProperty = ({
     cache = {};
     lazyRoutePropertyCache.set(routeToUpdate, cache);
   }
-  let cachedPromise = cache[key];
+  let cachedPromise = cache[key2];
   if (cachedPromise) {
     return cachedPromise;
   }
   let propertyPromise = (async () => {
-    let isUnsupported = isUnsupportedLazyRouteObjectKey(key);
-    let staticRouteValue = routeToUpdate[key];
-    let isStaticallyDefined = staticRouteValue !== void 0 && key !== "hasErrorBoundary";
+    let isUnsupported = isUnsupportedLazyRouteObjectKey(key2);
+    let staticRouteValue = routeToUpdate[key2];
+    let isStaticallyDefined = staticRouteValue !== void 0 && key2 !== "hasErrorBoundary";
     if (isUnsupported) {
       warning(
         !isUnsupported,
-        "Route property " + key + " is not a supported lazy route property. This property will be ignored."
+        "Route property " + key2 + " is not a supported lazy route property. This property will be ignored."
       );
-      cache[key] = Promise.resolve();
+      cache[key2] = Promise.resolve();
     } else if (isStaticallyDefined) {
       warning(
         false,
-        `Route "${routeToUpdate.id}" has a static property "${key}" defined. The lazy property will be ignored.`
+        `Route "${routeToUpdate.id}" has a static property "${key2}" defined. The lazy property will be ignored.`
       );
     } else {
       let value = await lazyFn();
       if (value != null) {
-        Object.assign(routeToUpdate, { [key]: value });
+        Object.assign(routeToUpdate, { [key2]: value });
         Object.assign(routeToUpdate, mapRouteProperties2(routeToUpdate));
       }
     }
     if (typeof routeToUpdate.lazy === "object") {
-      routeToUpdate.lazy[key] = void 0;
+      routeToUpdate.lazy[key2] = void 0;
       if (Object.values(routeToUpdate.lazy).every((value) => value === void 0)) {
         routeToUpdate.lazy = void 0;
       }
     }
   })();
-  cache[key] = propertyPromise;
+  cache[key2] = propertyPromise;
   return propertyPromise;
 };
 var lazyRouteFunctionCache = /* @__PURE__ */ new WeakMap();
@@ -15642,19 +15642,19 @@ function loadLazyRoute(route, type, manifest, mapRouteProperties2, lazyRouteProp
   let lazyKeys = Object.keys(route.lazy);
   let lazyPropertyPromises = [];
   let lazyHandlerPromise = void 0;
-  for (let key of lazyKeys) {
-    if (lazyRoutePropertiesToSkip && lazyRoutePropertiesToSkip.includes(key)) {
+  for (let key2 of lazyKeys) {
+    if (lazyRoutePropertiesToSkip && lazyRoutePropertiesToSkip.includes(key2)) {
       continue;
     }
     let promise = loadLazyRouteProperty({
-      key,
+      key: key2,
       route,
       manifest,
       mapRouteProperties: mapRouteProperties2
     });
     if (promise) {
       lazyPropertyPromises.push(promise);
-      if (key === type) {
+      if (key2 === type) {
         lazyHandlerPromise = promise;
       }
     }
@@ -16144,15 +16144,15 @@ function createClientSideRequest(history, location, signal, submission) {
 }
 function convertFormDataToSearchParams(formData) {
   let searchParams = new URLSearchParams();
-  for (let [key, value] of formData.entries()) {
-    searchParams.append(key, typeof value === "string" ? value : value.name);
+  for (let [key2, value] of formData.entries()) {
+    searchParams.append(key2, typeof value === "string" ? value : value.name);
   }
   return searchParams;
 }
 function convertSearchParamsToFormData(searchParams) {
   let formData = new FormData();
-  for (let [key, value] of searchParams.entries()) {
-    formData.append(key, value);
+  for (let [key2, value] of searchParams.entries()) {
+    formData.append(key2, value);
   }
   return formData;
 }
@@ -16228,11 +16228,11 @@ function processLoaderData(state, matches, results, pendingActionResult, revalid
     pendingActionResult
   );
   revalidatingFetchers.filter((f) => !f.matches || f.matches.some((m) => m.shouldLoad)).forEach((rf) => {
-    let { key, match, controller } = rf;
+    let { key: key2, match, controller } = rf;
     if (controller && controller.signal.aborted) {
       return;
     }
-    let result = fetcherResults[key];
+    let result = fetcherResults[key2];
     invariant(result, "Did not find corresponding fetcher result");
     if (isErrorResult(result)) {
       let boundaryMatch = findNearestBoundary(state.matches, match?.route.id);
@@ -16242,12 +16242,12 @@ function processLoaderData(state, matches, results, pendingActionResult, revalid
           [boundaryMatch.route.id]: result.error
         };
       }
-      state.fetchers.delete(key);
+      state.fetchers.delete(key2);
     } else if (isRedirectResult(result)) {
       invariant(false, "Unhandled fetcher revalidation redirect");
     } else {
       let doneFetcher = getDoneFetcher(result.data);
-      state.fetchers.set(key, doneFetcher);
+      state.fetchers.set(key2, doneFetcher);
     }
   });
   return { loaderData, errors };
@@ -16341,9 +16341,9 @@ function getInternalRouterError(status, {
 function findRedirect(results) {
   let entries = Object.entries(results);
   for (let i = entries.length - 1; i >= 0; i--) {
-    let [key, result] = entries[i];
+    let [key2, result] = entries[i];
     if (isRedirectResult(result)) {
-      return { key, result };
+      return { key: key2, result };
     }
   }
 }
@@ -16366,7 +16366,7 @@ function isHashChangeOnly(a, b) {
 }
 function isDataStrategyResults(result) {
   return result != null && typeof result === "object" && Object.entries(result).every(
-    ([key, value]) => typeof key === "string" && isDataStrategyResult(value)
+    ([key2, value]) => typeof key2 === "string" && isDataStrategyResult(value)
   );
 }
 function isDataStrategyResult(result) {
@@ -16821,7 +16821,7 @@ Please change the parent <Route path="${parentPath}"> to <Route path="${parentPa
 function DefaultErrorComponent() {
   let error = useRouteError();
   let message = isRouteErrorResponse(error) ? `${error.status} ${error.statusText}` : error instanceof Error ? error.message : JSON.stringify(error);
-  let stack = error instanceof Error ? error.stack : null;
+  let stack2 = error instanceof Error ? error.stack : null;
   let lightgrey = "rgba(200,200,200, 0.5)";
   let preStyles = { padding: "0.5rem", backgroundColor: lightgrey };
   let codeStyles = { padding: "2px 4px", backgroundColor: lightgrey };
@@ -16833,7 +16833,7 @@ function DefaultErrorComponent() {
     );
     devInfo = /* @__PURE__ */ reactExports.createElement(reactExports.Fragment, null, /* @__PURE__ */ reactExports.createElement("p", null, "💿 Hey developer 👋"), /* @__PURE__ */ reactExports.createElement("p", null, "You can provide a way better UX than this when your app throws errors by providing your own ", /* @__PURE__ */ reactExports.createElement("code", { style: codeStyles }, "ErrorBoundary"), " or", " ", /* @__PURE__ */ reactExports.createElement("code", { style: codeStyles }, "errorElement"), " prop on your route."));
   }
-  return /* @__PURE__ */ reactExports.createElement(reactExports.Fragment, null, /* @__PURE__ */ reactExports.createElement("h2", null, "Unexpected Application Error!"), /* @__PURE__ */ reactExports.createElement("h3", { style: { fontStyle: "italic" } }, message), stack ? /* @__PURE__ */ reactExports.createElement("pre", { style: preStyles }, stack) : null, devInfo);
+  return /* @__PURE__ */ reactExports.createElement(reactExports.Fragment, null, /* @__PURE__ */ reactExports.createElement("h2", null, "Unexpected Application Error!"), /* @__PURE__ */ reactExports.createElement("h3", { style: { fontStyle: "italic" } }, message), stack2 ? /* @__PURE__ */ reactExports.createElement("pre", { style: preStyles }, stack2) : null, devInfo);
 }
 var defaultErrorElement = /* @__PURE__ */ reactExports.createElement(DefaultErrorComponent, null);
 var RenderErrorBoundary = class extends reactExports.Component {
@@ -17085,9 +17085,9 @@ function useNavigateStable() {
   return navigate;
 }
 var alreadyWarned = {};
-function warningOnce(key, cond, message) {
-  if (!cond && !alreadyWarned[key]) {
-    alreadyWarned[key] = true;
+function warningOnce(key2, cond, message) {
+  if (!cond && !alreadyWarned[key2]) {
+    alreadyWarned[key2] = true;
     warning(false, message);
   }
 }
@@ -17202,12 +17202,12 @@ function RouterProvider({
   );
   let setState2 = reactExports.useCallback(
     (newState, { deletedFetchers, flushSync, viewTransitionOpts }) => {
-      newState.fetchers.forEach((fetcher, key) => {
+      newState.fetchers.forEach((fetcher, key2) => {
         if (fetcher.data !== void 0) {
-          fetcherData.current.set(key, fetcher.data);
+          fetcherData.current.set(key2, fetcher.data);
         }
       });
-      deletedFetchers.forEach((key) => fetcherData.current.delete(key));
+      deletedFetchers.forEach((key2) => fetcherData.current.delete(key2));
       warnOnce(
         flushSync === false || reactDomFlushSyncImpl != null,
         'You provided the `flushSync` option to a router update, but you are not using the `<RouterProvider>` from `react-router/dom` so `ReactDOM.flushSync()` is unavailable.  Please update your app to `import { RouterProvider } from "react-router/dom"` and ensure you have `react-dom` installed as a dependency to use the `flushSync` option.'
@@ -17438,7 +17438,7 @@ function Router({
     search = "",
     hash = "",
     state = null,
-    key = "default"
+    key: key2 = "default"
   } = locationProp;
   let locationContext = reactExports.useMemo(() => {
     let trailingPathname = stripBasename(pathname, basename2);
@@ -17451,11 +17451,11 @@ function Router({
         search,
         hash,
         state,
-        key
+        key: key2
       },
       navigationType
     };
-  }, [basename2, pathname, search, hash, state, key, navigationType]);
+  }, [basename2, pathname, search, hash, state, key2, navigationType]);
   warning(
     locationContext != null,
     `<Router basename="${basename2}"> is not able to match the URL "${pathname}${search}${hash}" because it does not start with the basename, so the <Router> won't render anything.`
@@ -17715,8 +17715,8 @@ function dedupeHrefs(hrefs) {
 function sortKeys(obj) {
   let sorted = {};
   let keys = Object.keys(obj).sort();
-  for (let key of keys) {
-    sorted[key] = obj[key];
+  for (let key2 of keys) {
+    sorted[key2] = obj[key2];
   }
   return sorted;
 }
@@ -17724,10 +17724,10 @@ function dedupeLinkDescriptors(descriptors, preloads) {
   let set2 = /* @__PURE__ */ new Set();
   new Set(preloads);
   return descriptors.reduce((deduped, descriptor) => {
-    let key = JSON.stringify(sortKeys(descriptor));
-    if (!set2.has(key)) {
-      set2.add(key);
-      deduped.push({ key, link: descriptor });
+    let key2 = JSON.stringify(sortKeys(descriptor));
+    if (!set2.has(key2)) {
+      set2.add(key2);
+      deduped.push({ key: key2, link: descriptor });
     }
     return deduped;
   }, []);
@@ -17929,10 +17929,10 @@ function PrefetchPageLinksImpl({
     [newMatchesForAssets, manifest]
   );
   let keyedPrefetchLinks = useKeyedPrefetchLinks(newMatchesForAssets);
-  return /* @__PURE__ */ reactExports.createElement(reactExports.Fragment, null, dataHrefs.map((href) => /* @__PURE__ */ reactExports.createElement("link", { key: href, rel: "prefetch", as: "fetch", href, ...linkProps })), moduleHrefs.map((href) => /* @__PURE__ */ reactExports.createElement("link", { key: href, rel: "modulepreload", href, ...linkProps })), keyedPrefetchLinks.map(({ key, link }) => (
+  return /* @__PURE__ */ reactExports.createElement(reactExports.Fragment, null, dataHrefs.map((href) => /* @__PURE__ */ reactExports.createElement("link", { key: href, rel: "prefetch", as: "fetch", href, ...linkProps })), moduleHrefs.map((href) => /* @__PURE__ */ reactExports.createElement("link", { key: href, rel: "modulepreload", href, ...linkProps })), keyedPrefetchLinks.map(({ key: key2, link }) => (
     // these don't spread `linkProps` because they are full link descriptors
     // already with their own props
-    /* @__PURE__ */ reactExports.createElement("link", { key, nonce: linkProps.nonce, ...link })
+    /* @__PURE__ */ reactExports.createElement("link", { key: key2, nonce: linkProps.nonce, ...link })
   )));
 }
 function mergeRefs(...refs) {
@@ -17983,9 +17983,9 @@ function deserializeErrors(errors) {
   if (!errors) return null;
   let entries = Object.entries(errors);
   let serialized = {};
-  for (let [key, val] of entries) {
+  for (let [key2, val] of entries) {
     if (val && val.__type === "RouteErrorResponse") {
-      serialized[key] = new ErrorResponseImpl(
+      serialized[key2] = new ErrorResponseImpl(
         val.status,
         val.statusText,
         val.data,
@@ -17998,18 +17998,18 @@ function deserializeErrors(errors) {
           try {
             let error = new ErrorConstructor(val.message);
             error.stack = "";
-            serialized[key] = error;
+            serialized[key2] = error;
           } catch (e) {
           }
         }
       }
-      if (serialized[key] == null) {
+      if (serialized[key2] == null) {
         let error = new Error(val.message);
         error.stack = "";
-        serialized[key] = error;
+        serialized[key2] = error;
       }
     } else {
-      serialized[key] = val;
+      serialized[key2] = val;
     }
   }
   return serialized;
@@ -18273,8 +18273,8 @@ function useSubmit() {
         basename2
       );
       if (options.navigate === false) {
-        let key = options.fetcherKey || getUniqueFetcherId();
-        await router.fetch(key, currentRouteId, options.action || action, {
+        let key2 = options.fetcherKey || getUniqueFetcherId();
+        await router.fetch(key2, currentRouteId, options.action || action, {
           preventScrollReset: options.preventScrollReset,
           formData,
           body,
@@ -18385,35 +18385,35 @@ const createStoreImpl = (createState) => {
     listeners.add(listener);
     return () => listeners.delete(listener);
   };
-  const api2 = { setState: setState2, getState: getState2, getInitialState, subscribe };
-  const initialState = state = createState(setState2, getState2, api2);
-  return api2;
+  const api = { setState: setState2, getState: getState2, getInitialState, subscribe };
+  const initialState = state = createState(setState2, getState2, api);
+  return api;
 };
 const createStore = ((createState) => createState ? createStoreImpl(createState) : createStoreImpl);
 const identity = (arg) => arg;
-function useStore$1(api2, selector = identity) {
+function useStore$1(api, selector = identity) {
   const slice = React20.useSyncExternalStore(
-    api2.subscribe,
-    React20.useCallback(() => selector(api2.getState()), [api2, selector]),
-    React20.useCallback(() => selector(api2.getInitialState()), [api2, selector])
+    api.subscribe,
+    React20.useCallback(() => selector(api.getState()), [api, selector]),
+    React20.useCallback(() => selector(api.getInitialState()), [api, selector])
   );
   React20.useDebugValue(slice);
   return slice;
 }
 const createImpl = (createState) => {
-  const api2 = createStore(createState);
-  const useBoundStore = (selector) => useStore$1(api2, selector);
-  Object.assign(useBoundStore, api2);
+  const api = createStore(createState);
+  const useBoundStore = (selector) => useStore$1(api, selector);
+  Object.assign(useBoundStore, api);
   return useBoundStore;
 };
 const create = ((createState) => createImpl);
 const __vite_import_meta_env__ = { "BASE_URL": "./", "DEV": false, "MODE": "production", "PROD": true, "SSR": false };
 const trackedConnections = /* @__PURE__ */ new Map();
 const getTrackedConnectionState = (name) => {
-  const api2 = trackedConnections.get(name);
-  if (!api2) return {};
+  const api = trackedConnections.get(name);
+  if (!api) return {};
   return Object.fromEntries(
-    Object.entries(api2.stores).map(([key, api22]) => [key, api22.getState()])
+    Object.entries(api.stores).map(([key2, api2]) => [key2, api2.getState()])
   );
 };
 const extractConnectionInformation = (store, extensionConnector, options) => {
@@ -18443,10 +18443,10 @@ const removeStoreFromTrackedConnections = (name, store) => {
     trackedConnections.delete(name);
   }
 };
-const findCallerName = (stack) => {
+const findCallerName = (stack2) => {
   var _a2, _b;
-  if (!stack) return void 0;
-  const traceLines = stack.split("\n");
+  if (!stack2) return void 0;
+  const traceLines = stack2.split("\n");
   const apiSetStateLineIndex = traceLines.findIndex(
     (traceLine) => traceLine.includes("api.setState")
   );
@@ -18454,7 +18454,7 @@ const findCallerName = (stack) => {
   const callerLine = ((_a2 = traceLines[apiSetStateLineIndex + 1]) == null ? void 0 : _a2.trim()) || "";
   return (_b = /.+ (.+) .+/.exec(callerLine)) == null ? void 0 : _b[1];
 };
-const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
+const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api) => {
   const { enabled, anonymousActionType, store, ...options } = devtoolsOptions;
   let extensionConnector;
   try {
@@ -18462,11 +18462,11 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
   } catch (e) {
   }
   if (!extensionConnector) {
-    return fn(set2, get, api2);
+    return fn(set2, get, api);
   }
   const { connection, ...connectionInformation } = extractConnectionInformation(store, extensionConnector, options);
   let isRecording = true;
-  api2.setState = ((state, replace, nameOrAction) => {
+  api.setState = ((state, replace, nameOrAction) => {
     const r2 = set2(state, replace);
     if (!isRecording) return r2;
     const action = nameOrAction === void 0 ? {
@@ -18483,12 +18483,12 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
       },
       {
         ...getTrackedConnectionState(options.name),
-        [store]: api2.getState()
+        [store]: api.getState()
       }
     );
     return r2;
   });
-  api2.devtools = {
+  api.devtools = {
     cleanup: () => {
       if (connection && typeof connection.unsubscribe === "function") {
         connection.unsubscribe();
@@ -18502,24 +18502,24 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
     set2(...a);
     isRecording = originalIsRecording;
   };
-  const initialState = fn(api2.setState, get, api2);
+  const initialState = fn(api.setState, get, api);
   if (connectionInformation.type === "untracked") {
     connection == null ? void 0 : connection.init(initialState);
   } else {
-    connectionInformation.stores[connectionInformation.store] = api2;
+    connectionInformation.stores[connectionInformation.store] = api;
     connection == null ? void 0 : connection.init(
       Object.fromEntries(
-        Object.entries(connectionInformation.stores).map(([key, store2]) => [
-          key,
-          key === connectionInformation.store ? initialState : store2.getState()
+        Object.entries(connectionInformation.stores).map(([key2, store2]) => [
+          key2,
+          key2 === connectionInformation.store ? initialState : store2.getState()
         ])
       )
     );
   }
-  if (api2.dispatchFromDevtools && typeof api2.dispatch === "function") {
+  if (api.dispatchFromDevtools && typeof api.dispatch === "function") {
     let didWarnAboutReservedActionType = false;
-    const originalDispatch = api2.dispatch;
-    api2.dispatch = (...args) => {
+    const originalDispatch = api.dispatch;
+    api.dispatch = (...args) => {
       if ((__vite_import_meta_env__ ? "production" : void 0) !== "production" && args[0].type === "__setState" && !didWarnAboutReservedActionType) {
         console.warn(
           '[zustand devtools middleware] "__setState" action type is reserved to set state from the devtools. Avoid using it.'
@@ -18560,14 +18560,14 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
               if (stateFromDevtools === void 0 || stateFromDevtools === null) {
                 return;
               }
-              if (JSON.stringify(api2.getState()) !== JSON.stringify(stateFromDevtools)) {
+              if (JSON.stringify(api.getState()) !== JSON.stringify(stateFromDevtools)) {
                 setStateFromDevtools(stateFromDevtools);
               }
               return;
             }
-            if (!api2.dispatchFromDevtools) return;
-            if (typeof api2.dispatch !== "function") return;
-            api2.dispatch(action);
+            if (!api.dispatchFromDevtools) return;
+            if (typeof api.dispatch !== "function") return;
+            api.dispatch(action);
           }
         );
       case "DISPATCH":
@@ -18575,12 +18575,12 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
           case "RESET":
             setStateFromDevtools(initialState);
             if (store === void 0) {
-              return connection == null ? void 0 : connection.init(api2.getState());
+              return connection == null ? void 0 : connection.init(api.getState());
             }
             return connection == null ? void 0 : connection.init(getTrackedConnectionState(options.name));
           case "COMMIT":
             if (store === void 0) {
-              connection == null ? void 0 : connection.init(api2.getState());
+              connection == null ? void 0 : connection.init(api.getState());
               return;
             }
             return connection == null ? void 0 : connection.init(getTrackedConnectionState(options.name));
@@ -18588,7 +18588,7 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
             return parseJsonThen(message.state, (state) => {
               if (store === void 0) {
                 setStateFromDevtools(state);
-                connection == null ? void 0 : connection.init(api2.getState());
+                connection == null ? void 0 : connection.init(api.getState());
                 return;
               }
               setStateFromDevtools(state[store]);
@@ -18601,7 +18601,7 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set2, get, api2) => {
                 setStateFromDevtools(state);
                 return;
               }
-              if (JSON.stringify(api2.getState()) !== JSON.stringify(state[store])) {
+              if (JSON.stringify(api.getState()) !== JSON.stringify(state[store])) {
                 setStateFromDevtools(state[store]);
               }
             });
@@ -18652,7 +18652,7 @@ function createJSONStorage(getStorage, options) {
   const persistStorage = {
     getItem: (name) => {
       var _a2;
-      const parse = (str2) => {
+      const parse3 = (str2) => {
         if (str2 === null) {
           return null;
         }
@@ -18660,9 +18660,9 @@ function createJSONStorage(getStorage, options) {
       };
       const str = (_a2 = storage.getItem(name)) != null ? _a2 : null;
       if (str instanceof Promise) {
-        return str.then(parse);
+        return str.then(parse3);
       }
-      return parse(str);
+      return parse3(str);
     },
     setItem: (name, newValue) => storage.setItem(name, JSON.stringify(newValue, void 0)),
     removeItem: (name) => storage.removeItem(name)
@@ -18694,7 +18694,7 @@ const toThenable = (fn) => (input) => {
     };
   }
 };
-const persistImpl = (config, baseOptions) => (set2, get, api2) => {
+const persistImpl = (config, baseOptions) => (set2, get, api) => {
   let options = {
     storage: createJSONStorage(() => localStorage),
     partialize: (state) => state,
@@ -18718,7 +18718,7 @@ const persistImpl = (config, baseOptions) => (set2, get, api2) => {
         set2(...args);
       },
       get,
-      api2
+      api
     );
   }
   const setItem = () => {
@@ -18728,8 +18728,8 @@ const persistImpl = (config, baseOptions) => (set2, get, api2) => {
       version: options.version
     });
   };
-  const savedSetState = api2.setState;
-  api2.setState = (state, replace) => {
+  const savedSetState = api.setState;
+  api.setState = (state, replace) => {
     savedSetState(state, replace);
     return setItem();
   };
@@ -18739,9 +18739,9 @@ const persistImpl = (config, baseOptions) => (set2, get, api2) => {
       return setItem();
     },
     get,
-    api2
+    api
   );
-  api2.getInitialState = () => configResult;
+  api.getInitialState = () => configResult;
   let stateFromStorage;
   const hydrate = () => {
     var _a2, _b;
@@ -18793,7 +18793,7 @@ const persistImpl = (config, baseOptions) => (set2, get, api2) => {
       postRehydrationCallback == null ? void 0 : postRehydrationCallback(void 0, e);
     });
   };
-  api2.persist = {
+  api.persist = {
     setOptions: (newOptions) => {
       options = {
         ...options,
@@ -18860,8 +18860,8 @@ function isPlainObject(value) {
 }
 function each(obj, iter) {
   if (getArchtype(obj) === 0) {
-    Reflect.ownKeys(obj).forEach((key) => {
-      iter(key, obj[key], obj);
+    Reflect.ownKeys(obj).forEach((key2) => {
+      iter(key2, obj[key2], obj);
     });
   } else {
     obj.forEach((entry, index) => iter(index, entry, obj));
@@ -18914,19 +18914,19 @@ function shallowCopy(base, strict) {
     delete descriptors[DRAFT_STATE];
     let keys = Reflect.ownKeys(descriptors);
     for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      const desc = descriptors[key];
+      const key2 = keys[i];
+      const desc = descriptors[key2];
       if (desc.writable === false) {
         desc.writable = true;
         desc.configurable = true;
       }
       if (desc.get || desc.set)
-        descriptors[key] = {
+        descriptors[key2] = {
           configurable: true,
           writable: true,
           // could live with !!desc.set as well here...
           enumerable: desc.enumerable,
-          value: base[key]
+          value: base[key2]
         };
     }
     return Object.create(getPrototypeOf(base), descriptors);
@@ -19050,7 +19050,7 @@ function finalize(rootScope, value, path) {
   if (!state) {
     each(
       value,
-      (key, childValue) => finalizeProperty(rootScope, state, value, key, childValue, path)
+      (key2, childValue) => finalizeProperty(rootScope, state, value, key2, childValue, path)
     );
     return value;
   }
@@ -19073,7 +19073,7 @@ function finalize(rootScope, value, path) {
     }
     each(
       resultEach,
-      (key, childValue) => finalizeProperty(rootScope, state, result, key, childValue, path, isSet2)
+      (key2, childValue) => finalizeProperty(rootScope, state, result, key2, childValue, path, isSet2)
     );
     maybeFreeze(rootScope, result, false);
     if (path && rootScope.patches_) {
@@ -19154,15 +19154,15 @@ var objectTraps = {
   get(state, prop) {
     if (prop === DRAFT_STATE)
       return state;
-    const source = latest(state);
-    if (!has(source, prop)) {
-      return readPropFromProto(state, source, prop);
+    const source2 = latest(state);
+    if (!has(source2, prop)) {
+      return readPropFromProto(state, source2, prop);
     }
-    const value = source[prop];
+    const value = source2[prop];
     if (state.finalized_ || !isDraftable(value)) {
       return value;
     }
-    if (value === peek(state.base_, prop)) {
+    if (value === peek$1(state.base_, prop)) {
       prepareCopy(state);
       return state.copy_[prop] = createProxy(value, state);
     }
@@ -19181,7 +19181,7 @@ var objectTraps = {
       return true;
     }
     if (!state.modified_) {
-      const current2 = peek(latest(state), prop);
+      const current2 = peek$1(latest(state), prop);
       const currentState = current2?.[DRAFT_STATE];
       if (currentState && currentState.base_ === value) {
         state.copy_[prop] = value;
@@ -19202,7 +19202,7 @@ var objectTraps = {
     return true;
   },
   deleteProperty(state, prop) {
-    if (peek(state.base_, prop) !== void 0 || prop in state.base_) {
+    if (peek$1(state.base_, prop) !== void 0 || prop in state.base_) {
       state.assigned_[prop] = false;
       prepareCopy(state);
       markChanged(state);
@@ -19239,8 +19239,8 @@ var objectTraps = {
   }
 };
 var arrayTraps = {};
-each(objectTraps, (key, fn) => {
-  arrayTraps[key] = function() {
+each(objectTraps, (key2, fn) => {
+  arrayTraps[key2] = function() {
     arguments[0] = arguments[0][0];
     return fn.apply(this, arguments);
   };
@@ -19251,23 +19251,23 @@ arrayTraps.deleteProperty = function(state, prop) {
 arrayTraps.set = function(state, prop, value) {
   return objectTraps.set.call(this, state[0], prop, value, state[0]);
 };
-function peek(draft, prop) {
+function peek$1(draft, prop) {
   const state = draft[DRAFT_STATE];
-  const source = state ? latest(state) : draft;
-  return source[prop];
+  const source2 = state ? latest(state) : draft;
+  return source2[prop];
 }
-function readPropFromProto(state, source, prop) {
-  const desc = getDescriptorFromProto(source, prop);
+function readPropFromProto(state, source2, prop) {
+  const desc = getDescriptorFromProto(source2, prop);
   return desc ? `value` in desc ? desc.value : (
     // This is a very special case, if the prop is a getter defined by the
     // prototype, we should invoke it with the draft as context!
     desc.get?.call(state.draft_)
   ) : void 0;
 }
-function getDescriptorFromProto(source, prop) {
-  if (!(prop in source))
+function getDescriptorFromProto(source2, prop) {
+  if (!(prop in source2))
     return void 0;
-  let proto = getPrototypeOf(source);
+  let proto = getPrototypeOf(source2);
   while (proto) {
     const desc = Object.getOwnPropertyDescriptor(proto, prop);
     if (desc)
@@ -19440,8 +19440,8 @@ function currentImpl(value) {
   } else {
     copy = shallowCopy(value, true);
   }
-  each(copy, (key, childValue) => {
-    set(copy, key, currentImpl(childValue));
+  each(copy, (key2, childValue) => {
+    set(copy, key2, currentImpl(childValue));
   });
   if (state) {
     state.finalized_ = false;
@@ -19471,8 +19471,8 @@ const useStore = create()(
         visibleRanges: {},
         gridStates: {},
         // Actions
-        setApi: (api2) => set2((state) => {
-          state.api = api2;
+        setApi: (api) => set2((state) => {
+          state.api = api;
         }),
         setScans: (scans) => set2((state) => {
           state.scans = scans;
@@ -19826,23 +19826,23 @@ const ScanDetail = () => {
   const selectedScan = useStore((state) => state.selectedScan);
   const setSelectedScan = useStore((state) => state.setSelectedScan);
   const setScans = useStore((state) => state.setScans);
-  const api2 = useStore((state) => state.api);
+  const api = useStore((state) => state.api);
   reactExports.useEffect(() => {
     const fetchScans = async () => {
       if (resultsDir === void 0) {
-        const scansInfo2 = await api2?.getScans();
+        const scansInfo2 = await api?.getScans();
         if (scansInfo2) {
           setResultsDir(scansInfo2.results_dir);
           setScans(scansInfo2.scans);
         }
       }
-      const scansInfo = await api2?.getScan(relativePath);
+      const scansInfo = await api?.getScan(relativePath);
       if (scansInfo) {
         setSelectedScan(scansInfo);
       }
     };
     void fetchScans();
-  }, [resultsDir, relativePath, api2, setSelectedScan, setResultsDir, setScans]);
+  }, [resultsDir, relativePath, api, setSelectedScan, setResultsDir, setScans]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", overflowY: "auto", padding: "16px" }, children: selectedScan ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedScan, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." }) })
@@ -20502,8 +20502,8 @@ function _createAgElement(params) {
     element.setAttribute("role", role);
   }
   if (attrs) {
-    for (const key of Object.keys(attrs)) {
-      element.setAttribute(key, attrs[key]);
+    for (const key2 of Object.keys(attrs)) {
+      element.setAttribute(key2, attrs[key2]);
     }
   }
   if (children) {
@@ -20677,26 +20677,26 @@ function defaultLocaleTextFunc(_key, defaultValue) {
 function _getLocaleTextFunc(localeSvc) {
   return localeSvc?.getLocaleTextFunc() ?? defaultLocaleTextFunc;
 }
-function _translate(bean, localeValues, key, variableValues) {
-  const defaultValue = localeValues[key];
+function _translate(bean, localeValues, key2, variableValues) {
+  const defaultValue = localeValues[key2];
   return bean.getLocaleTextFunc()(
-    key,
+    key2,
     typeof defaultValue === "function" ? defaultValue(variableValues) : defaultValue,
     variableValues
   );
 }
 function _getLocaleTextFromFunc(getLocaleText) {
-  return (key, defaultValue, variableValues) => {
+  return (key2, defaultValue, variableValues) => {
     return getLocaleText({
-      key,
+      key: key2,
       defaultValue,
       variableValues
     });
   };
 }
 function _getLocaleTextFromMap(localeText) {
-  return (key, defaultValue, variableValues) => {
-    let localisedText = localeText?.[key];
+  return (key2, defaultValue, variableValues) => {
+    let localisedText = localeText?.[key2];
     if (localisedText && variableValues?.length) {
       let found = 0;
       while (true) {
@@ -20927,12 +20927,12 @@ function isEventService(object) {
 var BeanStub = class extends AgBeanStub {
 };
 var doOnceFlags = {};
-function _doOnce(func, key) {
-  if (doOnceFlags[key]) {
+function _doOnce(func, key2) {
+  if (doOnceFlags[key2]) {
     return;
   }
   func();
-  doOnceFlags[key] = true;
+  doOnceFlags[key2] = true;
 }
 var batchedCallsSetTimeout = {
   pending: false,
@@ -21022,16 +21022,16 @@ function _iterateObject(object, callback) {
     }
     return;
   }
-  for (const key of Object.keys(object).filter((key2) => !SKIP_JS_BUILTINS.has(key2))) {
-    callback(key, object[key]);
+  for (const key2 of Object.keys(object).filter((key22) => !SKIP_JS_BUILTINS.has(key22))) {
+    callback(key2, object[key2]);
   }
 }
-function _mergeDeep(dest, source, copyUndefined = true, makeCopyOfSimpleObjects = false) {
-  if (!_exists(source)) {
+function _mergeDeep(dest, source2, copyUndefined = true, makeCopyOfSimpleObjects = false) {
+  if (!_exists(source2)) {
     return;
   }
-  _iterateObject(source, (key, sourceValue) => {
-    let destValue = dest[key];
+  _iterateObject(source2, (key2, sourceValue) => {
+    let destValue = dest[key2];
     if (destValue === sourceValue) {
       return;
     }
@@ -21041,14 +21041,14 @@ function _mergeDeep(dest, source, copyUndefined = true, makeCopyOfSimpleObjects 
         const doNotCopyAsSourceIsSimpleObject = typeof sourceValue === "object" && sourceValue.constructor === Object;
         if (doNotCopyAsSourceIsSimpleObject) {
           destValue = {};
-          dest[key] = destValue;
+          dest[key2] = destValue;
         }
       }
     }
     if (_isNonNullObject(sourceValue) && _isNonNullObject(destValue) && !Array.isArray(destValue)) {
       _mergeDeep(destValue, sourceValue, copyUndefined, makeCopyOfSimpleObjects);
     } else if (copyUndefined || sourceValue !== void 0) {
-      dest[key] = sourceValue;
+      dest[key2] = sourceValue;
     }
   });
 }
@@ -21449,8 +21449,8 @@ function getParamsUrl(baseUrl, params) {
 function truncateUrl(baseUrl, params, maxLength) {
   const sortedParams = Array.from(params.entries()).sort((a, b) => b[1].length - a[1].length);
   let url = getParamsUrl(baseUrl, params);
-  for (const [key, value] of sortedParams) {
-    if (key === VERSION_PARAM_NAME) {
+  for (const [key2, value] of sortedParams) {
+    if (key2 === VERSION_PARAM_NAME) {
       continue;
     }
     const excessLength = url.length - maxLength;
@@ -21460,7 +21460,7 @@ function truncateUrl(baseUrl, params, maxLength) {
     const ellipse = "...";
     const truncateAmount = excessLength + ellipse.length;
     const truncatedValue = value.length - truncateAmount > MIN_PARAM_LENGTH ? value.slice(0, value.length - truncateAmount) + ellipse : value.slice(0, MIN_PARAM_LENGTH) + ellipse;
-    params.set(key, truncatedValue);
+    params.set(key2, truncatedValue);
     url = getParamsUrl(baseUrl, params);
   }
   return url;
@@ -21469,8 +21469,8 @@ function getErrorLink(errorNum, args) {
   const params = new URLSearchParams();
   params.append(VERSION_PARAM_NAME, VERSION);
   if (args) {
-    for (const key of Object.keys(args)) {
-      params.append(key, stringifyValue(args[key]));
+    for (const key2 of Object.keys(args)) {
+      params.append(key2, stringifyValue(args[key2]));
     }
   }
   const baseUrl = `${baseDocLink}/errors/${errorNum}`;
@@ -21576,18 +21576,18 @@ function _getRowHeightAsNumber(beans) {
 function isNumeric(value) {
   return !isNaN(value) && typeof value === "number" && isFinite(value);
 }
-function _getDomData(gos, element, key) {
+function _getDomData(gos, element, key2) {
   const domData = element[gos.getDomDataKey()];
-  return domData ? domData[key] : void 0;
+  return domData ? domData[key2] : void 0;
 }
-function _setDomData(gos, element, key, value) {
+function _setDomData(gos, element, key2, value) {
   const domDataKey = gos.getDomDataKey();
   let domData = element[domDataKey];
   if (_missing(domData)) {
     domData = {};
     element[domDataKey] = domData;
   }
-  domData[key] = value;
+  domData[key2] = value;
 }
 function _isAnimateRows(gos) {
   if (gos.get("ensureDomOrder")) {
@@ -21802,22 +21802,22 @@ function _combineAttributesAndGridOptions(gridOptions, component, gridOptionsKey
     gridOptions = {};
   }
   const mergedOptions = { ...gridOptions };
-  for (const key of gridOptionsKeys) {
-    const value = component[key];
+  for (const key2 of gridOptionsKeys) {
+    const value = component[key2];
     if (typeof value !== "undefined") {
-      mergedOptions[key] = value;
+      mergedOptions[key2] = value;
     }
   }
   return mergedOptions;
 }
-function _processOnChange(changes, api2) {
+function _processOnChange(changes, api) {
   if (!changes) {
     return;
   }
   const gridChanges = {};
   let hasChanges = false;
-  for (const key of Object.keys(changes)) {
-    gridChanges[key] = changes[key];
+  for (const key2 of Object.keys(changes)) {
+    gridChanges[key2] = changes[key2];
     hasChanges = true;
   }
   if (!hasChanges) {
@@ -21827,12 +21827,12 @@ function _processOnChange(changes, api2) {
     type: "gridOptionsChanged",
     options: gridChanges
   };
-  api2.dispatchEvent(internalUpdateEvent);
+  api.dispatchEvent(internalUpdateEvent);
   const event = {
     type: "componentStateChanged",
     ...gridChanges
   };
-  api2.dispatchEvent(event);
+  api.dispatchEvent(event);
 }
 function _addGridCommonParams(gos, params) {
   return gos.addCommon(params);
@@ -21901,7 +21901,7 @@ var AgColumn = class extends BeanStub {
     colFlex?.initCol(this);
   }
   // gets called when user provides an alternative colDef, eg
-  setColDef(colDef, userProvidedColDef, source) {
+  setColDef(colDef, userProvidedColDef, source2) {
     const colSpanChanged = colDef.spanRows !== this.colDef.spanRows;
     this.colDef = colDef;
     this.userProvidedColDef = userProvidedColDef;
@@ -21912,7 +21912,7 @@ var AgColumn = class extends BeanStub {
       this.beans.rowSpanSvc?.deregister(this);
       this.initRowSpan();
     }
-    this.dispatchColEvent("colDefChanged", source);
+    this.dispatchColEvent("colDefChanged", source2);
   }
   getUserProvidedColDef() {
     return this.userProvidedColDef;
@@ -21968,9 +21968,9 @@ var AgColumn = class extends BeanStub {
       }
     });
   }
-  resetActualWidth(source) {
+  resetActualWidth(source2) {
     const initialWidth = this.calculateColInitialWidth(this.colDef);
-    this.setActualWidth(initialWidth, source, true);
+    this.setActualWidth(initialWidth, source2, true);
   }
   calculateColInitialWidth(colDef) {
     let width;
@@ -22073,8 +22073,8 @@ var AgColumn = class extends BeanStub {
     return !!this.getColDefValue("resizable");
   }
   /** Get value from ColDef or default if it exists. */
-  getColDefValue(key) {
-    return this.colDef[key] ?? COL_DEF_DEFAULTS[key];
+  getColDefValue(key2) {
+    return this.colDef[key2] ?? COL_DEF_DEFAULTS[key2];
   }
   isColumnFunc(rowNode, value) {
     if (typeof value === "boolean") {
@@ -22087,12 +22087,12 @@ var AgColumn = class extends BeanStub {
     }
     return false;
   }
-  createColumnEvent(type, source) {
+  createColumnEvent(type, source2) {
     return _addGridCommonParams(this.gos, {
       type,
       column: this,
       columns: [this],
-      source
+      source: source2
     });
   }
   isMoving() {
@@ -22138,11 +22138,11 @@ var AgColumn = class extends BeanStub {
   getRight() {
     return this.left + this.actualWidth;
   }
-  setLeft(left2, source) {
+  setLeft(left2, source2) {
     this.oldLeft = this.left;
     if (this.left !== left2) {
       this.left = left2;
-      this.dispatchColEvent("leftChanged", source);
+      this.dispatchColEvent("leftChanged", source2);
     }
   }
   isFilterActive() {
@@ -22153,16 +22153,16 @@ var AgColumn = class extends BeanStub {
     _warn(261);
     return !!this.beans.colHover?.isHovered(this);
   }
-  setFirstRightPinned(firstRightPinned, source) {
+  setFirstRightPinned(firstRightPinned, source2) {
     if (this.firstRightPinned !== firstRightPinned) {
       this.firstRightPinned = firstRightPinned;
-      this.dispatchColEvent("firstRightPinnedChanged", source);
+      this.dispatchColEvent("firstRightPinnedChanged", source2);
     }
   }
-  setLastLeftPinned(lastLeftPinned, source) {
+  setLastLeftPinned(lastLeftPinned, source2) {
     if (this.lastLeftPinned !== lastLeftPinned) {
       this.lastLeftPinned = lastLeftPinned;
-      this.dispatchColEvent("lastLeftPinnedChanged", source);
+      this.dispatchColEvent("lastLeftPinnedChanged", source2);
     }
   }
   isFirstRightPinned() {
@@ -22183,11 +22183,11 @@ var AgColumn = class extends BeanStub {
   getPinned() {
     return this.pinned;
   }
-  setVisible(visible, source) {
+  setVisible(visible, source2) {
     const newValue = visible === true;
     if (this.visible !== newValue) {
       this.visible = newValue;
-      this.dispatchColEvent("visibleChanged", source);
+      this.dispatchColEvent("visibleChanged", source2);
     }
     this.dispatchStateUpdatedEvent("hide");
   }
@@ -22279,22 +22279,22 @@ var AgColumn = class extends BeanStub {
     const rowSpan = this.colDef.rowSpan(params);
     return Math.max(rowSpan, 1);
   }
-  setActualWidth(actualWidth, source, silent = false) {
+  setActualWidth(actualWidth, source2, silent = false) {
     actualWidth = Math.max(actualWidth, this.minWidth);
     actualWidth = Math.min(actualWidth, this.maxWidth);
     if (this.actualWidth !== actualWidth) {
       this.actualWidth = actualWidth;
-      if (this.flex != null && source !== "flex" && source !== "gridInitializing") {
+      if (this.flex != null && source2 !== "flex" && source2 !== "gridInitializing") {
         this.flex = null;
       }
       if (!silent) {
-        this.fireColumnWidthChangedEvent(source);
+        this.fireColumnWidthChangedEvent(source2);
       }
     }
     this.dispatchStateUpdatedEvent("width");
   }
-  fireColumnWidthChangedEvent(source) {
-    this.dispatchColEvent("widthChanged", source);
+  fireColumnWidthChangedEvent(source2) {
+    this.dispatchColEvent("widthChanged", source2);
   }
   isGreaterThanMax(width) {
     return width > this.maxWidth;
@@ -22332,17 +22332,17 @@ var AgColumn = class extends BeanStub {
   isAllowRowGroup() {
     return this.colDef.enableRowGroup === true;
   }
-  dispatchColEvent(type, source, additionalEventAttributes) {
-    const colEvent = this.createColumnEvent(type, source);
+  dispatchColEvent(type, source2, additionalEventAttributes) {
+    const colEvent = this.createColumnEvent(type, source2);
     if (additionalEventAttributes) {
       _mergeDeep(colEvent, additionalEventAttributes);
     }
     this.colEventSvc.dispatchEvent(colEvent);
   }
-  dispatchStateUpdatedEvent(key) {
+  dispatchStateUpdatedEvent(key2) {
     this.colEventSvc.dispatchEvent({
       type: "columnStateUpdated",
-      key
+      key: key2
     });
   }
 };
@@ -22692,13 +22692,13 @@ function _updateColsMap(cols) {
     cols.map[col.getId()] = col;
   }
 }
-function _convertColumnEventSourceType(source) {
-  return source === "optionsUpdated" ? "gridOptionsChanged" : source;
+function _convertColumnEventSourceType(source2) {
+  return source2 === "optionsUpdated" ? "gridOptionsChanged" : source2;
 }
-function _columnsMatch(column, key) {
-  const columnMatches = column === key;
-  const colDefMatches = column.getColDef() === key;
-  const idMatches = column.getColId() == key;
+function _columnsMatch(column2, key2) {
+  const columnMatches = column2 === key2;
+  const colDefMatches = column2.getColDef() === key2;
+  const idMatches = column2.getColId() == key2;
   return columnMatches || colDefMatches || idMatches;
 }
 var getValueFactory = (stateItem, defaultState) => (key1, key2) => {
@@ -22733,7 +22733,7 @@ var depthFirstCallback = (child, parent) => {
   }
   child.originalParent = parent;
 };
-function _createColumnTree(beans, defs = null, primaryColumns, existingTree, source) {
+function _createColumnTree(beans, defs = null, primaryColumns, existingTree, source2) {
   const columnKeyCreator = new ColumnKeyCreator();
   const { existingCols, existingGroups, existingColKeys } = extractExistingTreeData(existingTree);
   columnKeyCreator.addExistingKeys(existingColKeys);
@@ -22745,7 +22745,7 @@ function _createColumnTree(beans, defs = null, primaryColumns, existingTree, sou
     existingCols,
     columnKeyCreator,
     existingGroups,
-    source
+    source2
   );
   const { colGroupSvc } = beans;
   const treeDepth = colGroupSvc?.findMaxDepth(unbalancedTree, 0) ?? 0;
@@ -22774,7 +22774,7 @@ function extractExistingTreeData(existingTree) {
   }
   return { existingCols, existingGroups, existingColKeys };
 }
-function _recursivelyCreateColumns(beans, defs, level, primaryColumns, existingColsCopy, columnKeyCreator, existingGroups, source) {
+function _recursivelyCreateColumns(beans, defs, level, primaryColumns, existingColsCopy, columnKeyCreator, existingGroups, source2) {
   if (!defs) {
     return [];
   }
@@ -22790,71 +22790,71 @@ function _recursivelyCreateColumns(beans, defs, level, primaryColumns, existingC
         existingColsCopy,
         columnKeyCreator,
         existingGroups,
-        source
+        source2
       );
     } else {
-      result[i] = createColumn(beans, primaryColumns, def, existingColsCopy, columnKeyCreator, source);
+      result[i] = createColumn(beans, primaryColumns, def, existingColsCopy, columnKeyCreator, source2);
     }
   }
   return result;
 }
-function createColumn(beans, primaryColumns, colDef, existingColsCopy, columnKeyCreator, source) {
+function createColumn(beans, primaryColumns, colDef, existingColsCopy, columnKeyCreator, source2) {
   const existingColAndIndex = findExistingColumn(colDef, existingColsCopy);
   if (existingColAndIndex) {
     existingColsCopy?.splice(existingColAndIndex.idx, 1);
   }
-  let column = existingColAndIndex?.column;
-  if (!column) {
+  let column2 = existingColAndIndex?.column;
+  if (!column2) {
     const colId = columnKeyCreator.getUniqueKey(colDef.colId, colDef.field);
     const colDefMerged = _addColumnDefaultAndTypes(beans, colDef, colId);
-    column = new AgColumn(colDefMerged, colDef, colId, primaryColumns);
-    beans.context.createBean(column);
+    column2 = new AgColumn(colDefMerged, colDef, colId, primaryColumns);
+    beans.context.createBean(column2);
   } else {
-    const colDefMerged = _addColumnDefaultAndTypes(beans, colDef, column.getColId());
-    column.setColDef(colDefMerged, colDef, source);
-    _updateColumnState(beans, column, colDefMerged, source);
+    const colDefMerged = _addColumnDefaultAndTypes(beans, colDef, column2.getColId());
+    column2.setColDef(colDefMerged, colDef, source2);
+    _updateColumnState(beans, column2, colDefMerged, source2);
   }
-  beans.dataTypeSvc?.addColumnListeners(column);
-  return column;
+  beans.dataTypeSvc?.addColumnListeners(column2);
+  return column2;
 }
-function updateSomeColumnState(beans, column, hide, sort, sortIndex, pinned, flex, source) {
+function updateSomeColumnState(beans, column2, hide, sort, sortIndex, pinned, flex, source2) {
   const { sortSvc, pinnedCols, colFlex } = beans;
   if (hide !== void 0) {
-    column.setVisible(!hide, source);
+    column2.setVisible(!hide, source2);
   }
   if (sortSvc) {
-    sortSvc.updateColSort(column, sort, source);
+    sortSvc.updateColSort(column2, sort, source2);
     if (sortIndex !== void 0) {
-      sortSvc.setColSortIndex(column, sortIndex);
+      sortSvc.setColSortIndex(column2, sortIndex);
     }
   }
   if (pinned !== void 0) {
-    pinnedCols?.setColPinned(column, pinned);
+    pinnedCols?.setColPinned(column2, pinned);
   }
   if (flex !== void 0) {
-    colFlex?.setColFlex(column, flex);
+    colFlex?.setColFlex(column2, flex);
   }
 }
-function _updateColumnState(beans, column, colDef, source) {
+function _updateColumnState(beans, column2, colDef, source2) {
   updateSomeColumnState(
     beans,
-    column,
+    column2,
     colDef.hide,
     colDef.sort,
     colDef.sortIndex,
     colDef.pinned,
     colDef.flex,
-    source
+    source2
   );
-  const colFlex = column.getFlex();
+  const colFlex = column2.getFlex();
   if (colFlex != null && colFlex > 0) {
     return;
   }
   if (colDef.width != null) {
-    column.setActualWidth(colDef.width, source);
+    column2.setActualWidth(colDef.width, source2);
   } else {
-    const widthBeforeUpdate = column.getActualWidth();
-    column.setActualWidth(widthBeforeUpdate, source);
+    const widthBeforeUpdate = column2.getActualWidth();
+    column2.setActualWidth(widthBeforeUpdate, source2);
   }
 }
 function findExistingColumn(newColDef, existingColsCopy) {
@@ -22929,16 +22929,16 @@ function assignColumnTypes(beans, typeKeys, colDefMerged) {
   }
   const allColumnTypes = Object.assign({}, DefaultColumnTypes);
   const userTypes = beans.gos.get("columnTypes") || {};
-  for (const key of Object.keys(userTypes)) {
-    const value = userTypes[key];
-    if (key in allColumnTypes) {
-      _warn(34, { key });
+  for (const key2 of Object.keys(userTypes)) {
+    const value = userTypes[key2];
+    if (key2 in allColumnTypes) {
+      _warn(34, { key: key2 });
     } else {
       const colType = value;
       if (colType.type) {
         _warn(35);
       }
-      allColumnTypes[key] = value;
+      allColumnTypes[key2] = value;
     }
   }
   for (const t of typeKeys) {
@@ -23024,44 +23024,44 @@ function getCommonValue(cols, valueGetter) {
   }
   return firstValue;
 }
-function dispatchColumnPinnedEvent(eventSvc, changedColumns, source) {
+function dispatchColumnPinnedEvent(eventSvc, changedColumns, source2) {
   if (!changedColumns.length) {
     return;
   }
-  const column = changedColumns.length === 1 ? changedColumns[0] : null;
+  const column2 = changedColumns.length === 1 ? changedColumns[0] : null;
   const pinned = getCommonValue(changedColumns, (col) => col.getPinned());
   eventSvc.dispatchEvent({
     type: "columnPinned",
     // mistake in typing, 'undefined' should be allowed, as 'null' means 'not pinned'
     pinned: pinned != null ? pinned : null,
     columns: changedColumns,
-    column,
-    source
+    column: column2,
+    source: source2
   });
 }
-function dispatchColumnVisibleEvent(eventSvc, changedColumns, source) {
+function dispatchColumnVisibleEvent(eventSvc, changedColumns, source2) {
   if (!changedColumns.length) {
     return;
   }
-  const column = changedColumns.length === 1 ? changedColumns[0] : null;
+  const column2 = changedColumns.length === 1 ? changedColumns[0] : null;
   const visible = getCommonValue(changedColumns, (col) => col.isVisible());
   eventSvc.dispatchEvent({
     type: "columnVisible",
     visible,
     columns: changedColumns,
-    column,
-    source
+    column: column2,
+    source: source2
   });
 }
-function dispatchColumnChangedEvent(eventSvc, type, columns, source) {
+function dispatchColumnChangedEvent(eventSvc, type, columns, source2) {
   eventSvc.dispatchEvent({
     type,
     columns,
     column: columns && columns.length == 1 ? columns[0] : null,
-    source
+    source: source2
   });
 }
-function dispatchColumnResizedEvent(eventSvc, columns, finished, source, flexColumns = null) {
+function dispatchColumnResizedEvent(eventSvc, columns, finished, source2, flexColumns = null) {
   if (columns?.length) {
     eventSvc.dispatchEvent({
       type: "columnResized",
@@ -23069,11 +23069,11 @@ function dispatchColumnResizedEvent(eventSvc, columns, finished, source, flexCol
       column: columns.length === 1 ? columns[0] : null,
       flexColumns,
       finished,
-      source
+      source: source2
     });
   }
 }
-function _applyColumnState(beans, params, source) {
+function _applyColumnState(beans, params, source2) {
   const {
     colModel,
     rowGroupColsSvc,
@@ -23097,40 +23097,40 @@ function _applyColumnState(beans, params, source) {
     _warn(32);
     return false;
   }
-  const syncColumnWithStateItem = (column, stateItem, rowGroupIndexes, pivotIndexes, autoCol) => {
-    if (!column) {
+  const syncColumnWithStateItem = (column2, stateItem, rowGroupIndexes, pivotIndexes, autoCol) => {
+    if (!column2) {
       return;
     }
     const getValue = getValueFactory(stateItem, params.defaultState);
     const flex = getValue("flex").value1;
     updateSomeColumnState(
       beans,
-      column,
+      column2,
       getValue("hide").value1,
       getValue("sort").value1,
       getValue("sortIndex").value1,
       getValue("pinned").value1,
       flex,
-      source
+      source2
     );
     if (flex == null) {
       const width = getValue("width").value1;
       if (width != null) {
-        const minColWidth = column.getColDef().minWidth ?? environment.getDefaultColumnMinWidth();
+        const minColWidth = column2.getColDef().minWidth ?? environment.getDefaultColumnMinWidth();
         if (minColWidth != null && width >= minColWidth) {
-          column.setActualWidth(width, source);
+          column2.setActualWidth(width, source2);
         }
       }
     }
-    if (autoCol || !column.isPrimary()) {
+    if (autoCol || !column2.isPrimary()) {
       return;
     }
-    valueColsSvc?.syncColumnWithState(column, source, getValue);
-    rowGroupColsSvc?.syncColumnWithState(column, source, getValue, rowGroupIndexes);
-    pivotColsSvc?.syncColumnWithState(column, source, getValue, pivotIndexes);
+    valueColsSvc?.syncColumnWithState(column2, source2, getValue);
+    rowGroupColsSvc?.syncColumnWithState(column2, source2, getValue, rowGroupIndexes);
+    pivotColsSvc?.syncColumnWithState(column2, source2, getValue, pivotIndexes);
   };
   const applyStates = (states, existingColumns, getById2) => {
-    const dispatchEventsFunc = _compareColumnStatesAndDispatchEvents(beans, source);
+    const dispatchEventsFunc = _compareColumnStatesAndDispatchEvents(beans, source2);
     const columnsWithNoState = existingColumns.slice();
     const rowGroupIndexes = {};
     const pivotIndexes = {};
@@ -23153,20 +23153,20 @@ function _applyColumnState(beans, params, source) {
         unmatchedAndAutoStates2.push(state);
         continue;
       }
-      const column = getById2(colId);
-      if (!column) {
+      const column2 = getById2(colId);
+      if (!column2) {
         unmatchedAndAutoStates2.push(state);
         unmatchedCount2 += 1;
       } else {
-        syncColumnWithStateItem(column, state, rowGroupIndexes, pivotIndexes, false);
-        _removeFromArray(columnsWithNoState, column);
+        syncColumnWithStateItem(column2, state, rowGroupIndexes, pivotIndexes, false);
+        _removeFromArray(columnsWithNoState, column2);
       }
     }
     const applyDefaultsFunc = (col) => syncColumnWithStateItem(col, null, rowGroupIndexes, pivotIndexes, false);
     columnsWithNoState.forEach(applyDefaultsFunc);
     rowGroupColsSvc?.sortColumns(comparatorByIndex.bind(rowGroupColsSvc, rowGroupIndexes, previousRowGroupCols));
     pivotColsSvc?.sortColumns(comparatorByIndex.bind(pivotColsSvc, pivotIndexes, previousPivotCols));
-    colModel.refreshCols(false, source);
+    colModel.refreshCols(false, source2);
     const syncColStates = (getCol, colStates, columns = []) => {
       for (const stateItem of colStates) {
         const col = getCol(stateItem.colId);
@@ -23186,10 +23186,10 @@ function _applyColumnState(beans, params, source) {
       selectionColSvc?.getColumns()?.slice()
     );
     orderLiveColsLikeState(params, colModel, gos);
-    visibleCols.refresh(source);
+    visibleCols.refresh(source2);
     eventSvc.dispatchEvent({
       type: "columnEverythingChanged",
-      source
+      source: source2
     });
     dispatchEventsFunc();
     return { unmatchedAndAutoStates: unmatchedAndAutoStates2, unmatchedCount: unmatchedCount2 };
@@ -23211,7 +23211,7 @@ function _applyColumnState(beans, params, source) {
   colAnimation?.finish();
   return unmatchedCount === 0;
 }
-function _resetColumnState(beans, source) {
+function _resetColumnState(beans, source2) {
   const { colModel, autoColSvc, selectionColSvc, eventSvc, gos } = beans;
   const primaryCols = colModel.getColDefCols();
   if (!primaryCols?.length) {
@@ -23235,15 +23235,15 @@ function _resetColumnState(beans, source) {
   autoColSvc?.getColumns()?.forEach(addColState);
   selectionColSvc?.getColumns()?.forEach(addColState);
   primaryColumns?.forEach(addColState);
-  _applyColumnState(beans, { state: columnStates }, source);
+  _applyColumnState(beans, { state: columnStates }, source2);
   const autoCols = autoColSvc?.getColumns() ?? [];
   const selectionCols = selectionColSvc?.getColumns() ?? [];
   const orderedCols = [...selectionCols, ...autoCols, ...primaryCols];
   const orderedColState = orderedCols.map((col) => ({ colId: col.colId }));
-  _applyColumnState(beans, { state: orderedColState, applyOrder: true }, source);
-  eventSvc.dispatchEvent(_addGridCommonParams(gos, { type: "columnsReset", source }));
+  _applyColumnState(beans, { state: orderedColState, applyOrder: true }, source2);
+  eventSvc.dispatchEvent(_addGridCommonParams(gos, { type: "columnsReset", source: source2 }));
 }
-function _compareColumnStatesAndDispatchEvents(beans, source) {
+function _compareColumnStatesAndDispatchEvents(beans, source2) {
   const { rowGroupColsSvc, pivotColsSvc, valueColsSvc, colModel, sortSvc, eventSvc } = beans;
   const startState = {
     rowGroupColumns: rowGroupColsSvc?.columns.slice() ?? [],
@@ -23274,20 +23274,20 @@ function _compareColumnStatesAndDispatchEvents(beans, source) {
         type: eventType,
         columns: changesArr,
         column: changesArr.length === 1 ? changesArr[0] : null,
-        source
+        source: source2
       });
     };
     const getChangedColumns = (changedPredicate) => {
       const changedColumns2 = [];
-      colModel.forAllCols((column) => {
-        const colStateBefore = columnStateBeforeMap[column.getColId()];
-        if (colStateBefore && changedPredicate(colStateBefore, column)) {
-          changedColumns2.push(column);
+      colModel.forAllCols((column2) => {
+        const colStateBefore = columnStateBeforeMap[column2.getColId()];
+        if (colStateBefore && changedPredicate(colStateBefore, column2)) {
+          changedColumns2.push(column2);
         }
       });
       return changedColumns2;
     };
-    const columnIdMapper = (c) => c.getColId();
+    const columnIdMapper = (c2) => c2.getColId();
     dispatchWhenListsDifferent(
       "columnRowGroupChanged",
       startState.rowGroupColumns,
@@ -23300,29 +23300,29 @@ function _compareColumnStatesAndDispatchEvents(beans, source) {
       pivotColsSvc?.columns ?? [],
       columnIdMapper
     );
-    const valueChangePredicate = (cs, c) => {
+    const valueChangePredicate = (cs, c2) => {
       const oldActive = cs.aggFunc != null;
-      const activeChanged = oldActive != c.isValueActive();
-      const aggFuncChanged = oldActive && cs.aggFunc != c.getAggFunc();
+      const activeChanged = oldActive != c2.isValueActive();
+      const aggFuncChanged = oldActive && cs.aggFunc != c2.getAggFunc();
       return activeChanged || aggFuncChanged;
     };
     const changedValues = getChangedColumns(valueChangePredicate);
     if (changedValues.length > 0) {
-      dispatchColumnChangedEvent(eventSvc, "columnValueChanged", changedValues, source);
+      dispatchColumnChangedEvent(eventSvc, "columnValueChanged", changedValues, source2);
     }
-    const resizeChangePredicate = (cs, c) => cs.width != c.getActualWidth();
-    dispatchColumnResizedEvent(eventSvc, getChangedColumns(resizeChangePredicate), true, source);
-    const pinnedChangePredicate = (cs, c) => cs.pinned != c.getPinned();
-    dispatchColumnPinnedEvent(eventSvc, getChangedColumns(pinnedChangePredicate), source);
-    const visibilityChangePredicate = (cs, c) => cs.hide == c.isVisible();
-    dispatchColumnVisibleEvent(eventSvc, getChangedColumns(visibilityChangePredicate), source);
-    const sortChangePredicate = (cs, c) => cs.sort != c.getSort() || cs.sortIndex != c.getSortIndex();
+    const resizeChangePredicate = (cs, c2) => cs.width != c2.getActualWidth();
+    dispatchColumnResizedEvent(eventSvc, getChangedColumns(resizeChangePredicate), true, source2);
+    const pinnedChangePredicate = (cs, c2) => cs.pinned != c2.getPinned();
+    dispatchColumnPinnedEvent(eventSvc, getChangedColumns(pinnedChangePredicate), source2);
+    const visibilityChangePredicate = (cs, c2) => cs.hide == c2.isVisible();
+    dispatchColumnVisibleEvent(eventSvc, getChangedColumns(visibilityChangePredicate), source2);
+    const sortChangePredicate = (cs, c2) => cs.sort != c2.getSort() || cs.sortIndex != c2.getSortIndex();
     const changedColumns = getChangedColumns(sortChangePredicate);
     if (changedColumns.length > 0) {
-      sortSvc?.dispatchSortChangedEvents(source, changedColumns);
+      sortSvc?.dispatchSortChangedEvents(source2, changedColumns);
     }
     const colStateAfter = _getColumnState(beans);
-    normaliseColumnMovedEventForColumnState(columnStateBefore, colStateAfter, source, colModel, eventSvc);
+    normaliseColumnMovedEventForColumnState(columnStateBefore, colStateAfter, source2, colModel, eventSvc);
   };
 }
 function _getColumnState(beans) {
@@ -23334,25 +23334,25 @@ function _getColumnState(beans) {
   const rowGroupColumns = rowGroupColsSvc?.columns;
   const pivotColumns = pivotColsSvc?.columns;
   const res = [];
-  const createStateItemFromColumn = (column) => {
-    const rowGroupIndex = column.isRowGroupActive() && rowGroupColumns ? rowGroupColumns.indexOf(column) : null;
-    const pivotIndex = column.isPivotActive() && pivotColumns ? pivotColumns.indexOf(column) : null;
-    const aggFunc = column.isValueActive() ? column.getAggFunc() : null;
-    const sort = column.getSort() != null ? column.getSort() : null;
-    const sortIndex = column.getSortIndex() != null ? column.getSortIndex() : null;
+  const createStateItemFromColumn = (column2) => {
+    const rowGroupIndex = column2.isRowGroupActive() && rowGroupColumns ? rowGroupColumns.indexOf(column2) : null;
+    const pivotIndex = column2.isPivotActive() && pivotColumns ? pivotColumns.indexOf(column2) : null;
+    const aggFunc = column2.isValueActive() ? column2.getAggFunc() : null;
+    const sort = column2.getSort() != null ? column2.getSort() : null;
+    const sortIndex = column2.getSortIndex() != null ? column2.getSortIndex() : null;
     res.push({
-      colId: column.getColId(),
-      width: column.getActualWidth(),
-      hide: !column.isVisible(),
-      pinned: column.getPinned(),
+      colId: column2.getColId(),
+      width: column2.getActualWidth(),
+      hide: !column2.isVisible(),
+      pinned: column2.getPinned(),
       sort,
       sortIndex,
       aggFunc,
-      rowGroup: column.isRowGroupActive(),
+      rowGroup: column2.isRowGroupActive(),
       rowGroupIndex,
-      pivot: column.isPivotActive(),
+      pivot: column2.isPivotActive(),
       pivotIndex,
-      flex: column.getFlex() ?? null
+      flex: column2.getFlex() ?? null
     });
   };
   colModel.forAllCols((col) => createStateItemFromColumn(col));
@@ -23366,9 +23366,9 @@ function _getColumnState(beans) {
   });
   return res;
 }
-function getColumnStateFromColDef(column) {
+function getColumnStateFromColDef(column2) {
   const getValueOrNull = (a, b) => a != null ? a : b != null ? b : null;
-  const colDef = column.getColDef();
+  const colDef = column2.getColDef();
   const sort = getValueOrNull(colDef.sort, colDef.initialSort);
   const sortIndex = getValueOrNull(colDef.sortIndex, colDef.initialSortIndex);
   const hide = getValueOrNull(colDef.hide, colDef.initialHide);
@@ -23389,7 +23389,7 @@ function getColumnStateFromColDef(column) {
   }
   const aggFunc = getValueOrNull(colDef.aggFunc, colDef.initialAggFunc);
   return {
-    colId: column.getColId(),
+    colId: column2.getColId(),
     sort,
     sortIndex,
     hide,
@@ -23452,7 +23452,7 @@ function sortColsLikeKeys(cols, colIds, colModel, gos) {
   }
   cols.list = newOrder;
 }
-function normaliseColumnMovedEventForColumnState(colStateBefore, colStateAfter, source, colModel, eventSvc) {
+function normaliseColumnMovedEventForColumnState(colStateBefore, colStateAfter, source2, colModel, eventSvc) {
   const colStateAfterMapped = {};
   for (const s of colStateAfter) {
     colStateAfterMapped[s.colId] = s;
@@ -23463,8 +23463,8 @@ function normaliseColumnMovedEventForColumnState(colStateBefore, colStateAfter, 
       colsIntersectIds[s.colId] = true;
     }
   }
-  const beforeFiltered = colStateBefore.filter((c) => colsIntersectIds[c.colId]);
-  const afterFiltered = colStateAfter.filter((c) => colsIntersectIds[c.colId]);
+  const beforeFiltered = colStateBefore.filter((c2) => colsIntersectIds[c2.colId]);
+  const afterFiltered = colStateAfter.filter((c2) => colsIntersectIds[c2.colId]);
   const movedColumns = [];
   afterFiltered.forEach((csAfter, index) => {
     const csBefore = beforeFiltered?.[index];
@@ -23483,7 +23483,7 @@ function normaliseColumnMovedEventForColumnState(colStateBefore, colStateAfter, 
     columns: movedColumns,
     column: movedColumns.length === 1 ? movedColumns[0] : null,
     finished: true,
-    source
+    source: source2
   });
 }
 var comparatorByIndex = (indexes, oldList, colA, colB) => {
@@ -23543,7 +23543,7 @@ var ColumnModel = class extends BeanStub {
     );
   }
   // called from SyncService, when grid has finished initialising
-  createColsFromColDefs(source) {
+  createColsFromColDefs(source2) {
     const { beans } = this;
     const {
       valueCache,
@@ -23555,11 +23555,11 @@ var ColumnModel = class extends BeanStub {
       eventSvc,
       groupHierarchyColSvc
     } = beans;
-    const dispatchEventsFunc = this.colDefs ? _compareColumnStatesAndDispatchEvents(beans, source) : void 0;
+    const dispatchEventsFunc = this.colDefs ? _compareColumnStatesAndDispatchEvents(beans, source2) : void 0;
     valueCache?.expire();
     const oldCols = this.colDefCols?.list;
     const oldTree = this.colDefCols?.tree;
-    const newTree = _createColumnTree(beans, this.colDefs, true, oldTree, source);
+    const newTree = _createColumnTree(beans, this.colDefs, true, oldTree, source2);
     _destroyColumnTree(beans, this.colDefCols?.tree, newTree.columnTree);
     const tree = newTree.columnTree;
     const treeDepth = newTree.treeDepth;
@@ -23569,16 +23569,16 @@ var ColumnModel = class extends BeanStub {
       map[col.getId()] = col;
     }
     this.colDefCols = { tree, treeDepth, list, map };
-    this.createColumnsForService([groupHierarchyColSvc], this.colDefCols, source);
-    rowGroupColsSvc?.extractCols(source, oldCols);
-    pivotColsSvc?.extractCols(source, oldCols);
-    valueColsSvc?.extractCols(source, oldCols);
+    this.createColumnsForService([groupHierarchyColSvc], this.colDefCols, source2);
+    rowGroupColsSvc?.extractCols(source2, oldCols);
+    pivotColsSvc?.extractCols(source2, oldCols);
+    valueColsSvc?.extractCols(source2, oldCols);
     this.ready = true;
-    this.refreshCols(true, source);
-    visibleCols.refresh(source);
+    this.refreshCols(true, source2);
+    visibleCols.refresh(source2);
     eventSvc.dispatchEvent({
       type: "columnEverythingChanged",
-      source
+      source: source2
     });
     if (dispatchEventsFunc) {
       this.changeEventsDispatching = true;
@@ -23587,9 +23587,9 @@ var ColumnModel = class extends BeanStub {
     }
     eventSvc.dispatchEvent({
       type: "newColumnsLoaded",
-      source
+      source: source2
     });
-    if (source === "gridInitializing") {
+    if (source2 === "gridInitializing") {
       colAutosize?.applyAutosizeStrategy();
     }
   }
@@ -23598,7 +23598,7 @@ var ColumnModel = class extends BeanStub {
   // setPivotMode, applyColumnState,
   // functionColsService.setPrimaryColList, functionColsService.updatePrimaryColList,
   // pivotResultCols.setPivotResultCols
-  refreshCols(newColDefs, source) {
+  refreshCols(newColDefs, source2) {
     if (!this.colDefCols) {
       return;
     }
@@ -23617,7 +23617,7 @@ var ColumnModel = class extends BeanStub {
       eventSvc
     } = this.beans;
     const cols = this.selectCols(pivotResultCols, this.colDefCols);
-    this.createColumnsForService([autoColSvc, selectionColSvc, rowNumbersSvc], cols, source);
+    this.createColumnsForService([autoColSvc, selectionColSvc, rowNumbersSvc], cols, source2);
     const shouldSortNewColDefs = _shouldMaintainColumnOrder(this.gos, this.showingPivotResult);
     if (!newColDefs || shouldSortNewColDefs) {
       this.restoreColOrder(cols);
@@ -23636,7 +23636,7 @@ var ColumnModel = class extends BeanStub {
       });
     }
   }
-  createColumnsForService(services, cols, source) {
+  createColumnsForService(services, cols, source2) {
     for (const service of services) {
       if (!service) {
         continue;
@@ -23647,7 +23647,7 @@ var ColumnModel = class extends BeanStub {
           this.lastOrder = updateOrder(this.lastOrder);
           this.lastPivotOrder = updateOrder(this.lastPivotOrder);
         },
-        source
+        source2
       );
       service.addColumns(cols);
     }
@@ -23691,23 +23691,23 @@ var ColumnModel = class extends BeanStub {
     return res;
   }
   // on events 'groupDisplayType', 'treeData', 'treeDataDisplayType', 'groupHideOpenParents'
-  refreshAll(source) {
+  refreshAll(source2) {
     if (!this.ready) {
       return;
     }
-    this.refreshCols(false, source);
-    this.beans.visibleCols.refresh(source);
+    this.refreshCols(false, source2);
+    this.beans.visibleCols.refresh(source2);
   }
-  setColsVisible(keys, visible = false, source) {
+  setColsVisible(keys, visible = false, source2) {
     _applyColumnState(
       this.beans,
       {
-        state: keys.map((key) => ({
-          colId: typeof key === "string" ? key : key.getColId(),
+        state: keys.map((key2) => ({
+          colId: typeof key2 === "string" ? key2 : key2.getColId(),
           hide: !visible
         }))
       },
-      source
+      source2
     );
   }
   /**
@@ -23862,7 +23862,7 @@ var ColumnModel = class extends BeanStub {
   isPivotMode() {
     return this.pivotMode;
   }
-  setPivotMode(pivotMode, source) {
+  setPivotMode(pivotMode, source2) {
     if (pivotMode === this.pivotMode) {
       return;
     }
@@ -23870,9 +23870,9 @@ var ColumnModel = class extends BeanStub {
     if (!this.ready) {
       return;
     }
-    this.refreshCols(false, source);
+    this.refreshCols(false, source2);
     const { visibleCols, eventSvc } = this.beans;
-    visibleCols.refresh(source);
+    visibleCols.refresh(source2);
     eventSvc.dispatchEvent({
       type: "columnPivotModeChanged"
     });
@@ -23888,12 +23888,12 @@ var ColumnModel = class extends BeanStub {
       return;
     }
     this.beans.autoColSvc?.updateColumns(e);
-    const source = _convertColumnEventSourceType(e.source);
-    this.createColsFromColDefs(source);
+    const source2 = _convertColumnEventSourceType(e.source);
+    this.createColsFromColDefs(source2);
   }
-  setColumnDefs(columnDefs, source) {
+  setColumnDefs(columnDefs, source2) {
     this.colDefs = columnDefs;
-    this.createColsFromColDefs(source);
+    this.createColsFromColDefs(source2);
   }
   destroy() {
     _destroyColumnTree(this.beans, this.colDefCols?.tree);
@@ -23927,58 +23927,58 @@ var ColumnModel = class extends BeanStub {
     if (!keys) {
       return [];
     }
-    return keys.map((key) => this.getCol(key)).filter((col) => col != null);
+    return keys.map((key2) => this.getCol(key2)).filter((col) => col != null);
   }
-  getColDefCol(key) {
+  getColDefCol(key2) {
     if (!this.colDefCols?.list) {
       return null;
     }
-    return this.getColFromCollection(key, this.colDefCols);
+    return this.getColFromCollection(key2, this.colDefCols);
   }
-  getCol(key) {
-    if (key == null) {
+  getCol(key2) {
+    if (key2 == null) {
       return null;
     }
-    return this.getColFromCollection(key, this.cols);
+    return this.getColFromCollection(key2, this.cols);
   }
   /**
    * Get column exclusively by ID.
    *
    * Note getCol/getColFromCollection have poor performance when col has been removed.
    */
-  getColById(key) {
-    return this.cols?.map[key] ?? null;
+  getColById(key2) {
+    return this.cols?.map[key2] ?? null;
   }
-  getColFromCollection(key, cols) {
+  getColFromCollection(key2, cols) {
     if (cols == null) {
       return null;
     }
     const { map, list } = cols;
-    if (typeof key == "string" && map[key]) {
-      return map[key];
+    if (typeof key2 == "string" && map[key2]) {
+      return map[key2];
     }
     for (let i = 0; i < list.length; i++) {
-      if (_columnsMatch(list[i], key)) {
+      if (_columnsMatch(list[i], key2)) {
         return list[i];
       }
     }
     const { autoColSvc, selectionColSvc, groupHierarchyColSvc } = this.beans;
-    return autoColSvc?.getColumn(key) ?? selectionColSvc?.getColumn(key) ?? groupHierarchyColSvc?.getColumn(key) ?? null;
+    return autoColSvc?.getColumn(key2) ?? selectionColSvc?.getColumn(key2) ?? groupHierarchyColSvc?.getColumn(key2) ?? null;
   }
 };
 var GroupInstanceIdCreator = class {
   constructor() {
     this.existingIds = {};
   }
-  getInstanceIdForKey(key) {
-    const lastResult = this.existingIds[key];
+  getInstanceIdForKey(key2) {
+    const lastResult = this.existingIds[key2];
     let result;
     if (typeof lastResult !== "number") {
       result = 0;
     } else {
       result = lastResult + 1;
     }
-    this.existingIds[key] = result;
+    this.existingIds[key2] = result;
     return result;
   }
 };
@@ -24106,10 +24106,10 @@ var AgComponentStub = class extends AgBeanStub {
     }
   }
   createComponentFromElement(element, afterPreCreateCallback, paramsMap) {
-    const key = element.nodeName;
+    const key2 = element.nodeName;
     const elementRef = this.getDataRefAttribute(element);
-    const isAgGridComponent = key.indexOf("AG-") === 0;
-    const componentSelector = isAgGridComponent ? this.componentSelectors.get(key) : null;
+    const isAgGridComponent = key2.indexOf("AG-") === 0;
+    const componentSelector = isAgGridComponent ? this.componentSelectors.get(key2) : null;
     let newComponent = null;
     if (componentSelector) {
       const componentParams = paramsMap && elementRef ? paramsMap[elementRef] : void 0;
@@ -24119,7 +24119,7 @@ var AgComponentStub = class extends AgBeanStub {
       );
       this.createBean(newComponent, null, afterPreCreateCallback);
     } else if (isAgGridComponent) {
-      throw new Error(`selector: ${key}`);
+      throw new Error(`selector: ${key2}`);
     }
     this.applyElementsToComponent(element, elementRef, paramsMap, newComponent);
     return newComponent;
@@ -24381,8 +24381,8 @@ var UserComponentFactory = class extends BeanStub {
     let { compName, jsComp, fwComp, paramsFromSelector, popupFromSelector, popupPositionFromSelector } = _getUserCompKeys(this.beans.frameworkOverrides, defObject, type, params);
     let defaultCompParams;
     let defaultCompProcessParams;
-    const lookupFromRegistry = (key) => {
-      const item = this.registry.getUserComponent(name, key);
+    const lookupFromRegistry = (key2) => {
+      const item = this.registry.getUserComponent(name, key2);
       if (item) {
         jsComp = !item.componentFromFramework ? item.component : void 0;
         fwComp = item.componentFromFramework ? item.component : void 0;
@@ -25537,7 +25537,7 @@ var AgInputTextField = class extends AgAbstractInputField {
       keydown: preventCharacters,
       paste: (e) => {
         const text = e.clipboardData?.getData("text");
-        if (text?.split("").some((c) => !pattern.test(c))) {
+        if (text?.split("").some((c2) => !pattern.test(c2))) {
           e.preventDefault();
         }
       }
@@ -25883,27 +25883,27 @@ var AgList = class extends AgComponentStub {
     this.addManagedElementListeners(eGui, { mouseleave: () => this.clearHighlighted() });
   }
   handleKeyDown(e) {
-    const key = e.key;
-    switch (key) {
+    const key2 = e.key;
+    switch (key2) {
       case KeyCode.ENTER:
         if (!this.highlightedItem) {
           this.setValue(this.getValue());
         } else {
-          const pos = this.listItems.indexOf(this.highlightedItem);
-          this.setValueByIndex(pos);
+          const pos2 = this.listItems.indexOf(this.highlightedItem);
+          this.setValueByIndex(pos2);
         }
         break;
       case KeyCode.DOWN:
       case KeyCode.UP:
         e.preventDefault();
-        this.navigate(key);
+        this.navigate(key2);
         break;
       case KeyCode.PAGE_DOWN:
       case KeyCode.PAGE_UP:
       case KeyCode.PAGE_HOME:
       case KeyCode.PAGE_END:
         e.preventDefault();
-        this.navigateToPage(key);
+        this.navigateToPage(key2);
         break;
     }
   }
@@ -26009,8 +26009,8 @@ var AgList = class extends AgComponentStub {
     this.listItems.push(listItem);
     this.getGui().appendChild(listItem.getGui());
   }
-  navigate(key) {
-    const isDown = key === KeyCode.DOWN;
+  navigate(key2) {
+    const isDown = key2 === KeyCode.DOWN;
     let itemToHighlight;
     const { listItems, highlightedItem } = this;
     if (!highlightedItem) {
@@ -26023,7 +26023,7 @@ var AgList = class extends AgComponentStub {
     }
     this.highlightItem(itemToHighlight);
   }
-  navigateToPage(key) {
+  navigateToPage(key2) {
     const { listItems, highlightedItem } = this;
     if (!highlightedItem || listItems.length === 0) {
       return;
@@ -26033,13 +26033,13 @@ var AgList = class extends AgComponentStub {
     const itemHeight = listItems[0].getHeight();
     const pageSize = Math.floor(this.getGui().clientHeight / itemHeight);
     let newIndex = -1;
-    if (key === KeyCode.PAGE_HOME) {
+    if (key2 === KeyCode.PAGE_HOME) {
       newIndex = 0;
-    } else if (key === KeyCode.PAGE_END) {
+    } else if (key2 === KeyCode.PAGE_END) {
       newIndex = rowCount;
-    } else if (key === KeyCode.PAGE_DOWN) {
+    } else if (key2 === KeyCode.PAGE_DOWN) {
       newIndex = Math.min(currentIdx + pageSize, rowCount);
-    } else if (key === KeyCode.PAGE_UP) {
+    } else if (key2 === KeyCode.PAGE_UP) {
       newIndex = Math.max(currentIdx - pageSize, 0);
     }
     if (newIndex === -1) {
@@ -26442,11 +26442,11 @@ var AgSelect = class extends AgPickerField {
     super.beforeHidePicker();
   }
   onKeyDown(e) {
-    const { key } = e;
-    if (key === KeyCode.TAB) {
+    const { key: key2 } = e;
+    if (key2 === KeyCode.TAB) {
       this.hidePicker();
     }
-    switch (key) {
+    switch (key2) {
       case KeyCode.ENTER:
       case KeyCode.UP:
       case KeyCode.DOWN:
@@ -26655,11 +26655,11 @@ var clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 var memoize = (fn) => {
   const values = /* @__PURE__ */ new Map();
   return (a) => {
-    const key = a;
-    if (!values.has(key)) {
-      values.set(key, fn(a));
+    const key2 = a;
+    if (!values.has(key2)) {
+      values.set(key2, fn(a));
     }
-    return values.get(key);
+    return values.get(key2);
   };
 };
 var accentMix = (mix) => ({ ref: "accentColor", mix });
@@ -27056,13 +27056,13 @@ var ThemeImpl = class _ThemeImpl {
           variablesCss += wrapPrefix;
           inheritanceCss += wrapPrefix;
         }
-        for (const key of Object.keys(params).sort()) {
-          const value = params[key];
-          const cssValue = paramValueToCss(key, value, this.themeLogger);
+        for (const key2 of Object.keys(params).sort()) {
+          const value = params[key2];
+          const cssValue = paramValueToCss(key2, value, this.themeLogger);
           if (cssValue === false) {
-            this.themeLogger.error(107, { key, value });
+            this.themeLogger.error(107, { key: key2, value });
           } else {
-            const cssName = paramToVariableName(key);
+            const cssName = paramToVariableName(key2);
             const inheritedName = cssName.replace("--ag-", "--ag-inherited-");
             variablesCss += `	${cssName}: var(${inheritedName}, ${cssValue});
 `;
@@ -28086,9 +28086,9 @@ var BasePopupService = class extends AgBeanStub {
   }
   addPopup(params) {
     const { eChild, ariaLabel, ariaOwns, alwaysOnTop, positionCallback, anchorToElement } = params;
-    const pos = this.getPopupIndex(eChild);
-    if (pos !== -1) {
-      const popup = this.popupList[pos];
+    const pos2 = this.getPopupIndex(eChild);
+    if (pos2 !== -1) {
+      const popup = this.popupList[pos2];
       return { hideFunc: popup.hideFunc };
     }
     this.initialisePopupPosition(eChild);
@@ -28146,8 +28146,8 @@ var BasePopupService = class extends AgBeanStub {
       if (!wrapperEl.contains(_getActiveDomElement(beans))) {
         return;
       }
-      const key = event.key;
-      if (key === KeyCode.ESCAPE && !this.isStopPropagation(event)) {
+      const key2 = event.key;
+      if (key2 === KeyCode.ESCAPE && !this.isStopPropagation(event)) {
         removeListeners({ keyboardEvent: event });
       }
     };
@@ -29620,11 +29620,11 @@ var RowNode = class {
    */
   setDataValue(colKey, newValue, eventSource) {
     const { colModel, valueSvc, gos, editSvc } = this.beans;
-    const column = typeof colKey !== "string" ? colKey : colModel.getCol(colKey) ?? colModel.getColDefCol(colKey);
-    if (!column) {
+    const column2 = typeof colKey !== "string" ? colKey : colModel.getCol(colKey) ?? colModel.getColDefCol(colKey);
+    if (!column2) {
       return false;
     }
-    const oldValue = valueSvc.getValueForDisplay(column, this, void 0, void 0, "api").value;
+    const oldValue = valueSvc.getValueForDisplay(column2, this, void 0, void 0, "api").value;
     if (gos.get("readOnlyEdit")) {
       const {
         beans: { eventSvc },
@@ -29637,8 +29637,8 @@ var RowNode = class {
         event: null,
         rowIndex,
         rowPinned,
-        column,
-        colDef: column.colDef,
+        column: column2,
+        colDef: column2.colDef,
         data,
         node: this,
         oldValue,
@@ -29649,15 +29649,15 @@ var RowNode = class {
       return false;
     }
     if (editSvc && !editSvc.committing) {
-      const result = editSvc.setDataValue({ rowNode: this, column }, newValue, eventSource);
+      const result = editSvc.setDataValue({ rowNode: this, column: column2 }, newValue, eventSource);
       if (result != null) {
         return result;
       }
     }
-    const valueChanged = valueSvc.setValue(this, column, newValue, eventSource);
-    this.dispatchCellChangedEvent(column, newValue, oldValue);
+    const valueChanged = valueSvc.setValue(this, column2, newValue, eventSource);
+    this.dispatchCellChangedEvent(column2, newValue, oldValue);
     if (valueChanged) {
-      this.pinnedSibling?.dispatchCellChangedEvent(column, newValue, oldValue);
+      this.pinnedSibling?.dispatchCellChangedEvent(column2, newValue, oldValue);
     }
     return valueChanged;
   }
@@ -29678,11 +29678,11 @@ var RowNode = class {
     }
     return this.__hasChildren;
   }
-  dispatchCellChangedEvent(column, newValue, oldValue) {
+  dispatchCellChangedEvent(column2, newValue, oldValue) {
     const cellChangedEvent = {
       type: "cellChanged",
       node: this,
-      column,
+      column: column2,
       newValue,
       oldValue
     };
@@ -29740,12 +29740,12 @@ var RowNode = class {
    * @param clearSelection - If selecting, then passing `true` selects the node exclusively (i.e. NOT do multi select). If doing deselection, `clearSelection` has no impact.
    * @param source - Source property that appears in the `selectionChanged` event.
    */
-  setSelected(newValue, clearSelection = false, source = "api") {
+  setSelected(newValue, clearSelection = false, source2 = "api") {
     this.beans.selectionSvc?.setNodesSelected({
       nodes: [this],
       newValue,
       clearSelection,
-      source
+      source: source2
     });
   }
   /**
@@ -29874,11 +29874,11 @@ var IGNORED_SIBLING_PROPERTIES = /* @__PURE__ */ new Set([
 ]);
 var _createRowNodeSibling = (rowNode, beans) => {
   const sibling = new RowNode(beans);
-  for (const key of Object.keys(rowNode)) {
-    if (IGNORED_SIBLING_PROPERTIES.has(key)) {
+  for (const key2 of Object.keys(rowNode)) {
+    if (IGNORED_SIBLING_PROPERTIES.has(key2)) {
       continue;
     }
-    sibling[key] = rowNode[key];
+    sibling[key2] = rowNode[key2];
   }
   sibling.oldRowTop = null;
   return sibling;
@@ -29918,21 +29918,21 @@ function getFilterUiFromWrapper(filterWrapper, skipCreate) {
   createdFilterUi.promise = promise;
   return promise;
 }
-function _refreshHandlerAndUi(getFilterUi, handler, handlerParams, model, state, source, additionalEventAttributes) {
-  handler.refresh?.({ ...handlerParams, model, source, additionalEventAttributes });
+function _refreshHandlerAndUi(getFilterUi, handler, handlerParams, model, state, source2, additionalEventAttributes) {
+  handler.refresh?.({ ...handlerParams, model, source: source2, additionalEventAttributes });
   return getFilterUi().then((filterUi) => {
     if (filterUi) {
       const { filter, filterParams } = filterUi;
-      _refreshFilterUi(filter, filterParams, model, state, source, additionalEventAttributes);
+      _refreshFilterUi(filter, filterParams, model, state, source2, additionalEventAttributes);
     }
   });
 }
-function _refreshFilterUi(filter, filterParams, model, state, source, additionalEventAttributes) {
+function _refreshFilterUi(filter, filterParams, model, state, source2, additionalEventAttributes) {
   filter?.refresh?.({
     ...filterParams,
     model,
     state,
-    source,
+    source: source2,
     additionalEventAttributes
   });
 }
@@ -30154,8 +30154,8 @@ var FILTER_LOCALE_TEXT = {
   filterSummaryInRangeValues: (variableValues) => `(${variableValues[0]}, ${variableValues[1]})`,
   filterSummaryTextQuote: (variableValues) => `"${variableValues[0]}"`
 };
-function translateForFilter(bean, key, variableValues) {
-  return _translate(bean, FILTER_LOCALE_TEXT, key, variableValues);
+function translateForFilter(bean, key2, variableValues) {
+  return _translate(bean, FILTER_LOCALE_TEXT, key2, variableValues);
 }
 function getDebounceMs(params, debounceDefault) {
   const { debounceMs } = params;
@@ -30171,9 +30171,9 @@ function _isUseApplyButton(params) {
   return (params.buttons?.indexOf("apply") ?? -1) >= 0;
 }
 var FilterWrapperComp = class extends Component {
-  constructor(column, wrapper, eventParent, updateModel, isGlobalButtons, enableGlobalButtonCheck) {
+  constructor(column2, wrapper, eventParent, updateModel, isGlobalButtons, enableGlobalButtonCheck) {
     super();
-    this.column = column;
+    this.column = column2;
     this.wrapper = wrapper;
     this.eventParent = eventParent;
     this.updateModel = updateModel;
@@ -30203,18 +30203,18 @@ var FilterWrapperComp = class extends Component {
     this.params = params;
     this.resetButtonsPanel(params);
     this.addManagedListeners(this.eventParent, {
-      filterParamsChanged: ({ column, params: eventParams }) => {
-        if (column === this.column) {
+      filterParamsChanged: ({ column: column2, params: eventParams }) => {
+        if (column2 === this.column) {
           this.resetButtonsPanel(eventParams, this.params);
         }
       },
-      filterStateChanged: ({ column, state }) => {
-        if (column === this.column) {
+      filterStateChanged: ({ column: column2, state }) => {
+        if (column2 === this.column) {
           this.eButtons?.updateValidity(state.valid !== false);
         }
       },
-      filterAction: ({ column, action, event: keyboardEvent }) => {
-        if (column === this.column) {
+      filterAction: ({ column: column2, action, event: keyboardEvent }) => {
+        if (column2 === this.column) {
           this.afterAction(action, keyboardEvent);
         }
       },
@@ -30251,9 +30251,9 @@ var FilterWrapperComp = class extends Component {
       if (!eButtonsPanel) {
         eButtonsPanel = this.createBean(new FilterButtonComp());
         this.appendChild(eButtonsPanel.getGui());
-        const column = this.column;
+        const column2 = this.column;
         const getListener = (action) => ({ event }) => {
-          this.updateModel(column, action, { fromButtons: true });
+          this.updateModel(column2, action, { fromButtons: true });
           this.afterAction(action, event);
         };
         eButtonsPanel?.addManagedListeners(eButtonsPanel, {
@@ -30279,9 +30279,9 @@ var FilterWrapperComp = class extends Component {
       return;
     }
     const keyboardEvent = e;
-    const key = keyboardEvent?.key;
+    const key2 = keyboardEvent?.key;
     let params;
-    if (key === KeyCode.ENTER || key === KeyCode.SPACE) {
+    if (key2 === KeyCode.ENTER || key2 === KeyCode.SPACE) {
       params = { keyboardEvent };
     }
     hidePopup(params);
@@ -30325,10 +30325,10 @@ var FilterWrapperComp = class extends Component {
 };
 var FilterElement = { tag: "div", cls: "ag-filter" };
 var FilterComp = class extends Component {
-  constructor(column, source, enableGlobalButtonCheck) {
+  constructor(column2, source2, enableGlobalButtonCheck) {
     super(FilterElement);
-    this.column = column;
-    this.source = source;
+    this.column = column2;
+    this.source = source2;
     this.enableGlobalButtonCheck = enableGlobalButtonCheck;
     this.wrapper = null;
   }
@@ -30361,11 +30361,11 @@ var FilterComp = class extends Component {
   }
   createFilter(init) {
     const {
-      column,
-      source,
+      column: column2,
+      source: source2,
       beans: { colFilter }
     } = this;
-    const filterPromise = colFilter.getFilterUiForDisplay(column) ?? null;
+    const filterPromise = colFilter.getFilterUiForDisplay(column2) ?? null;
     this.wrapper = filterPromise;
     filterPromise?.then((wrapper) => {
       if (!wrapper) {
@@ -30377,7 +30377,7 @@ var FilterComp = class extends Component {
         const enableGlobalButtonCheck = !!this.enableGlobalButtonCheck;
         const displayComp = this.createBean(
           new FilterWrapperComp(
-            column,
+            column2,
             wrapper,
             colFilter,
             colFilter.updateModel.bind(colFilter),
@@ -30397,8 +30397,8 @@ var FilterComp = class extends Component {
       if (init) {
         this.eventSvc.dispatchEvent({
           type: "filterOpened",
-          column,
-          source,
+          column: column2,
+          source: source2,
           eGui: this.getGui()
         });
       } else {
@@ -30407,8 +30407,8 @@ var FilterComp = class extends Component {
     });
   }
   onFilterDestroyed(event) {
-    const { source, column } = event;
-    if ((source === "api" || source === "paramsUpdated") && column.getId() === this.column.getId() && this.beans.colModel.getColDefCol(this.column)) {
+    const { source: source2, column: column2 } = event;
+    if ((source2 === "api" || source2 === "paramsUpdated") && column2.getId() === this.column.getId() && this.beans.colModel.getColDefCol(this.column)) {
       _clearElement(this.getGui());
       this.comp = this.destroyBean(this.comp);
       this.createFilter();
@@ -30568,7 +30568,7 @@ function _getFilterParamsForDataType(filter, existingFilterParams, existingFilte
   let filterValueGetter = existingFilterValueGetter;
   const usingSetFilter = filter === "agSetColumnFilter";
   if (!filterValueGetter && dataTypeDefinition.baseDataType === "object" && !usingSetFilter) {
-    filterValueGetter = ({ column, node }) => formatValue({ column, node, value: beans.valueSvc.getValue(column, node) });
+    filterValueGetter = ({ column: column2, node }) => formatValue({ column: column2, node, value: beans.valueSvc.getValue(column2, node) });
   }
   const filterParamsMap = usingSetFilter ? setFilterParamsForEachDataType : filterParamsForEachDataType;
   const filterParamsGetter = filterParamsMap[dataTypeDefinition.baseDataType];
@@ -31366,8 +31366,8 @@ var ProvidedFilter = class extends Component {
     const newParams = legacyNewParams;
     const oldParams = this.params;
     this.params = newParams;
-    const source = newParams.source;
-    if (source === "colDef") {
+    const source2 = newParams.source;
+    if (source2 === "colDef") {
       this.updateParams(newParams, oldParams);
     }
     const newState = newParams.state;
@@ -31397,11 +31397,11 @@ var ProvidedFilter = class extends Component {
    */
   doesFilterPass(params) {
     _warn(283);
-    const { getHandler, model, column } = this.params;
+    const { getHandler, model, column: column2 } = this.params;
     return getHandler().doesFilterPass({
       ...params,
       model,
-      handlerParams: this.beans.colFilter.getHandlerParams(column)
+      handlerParams: this.beans.colFilter.getHandlerParams(column2)
     });
   }
   getFilterTitle() {
@@ -31531,8 +31531,8 @@ var ProvidedFilter = class extends Component {
     this.positionableFeature = this.destroyBean(this.positionableFeature);
     super.destroy();
   }
-  translate(key) {
-    return translateForFilter(this, key);
+  translate(key2) {
+    return translateForFilter(this, key2);
   }
   // override to control positionable feature
   getPositionableElement() {
@@ -31691,9 +31691,9 @@ var GridBodyScrollFeature = class extends BeanStub {
     this.addManagedElementListeners(this.centerRowsCtrl.eViewport, {
       scroll: this.onHScroll.bind(this, VIEWPORT)
     });
-    for (const source of HORIZONTAL_SOURCES) {
-      const scrollPartner = this.ctrlsSvc.get(source);
-      this.registerScrollPartner(scrollPartner, this.onHScroll.bind(this, source));
+    for (const source2 of HORIZONTAL_SOURCES) {
+      const scrollPartner = this.ctrlsSvc.get(source2);
+      this.registerScrollPartner(scrollPartner, this.onHScroll.bind(this, source2));
     }
   }
   addVerticalScrollListeners() {
@@ -31734,26 +31734,26 @@ var GridBodyScrollFeature = class extends BeanStub {
       _setScrollLeft(viewport, scrollLeft, this.enableRtl);
     }
   }
-  getViewportForSource(source) {
-    if (source === VIEWPORT) {
+  getViewportForSource(source2) {
+    if (source2 === VIEWPORT) {
       return this.centerRowsCtrl.eViewport;
     }
-    return this.ctrlsSvc.get(source).eViewport;
+    return this.ctrlsSvc.get(source2).eViewport;
   }
-  isControllingScroll(source, direction) {
+  isControllingScroll(source2, direction) {
     if (this.lastScrollSource[direction] == null) {
       if (direction === 0) {
-        this.lastScrollSource[0] = source;
+        this.lastScrollSource[0] = source2;
       } else {
-        this.lastScrollSource[1] = source;
+        this.lastScrollSource[1] = source2;
       }
       return true;
     }
-    return this.lastScrollSource[direction] === source;
+    return this.lastScrollSource[direction] === source2;
   }
-  onHScroll(source) {
+  onHScroll(source2) {
     if (!this.isControllingScroll(
-      source,
+      source2,
       1
       /* Horizontal */
     )) {
@@ -31764,20 +31764,20 @@ var GridBodyScrollFeature = class extends BeanStub {
     if (this.shouldBlockScrollUpdate(1, scrollLeft, true)) {
       return;
     }
-    const newScrollLeft = _getScrollLeft(this.getViewportForSource(source), this.enableRtl);
+    const newScrollLeft = _getScrollLeft(this.getViewportForSource(source2), this.enableRtl);
     this.doHorizontalScroll(newScrollLeft);
     this.resetLastHScrollDebounced();
   }
-  onVScroll(source) {
+  onVScroll(source2) {
     if (!this.isControllingScroll(
-      source,
+      source2,
       0
       /* Vertical */
     )) {
       return;
     }
     let scrollTop;
-    if (source === VIEWPORT) {
+    if (source2 === VIEWPORT) {
       scrollTop = this.eBodyViewport.scrollTop;
     } else {
       scrollTop = this.ctrlsSvc.get("fakeVScrollComp").getScrollPosition();
@@ -31788,7 +31788,7 @@ var GridBodyScrollFeature = class extends BeanStub {
     const { animationFrameSvc } = this;
     animationFrameSvc?.setScrollTop(scrollTop);
     this.nextScrollTop = scrollTop;
-    if (source === VIEWPORT) {
+    if (source2 === VIEWPORT) {
       this.ctrlsSvc.get("fakeVScrollComp").setScrollPosition(scrollTop);
     } else {
       this.eBodyViewport.scrollTop = scrollTop;
@@ -31876,8 +31876,8 @@ var GridBodyScrollFeature = class extends BeanStub {
   checkScrollLeft() {
     const scrollLeft = this.scrollLeft;
     let hasHorizontalScrollersOutOfSync = false;
-    for (const source of HORIZONTAL_SOURCES) {
-      const viewport = this.getViewportForSource(source);
+    for (const source2 of HORIZONTAL_SOURCES) {
+      const viewport = this.getViewportForSource(source2);
       if (viewport.scrollLeft !== scrollLeft) {
         hasHorizontalScrollersOutOfSync = true;
         break;
@@ -32082,19 +32082,19 @@ var GridBodyScrollFeature = class extends BeanStub {
     }
     this.clearRetryListenerFncs = [];
   }
-  ensureColumnVisible(key, position = "auto") {
+  ensureColumnVisible(key2, position = "auto") {
     const { colModel, frameworkOverrides } = this.beans;
-    const column = colModel.getCol(key);
-    if (!column) {
+    const column2 = colModel.getCol(key2);
+    if (!column2) {
       return;
     }
-    if (column.isPinned()) {
+    if (column2.isPinned()) {
       return;
     }
-    if (!this.visibleCols.isColDisplayed(column)) {
+    if (!this.visibleCols.isColDisplayed(column2)) {
       return;
     }
-    const newHorizontalScroll = this.getPositionedHorizontalScroll(column, position);
+    const newHorizontalScroll = this.getPositionedHorizontalScroll(column2, position);
     frameworkOverrides.wrapIncoming(() => {
       if (newHorizontalScroll !== null) {
         this.centerRowsCtrl.setCenterViewportScrollLeft(newHorizontalScroll);
@@ -32103,9 +32103,9 @@ var GridBodyScrollFeature = class extends BeanStub {
       this.animationFrameSvc?.flushAllFrames();
     });
   }
-  getPositionedHorizontalScroll(column, position) {
-    const { columnBeforeStart, columnAfterEnd } = this.isColumnOutsideViewport(column);
-    const viewportTooSmallForColumn = this.centerRowsCtrl.getCenterWidth() < column.getActualWidth();
+  getPositionedHorizontalScroll(column2, position) {
+    const { columnBeforeStart, columnAfterEnd } = this.isColumnOutsideViewport(column2);
+    const viewportTooSmallForColumn = this.centerRowsCtrl.getCenterWidth() < column2.getActualWidth();
     const viewportWidth = this.centerRowsCtrl.getCenterWidth();
     const isRtl = this.enableRtl;
     let alignColToStart = (isRtl ? columnBeforeStart : columnAfterEnd) || viewportTooSmallForColumn;
@@ -32116,7 +32116,7 @@ var GridBodyScrollFeature = class extends BeanStub {
     }
     const isMiddle = position === "middle";
     if (alignColToStart || alignColToEnd || isMiddle) {
-      const { colLeft, colMiddle, colRight } = this.getColumnBounds(column);
+      const { colLeft, colMiddle, colRight } = this.getColumnBounds(column2);
       if (isMiddle) {
         return colMiddle - viewportWidth / 2;
       }
@@ -32127,19 +32127,19 @@ var GridBodyScrollFeature = class extends BeanStub {
     }
     return null;
   }
-  isColumnOutsideViewport(column) {
+  isColumnOutsideViewport(column2) {
     const { start: viewportStart, end: viewportEnd } = this.getViewportBounds();
-    const { colLeft, colRight } = this.getColumnBounds(column);
+    const { colLeft, colRight } = this.getColumnBounds(column2);
     const isRtl = this.enableRtl;
     const columnBeforeStart = isRtl ? viewportStart > colRight : viewportEnd < colRight;
     const columnAfterEnd = isRtl ? viewportEnd < colLeft : viewportStart > colLeft;
     return { columnBeforeStart, columnAfterEnd };
   }
-  getColumnBounds(column) {
+  getColumnBounds(column2) {
     const isRtl = this.enableRtl;
     const bodyWidth = this.visibleCols.bodyWidth;
-    const colWidth = column.getActualWidth();
-    const colLeft = column.getLeft();
+    const colWidth = column2.getActualWidth();
+    const colLeft = column2.getLeft();
     const multiplier = isRtl ? -1 : 1;
     const colLeftPixel = isRtl ? bodyWidth - colLeft : colLeft;
     const colRightPixel = colLeftPixel + colWidth * multiplier;
@@ -32292,21 +32292,21 @@ var ViewportSizeFeature = class extends BeanStub {
     this.beans.colViewport.setScrollPosition(scrollWidth, scrollPosition);
   }
 };
-function _suppressCellMouseEvent(gos, column, node, event) {
-  const suppressMouseEventHandling = column.getColDef().cellRendererParams?.suppressMouseEventHandling;
-  return suppressMouseEvent(gos, column, node, event, suppressMouseEventHandling);
+function _suppressCellMouseEvent(gos, column2, node, event) {
+  const suppressMouseEventHandling = column2.getColDef().cellRendererParams?.suppressMouseEventHandling;
+  return suppressMouseEvent(gos, column2, node, event, suppressMouseEventHandling);
 }
 function _suppressFullWidthMouseEvent(gos, cellRendererParams, node, event) {
   const suppressMouseEventHandling = cellRendererParams?.suppressMouseEventHandling;
   return suppressMouseEvent(gos, void 0, node, event, suppressMouseEventHandling);
 }
-function suppressMouseEvent(gos, column, node, event, suppressMouseEventHandling) {
+function suppressMouseEvent(gos, column2, node, event, suppressMouseEventHandling) {
   if (!suppressMouseEventHandling) {
     return false;
   }
   return suppressMouseEventHandling(
     _addGridCommonParams(gos, {
-      column,
+      column: column2,
       node,
       event
     })
@@ -32331,18 +32331,18 @@ var DOM_DATA_KEY_ROW_CTRL = "renderedRow";
 function _getRowCtrlForEventTarget(gos, eventTarget) {
   return _getCtrlForEventTarget(gos, eventTarget, DOM_DATA_KEY_ROW_CTRL);
 }
-function _isUserSuppressingKeyboardEvent(gos, keyboardEvent, rowNode, column, editing) {
-  const colDefFunc = column ? column.getColDef().suppressKeyboardEvent : void 0;
+function _isUserSuppressingKeyboardEvent(gos, keyboardEvent, rowNode, column2, editing) {
+  const colDefFunc = column2 ? column2.getColDef().suppressKeyboardEvent : void 0;
   if (!colDefFunc) {
     return false;
   }
   const params = _addGridCommonParams(gos, {
     event: keyboardEvent,
     editing,
-    column,
+    column: column2,
     node: rowNode,
     data: rowNode.data,
-    colDef: column.getColDef()
+    colDef: column2.getColDef()
   });
   if (colDefFunc) {
     const colDefFuncResult = colDefFunc(params);
@@ -32503,12 +32503,12 @@ var RowContainerEventsFeature = class extends BeanStub {
     const { rowNode } = rowCtrl;
     const { focusSvc, navigation: navigation2 } = this.beans;
     const focusedCell = focusSvc.getFocusedCell();
-    const column = focusedCell?.column;
-    const gridProcessingAllowed = !_isUserSuppressingKeyboardEvent(this.gos, keyboardEvent, rowNode, column, false);
+    const column2 = focusedCell?.column;
+    const gridProcessingAllowed = !_isUserSuppressingKeyboardEvent(this.gos, keyboardEvent, rowNode, column2, false);
     if (gridProcessingAllowed) {
-      const key = keyboardEvent.key;
+      const key2 = keyboardEvent.key;
       if (eventName === "keydown") {
-        switch (key) {
+        switch (key2) {
           case KeyCode.PAGE_HOME:
           case KeyCode.PAGE_END:
           case KeyCode.PAGE_UP:
@@ -33682,33 +33682,33 @@ var FakeVScrollComp = class extends AbstractFakeScrollComp {
 };
 var CSS_FIRST_COLUMN = "ag-column-first";
 var CSS_LAST_COLUMN = "ag-column-last";
-function _getHeaderClassesFromColDef(abstractColDef, gos, column, columnGroup) {
+function _getHeaderClassesFromColDef(abstractColDef, gos, column2, columnGroup) {
   if (_missing(abstractColDef)) {
     return [];
   }
-  return getColumnClassesFromCollDef(abstractColDef.headerClass, abstractColDef, gos, column, columnGroup);
+  return getColumnClassesFromCollDef(abstractColDef.headerClass, abstractColDef, gos, column2, columnGroup);
 }
-function refreshFirstAndLastStyles(comp, column, presentedColsService) {
-  comp.toggleCss(CSS_FIRST_COLUMN, presentedColsService.isColAtEdge(column, "first"));
-  comp.toggleCss(CSS_LAST_COLUMN, presentedColsService.isColAtEdge(column, "last"));
+function refreshFirstAndLastStyles(comp, column2, presentedColsService) {
+  comp.toggleCss(CSS_FIRST_COLUMN, presentedColsService.isColAtEdge(column2, "first"));
+  comp.toggleCss(CSS_LAST_COLUMN, presentedColsService.isColAtEdge(column2, "last"));
 }
-function getClassParams(abstractColDef, gos, column, columnGroup) {
+function getClassParams(abstractColDef, gos, column2, columnGroup) {
   return _addGridCommonParams(gos, {
     // bad naming, as colDef here can be a group or a column,
     // however most people won't appreciate the difference,
     // so keeping it as colDef to avoid confusion.
     colDef: abstractColDef,
-    column,
+    column: column2,
     columnGroup
   });
 }
-function getColumnClassesFromCollDef(classesOrFunc, abstractColDef, gos, column, columnGroup) {
+function getColumnClassesFromCollDef(classesOrFunc, abstractColDef, gos, column2, columnGroup) {
   if (_missing(classesOrFunc)) {
     return [];
   }
   let classToUse;
   if (typeof classesOrFunc === "function") {
-    const params = getClassParams(abstractColDef, gos, column, columnGroup);
+    const params = getClassParams(abstractColDef, gos, column2, columnGroup);
     classToUse = classesOrFunc(params);
   } else {
     classToUse = classesOrFunc;
@@ -33783,9 +33783,9 @@ function getColumnGroupHeaderRowHeight(beans, headerRowCtrl) {
   let maxDisplayedHeight = defaultHeight;
   const headerRowCellCtrls = headerRowCtrl.getHeaderCellCtrls();
   for (const headerCellCtrl of headerRowCellCtrls) {
-    const { column } = headerCellCtrl;
-    const height = column.getAutoHeaderHeight();
-    if (height != null && height > maxDisplayedHeight && column.isAutoHeaderHeight()) {
+    const { column: column2 } = headerCellCtrl;
+    const height = column2.getAutoHeaderHeight();
+    if (height != null && height > maxDisplayedHeight && column2.isAutoHeaderHeight()) {
       maxDisplayedHeight = height;
     }
   }
@@ -34050,9 +34050,9 @@ var SetLeftFeature = class extends BeanStub {
 var instanceIdSequence2 = 0;
 var DOM_DATA_KEY_HEADER_CTRL = "headerCtrl";
 var AbstractHeaderCellCtrl = class extends BeanStub {
-  constructor(column, rowCtrl) {
+  constructor(column2, rowCtrl) {
     super();
-    this.column = column;
+    this.column = column2;
     this.rowCtrl = rowCtrl;
     this.resizeToggleTimeout = 0;
     this.resizeMultiplier = 1;
@@ -34060,7 +34060,7 @@ var AbstractHeaderCellCtrl = class extends BeanStub {
     this.lastFocusEvent = null;
     this.dragSource = null;
     this.reAttemptToFocus = false;
-    this.instanceId = column.getUniqueId() + "-" + instanceIdSequence2++;
+    this.instanceId = column2.getUniqueId() + "-" + instanceIdSequence2++;
   }
   postConstruct() {
     const refreshTabIndex = this.refreshTabIndex.bind(this);
@@ -34078,15 +34078,15 @@ var AbstractHeaderCellCtrl = class extends BeanStub {
     }
   }
   shouldStopEventPropagation(event) {
-    const { headerRowIndex, column } = this.beans.focusSvc.focusedHeader;
-    const colDef = column.getDefinition();
+    const { headerRowIndex, column: column2 } = this.beans.focusSvc.focusedHeader;
+    const colDef = column2.getDefinition();
     const colDefFunc = colDef?.suppressHeaderKeyboardEvent;
     if (!_exists(colDefFunc)) {
       return false;
     }
     const params = _addGridCommonParams(this.gos, {
       colDef,
-      column,
+      column: column2,
       headerRowIndex,
       event
     });
@@ -34193,12 +34193,12 @@ var AbstractHeaderCellCtrl = class extends BeanStub {
     }
   }
   onDisplayedColumnsChanged() {
-    const { comp, column, beans, eGui } = this;
-    if (!comp || !column || !eGui) {
+    const { comp, column: column2, beans, eGui } = this;
+    if (!comp || !column2 || !eGui) {
       return;
     }
-    refreshFirstAndLastStyles(comp, column, beans.visibleCols);
-    _setAriaColIndex(eGui, beans.visibleCols.getAriaColIndex(column));
+    refreshFirstAndLastStyles(comp, column2, beans.visibleCols);
+    _setAriaColIndex(eGui, beans.visibleCols.getAriaColIndex(column2));
   }
   addResizeAndMoveKeyboardListeners(compBean) {
     compBean.addManagedListeners(this.eGui, {
@@ -34254,9 +34254,9 @@ var AbstractHeaderCellCtrl = class extends BeanStub {
     return pinnedCols ? pinnedCols.getHeaderResizeDiff(diff, this.column) : diff;
   }
   getResizeDiff(e) {
-    const { gos, column } = this;
+    const { gos, column: column2 } = this;
     let isLeft = e.key === KeyCode.LEFT !== gos.get("enableRtl");
-    const pinned = column.getPinned();
+    const pinned = column2.getPinned();
     const isRtl = gos.get("enableRtl");
     if (pinned) {
       if (isRtl !== (pinned === "right")) {
@@ -34292,10 +34292,10 @@ var AbstractHeaderCellCtrl = class extends BeanStub {
     }
   }
   addDomData(compBean) {
-    const key = DOM_DATA_KEY_HEADER_CTRL;
+    const key2 = DOM_DATA_KEY_HEADER_CTRL;
     const { eGui, gos } = this;
-    _setDomData(gos, eGui, key, this);
-    compBean.addDestroyFunc(() => _setDomData(gos, eGui, key, null));
+    _setDomData(gos, eGui, key2, this);
+    compBean.addDestroyFunc(() => _setDomData(gos, eGui, key2, null));
   }
   focus(event) {
     if (!this.isAlive()) {
@@ -34319,21 +34319,21 @@ var AbstractHeaderCellCtrl = class extends BeanStub {
       this.dragSource = null;
     }
   }
-  handleContextMenuMouseEvent(mouseEvent, touchEvent, column) {
+  handleContextMenuMouseEvent(mouseEvent, touchEvent, column2) {
     const event = mouseEvent ?? touchEvent;
     const { menuSvc, gos } = this.beans;
     if (gos.get("preventDefaultOnContextMenu")) {
       event.preventDefault();
     }
-    if (menuSvc?.isHeaderContextMenuEnabled(column)) {
-      menuSvc.showHeaderContextMenu(column, mouseEvent, touchEvent);
+    if (menuSvc?.isHeaderContextMenuEnabled(column2)) {
+      menuSvc.showHeaderContextMenu(column2, mouseEvent, touchEvent);
     }
-    this.dispatchColumnMouseEvent("columnHeaderContextMenu", column);
+    this.dispatchColumnMouseEvent("columnHeaderContextMenu", column2);
   }
-  dispatchColumnMouseEvent(eventType, column) {
+  dispatchColumnMouseEvent(eventType, column2) {
     this.eventSvc.dispatchEvent({
       type: eventType,
-      column
+      column: column2
     });
   }
   setColHeaderHeight(col, height) {
@@ -34378,7 +34378,7 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
   }
   wireComp(comp, eGui, eResize, eHeaderCompWrapper, compBeanInput) {
     this.comp = comp;
-    const { rowCtrl, column, beans } = this;
+    const { rowCtrl, column: column2, beans } = this;
     const { colResize, context, colHover, rangeSvc } = beans;
     const compBean = setupCompBean(this, context, compBeanInput);
     this.setGui(eGui, compBean);
@@ -34405,14 +34405,14 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
     this.refreshAria();
     if (colResize) {
       this.resizeFeature = compBean.createManagedBean(
-        colResize.createResizeFeature(rowCtrl.pinned, column, eResize, comp, this)
+        colResize.createResizeFeature(rowCtrl.pinned, column2, eResize, comp, this)
       );
     } else {
       _setDisplayed(eResize, false);
     }
-    colHover?.createHoverFeature(compBean, [column], eGui);
-    rangeSvc?.createRangeHighlightFeature(compBean, column, comp);
-    compBean.createManagedBean(new SetLeftFeature(column, eGui, beans));
+    colHover?.createHoverFeature(compBean, [column2], eGui);
+    rangeSvc?.createRangeHighlightFeature(compBean, column2, comp);
+    compBean.createManagedBean(new SetLeftFeature(column2, eGui, beans));
     compBean.createManagedBean(
       new ManagedFocusFeature(eGui, {
         shouldStopEventPropagation: (e) => this.shouldStopEventPropagation(e),
@@ -34427,8 +34427,8 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
       ["suppressMovableColumns", "suppressMenuHide", "suppressAggFuncInHeader", "enableAdvancedFilter"],
       () => this.refresh()
     );
-    compBean.addManagedListeners(column, { colDefChanged: () => this.refresh() });
-    compBean.addManagedListeners(column, { headerHighlightChanged: this.onHeaderHighlightChanged.bind(this) });
+    compBean.addManagedListeners(column2, { colDefChanged: () => this.refresh() });
+    compBean.addManagedListeners(column2, { headerHighlightChanged: this.onHeaderHighlightChanged.bind(this) });
     const listener = () => this.checkDisplayName();
     compBean.addManagedEventListeners({
       columnValueChanged: listener,
@@ -34450,11 +34450,11 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
     this.beans.colResize?.resizeHeader(this.column, delta, shiftKey);
   }
   getHeaderClassParams() {
-    const { column, beans } = this;
-    const colDef = column.colDef;
+    const { column: column2, beans } = this;
+    const colDef = column2.colDef;
     return _addGridCommonParams(beans.gos, {
       colDef,
-      column,
+      column: column2,
       floatingFilter: false
     });
   }
@@ -34603,15 +34603,15 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
       const classes = _getHeaderClassesFromColDef(colDef, this.gos, this.column, null);
       const oldClasses = this.userHeaderClasses;
       this.userHeaderClasses = new Set(classes);
-      for (const c of classes) {
-        if (oldClasses.has(c)) {
-          oldClasses.delete(c);
+      for (const c2 of classes) {
+        if (oldClasses.has(c2)) {
+          oldClasses.delete(c2);
         } else {
-          this.comp.toggleCss(c, true);
+          this.comp.toggleCss(c2, true);
         }
       }
-      for (const c of oldClasses) {
-        this.comp.toggleCss(c, false);
+      for (const c2 of oldClasses) {
+        this.comp.toggleCss(c2, false);
       }
     };
     this.setRefreshFunction("headerClasses", refreshHeaderClasses);
@@ -34748,11 +34748,11 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
     this.refreshSpanHeaderHeight();
   }
   refreshSpanHeaderHeight() {
-    const { eGui, column, comp, beans } = this;
+    const { eGui, column: column2, comp, beans } = this;
     const groupHeaderHeight = getGroupRowsHeight(this.beans);
     const isZeroGroupHeight = groupHeaderHeight.reduce((total, next) => total + next, 0) === 0;
     comp.toggleCss("ag-header-parent-hidden", isZeroGroupHeight);
-    if (!column.isSpanHeaderHeight()) {
+    if (!column2.isSpanHeaderHeight()) {
       eGui.style.removeProperty("top");
       eGui.style.removeProperty("height");
       comp.toggleCss("ag-header-span-height", false);
@@ -34828,7 +34828,7 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
     if (!this.eGui.contains(_getActiveDomElement(this.beans))) {
       return;
     }
-    const ariaDescription = Array.from(this.ariaDescriptionProperties.keys()).sort((a, b) => a === "filter" ? -1 : b.charCodeAt(0) - a.charCodeAt(0)).map((key) => this.ariaDescriptionProperties.get(key)).join(". ");
+    const ariaDescription = Array.from(this.ariaDescriptionProperties.keys()).sort((a, b) => a === "filter" ? -1 : b.charCodeAt(0) - a.charCodeAt(0)).map((key2) => this.ariaDescriptionProperties.get(key2)).join(". ");
     this.beans.ariaAnnounce?.announceValue(ariaDescription, "columnHeader");
   }
   refreshAria() {
@@ -35116,8 +35116,8 @@ var HeaderRowCtrl = class extends BeanStub {
     }
     return this.beans.colViewport.getColumnHeadersToRender(pinned);
   }
-  focusHeader(column, event) {
-    const ctrl = this.allCtrls.find((ctrl2) => ctrl2.column == column);
+  focusHeader(column2, event) {
+    const ctrl = this.allCtrls.find((ctrl2) => ctrl2.column == column2);
     if (!ctrl) {
       return false;
     }
@@ -35241,9 +35241,9 @@ var HeaderRowContainerCtrl = class extends BeanStub {
       });
     }
   }
-  getHeaderCtrlForColumn(column) {
-    const findCtrl = (ctrl) => ctrl?.getHeaderCellCtrls().find((ctrl2) => ctrl2.column === column);
-    if (isColumn(column)) {
+  getHeaderCtrlForColumn(column2) {
+    const findCtrl = (ctrl) => ctrl?.getHeaderCellCtrls().find((ctrl2) => ctrl2.column === column2);
+    if (isColumn(column2)) {
       return findCtrl(this.columnsRowCtrl);
     }
     if (this.groupsRowCtrls.length === 0) {
@@ -35256,19 +35256,19 @@ var HeaderRowContainerCtrl = class extends BeanStub {
       }
     }
   }
-  getHtmlElementForColumnHeader(column) {
-    return this.getHeaderCtrlForColumn(column)?.eGui ?? null;
+  getHtmlElementForColumnHeader(column2) {
+    return this.getHeaderCtrlForColumn(column2)?.eGui ?? null;
   }
   getRowType(rowIndex) {
     return this.getAllCtrls()[rowIndex]?.type;
   }
-  focusHeader(rowIndex, column, event) {
+  focusHeader(rowIndex, column2, event) {
     const allCtrls = this.getAllCtrls();
     const ctrl = allCtrls[rowIndex];
     if (!ctrl) {
       return false;
     }
-    return ctrl.focusHeader(column, event);
+    return ctrl.focusHeader(column2, event);
   }
   getGroupRowCount() {
     return this.groupsRowCtrls.length;
@@ -35301,8 +35301,8 @@ var HeaderRowContainerCtrl = class extends BeanStub {
     if (!position) {
       return;
     }
-    const { column } = position;
-    if (column.getPinned() != this.pinned) {
+    const { column: column2 } = position;
+    if (column2.getPinned() != this.pinned) {
       return;
     }
     focusSvc.focusHeaderPosition({ headerPosition: position, scroll: false });
@@ -35329,8 +35329,8 @@ var MenuService = class extends BeanStub {
   showFilterMenu(params) {
     this.showColumnMenuCommon(getFilterMenuFactory(this.beans), params, params.containerType, true);
   }
-  showHeaderContextMenu(column, mouseEvent, touchEvent) {
-    this.activeMenuFactory?.showMenuAfterContextMenuEvent(column, mouseEvent, touchEvent);
+  showHeaderContextMenu(column2, mouseEvent, touchEvent) {
+    this.activeMenuFactory?.showMenuAfterContextMenuEvent(column2, mouseEvent, touchEvent);
   }
   hidePopupMenu() {
     this.beans.contextMenuSvc?.hideActiveMenu();
@@ -35339,15 +35339,15 @@ var MenuService = class extends BeanStub {
   hideFilterMenu() {
     getFilterMenuFactory(this.beans)?.hideActiveMenu();
   }
-  isColumnMenuInHeaderEnabled(column) {
-    const { suppressHeaderMenuButton } = column.getColDef();
-    return !suppressHeaderMenuButton && !!this.activeMenuFactory?.isMenuEnabled(column) && (_isLegacyMenuEnabled(this.gos) || !!this.beans.enterpriseMenuFactory);
+  isColumnMenuInHeaderEnabled(column2) {
+    const { suppressHeaderMenuButton } = column2.getColDef();
+    return !suppressHeaderMenuButton && !!this.activeMenuFactory?.isMenuEnabled(column2) && (_isLegacyMenuEnabled(this.gos) || !!this.beans.enterpriseMenuFactory);
   }
-  isFilterMenuInHeaderEnabled(column) {
-    return !column.getColDef().suppressHeaderFilterButton && !!this.beans.filterManager?.isFilterAllowed(column);
+  isFilterMenuInHeaderEnabled(column2) {
+    return !column2.getColDef().suppressHeaderFilterButton && !!this.beans.filterManager?.isFilterAllowed(column2);
   }
-  isHeaderContextMenuEnabled(column) {
-    const colDef = column && isColumn(column) ? column.getColDef() : column?.getColGroupDef();
+  isHeaderContextMenuEnabled(column2) {
+    const colDef = column2 && isColumn(column2) ? column2.getColDef() : column2?.getColGroupDef();
     return !colDef?.suppressHeaderContextMenu && this.gos.get("columnMenu") === "new";
   }
   isHeaderMenuButtonAlwaysShowEnabled() {
@@ -35358,17 +35358,17 @@ var MenuService = class extends BeanStub {
     const onIpadAndMenuHides = _isIOSUserAgent() && menuHides;
     return !onIpadAndMenuHides;
   }
-  isHeaderFilterButtonEnabled(column) {
-    return this.isFilterMenuInHeaderEnabled(column) && !_isLegacyMenuEnabled(this.gos) && !this.isFloatingFilterButtonDisplayed(column);
+  isHeaderFilterButtonEnabled(column2) {
+    return this.isFilterMenuInHeaderEnabled(column2) && !_isLegacyMenuEnabled(this.gos) && !this.isFloatingFilterButtonDisplayed(column2);
   }
-  isFilterMenuItemEnabled(column) {
-    return !!this.beans.filterManager?.isFilterAllowed(column) && !_isLegacyMenuEnabled(this.gos) && !this.isFilterMenuInHeaderEnabled(column) && !this.isFloatingFilterButtonDisplayed(column);
+  isFilterMenuItemEnabled(column2) {
+    return !!this.beans.filterManager?.isFilterAllowed(column2) && !_isLegacyMenuEnabled(this.gos) && !this.isFilterMenuInHeaderEnabled(column2) && !this.isFloatingFilterButtonDisplayed(column2);
   }
-  isFloatingFilterButtonEnabled(column) {
-    return !column.getColDef().suppressFloatingFilterButton;
+  isFloatingFilterButtonEnabled(column2) {
+    return !column2.getColDef().suppressFloatingFilterButton;
   }
-  isFloatingFilterButtonDisplayed(column) {
-    return !!column.getColDef().floatingFilter && this.isFloatingFilterButtonEnabled(column);
+  isFloatingFilterButtonDisplayed(column2) {
+    return !!column2.getColDef().floatingFilter && this.isFloatingFilterButtonEnabled(column2);
   }
   isSuppressMenuHide() {
     const gos = this.gos;
@@ -35380,22 +35380,22 @@ var MenuService = class extends BeanStub {
   }
   showColumnMenuCommon(menuFactory, params, containerType, filtersOnly) {
     const { positionBy, onClosedCallback } = params;
-    const column = params.column;
+    const column2 = params.column;
     if (positionBy === "button") {
       const { buttonElement } = params;
-      menuFactory?.showMenuAfterButtonClick(column, buttonElement, containerType, onClosedCallback, filtersOnly);
+      menuFactory?.showMenuAfterButtonClick(column2, buttonElement, containerType, onClosedCallback, filtersOnly);
     } else if (positionBy === "mouse") {
       const { mouseEvent } = params;
-      menuFactory?.showMenuAfterMouseEvent(column, mouseEvent, containerType, onClosedCallback, filtersOnly);
-    } else if (column) {
+      menuFactory?.showMenuAfterMouseEvent(column2, mouseEvent, containerType, onClosedCallback, filtersOnly);
+    } else if (column2) {
       const beans = this.beans;
       const ctrlsSvc = beans.ctrlsSvc;
-      ctrlsSvc.getScrollFeature().ensureColumnVisible(column, "auto");
+      ctrlsSvc.getScrollFeature().ensureColumnVisible(column2, "auto");
       _requestAnimationFrame(beans, () => {
-        const headerCellCtrl = ctrlsSvc.getHeaderRowContainerCtrl(column.getPinned())?.getHeaderCtrlForColumn(column);
+        const headerCellCtrl = ctrlsSvc.getHeaderRowContainerCtrl(column2.getPinned())?.getHeaderCtrlForColumn(column2);
         if (headerCellCtrl) {
           menuFactory?.showMenuAfterButtonClick(
-            column,
+            column2,
             headerCellCtrl.getAnchorElementForMenu(filtersOnly),
             containerType,
             onClosedCallback,
@@ -35406,10 +35406,10 @@ var MenuService = class extends BeanStub {
     }
   }
 };
-function _setColMenuVisible(column, visible, source) {
-  if (column.menuVisible !== visible) {
-    column.menuVisible = visible;
-    column.dispatchColEvent("menuVisibleChanged", source);
+function _setColMenuVisible(column2, visible, source2) {
+  if (column2.menuVisible !== visible) {
+    column2.menuVisible = visible;
+    column2.dispatchColEvent("menuVisibleChanged", source2);
   }
 }
 function getFilterMenuFactory(beans) {
@@ -35464,8 +35464,8 @@ var NoRowsOverlayComponent2 = class extends OverlayComponent {
     }
   }
 };
-function _createIcon(iconName, beans, column) {
-  const iconContents = _createIconNoSpan(iconName, beans, column);
+function _createIcon(iconName, beans, column2) {
+  const iconContents = _createIconNoSpan(iconName, beans, column2);
   if (iconContents) {
     const { className } = iconContents;
     if (typeof className === "string" && className.includes("ag-icon") || typeof className === "object" && className["ag-icon"]) {
@@ -35476,7 +35476,7 @@ function _createIcon(iconName, beans, column) {
   eResult.appendChild(iconContents);
   return eResult;
 }
-function _createIconNoSpan(iconName, beans, column) {
+function _createIconNoSpan(iconName, beans, column2) {
   let userProvidedIcon = null;
   if (iconName === "smallDown") {
     _warn(262);
@@ -35485,7 +35485,7 @@ function _createIconNoSpan(iconName, beans, column) {
   } else if (iconName === "smallRight") {
     _warn(264);
   }
-  const icons = column?.getColDef().icons;
+  const icons = column2?.getColDef().icons;
   if (icons) {
     userProvidedIcon = icons[iconName];
   }
@@ -35659,12 +35659,12 @@ var CheckboxCellRenderer = class extends Component {
   updateCheckbox(params) {
     let isSelected;
     let displayed = true;
-    const { value, column, node } = params;
-    if (node.group && column) {
+    const { value, column: column2, node } = params;
+    if (node.group && column2) {
       if (typeof value === "boolean") {
         isSelected = value;
       } else {
-        const colId = column.getColId();
+        const colId = column2.getColId();
         if (colId.startsWith(GROUP_AUTO_COLUMN_ID)) {
           isSelected = value == null || value === "" ? void 0 : value === "true";
         } else if (node.aggData && node.aggData[colId] !== void 0) {
@@ -35684,7 +35684,7 @@ var CheckboxCellRenderer = class extends Component {
       return;
     }
     eCheckbox.setValue(isSelected);
-    const disabled = params.disabled ?? !column?.isCellEditable(node);
+    const disabled = params.disabled ?? !column2?.isCellEditable(node);
     eCheckbox.setDisabled(disabled);
     const translate = this.getLocaleTextFunc();
     const stateName = _getAriaCheckboxStateName(translate, isSelected);
@@ -35693,12 +35693,12 @@ var CheckboxCellRenderer = class extends Component {
   }
   onCheckboxChanged(isSelected) {
     const { params } = this;
-    const { column, node, value } = params;
+    const { column: column2, node, value } = params;
     this.beans?.editSvc?.setEditingCells(
       [
         {
-          column,
-          colId: column.getColId(),
+          column: column2,
+          colId: column2.getColId(),
           rowIndex: node.rowIndex,
           rowPinned: node.rowPinned,
           state: "changed",
@@ -35708,11 +35708,11 @@ var CheckboxCellRenderer = class extends Component {
       ],
       { update: true, forceRefreshOfEditCellsOnly: true }
     );
-    const valueChanged = node.setDataValue(column, isSelected, "renderer");
+    const valueChanged = node.setDataValue(column2, isSelected, "renderer");
     this.beans.editSvc?.stopEditing(
       {
         rowNode: node,
-        column
+        column: column2
       },
       { source: this.beans.editSvc?.isBatchEditing() ? "ui" : "api" }
     );
@@ -35901,7 +35901,7 @@ var ManualPinnedRowModel = class extends BeanStub {
       this.dispatchRowPinnedEvents();
     }
   }
-  pinRow(rowNode, float, column) {
+  pinRow(rowNode, float, column2) {
     if (rowNode.footer && rowNode.level > -1) {
       return;
     }
@@ -35914,12 +35914,12 @@ var ManualPinnedRowModel = class extends BeanStub {
     const switching = currentFloat != null && float != null && float != currentFloat;
     if (switching) {
       const pinned = rowNode.rowPinned ? rowNode : rowNode.pinnedSibling;
-      const source = rowNode.rowPinned ? rowNode.pinnedSibling : rowNode;
-      this.pinRow(pinned, null, column);
-      this.pinRow(source, float, column);
+      const source2 = rowNode.rowPinned ? rowNode.pinnedSibling : rowNode;
+      this.pinRow(pinned, null, column2);
+      this.pinRow(source2, float, column2);
       return;
     }
-    const spannedRows = column && getSpannedRows(this.beans, rowNode, column);
+    const spannedRows = column2 && getSpannedRows(this.beans, rowNode, column2);
     if (spannedRows) {
       spannedRows.forEach((node) => this.pinRow(node, float));
       return;
@@ -35931,10 +35931,10 @@ var ManualPinnedRowModel = class extends BeanStub {
         return;
       }
       found.delete(node);
-      const source = node.pinnedSibling;
+      const source2 = node.pinnedSibling;
       _destroyRowNodeSibling(node);
       this.refreshRowPositions(float);
-      this.dispatchRowPinnedEvents(source);
+      this.dispatchRowPinnedEvents(source2);
     } else {
       const sibling = _createPinnedSibling(this.beans, rowNode, float);
       const container2 = this.getContainer(float);
@@ -36164,11 +36164,11 @@ function removeGroupRows(set2) {
   });
   rowsToRemove.forEach((node) => set2.delete(node));
 }
-function getSpannedRows(beans, rowNode, column) {
+function getSpannedRows(beans, rowNode, column2) {
   const { rowSpanSvc } = beans;
-  const isCellSpanning = (column && rowSpanSvc?.isCellSpanning(column, rowNode)) ?? false;
-  if (column && isCellSpanning) {
-    return rowSpanSvc?.getCellSpan(column, rowNode)?.spannedNodes;
+  const isCellSpanning = (column2 && rowSpanSvc?.isCellSpanning(column2, rowNode)) ?? false;
+  if (column2 && isCellSpanning) {
+    return rowSpanSvc?.getCellSpan(column2, rowNode)?.spannedNodes;
   }
 }
 function getTotalHeight(container2) {
@@ -36408,8 +36408,8 @@ var PinnedRowModel = class extends BeanStub {
   isRowsToRender(container2) {
     return this.inner.isRowsToRender(container2);
   }
-  pinRow(node, container2, column) {
-    return this.inner.pinRow(node, container2, column);
+  pinRow(node, container2, column2) {
+    return this.inner.pinRow(node, container2, column2);
   }
   ensureRowHeightsValid() {
     return this.inner.ensureRowHeightsValid();
@@ -36568,16 +36568,16 @@ var CheckboxSelectionComponent = class extends Component {
     this.eCheckbox.getInputElement().setAttribute("tabindex", "-1");
   }
   showOrHideSelect() {
-    const { column, rowNode, overrides, gos } = this;
+    const { column: column2, rowNode, overrides, gos } = this;
     const selectable = rowNode.selectable;
     const isVisible = this.getIsVisible();
     let checkboxes = void 0;
     if (typeof isVisible === "function") {
       const extraParams = overrides?.callbackParams;
-      if (!column) {
+      if (!column2) {
         checkboxes = isVisible({ ...extraParams, node: rowNode, data: rowNode.data });
       } else {
-        const params = column.createColumnFunctionCallbackParams(rowNode);
+        const params = column2.createColumnFunctionCallbackParams(rowNode);
         checkboxes = isVisible({ ...extraParams, ...params });
       }
     } else {
@@ -36586,7 +36586,7 @@ var CheckboxSelectionComponent = class extends Component {
     const disabled = selectable && !checkboxes || !selectable && checkboxes;
     const visible = selectable || checkboxes;
     const so = gos.get("rowSelection");
-    const showDisabledCheckboxes = so && typeof so !== "string" ? !_getHideDisabledCheckboxes(so) : !!column?.getColDef().showDisabledCheckboxes;
+    const showDisabledCheckboxes = so && typeof so !== "string" ? !_getHideDisabledCheckboxes(so) : !!column2?.getColDef().showDisabledCheckboxes;
     this.setVisible(visible && (disabled ? showDisabledCheckboxes : true));
     this.setDisplayed(visible && (disabled ? showDisabledCheckboxes : true));
     if (visible) {
@@ -36778,9 +36778,9 @@ var RowRangeSelectionContext = class {
   }
 };
 var SelectAllFeature = class extends BeanStub {
-  constructor(column) {
+  constructor(column2) {
     super();
-    this.column = column;
+    this.column = column2;
     this.cbSelectAllVisible = false;
     this.processingEventFromCheckbox = false;
   }
@@ -36893,13 +36893,13 @@ var SelectAllFeature = class extends BeanStub {
     }
     const value = this.cbSelectAll.getValue();
     const selectAll2 = this.getSelectAllMode();
-    let source = "uiSelectAll";
+    let source2 = "uiSelectAll";
     if (selectAll2 === "currentPage") {
-      source = "uiSelectAllCurrentPage";
+      source2 = "uiSelectAllCurrentPage";
     } else if (selectAll2 === "filtered") {
-      source = "uiSelectAllFiltered";
+      source2 = "uiSelectAllFiltered";
     }
-    const params = { source, selectAll: selectAll2 };
+    const params = { source: source2, selectAll: selectAll2 };
     const selectionSvc = this.beans.selectionSvc;
     if (value) {
       selectionSvc.selectAllRowNodes(params);
@@ -36912,11 +36912,11 @@ var SelectAllFeature = class extends BeanStub {
    * or `headerCheckboxSelection` is enabled in the legacy API.
    */
   isCheckboxSelection() {
-    const { column, gos, beans } = this;
+    const { column: column2, gos, beans } = this;
     const rowSelection = gos.get("rowSelection");
     const newHeaderCheckbox = typeof rowSelection === "object";
     const featureName = newHeaderCheckbox ? "headerCheckbox" : "headerCheckboxSelection";
-    return isCheckboxSelection(beans, column) && this.checkRightRowModelType(featureName) && this.checkSelectionType(featureName);
+    return isCheckboxSelection(beans, column2) && this.checkRightRowModelType(featureName) && this.checkSelectionType(featureName);
   }
   getSelectAllMode() {
     const selectAll2 = _getSelectAll(this.gos, false);
@@ -36938,21 +36938,21 @@ var SelectAllFeature = class extends BeanStub {
     this.headerCellCtrl = void 0;
   }
 };
-function isCheckboxSelection({ gos, selectionColSvc }, column) {
+function isCheckboxSelection({ gos, selectionColSvc }, column2) {
   const rowSelection = gos.get("rowSelection");
-  const colDef = column.getColDef();
+  const colDef = column2.getColDef();
   const { headerCheckboxSelection } = colDef;
   let result = false;
   const newHeaderCheckbox = typeof rowSelection === "object";
   if (newHeaderCheckbox) {
-    const isSelectionCol = isColumnSelectionCol(column);
-    const isAutoCol = isColumnGroupAutoCol(column);
+    const isSelectionCol = isColumnSelectionCol(column2);
+    const isAutoCol = isColumnGroupAutoCol(column2);
     const location = _getCheckboxLocation(rowSelection);
     if (location === "autoGroupColumn" && isAutoCol || isSelectionCol && selectionColSvc?.isSelectionColumnEnabled()) {
       result = _getHeaderCheckbox(rowSelection);
     }
   } else if (typeof headerCheckboxSelection === "function") {
-    result = headerCheckboxSelection(_addGridCommonParams(gos, { column, colDef }));
+    result = headerCheckboxSelection(_addGridCommonParams(gos, { column: column2, colDef }));
   } else {
     result = !!headerCheckboxSelection;
   }
@@ -36982,9 +36982,9 @@ var BaseSelectionService = class extends BeanStub {
   createCheckboxSelectionComponent() {
     return new CheckboxSelectionComponent();
   }
-  createSelectAllFeature(column) {
-    if (isCheckboxSelection(this.beans, column)) {
-      return new SelectAllFeature(column);
+  createSelectAllFeature(column2) {
+    if (isCheckboxSelection(this.beans, column2)) {
+      return new SelectAllFeature(column2);
     }
   }
   isMultiSelect() {
@@ -37091,7 +37091,7 @@ var BaseSelectionService = class extends BeanStub {
     }
     return rowNode.__selected;
   }
-  selectRowNode(rowNode, newValue, e, source = "api") {
+  selectRowNode(rowNode, newValue, e, source2 = "api") {
     const selectionNotAllowed = !rowNode.selectable && newValue;
     const selectionNotChanged = rowNode.__selected === newValue;
     if (selectionNotAllowed || selectionNotChanged) {
@@ -37110,27 +37110,27 @@ var BaseSelectionService = class extends BeanStub {
     this.eventSvc.dispatchEvent({
       ..._createGlobalRowEvent(rowNode, this.gos, "rowSelected"),
       event: e || null,
-      source
+      source: source2
     });
     return true;
   }
-  isCellCheckboxSelection(column, rowNode) {
+  isCellCheckboxSelection(column2, rowNode) {
     const so = this.gos.get("rowSelection");
     if (so && typeof so !== "string") {
-      const checkbox = isColumnSelectionCol(column) && _getCheckboxes(so);
-      return column.isColumnFunc(rowNode, checkbox);
+      const checkbox = isColumnSelectionCol(column2) && _getCheckboxes(so);
+      return column2.isColumnFunc(rowNode, checkbox);
     } else {
-      return column.isColumnFunc(rowNode, column.colDef.checkboxSelection);
+      return column2.isColumnFunc(rowNode, column2.colDef.checkboxSelection);
     }
   }
-  inferNodeSelections(node, shiftKey, metaKey, source) {
+  inferNodeSelections(node, shiftKey, metaKey, source2) {
     const { gos, selectionCtx } = this;
     const currentSelection = node.isSelected();
     const groupSelectsDescendants = _getGroupSelectsDescendants(gos);
     const enableClickSelection = _getEnableSelection(gos);
     const enableDeselection = _getEnableDeselection(gos);
     const isMultiSelect = this.isMultiSelect();
-    const isRowClicked = source === "rowClicked";
+    const isRowClicked = source2 === "rowClicked";
     if (isRowClicked && !(enableClickSelection || enableDeselection)) {
       return null;
     }
@@ -38049,8 +38049,8 @@ var GridCtrl = class extends BeanStub {
   }
 };
 var mod = (moduleName, input) => {
-  for (const key of Object.keys(input)) {
-    input[key] = moduleName;
+  for (const key2 of Object.keys(input)) {
+    input[key2] = moduleName;
   }
   return input;
 };
@@ -38446,9 +38446,9 @@ var ApiFunctionService = class extends BeanStub {
       dispatchEvent
     };
     this.preDestroyLink = "";
-    const { api: api2 } = this;
-    for (const key of Object.keys(gridApiFunctionsMap)) {
-      api2[key] = this.makeApi(key)[key];
+    const { api } = this;
+    for (const key2 of Object.keys(gridApiFunctionsMap)) {
+      api[key2] = this.makeApi(key2)[key2];
     }
   }
   postConstruct() {
@@ -38497,11 +38497,11 @@ function destroy(beans) {
 function isDestroyed(beans) {
   return beans.gridDestroySvc.destroyCalled;
 }
-function getGridOption(beans, key) {
-  return beans.gos.get(key);
+function getGridOption(beans, key2) {
+  return beans.gos.get(key2);
 }
-function setGridOption(beans, key, value) {
-  updateGridOptions(beans, { [key]: value });
+function setGridOption(beans, key2, value) {
+  updateGridOptions(beans, { [key2]: value });
 }
 function updateGridOptions(beans, options) {
   beans.gos.updateGridOptions({ options });
@@ -38512,10 +38512,10 @@ function isModuleRegistered(beans, moduleName) {
 }
 var DndSourceElement = { tag: "div", cls: "ag-drag-handle ag-row-drag", attrs: { draggable: "true" } };
 var DndSourceComp = class extends Component {
-  constructor(rowNode, column, eCell) {
+  constructor(rowNode, column2, eCell) {
     super(DndSourceElement);
     this.rowNode = rowNode;
-    this.column = column;
+    this.column = column2;
     this.eCell = eCell;
   }
   postConstruct() {
@@ -38531,8 +38531,8 @@ var DndSourceComp = class extends Component {
     this.addGuiEventListener("dragstart", this.onDragStart.bind(this));
   }
   onDragStart(dragEvent) {
-    const { rowNode, column, eCell, gos } = this;
-    const providedOnRowDrag = column.getColDef().dndSourceOnRowDrag;
+    const { rowNode, column: column2, eCell, gos } = this;
+    const providedOnRowDrag = column2.getColDef().dndSourceOnRowDrag;
     const dataTransfer = dragEvent.dataTransfer;
     dataTransfer.setDragImage(eCell, 0, 0);
     if (providedOnRowDrag) {
@@ -38649,11 +38649,11 @@ var RowDragElement = {
   attrs: { "aria-hidden": "true" }
 };
 var RowDragComp = class extends Component {
-  constructor(cellValueFn, rowNode, column, customGui, dragStartPixels, alwaysVisible = false) {
+  constructor(cellValueFn, rowNode, column2, customGui, dragStartPixels, alwaysVisible = false) {
     super();
     this.cellValueFn = cellValueFn;
     this.rowNode = rowNode;
-    this.column = column;
+    this.column = column2;
     this.customGui = customGui;
     this.dragStartPixels = dragStartPixels;
     this.alwaysVisible = alwaysVisible;
@@ -38707,9 +38707,9 @@ var RowDragComp = class extends Component {
       this.setDisplayed(false, displayedOptions);
       return;
     }
-    const column = this.column;
-    let shownSometimes = typeof column?.getColDef().rowDrag === "function";
-    let visible = !column || this.isCustomGui() || column.isRowDrag(this.rowNode);
+    const column2 = this.column;
+    let shownSometimes = typeof column2?.getColDef().rowDrag === "function";
+    let visible = !column2 || this.isCustomGui() || column2.isRowDrag(this.rowNode);
     if (visible && this.rowNode.footer && this.gos.get("rowDragManaged")) {
       visible = false;
       shownSometimes = true;
@@ -38737,17 +38737,17 @@ var RowDragComp = class extends Component {
     return selection.indexOf(rowNode) !== -1 ? selection : [rowNode];
   }
   getDragItem() {
-    const { column, rowNode } = this;
+    const { column: column2, rowNode } = this;
     return {
       rowNode,
       rowNodes: this.getSelectedNodes(),
-      columns: column ? [column] : void 0,
+      columns: column2 ? [column2] : void 0,
       defaultTextValue: this.cellValueFn()
     };
   }
-  getRowDragText(column) {
-    if (column) {
-      const colDef = column.getColDef();
+  getRowDragText(column2) {
+    if (column2) {
+      const colDef = column2.getColDef();
       if (colDef.rowDragText) {
         return colDef.rowDragText;
       }
@@ -38818,8 +38818,8 @@ var ChangedRowNodes = class {
   }
 };
 function _createCellId(cellPosition) {
-  const { rowIndex, rowPinned, column } = cellPosition;
-  return `${rowIndex}.${rowPinned == null ? "null" : rowPinned}.${column.getId()}`;
+  const { rowIndex, rowPinned, column: column2 } = cellPosition;
+  return `${rowIndex}.${rowPinned == null ? "null" : rowPinned}.${column2.getId()}`;
 }
 function _areCellsEqual(cellA, cellB) {
   const colsMatch = cellA.column === cellB.column;
@@ -39285,7 +39285,7 @@ var RowDragFeature = class extends BeanStub {
     if (!rowsDrop) {
       return null;
     }
-    let { sameGrid, rootNode, source, target, rows } = rowsDrop;
+    let { sameGrid, rootNode, source: source2, target, rows } = rowsDrop;
     target ?? (target = rowModel.getRow(rowModel.getRowCount() - 1) ?? null);
     const canSetParent = (
       // We don't yet support drag and drop with grouping
@@ -39301,11 +39301,11 @@ var RowDragFeature = class extends BeanStub {
     if (target?.detail) {
       target = target.parent;
     }
-    rowsDrop.moved && (rowsDrop.moved = source !== target);
+    rowsDrop.moved && (rowsDrop.moved = source2 !== target);
     let yDelta = 0.5;
     if (target) {
       if (sameGrid && rowsDrop.moved && (newParent || !canSetParent)) {
-        yDelta = source.rowIndex > target.rowIndex ? -0.5 : 0.5;
+        yDelta = source2.rowIndex > target.rowIndex ? -0.5 : 0.5;
       } else {
         yDelta = (rowsDrop.y - target.rowTop - target.rowHeight / 2) / target.rowHeight || 0;
       }
@@ -39313,9 +39313,9 @@ var RowDragFeature = class extends BeanStub {
     if (!canSetParent && sameGrid && target && rowsDrop.moved && _isClientSideRowModel(gos)) {
       const newTarget = deltaDraggingTarget(rowModel, rowsDrop);
       if (newTarget) {
-        yDelta = source.rowIndex > newTarget.rowIndex ? -0.5 : 0.5;
+        yDelta = source2.rowIndex > newTarget.rowIndex ? -0.5 : 0.5;
         target = newTarget;
-        rowsDrop.moved && (rowsDrop.moved = source !== target);
+        rowsDrop.moved && (rowsDrop.moved = source2 !== target);
       }
     }
     const nudger = this.nudger;
@@ -39354,7 +39354,7 @@ var RowDragFeature = class extends BeanStub {
     }
     rowsDrop.target = target;
     rowsDrop.newParent = newParent;
-    rowsDrop.moved && (rowsDrop.moved = source !== target);
+    rowsDrop.moved && (rowsDrop.moved = source2 !== target);
     const aboveOrBelow = yDelta < 0 ? "above" : "below";
     rowsDrop.position = rowsDrop.moved ? inside ? "inside" : aboveOrBelow : "none";
     this.validateRowsDrop(rowsDrop, canSetParent, aboveOrBelow, dropping);
@@ -39367,10 +39367,10 @@ var RowDragFeature = class extends BeanStub {
     const rowDragManaged = _isClientSideRowModel(gos) ? gos.get("rowDragManaged") : false;
     const suppressMoveWhenRowDragging = gos.get("suppressMoveWhenRowDragging");
     const sameGrid = this.isFromThisGrid(draggingEvent);
-    let { rowNode: source, rowNodes: rows } = draggingEvent.dragItem;
-    rows || (rows = source ? [source] : []);
-    source || (source = rows[0]);
-    if (!source || !rootNode) {
+    let { rowNode: source2, rowNodes: rows } = draggingEvent.dragItem;
+    rows || (rows = source2 ? [source2] : []);
+    source2 || (source2 = rows[0]);
+    if (!source2 || !rootNode) {
       return null;
     }
     const withinGrid = this.beans.dragAndDrop.isDropZoneWithinThisGrid(draggingEvent);
@@ -39389,12 +39389,12 @@ var RowDragFeature = class extends BeanStub {
       sameGrid,
       withinGrid,
       rootNode,
-      moved: source !== overNode,
+      moved: source2 !== overNode,
       y,
       overNode,
       overIndex: overNode?.rowIndex ?? -1,
       position: "none",
-      source,
+      source: source2,
       target: overNode ?? null,
       newParent: null,
       rows,
@@ -39791,11 +39791,11 @@ var deltaDraggingTarget = (rowModel, rowsDrop) => {
   if (current2 && rowsDrop.rows.indexOf(current2) < 0) {
     return null;
   }
-  const source = rowsDrop.source;
-  if (!current2 || !source) {
+  const source2 = rowsDrop.source;
+  if (!current2 || !source2) {
     return null;
   }
-  let count = current2.rowIndex - source.rowIndex;
+  let count = current2.rowIndex - source2.rowIndex;
   const increment = count < 0 ? -1 : 1;
   count = rowsDrop.suppressMoveWhenRowDragging ? Math.abs(count) : 1;
   const rowsSet = new Set(rowsDrop.rows);
@@ -39824,8 +39824,8 @@ var RowDragService = class extends BeanStub {
     ctrl.addDestroyFunc(() => dragAndDrop.removeDropTarget(rowDragFeature));
     this.rowDragFeature = rowDragFeature;
   }
-  createRowDragComp(cellValueFn, rowNode, column, customGui, dragStartPixels, alwaysVisible) {
-    return new RowDragComp(cellValueFn, rowNode, column, customGui, dragStartPixels, alwaysVisible);
+  createRowDragComp(cellValueFn, rowNode, column2, customGui, dragStartPixels, alwaysVisible) {
+    return new RowDragComp(cellValueFn, rowNode, column2, customGui, dragStartPixels, alwaysVisible);
   }
   createRowDragCompForRow(rowNode, element) {
     if (_isCellSelectionEnabled(this.gos)) {
@@ -39841,7 +39841,7 @@ var RowDragService = class extends BeanStub {
       true
     );
   }
-  createRowDragCompForCell(rowNode, column, cellValueFn, element, dragStartPixels, alwaysVisible) {
+  createRowDragCompForCell(rowNode, column2, cellValueFn, element, dragStartPixels, alwaysVisible) {
     const gos = this.gos;
     if (gos.get("rowDragManaged")) {
       if (!_isClientSideRowModel(gos) || gos.get("pagination")) {
@@ -39851,7 +39851,7 @@ var RowDragService = class extends BeanStub {
     const rowDragComp = this.createRowDragComp(
       cellValueFn,
       rowNode,
-      column,
+      column2,
       element,
       dragStartPixels,
       alwaysVisible
@@ -40119,19 +40119,19 @@ var BodyDropPivotTarget = class extends BeanStub {
     if (!dragColumns) {
       return;
     }
-    for (const column of dragColumns) {
-      if (!column.isPrimary()) {
+    for (const column2 of dragColumns) {
+      if (!column2.isPrimary()) {
         continue;
       }
-      if (column.isAnyFunctionActive()) {
+      if (column2.isAnyFunctionActive()) {
         continue;
       }
-      if (column.isAllowValue()) {
-        this.columnsToAggregate.push(column);
-      } else if (column.isAllowRowGroup()) {
-        this.columnsToGroup.push(column);
-      } else if (column.isAllowPivot()) {
-        this.columnsToPivot.push(column);
+      if (column2.isAllowValue()) {
+        this.columnsToAggregate.push(column2);
+      } else if (column2.isAllowRowGroup()) {
+        this.columnsToGroup.push(column2);
+      } else if (column2.isAllowPivot()) {
+        this.columnsToPivot.push(column2);
       }
     }
   }
@@ -40178,7 +40178,7 @@ function sortColsLikeCols(colsList, cols) {
   if (!cols || cols.length <= 1) {
     return;
   }
-  const notAllColsPresent = cols.filter((c) => colsList.indexOf(c) < 0).length > 0;
+  const notAllColsPresent = cols.filter((c2) => colsList.indexOf(c2) < 0).length > 0;
   if (notAllColsPresent) {
     return;
   }
@@ -40422,9 +40422,9 @@ function normaliseX(params) {
   return x;
 }
 function setColumnsMoving(columns, isMoving) {
-  for (const column of columns) {
-    column.moving = isMoving;
-    column.dispatchColEvent("movingChanged", "uiColumnMoved");
+  for (const column2 of columns) {
+    column2.moving = isMoving;
+    column2.dispatchColEvent("movingChanged", "uiColumnMoved");
   }
 }
 var MOVE_FAIL_THRESHOLD = 7;
@@ -40477,7 +40477,7 @@ var MoveColumnFeature = class extends BeanStub {
     } else {
       const visibleState = dragItem.visibleState;
       const visibleColumns = (columns || []).filter(
-        (column) => visibleState[column.getId()] && !column.isVisible()
+        (column2) => visibleState[column2.getId()] && !column2.isVisible()
       );
       this.setColumnsVisible(visibleColumns, true, "uiColumnDragged");
     }
@@ -40528,15 +40528,15 @@ var MoveColumnFeature = class extends BeanStub {
     this.ensureIntervalCleared();
     this.lastMovedInfo = null;
   }
-  setColumnsVisible(columns, visible, source) {
+  setColumnsVisible(columns, visible, source2) {
     if (!columns?.length) {
       return;
     }
-    const allowedCols = columns.filter((c) => !c.getColDef().lockVisible);
+    const allowedCols = columns.filter((c2) => !c2.getColDef().lockVisible);
     if (!allowedCols.length) {
       return;
     }
-    this.beans.colModel.setColsVisible(allowedCols, visible, source);
+    this.beans.colModel.setColsVisible(allowedCols, visible, source2);
   }
   finishColumnMoving() {
     this.clearHighlighted();
@@ -40695,17 +40695,17 @@ var MoveColumnFeature = class extends BeanStub {
   getNormalisedXPositionInfo(allMovingColumns, isAttemptingToPin) {
     const { gos, visibleCols } = this.beans;
     const isRtl = gos.get("enableRtl");
-    const { firstMovingCol, column, position } = this.getColumnMoveAndTargetInfo(
+    const { firstMovingCol, column: column2, position } = this.getColumnMoveAndTargetInfo(
       allMovingColumns,
       isAttemptingToPin,
       isRtl
     );
-    if (!firstMovingCol || !column || position == null) {
+    if (!firstMovingCol || !column2 || position == null) {
       return;
     }
     const visibleColumns = visibleCols.allCols;
     const movingColIndex = visibleColumns.indexOf(firstMovingCol);
-    const targetIndex = visibleColumns.indexOf(column);
+    const targetIndex = visibleColumns.indexOf(column2);
     const isBefore = position === 0 !== isRtl;
     const fromLeft = movingColIndex < targetIndex || movingColIndex === targetIndex && !isBefore;
     let diff = 0;
@@ -40883,7 +40883,7 @@ var MoveColumnFeature = class extends BeanStub {
     }
   }
   attemptToPinColumns(columns, pinned, fromMoving = false) {
-    const allowedCols = (columns || []).filter((c) => !c.getColDef().lockPinned);
+    const allowedCols = (columns || []).filter((c2) => !c2.getColDef().lockPinned);
     if (!allowedCols.length) {
       return 0;
     }
@@ -40904,12 +40904,12 @@ var MoveColumnFeature = class extends BeanStub {
     this.lastMovedInfo = null;
   }
 };
-function setColumnHighlighted(column, highlighted) {
-  if (column.highlighted === highlighted) {
+function setColumnHighlighted(column2, highlighted) {
+  if (column2.highlighted === highlighted) {
     return;
   }
-  column.highlighted = highlighted;
-  column.dispatchColEvent("headerHighlightChanged", "uiColumnMoved");
+  column2.highlighted = highlighted;
+  column2.dispatchColEvent("headerHighlightChanged", "uiColumnMoved");
 }
 function findFirstAndLastMovingColumns(allMovingColumns) {
   const moveLen = allMovingColumns.length;
@@ -41016,15 +41016,15 @@ var ColumnMoveService = class extends BeanStub {
     super(...arguments);
     this.beanName = "colMoves";
   }
-  moveColumnByIndex(fromIndex, toIndex, source) {
+  moveColumnByIndex(fromIndex, toIndex, source2) {
     const gridColumns = this.beans.colModel.getCols();
     if (!gridColumns) {
       return;
     }
-    const column = gridColumns[fromIndex];
-    this.moveColumns([column], toIndex, source);
+    const column2 = gridColumns[fromIndex];
+    this.moveColumns([column2], toIndex, source2);
   }
-  moveColumns(columnsToMoveKeys, toIndex, source, finished = true) {
+  moveColumns(columnsToMoveKeys, toIndex, source2, finished = true) {
     const { colModel, colAnimation, visibleCols, eventSvc } = this.beans;
     const gridColumns = colModel.getCols();
     if (!gridColumns) {
@@ -41038,14 +41038,14 @@ var ColumnMoveService = class extends BeanStub {
     const movedColumns = colModel.getColsForKeys(columnsToMoveKeys);
     if (this.doesMovePassRules(movedColumns, toIndex)) {
       _moveInArray(colModel.getCols(), movedColumns, toIndex);
-      visibleCols.refresh(source);
+      visibleCols.refresh(source2);
       eventSvc.dispatchEvent({
         type: "columnMoved",
         columns: movedColumns,
         column: movedColumns.length === 1 ? movedColumns[0] : null,
         toIndex,
         finished,
-        source
+        source: source2
       });
     }
     colAnimation?.finish();
@@ -41096,12 +41096,12 @@ var ColumnMoveService = class extends BeanStub {
   createBodyDropTarget(pinned, dropContainer) {
     return new BodyDropTarget(pinned, dropContainer);
   }
-  moveHeader(hDirection, eGui, column, pinned, bean) {
+  moveHeader(hDirection, eGui, column2, pinned, bean) {
     const { ctrlsSvc, gos, colModel, visibleCols, focusSvc } = this.beans;
     const rect = eGui.getBoundingClientRect();
     const left2 = rect.left;
-    const isGroup = isColumnGroup(column);
-    const width = isGroup ? rect.width : column.getActualWidth();
+    const isGroup = isColumnGroup(column2);
+    const width = isGroup ? rect.width : column2.getActualWidth();
     const isLeft = hDirection === "left" !== gos.get("enableRtl");
     const xPosition = normaliseX({
       x: isLeft ? left2 - 20 : left2 + width + 20,
@@ -41112,7 +41112,7 @@ var ColumnMoveService = class extends BeanStub {
     });
     const headerPosition = focusSvc.focusedHeader;
     attemptMoveColumns({
-      allMovingColumns: isGroup ? column.getLeafColumns() : [column],
+      allMovingColumns: isGroup ? column2.getLeafColumns() : [column2],
       isFromHeader: true,
       fromLeft: hDirection === "right",
       xPosition,
@@ -41127,17 +41127,17 @@ var ColumnMoveService = class extends BeanStub {
     });
     let targetColumn;
     if (isGroup) {
-      const displayedLeafColumns = column.getDisplayedLeafColumns();
+      const displayedLeafColumns = column2.getDisplayedLeafColumns();
       targetColumn = isLeft ? displayedLeafColumns[0] : _last(displayedLeafColumns);
     } else {
-      targetColumn = column;
+      targetColumn = column2;
     }
     ctrlsSvc.getScrollFeature().ensureColumnVisible(targetColumn, "auto");
     if ((!bean.isAlive() || gos.get("ensureDomOrder")) && headerPosition) {
       let restoreFocusColumn;
       if (isGroup) {
-        const groupId = column.getGroupId();
-        const leafCols = column.getLeafColumns();
+        const groupId = column2.getGroupId();
+        const leafCols = column2.getLeafColumns();
         if (!leafCols.length) {
           return;
         }
@@ -41147,7 +41147,7 @@ var ColumnMoveService = class extends BeanStub {
         }
         restoreFocusColumn = findGroupWidthId(parent, groupId);
       } else {
-        restoreFocusColumn = column;
+        restoreFocusColumn = column2;
       }
       if (restoreFocusColumn) {
         focusSvc.focusHeaderPosition({
@@ -41159,12 +41159,12 @@ var ColumnMoveService = class extends BeanStub {
       }
     }
   }
-  setDragSourceForHeader(eSource, column, displayName) {
+  setDragSourceForHeader(eSource, column2, displayName) {
     const { gos, colModel, dragAndDrop, visibleCols } = this.beans;
     let hideColumnOnExit = !gos.get("suppressDragLeaveHidesColumns");
-    const isGroup = isColumnGroup(column);
-    const columns = isGroup ? column.getProvidedColumnGroup().getLeafColumns() : [column];
-    const getDragItem = isGroup ? () => createDragItemForGroup(column, visibleCols.allCols) : () => createDragItem(column);
+    const isGroup = isColumnGroup(column2);
+    const columns = isGroup ? column2.getProvidedColumnGroup().getLeafColumns() : [column2];
+    const getDragItem = isGroup ? () => createDragItemForGroup(column2, visibleCols.allCols) : () => createDragItem(column2);
     const dragSource = {
       type: 1,
       eElement: eSource,
@@ -41207,30 +41207,30 @@ function findGroupWidthId(columnGroup, id) {
   }
   return void 0;
 }
-function createDragItem(column) {
+function createDragItem(column2) {
   const visibleState = {};
-  visibleState[column.getId()] = column.isVisible();
+  visibleState[column2.getId()] = column2.isVisible();
   return {
-    columns: [column],
+    columns: [column2],
     visibleState,
-    containerType: column.pinned
+    containerType: column2.pinned
   };
 }
 function createDragItemForGroup(columnGroup, allCols) {
   const allColumnsOriginalOrder = columnGroup.getProvidedColumnGroup().getLeafColumns();
   const visibleState = {};
-  for (const column of allColumnsOriginalOrder) {
-    visibleState[column.getId()] = column.isVisible();
+  for (const column2 of allColumnsOriginalOrder) {
+    visibleState[column2.getId()] = column2.isVisible();
   }
   const allColumnsCurrentOrder = [];
-  for (const column of allCols) {
-    if (allColumnsOriginalOrder.indexOf(column) >= 0) {
-      allColumnsCurrentOrder.push(column);
-      _removeFromArray(allColumnsOriginalOrder, column);
+  for (const column2 of allCols) {
+    if (allColumnsOriginalOrder.indexOf(column2) >= 0) {
+      allColumnsCurrentOrder.push(column2);
+      _removeFromArray(allColumnsOriginalOrder, column2);
     }
   }
-  for (const column of allColumnsOriginalOrder) {
-    allColumnsCurrentOrder.push(column);
+  for (const column2 of allColumnsOriginalOrder) {
+    allColumnsCurrentOrder.push(column2);
   }
   const columnsInSplit = [];
   const columnGroupColumns = columnGroup.getLeafColumns();
@@ -41271,12 +41271,12 @@ var AutoWidthCalculator = class extends BeanStub {
   // into the dummy, then check the dummy's width. then destroy the dummy
   // as we don't need it any more.
   // drawback: only the cells visible on the screen are considered
-  getPreferredWidthForColumn(column, skipHeader) {
-    const eHeaderCell = this.getHeaderCellForColumn(column);
+  getPreferredWidthForColumn(column2, skipHeader) {
+    const eHeaderCell = this.getHeaderCellForColumn(column2);
     if (!eHeaderCell) {
       return -1;
     }
-    const elements = this.beans.rowRenderer.getAllCellsNotSpanningForColumn(column);
+    const elements = this.beans.rowRenderer.getAllCellsNotSpanningForColumn(column2);
     if (!skipHeader) {
       elements.push(eHeaderCell);
     }
@@ -41302,10 +41302,10 @@ var AutoWidthCalculator = class extends BeanStub {
     extraPadding = extraPadding ?? this.gos.get("autoSizePadding");
     return dummyContainerWidth + extraPadding;
   }
-  getHeaderCellForColumn(column) {
+  getHeaderCellForColumn(column2) {
     let element = null;
     for (const container2 of this.beans.ctrlsSvc.getHeaderRowContainerCtrls()) {
-      const res = container2.getHtmlElementForColumnHeader(column);
+      const res = container2.getHtmlElementForColumnHeader(column2);
       if (res != null) {
         element = res;
       }
@@ -41349,8 +41349,8 @@ var AutoWidthModule = {
   version: VERSION,
   beans: [AutoWidthCalculator]
 };
-function setColumnWidths(beans, columnWidths, finished = true, source = "api") {
-  beans.colResize?.setColumnWidths(columnWidths, false, finished, source);
+function setColumnWidths(beans, columnWidths, finished = true, source2 = "api") {
+  beans.colResize?.setColumnWidths(columnWidths, false, finished, source2);
 }
 var GroupResizeFeature = class extends BeanStub {
   constructor(comp, eResize, pinned, columnGroup) {
@@ -41400,14 +41400,14 @@ var GroupResizeFeature = class extends BeanStub {
     this.resizeTakeFromRatios = groupAfterRatios;
     this.toggleColumnResizing(true);
   }
-  onResizing(finished, resizeAmount, source = "uiColumnResized") {
+  onResizing(finished, resizeAmount, source2 = "uiColumnResized") {
     const resizeAmountNormalised = this.normaliseDragChange(resizeAmount);
     const width = this.resizeStartWidth + resizeAmountNormalised;
-    this.resizeColumnsFromLocalValues(width, source, finished);
+    this.resizeColumnsFromLocalValues(width, source2, finished);
   }
   getInitialValues(shiftKey) {
-    const getInitialSizeOfColumns = (columns) => columns.reduce((totalWidth, column) => totalWidth + column.getActualWidth(), 0);
-    const getSizeRatiosOfColumns = (columns, initialSizeOfColumns) => columns.map((column) => column.getActualWidth() / initialSizeOfColumns);
+    const getInitialSizeOfColumns = (columns) => columns.reduce((totalWidth, column2) => totalWidth + column2.getActualWidth(), 0);
+    const getSizeRatiosOfColumns = (columns, initialSizeOfColumns) => columns.map((column2) => column2.getActualWidth() / initialSizeOfColumns);
     const columnsToResize = this.getColumnsToResize();
     const resizeStartWidth = getInitialSizeOfColumns(columnsToResize);
     const resizeRatios = getSizeRatiosOfColumns(columnsToResize, resizeStartWidth);
@@ -41434,14 +41434,14 @@ var GroupResizeFeature = class extends BeanStub {
     }
     return columnSizeAndRatios;
   }
-  resizeLeafColumnsToFit(source) {
+  resizeLeafColumnsToFit(source2) {
     const preferredSize = this.beans.autoWidthCalc.getPreferredWidthForColumnGroup(this.columnGroup);
     const initialValues = this.getInitialValues();
     if (preferredSize > initialValues.resizeStartWidth) {
-      this.resizeColumns(initialValues, preferredSize, source, true);
+      this.resizeColumns(initialValues, preferredSize, source2, true);
     }
   }
-  resizeColumnsFromLocalValues(totalWidth, source, finished = true) {
+  resizeColumnsFromLocalValues(totalWidth, source2, finished = true) {
     if (!this.resizeCols || !this.resizeRatios) {
       return;
     }
@@ -41453,9 +41453,9 @@ var GroupResizeFeature = class extends BeanStub {
       groupAfterStartWidth: this.resizeTakeFromStartWidth,
       groupAfterRatios: this.resizeTakeFromRatios
     };
-    this.resizeColumns(initialValues, totalWidth, source, finished);
+    this.resizeColumns(initialValues, totalWidth, source2, finished);
   }
-  resizeColumns(initialValues, totalWidth, source, finished = true) {
+  resizeColumns(initialValues, totalWidth, source2, finished = true) {
     const {
       columnsToResize,
       resizeStartWidth,
@@ -41481,7 +41481,7 @@ var GroupResizeFeature = class extends BeanStub {
     this.beans.colResize?.resizeColumnSets({
       resizeSets,
       finished,
-      source
+      source: source2
     });
     if (finished) {
       this.toggleColumnResizing(false);
@@ -41516,10 +41516,10 @@ var GroupResizeFeature = class extends BeanStub {
   }
 };
 var ResizeFeature = class extends BeanStub {
-  constructor(pinned, column, eResize, comp, ctrl) {
+  constructor(pinned, column2, eResize, comp, ctrl) {
     super();
     this.pinned = pinned;
-    this.column = column;
+    this.column = column2;
     this.eResize = eResize;
     this.comp = comp;
     this.ctrl = ctrl;
@@ -41567,10 +41567,10 @@ var ResizeFeature = class extends BeanStub {
     this.ctrl.setRefreshFunction("resize", refresh);
   }
   onResizing(finished, resizeAmount) {
-    const { column: key, lastResizeAmount, resizeStartWidth, beans } = this;
+    const { column: key2, lastResizeAmount, resizeStartWidth, beans } = this;
     const resizeAmountNormalised = this.normaliseResizeAmount(resizeAmount);
     const newWidth = resizeStartWidth + resizeAmountNormalised;
-    const columnWidths = [{ key, newWidth }];
+    const columnWidths = [{ key: key2, newWidth }];
     const { pinnedCols, ctrlsSvc, colResize } = beans;
     if (this.column.getPinned()) {
       const leftWidth = pinnedCols?.leftWidth ?? 0;
@@ -41617,7 +41617,7 @@ var ColumnResizeService = class extends BeanStub {
     super(...arguments);
     this.beanName = "colResize";
   }
-  setColumnWidths(columnWidths, shiftKey, finished, source) {
+  setColumnWidths(columnWidths, shiftKey, finished, source2) {
     const sets = [];
     const { colModel, gos, visibleCols } = this.beans;
     for (const columnWidth of columnWidths) {
@@ -41654,7 +41654,7 @@ var ColumnResizeService = class extends BeanStub {
     this.resizeColumnSets({
       resizeSets: sets,
       finished,
-      source
+      source: source2
     });
   }
   // method takes sets of columns and resizes them. either all sets will be resized, or nothing
@@ -41662,12 +41662,12 @@ var ColumnResizeService = class extends BeanStub {
   // then both the current group (grows), and the adjacent group (shrinks), will get resized,
   // so that's two sets for this method.
   resizeColumnSets(params) {
-    const { resizeSets, finished, source } = params;
+    const { resizeSets, finished, source: source2 } = params;
     const passMinMaxCheck = !resizeSets || resizeSets.every((columnResizeSet) => checkMinAndMaxWidthsForSet(columnResizeSet));
     if (!passMinMaxCheck) {
       if (finished) {
         const columns = resizeSets && resizeSets.length > 0 ? resizeSets[0].columns : null;
-        dispatchColumnResizedEvent(this.eventSvc, columns, finished, source);
+        dispatchColumnResizedEvent(this.eventSvc, columns, finished, source2);
       }
       return;
     }
@@ -41730,7 +41730,7 @@ var ColumnResizeService = class extends BeanStub {
         const newWidth = newWidths[col.getId()];
         const actualWidth = col.getActualWidth();
         if (actualWidth !== newWidth) {
-          col.setActualWidth(newWidth, source);
+          col.setActualWidth(newWidth, source2);
           changedCols.push(col);
         }
       }
@@ -41743,27 +41743,27 @@ var ColumnResizeService = class extends BeanStub {
         resizingCols: allResizedCols,
         skipSetLeft: true
       }) ?? [];
-      visibleCols.setLeftValues(source);
+      visibleCols.setLeftValues(source2);
       visibleCols.updateBodyWidths();
       colViewport.checkViewportColumns();
     }
     const colsForEvent = allResizedCols.concat(flexedCols);
     if (atLeastOneColChanged || finished) {
-      dispatchColumnResizedEvent(this.eventSvc, colsForEvent, finished, source, flexedCols);
+      dispatchColumnResizedEvent(this.eventSvc, colsForEvent, finished, source2, flexedCols);
     }
   }
-  resizeHeader(column, delta, shiftKey) {
-    if (!column.isResizable()) {
+  resizeHeader(column2, delta, shiftKey) {
+    if (!column2.isResizable()) {
       return;
     }
-    const actualWidth = column.getActualWidth();
-    const minWidth = column.getMinWidth();
-    const maxWidth = column.getMaxWidth();
+    const actualWidth = column2.getActualWidth();
+    const minWidth = column2.getMinWidth();
+    const maxWidth = column2.getMaxWidth();
     const newWidth = Math.min(Math.max(actualWidth + delta, minWidth), maxWidth);
-    this.setColumnWidths([{ key: column, newWidth }], shiftKey, true, "uiColumnResized");
+    this.setColumnWidths([{ key: column2, newWidth }], shiftKey, true, "uiColumnResized");
   }
-  createResizeFeature(pinned, column, eResize, comp, ctrl) {
-    return new ResizeFeature(pinned, column, eResize, comp, ctrl);
+  createResizeFeature(pinned, column2, eResize, comp, ctrl) {
+    return new ResizeFeature(pinned, column2, eResize, comp, ctrl);
   }
   createGroupResizeFeature(comp, eResize, pinned, columnGroup) {
     return new GroupResizeFeature(comp, eResize, pinned, columnGroup);
@@ -41815,12 +41815,12 @@ var GroupWidthFeature = class extends BeanStub {
   addListenersToChildrenColumns() {
     this.removeListenersOnChildrenColumns();
     const widthChangedListener = this.onWidthChanged.bind(this);
-    for (const column of this.columnGroup.getLeafColumns()) {
-      column.__addEventListener("widthChanged", widthChangedListener);
-      column.__addEventListener("visibleChanged", widthChangedListener);
+    for (const column2 of this.columnGroup.getLeafColumns()) {
+      column2.__addEventListener("widthChanged", widthChangedListener);
+      column2.__addEventListener("visibleChanged", widthChangedListener);
       this.removeChildListenersFuncs.push(() => {
-        column.__removeEventListener("widthChanged", widthChangedListener);
-        column.__removeEventListener("visibleChanged", widthChangedListener);
+        column2.__removeEventListener("widthChanged", widthChangedListener);
+        column2.__removeEventListener("visibleChanged", widthChangedListener);
       });
     }
   }
@@ -41852,12 +41852,12 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     };
   }
   wireComp(comp, eGui, eResize, eHeaderCompWrapper, compBean) {
-    const { column, beans } = this;
+    const { column: column2, beans } = this;
     const { context, colNames, colHover, rangeSvc, colResize } = beans;
     this.comp = comp;
     compBean = setupCompBean(this, context, compBean);
     this.setGui(eGui, compBean);
-    this.displayName = colNames.getDisplayNameForColumnGroup(column, "header");
+    this.displayName = colNames.getDisplayNameForColumnGroup(column2, "header");
     this.refreshHeaderStyles();
     this.addClasses();
     this.setupMovingCss(compBean);
@@ -41872,14 +41872,14 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     this.addManagedPropertyListener("groupHeaderHeight", this.refreshMaxHeaderHeight.bind(this));
     this.refreshMaxHeaderHeight();
     const pinned = this.rowCtrl.pinned;
-    const leafCols = column.getProvidedColumnGroup().getLeafColumns();
+    const leafCols = column2.getProvidedColumnGroup().getLeafColumns();
     colHover?.createHoverFeature(compBean, leafCols, eGui);
-    rangeSvc?.createRangeHighlightFeature(compBean, column, comp);
-    compBean.createManagedBean(new SetLeftFeature(column, eGui, beans));
-    compBean.createManagedBean(new GroupWidthFeature(comp, column));
+    rangeSvc?.createRangeHighlightFeature(compBean, column2, comp);
+    compBean.createManagedBean(new SetLeftFeature(column2, eGui, beans));
+    compBean.createManagedBean(new GroupWidthFeature(comp, column2));
     if (colResize) {
       this.resizeFeature = compBean.createManagedBean(
-        colResize.createGroupResizeFeature(comp, eResize, pinned, column)
+        colResize.createGroupResizeFeature(comp, eResize, pinned, column2)
       );
     } else {
       comp.setResizableDisplayed(false);
@@ -41898,11 +41898,11 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     compBean.addDestroyFunc(() => this.clearComponent());
   }
   getHeaderClassParams() {
-    const { column, beans } = this;
-    const colDef = column.getDefinition();
+    const { column: column2, beans } = this;
+    const colDef = column2.getDefinition();
     return _addGridCommonParams(beans.gos, {
       colDef,
-      columnGroup: column,
+      columnGroup: column2,
       floatingFilter: false
     });
   }
@@ -41924,20 +41924,20 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     if (!this.beans.gos.get("suppressMoveWhenColumnDragging")) {
       return;
     }
-    for (const column of columns) {
-      compBean.addManagedListeners(column, {
-        headerHighlightChanged: this.onLeafColumnHighlightChanged.bind(this, column)
+    for (const column2 of columns) {
+      compBean.addManagedListeners(column2, {
+        headerHighlightChanged: this.onLeafColumnHighlightChanged.bind(this, column2)
       });
     }
   }
-  onLeafColumnHighlightChanged(column) {
+  onLeafColumnHighlightChanged(column2) {
     const displayedColumns = this.column.getDisplayedLeafColumns();
-    const isFirst = displayedColumns[0] === column;
-    const isLast = _last(displayedColumns) === column;
+    const isFirst = displayedColumns[0] === column2;
+    const isLast = _last(displayedColumns) === column2;
     if (!isFirst && !isLast) {
       return;
     }
-    const highlighted = column.getHighlighted();
+    const highlighted = column2.getHighlighted();
     const isColumnMoveAtThisLevel = !!this.rowCtrl.getHeaderCellCtrls().find((ctrl) => {
       return ctrl.column.isMoving();
     });
@@ -41973,8 +41973,8 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     const initialValues = resizeFeature.getInitialValues(shiftKey);
     resizeFeature.resizeColumns(initialValues, initialValues.resizeStartWidth + delta, "uiColumnResized", true);
   }
-  resizeLeafColumnsToFit(source) {
-    this.resizeFeature?.resizeLeafColumnsToFit(source);
+  resizeLeafColumnsToFit(source2) {
+    this.resizeFeature?.resizeLeafColumnsToFit(source2);
   }
   setupUserComp() {
     const { colGroupSvc, userCompFactory, gos, enterpriseMenuFactory } = this.beans;
@@ -42044,9 +42044,9 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     });
   }
   refreshExpanded() {
-    const { column } = this;
-    this.expandable = column.isExpandable();
-    const expanded = column.isExpanded();
+    const { column: column2 } = this;
+    this.expandable = column2.isExpandable();
+    const expanded = column2.isExpanded();
     if (this.expandable) {
       this.comp.setAriaExpanded(expanded ? "true" : "false");
     } else {
@@ -42055,12 +42055,12 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     this.refreshHeaderStyles();
   }
   addClasses() {
-    const { column } = this;
-    const colGroupDef = column.getColGroupDef();
-    const classes = _getHeaderClassesFromColDef(colGroupDef, this.gos, null, column);
-    if (column.isPadding()) {
+    const { column: column2 } = this;
+    const colGroupDef = column2.getColGroupDef();
+    const classes = _getHeaderClassesFromColDef(colGroupDef, this.gos, null, column2);
+    if (column2.isPadding()) {
       classes.push("ag-header-group-cell-no-group");
-      const leafCols = column.getLeafColumns();
+      const leafCols = column2.getLeafColumns();
       if (leafCols.every((col) => col.isSpanHeaderHeight())) {
         classes.push("ag-header-span-height");
       }
@@ -42070,15 +42070,15 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
         classes.push("ag-header-cell-wrap-text");
       }
     }
-    for (const c of classes) {
-      this.comp.toggleCss(c, true);
+    for (const c2 of classes) {
+      this.comp.toggleCss(c2, true);
     }
   }
   setupMovingCss(compBean) {
-    const { column } = this;
-    const providedColumnGroup = column.getProvidedColumnGroup();
+    const { column: column2 } = this;
+    const providedColumnGroup = column2.getProvidedColumnGroup();
     const leafColumns = providedColumnGroup.getLeafColumns();
-    const listener = () => this.comp.toggleCss("ag-header-cell-moving", column.isMoving());
+    const listener = () => this.comp.toggleCss("ag-header-cell-moving", column2.isMoving());
     for (const col of leafColumns) {
       compBean.addManagedListeners(col, { movingChanged: listener });
     }
@@ -42096,10 +42096,10 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
       return;
     }
     if (e.key === KeyCode.ENTER) {
-      const column = this.column;
-      const newExpandedValue = !column.isExpanded();
+      const column2 = this.column;
+      const newExpandedValue = !column2.isExpanded();
       this.beans.colGroupSvc.setColumnGroupOpened(
-        column.getProvidedColumnGroup(),
+        column2.getProvidedColumnGroup(),
         newExpandedValue,
         "uiColumnExpanded"
       );
@@ -42118,7 +42118,7 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
     this.dragSource = this.beans.colMoves?.setDragSourceForHeader(eHeaderGroup, this.column, this.displayName) ?? null;
   }
   isSuppressMoving() {
-    return this.gos.get("suppressMovableColumns") || this.column.getLeafColumns().some((column) => column.getColDef().suppressMovable || column.getColDef().lockPosition);
+    return this.gos.get("suppressMovableColumns") || this.column.getLeafColumns().some((column2) => column2.getColDef().suppressMovable || column2.getColDef().lockPosition);
   }
   destroy() {
     this.tooltipFeature = this.destroyBean(this.tooltipFeature);
@@ -42182,7 +42182,7 @@ var VisibleColsService = class extends BeanStub {
     this.rightWidth = 0;
     this.isBodyWidthDirty = true;
   }
-  refresh(source, skipTreeBuild = false) {
+  refresh(source2, skipTreeBuild = false) {
     const { colFlex, colModel, colGroupSvc, colViewport, selectionColSvc } = this.beans;
     if (!skipTreeBuild) {
       this.buildTrees(colModel, colGroupSvc);
@@ -42195,15 +42195,15 @@ var VisibleColsService = class extends BeanStub {
     this.joinColsAriaOrder(colModel);
     this.joinCols();
     this.headerGroupRowCount = this.getHeaderRowCount();
-    this.setLeftValues(source);
+    this.setLeftValues(source2);
     this.autoHeightCols = this.allCols.filter((col) => col.isAutoHeight());
     colFlex?.refreshFlexedColumns();
     this.updateBodyWidths();
-    this.setFirstRightAndLastLeftPinned(colModel, this.leftCols, this.rightCols, source);
+    this.setFirstRightAndLastLeftPinned(colModel, this.leftCols, this.rightCols, source2);
     colViewport.checkViewportColumns(false);
     this.eventSvc.dispatchEvent({
       type: "displayedColumnsChanged",
-      source
+      source: source2
     });
   }
   getHeaderRowCount() {
@@ -42246,11 +42246,11 @@ var VisibleColsService = class extends BeanStub {
     }
   }
   // sets the left pixel position of each column
-  setLeftValues(source) {
-    this.setLeftValuesOfCols(source);
+  setLeftValues(source2) {
+    this.setLeftValuesOfCols(source2);
     this.setLeftValuesOfGroups();
   }
-  setFirstRightAndLastLeftPinned(colModel, leftCols, rightCols, source) {
+  setFirstRightAndLastLeftPinned(colModel, leftCols, rightCols, source2) {
     let lastLeft;
     let firstRight;
     if (this.gos.get("enableRtl")) {
@@ -42261,8 +42261,8 @@ var VisibleColsService = class extends BeanStub {
       firstRight = rightCols ? rightCols[0] : null;
     }
     for (const col of colModel.getCols()) {
-      col.setLastLeftPinned(col === lastLeft, source);
-      col.setFirstRightPinned(col === firstRight, source);
+      col.setLastLeftPinned(col === lastLeft, source2);
+      col.setFirstRightPinned(col === firstRight, source2);
     }
   }
   buildTrees(colModel, columnGroupSvc) {
@@ -42329,15 +42329,15 @@ var VisibleColsService = class extends BeanStub {
   }
   setLeftValuesOfGroups() {
     for (const columns of [this.treeLeft, this.treeRight, this.treeCenter]) {
-      for (const column of columns) {
-        if (isColumnGroup(column)) {
-          const columnGroup = column;
+      for (const column2 of columns) {
+        if (isColumnGroup(column2)) {
+          const columnGroup = column2;
           columnGroup.checkLeft();
         }
       }
     }
   }
-  setLeftValuesOfCols(source) {
+  setLeftValuesOfCols(source2) {
     const { colModel } = this.beans;
     const primaryCols = colModel.getColDefCols();
     if (!primaryCols) {
@@ -42348,21 +42348,21 @@ var VisibleColsService = class extends BeanStub {
     for (const columns of [this.leftCols, this.rightCols, this.centerCols]) {
       if (doingRtl) {
         let left2 = getWidthOfColsInList(columns);
-        for (const column of columns) {
-          left2 -= column.getActualWidth();
-          column.setLeft(left2, source);
+        for (const column2 of columns) {
+          left2 -= column2.getActualWidth();
+          column2.setLeft(left2, source2);
         }
       } else {
         let left2 = 0;
-        for (const column of columns) {
-          column.setLeft(left2, source);
-          left2 += column.getActualWidth();
+        for (const column2 of columns) {
+          column2.setLeft(left2, source2);
+          left2 += column2.getActualWidth();
         }
       }
       _removeAllFromUnorderedArray(allColumns, columns);
     }
-    for (const column of allColumns) {
-      column.setLeft(null, source);
+    for (const column2 of allColumns) {
+      column2.setLeft(null, source2);
     }
   }
   joinCols() {
@@ -42379,8 +42379,8 @@ var VisibleColsService = class extends BeanStub {
     return null;
   }
   // gridPanel -> ensureColumnVisible
-  isColDisplayed(column) {
-    return this.allCols.indexOf(column) >= 0;
+  isColDisplayed(column2) {
+    return this.allCols.indexOf(column2) >= 0;
   }
   getLeftColsForRow(rowNode) {
     const {
@@ -42573,7 +42573,7 @@ var ColumnGroupService = class extends BeanStub {
     });
     return columnGroupState;
   }
-  resetColumnGroupState(source) {
+  resetColumnGroupState(source2) {
     const primaryColumnTree = this.beans.colModel.getColDefColTree();
     if (!primaryColumnTree) {
       return;
@@ -42589,9 +42589,9 @@ var ColumnGroupService = class extends BeanStub {
         stateItems.push(groupState);
       }
     });
-    this.setColumnGroupState(stateItems, source);
+    this.setColumnGroupState(stateItems, source2);
   }
-  setColumnGroupState(stateItems, source) {
+  setColumnGroupState(stateItems, source2) {
     const { colModel, colAnimation, visibleCols, eventSvc } = this.beans;
     const gridBalancedTree = colModel.getColTree();
     if (!gridBalancedTree.length) {
@@ -42612,7 +42612,7 @@ var ColumnGroupService = class extends BeanStub {
       providedColumnGroup.setExpanded(newValue);
       impactedGroups.push(providedColumnGroup);
     }
-    visibleCols.refresh(source, true);
+    visibleCols.refresh(source2, true);
     if (impactedGroups.length) {
       eventSvc.dispatchEvent({
         type: "columnGroupOpened",
@@ -42623,20 +42623,20 @@ var ColumnGroupService = class extends BeanStub {
     colAnimation?.finish();
   }
   // called by headerRenderer - when a header is opened or closed
-  setColumnGroupOpened(key, newValue, source) {
+  setColumnGroupOpened(key2, newValue, source2) {
     let keyAsString;
-    if (isProvidedColumnGroup(key)) {
-      keyAsString = key.getId();
+    if (isProvidedColumnGroup(key2)) {
+      keyAsString = key2.getId();
     } else {
-      keyAsString = key || "";
+      keyAsString = key2 || "";
     }
-    this.setColumnGroupState([{ groupId: keyAsString, open: newValue }], source);
+    this.setColumnGroupState([{ groupId: keyAsString, open: newValue }], source2);
   }
-  getProvidedColGroup(key) {
+  getProvidedColGroup(key2) {
     let res = null;
     depthFirstOriginalTreeSearch(null, this.beans.colModel.getColTree(), (node) => {
       if (isProvidedColumnGroup(node)) {
-        if (node.getId() === key) {
+        if (node.getId() === key2) {
           res = node;
         }
       }
@@ -42649,18 +42649,18 @@ var ColumnGroupService = class extends BeanStub {
     const col = direction === "After" ? _last(colGroupLeafColumns) : colGroupLeafColumns[0];
     const getDisplayColMethod = `getCol${direction}`;
     while (true) {
-      const column = this.beans.visibleCols[getDisplayColMethod](col);
-      if (!column) {
+      const column2 = this.beans.visibleCols[getDisplayColMethod](col);
+      if (!column2) {
         return null;
       }
-      const groupPointer = this.getColGroupAtLevel(column, requiredLevel);
+      const groupPointer = this.getColGroupAtLevel(column2, requiredLevel);
       if (groupPointer !== columnGroup) {
         return groupPointer;
       }
     }
   }
-  getColGroupAtLevel(column, level) {
-    let groupPointer = column.getParent();
+  getColGroupAtLevel(column2, level) {
+    let groupPointer = column2.getParent();
     let originalGroupLevel;
     let groupPointerLevel;
     while (true) {
@@ -42763,7 +42763,7 @@ var ColumnGroupService = class extends BeanStub {
     }
     return topLevelResultCols;
   }
-  createProvidedColumnGroup(primaryColumns, colGroupDef, level, existingColumns, columnKeyCreator, existingGroups, source) {
+  createProvidedColumnGroup(primaryColumns, colGroupDef, level, existingColumns, columnKeyCreator, existingGroups, source2) {
     const groupId = columnKeyCreator.getUniqueKey(colGroupDef.groupId || null, null);
     const colGroupDefMerged = createMergedColGroupDef(this.beans, colGroupDef, groupId);
     const providedGroup = new AgProvidedColumnGroup(colGroupDefMerged, groupId, false, level);
@@ -42784,7 +42784,7 @@ var ColumnGroupService = class extends BeanStub {
       existingColumns,
       columnKeyCreator,
       existingGroups,
-      source
+      source2
     );
     providedGroup.setChildren(children);
     return providedGroup;
@@ -43020,21 +43020,21 @@ var SkeletonCellRendererModule = {
     agSkeletonCellRenderer: SkeletonCellRenderer$1
   }
 };
-function getColumnDef(beans, key) {
-  const column = beans.colModel.getColDefCol(key);
-  if (column) {
-    return column.getColDef();
+function getColumnDef(beans, key2) {
+  const column2 = beans.colModel.getColDefCol(key2);
+  if (column2) {
+    return column2.getColDef();
   }
   return null;
 }
 function getColumnDefs(beans) {
   return beans.colModel.getColumnDefs(true);
 }
-function getDisplayNameForColumn(beans, column, location) {
-  return beans.colNames.getDisplayNameForColumn(column, location) || "";
+function getDisplayNameForColumn(beans, column2, location) {
+  return beans.colNames.getDisplayNameForColumn(column2, location) || "";
 }
-function getColumn(beans, key) {
-  return beans.colModel.getColDefCol(key);
+function getColumn(beans, key2) {
+  return beans.colModel.getColDefCol(key2);
 }
 function getColumns(beans) {
   return beans.colModel.getColDefCols();
@@ -43093,16 +43093,16 @@ function _deepCloneDefinition(object, keysToSkip) {
   }
   const obj = object;
   const res = {};
-  for (const key of Object.keys(obj)) {
-    if (keysToSkip && keysToSkip.indexOf(key) >= 0 || SKIP_JS_BUILTINS.has(key)) {
+  for (const key2 of Object.keys(obj)) {
+    if (keysToSkip && keysToSkip.indexOf(key2) >= 0 || SKIP_JS_BUILTINS.has(key2)) {
       continue;
     }
-    const value = obj[key];
+    const value = obj[key2];
     const sourceIsSimpleObject = typeof value === "object" && value !== null && value.constructor === Object;
     if (sourceIsSimpleObject) {
-      res[key] = _deepCloneDefinition(value);
+      res[key2] = _deepCloneDefinition(value);
     } else {
-      res[key] = value;
+      res[key2] = value;
     }
   }
   return res;
@@ -43197,7 +43197,7 @@ var ColumnFlexService = class extends BeanStub {
     this.columnsHidden = false;
   }
   refreshFlexedColumns(params = {}) {
-    const source = params.source ?? "flex";
+    const source2 = params.source ?? "flex";
     if (params.viewportWidth != null) {
       this.flexViewportWidth = params.viewportWidth;
     }
@@ -43243,7 +43243,7 @@ var ColumnFlexService = class extends BeanStub {
     let unfrozenSpace = totalSpace;
     const freeze2 = (item, width) => {
       item.frozenSize = width;
-      item.col.setActualWidth(width, source);
+      item.col.setActualWidth(width, source2);
       unfrozenSpace -= width;
       unfrozenFlex -= item.flex;
       unfrozenItemCount -= 1;
@@ -43295,7 +43295,7 @@ var ColumnFlexService = class extends BeanStub {
       }
     }
     if (!params.skipSetLeft) {
-      visibleCols.setLeftValues(source);
+      visibleCols.setLeftValues(source2);
     }
     if (params.updateBodyWidths) {
       visibleCols.updateBodyWidths();
@@ -43304,7 +43304,7 @@ var ColumnFlexService = class extends BeanStub {
     if (params.fireResizedEvent) {
       const changedColumns = items.filter((item) => item.initialSize !== item.frozenSize).map((item) => item.col);
       const flexingColumns = items.filter((item) => item.flex).map((item) => item.col);
-      dispatchColumnResizedEvent(this.eventSvc, changedColumns, true, source, flexingColumns);
+      dispatchColumnResizedEvent(this.eventSvc, changedColumns, true, source2, flexingColumns);
     }
     this.revealColumns(colDelayRenderSvc);
     return unconstrainedFlexColumns;
@@ -43315,19 +43315,19 @@ var ColumnFlexService = class extends BeanStub {
       this.columnsHidden = false;
     }
   }
-  initCol(column) {
-    const { flex, initialFlex } = column.colDef;
+  initCol(column2) {
+    const { flex, initialFlex } = column2.colDef;
     if (flex !== void 0) {
-      column.flex = flex;
+      column2.flex = flex;
     } else if (initialFlex !== void 0) {
-      column.flex = initialFlex;
+      column2.flex = initialFlex;
     }
   }
   // this method should only be used by the colModel to
   // change flex when required by the applyColumnState method.
-  setColFlex(column, flex) {
-    column.flex = flex ?? null;
-    column.dispatchStateUpdatedEvent("flex");
+  setColFlex(column2, flex) {
+    column2.flex = flex ?? null;
+    column2.dispatchStateUpdatedEvent("flex");
   }
 };
 function _getValueUsingField(data, field, fieldContainsDots) {
@@ -43394,13 +43394,13 @@ var DataTypeService = class extends BeanStub {
             useFormatter: true
           },
           comparator: (a, b) => {
-            const column = colModel.getColDefCol(colId);
-            const colDef = column?.getColDef();
-            if (!column || !colDef) {
+            const column2 = colModel.getColDefCol(colId);
+            const colDef = column2?.getColDef();
+            if (!column2 || !colDef) {
               return 0;
             }
-            const valA = a == null ? "" : formatValue({ column, node: null, value: a });
-            const valB = b == null ? "" : formatValue({ column, node: null, value: b });
+            const valA = a == null ? "" : formatValue({ column: column2, node: null, value: a });
+            const valB = b == null ? "" : formatValue({ column: column2, node: null, value: b });
             if (valA === valB) {
               return 0;
             }
@@ -43430,12 +43430,12 @@ var DataTypeService = class extends BeanStub {
     const newFormatValueFuncs = {};
     const generateFormatValueFunc = (dataTypeDefinition) => {
       return (params) => {
-        const { column, node, value } = params;
-        let valueFormatter = column.getColDef().valueFormatter;
+        const { column: column2, node, value } = params;
+        let valueFormatter = column2.getColDef().valueFormatter;
         if (valueFormatter === dataTypeDefinition.groupSafeValueFormatter) {
           valueFormatter = dataTypeDefinition.valueFormatter;
         }
-        return this.beans.valueSvc.formatValue(column, node, value, valueFormatter);
+        return this.beans.valueSvc.formatValue(column2, node, value, valueFormatter);
       };
     };
     for (const cellDataType of Object.keys(defaultDataTypes)) {
@@ -43556,20 +43556,20 @@ var DataTypeService = class extends BeanStub {
     }
     return dataTypeDefinition.columnTypes;
   }
-  addColumnListeners(column) {
+  addColumnListeners(column2) {
     if (!this.isPendingInference) {
       return;
     }
-    const columnStateUpdates = this.columnStateUpdatesPendingInference[column.getColId()];
+    const columnStateUpdates = this.columnStateUpdatesPendingInference[column2.getColId()];
     if (!columnStateUpdates) {
       return;
     }
     const columnListener = (event) => {
       columnStateUpdates.add(event.key);
     };
-    column.__addEventListener("columnStateUpdated", columnListener);
+    column2.__addEventListener("columnStateUpdated", columnListener);
     this.columnStateUpdateListenerDestroyFuncs.push(
-      () => column.__removeEventListener("columnStateUpdated", columnListener)
+      () => column2.__removeEventListener("columnStateUpdated", columnListener)
     );
   }
   canInferCellDataType(colDef, userColDef) {
@@ -43666,17 +43666,17 @@ var DataTypeService = class extends BeanStub {
     const newPivotColumnStateWithoutIndex = {};
     for (const colId of Object.keys(this.columnStateUpdatesPendingInference)) {
       const columnStateUpdates = this.columnStateUpdatesPendingInference[colId];
-      const column = this.colModel.getCol(colId);
-      if (!column) {
+      const column2 = this.colModel.getCol(colId);
+      if (!column2) {
         return;
       }
-      const oldColDef = column.getColDef();
-      if (!this.resetColDefIntoCol(column, "cellDataTypeInferred")) {
+      const oldColDef = column2.getColDef();
+      if (!this.resetColDefIntoCol(column2, "cellDataTypeInferred")) {
         return;
       }
-      const newColDef = column.getColDef();
+      const newColDef = column2.getColDef();
       if (columnTypeOverridesExist && newColDef.type && newColDef.type !== oldColDef.type) {
-        const updatedColumnState = getUpdatedColumnState(column, columnStateUpdates);
+        const updatedColumnState = getUpdatedColumnState(column2, columnStateUpdates);
         if (updatedColumnState.rowGroup && updatedColumnState.rowGroupIndex == null) {
           newRowGroupColumnStateWithoutIndex[colId] = updatedColumnState;
         }
@@ -43706,46 +43706,46 @@ var DataTypeService = class extends BeanStub {
     pivotColsSvc?.restoreColumnOrder(existingColumnStateUpdates, updatedPivotColumnState);
     return Object.values(existingColumnStateUpdates);
   }
-  resetColDefIntoCol(column, source) {
-    const userColDef = column.getUserProvidedColDef();
+  resetColDefIntoCol(column2, source2) {
+    const userColDef = column2.getUserProvidedColDef();
     if (!userColDef) {
       return false;
     }
-    const newColDef = _addColumnDefaultAndTypes(this.beans, userColDef, column.getColId());
-    column.setColDef(newColDef, userColDef, source);
+    const newColDef = _addColumnDefaultAndTypes(this.beans, userColDef, column2.getColId());
+    column2.setColDef(newColDef, userColDef, source2);
     return true;
   }
-  getDateStringTypeDefinition(column) {
+  getDateStringTypeDefinition(column2) {
     const { dateString } = this.dataTypeDefinitions;
-    if (!column) {
+    if (!column2) {
       return dateString;
     }
-    return this.getDataTypeDefinition(column) ?? dateString;
+    return this.getDataTypeDefinition(column2) ?? dateString;
   }
-  getDateParserFunction(column) {
-    return this.getDateStringTypeDefinition(column).dateParser;
+  getDateParserFunction(column2) {
+    return this.getDateStringTypeDefinition(column2).dateParser;
   }
-  getDateFormatterFunction(column) {
-    return this.getDateStringTypeDefinition(column).dateFormatter;
+  getDateFormatterFunction(column2) {
+    return this.getDateStringTypeDefinition(column2).dateFormatter;
   }
   getDateIncludesTimeFlag(cellDataType) {
     return cellDataType === "dateTime" || cellDataType === "dateTimeString";
   }
-  getDataTypeDefinition(column) {
-    const colDef = column.getColDef();
+  getDataTypeDefinition(column2) {
+    const colDef = column2.getColDef();
     if (!colDef.cellDataType) {
       return void 0;
     }
     return this.dataTypeDefinitions[colDef.cellDataType];
   }
-  getBaseDataType(column) {
-    return this.getDataTypeDefinition(column)?.baseDataType;
+  getBaseDataType(column2) {
+    return this.getDataTypeDefinition(column2)?.baseDataType;
   }
-  checkType(column, value) {
+  checkType(column2, value) {
     if (value == null) {
       return true;
     }
-    const dataTypeMatcher = this.getDataTypeDefinition(column)?.dataTypeMatcher;
+    const dataTypeMatcher = this.getDataTypeDefinition(column2)?.dataTypeMatcher;
     if (!dataTypeMatcher) {
       return true;
     }
@@ -43975,13 +43975,13 @@ function doColDefPropsPreventInference(colDef, propsToCheckForInference) {
     ([prop, comparisonValue]) => doesColDefPropPreventInference(colDef, propsToCheckForInference, prop, comparisonValue)
   );
 }
-function getUpdatedColumnState(column, columnStateUpdates) {
-  const columnState = getColumnStateFromColDef(column);
-  for (const key of columnStateUpdates) {
-    delete columnState[key];
-    if (key === "rowGroup") {
+function getUpdatedColumnState(column2, columnStateUpdates) {
+  const columnState = getColumnStateFromColDef(column2);
+  for (const key2 of columnStateUpdates) {
+    delete columnState[key2];
+    if (key2 === "rowGroup") {
       delete columnState.rowGroupIndex;
-    } else if (key === "pivot") {
+    } else if (key2 === "pivot") {
       delete columnState.pivotIndex;
     }
   }
@@ -44040,14 +44040,14 @@ var ColumnNameService = class extends BeanStub {
     super(...arguments);
     this.beanName = "colNames";
   }
-  getDisplayNameForColumn(column, location, includeAggFunc = false) {
-    if (!column) {
+  getDisplayNameForColumn(column2, location, includeAggFunc = false) {
+    if (!column2) {
       return null;
     }
-    const headerName = this.getHeaderName(column.getColDef(), column, null, null, location);
+    const headerName = this.getHeaderName(column2.getColDef(), column2, null, null, location);
     const { aggColNameSvc } = this.beans;
     if (includeAggFunc && aggColNameSvc) {
-      return aggColNameSvc.getHeaderName(column, headerName);
+      return aggColNameSvc.getHeaderName(column2, headerName);
     }
     return headerName;
   }
@@ -44062,12 +44062,12 @@ var ColumnNameService = class extends BeanStub {
     return this.getDisplayNameForProvidedColumnGroup(columnGroup, columnGroup.getProvidedColumnGroup(), location);
   }
   // location is where the column is going to appear, ie who is calling us
-  getHeaderName(colDef, column, columnGroup, providedColumnGroup, location) {
+  getHeaderName(colDef, column2, columnGroup, providedColumnGroup, location) {
     const headerValueGetter = colDef.headerValueGetter;
     if (headerValueGetter) {
       const params = _addGridCommonParams(this.gos, {
         colDef,
-        column,
+        column: column2,
         columnGroup,
         providedColumnGroup,
         location
@@ -44266,7 +44266,7 @@ var ColumnViewportService = class extends BeanStub {
     this.rowsOfHeadersToRenderCenter = workOutGroupsToRender(this.headerColsWithinViewport);
   }
   extractViewport() {
-    const hashColumn = (c) => `${c.getId()}-${c.getPinned() || "normal"}`;
+    const hashColumn = (c2) => `${c2.getId()}-${c2.getPinned() || "normal"}`;
     this.extractViewportColumns();
     const newHash = this.getViewportColumns().map(hashColumn).join("#");
     const changed = this.colsWithinViewportHash !== newHash;
@@ -44336,8 +44336,8 @@ var Registry = class extends BaseRegistry {
   postConstruct() {
     const comps = this.gos.get("components");
     if (comps != null) {
-      for (const key of Object.keys(comps)) {
-        this.jsComps[key] = comps[key];
+      for (const key2 of Object.keys(comps)) {
+        this.jsComps[key2] = comps[key2];
       }
     }
   }
@@ -45503,22 +45503,22 @@ var EventService = class extends BaseEventService {
     }
   }
 };
-function getHeaderIndexToFocus(beans, column, level) {
+function getHeaderIndexToFocus(beans, column2, level) {
   const columnRowIndex = beans.visibleCols.headerGroupRowCount;
   if (level >= columnRowIndex) {
     return {
-      column,
+      column: column2,
       headerRowIndex: level
     };
   }
-  let parent = column.getParent();
+  let parent = column2.getParent();
   while (parent && parent.getProvidedColumnGroup().getLevel() > level) {
     parent = parent.getParent();
   }
-  const isColSpanning = column.isSpanHeaderHeight();
+  const isColSpanning = column2.isSpanHeaderHeight();
   if (!parent || isColSpanning && parent.isPadding()) {
     return {
-      column,
+      column: column2,
       headerRowIndex: columnRowIndex
     };
   }
@@ -45546,17 +45546,17 @@ var HeaderNavigationService = class extends BeanStub {
     });
   }
   getHeaderPositionForColumn(colKey, floatingFilter) {
-    let column;
+    let column2;
     const { colModel, colGroupSvc, ctrlsSvc } = this.beans;
     if (typeof colKey === "string") {
-      column = colModel.getCol(colKey);
-      if (!column) {
-        column = colGroupSvc?.getColumnGroup(colKey) ?? null;
+      column2 = colModel.getCol(colKey);
+      if (!column2) {
+        column2 = colGroupSvc?.getColumnGroup(colKey) ?? null;
       }
     } else {
-      column = colKey;
+      column2 = colKey;
     }
-    if (!column) {
+    if (!column2) {
       return null;
     }
     const centerHeaderContainer = ctrlsSvc.getHeaderRowContainerCtrl();
@@ -45564,7 +45564,7 @@ var HeaderNavigationService = class extends BeanStub {
     const isFloatingFilterVisible = _last(allCtrls || []).type === "filter";
     const headerRowCount = getFocusHeaderRowCount(this.beans) - 1;
     let row = -1;
-    let col = column;
+    let col = column2;
     while (col) {
       row++;
       col = col.getParent();
@@ -45575,7 +45575,7 @@ var HeaderNavigationService = class extends BeanStub {
     }
     return headerRowIndex === -1 ? null : {
       headerRowIndex,
-      column
+      column: column2
     };
   }
   /*
@@ -45589,7 +45589,7 @@ var HeaderNavigationService = class extends BeanStub {
       return false;
     }
     const { headerRowIndex } = focusedHeader;
-    const column = focusedHeader.column;
+    const column2 = focusedHeader.column;
     const rowLen = getFocusHeaderRowCount(this.beans);
     const currentRowType = this.getHeaderRowType(headerRowIndex);
     const columnHeaderRowIndex = visibleCols.headerGroupRowCount;
@@ -45597,11 +45597,11 @@ var HeaderNavigationService = class extends BeanStub {
       headerRowIndex: nextRow,
       column: nextFocusColumn,
       headerRowIndexWithoutSpan
-    } = direction === "UP" ? getColumnVisibleParent(currentRowType, column, headerRowIndex) : getColumnVisibleChild(column, headerRowIndex, columnHeaderRowIndex);
+    } = direction === "UP" ? getColumnVisibleParent(currentRowType, column2, headerRowIndex) : getColumnVisibleChild(column2, headerRowIndex, columnHeaderRowIndex);
     let skipColumn = false;
     if (nextRow < 0) {
       nextRow = 0;
-      nextFocusColumn = column;
+      nextFocusColumn = column2;
       skipColumn = true;
     }
     if (nextRow >= rowLen) {
@@ -45689,28 +45689,28 @@ var HeaderNavigationService = class extends BeanStub {
         this.currentHeaderRowWithoutSpan = -1;
       }
     }
-    let { column, headerRowIndex } = getHeaderIndexToFocus(this.beans, nextFocusedCol, nextRowIndex);
+    let { column: column2, headerRowIndex } = getHeaderIndexToFocus(this.beans, nextFocusedCol, nextRowIndex);
     if (headerRowIndex >= headerRowCount) {
       headerRowIndex = -1;
     }
     return beans.focusSvc.focusHeaderPosition({
-      headerPosition: { column, headerRowIndex },
+      headerPosition: { column: column2, headerRowIndex },
       direction,
       fromTab: true,
       allowUserOverride: true,
       event
     });
   }
-  scrollToColumn(column, direction = "After") {
-    if (column.getPinned()) {
+  scrollToColumn(column2, direction = "After") {
+    if (column2.getPinned()) {
       return;
     }
     let columnToScrollTo;
-    if (isColumnGroup(column)) {
-      const columns = column.getDisplayedLeafColumns();
+    if (isColumnGroup(column2)) {
+      const columns = column2.getDisplayedLeafColumns();
       columnToScrollTo = direction === "Before" ? _last(columns) : columns[0];
     } else {
-      columnToScrollTo = column;
+      columnToScrollTo = column2;
     }
     this.gridBodyCon.scrollFeature.ensureColumnVisible(columnToScrollTo);
   }
@@ -45789,22 +45789,22 @@ function getColumnVisibleParent(currentRowType, currentColumn, currentIndex) {
     headerRowIndexWithoutSpan: optimisticNextIndex
   };
 }
-function getColumnVisibleChild(column, currentIndex, columnHeaderRowIndex) {
+function getColumnVisibleChild(column2, currentIndex, columnHeaderRowIndex) {
   const optimisticNextIndex = currentIndex + 1;
   const result = {
-    column,
+    column: column2,
     headerRowIndex: optimisticNextIndex,
     headerRowIndexWithoutSpan: optimisticNextIndex
   };
-  if (column instanceof AgColumnGroup) {
+  if (column2 instanceof AgColumnGroup) {
     if (optimisticNextIndex >= columnHeaderRowIndex) {
       return {
-        column: column.getDisplayedLeafColumns()[0],
+        column: column2.getDisplayedLeafColumns()[0],
         headerRowIndex: columnHeaderRowIndex,
         headerRowIndexWithoutSpan: optimisticNextIndex
       };
     }
-    const children = column.getDisplayedChildren();
+    const children = column2.getDisplayedChildren();
     let firstChild = children[0];
     if (firstChild instanceof AgColumnGroup && firstChild.isPadding()) {
       const firstCol = firstChild.getDisplayedLeafColumns()[0];
@@ -45923,10 +45923,10 @@ var FocusService = class extends BeanStub {
     }
     return this.isDomDataPresentInHierarchy(activeElement, DOM_DATA_KEY_ROW_CTRL);
   }
-  isDomDataPresentInHierarchy(eBrowserCell, key) {
+  isDomDataPresentInHierarchy(eBrowserCell, key2) {
     let ePointer = eBrowserCell;
     while (ePointer) {
-      const data = _getDomData(this.gos, ePointer, key);
+      const data = _getDomData(this.gos, ePointer, key2);
       if (data) {
         return true;
       }
@@ -45938,11 +45938,11 @@ var FocusService = class extends BeanStub {
     return this.focusedCell;
   }
   getFocusEventParams(focusedCellPosition) {
-    const { rowIndex, rowPinned, column } = focusedCellPosition;
+    const { rowIndex, rowPinned, column: column2 } = focusedCellPosition;
     const params = {
       rowIndex,
       rowPinned,
-      column,
+      column: column2,
       isFullWidthCell: false
     };
     const rowCtrl = this.rowRenderer.getRowByPosition({ rowIndex, rowPinned });
@@ -45965,14 +45965,14 @@ var FocusService = class extends BeanStub {
   setFocusedCell(params) {
     this.setFocusRecovered();
     const {
-      column,
+      column: column2,
       rowIndex,
       rowPinned,
       forceBrowserFocus = false,
       preventScrollOnBrowserFocus = false,
       sourceEvent
     } = params;
-    const gridColumn = this.colModel.getCol(column);
+    const gridColumn = this.colModel.getCol(column2);
     if (!gridColumn) {
       this.focusedCell = null;
       return;
@@ -46004,11 +46004,11 @@ var FocusService = class extends BeanStub {
       return false;
     }
     const {
-      column,
+      column: column2,
       rowCtrl: { rowIndex: headerRowIndex, pinned }
     } = headerCtrl;
     const { column: focusedColumn, headerRowIndex: focusedHeaderRowIndex } = this.focusedHeader;
-    return column === focusedColumn && headerRowIndex === focusedHeaderRowIndex && pinned == focusedColumn.getPinned();
+    return column2 === focusedColumn && headerRowIndex === focusedHeaderRowIndex && pinned == focusedColumn.getPinned();
   }
   focusHeaderPosition(params) {
     this.setFocusRecovered();
@@ -46099,7 +46099,7 @@ var FocusService = class extends BeanStub {
   }
   focusProvidedHeaderPosition(params) {
     const { headerPosition, direction, fromCell, rowWithoutSpanValue, event, scroll = true } = params;
-    const { column, headerRowIndex } = headerPosition;
+    const { column: column2, headerRowIndex } = headerPosition;
     const { filterManager, ctrlsSvc, headerNavigation } = this.beans;
     if (this.focusedHeader && isHeaderPositionEqual(params.headerPosition, this.focusedHeader)) {
       return false;
@@ -46108,13 +46108,13 @@ var FocusService = class extends BeanStub {
       if (filterManager?.isAdvFilterHeaderActive()) {
         return this.focusAdvancedFilter(headerPosition);
       }
-      return this.focusGridView({ column, event });
+      return this.focusGridView({ column: column2, event });
     }
     if (scroll) {
-      headerNavigation?.scrollToColumn(column, direction);
+      headerNavigation?.scrollToColumn(column2, direction);
     }
-    const headerRowContainerCtrl = ctrlsSvc.getHeaderRowContainerCtrl(column.getPinned());
-    const focusSuccess = headerRowContainerCtrl?.focusHeader(headerPosition.headerRowIndex, column, event) || false;
+    const headerRowContainerCtrl = ctrlsSvc.getHeaderRowContainerCtrl(column2.getPinned());
+    const focusSuccess = headerRowContainerCtrl?.focusHeader(headerPosition.headerRowIndex, column2, event) || false;
     if (headerNavigation && focusSuccess && (rowWithoutSpanValue != null || fromCell)) {
       headerNavigation.currentHeaderRowWithoutSpan = rowWithoutSpanValue ?? -1;
     }
@@ -46139,9 +46139,9 @@ var FocusService = class extends BeanStub {
       return true;
     }
     const headerRowIndex = getFocusHeaderRowCount(this.beans) - 1;
-    const column = _last(this.visibleCols.allCols);
+    const column2 = _last(this.visibleCols.allCols);
     return this.focusHeaderPosition({
-      headerPosition: { headerRowIndex, column },
+      headerPosition: { headerRowIndex, column: column2 },
       rowWithoutSpanValue: -1,
       event
     });
@@ -46186,29 +46186,29 @@ var FocusService = class extends BeanStub {
     }
     const nextRow = backwards ? _getLastRow(this.beans) : _getFirstRow(this.beans);
     if (nextRow) {
-      const column = params.column ?? this.focusedHeader?.column;
+      const column2 = params.column ?? this.focusedHeader?.column;
       const { rowIndex, rowPinned } = nextRow;
       const rowNode = _getRowNode(this.beans, nextRow);
-      if (!column || !rowNode || rowIndex == null) {
+      if (!column2 || !rowNode || rowIndex == null) {
         return false;
       }
-      if (column.isSuppressNavigable(rowNode)) {
+      if (column2.isSuppressNavigable(rowNode)) {
         const isRtl = this.gos.get("enableRtl");
-        let key;
+        let key2;
         if (!event || event.key === KeyCode.TAB) {
-          key = isRtl ? KeyCode.LEFT : KeyCode.RIGHT;
+          key2 = isRtl ? KeyCode.LEFT : KeyCode.RIGHT;
         } else {
-          key = event.key;
+          key2 = event.key;
         }
         this.beans.navigation?.navigateToNextCell(
           null,
-          key,
-          { rowIndex, column, rowPinned: rowPinned || null },
+          key2,
+          { rowIndex, column: column2, rowPinned: rowPinned || null },
           true
         );
         return true;
       }
-      this.navigation?.ensureCellVisible({ rowIndex, column, rowPinned });
+      this.navigation?.ensureCellVisible({ rowIndex, column: column2, rowPinned });
       if (backwards) {
         const rowCtrl = this.rowRenderer.getRowByPosition(nextRow);
         if (rowCtrl?.isFullWidth() && this.navigation?.tryToFocusFullWidthRow(nextRow, backwards)) {
@@ -46217,11 +46217,11 @@ var FocusService = class extends BeanStub {
       }
       this.setFocusedCell({
         rowIndex,
-        column,
+        column: column2,
         rowPinned: _makeNull(rowPinned),
         forceBrowserFocus: true
       });
-      this.beans.rangeSvc?.setRangeToCell({ rowIndex, rowPinned, column });
+      this.beans.rangeSvc?.setRangeToCell({ rowIndex, rowPinned, column: column2 });
       return true;
     }
     if (canFocusOverlay && this.focusOverlay(backwards)) {
@@ -46237,16 +46237,16 @@ var FocusService = class extends BeanStub {
     return this.beans.advancedFilter?.getCtrl().focusHeaderComp() ?? false;
   }
   focusNextFromAdvancedFilter(backwards, forceFirstColumn) {
-    const column = (forceFirstColumn ? void 0 : this.advFilterFocusColumn) ?? this.visibleCols.allCols?.[0];
+    const column2 = (forceFirstColumn ? void 0 : this.advFilterFocusColumn) ?? this.visibleCols.allCols?.[0];
     if (backwards) {
       return this.focusHeaderPosition({
         headerPosition: {
-          column,
+          column: column2,
           headerRowIndex: getFocusHeaderRowCount(this.beans) - 1
         }
       });
     } else {
-      return this.focusGridView({ column });
+      return this.focusGridView({ column: column2 });
     }
   }
   clearAdvancedFilterColumn() {
@@ -46508,16 +46508,16 @@ var SortIndicatorComp = class extends Component {
     this.eSortMixed = eSortMixed;
     this.eSortNone = eSortNone;
   }
-  setupSort(column, suppressOrder = false) {
-    this.column = column;
+  setupSort(column2, suppressOrder = false) {
+    this.column = column2;
     this.suppressOrder = suppressOrder;
     this.setupMultiSortIndicator();
-    if (!column.isSortable() && !column.getColDef().showRowGroup) {
+    if (!column2.isSortable() && !column2.getColDef().showRowGroup) {
       return;
     }
-    this.addInIcon("sortAscending", this.eSortAsc, column);
-    this.addInIcon("sortDescending", this.eSortDesc, column);
-    this.addInIcon("sortUnSort", this.eSortNone, column);
+    this.addInIcon("sortAscending", this.eSortAsc, column2);
+    this.addInIcon("sortDescending", this.eSortDesc, column2);
+    this.addInIcon("sortUnSort", this.eSortNone, column2);
     const updateIcons = this.updateIcons.bind(this);
     const sortUpdated = this.onSortChanged.bind(this);
     this.addManagedPropertyListener("unSortIcon", updateIcons);
@@ -46530,11 +46530,11 @@ var SortIndicatorComp = class extends Component {
     });
     this.onSortChanged();
   }
-  addInIcon(iconName, eParent, column) {
+  addInIcon(iconName, eParent, column2) {
     if (eParent == null) {
       return;
     }
-    const eIcon = _createIconNoSpan(iconName, this.beans, column);
+    const eIcon = _createIconNoSpan(iconName, this.beans, column2);
     if (eIcon) {
       eParent.appendChild(eIcon);
     }
@@ -46546,8 +46546,8 @@ var SortIndicatorComp = class extends Component {
     }
   }
   updateIcons() {
-    const { eSortAsc, eSortDesc, eSortNone, column, gos, beans } = this;
-    const sortDirection = beans.sortSvc.getDisplaySortForColumn(column);
+    const { eSortAsc, eSortDesc, eSortNone, column: column2, gos, beans } = this;
+    const sortDirection = beans.sortSvc.getDisplaySortForColumn(column2);
     if (eSortAsc) {
       const isAscending = sortDirection === "asc";
       _setDisplayed(eSortAsc, isAscending, { skipAriaHidden: true });
@@ -46557,15 +46557,15 @@ var SortIndicatorComp = class extends Component {
       _setDisplayed(eSortDesc, isDescending, { skipAriaHidden: true });
     }
     if (eSortNone) {
-      const alwaysHideNoSort = !column.getColDef().unSortIcon && !gos.get("unSortIcon");
+      const alwaysHideNoSort = !column2.getColDef().unSortIcon && !gos.get("unSortIcon");
       const isNone = sortDirection === null || sortDirection === void 0;
       _setDisplayed(eSortNone, !alwaysHideNoSort && isNone, { skipAriaHidden: true });
     }
   }
   setupMultiSortIndicator() {
-    const { eSortMixed, column, gos } = this;
-    this.addInIcon("sortUnSort", eSortMixed, column);
-    const isColumnShowingRowGroup = column.getColDef().showRowGroup;
+    const { eSortMixed, column: column2, gos } = this;
+    this.addInIcon("sortUnSort", eSortMixed, column2);
+    const isColumnShowingRowGroup = column2.getColDef().showRowGroup;
     const areGroupsCoupled = _isColumnsSortingCoupledToGroup(gos);
     if (areGroupsCoupled && isColumnShowingRowGroup) {
       this.addManagedEventListeners({
@@ -46578,9 +46578,9 @@ var SortIndicatorComp = class extends Component {
     }
   }
   updateMultiSortIndicator() {
-    const { eSortMixed, beans, column } = this;
+    const { eSortMixed, beans, column: column2 } = this;
     if (eSortMixed) {
-      const isMixedSort = beans.sortSvc.getDisplaySortForColumn(column) === "mixed";
+      const isMixedSort = beans.sortSvc.getDisplaySortForColumn(column2) === "mixed";
       _setDisplayed(eSortMixed, isMixedSort, { skipAriaHidden: true });
     }
   }
@@ -46590,14 +46590,14 @@ var SortIndicatorComp = class extends Component {
   updateSortOrder() {
     const {
       eSortOrder,
-      column,
+      column: column2,
       beans: { sortSvc }
     } = this;
     if (!eSortOrder) {
       return;
     }
     const allColumnsWithSorting = sortSvc.getColumnsWithSortingOrdered();
-    const indexThisCol = sortSvc.getDisplaySortIndexForColumn(column) ?? -1;
+    const indexThisCol = sortSvc.getDisplaySortIndexForColumn(column2) ?? -1;
     const moreThanOneColSorting = allColumnsWithSorting.some(
       (col) => sortSvc.getDisplaySortIndexForColumn(col) ?? -1 >= 1
     );
@@ -46620,43 +46620,43 @@ var SortService = class extends BeanStub {
     super(...arguments);
     this.beanName = "sortSvc";
   }
-  progressSort(column, multiSort, source) {
-    const nextDirection = this.getNextSortDirection(column);
-    this.setSortForColumn(column, nextDirection, multiSort, source);
+  progressSort(column2, multiSort, source2) {
+    const nextDirection = this.getNextSortDirection(column2);
+    this.setSortForColumn(column2, nextDirection, multiSort, source2);
   }
-  progressSortFromEvent(column, event) {
+  progressSortFromEvent(column2, event) {
     const sortUsingCtrl = this.gos.get("multiSortKey") === "ctrl";
     const multiSort = sortUsingCtrl ? event.ctrlKey || event.metaKey : event.shiftKey;
-    this.progressSort(column, multiSort, "uiColumnSorted");
+    this.progressSort(column2, multiSort, "uiColumnSorted");
   }
-  setSortForColumn(column, sort, multiSort, source) {
+  setSortForColumn(column2, sort, multiSort, source2) {
     if (sort !== "asc" && sort !== "desc") {
       sort = null;
     }
     const { gos, showRowGroupCols } = this.beans;
     const isColumnsSortingCoupledToGroup = _isColumnsSortingCoupledToGroup(gos);
-    let columnsToUpdate = [column];
+    let columnsToUpdate = [column2];
     if (isColumnsSortingCoupledToGroup) {
-      if (column.getColDef().showRowGroup) {
-        const rowGroupColumns = showRowGroupCols?.getSourceColumnsForGroupColumn?.(column);
+      if (column2.getColDef().showRowGroup) {
+        const rowGroupColumns = showRowGroupCols?.getSourceColumnsForGroupColumn?.(column2);
         const sortableRowGroupColumns = rowGroupColumns?.filter((col) => col.isSortable());
         if (sortableRowGroupColumns) {
-          columnsToUpdate = [column, ...sortableRowGroupColumns];
+          columnsToUpdate = [column2, ...sortableRowGroupColumns];
         }
       }
     }
     for (const col of columnsToUpdate) {
-      this.setColSort(col, sort, source);
+      this.setColSort(col, sort, source2);
     }
     const doingMultiSort = (multiSort || gos.get("alwaysMultiSort")) && !gos.get("suppressMultiSort");
     const updatedColumns = [];
     if (!doingMultiSort) {
-      const clearedColumns = this.clearSortBarTheseColumns(columnsToUpdate, source);
+      const clearedColumns = this.clearSortBarTheseColumns(columnsToUpdate, source2);
       updatedColumns.push(...clearedColumns);
     }
-    this.updateSortIndex(column);
+    this.updateSortIndex(column2);
     updatedColumns.push(...columnsToUpdate);
-    this.dispatchSortChangedEvents(source, updatedColumns);
+    this.dispatchSortChangedEvents(source2, updatedColumns);
   }
   updateSortIndex(lastColToChange) {
     const { gos, colModel, showRowGroupCols } = this.beans;
@@ -46676,8 +46676,8 @@ var SortService = class extends BeanStub {
   }
   // gets called by API, so if data changes, use can call this, which will end up
   // working out the sort order again of the rows.
-  onSortChanged(source, columns) {
-    this.dispatchSortChangedEvents(source, columns);
+  onSortChanged(source2, columns) {
+    this.dispatchSortChangedEvents(source2, columns);
   }
   isSortActive() {
     let isSorting = false;
@@ -46688,31 +46688,31 @@ var SortService = class extends BeanStub {
     });
     return isSorting;
   }
-  dispatchSortChangedEvents(source, columns) {
+  dispatchSortChangedEvents(source2, columns) {
     const event = {
       type: "sortChanged",
-      source
+      source: source2
     };
     if (columns) {
       event.columns = columns;
     }
     this.eventSvc.dispatchEvent(event);
   }
-  clearSortBarTheseColumns(columnsToSkip, source) {
+  clearSortBarTheseColumns(columnsToSkip, source2) {
     const clearedColumns = [];
     this.beans.colModel.forAllCols((columnToClear) => {
       if (!columnsToSkip.includes(columnToClear)) {
         if (columnToClear.getSort()) {
           clearedColumns.push(columnToClear);
         }
-        this.setColSort(columnToClear, void 0, source);
+        this.setColSort(columnToClear, void 0, source2);
       }
     });
     return clearedColumns;
   }
-  getNextSortDirection(column) {
-    const sortingOrder = column.getColDef().sortingOrder ?? this.gos.get("sortingOrder") ?? DEFAULT_SORTING_ORDER;
-    const currentIndex = sortingOrder.indexOf(column.getSort());
+  getNextSortDirection(column2) {
+    const sortingOrder = column2.getColDef().sortingOrder ?? this.gos.get("sortingOrder") ?? DEFAULT_SORTING_ORDER;
+    const currentIndex = sortingOrder.indexOf(column2.getSort());
     const notInArray = currentIndex < 0;
     const lastItemInArray = currentIndex == sortingOrder.length - 1;
     return notInArray || lastItemInArray ? sortingOrder[0] : sortingOrder[currentIndex + 1];
@@ -46779,29 +46779,29 @@ var SortService = class extends BeanStub {
   }
   // used by server side row models, to sent sort to server
   getSortModel() {
-    return this.getColumnsWithSortingOrdered().filter((column) => column.getSort()).map((column) => ({
-      sort: column.getSort(),
-      colId: column.getId()
+    return this.getColumnsWithSortingOrdered().filter((column2) => column2.getSort()).map((column2) => ({
+      sort: column2.getSort(),
+      colId: column2.getId()
     }));
   }
   getSortOptions() {
-    return this.getColumnsWithSortingOrdered().filter((column) => column.getSort()).map((column) => ({
-      sort: column.getSort(),
-      column
+    return this.getColumnsWithSortingOrdered().filter((column2) => column2.getSort()).map((column2) => ({
+      sort: column2.getSort(),
+      column: column2
     }));
   }
-  canColumnDisplayMixedSort(column) {
+  canColumnDisplayMixedSort(column2) {
     const isColumnSortCouplingActive = _isColumnsSortingCoupledToGroup(this.gos);
-    const isGroupDisplayColumn = !!column.getColDef().showRowGroup;
+    const isGroupDisplayColumn = !!column2.getColDef().showRowGroup;
     return isColumnSortCouplingActive && isGroupDisplayColumn;
   }
-  getDisplaySortForColumn(column) {
-    const linkedColumns = this.beans.showRowGroupCols?.getSourceColumnsForGroupColumn(column);
-    if (!this.canColumnDisplayMixedSort(column) || !linkedColumns?.length) {
-      return column.getSort();
+  getDisplaySortForColumn(column2) {
+    const linkedColumns = this.beans.showRowGroupCols?.getSourceColumnsForGroupColumn(column2);
+    if (!this.canColumnDisplayMixedSort(column2) || !linkedColumns?.length) {
+      return column2.getSort();
     }
-    const columnHasUniqueData = column.getColDef().field != null || !!column.getColDef().valueGetter;
-    const sortableColumns = columnHasUniqueData ? [column, ...linkedColumns] : linkedColumns;
+    const columnHasUniqueData = column2.getColDef().field != null || !!column2.getColDef().valueGetter;
+    const sortableColumns = columnHasUniqueData ? [column2, ...linkedColumns] : linkedColumns;
     const firstSort = sortableColumns[0].getSort();
     const allMatch = sortableColumns.every((col) => col.getSort() == firstSort);
     if (!allMatch) {
@@ -46809,12 +46809,12 @@ var SortService = class extends BeanStub {
     }
     return firstSort;
   }
-  getDisplaySortIndexForColumn(column) {
-    return this.getIndexedSortMap().get(column);
+  getDisplaySortIndexForColumn(column2) {
+    return this.getIndexedSortMap().get(column2);
   }
-  setupHeader(comp, column, clickElement) {
+  setupHeader(comp, column2, clickElement) {
     let lastMovingChanged = 0;
-    comp.addManagedListeners(column, {
+    comp.addManagedListeners(column2, {
       movingChanged: () => {
         lastMovingChanged = Date.now();
       }
@@ -46822,25 +46822,25 @@ var SortService = class extends BeanStub {
     if (clickElement) {
       comp.addManagedElementListeners(clickElement, {
         click: (event) => {
-          const moving = column.isMoving();
+          const moving = column2.isMoving();
           const nowTime = Date.now();
           const movedRecently = nowTime - lastMovingChanged < 50;
           const columnMoving = moving || movedRecently;
           if (!columnMoving) {
-            this.progressSortFromEvent(column, event);
+            this.progressSortFromEvent(column2, event);
           }
         }
       });
     }
     const onSortingChanged = () => {
-      const sort = column.getSort();
+      const sort = column2.getSort();
       comp.toggleCss("ag-header-cell-sorted-asc", sort === "asc");
       comp.toggleCss("ag-header-cell-sorted-desc", sort === "desc");
       comp.toggleCss("ag-header-cell-sorted-none", !sort);
-      if (column.getColDef().showRowGroup) {
-        const sourceColumns = this.beans.showRowGroupCols?.getSourceColumnsForGroupColumn(column);
+      if (column2.getColDef().showRowGroup) {
+        const sourceColumns = this.beans.showRowGroupCols?.getSourceColumnsForGroupColumn(column2);
         const sortDirectionsMatch = sourceColumns?.every(
-          (sourceCol) => column.getSort() == sourceCol.getSort()
+          (sourceCol) => column2.getSort() == sourceCol.getSort()
         );
         const isMultiSorting = !sortDirectionsMatch;
         comp.toggleCss("ag-header-cell-sorted-mixed", isMultiSorting);
@@ -46851,42 +46851,42 @@ var SortService = class extends BeanStub {
       columnRowGroupChanged: onSortingChanged
     });
   }
-  initCol(column) {
-    const { sort, initialSort, sortIndex, initialSortIndex } = column.colDef;
+  initCol(column2) {
+    const { sort, initialSort, sortIndex, initialSortIndex } = column2.colDef;
     if (sort !== void 0) {
       if (sort === "asc" || sort === "desc") {
-        column.sort = sort;
+        column2.sort = sort;
       }
     } else if (initialSort === "asc" || initialSort === "desc") {
-      column.sort = initialSort;
+      column2.sort = initialSort;
     }
     if (sortIndex !== void 0) {
       if (sortIndex !== null) {
-        column.sortIndex = sortIndex;
+        column2.sortIndex = sortIndex;
       }
     } else if (initialSortIndex !== null) {
-      column.sortIndex = initialSortIndex;
+      column2.sortIndex = initialSortIndex;
     }
   }
-  updateColSort(column, sort, source) {
+  updateColSort(column2, sort, source2) {
     if (sort !== void 0) {
       if (sort === "desc" || sort === "asc") {
-        this.setColSort(column, sort, source);
+        this.setColSort(column2, sort, source2);
       } else {
-        this.setColSort(column, void 0, source);
+        this.setColSort(column2, void 0, source2);
       }
     }
   }
-  setColSort(column, sort, source) {
-    if (column.sort !== sort) {
-      column.sort = sort;
-      column.dispatchColEvent("sortChanged", source);
+  setColSort(column2, sort, source2) {
+    if (column2.sort !== sort) {
+      column2.sort = sort;
+      column2.dispatchColEvent("sortChanged", source2);
     }
-    column.dispatchStateUpdatedEvent("sort");
+    column2.dispatchStateUpdatedEvent("sort");
   }
-  setColSortIndex(column, sortOrder) {
-    column.sortIndex = sortOrder;
-    column.dispatchStateUpdatedEvent("sortIndex");
+  setColSortIndex(column2, sortOrder) {
+    column2.sortIndex = sortOrder;
+    column2.dispatchStateUpdatedEvent("sortIndex");
   }
   createSortIndicator(skipTemplate) {
     return new SortIndicatorComp(skipTemplate);
@@ -47797,14 +47797,14 @@ var GRID_OPTION_DEPRECATIONS = () => ({
     message: "Advanced filter no longer uses function evaluation, so this option has no effect."
   }
 });
-function toConstrainedNum(key, value, min) {
+function toConstrainedNum(key2, value, min) {
   if (typeof value === "number" || value == null) {
     if (value == null) {
       return null;
     }
-    return value >= min ? null : `${key}: value should be greater than or equal to ${min}`;
+    return value >= min ? null : `${key2}: value should be greater than or equal to ${min}`;
   }
-  return `${key}: value should be a number`;
+  return `${key2}: value should be a number`;
 }
 var GRID_OPTIONS_MODULES = {
   alignedGrids: "AlignedGrids",
@@ -48241,11 +48241,11 @@ var GRID_OPTION_VALIDATIONS = () => {
     }
   };
   const validations = {};
-  for (const key of _BOOLEAN_GRID_OPTIONS) {
-    validations[key] = { expectedType: "boolean" };
+  for (const key2 of _BOOLEAN_GRID_OPTIONS) {
+    validations[key2] = { expectedType: "boolean" };
   }
-  for (const key of _NUMBER_GRID_OPTIONS) {
-    validations[key] = { expectedType: "number" };
+  for (const key2 of _NUMBER_GRID_OPTIONS) {
+    validations[key2] = { expectedType: "number" };
   }
   _mergeDeep(validations, definedValidations);
   return validations;
@@ -48367,24 +48367,24 @@ var GridOptionsService = class extends BeanStub {
   updateGridOptions({
     options,
     force,
-    source = "api"
+    source: source2 = "api"
   }) {
     const changeSet = { id: changeSetId++, properties: [] };
     const events = [];
     const { gridOptions, validation } = this;
-    for (const key of Object.keys(options)) {
-      const value = GlobalGridOptions.applyGlobalGridOption(key, options[key]);
-      validation?.warnOnInitialPropertyUpdate(source, key);
-      const shouldForce = force || typeof value === "object" && source === "api";
-      const previousValue = gridOptions[key];
+    for (const key2 of Object.keys(options)) {
+      const value = GlobalGridOptions.applyGlobalGridOption(key2, options[key2]);
+      validation?.warnOnInitialPropertyUpdate(source2, key2);
+      const shouldForce = force || typeof value === "object" && source2 === "api";
+      const previousValue = gridOptions[key2];
       if (shouldForce || previousValue !== value) {
-        gridOptions[key] = value;
+        gridOptions[key2] = value;
         const event = {
-          type: key,
+          type: key2,
           currentValue: value,
           previousValue,
           changeSet,
-          source
+          source: source2
         };
         events.push(event);
       }
@@ -48396,11 +48396,11 @@ var GridOptionsService = class extends BeanStub {
       this.propEventSvc.dispatchEvent(event);
     }
   }
-  addPropertyEventListener(key, listener) {
-    this.propEventSvc.addEventListener(key, listener);
+  addPropertyEventListener(key2, listener) {
+    this.propEventSvc.addEventListener(key2, listener);
   }
-  removePropertyEventListener(key, listener) {
-    this.propEventSvc.removeEventListener(key, listener);
+  removePropertyEventListener(key2, listener) {
+    this.propEventSvc.removeEventListener(key2, listener);
   }
   getDomDataKey() {
     return this.domDataKey;
@@ -48412,17 +48412,17 @@ var GridOptionsService = class extends BeanStub {
     return params;
   }
   validateOptions(options, modValidations) {
-    for (const key of Object.keys(options)) {
-      const value = options[key];
+    for (const key2 of Object.keys(options)) {
+      const value = options[key2];
       if (value == null || value === false) {
         continue;
       }
-      let moduleToCheck = modValidations[key];
+      let moduleToCheck = modValidations[key2];
       if (typeof moduleToCheck === "function") {
         moduleToCheck = moduleToCheck(options, this.gridOptions, this.beans);
       }
       if (moduleToCheck) {
-        this.assertModuleRegistered(moduleToCheck, key);
+        this.assertModuleRegistered(moduleToCheck, key2);
       }
     }
   }
@@ -48601,8 +48601,8 @@ var HeaderComp = class extends Component {
     }
     this.eText.textContent = _toString(displayName);
   }
-  addInIcon(iconName, eParent, column) {
-    const eIcon = _createIconNoSpan(iconName, this.beans, column);
+  addInIcon(iconName, eParent, column2) {
+    const eIcon = _createIconNoSpan(iconName, this.beans, column2);
     if (eIcon) {
       eParent.appendChild(eIcon);
     }
@@ -48648,10 +48648,10 @@ var HeaderComp = class extends Component {
   }
   onMenuKeyboardShortcut(isFilterShortcut) {
     const { params, gos, beans, eMenu, eFilterButton } = this;
-    const column = params.column;
+    const column2 = params.column;
     const isLegacyMenuEnabled = _isLegacyMenuEnabled(gos);
     if (isFilterShortcut && !isLegacyMenuEnabled) {
-      if (beans.menuSvc?.isFilterMenuInHeaderEnabled(column)) {
+      if (beans.menuSvc?.isFilterMenuInHeaderEnabled(column2)) {
         params.showFilter(eFilterButton ?? eMenu ?? this.getGui());
         return true;
       }
@@ -48666,18 +48666,18 @@ var HeaderComp = class extends Component {
     if (!sortSvc) {
       return;
     }
-    const { enableSorting, column } = this.params;
+    const { enableSorting, column: column2 } = this.params;
     this.currentSort = enableSorting;
     if (!this.eSortIndicator) {
       this.eSortIndicator = this.createBean(sortSvc.createSortIndicator(true));
       const { eSortIndicator, eSortOrder, eSortAsc, eSortDesc, eSortMixed, eSortNone } = this;
       eSortIndicator.attachCustomElements(eSortOrder, eSortAsc, eSortDesc, eSortMixed, eSortNone);
     }
-    this.eSortIndicator.setupSort(column);
+    this.eSortIndicator.setupSort(column2);
     if (!this.currentSort) {
       return;
     }
-    sortSvc.setupHeader(this, column, this.eLabel);
+    sortSvc.setupHeader(this, column2, this.eLabel);
   }
   setupFilterIcon() {
     const { eFilter, params } = this;
@@ -48714,9 +48714,9 @@ var HeaderComp = class extends Component {
       _removeFromParent(element);
       return false;
     }
-    const column = this.params.column;
-    this.addInIcon(icon, element, column);
-    this.addManagedListeners(column, { filterChanged: filterChangedCallback });
+    const column2 = this.params.column;
+    this.addInIcon(icon, element, column2);
+    this.addManagedListeners(column2, { filterChanged: filterChangedCallback });
     filterChangedCallback();
     return true;
   }
@@ -49187,17 +49187,17 @@ var CellNavigationService = class extends BeanStub {
     this.rowSpanSvc = beans.rowSpanSvc;
   }
   // returns null if no cell to focus on, ie at the end of the grid
-  getNextCellToFocus(key, focusedCell, ctrlPressed = false) {
+  getNextCellToFocus(key2, focusedCell, ctrlPressed = false) {
     if (ctrlPressed) {
-      return this.getNextCellToFocusWithCtrlPressed(key, focusedCell);
+      return this.getNextCellToFocusWithCtrlPressed(key2, focusedCell);
     }
-    return this.getNextCellToFocusWithoutCtrlPressed(key, focusedCell);
+    return this.getNextCellToFocusWithoutCtrlPressed(key2, focusedCell);
   }
-  getNextCellToFocusWithCtrlPressed(key, focusedCell) {
-    const upKey = key === KeyCode.UP;
-    const downKey = key === KeyCode.DOWN;
-    const leftKey = key === KeyCode.LEFT;
-    let column;
+  getNextCellToFocusWithCtrlPressed(key2, focusedCell) {
+    const upKey = key2 === KeyCode.UP;
+    const downKey = key2 === KeyCode.DOWN;
+    const leftKey = key2 === KeyCode.LEFT;
+    let column2;
     let rowIndex;
     const { pageBounds, gos, visibleCols, pinnedRowModel } = this.beans;
     const { rowPinned } = focusedCell;
@@ -49211,12 +49211,12 @@ var CellNavigationService = class extends BeanStub {
       } else {
         rowIndex = upKey ? pageBounds.getFirstRow() : pageBounds.getLastRow();
       }
-      column = focusedCell.column;
+      column2 = focusedCell.column;
     } else {
       const isRtl = gos.get("enableRtl");
       rowIndex = focusedCell.rowIndex;
       const allColumns = leftKey !== isRtl ? visibleCols.allCols : [...visibleCols.allCols].reverse();
-      column = allColumns.find(
+      column2 = allColumns.find(
         (col) => this.isCellGoodToFocusOn({
           rowIndex,
           rowPinned: null,
@@ -49224,17 +49224,17 @@ var CellNavigationService = class extends BeanStub {
         })
       );
     }
-    return column ? {
+    return column2 ? {
       rowIndex,
       rowPinned,
-      column
+      column: column2
     } : null;
   }
-  getNextCellToFocusWithoutCtrlPressed(key, focusedCell) {
+  getNextCellToFocusWithoutCtrlPressed(key2, focusedCell) {
     let pointer = focusedCell;
     let finished = false;
     while (!finished) {
-      switch (key) {
+      switch (key2) {
         case KeyCode.UP:
           pointer = this.getCellAbove(pointer);
           break;
@@ -49249,7 +49249,7 @@ var CellNavigationService = class extends BeanStub {
           break;
         default:
           pointer = null;
-          _warn(8, { key });
+          _warn(8, { key: key2 });
           break;
       }
       if (pointer) {
@@ -49261,7 +49261,7 @@ var CellNavigationService = class extends BeanStub {
     return pointer;
   }
   isCellGoodToFocusOn(gridCell) {
-    const column = gridCell.column;
+    const column2 = gridCell.column;
     let rowNode;
     const { pinnedRowModel, rowModel } = this.beans;
     switch (gridCell.rowPinned) {
@@ -49278,7 +49278,7 @@ var CellNavigationService = class extends BeanStub {
     if (!rowNode) {
       return false;
     }
-    const suppressNavigable = this.isSuppressNavigable(column, rowNode);
+    const suppressNavigable = this.isSuppressNavigable(column2, rowNode);
     return !suppressNavigable;
   }
   getCellToLeft(lastCell) {
@@ -49393,13 +49393,13 @@ var CellNavigationService = class extends BeanStub {
     }
     return { rowIndex: newRowIndex, column: newColumn, rowPinned: newFloating };
   }
-  isSuppressNavigable(column, rowNode) {
-    const { suppressNavigable } = column.colDef;
+  isSuppressNavigable(column2, rowNode) {
+    const { suppressNavigable } = column2.colDef;
     if (typeof suppressNavigable === "boolean") {
       return suppressNavigable;
     }
     if (typeof suppressNavigable === "function") {
-      const params = column.createColumnFunctionCallbackParams(rowNode);
+      const params = column2.createColumnFunctionCallbackParams(rowNode);
       const userFunc = suppressNavigable;
       return userFunc(params);
     }
@@ -49440,13 +49440,13 @@ var EditModelService = class extends BeanStub {
   suspend(suspend) {
     this.suspendEdits = suspend;
   }
-  removeEdits({ rowNode, column }) {
+  removeEdits({ rowNode, column: column2 }) {
     if (!this.hasEdits({ rowNode }) || !rowNode) {
       return;
     }
     const editRow = this.getEditRow(rowNode);
-    if (column) {
-      editRow.delete(column);
+    if (column2) {
+      editRow.delete(column2);
     } else {
       editRow.clear();
     }
@@ -49484,9 +49484,9 @@ var EditModelService = class extends BeanStub {
       return void 0;
     }
     const data = Object.assign({}, rowNode.data);
-    const applyEdits = (edits, data2) => edits.forEach(({ pendingValue }, column) => {
+    const applyEdits = (edits, data2) => edits.forEach(({ pendingValue }, column2) => {
       if (pendingValue !== UNEDITED) {
-        data2[column.getColId()] = pendingValue;
+        data2[column2.getColId()] = pendingValue;
       }
     });
     if (editRow) {
@@ -49521,9 +49521,9 @@ var EditModelService = class extends BeanStub {
     this.edits.forEach((editRow, rowNode) => {
       const newEditRow = /* @__PURE__ */ new Map();
       editRow.forEach(
-        ({ editorState: _, ...cellData }, column) => (
+        ({ editorState: _, ...cellData }, column2) => (
           // Ensure we copy the cell data to avoid reference issues
-          newEditRow.set(column, { ...cellData })
+          newEditRow.set(column2, { ...cellData })
         )
       );
       map.set(rowNode, newEditRow);
@@ -49535,9 +49535,9 @@ var EditModelService = class extends BeanStub {
     newEdits.forEach((editRow, rowNode) => {
       const newRow = /* @__PURE__ */ new Map();
       editRow.forEach(
-        (cellData, column) => (
+        (cellData, column2) => (
           // Ensure we copy the cell data to avoid reference issues
-          newRow.set(column, { ...cellData })
+          newRow.set(column2, { ...cellData })
         )
       );
       this.edits.set(rowNode, newRow);
@@ -49558,9 +49558,9 @@ var EditModelService = class extends BeanStub {
     return updatedEdit;
   }
   clearEditValue(position) {
-    const { rowNode, column } = position;
+    const { rowNode, column: column2 } = position;
     if (rowNode) {
-      if (column) {
+      if (column2) {
         const edit = this._getEdit(position);
         if (edit) {
           edit.editorValue = void 0;
@@ -49588,11 +49588,11 @@ var EditModelService = class extends BeanStub {
     }
     const positions = [];
     (editMap ?? this.edits).forEach((editRow, rowNode) => {
-      for (const column of editRow.keys()) {
-        const { editorState: _, ...rest } = editRow.get(column);
+      for (const column2 of editRow.keys()) {
+        const { editorState: _, ...rest } = editRow.get(column2);
         positions.push({
           rowNode,
-          column,
+          column: column2,
           ...rest
         });
       }
@@ -49616,18 +49616,18 @@ var EditModelService = class extends BeanStub {
     if (this.edits.size === 0) {
       return false;
     }
-    const { rowNode, column } = position;
+    const { rowNode, column: column2 } = position;
     const { withOpenEditor } = params;
     if (rowNode) {
       const rowEdits = this.getEditRow(rowNode, params);
       if (!rowEdits) {
         return false;
       }
-      if (column) {
+      if (column2) {
         if (withOpenEditor) {
           return this.getEdit(position)?.state === "editing";
         }
-        return rowEdits.has(column) ?? false;
+        return rowEdits.has(column2) ?? false;
       }
       if (rowEdits.size !== 0) {
         if (withOpenEditor) {
@@ -49644,12 +49644,12 @@ var EditModelService = class extends BeanStub {
   }
   start(position) {
     const map = this.getEditRow(position.rowNode) ?? /* @__PURE__ */ new Map();
-    const { rowNode, column } = position;
-    if (column && !map.has(column)) {
-      map.set(column, {
+    const { rowNode, column: column2 } = position;
+    if (column2 && !map.has(column2)) {
+      map.set(column2, {
         editorValue: void 0,
         pendingValue: UNEDITED,
-        sourceValue: this.beans.valueSvc.getValue(column, rowNode, false, "api"),
+        sourceValue: this.beans.valueSvc.getValue(column2, rowNode, false, "api"),
         state: "editing",
         editorState: {
           isCancelAfterEnd: void 0,
@@ -49697,8 +49697,8 @@ var EditCellValidationModel = class {
     this.cellValidations = /* @__PURE__ */ new Map();
   }
   getCellValidation(position) {
-    const { rowNode, column } = position || {};
-    return this.cellValidations?.get(rowNode)?.get(column);
+    const { rowNode, column: column2 } = position || {};
+    return this.cellValidations?.get(rowNode)?.get(column2);
   }
   hasCellValidation(position) {
     if (!position?.rowNode || !position.column) {
@@ -49707,15 +49707,15 @@ var EditCellValidationModel = class {
     return !!this.getCellValidation(position);
   }
   setCellValidation(position, validation) {
-    const { rowNode, column } = position;
+    const { rowNode, column: column2 } = position;
     if (!this.cellValidations.has(rowNode)) {
       this.cellValidations.set(rowNode, /* @__PURE__ */ new Map());
     }
-    this.cellValidations.get(rowNode).set(column, validation);
+    this.cellValidations.get(rowNode).set(column2, validation);
   }
   clearCellValidation(position) {
-    const { rowNode, column } = position;
-    this.cellValidations.get(rowNode)?.delete(column);
+    const { rowNode, column: column2 } = position;
+    this.cellValidations.get(rowNode)?.delete(column2);
   }
   setCellValidationMap(validationMap) {
     this.cellValidations = validationMap;
@@ -49774,11 +49774,11 @@ function _getRowCtrl(beans, inputs = {}) {
   return rowRenderer.getRowCtrls(rowNode ? [rowNode] : [])?.[0];
 }
 function _getCellCtrl(beans, inputs = {}) {
-  const { cellCtrl, colId, columnId, column } = inputs;
+  const { cellCtrl, colId, columnId, column: column2 } = inputs;
   if (cellCtrl) {
     return cellCtrl;
   }
-  const actualColumn = beans.colModel.getCol(colId ?? columnId ?? _getColId(column));
+  const actualColumn = beans.colModel.getCol(colId ?? columnId ?? _getColId(column2));
   const rowCtrl = inputs.rowCtrl ?? _getRowCtrl(beans, inputs);
   const result = rowCtrl?.getCellCtrl(actualColumn) ?? void 0;
   if (result) {
@@ -49825,14 +49825,14 @@ function _addStopEditingWhenGridLosesFocus(bean, beans, viewports) {
     bean.addManagedElementListeners(viewport, { focusout: focusOutListener });
   }
 }
-function _getColId(column) {
-  if (!column) {
+function _getColId(column2) {
+  if (!column2) {
     return void 0;
   }
-  if (typeof column === "string") {
-    return column;
+  if (typeof column2 === "string") {
+    return column2;
   }
-  return column.getColId();
+  return column2.getColId();
 }
 var UNEDITED = Symbol("unedited");
 function getCellEditorInstanceMap(beans, params = {}) {
@@ -49850,12 +49850,12 @@ function getCellEditorInstanceMap(beans, params = {}) {
   return res;
 }
 var getCellEditorInstances = (beans, params = {}) => getCellEditorInstanceMap(beans, params).map((res) => res.editor);
-function _setupEditors(beans, editingCells, position, key, event, cellStartedEdit) {
+function _setupEditors(beans, editingCells, position, key2, event, cellStartedEdit) {
   if (editingCells.length === 0 && position?.rowNode && position?.column) {
-    _setupEditor(beans, position, { key, event, cellStartedEdit });
+    _setupEditor(beans, position, { key: key2, event, cellStartedEdit });
   }
   const { valueSvc, editSvc, editModelSvc } = beans;
-  const { rowNode, column } = position ?? {};
+  const { rowNode, column: column2 } = position ?? {};
   for (const cellPosition of editingCells) {
     const { rowNode: cellRowNode, column: cellColumn } = cellPosition;
     const curCellCtrl = _getCellCtrl(beans, cellPosition);
@@ -49863,7 +49863,7 @@ function _setupEditors(beans, editingCells, position, key, event, cellStartedEdi
       if (cellRowNode && cellColumn) {
         const oldValue = valueSvc.getValue(cellColumn, cellRowNode, void 0, "api");
         const isNewValueCell = position?.rowNode === cellRowNode && position?.column === cellColumn;
-        const cellStartValue = isNewValueCell && key || void 0;
+        const cellStartValue = isNewValueCell && key2 || void 0;
         const newValue = cellStartValue ?? editSvc?.getCellDataValue(cellPosition, false) ?? valueSvc.getValueForDisplay(cellColumn, cellRowNode)?.value ?? oldValue ?? UNEDITED;
         editModelSvc?.setEdit(cellPosition, {
           pendingValue: newValue,
@@ -49873,12 +49873,12 @@ function _setupEditors(beans, editingCells, position, key, event, cellStartedEdi
       }
       continue;
     }
-    const shouldStartEditing2 = cellStartedEdit && rowNode === curCellCtrl.rowNode && curCellCtrl.column === column;
+    const shouldStartEditing2 = cellStartedEdit && rowNode === curCellCtrl.rowNode && curCellCtrl.column === column2;
     _setupEditor(
       beans,
       { rowNode, column: curCellCtrl.column },
       {
-        key: shouldStartEditing2 ? key : null,
+        key: shouldStartEditing2 ? key2 : null,
         event: shouldStartEditing2 ? event : null,
         cellStartedEdit: shouldStartEditing2 && cellStartedEdit
       }
@@ -49896,10 +49896,10 @@ function _sourceAndPendingDiffer({
 }
 function _setupEditor(beans, position, params) {
   const enableGroupEditing = beans.gos.get("enableGroupEdit");
-  const { key, event, cellStartedEdit, silent } = params ?? {};
+  const { key: key2, event, cellStartedEdit, silent } = params ?? {};
   const cellCtrl = _getCellCtrl(beans, position);
   const editorComp = cellCtrl?.comp?.getCellEditor();
-  const editorParams = _createEditorParams(beans, position, key, cellStartedEdit && !silent);
+  const editorParams = _createEditorParams(beans, position, key2, cellStartedEdit && !silent);
   const previousEdit = beans.editModelSvc?.getEdit(position);
   let newValue = editorParams.value;
   if (newValue === void 0) {
@@ -49958,22 +49958,22 @@ function _valueFromEditor(beans, cellEditor, params) {
     editorValueExists: true
   };
 }
-function _createEditorParams(beans, position, key, cellStartedEdit) {
+function _createEditorParams(beans, position, key2, cellStartedEdit) {
   const { valueSvc, gos, editSvc } = beans;
   const enableGroupEditing = beans.gos.get("enableGroupEdit");
   const cellCtrl = _getCellCtrl(beans, position);
   const rowIndex = position.rowNode?.rowIndex ?? void 0;
   const batchEdit = editSvc?.isBatchEditing();
   const agColumn = beans.colModel.getCol(position.column.getId());
-  const { rowNode, column } = position;
+  const { rowNode, column: column2 } = position;
   const editor = cellCtrl.comp?.getCellEditor();
   const initialNewValue = editSvc?.getCellDataValue(position, false) ?? (editor ? _valueFromEditor(beans, editor)?.editorValue : void 0);
   const value = initialNewValue === UNEDITED ? valueSvc.getValueForDisplay(agColumn, rowNode)?.value : initialNewValue;
   return _addGridCommonParams(gos, {
     value: enableGroupEditing ? initialNewValue : value,
-    eventKey: key ?? null,
-    column,
-    colDef: column.getColDef(),
+    eventKey: key2 ?? null,
+    column: column2,
+    colDef: column2.getColDef(),
     rowIndex,
     node: rowNode,
     data: rowNode.data,
@@ -49994,12 +49994,12 @@ function _createEditorParams(beans, position, key, cellStartedEdit) {
 function _purgeUnchangedEdits(beans, includeEditing) {
   const { editModelSvc } = beans;
   editModelSvc?.getEditMap().forEach((editRow, rowNode) => {
-    editRow.forEach((edit, column) => {
+    editRow.forEach((edit, column2) => {
       if (!includeEditing && (edit.state === "editing" || edit.pendingValue === UNEDITED)) {
         return;
       }
       if (!_sourceAndPendingDiffer(edit) && (edit.state !== "editing" || includeEditing)) {
-        editModelSvc?.removeEdits({ rowNode, column });
+        editModelSvc?.removeEdits({ rowNode, column: column2 });
       }
     });
   });
@@ -50010,9 +50010,9 @@ function _refreshEditorOnColDefChanged(beans, cellCtrl) {
     return;
   }
   const { eventKey, cellStartedEdit } = cellCtrl.editCompDetails.params;
-  const { column } = cellCtrl;
+  const { column: column2 } = cellCtrl;
   const editorParams = _createEditorParams(beans, cellCtrl, eventKey, cellStartedEdit);
-  const colDef = column.getColDef();
+  const colDef = column2.getColDef();
   const compDetails = _getCellEditorDetails(beans.userCompFactory, colDef, editorParams);
   editor.refresh(checkAndPreventDefault(compDetails.params, eventKey));
 }
@@ -50046,14 +50046,14 @@ function _syncFromEditor(beans, position, editorValue, _source, valueSameAsSourc
   if (!editModelSvc) {
     return;
   }
-  const { rowNode, column } = position;
-  if (!(rowNode && column)) {
+  const { rowNode, column: column2 } = position;
+  if (!(rowNode && column2)) {
     return;
   }
   let edit = editModelSvc.getEdit(position, true);
   if (!edit?.sourceValue) {
     edit = editModelSvc.setEdit(position, {
-      sourceValue: valueSvc.getValue(column, rowNode, void 0, "api"),
+      sourceValue: valueSvc.getValue(column2, rowNode, void 0, "api"),
       pendingValue: edit ? edit.editorValue : UNEDITED
     });
   }
@@ -50153,7 +50153,7 @@ function dispatchEditingStopped(beans, position, args, { silent, event } = {}) {
 function _hasValidationRules(beans) {
   const { gos, colModel } = beans;
   const getFullRowEditValidationErrors = !!gos.get("getFullRowEditValidationErrors");
-  const columnsHaveRules = colModel.getColumnDefs()?.filter((c) => c.editable).some(({ cellEditorParams }) => {
+  const columnsHaveRules = colModel.getColumnDefs()?.filter((c2) => c2.editable).some(({ cellEditorParams }) => {
     const { minLength, maxLength, getValidationErrors, min, max } = cellEditorParams || {};
     return minLength !== void 0 || maxLength !== void 0 || getValidationErrors !== void 0 || min !== void 0 || max !== void 0;
   });
@@ -50172,7 +50172,7 @@ function _populateModelValidationErrors(beans, force) {
   const ariaValidationErrorPrefix = translate("ariaValidationErrorPrefix", "Cell Editor Validation");
   for (const mappedEditor of mappedEditors) {
     const { ctrl, editor } = mappedEditor;
-    const { rowNode, column } = ctrl;
+    const { rowNode, column: column2 } = ctrl;
     const errorMessages = editor.getValidationErrors?.() ?? [];
     const el = editor.getValidationElement?.(false) || !editor.isPopup?.() && ctrl.eGui;
     if (el) {
@@ -50192,7 +50192,7 @@ function _populateModelValidationErrors(beans, force) {
       cellValidationModel.setCellValidation(
         {
           rowNode,
-          column
+          column: column2
         },
         {
           errorMessages
@@ -50233,16 +50233,16 @@ var _generateRowValidationErrors = (beans) => {
     }
     const editorsState = [];
     const { rowIndex, rowPinned } = rowNode;
-    for (const column of rowEditMap.keys()) {
-      const editValue = rowEditMap.get(column);
+    for (const column2 of rowEditMap.keys()) {
+      const editValue = rowEditMap.get(column2);
       if (!editValue) {
         continue;
       }
       const { editorValue, pendingValue, sourceValue } = editValue;
       const newValue = editorValue ?? (pendingValue === UNEDITED ? void 0 : pendingValue) ?? sourceValue;
       editorsState.push({
-        column,
-        colId: column.getColId(),
+        column: column2,
+        colId: column2.getColId(),
         rowIndex,
         rowPinned,
         oldValue: sourceValue,
@@ -50269,9 +50269,9 @@ function _validateEdit(beans) {
   }
   const validations = [];
   map.forEach((rowValidations, rowNode) => {
-    rowValidations.forEach(({ errorMessages }, column) => {
+    rowValidations.forEach(({ errorMessages }, column2) => {
       validations.push({
-        column,
+        column: column2,
         rowIndex: rowNode.rowIndex,
         rowPinned: rowNode.rowPinned,
         messages: errorMessages ?? null
@@ -50280,25 +50280,25 @@ function _validateEdit(beans) {
   });
   return validations;
 }
-function _createCellEvent(beans, domEvent, eventType, { rowNode, column }, value) {
+function _createCellEvent(beans, domEvent, eventType, { rowNode, column: column2 }, value) {
   const event = _addGridCommonParams(beans.gos, {
     type: eventType,
     node: rowNode,
     data: rowNode.data,
     value,
-    column,
-    colDef: column.getColDef(),
+    column: column2,
+    colDef: column2.getColDef(),
     rowPinned: rowNode.rowPinned,
     event: domEvent,
     rowIndex: rowNode.rowIndex
   });
   return event;
 }
-function _isDeleteKey(key, alwaysReturnFalseOnBackspace = false) {
-  if (key === KeyCode.DELETE) {
+function _isDeleteKey(key2, alwaysReturnFalseOnBackspace = false) {
+  if (key2 === KeyCode.DELETE) {
     return true;
   }
-  if (!alwaysReturnFalseOnBackspace && key === KeyCode.BACKSPACE) {
+  if (!alwaysReturnFalseOnBackspace && key2 === KeyCode.BACKSPACE) {
     return _isMacOsUserAgent();
   }
   return false;
@@ -50315,8 +50315,8 @@ var CellKeyboardListenerFeature = class extends BeanStub {
     this.eGui = this.cellCtrl.eGui;
   }
   onKeyDown(event) {
-    const key = event.key;
-    switch (key) {
+    const key2 = event.key;
+    switch (key2) {
       case KeyCode.ENTER:
         this.onEnterKeyDown(event);
         break;
@@ -50331,17 +50331,17 @@ var CellKeyboardListenerFeature = class extends BeanStub {
         break;
       case KeyCode.BACKSPACE:
       case KeyCode.DELETE:
-        this.onBackspaceOrDeleteKeyDown(key, event);
+        this.onBackspaceOrDeleteKeyDown(key2, event);
         break;
       case KeyCode.DOWN:
       case KeyCode.UP:
       case KeyCode.RIGHT:
       case KeyCode.LEFT:
-        this.onNavigationKeyDown(event, key);
+        this.onNavigationKeyDown(event, key2);
         break;
     }
   }
-  onNavigationKeyDown(event, key) {
+  onNavigationKeyDown(event, key2) {
     const { cellCtrl, beans } = this;
     if (beans.editSvc?.isEditing(cellCtrl, { withOpenEditor: true })) {
       return;
@@ -50350,7 +50350,7 @@ var CellKeyboardListenerFeature = class extends BeanStub {
       this.onShiftRangeSelect(event);
     } else {
       const currentCellPosition = cellCtrl.getFocusedCellPosition();
-      beans.navigation?.navigateToNextCell(event, key, currentCellPosition, true);
+      beans.navigation?.navigateToNextCell(event, key2, currentCellPosition, true);
     }
     event.preventDefault();
   }
@@ -50372,17 +50372,17 @@ var CellKeyboardListenerFeature = class extends BeanStub {
   onTabKeyDown(event) {
     this.beans.navigation?.onTabKeyDown(this.cellCtrl, event);
   }
-  onBackspaceOrDeleteKeyDown(key, event) {
+  onBackspaceOrDeleteKeyDown(key2, event) {
     const { cellCtrl, beans, rowNode } = this;
     const { gos, rangeSvc, eventSvc, editSvc } = beans;
     eventSvc.dispatchEvent({ type: "keyShortcutChangedCellStart" });
-    if (_isDeleteKey(key, gos.get("enableCellEditingOnBackspace")) && !editSvc?.isEditing(cellCtrl, { withOpenEditor: true })) {
+    if (_isDeleteKey(key2, gos.get("enableCellEditingOnBackspace")) && !editSvc?.isEditing(cellCtrl, { withOpenEditor: true })) {
       if (rangeSvc && _isCellSelectionEnabled(gos)) {
         rangeSvc.clearCellRangeCellValues({ dispatchWrapperEvents: true, wrapperEventSource: "deleteKey" });
       } else if (cellCtrl.isCellEditable()) {
-        const { column } = cellCtrl;
-        const emptyValue = this.beans.valueSvc.getDeleteValue(column, rowNode);
-        rowNode.setDataValue(column, emptyValue, "cellClear");
+        const { column: column2 } = cellCtrl;
+        const emptyValue = this.beans.valueSvc.getDeleteValue(column2, rowNode);
+        rowNode.setDataValue(column2, emptyValue, "cellClear");
       }
     } else if (!editSvc?.isEditing(cellCtrl, { withOpenEditor: true })) {
       beans.editSvc?.startEditing(cellCtrl, { startedEdit: true, event });
@@ -50425,8 +50425,8 @@ var CellKeyboardListenerFeature = class extends BeanStub {
         startEditingAction(cellCtrl);
       }
     } else if (beans.gos.get("enterNavigatesVertically")) {
-      const key = event.shiftKey ? KeyCode.UP : KeyCode.DOWN;
-      navigation2?.navigateToNextCell(null, key, cellCtrl.cellPosition, false);
+      const key2 = event.shiftKey ? KeyCode.UP : KeyCode.DOWN;
+      navigation2?.navigateToNextCell(null, key2, cellCtrl.cellPosition, false);
     } else {
       if (editSvc?.hasValidationErrors()) {
         return;
@@ -50480,8 +50480,8 @@ var CellKeyboardListenerFeature = class extends BeanStub {
     if (editSvc?.isEditing(cellCtrl, { withOpenEditor: true })) {
       return;
     }
-    const key = event.key;
-    if (key === KeyCode.SPACE) {
+    const key2 = event.key;
+    if (key2 === KeyCode.SPACE) {
       this.onSpaceKeyDown(event);
     } else if (editSvc?.isCellEditable(cellCtrl, "ui")) {
       if (editSvc?.hasValidationErrors() && !editSvc?.hasValidationErrors(cellCtrl)) {
@@ -50505,10 +50505,10 @@ var CellKeyboardListenerFeature = class extends BeanStub {
   }
 };
 var CellMouseListenerFeature = class extends BeanStub {
-  constructor(cellCtrl, beans, column) {
+  constructor(cellCtrl, beans, column2) {
     super();
     this.cellCtrl = cellCtrl;
-    this.column = column;
+    this.column = column2;
     this.beans = beans;
   }
   onMouseEvent(eventName, mouseEvent) {
@@ -50541,8 +50541,8 @@ var CellMouseListenerFeature = class extends BeanStub {
     const { eventSvc, rangeSvc, editSvc, editModelSvc, frameworkOverrides, gos } = this.beans;
     const isMultiKey = event.ctrlKey || event.metaKey;
     const { cellCtrl } = this;
-    const { column, cellPosition, rowNode } = cellCtrl;
-    const suppressMouseEvent2 = _suppressCellMouseEvent(gos, column, rowNode, event);
+    const { column: column2, cellPosition, rowNode } = cellCtrl;
+    const suppressMouseEvent2 = _suppressCellMouseEvent(gos, column2, rowNode, event);
     if (rangeSvc && isMultiKey && !suppressMouseEvent2) {
       if (rangeSvc.getCellRangeCount(cellPosition) > 1) {
         rangeSvc.intersectLastRange(true);
@@ -50551,7 +50551,7 @@ var CellMouseListenerFeature = class extends BeanStub {
     const cellClickedEvent = cellCtrl.createEvent(event, "cellClicked");
     cellClickedEvent.isEventHandlingSuppressed = suppressMouseEvent2;
     eventSvc.dispatchEvent(cellClickedEvent);
-    const colDef = column.getColDef();
+    const colDef = column2.getColDef();
     if (colDef.onCellClicked) {
       window.setTimeout(() => {
         frameworkOverrides.wrapOutgoing(() => {
@@ -50587,10 +50587,10 @@ var CellMouseListenerFeature = class extends BeanStub {
     }
   }
   onCellDoubleClicked(event) {
-    const { column, beans, cellCtrl } = this;
+    const { column: column2, beans, cellCtrl } = this;
     const { eventSvc, frameworkOverrides, editSvc, editModelSvc, gos } = beans;
     const suppressMouseEvent2 = _suppressCellMouseEvent(gos, cellCtrl.column, cellCtrl.rowNode, event);
-    const colDef = column.getColDef();
+    const colDef = column2.getColDef();
     const cellDoubleClickedEvent = cellCtrl.createEvent(
       event,
       "cellDoubleClicked"
@@ -50622,8 +50622,8 @@ var CellMouseListenerFeature = class extends BeanStub {
     const target = mouseEvent.target;
     const { cellCtrl, beans } = this;
     const { eventSvc, rangeSvc, rowNumbersSvc, focusSvc, gos, editSvc } = beans;
-    const { column, rowNode, cellPosition } = cellCtrl;
-    const suppressMouseEvent2 = _suppressCellMouseEvent(gos, column, rowNode, mouseEvent);
+    const { column: column2, rowNode, cellPosition } = cellCtrl;
+    const suppressMouseEvent2 = _suppressCellMouseEvent(gos, column2, rowNode, mouseEvent);
     const fireMouseDownEvent = () => {
       const cellMouseDownEvent = cellCtrl.createEvent(mouseEvent, "cellMouseDown");
       cellMouseDownEvent.isEventHandlingSuppressed = suppressMouseEvent2;
@@ -50638,7 +50638,7 @@ var CellMouseListenerFeature = class extends BeanStub {
     }
     const hasRanges = rangeSvc && !rangeSvc.isEmpty();
     const containsWidget = this.containsWidget(target);
-    const isRowNumberColumn = isRowNumberCol(column);
+    const isRowNumberColumn = isRowNumberCol(column2);
     if (rowNumbersSvc && isRowNumberColumn && !rowNumbersSvc.handleMouseDownOnCell(cellPosition, mouseEvent)) {
       if (rangeSvc) {
         mouseEvent.preventDefault();
@@ -50657,12 +50657,12 @@ var CellMouseListenerFeature = class extends BeanStub {
       mouseEvent.preventDefault();
       const focusedCell = focusSvc.getFocusedCell();
       if (focusedCell) {
-        const { column: column2, rowIndex, rowPinned } = focusedCell;
+        const { column: column22, rowIndex, rowPinned } = focusedCell;
         if (editSvc?.isEditing(focusedCell)) {
           editSvc?.stopEditing(focusedCell);
         }
         focusSvc.setFocusedCell({
-          column: column2,
+          column: column22,
           rowIndex,
           rowPinned,
           forceBrowserFocus: true,
@@ -50814,14 +50814,14 @@ var CellPositionFeature = class extends BeanStub {
     return this.colsSpanning.reduce((width, col) => width + col.getActualWidth(), 0);
   }
   getColSpanningList() {
-    const { column, rowNode } = this;
-    const colSpan = column.getColSpan(rowNode);
+    const { column: column2, rowNode } = this;
+    const colSpan = column2.getColSpan(rowNode);
     const colsSpanning = [];
     if (colSpan === 1) {
-      colsSpanning.push(column);
+      colsSpanning.push(column2);
     } else {
-      let pointer = column;
-      const pinned = column.getPinned();
+      let pointer = column2;
+      const pinned = column2.getPinned();
       for (let i = 0; pointer && i < colSpan; i++) {
         colsSpanning.push(pointer);
         pointer = this.beans.visibleCols.getColAfter(pointer);
@@ -50887,9 +50887,9 @@ var CSS_CELL_NOT_INLINE_EDITING = "ag-cell-not-inline-editing";
 var CSS_CELL_WRAP_TEXT = "ag-cell-wrap-text";
 var instanceIdSequence4 = 0;
 var CellCtrl = class extends BeanStub {
-  constructor(column, rowNode, beans, rowCtrl) {
+  constructor(column2, rowNode, beans, rowCtrl) {
     super();
-    this.column = column;
+    this.column = column2;
     this.rowNode = rowNode;
     this.rowCtrl = rowCtrl;
     this.rangeFeature = void 0;
@@ -50911,7 +50911,7 @@ var CellCtrl = class extends BeanStub {
     this.gos = beans.gos;
     this.editSvc = beans.editSvc;
     this.hasEdit = !!beans.editSvc;
-    const { colId } = column;
+    const { colId } = column2;
     this.instanceId = colId + "-" + instanceIdSequence4++;
     this.createCellPosition();
     this.updateAndFormatValue(false);
@@ -51024,9 +51024,9 @@ var CellCtrl = class extends BeanStub {
     return this.valueFormatted ?? this.value;
   }
   getDeferLoadingCellRenderer() {
-    const { beans, column } = this;
+    const { beans, column: column2 } = this;
     const { userCompFactory, ctrlsSvc, eventSvc } = beans;
-    const colDef = column.getColDef();
+    const colDef = column2.getColDef();
     const params = this.createCellRendererParams();
     params.deferRender = true;
     const loadingDetails = _getLoadingCellRendererDetails(userCompFactory, colDef, params);
@@ -51046,25 +51046,25 @@ var CellCtrl = class extends BeanStub {
     return { loadingComp: loadingDetails, onReady: AgPromise.resolve() };
   }
   showValue(forceNewCellRendererInstance, skipRangeHandleRefresh) {
-    const { beans, column, rowNode, rangeFeature } = this;
+    const { beans, column: column2, rowNode, rangeFeature } = this;
     const { userCompFactory } = beans;
     let valueToDisplay = this.getValueToDisplay();
     let compDetails;
-    const isSsrmLoading = rowNode.stub && rowNode.groupData?.[column.getId()] == null;
-    const colDef = column.getColDef();
+    const isSsrmLoading = rowNode.stub && rowNode.groupData?.[column2.getId()] == null;
+    const colDef = column2.getColDef();
     if (isSsrmLoading || this.isCellRenderer()) {
       const params = this.createCellRendererParams();
-      if (!isSsrmLoading || isRowNumberCol(column)) {
+      if (!isSsrmLoading || isRowNumberCol(column2)) {
         compDetails = _getCellRendererDetails(userCompFactory, colDef, params);
       } else {
         compDetails = _getLoadingCellRendererDetails(userCompFactory, colDef, params);
       }
     }
-    if (!compDetails && !isSsrmLoading && beans.findSvc?.isMatch(rowNode, column)) {
+    if (!compDetails && !isSsrmLoading && beans.findSvc?.isMatch(rowNode, column2)) {
       const params = this.createCellRendererParams();
       compDetails = _getCellRendererDetails(
         userCompFactory,
-        { ...column.getColDef(), cellRenderer: "agFindCellRenderer" },
+        { ...column2.getColDef(), cellRenderer: "agFindCellRenderer" },
         params
       );
     }
@@ -51154,7 +51154,7 @@ var CellCtrl = class extends BeanStub {
     const {
       value,
       valueFormatted,
-      column,
+      column: column2,
       rowNode,
       comp,
       eGui,
@@ -51163,14 +51163,14 @@ var CellCtrl = class extends BeanStub {
     const res = _addGridCommonParams(gos, {
       value,
       valueFormatted,
-      getValue: () => valueSvc.getValueForDisplay(column, rowNode).value,
-      setValue: (value2) => editSvc?.setDataValue({ rowNode, column }, value2) || rowNode.setDataValue(column, value2),
+      getValue: () => valueSvc.getValueForDisplay(column2, rowNode).value,
+      setValue: (value2) => editSvc?.setDataValue({ rowNode, column: column2 }, value2) || rowNode.setDataValue(column2, value2),
       formatValue: this.formatValue.bind(this),
       data: rowNode.data,
       node: rowNode,
-      pinned: column.getPinned(),
-      colDef: column.getColDef(),
-      column,
+      pinned: column2.getPinned(),
+      colDef: column2.getColDef(),
+      column: column2,
       refreshCell: this.refreshCell.bind(this),
       eGridCell: eGui,
       eParentOfValue: comp.getParentOfValue(),
@@ -51217,7 +51217,7 @@ var CellCtrl = class extends BeanStub {
       customStyleFeature,
       rowCtrl: { rowEditStyleFeature },
       beans: { cellFlashSvc, filterManager },
-      column,
+      column: column2,
       comp,
       suppressRefreshCell,
       tooltipFeature
@@ -51225,7 +51225,7 @@ var CellCtrl = class extends BeanStub {
     if (suppressRefreshCell) {
       return;
     }
-    const { field, valueGetter, showRowGroup, enableCellChangeFlash } = column.getColDef();
+    const { field, valueGetter, showRowGroup, enableCellChangeFlash } = column2.getColDef();
     const noValueProvided = field == null && valueGetter == null && showRowGroup == null;
     const forceRefresh = force || noValueProvided || newData;
     const isCellCompReady = !!comp;
@@ -51279,8 +51279,8 @@ var CellCtrl = class extends BeanStub {
     compBean.addDestroyFunc(() => _setDomData(this.beans.gos, element, DOM_DATA_KEY_CELL_CTRL, null));
   }
   createEvent(domEvent, eventType) {
-    const { rowNode, column, value, beans } = this;
-    return _createCellEvent(beans, domEvent, eventType, { rowNode, column }, value);
+    const { rowNode, column: column2, value, beans } = this;
+    return _createCellEvent(beans, domEvent, eventType, { rowNode, column: column2 }, value);
   }
   processCharacter(event) {
     this.keyboardListener?.processCharacter(event);
@@ -51308,8 +51308,8 @@ var CellCtrl = class extends BeanStub {
     this.refreshFirstAndLastStyles();
   }
   refreshFirstAndLastStyles() {
-    const { comp, column, beans } = this;
-    refreshFirstAndLastStyles(comp, column, beans.visibleCols);
+    const { comp, column: column2, beans } = this;
+    refreshFirstAndLastStyles(comp, column2, beans.visibleCols);
   }
   refreshAriaColIndex() {
     const colIdx = this.beans.visibleCols.getAriaColIndex(this.column);
@@ -52150,8 +52150,8 @@ var RowCtrl = class extends BeanStub {
   isCellEligibleToBeRemoved(cellCtrl, nextContainerPinned) {
     const REMOVE_CELL = true;
     const KEEP_CELL = false;
-    const { column } = cellCtrl;
-    if (column.getPinned() != nextContainerPinned) {
+    const { column: column2 } = cellCtrl;
+    if (column2.getPinned() != nextContainerPinned) {
       return REMOVE_CELL;
     }
     if (!this.isCorrectCtrlForSpan(cellCtrl)) {
@@ -52163,7 +52163,7 @@ var RowCtrl = class extends BeanStub {
     const mightWantToKeepCell = editing || focused;
     if (mightWantToKeepCell) {
       const displayedColumns = visibleCols.allCols;
-      const cellStillDisplayed = displayedColumns.indexOf(column) >= 0;
+      const cellStillDisplayed = displayedColumns.indexOf(column2) >= 0;
       return cellStillDisplayed ? KEEP_CELL : REMOVE_CELL;
     }
     return REMOVE_CELL;
@@ -52392,7 +52392,7 @@ var RowCtrl = class extends BeanStub {
     if (!groupInfo) {
       return;
     }
-    const { rowGui, column } = groupInfo;
+    const { rowGui, column: column2 } = groupInfo;
     const currentFullWidthContainer = rowGui.element;
     const isFullWidthContainerFocused = currentFullWidthContainer === keyboardEvent.target;
     if (!isFullWidthContainerFocused) {
@@ -52404,7 +52404,7 @@ var RowCtrl = class extends BeanStub {
     const cellPosition = {
       rowIndex: node.rowIndex,
       rowPinned: node.rowPinned,
-      column: lastFocusedCell?.column ?? column
+      column: lastFocusedCell?.column ?? column2
     };
     navigation2?.navigateToNextCell(keyboardEvent, keyboardEvent.key, cellPosition, true);
     keyboardEvent.preventDefault();
@@ -52414,7 +52414,7 @@ var RowCtrl = class extends BeanStub {
       return;
     }
     const currentFullWidthComp = this.allRowGuis.find(
-      (c) => c.element.contains(keyboardEvent.target)
+      (c2) => c2.element.contains(keyboardEvent.target)
     );
     const currentFullWidthContainer = currentFullWidthComp ? currentFullWidthComp.element : null;
     const isFullWidthContainerFocused = currentFullWidthContainer === keyboardEvent.target;
@@ -52457,8 +52457,8 @@ var RowCtrl = class extends BeanStub {
     if (this.fullWidthGui) {
       element = this.fullWidthGui.element;
     } else {
-      const column = this.beans.colModel.getCol(event?.column);
-      const pinned = column?.pinned;
+      const column2 = this.beans.colModel.getCol(event?.column);
+      const pinned = column2?.pinned;
       if (pinned) {
         element = pinned === "right" ? this.rightGui?.element : this.leftGui?.element;
       } else {
@@ -52537,14 +52537,14 @@ var RowCtrl = class extends BeanStub {
       return;
     }
     const rowGui = this.findFullWidthRowGui(event.target);
-    const column = this.getColumnForFullWidth(rowGui);
-    if (!rowGui || !column) {
+    const column2 = this.getColumnForFullWidth(rowGui);
+    if (!rowGui || !column2) {
       return;
     }
-    return { rowGui, column };
+    return { rowGui, column: column2 };
   }
   findFullWidthRowGui(target) {
-    return this.allRowGuis.find((c) => c.element.contains(target));
+    return this.allRowGuis.find((c2) => c2.element.contains(target));
   }
   getColumnForFullWidth(fullWidthRowGui) {
     const { visibleCols } = this.beans;
@@ -52570,7 +52570,7 @@ var RowCtrl = class extends BeanStub {
     if (!groupInfo) {
       return;
     }
-    const { rowGui, column } = groupInfo;
+    const { rowGui, column: column2 } = groupInfo;
     const element = rowGui.element;
     const target = mouseEvent.target;
     const node = this.rowNode;
@@ -52580,7 +52580,7 @@ var RowCtrl = class extends BeanStub {
     }
     focusSvc.setFocusedCell({
       rowIndex: node.rowIndex,
-      column,
+      column: column2,
       rowPinned: node.rowPinned,
       forceBrowserFocus
     });
@@ -52733,8 +52733,8 @@ var RowCtrl = class extends BeanStub {
       return;
     }
     for (const classStr of cssClasses) {
-      for (const c of this.allRowGuis) {
-        c.rowComp.toggleCss(classStr, true);
+      for (const c2 of this.allRowGuis) {
+        c2.rowComp.toggleCss(classStr, true);
       }
     }
   }
@@ -52946,8 +52946,8 @@ var RowCtrl = class extends BeanStub {
   destroySecondPass() {
     this.allRowGuis.length = 0;
     const destroyCellCtrls = (ctrls) => {
-      for (const c of ctrls.list) {
-        c.destroy();
+      for (const c2 of ctrls.list) {
+        c2.destroy();
       }
       return { list: [], map: {} };
     };
@@ -53039,10 +53039,10 @@ var RowCtrl = class extends BeanStub {
       this.suppressRowTransform ? gui.rowComp.setTop(topPx) : gui.rowComp.setTransform(`translateY(${topPx})`);
     }
   }
-  getCellCtrl(column, skipColSpanSearch = false) {
+  getCellCtrl(column2, skipColSpanSearch = false) {
     let res = null;
     for (const cellCtrl of this.getAllCellCtrls()) {
-      if (cellCtrl.column == column) {
+      if (cellCtrl.column == column2) {
         res = cellCtrl;
       }
     }
@@ -53050,7 +53050,7 @@ var RowCtrl = class extends BeanStub {
       return res;
     }
     for (const cellCtrl of this.getAllCellCtrls()) {
-      if (cellCtrl?.getColSpanningList().indexOf(column) >= 0) {
+      if (cellCtrl?.getColSpanningList().indexOf(column2) >= 0) {
         res = cellCtrl;
       }
     }
@@ -53071,11 +53071,11 @@ var RowCtrl = class extends BeanStub {
     const headerRowCount = (this.beans.ctrlsSvc.getHeaderRowContainerCtrl()?.getRowCount() ?? 0) + (this.beans.filterManager?.getHeaderRowCount() ?? 0);
     const rowIsEven = this.rowNode.rowIndex % 2 === 0;
     const ariaRowIndex = headerRowCount + this.rowNode.rowIndex + 1;
-    this.forEachGui(gui, (c) => {
-      c.rowComp.setRowIndex(rowIndexStr);
-      c.rowComp.toggleCss("ag-row-even", rowIsEven);
-      c.rowComp.toggleCss("ag-row-odd", !rowIsEven);
-      _setAriaRowIndex(c.element, ariaRowIndex);
+    this.forEachGui(gui, (c2) => {
+      c2.rowComp.setRowIndex(rowIndexStr);
+      c2.rowComp.toggleCss("ag-row-even", rowIsEven);
+      c2.rowComp.toggleCss("ag-row-odd", !rowIsEven);
+      _setAriaRowIndex(c2.element, ariaRowIndex);
     });
   }
 };
@@ -53092,17 +53092,17 @@ var NavigationService = class extends BeanStub {
     });
   }
   handlePageScrollingKey(event, fromFullWidth = false) {
-    const key = event.key;
+    const key2 = event.key;
     const alt = event.altKey;
     const ctrl = event.ctrlKey || event.metaKey;
     const rangeServiceShouldHandleShift = !!this.beans.rangeSvc && event.shiftKey;
     const currentCell = _getCellPositionForEvent(this.gos, event);
     let processed = false;
-    switch (key) {
+    switch (key2) {
       case KeyCode.PAGE_HOME:
       case KeyCode.PAGE_END:
         if (!ctrl && !alt) {
-          this.onHomeOrEndKey(key);
+          this.onHomeOrEndKey(key2);
           processed = true;
         }
         break;
@@ -53114,14 +53114,14 @@ var NavigationService = class extends BeanStub {
           return false;
         }
         if (ctrl && !alt && !rangeServiceShouldHandleShift) {
-          this.onCtrlUpDownLeftRight(key, currentCell);
+          this.onCtrlUpDownLeftRight(key2, currentCell);
           processed = true;
         }
         break;
       case KeyCode.PAGE_DOWN:
       case KeyCode.PAGE_UP:
         if (!ctrl && !alt) {
-          processed = this.handlePageUpDown(key, currentCell, fromFullWidth);
+          processed = this.handlePageUpDown(key2, currentCell, fromFullWidth);
         }
         break;
     }
@@ -53130,14 +53130,14 @@ var NavigationService = class extends BeanStub {
     }
     return processed;
   }
-  handlePageUpDown(key, currentCell, fromFullWidth) {
+  handlePageUpDown(key2, currentCell, fromFullWidth) {
     if (fromFullWidth) {
       currentCell = this.beans.focusSvc.getFocusedCell();
     }
     if (!currentCell) {
       return false;
     }
-    if (key === KeyCode.PAGE_UP) {
+    if (key2 === KeyCode.PAGE_UP) {
       this.onPageUp(currentCell);
     } else {
       this.onPageDown(currentCell);
@@ -53308,11 +53308,11 @@ var NavigationService = class extends BeanStub {
     }
     return rowHeight > this.getViewportHeight();
   }
-  onCtrlUpDownLeftRight(key, gridCell) {
-    const cellToFocus = this.beans.cellNavigation.getNextCellToFocus(key, gridCell, true);
+  onCtrlUpDownLeftRight(key2, gridCell) {
+    const cellToFocus = this.beans.cellNavigation.getNextCellToFocus(key2, gridCell, true);
     const normalisedPosition = this.getNormalisedPosition(cellToFocus);
-    const { rowIndex, rowPinned, column } = normalisedPosition ?? cellToFocus;
-    const col = column;
+    const { rowIndex, rowPinned, column: column2 } = normalisedPosition ?? cellToFocus;
+    const col = column2;
     this.navigateTo({
       scrollIndex: rowIndex,
       scrollType: null,
@@ -53324,8 +53324,8 @@ var NavigationService = class extends BeanStub {
   }
   // home brings focus to top left cell, end brings focus to bottom right, grid scrolled to bring
   // same cell into view (which means either scroll all the way up, or all the way down).
-  onHomeOrEndKey(key) {
-    const homeKey = key === KeyCode.PAGE_HOME;
+  onHomeOrEndKey(key2) {
+    const homeKey = key2 === KeyCode.PAGE_HOME;
     const { visibleCols, pageBounds, rowModel } = this.beans;
     const allColumns = visibleCols.allCols;
     const scrollIndex = homeKey ? pageBounds.getFirstRow() : pageBounds.getLastRow();
@@ -53398,12 +53398,12 @@ var NavigationService = class extends BeanStub {
     }
     return !!this.tabToNextCellCommon(cellOrRow, backwards, event, "api");
   }
-  tabToNextCellCommon(previous, backwards, event, source = "ui") {
+  tabToNextCellCommon(previous, backwards, event, source2 = "ui") {
     const { editSvc, focusSvc } = this.beans;
     let res = void 0;
     const cellCtrl = previous instanceof CellCtrl ? previous : previous.getAllCellCtrls()?.[0];
     if (editSvc?.isEditing()) {
-      res = editSvc?.moveToNextCell(cellCtrl, backwards, event, source);
+      res = editSvc?.moveToNextCell(cellCtrl, backwards, event, source2);
     } else {
       res = this.moveToNextCellNotEditing(previous, backwards, event);
     }
@@ -53535,20 +53535,20 @@ var NavigationService = class extends BeanStub {
   }
   // we use index for rows, but column object for columns, as the next column (by index) might not
   // be visible (header grouping) so it's not reliable, so using the column object instead.
-  navigateToNextCell(event, key, currentCell, allowUserOverride) {
+  navigateToNextCell(event, key2, currentCell, allowUserOverride) {
     let nextCell = currentCell;
     let hitEdgeOfGrid = false;
     const beans = this.beans;
     const { cellNavigation, focusSvc, gos } = beans;
     while (nextCell && (nextCell === currentCell || !this.isValidNavigateCell(nextCell))) {
       if (gos.get("enableRtl")) {
-        if (key === KeyCode.LEFT) {
+        if (key2 === KeyCode.LEFT) {
           nextCell = this.getLastCellOfColSpan(nextCell);
         }
-      } else if (key === KeyCode.RIGHT) {
+      } else if (key2 === KeyCode.RIGHT) {
         nextCell = this.getLastCellOfColSpan(nextCell);
       }
-      nextCell = cellNavigation.getNextCellToFocus(key, nextCell);
+      nextCell = cellNavigation.getNextCellToFocus(key2, nextCell);
       hitEdgeOfGrid = _missing(nextCell);
     }
     if (hitEdgeOfGrid && event && event.key === KeyCode.UP) {
@@ -53562,7 +53562,7 @@ var NavigationService = class extends BeanStub {
       const userFunc = gos.getCallback("navigateToNextCell");
       if (_exists(userFunc)) {
         const params = {
-          key,
+          key: key2,
           previousCellPosition: currentCell,
           nextCellPosition: nextCell ? nextCell : null,
           event
@@ -53678,10 +53678,10 @@ var NavigationService = class extends BeanStub {
       scrollFeature.ensureColumnVisible(gridCell.column);
     }
   }
-  ensureColumnVisible(column) {
+  ensureColumnVisible(column2) {
     const scrollFeature = this.gridBodyCon.scrollFeature;
-    if (!column.isPinned()) {
-      scrollFeature.ensureColumnVisible(column);
+    if (!column2.isPinned()) {
+      scrollFeature.ensureColumnVisible(column2);
     }
   }
   ensureRowVisible(rowIndex) {
@@ -53874,7 +53874,7 @@ var PinnedColumnService = class extends BeanStub {
   createPinnedWidthFeature(isLeft, ...elements) {
     return new SetPinnedWidthFeature(isLeft, elements);
   }
-  setColsPinned(keys, pinned, source) {
+  setColsPinned(keys, pinned, source2) {
     const { colModel, colAnimation, visibleCols, gos } = this.beans;
     if (!colModel.cols) {
       return;
@@ -53896,42 +53896,42 @@ var PinnedColumnService = class extends BeanStub {
       actualPinned = null;
     }
     const updatedCols = [];
-    for (const key of keys) {
-      if (!key) {
+    for (const key2 of keys) {
+      if (!key2) {
         continue;
       }
-      const column = colModel.getCol(key);
-      if (!column) {
+      const column2 = colModel.getCol(key2);
+      if (!column2) {
         continue;
       }
-      if (column.getPinned() !== actualPinned) {
-        this.setColPinned(column, actualPinned);
-        updatedCols.push(column);
+      if (column2.getPinned() !== actualPinned) {
+        this.setColPinned(column2, actualPinned);
+        updatedCols.push(column2);
       }
     }
     if (updatedCols.length) {
-      visibleCols.refresh(source);
-      dispatchColumnPinnedEvent(this.eventSvc, updatedCols, source);
+      visibleCols.refresh(source2);
+      dispatchColumnPinnedEvent(this.eventSvc, updatedCols, source2);
     }
     colAnimation?.finish();
   }
-  initCol(column) {
-    const { pinned, initialPinned } = column.colDef;
+  initCol(column2) {
+    const { pinned, initialPinned } = column2.colDef;
     if (pinned !== void 0) {
-      this.setColPinned(column, pinned);
+      this.setColPinned(column2, pinned);
     } else {
-      this.setColPinned(column, initialPinned);
+      this.setColPinned(column2, initialPinned);
     }
   }
-  setColPinned(column, pinned) {
+  setColPinned(column2, pinned) {
     if (pinned === true || pinned === "left") {
-      column.pinned = "left";
+      column2.pinned = "left";
     } else if (pinned === "right") {
-      column.pinned = "right";
+      column2.pinned = "right";
     } else {
-      column.pinned = null;
+      column2.pinned = null;
     }
-    column.dispatchStateUpdatedEvent("pinned");
+    column2.dispatchStateUpdatedEvent("pinned");
   }
   setupHeaderPinnedWidth(ctrl) {
     const { scrollVisibleSvc } = this.beans;
@@ -53966,8 +53966,8 @@ var PinnedColumnService = class extends BeanStub {
       scrollbarWidthChanged: listener
     });
   }
-  getHeaderResizeDiff(diff, column) {
-    const pinned = column.getPinned();
+  getHeaderResizeDiff(diff, column2) {
+    const pinned = column2.getPinned();
     if (pinned) {
       const { leftWidth, rightWidth } = this;
       const bodyWidth = _getInnerWidth(this.beans.ctrlsSvc.getGridBodyCtrl().eBodyViewport) - 50;
@@ -54048,8 +54048,8 @@ var AriaAnnouncementService = class extends BeanStub {
   /**
    * @param key used for debouncing calls
    */
-  announceValue(value, key) {
-    this.pendingAnnouncements.set(key, value);
+  announceValue(value, key2) {
+    this.pendingAnnouncements.set(key2, value);
     this.updateAnnouncement();
   }
   updateAnnouncement() {
@@ -54108,11 +54108,11 @@ var ColumnDelayRenderService = class extends BeanStub {
     this.timesRetried = 0;
     this.requesters = /* @__PURE__ */ new Set();
   }
-  hideColumns(key) {
-    if (this.alreadyRevealed || this.requesters.has(key)) {
+  hideColumns(key2) {
+    if (this.alreadyRevealed || this.requesters.has(key2)) {
       return;
     }
-    this.requesters.add(key);
+    this.requesters.add(key2);
     if (!this.hideRequested) {
       this.beans.ctrlsSvc.whenReady(this, (p) => {
         p.gridBodyCtrl.eGridBody.classList.add(HideClass);
@@ -54120,11 +54120,11 @@ var ColumnDelayRenderService = class extends BeanStub {
       this.hideRequested = true;
     }
   }
-  revealColumns(key) {
+  revealColumns(key2) {
     if (this.alreadyRevealed || !this.isAlive()) {
       return;
     }
-    this.requesters.delete(key);
+    this.requesters.delete(key2);
     if (this.requesters.size > 0) {
       return;
     }
@@ -54132,7 +54132,7 @@ var ColumnDelayRenderService = class extends BeanStub {
     if (renderStatus) {
       if (!renderStatus.areHeaderCellsRendered() && this.timesRetried < 5) {
         this.timesRetried++;
-        setTimeout(() => this.revealColumns(key));
+        setTimeout(() => this.revealColumns(key2));
         return;
       }
       this.timesRetried = 0;
@@ -54560,8 +54560,8 @@ var RowContainerHeightService = class extends BeanStub {
     return modelPixel - this.divStretchOffset;
   }
   getUiBodyHeight() {
-    const pos = this.beans.ctrlsSvc.getScrollFeature().getVScrollPosition();
-    return pos.bottom - pos.top;
+    const pos2 = this.beans.ctrlsSvc.getScrollFeature().getVScrollPosition();
+    return pos2.bottom - pos2.top;
   }
   getScrollPositionForPixel(rowTop) {
     if (this.pixelsToShave <= 0) {
@@ -54733,16 +54733,16 @@ var RowRenderer = class extends BeanStub {
    * cells yet.
    * @returns true if cellCtrl is present, or if the row is present but has not rendered rows yet
    */
-  isCellBeingRendered(rowIndex, column) {
+  isCellBeingRendered(rowIndex, column2) {
     const rowCtrl = this.rowCtrlsByRowIndex[rowIndex];
-    if (!column || !rowCtrl) {
+    if (!column2 || !rowCtrl) {
       return !!rowCtrl;
     }
     if (rowCtrl.isFullWidth()) {
       return true;
     }
-    const spannedCell = this.beans.spannedRowRenderer?.getCellByPosition({ rowIndex, column, rowPinned: null });
-    return !!spannedCell || !!rowCtrl.getCellCtrl(column) || !rowCtrl.isRowRendered();
+    const spannedCell = this.beans.spannedRowRenderer?.getCellByPosition({ rowIndex, column: column2, rowPinned: null });
+    return !!spannedCell || !!rowCtrl.getCellCtrl(column2) || !rowCtrl.isRowRendered();
   }
   /**
    * Notifies all row and cell controls of any change in focused cell.
@@ -54908,10 +54908,10 @@ var RowRenderer = class extends BeanStub {
    * If the cell is spanning across multiple columns, it only returns the html element
    * if the column passed is the first column of the span (used for auto width calculation).
    */
-  getAllCellsNotSpanningForColumn(column) {
+  getAllCellsNotSpanningForColumn(column2) {
     const res = [];
     for (const rowCtrl of this.getAllRowCtrls()) {
-      const eCell = rowCtrl.getCellCtrl(column, true)?.eGui;
+      const eCell = rowCtrl.getCellCtrl(column2, true)?.eGui;
       if (eCell) {
         res.push(eCell);
       }
@@ -55244,9 +55244,9 @@ var RowRenderer = class extends BeanStub {
     if (_exists(columns)) {
       colIdsMap = {};
       columns.forEach((colKey) => {
-        const column = this.colModel.getCol(colKey);
-        if (_exists(column)) {
-          colIdsMap[column.getId()] = true;
+        const column2 = this.colModel.getCol(colKey);
+        if (_exists(column2)) {
+          colIdsMap[column2.getId()] = true;
         }
       });
     }
@@ -55859,15 +55859,15 @@ var RowNodeSorter = class extends BeanStub {
     return sortedNodeA.currentPos - sortedNodeB.currentPos;
   }
   getComparator(sortOption, rowNode) {
-    const column = sortOption.column;
-    const comparatorOnCol = column.getColDef().comparator;
+    const column2 = sortOption.column;
+    const comparatorOnCol = column2.getColDef().comparator;
     if (comparatorOnCol != null) {
       return comparatorOnCol;
     }
-    if (!column.getColDef().showRowGroup) {
+    if (!column2.getColDef().showRowGroup) {
       return;
     }
-    const groupLeafField = !rowNode.group && column.getColDef().field;
+    const groupLeafField = !rowNode.group && column2.getColDef().field;
     if (!groupLeafField) {
       return;
     }
@@ -55877,28 +55877,28 @@ var RowNodeSorter = class extends BeanStub {
     }
     return primaryColumn.getColDef().comparator;
   }
-  getValue(node, column) {
+  getValue(node, column2) {
     const { valueSvc, colModel, showRowGroupCols, gos } = this.beans;
     if (!this.primaryColumnsSortGroups) {
-      return valueSvc.getValue(column, node, false);
+      return valueSvc.getValue(column2, node, false);
     }
-    const isNodeGroupedAtLevel = node.rowGroupColumn === column;
+    const isNodeGroupedAtLevel = node.rowGroupColumn === column2;
     if (isNodeGroupedAtLevel) {
       const isGroupRows = _isGroupUseEntireRow(gos, colModel.isPivotActive());
       if (isGroupRows) {
         const leafChild = node.data ? node : _firstLeaf(node.childrenAfterGroup);
-        return leafChild && valueSvc.getValue(column, leafChild, false);
+        return leafChild && valueSvc.getValue(column2, leafChild, false);
       }
-      const displayCol = showRowGroupCols?.getShowRowGroupCol(column.getId());
+      const displayCol = showRowGroupCols?.getShowRowGroupCol(column2.getId());
       if (!displayCol) {
         return void 0;
       }
       return node.groupData?.[displayCol.getId()];
     }
-    if (node.group && column.getColDef().showRowGroup) {
+    if (node.group && column2.getColDef().showRowGroup) {
       return void 0;
     }
-    return valueSvc.getValue(column, node, false);
+    return valueSvc.getValue(column2, node, false);
   }
 };
 function onSortChanged(beans) {
@@ -55973,11 +55973,11 @@ function expireValueCache(beans) {
 }
 function getCellValue(beans, params) {
   const { colKey, rowNode, useFormatter } = params;
-  const column = beans.colModel.getColDefCol(colKey) ?? beans.colModel.getCol(colKey);
-  if (_missing(column)) {
+  const column2 = beans.colModel.getColDefCol(colKey) ?? beans.colModel.getCol(colKey);
+  if (_missing(column2)) {
     return null;
   }
-  const result = beans.valueSvc.getValueForDisplay(column, rowNode, useFormatter);
+  const result = beans.valueSvc.getValueForDisplay(column2, rowNode, useFormatter);
   if (useFormatter) {
     return result.valueFormatted ?? _toString(result.value);
   }
@@ -56178,13 +56178,13 @@ var ValueService = class extends BeanStub {
    * The values from this function are not used for sorting, filtering, or aggregation purposes.
    * Handles: groupHideOpenParents, showOpenedGroup and groupSuppressBlankHeader behaviours
    */
-  getValueForDisplay(column, node, includeValueFormatted = false, exporting = false, source = "ui") {
+  getValueForDisplay(column2, node, includeValueFormatted = false, exporting = false, source2 = "ui") {
     const { showRowGroupColValueSvc } = this.beans;
-    const isFullWidthGroup = !column && node.group;
-    const isGroupCol = column?.colDef.showRowGroup;
+    const isFullWidthGroup = !column2 && node.group;
+    const isGroupCol = column2?.colDef.showRowGroup;
     const processTreeDataAsGroup = !this.isTreeData || node.footer;
     if (showRowGroupColValueSvc && processTreeDataAsGroup && (isFullWidthGroup || isGroupCol)) {
-      const groupValue = showRowGroupColValueSvc.getGroupValue(node, column);
+      const groupValue = showRowGroupColValueSvc.getGroupValue(node, column2);
       if (groupValue == null) {
         return {
           value: null,
@@ -56197,13 +56197,13 @@ var ValueService = class extends BeanStub {
           valueFormatted: null
         };
       }
-      const valueFormatted = showRowGroupColValueSvc.formatAndPrefixGroupColValue(groupValue, column, exporting);
+      const valueFormatted = showRowGroupColValueSvc.formatAndPrefixGroupColValue(groupValue, column2, exporting);
       return {
         value: groupValue.value,
         valueFormatted
       };
     }
-    if (!column) {
+    if (!column2) {
       return {
         value: node.key,
         valueFormatted: null
@@ -56213,28 +56213,28 @@ var ValueService = class extends BeanStub {
     const isOpenedGroup = node.group && node.expanded && !node.footer && !isPivotLeaf;
     const groupShowsAggData = this.gos.get("groupSuppressBlankHeader") || !node.sibling;
     const ignoreAggData = isOpenedGroup && !groupShowsAggData;
-    const value = this.getValue(column, node, ignoreAggData, source);
-    const format = includeValueFormatted && !(exporting && column.colDef.useValueFormatterForExport === false);
+    const value = this.getValue(column2, node, ignoreAggData, source2);
+    const format = includeValueFormatted && !(exporting && column2.colDef.useValueFormatterForExport === false);
     return {
       value,
-      valueFormatted: format ? this.formatValue(column, node, value) : null
+      valueFormatted: format ? this.formatValue(column2, node, value) : null
     };
   }
-  getValue(column, rowNode, ignoreAggData = false, source = "ui") {
+  getValue(column2, rowNode, ignoreAggData = false, source2 = "ui") {
     if (!this.initialised) {
       this.init();
     }
     if (!rowNode) {
       return;
     }
-    const colDef = column.getColDef();
+    const colDef = column2.getColDef();
     const field = colDef.field;
-    const colId = column.getColId();
+    const colId = column2.getColId();
     const data = rowNode.data;
-    if (this.hasEditSvc && source === "ui") {
+    if (this.hasEditSvc && source2 === "ui") {
       const editSvc = this.editSvc;
       if (editSvc.isEditing()) {
-        const newValue = editSvc.getCellDataValue({ rowNode, column }, true);
+        const newValue = editSvc.getCellDataValue({ rowNode, column: column2 }, true);
         if (newValue !== void 0) {
           return newValue;
         }
@@ -56256,9 +56256,9 @@ var ValueService = class extends BeanStub {
     if (this.isTreeData && aggDataExists) {
       result = rowNode.aggData[colId];
     } else if (this.isTreeData && colDef.valueGetter) {
-      result = this.executeValueGetter(colDef.valueGetter, data, column, rowNode);
+      result = this.executeValueGetter(colDef.valueGetter, data, column2, rowNode);
     } else if (this.isTreeData && field && data) {
-      result = _getValueUsingField(data, field, column.isFieldContainsDots());
+      result = _getValueUsingField(data, field, column2.isFieldContainsDots());
     } else if (groupDataExists) {
       result = rowNode.groupData[colId];
     } else if (aggDataExists) {
@@ -56267,23 +56267,23 @@ var ValueService = class extends BeanStub {
       if (!allowUserValuesForCell) {
         return result;
       }
-      result = this.executeValueGetter(colDef.valueGetter, data, column, rowNode);
+      result = this.executeValueGetter(colDef.valueGetter, data, column2, rowNode);
     } else if (ssrmFooterGroupCol) {
-      result = _getValueUsingField(data, rowNode.field, column.isFieldContainsDots());
+      result = _getValueUsingField(data, rowNode.field, column2.isFieldContainsDots());
     } else if (field && data && !ignoreSsrmAggData) {
       if (!allowUserValuesForCell) {
         return result;
       }
-      result = _getValueUsingField(data, field, column.isFieldContainsDots());
+      result = _getValueUsingField(data, field, column2.isFieldContainsDots());
     }
     if (this.cellExpressions && typeof result === "string" && result.indexOf("=") === 0) {
       const cellValueGetter = result.substring(1);
-      result = this.executeValueGetter(cellValueGetter, data, column, rowNode);
+      result = this.executeValueGetter(cellValueGetter, data, column2, rowNode);
     }
     return result;
   }
-  parseValue(column, rowNode, newValue, oldValue) {
-    const colDef = column.getColDef();
+  parseValue(column2, rowNode, newValue, oldValue) {
+    const colDef = column2.getColDef();
     const valueParser = colDef.valueParser;
     if (_exists(valueParser)) {
       const params = _addGridCommonParams(this.gos, {
@@ -56292,7 +56292,7 @@ var ValueService = class extends BeanStub {
         oldValue,
         newValue,
         colDef,
-        column
+        column: column2
       });
       if (typeof valueParser === "function") {
         return valueParser(params);
@@ -56301,17 +56301,17 @@ var ValueService = class extends BeanStub {
     }
     return newValue;
   }
-  getDeleteValue(column, rowNode) {
-    if (_exists(column.getColDef().valueParser)) {
-      return this.parseValue(column, rowNode, "", this.getValueForDisplay(column, rowNode).value) ?? null;
+  getDeleteValue(column2, rowNode) {
+    if (_exists(column2.getColDef().valueParser)) {
+      return this.parseValue(column2, rowNode, "", this.getValueForDisplay(column2, rowNode).value) ?? null;
     }
     return null;
   }
-  formatValue(column, node, value, suppliedFormatter, useFormatterFromColumn = true) {
+  formatValue(column2, node, value, suppliedFormatter, useFormatterFromColumn = true) {
     const { expressionSvc } = this.beans;
     let result = null;
     let formatter;
-    const colDef = column.getColDef();
+    const colDef = column2.getColDef();
     if (suppliedFormatter) {
       formatter = suppliedFormatter;
     } else if (useFormatterFromColumn) {
@@ -56324,7 +56324,7 @@ var ValueService = class extends BeanStub {
         node,
         data,
         colDef,
-        column
+        column: column2
       });
       if (typeof formatter === "function") {
         result = formatter(params);
@@ -56348,29 +56348,29 @@ var ValueService = class extends BeanStub {
    * @returns `True` if the value has been updated, otherwise`False`.
    */
   setValue(rowNode, colKey, newValue, eventSource) {
-    const column = this.colModel.getColDefCol(colKey);
-    if (!rowNode || !column) {
+    const column2 = this.colModel.getColDefCol(colKey);
+    if (!rowNode || !column2) {
       return false;
     }
     if (_missing(rowNode.data)) {
       rowNode.data = {};
     }
-    const { field, valueSetter } = column.getColDef();
+    const { field, valueSetter } = column2.getColDef();
     if (_missing(field) && _missing(valueSetter)) {
       _warn(17);
       return false;
     }
-    if (this.dataTypeSvc && !this.dataTypeSvc.checkType(column, newValue)) {
+    if (this.dataTypeSvc && !this.dataTypeSvc.checkType(column2, newValue)) {
       _warn(135);
       return false;
     }
     const params = _addGridCommonParams(this.gos, {
       node: rowNode,
       data: rowNode.data,
-      oldValue: this.getValue(column, rowNode, void 0, eventSource),
+      oldValue: this.getValue(column2, rowNode, void 0, eventSource),
       newValue,
-      colDef: column.getColDef(),
-      column
+      colDef: column2.getColDef(),
+      column: column2
     });
     params.newValue = newValue;
     let valueWasDifferent;
@@ -56381,7 +56381,7 @@ var ValueService = class extends BeanStub {
         valueWasDifferent = this.expressionSvc?.evaluate(valueSetter, params);
       }
     } else {
-      valueWasDifferent = this.setValueUsingField(rowNode.data, field, newValue, column.isFieldContainsDots());
+      valueWasDifferent = this.setValueUsingField(rowNode.data, field, newValue, column2.isFieldContainsDots());
     }
     if (valueWasDifferent === void 0) {
       valueWasDifferent = true;
@@ -56391,14 +56391,14 @@ var ValueService = class extends BeanStub {
     }
     rowNode.resetQuickFilterAggregateText();
     this.valueCache?.onDataChanged();
-    const savedValue = this.getValue(column, rowNode);
+    const savedValue = this.getValue(column2, rowNode);
     this.dispatchCellValueChangedEvent(rowNode, params, savedValue, eventSource);
     if (rowNode.pinnedSibling) {
       this.dispatchCellValueChangedEvent(rowNode.pinnedSibling, params, savedValue, eventSource);
     }
     return true;
   }
-  dispatchCellValueChangedEvent(rowNode, params, value, source) {
+  dispatchCellValueChangedEvent(rowNode, params, value, source2) {
     this.eventSvc.dispatchEvent({
       type: "cellValueChanged",
       event: null,
@@ -56411,7 +56411,7 @@ var ValueService = class extends BeanStub {
       oldValue: params.oldValue,
       newValue: value,
       value,
-      source
+      source: source2
     });
   }
   callColumnCellValueChangedHandler(event) {
@@ -56458,22 +56458,22 @@ var ValueService = class extends BeanStub {
     }
     return !valuesAreSame;
   }
-  executeValueGetterWithValueCache(valueGetter, data, column, rowNode) {
-    const colId = column.getColId();
+  executeValueGetterWithValueCache(valueGetter, data, column2, rowNode) {
+    const colId = column2.getColId();
     const valueFromCache = this.valueCache.getValue(rowNode, colId);
     if (valueFromCache !== void 0) {
       return valueFromCache;
     }
-    const result = this.executeValueGetterWithoutValueCache(valueGetter, data, column, rowNode);
+    const result = this.executeValueGetterWithoutValueCache(valueGetter, data, column2, rowNode);
     this.valueCache.setValue(rowNode, colId, result);
     return result;
   }
-  executeValueGetterWithoutValueCache(valueGetter, data, column, rowNode) {
+  executeValueGetterWithoutValueCache(valueGetter, data, column2, rowNode) {
     const params = _addGridCommonParams(this.gos, {
       data,
       node: rowNode,
-      column,
-      colDef: column.getColDef(),
+      column: column2,
+      colDef: column2.getColDef(),
       getValue: this.getValueCallback.bind(this, rowNode)
     });
     let result;
@@ -56802,7 +56802,7 @@ var AG_GRID_ERRORS = {
   ],
   6: () => `'groupHideOpenParents' only works when specifying specific columns for 'colDef.showRowGroup'`,
   7: () => "Pivoting is not supported with aligned grids as it may produce different columns in each grid.",
-  8: ({ key }) => `Unknown key for navigation ${key}`,
+  8: ({ key: key2 }) => `Unknown key for navigation ${key2}`,
   9: ({ variable }) => `No value for ${variable?.cssName}. This usually means that the grid has been initialised before styles have been loaded. The default value of ${variable?.defaultValue} will be used and updated when styles load.`,
   10: ({ eventType }) => `As of v33, the '${eventType}' event is deprecated. Use the global 'modelUpdated' event to determine when row children have changed.`,
   11: () => "No gridOptions provided to createGrid",
@@ -56825,7 +56825,7 @@ var AG_GRID_ERRORS = {
   20: () => `You may want to configure via a callback to avoid setup race conditions:
                      "alignedGrids: () => [linkedGrid]"`,
   21: () => "pivoting is not supported with aligned grids. You can only use one of these features at a time in a grid.",
-  22: ({ key }) => `${key} is an initial property and cannot be updated.`,
+  22: ({ key: key2 }) => `${key2} is an initial property and cannot be updated.`,
   23: () => "The return of `getRowHeight` cannot be zero. If the intention is to hide rows, use a filter instead.",
   24: () => "row height must be a number if not using standard row model",
   25: ({ id }) => [`The getRowId callback must return a string. The ID `, id, ` is being cast to a string.`],
@@ -56845,7 +56845,7 @@ var AG_GRID_ERRORS = {
   31: () => "infinite loop in resizeColumnSets",
   32: () => "applyColumnState() - the state attribute should be an array, however an array was not found. Please provide an array of items (one for each col you want to change) for state.",
   33: () => "stateItem.aggFunc must be a string. if using your own aggregation functions, register the functions first before using them in get/set state. This is because it is intended for the column state to be stored and retrieved as simple JSON.",
-  34: ({ key }) => `the column type '${key}' is a default column type and cannot be overridden.`,
+  34: ({ key: key2 }) => `the column type '${key2}' is a default column type and cannot be overridden.`,
   35: () => `Column type definitions 'columnTypes' with a 'type' attribute are not supported because a column type cannot refer to another column type. Only column definitions 'columnDefs' can use the 'type' attribute to refer to a column type.`,
   36: ({ t }) => "colDef.type '" + t + "' does not correspond to defined gridOptions.columnTypes",
   37: () => `Changing the column pinning status is not allowed with domLayout='print'`,
@@ -56968,7 +56968,7 @@ ${clipboardApiError(method)}`,
   104: ({ value, param }) => `Numeric value ${value} passed to ${param} param will be interpreted as ${value} seconds. If this is intentional use "${value}s" to silence this warning.`,
   105: ({ e }) => [`chart rendering failed`, e],
   106: () => `Theming API and Legacy Themes are both used in the same page. A Theming API theme has been provided to the 'theme' grid option, but the file (ag-grid.css) is also included and will cause styling issues. Remove ag-grid.css from the page. See the migration guide: ${baseDocLink}/theming-migration/`,
-  107: ({ key, value }) => `Invalid value for theme param ${key} - ${value}`,
+  107: ({ key: key2, value }) => `Invalid value for theme param ${key2} - ${value}`,
   108: ({ e }) => ["chart update failed", e],
   109: ({ inputValue, allSuggestions }) => {
     const suggestions = _fuzzySuggestions({
@@ -57052,7 +57052,7 @@ ${clipboardApiError(method)}`,
     `Trying to render an invalid menu item '${menuTabName}'. Check that your 'menuTabs' contains one of `,
     itemsToConsider
   ],
-  176: ({ key }) => `unknown menu item type ${key}`,
+  176: ({ key: key2 }) => `unknown menu item type ${key2}`,
   177: () => `valid values for cellSelection.handle.direction are 'x', 'y' and 'xy'. Default to 'xy'.`,
   178: ({ colId }) => `column ${colId} is not visible`,
   179: () => "totalValueGetter should be either a function or a string (expression)",
@@ -57092,7 +57092,7 @@ ${clipboardApiError(method)}`,
   // 193: () => "cannot multi select unless selection mode is 'multiRow'" as const,
   194: ({ method }) => `calling gridApi.${method}() is only possible when using rowModelType=\`clientSide\`.`,
   195: ({ justCurrentPage }) => `selecting just ${justCurrentPage ? "current page" : "filtered"} only works when gridOptions.rowModelType='clientSide'`,
-  196: ({ key }) => `Provided ids must be of string type. Invalid id provided: ${key}`,
+  196: ({ key: key2 }) => `Provided ids must be of string type. Invalid id provided: ${key2}`,
   197: () => "`toggledNodes` must be an array of string ids.",
   // 198: () => `cannot multi select unless selection mode is 'multiRow'` as const,
   199: () => `getSelectedNodes and getSelectedRows functions cannot be used with select all functionality with the server-side row model. Use \`api.getServerSideSelectionState()\` instead.`,
@@ -57110,8 +57110,8 @@ ${clipboardApiError(method)}`,
   211: () => "property treeList=true for Set Filter params, but you did not provide a treeListPathGetter or values of type Date.",
   212: () => `please review all your toolPanel components, it seems like at least one of them doesn't have an id`,
   213: () => "Advanced Filter does not work with Filters Tool Panel. Filters Tool Panel has been disabled.",
-  214: ({ key }) => `unable to lookup Tool Panel as invalid key supplied: ${key}`,
-  215: ({ key, defaultByKey }) => `the key ${key} is not a valid key for specifying a tool panel, valid keys are: ${Object.keys(defaultByKey ?? {}).join(",")}`,
+  214: ({ key: key2 }) => `unable to lookup Tool Panel as invalid key supplied: ${key2}`,
+  215: ({ key: key2, defaultByKey }) => `the key ${key2} is not a valid key for specifying a tool panel, valid keys are: ${Object.keys(defaultByKey ?? {}).join(",")}`,
   216: ({ name }) => `Missing component for '${name}'`,
   217: ({ invalidColIds }) => ["unable to find grid columns for the supplied colDef(s):", invalidColIds],
   218: ({ property, defaultOffset }) => `${property} must be a number, the value you provided is not a valid number. Using the default of ${defaultOffset}px.`,
@@ -57250,7 +57250,7 @@ var GridCoreCreator = class {
       return void 0;
     }
     const destroyCallback = () => {
-      _gridElementCache.delete(api2);
+      _gridElementCache.delete(api);
       _gridApiCache.delete(eGridDiv);
       _unRegisterGridModules(gridId);
       _destroyCallback?.();
@@ -57269,10 +57269,10 @@ var GridCoreCreator = class {
     createUi(context);
     context.getBean("syncSvc").start();
     acceptChanges?.(context);
-    const api2 = context.getBean("gridApi");
-    _gridApiCache.set(eGridDiv, api2);
-    _gridElementCache.set(api2, eGridDiv);
-    return api2;
+    const api = context.getBean("gridApi");
+    _gridApiCache.set(eGridDiv, api);
+    _gridElementCache.set(api, eGridDiv);
+    return api;
   }
   getRegisteredModules(params, gridId, rowModelType) {
     _registerModule(CommunityCoreModule, void 0, true);
@@ -57547,31 +57547,31 @@ var BaseGridSerializingSession = class {
   }
   prepare(_columnsToExport) {
   }
-  extractHeaderValue(column) {
-    const value = this.getHeaderName(this.processHeaderCallback, column);
+  extractHeaderValue(column2) {
+    const value = this.getHeaderName(this.processHeaderCallback, column2);
     return value ?? "";
   }
-  extractRowCellValue(column, currentColumnIndex, accumulatedRowIndex, type, node) {
+  extractRowCellValue(column2, currentColumnIndex, accumulatedRowIndex, type, node) {
     const isFullWidthGroup = currentColumnIndex === 0 && _isFullWidthGroupRow(this.gos, node, this.colModel.isPivotMode());
-    if (this.processRowGroupCallback && (this.gos.get("treeData") || node.group) && (column.isRowGroupDisplayed(node.rowGroupColumn?.getColId() ?? "") || isFullWidthGroup)) {
-      return { value: this.processRowGroupCallback(_addGridCommonParams(this.gos, { column, node })) ?? "" };
+    if (this.processRowGroupCallback && (this.gos.get("treeData") || node.group) && (column2.isRowGroupDisplayed(node.rowGroupColumn?.getColId() ?? "") || isFullWidthGroup)) {
+      return { value: this.processRowGroupCallback(_addGridCommonParams(this.gos, { column: column2, node })) ?? "" };
     }
     if (this.processCellCallback) {
       return {
         value: this.processCellCallback(
           _addGridCommonParams(this.gos, {
             accumulatedRowIndex,
-            column,
+            column: column2,
             node,
-            value: this.valueSvc.getValueForDisplay(column, node, void 0, void 0).value,
+            value: this.valueSvc.getValueForDisplay(column2, node, void 0, void 0).value,
             type,
             parseValue: (valueToParse) => this.valueSvc.parseValue(
-              column,
+              column2,
               node,
               valueToParse,
-              this.valueSvc.getValue(column, node, void 0)
+              this.valueSvc.getValue(column2, node, void 0)
             ),
-            formatValue: (valueToFormat) => this.valueSvc.formatValue(column, node, valueToFormat) ?? valueToFormat
+            formatValue: (valueToFormat) => this.valueSvc.formatValue(column2, node, valueToFormat) ?? valueToFormat
           })
         ) ?? ""
       };
@@ -57579,13 +57579,13 @@ var BaseGridSerializingSession = class {
     const isTreeData = this.gos.get("treeData");
     const valueService = this.valueSvc;
     const isGrandTotalRow = node.level === -1 && node.footer;
-    const isMultiAutoCol = column.colDef.showRowGroup === true && (node.group || isTreeData);
+    const isMultiAutoCol = column2.colDef.showRowGroup === true && (node.group || isTreeData);
     if (!isGrandTotalRow && (isFullWidthGroup || isMultiAutoCol)) {
       let concatenatedGroupValue = "";
       let pointer = node;
       while (pointer && pointer.level !== -1) {
         const { value: value2, valueFormatted: valueFormatted2 } = valueService.getValueForDisplay(
-          isFullWidthGroup ? void 0 : column,
+          isFullWidthGroup ? void 0 : column2,
           // full width group doesn't have a column
           pointer,
           true,
@@ -57600,17 +57600,17 @@ var BaseGridSerializingSession = class {
         valueFormatted: concatenatedGroupValue
       };
     }
-    const { value, valueFormatted } = valueService.getValueForDisplay(column, node, true, true);
+    const { value, valueFormatted } = valueService.getValueForDisplay(column2, node, true, true);
     return {
       value: value ?? "",
       valueFormatted
     };
   }
-  getHeaderName(callback, column) {
+  getHeaderName(callback, column2) {
     if (callback) {
-      return callback(_addGridCommonParams(this.gos, { column }));
+      return callback(_addGridCommonParams(this.gos, { column: column2 }));
     }
-    return this.colNames.getDisplayNameForColumn(column, "csv", true);
+    return this.colNames.getDisplayNameForColumn(column2, "csv", true);
   }
 };
 function _downloadFile(fileName, content) {
@@ -58038,9 +58038,9 @@ var ValidationService = class extends BeanStub {
     this.gridOptions = beans.gridOptions;
     provideValidationServiceLogger(getError);
   }
-  warnOnInitialPropertyUpdate(source, key) {
-    if (source === "api" && INITIAL_GRID_OPTION_KEYS[key]) {
-      _warn(22, { key });
+  warnOnInitialPropertyUpdate(source2, key2) {
+    if (source2 === "api" && INITIAL_GRID_OPTION_KEYS[key2]) {
+      _warn(22, { key: key2 });
     }
   }
   processGridOptions(options) {
@@ -58119,17 +58119,17 @@ var ValidationService = class extends BeanStub {
     }
     const warnings = /* @__PURE__ */ new Set();
     const optionKeys = Object.keys(options);
-    optionKeys.forEach((key) => {
-      const deprecation = deprecations[key];
+    optionKeys.forEach((key2) => {
+      const deprecation = deprecations[key2];
       if (deprecation) {
         const { message, version } = deprecation;
-        warnings.add(`As of v${version}, ${String(key)} is deprecated. ${message ?? ""}`);
+        warnings.add(`As of v${version}, ${String(key2)} is deprecated. ${message ?? ""}`);
       }
-      const value = options[key];
+      const value = options[key2];
       if (value == null || value === false) {
         return;
       }
-      const rules = validations[key];
+      const rules = validations[key2];
       if (!rules) {
         return;
       }
@@ -58138,7 +58138,7 @@ var ValidationService = class extends BeanStub {
         const actualType = typeof value;
         if (actualType !== expectedType) {
           warnings.add(
-            `${String(key)} should be of type '${expectedType}' but received '${actualType}' (${value}).`
+            `${String(key2)} should be of type '${expectedType}' but received '${actualType}' (${value}).`
           );
           return;
         }
@@ -58147,13 +58147,13 @@ var ValidationService = class extends BeanStub {
         const rowModel = this.gridOptions.rowModelType ?? "clientSide";
         if (!supportedRowModels.includes(rowModel)) {
           warnings.add(
-            `${String(key)} is not supported with the '${rowModel}' row model. It is only valid with: ${supportedRowModels.join(", ")}.`
+            `${String(key2)} is not supported with the '${rowModel}' row model. It is only valid with: ${supportedRowModels.join(", ")}.`
           );
           return;
         }
       }
       if (dependencies) {
-        const warning2 = this.checkForRequiredDependencies(key, dependencies, options);
+        const warning2 = this.checkForRequiredDependencies(key2, dependencies, options);
         if (warning2) {
           warnings.add(warning2);
           return;
@@ -58173,17 +58173,17 @@ var ValidationService = class extends BeanStub {
       }
     }
   }
-  checkForRequiredDependencies(key, validator, options) {
+  checkForRequiredDependencies(key2, validator, options) {
     const optionEntries = Object.entries(validator);
-    const failedOptions = optionEntries.filter(([key2, value]) => {
-      const gridOptionValue = options[key2];
+    const failedOptions = optionEntries.filter(([key22, value]) => {
+      const gridOptionValue = options[key22];
       return !value.required.includes(gridOptionValue);
     });
     if (failedOptions.length === 0) {
       return null;
     }
     return failedOptions.map(
-      ([failedKey, possibleOptions]) => `'${String(key)}' requires '${failedKey}' to be one of [${possibleOptions.required.map((o) => {
+      ([failedKey, possibleOptions]) => `'${String(key2)}' requires '${failedKey}' to be one of [${possibleOptions.required.map((o) => {
         if (o === null) {
           return "null";
         } else if (o === void 0) {
@@ -58201,9 +58201,9 @@ var ValidationService = class extends BeanStub {
       validProperties
     );
     const invalidPropertiesKeys = Object.keys(invalidProperties);
-    for (const key of invalidPropertiesKeys) {
-      const value = invalidProperties[key];
-      let message = `invalid ${containerName} property '${key}' did you mean any of these: ${value.slice(0, 8).join(", ")}.`;
+    for (const key2 of invalidPropertiesKeys) {
+      const value = invalidProperties[key2];
+      let message = `invalid ${containerName} property '${key2}' did you mean any of these: ${value.slice(0, 8).join(", ")}.`;
       if (validProperties.includes("context")) {
         message += `
 If you are trying to annotate ${containerName} with application data, use the '${containerName}.context' property instead.`;
@@ -58332,8 +58332,8 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
     const colDefChanged = () => this.onColDefChanged(compBean);
     compBean.addManagedListeners(this.column, { colDefChanged });
     compBean.addManagedEventListeners({
-      filterSwitched: ({ column }) => {
-        if (column === this.column) {
+      filterSwitched: ({ column: column2 }) => {
+        if (column2 === this.column) {
           colDefChanged();
         }
       }
@@ -58351,11 +58351,11 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
   moveHeader() {
   }
   getHeaderClassParams() {
-    const { column, beans } = this;
-    const colDef = column.colDef;
+    const { column: column2, beans } = this;
+    const colDef = column2.colDef;
     return _addGridCommonParams(beans.gos, {
       colDef,
-      column,
+      column: column2,
       floatingFilter: true
     });
   }
@@ -58515,7 +58515,7 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
     }
     const {
       beans: { colFilter },
-      column,
+      column: column2,
       gos
     } = this;
     const syncWithFilter = (event) => {
@@ -58530,18 +58530,18 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
         if (comp) {
           if (gos.get("enableFilterHandlers")) {
             const eventWithParams = event;
-            let source = "filter";
+            let source2 = "filter";
             if (eventWithParams?.afterFloatingFilter) {
-              source = "ui";
+              source2 = "ui";
             } else if (eventWithParams?.afterDataChange) {
-              source = "dataChanged";
+              source2 = "dataChanged";
             } else if (event?.source === "api") {
-              source = "api";
+              source2 = "api";
             }
-            this.updateFloatingFilterParams(this.userCompDetails, source);
+            this.updateFloatingFilterParams(this.userCompDetails, source2);
             return;
           }
-          const parentModel = colFilter?.getCurrentFloatingFilterParentModel(column);
+          const parentModel = colFilter?.getCurrentFloatingFilterParentModel(column2);
           const filterChangedEvent = event ? {
             // event can have additional params like `afterDataChange` which need to be passed through
             ...event,
@@ -58552,8 +58552,8 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
         }
       });
     };
-    [this.destroySyncListener] = compBean.addManagedListeners(column, { filterChanged: syncWithFilter });
-    if (colFilter?.isFilterActive(column)) {
+    [this.destroySyncListener] = compBean.addManagedListeners(column2, { filterChanged: syncWithFilter });
+    if (colFilter?.isFilterActive(column2)) {
       syncWithFilter(null);
     }
   }
@@ -58617,7 +58617,7 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
       this.setupFilterChangedListener(compBean);
     }
   }
-  updateFloatingFilterParams(userCompDetails, source) {
+  updateFloatingFilterParams(userCompDetails, source2) {
     if (!userCompDetails) {
       return;
     }
@@ -58628,7 +58628,7 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
           params = {
             ...params,
             model: _getFilterModel(this.beans.colFilter?.model ?? {}, this.column.getColId()),
-            source
+            source: source2
           };
         }
         floatingFilter.refresh(params);
@@ -58644,13 +58644,13 @@ var HeaderFilterCellCtrl = class extends AbstractHeaderCellCtrl {
   }
 };
 function showColumnMenu(beans, colKey) {
-  const column = beans.colModel.getCol(colKey);
-  if (!column) {
+  const column2 = beans.colModel.getCol(colKey);
+  if (!column2) {
     _error(12, { colKey });
     return;
   }
   beans.menuSvc?.showColumnMenu({
-    column,
+    column: column2,
     positionBy: "auto"
   });
 }
@@ -58742,9 +58742,9 @@ var PopupService = class extends BasePopupService {
   callPostProcessPopup(params, type, ePopup, eventSource, mouseEvent) {
     const callback = this.gos.getCallback("postProcessPopup");
     if (callback) {
-      const { column, rowNode } = params;
+      const { column: column2, rowNode } = params;
       const postProcessParams = {
-        column,
+        column: column2,
         rowNode,
         ePopup,
         type,
@@ -58785,13 +58785,13 @@ function isColumnFilterPresent(beans) {
   const filterManager = beans.filterManager;
   return !!filterManager?.isColumnFilterPresent() || !!filterManager?.isAggregateFilterPresent();
 }
-function getColumnFilterInstance(beans, key) {
-  return beans.filterManager?.getColumnFilterInstance(key) ?? Promise.resolve(void 0);
+function getColumnFilterInstance(beans, key2) {
+  return beans.filterManager?.getColumnFilterInstance(key2) ?? Promise.resolve(void 0);
 }
-function destroyFilter(beans, key) {
-  const column = beans.colModel.getColDefCol(key);
-  if (column) {
-    return beans.colFilter?.destroyFilter(column, "api");
+function destroyFilter(beans, key2) {
+  const column2 = beans.colModel.getColDefCol(key2);
+  if (column2) {
+    return beans.colFilter?.destroyFilter(column2, "api");
   }
 }
 function setFilterModel(beans, model) {
@@ -58800,26 +58800,26 @@ function setFilterModel(beans, model) {
 function getFilterModel(beans) {
   return beans.filterManager?.getFilterModel() ?? {};
 }
-function getColumnFilterModel(beans, key, useUnapplied) {
+function getColumnFilterModel(beans, key2, useUnapplied) {
   const { gos, colModel, colFilter } = beans;
   if (useUnapplied && !gos.get("enableFilterHandlers")) {
     _warn(288);
     useUnapplied = false;
   }
-  const column = colModel.getColDefCol(key);
-  return column ? colFilter?.getModelForColumn(column, useUnapplied) ?? null : null;
+  const column2 = colModel.getColDefCol(key2);
+  return column2 ? colFilter?.getModelForColumn(column2, useUnapplied) ?? null : null;
 }
-function setColumnFilterModel(beans, column, model) {
-  return beans.filterManager?.setColumnFilterModel(column, model) ?? Promise.resolve();
+function setColumnFilterModel(beans, column2, model) {
+  return beans.filterManager?.setColumnFilterModel(column2, model) ?? Promise.resolve();
 }
 function showColumnFilter(beans, colKey) {
-  const column = beans.colModel.getCol(colKey);
-  if (!column) {
+  const column2 = beans.colModel.getCol(colKey);
+  if (!column2) {
     _error(12, { colKey });
     return;
   }
   beans.menuSvc?.showFilterMenu({
-    column,
+    column: column2,
     containerType: "columnFilter",
     positionBy: "auto"
   });
@@ -58828,12 +58828,12 @@ function hideColumnFilter(beans) {
   beans.menuSvc?.hideFilterMenu();
 }
 function getColumnFilterHandler(beans, colKey) {
-  const column = beans.colModel.getCol(colKey);
-  if (!column) {
+  const column2 = beans.colModel.getCol(colKey);
+  if (!column2) {
     _error(12, { colKey });
     return void 0;
   }
-  return beans.colFilter?.getHandler(column, true);
+  return beans.colFilter?.getHandler(column2, true);
 }
 function doFilterAction(beans, params) {
   const { colModel, colFilter, gos } = beans;
@@ -58843,9 +58843,9 @@ function doFilterAction(beans, params) {
   }
   const { colId, action } = params;
   if (colId) {
-    const column = colModel.getColById(colId);
-    if (column) {
-      colFilter?.updateModel(column, action);
+    const column2 = colModel.getColById(colId);
+    if (column2) {
+      colFilter?.updateModel(column2, action);
     }
   } else {
     colFilter?.updateAllModels(action);
@@ -58894,10 +58894,10 @@ var ColumnFilterService = class extends BeanStub {
   refreshModel() {
     this.onNewRowsLoaded("rowDataUpdated");
   }
-  setModel(model, source = "api", forceUpdateActive) {
+  setModel(model, source2 = "api", forceUpdateActive) {
     const { colModel, dataTypeSvc, filterManager } = this.beans;
     if (dataTypeSvc?.isPendingInference) {
-      this.modelUpdates.push({ model, source });
+      this.modelUpdates.push({ model, source: source2 });
       return;
     }
     const allPromises = [];
@@ -58910,16 +58910,16 @@ var ColumnFilterService = class extends BeanStub {
         modelKeys.delete(colId);
       });
       modelKeys.forEach((colId) => {
-        const column = colModel.getColDefCol(colId) || colModel.getCol(colId);
-        if (!column) {
+        const column2 = colModel.getColDefCol(colId) || colModel.getCol(colId);
+        if (!column2) {
           _warn(62, { colId });
           return;
         }
-        if (!column.isFilterAllowed()) {
+        if (!column2.isFilterAllowed()) {
           _warn(63, { colId });
           return;
         }
-        const filterWrapper = this.getOrCreateFilterWrapper(column, true);
+        const filterWrapper = this.getOrCreateFilterWrapper(column2, true);
         if (!filterWrapper) {
           _warn(64, { colId });
           return;
@@ -58943,7 +58943,7 @@ var ColumnFilterService = class extends BeanStub {
         }
       });
       if (columns.length > 0) {
-        filterManager?.onFilterChanged({ columns, source });
+        filterManager?.onFilterChanged({ columns, source: source2 });
       } else if (forceUpdateActive) {
         this.updateActive("filterChanged");
       }
@@ -58956,10 +58956,10 @@ var ColumnFilterService = class extends BeanStub {
       initialModel,
       beans: { colModel }
     } = this;
-    allColumnFilters.forEach((filterWrapper, key) => {
+    allColumnFilters.forEach((filterWrapper, key2) => {
       const model = this.getModelFromFilterWrapper(filterWrapper);
       if (_exists(model)) {
-        result[key] = model;
+        result[key2] = model;
       }
     });
     if (!excludeInitialState) {
@@ -58972,7 +58972,7 @@ var ColumnFilterService = class extends BeanStub {
     }
     return result;
   }
-  setState(model, state, source = "api") {
+  setState(model, state, source2 = "api") {
     this.state.clear();
     if (state) {
       for (const colId of Object.keys(state)) {
@@ -58983,7 +58983,7 @@ var ColumnFilterService = class extends BeanStub {
         });
       }
     }
-    this.setModel(model, source, true);
+    this.setModel(model, source2, true);
   }
   getState() {
     const state = this.state;
@@ -59002,8 +59002,8 @@ var ColumnFilterService = class extends BeanStub {
     return hasNewState ? newState : void 0;
   }
   getModelFromFilterWrapper(filterWrapper) {
-    const column = filterWrapper.column;
-    const colId = column.getColId();
+    const column2 = filterWrapper.column;
+    const colId = column2.getColId();
     if (filterWrapper.isHandler) {
       return _getFilterModel(this.model, colId);
     }
@@ -59047,13 +59047,13 @@ var ColumnFilterService = class extends BeanStub {
     };
     const { colModel, gos } = this.beans;
     const groupFilterEnabled = !!_getGroupAggFiltering(gos);
-    const isAggFilter = (column) => {
-      const isSecondary = !column.isPrimary();
+    const isAggFilter = (column2) => {
+      const isSecondary = !column2.isPrimary();
       if (isSecondary) {
         return true;
       }
       const isShowingPrimaryColumns = !colModel.isPivotActive();
-      const isValueActive = column.isValueActive();
+      const isValueActive = column2.isValueActive();
       if (!isValueActive || !isShowingPrimaryColumns) {
         return false;
       }
@@ -59064,9 +59064,9 @@ var ColumnFilterService = class extends BeanStub {
     };
     const activeAggregateFilters = [];
     const activeColumnFilters = [];
-    const addFilter = (column, filterActive, doesFilterPassWrapper) => {
+    const addFilter = (column2, filterActive, doesFilterPassWrapper) => {
       if (filterActive) {
-        if (isAggFilter(column)) {
+        if (isAggFilter(column2)) {
           activeAggregateFilters.push(doesFilterPassWrapper);
         } else {
           activeColumnFilters.push(doesFilterPassWrapper);
@@ -59075,12 +59075,12 @@ var ColumnFilterService = class extends BeanStub {
     };
     const promises = [];
     this.allColumnFilters.forEach((filterWrapper) => {
-      const column = filterWrapper.column;
-      const colId = column.getColId();
+      const column2 = filterWrapper.column;
+      const colId = column2.getColId();
       if (filterWrapper.isHandler) {
         promises.push(
           AgPromise.resolve().then(() => {
-            addFilter(column, this.isHandlerActive(column), {
+            addFilter(column2, this.isHandlerActive(column2), {
               colId,
               isHandler: true,
               handler: filterWrapper.handler,
@@ -59093,7 +59093,7 @@ var ColumnFilterService = class extends BeanStub {
         if (promise) {
           promises.push(
             promise.then((filter) => {
-              addFilter(column, isFilterActive(filter), {
+              addFilter(column2, isFilterActive(filter), {
                 colId,
                 isHandler: false,
                 comp: filter
@@ -59108,17 +59108,17 @@ var ColumnFilterService = class extends BeanStub {
       this.activeColumnFilters = activeColumnFilters;
     });
   }
-  updateFilterFlagInColumns(source, additionalEventAttributes) {
+  updateFilterFlagInColumns(source2, additionalEventAttributes) {
     const promises = [];
     this.allColumnFilters.forEach((filterWrapper) => {
-      const column = filterWrapper.column;
+      const column2 = filterWrapper.column;
       if (filterWrapper.isHandler) {
         promises.push(
           AgPromise.resolve().then(() => {
             this.setColFilterActive(
-              column,
-              this.isHandlerActive(column),
-              source,
+              column2,
+              this.isHandlerActive(column2),
+              source2,
               additionalEventAttributes
             );
           })
@@ -59129,9 +59129,9 @@ var ColumnFilterService = class extends BeanStub {
           promises.push(
             promise.then((filter) => {
               this.setColFilterActive(
-                column,
+                column2,
                 filter.isFilterActive(),
-                source,
+                source2,
                 additionalEventAttributes
               );
             })
@@ -59139,7 +59139,7 @@ var ColumnFilterService = class extends BeanStub {
         }
       }
     });
-    this.beans.groupFilter?.updateFilterFlags(source, additionalEventAttributes);
+    this.beans.groupFilter?.updateFilterFlags(source2, additionalEventAttributes);
     return AgPromise.all(promises);
   }
   doFiltersPass(node, colIdToSkip, targetAggregates) {
@@ -59176,8 +59176,8 @@ var ColumnFilterService = class extends BeanStub {
     }
     return true;
   }
-  getHandlerParams(column) {
-    const wrapper = this.allColumnFilters.get(column.getColId());
+  getHandlerParams(column2) {
+    const wrapper = this.allColumnFilters.get(column2.getColId());
     return wrapper?.isHandler ? wrapper.handlerParams : void 0;
   }
   // sometimes (especially in React) the filter can call onFilterChanged when we are in the middle
@@ -59200,8 +59200,8 @@ var ColumnFilterService = class extends BeanStub {
     }
   }
   updateBeforeFilterChanged(params = {}) {
-    const { column, additionalEventAttributes } = params;
-    const colId = column?.getColId();
+    const { column: column2, additionalEventAttributes } = params;
+    const colId = column2?.getColId();
     return this.updateActiveFilters().then(
       () => this.updateFilterFlagInColumns("filterChanged", additionalEventAttributes).then(() => {
         this.allColumnFilters.forEach((filterWrapper) => {
@@ -59229,7 +59229,7 @@ var ColumnFilterService = class extends BeanStub {
     const allowShowChangeAfterFilter = this.gos.get("allowShowChangeAfterFilter") ?? false;
     return !allowShowChangeAfterFilter && this.processingFilterChange;
   }
-  onNewRowsLoaded(source) {
+  onNewRowsLoaded(source2) {
     const promises = [];
     this.allColumnFilters.forEach((filterWrapper) => {
       const isHandler = filterWrapper.isHandler;
@@ -59245,43 +59245,43 @@ var ColumnFilterService = class extends BeanStub {
         );
       }
     });
-    AgPromise.all(promises).then(() => this.updateActive(source, { afterDataChange: true }));
+    AgPromise.all(promises).then(() => this.updateActive(source2, { afterDataChange: true }));
   }
-  updateActive(source, additionalEventAttributes) {
-    this.updateFilterFlagInColumns(source, additionalEventAttributes).then(() => this.updateActiveFilters());
+  updateActive(source2, additionalEventAttributes) {
+    this.updateFilterFlagInColumns(source2, additionalEventAttributes).then(() => this.updateActiveFilters());
   }
   createGetValue(filterColumn, filterValueGetterOverride) {
     const { filterValueSvc, colModel } = this.beans;
-    return (rowNode, column) => {
-      const columnToUse = column ? colModel.getCol(column) : filterColumn;
+    return (rowNode, column2) => {
+      const columnToUse = column2 ? colModel.getCol(column2) : filterColumn;
       return columnToUse ? filterValueSvc.getValue(columnToUse, rowNode, filterValueGetterOverride) : void 0;
     };
   }
-  isFilterActive(column) {
-    const filterWrapper = this.cachedFilter(column);
+  isFilterActive(column2) {
+    const filterWrapper = this.cachedFilter(column2);
     if (filterWrapper?.isHandler) {
-      return this.isHandlerActive(column);
+      return this.isHandlerActive(column2);
     }
     const filter = filterWrapper?.filter;
     if (filter) {
       return filter.isFilterActive();
     }
-    return _getFilterModel(this.initialModel, column.getColId()) != null;
+    return _getFilterModel(this.initialModel, column2.getColId()) != null;
   }
-  isHandlerActive(column) {
-    const active = _exists(_getFilterModel(this.model, column.getColId()));
+  isHandlerActive(column2) {
+    const active = _exists(_getFilterModel(this.model, column2.getColId()));
     if (active) {
       return active;
     }
     const groupFilter = this.beans.groupFilter;
-    return groupFilter?.isGroupFilter(column) ? groupFilter.isFilterActive(column) : false;
+    return groupFilter?.isGroupFilter(column2) ? groupFilter.isFilterActive(column2) : false;
   }
-  getOrCreateFilterUi(column) {
-    const filterWrapper = this.getOrCreateFilterWrapper(column, true);
+  getOrCreateFilterUi(column2) {
+    const filterWrapper = this.getOrCreateFilterWrapper(column2, true);
     return filterWrapper ? getFilterUiFromWrapper(filterWrapper) : null;
   }
-  getFilterUiForDisplay(column) {
-    const filterWrapper = this.getOrCreateFilterWrapper(column, true);
+  getFilterUiForDisplay(column2) {
+    const filterWrapper = this.getOrCreateFilterWrapper(column2, true);
     if (!filterWrapper) {
       return null;
     }
@@ -59295,26 +59295,26 @@ var ColumnFilterService = class extends BeanStub {
       isHandler: filterWrapper.isHandler
     }));
   }
-  getHandler(column, createIfMissing) {
-    const filterWrapper = this.getOrCreateFilterWrapper(column, createIfMissing);
+  getHandler(column2, createIfMissing) {
+    const filterWrapper = this.getOrCreateFilterWrapper(column2, createIfMissing);
     return filterWrapper?.isHandler ? filterWrapper.handler : void 0;
   }
-  getOrCreateFilterWrapper(column, createIfMissing) {
-    if (!column.isFilterAllowed()) {
+  getOrCreateFilterWrapper(column2, createIfMissing) {
+    if (!column2.isFilterAllowed()) {
       return void 0;
     }
-    let filterWrapper = this.cachedFilter(column);
+    let filterWrapper = this.cachedFilter(column2);
     if (!filterWrapper && createIfMissing) {
-      filterWrapper = this.createFilterWrapper(column);
-      this.setColumnFilterWrapper(column, filterWrapper);
+      filterWrapper = this.createFilterWrapper(column2);
+      this.setColumnFilterWrapper(column2, filterWrapper);
     }
     return filterWrapper;
   }
-  cachedFilter(column) {
-    return this.allColumnFilters.get(column.getColId());
+  cachedFilter(column2) {
+    return this.allColumnFilters.get(column2.getColId());
   }
-  getDefaultFilter(column, isFloating = false) {
-    return this.getDefaultFilterFromDataType(() => this.beans.dataTypeSvc?.getBaseDataType(column), isFloating);
+  getDefaultFilter(column2, isFloating = false) {
+    return this.getDefaultFilterFromDataType(() => this.beans.dataTypeSvc?.getBaseDataType(column2), isFloating);
   }
   getDefaultFilterFromDataType(getCellDataType, isFloating = false) {
     if (_isSetFilterByDefault(this.gos)) {
@@ -59322,12 +59322,12 @@ var ColumnFilterService = class extends BeanStub {
     }
     return _getDefaultSimpleFilter(getCellDataType(), isFloating);
   }
-  getDefaultFloatingFilter(column) {
-    return this.getDefaultFilter(column, true);
+  getDefaultFloatingFilter(column2) {
+    return this.getDefaultFilter(column2, true);
   }
-  createFilterComp(column, filterDef, defaultFilter, getFilterParams, isHandler, source) {
+  createFilterComp(column2, filterDef, defaultFilter, getFilterParams, isHandler, source2) {
     const createFilterCompDetails = () => {
-      const params = this.createFilterCompParams(column, isHandler, source);
+      const params = this.createFilterCompParams(column2, isHandler, source2);
       const updatedParams = getFilterParams(params, isHandler);
       return _getFilterDetails(this.beans.userCompFactory, filterDef, updatedParams, defaultFilter);
     };
@@ -59343,14 +59343,14 @@ var ColumnFilterService = class extends BeanStub {
       createFilterUi
     };
   }
-  createFilterInstance(column, filterDef, defaultFilter, getFilterParams) {
+  createFilterInstance(column2, filterDef, defaultFilter, getFilterParams) {
     const selectableFilter = this.beans.selectableFilter;
     if (selectableFilter?.isSelectable(filterDef)) {
-      filterDef = selectableFilter.getFilterDef(column, filterDef);
+      filterDef = selectableFilter.getFilterDef(column2, filterDef);
     }
-    const { handler, handlerParams, handlerGenerator } = this.createHandler(column, filterDef, defaultFilter) ?? {};
+    const { handler, handlerParams, handlerGenerator } = this.createHandler(column2, filterDef, defaultFilter) ?? {};
     const filterCompDetails = this.createFilterComp(
-      column,
+      column2,
       filterDef,
       defaultFilter,
       getFilterParams,
@@ -59370,7 +59370,7 @@ var ColumnFilterService = class extends BeanStub {
     if (this.isGlobalButtons) {
       const hasLocalButtons = !!compDetails.params?.buttons?.length;
       if (!hasLocalButtons) {
-        _warn(281, { colId: column.getColId() });
+        _warn(281, { colId: column2.getColId() });
       }
     }
     return {
@@ -59381,27 +59381,27 @@ var ColumnFilterService = class extends BeanStub {
       createFilterUi
     };
   }
-  createBaseFilterParams(column, forFloatingFilter) {
+  createBaseFilterParams(column2, forFloatingFilter) {
     const { filterManager, rowModel } = this.beans;
     return _addGridCommonParams(this.gos, {
-      column,
-      colDef: column.getColDef(),
-      getValue: this.createGetValue(column),
-      doesRowPassOtherFilter: forFloatingFilter ? () => true : (node) => filterManager?.doesRowPassOtherFilters(column.getColId(), node) ?? true,
+      column: column2,
+      colDef: column2.getColDef(),
+      getValue: this.createGetValue(column2),
+      doesRowPassOtherFilter: forFloatingFilter ? () => true : (node) => filterManager?.doesRowPassOtherFilters(column2.getColId(), node) ?? true,
       // to avoid breaking changes to `filterParams` defined as functions
       // we need to provide the below options even though they are not valid for handlers
       rowModel
     });
   }
-  createFilterCompParams(column, useHandler, source, forFloatingFilter) {
-    const filterChangedCallback = this.filterChangedCallbackFactory(column);
-    const params = this.createBaseFilterParams(column, forFloatingFilter);
+  createFilterCompParams(column2, useHandler, source2, forFloatingFilter) {
+    const filterChangedCallback = this.filterChangedCallbackFactory(column2);
+    const params = this.createBaseFilterParams(column2, forFloatingFilter);
     params.filterChangedCallback = filterChangedCallback;
     params.filterModifiedCallback = forFloatingFilter ? () => {
-    } : (additionalEventAttributes) => this.filterModified(column, additionalEventAttributes);
+    } : (additionalEventAttributes) => this.filterModified(column2, additionalEventAttributes);
     if (useHandler) {
       const displayParams = params;
-      const colId = column.getColId();
+      const colId = column2.getColId();
       const model = _getFilterModel(this.model, colId);
       displayParams.model = model;
       displayParams.state = this.state.get(colId) ?? {
@@ -59409,26 +59409,26 @@ var ColumnFilterService = class extends BeanStub {
       };
       displayParams.onModelChange = (model2, additionalEventAttributes) => {
         this.updateStoredModel(colId, model2);
-        this.refreshHandlerAndUi(column, model2, "ui", false, additionalEventAttributes).then(() => {
+        this.refreshHandlerAndUi(column2, model2, "ui", false, additionalEventAttributes).then(() => {
           filterChangedCallback({ ...additionalEventAttributes, source: "columnFilter" });
         });
       };
       displayParams.onStateChange = (state) => {
-        this.updateState(column, state);
-        this.updateOrRefreshFilterUi(column);
+        this.updateState(column2, state);
+        this.updateOrRefreshFilterUi(column2);
       };
       displayParams.onAction = (action, additionalEventAttributes, event) => {
-        this.updateModel(column, action, additionalEventAttributes);
+        this.updateModel(column2, action, additionalEventAttributes);
         this.dispatchLocalEvent({
           type: "filterAction",
-          column,
+          column: column2,
           action,
           event
         });
       };
-      displayParams.getHandler = () => this.getHandler(column, true);
-      displayParams.onUiChange = (additionalEventAttributes) => this.filterUiChanged(column, additionalEventAttributes);
-      displayParams.source = source;
+      displayParams.getHandler = () => this.getHandler(column2, true);
+      displayParams.onUiChange = (additionalEventAttributes) => this.filterUiChanged(column2, additionalEventAttributes);
+      displayParams.source = source2;
     }
     return params;
   }
@@ -59452,14 +59452,14 @@ var ColumnFilterService = class extends BeanStub {
     promise.then(updateInstanceCallback);
     return filterUi;
   }
-  createFilterWrapper(column) {
+  createFilterWrapper(column2) {
     const { compDetails, handler, handlerGenerator, handlerParams, createFilterUi } = this.createFilterInstance(
-      column,
-      column.getColDef(),
-      this.getDefaultFilter(column),
+      column2,
+      column2.getColDef(),
+      this.getDefaultFilter(column2),
       (params) => params
     );
-    const colId = column.getColId();
+    const colId = column2.getColId();
     if (handler) {
       delete this.initialModel[colId];
       handler.init?.({
@@ -59468,7 +59468,7 @@ var ColumnFilterService = class extends BeanStub {
         model: _getFilterModel(this.model, colId)
       });
       return {
-        column,
+        column: column2,
         isHandler: true,
         handler,
         handlerGenerator,
@@ -59478,7 +59478,7 @@ var ColumnFilterService = class extends BeanStub {
     }
     if (createFilterUi) {
       const filterWrapper = {
-        column,
+        column: column2,
         filterUi: null,
         isHandler: false
       };
@@ -59488,12 +59488,12 @@ var ColumnFilterService = class extends BeanStub {
       return filterWrapper;
     }
     return {
-      column,
+      column: column2,
       filterUi: null,
       isHandler: false
     };
   }
-  createHandlerFunc(column, filterDef, defaultFilter) {
+  createHandlerFunc(column2, filterDef, defaultFilter) {
     const { gos, frameworkOverrides, registry } = this.beans;
     let doesFilterPass;
     const getFilterHandlerFromDef = (filterDef2) => {
@@ -59550,48 +59550,48 @@ var ColumnFilterService = class extends BeanStub {
         return void 0;
       }
       if (_isClientSideRowModel(gos)) {
-        _warn(277, { colId: column.getColId() });
+        _warn(277, { colId: column2.getColId() });
       }
       return DUMMY_HANDLER;
     }
     return { filterHandler, handlerNameOrCallback: doesFilterPass ?? handlerName };
   }
-  createHandler(column, filterDef, defaultFilter) {
-    const handlerFunc = this.createHandlerFunc(column, filterDef, defaultFilter);
+  createHandler(column2, filterDef, defaultFilter) {
+    const handlerFunc = this.createHandlerFunc(column2, filterDef, defaultFilter);
     if (!handlerFunc) {
       return void 0;
     }
     const filterParams = _mergeFilterParamsWithApplicationProvidedParams(
       this.beans.userCompFactory,
       filterDef,
-      this.createFilterCompParams(column, true, "init")
+      this.createFilterCompParams(column2, true, "init")
     );
     const { handlerNameOrCallback, filterHandler } = handlerFunc;
-    const { handler, handlerParams } = this.createHandlerFromFunc(column, filterHandler, filterParams);
+    const { handler, handlerParams } = this.createHandlerFromFunc(column2, filterHandler, filterParams);
     return {
       handler,
       handlerParams,
       handlerGenerator: handlerNameOrCallback ?? filterHandler
     };
   }
-  createHandlerFromFunc(column, filterHandler, filterParams) {
-    const colDef = column.getColDef();
-    const handler = filterHandler(_addGridCommonParams(this.gos, { column, colDef }));
-    const handlerParams = this.createHandlerParams(column, filterParams);
+  createHandlerFromFunc(column2, filterHandler, filterParams) {
+    const colDef = column2.getColDef();
+    const handler = filterHandler(_addGridCommonParams(this.gos, { column: column2, colDef }));
+    const handlerParams = this.createHandlerParams(column2, filterParams);
     return { handler, handlerParams };
   }
-  createHandlerParams(column, filterParams) {
-    const colDef = column.getColDef();
-    const colId = column.getColId();
-    const filterChangedCallback = this.filterChangedCallbackFactory(column);
+  createHandlerParams(column2, filterParams) {
+    const colDef = column2.getColDef();
+    const colId = column2.getColId();
+    const filterChangedCallback = this.filterChangedCallbackFactory(column2);
     return _addGridCommonParams(this.gos, {
       colDef,
-      column,
-      getValue: this.createGetValue(column),
+      column: column2,
+      getValue: this.createGetValue(column2),
       doesRowPassOtherFilter: (node) => this.beans.filterManager?.doesRowPassOtherFilters(colId, node) ?? true,
       onModelChange: (newModel, additionalEventAttributes) => {
         this.updateStoredModel(colId, newModel);
-        this.refreshHandlerAndUi(column, newModel, "handler", false, additionalEventAttributes).then(() => {
+        this.refreshHandlerAndUi(column2, newModel, "handler", false, additionalEventAttributes).then(() => {
           filterChangedCallback({ ...additionalEventAttributes, source: "columnFilter" });
         });
       },
@@ -59620,21 +59620,21 @@ var ColumnFilterService = class extends BeanStub {
       filterManager?.onFilterChanged({ columns, source: "api" });
     }
   }
-  isFilterAllowed(column) {
-    const isFilterAllowed = column.isFilterAllowed();
+  isFilterAllowed(column2) {
+    const isFilterAllowed = column2.isFilterAllowed();
     if (!isFilterAllowed) {
       return false;
     }
     const groupFilter = this.beans.groupFilter;
-    if (groupFilter?.isGroupFilter(column)) {
-      return groupFilter.isFilterAllowed(column);
+    if (groupFilter?.isGroupFilter(column2)) {
+      return groupFilter.isFilterAllowed(column2);
     }
     return true;
   }
-  getFloatingFilterCompDetails(column, showParentFilter) {
+  getFloatingFilterCompDetails(column2, showParentFilter) {
     const { userCompFactory, frameworkOverrides, selectableFilter } = this.beans;
     const parentFilterInstance = (callback) => {
-      const filterComponent = this.getOrCreateFilterUi(column);
+      const filterComponent = this.getOrCreateFilterUi(column2);
       if (filterComponent == null) {
         return;
       }
@@ -59642,46 +59642,46 @@ var ColumnFilterService = class extends BeanStub {
         callback(_unwrapUserComp(instance));
       });
     };
-    const colDef = column.getColDef();
-    const filterDef = selectableFilter?.isSelectable(colDef) ? selectableFilter.getFilterDef(column, colDef) : colDef;
-    const defaultFloatingFilterType = _getDefaultFloatingFilterType(frameworkOverrides, filterDef, () => this.getDefaultFloatingFilter(column)) ?? "agReadOnlyFloatingFilter";
+    const colDef = column2.getColDef();
+    const filterDef = selectableFilter?.isSelectable(colDef) ? selectableFilter.getFilterDef(column2, colDef) : colDef;
+    const defaultFloatingFilterType = _getDefaultFloatingFilterType(frameworkOverrides, filterDef, () => this.getDefaultFloatingFilter(column2)) ?? "agReadOnlyFloatingFilter";
     const isReactive = this.gos.get("enableFilterHandlers");
     const filterParams = _mergeFilterParamsWithApplicationProvidedParams(
       userCompFactory,
       filterDef,
-      this.createFilterCompParams(column, isReactive, "init", true)
+      this.createFilterCompParams(column2, isReactive, "init", true)
     );
     const params = _addGridCommonParams(this.gos, {
-      column,
+      column: column2,
       filterParams,
-      currentParentModel: () => this.getCurrentFloatingFilterParentModel(column),
+      currentParentModel: () => this.getCurrentFloatingFilterParentModel(column2),
       parentFilterInstance,
       showParentFilter
     });
     if (isReactive) {
       const displayParams = params;
-      const colId = column.getColId();
-      const filterChangedCallback = this.filterChangedCallbackFactory(column);
-      displayParams.onUiChange = (additionalEventAttributes) => this.floatingFilterUiChanged(column, additionalEventAttributes);
+      const colId = column2.getColId();
+      const filterChangedCallback = this.filterChangedCallbackFactory(column2);
+      displayParams.onUiChange = (additionalEventAttributes) => this.floatingFilterUiChanged(column2, additionalEventAttributes);
       displayParams.model = _getFilterModel(this.model, colId);
       displayParams.onModelChange = (model, additionalEventAttributes) => {
         this.updateStoredModel(colId, model);
-        this.refreshHandlerAndUi(column, model, "floating", true, additionalEventAttributes).then(() => {
+        this.refreshHandlerAndUi(column2, model, "floating", true, additionalEventAttributes).then(() => {
           filterChangedCallback({ ...additionalEventAttributes, source: "columnFilter" });
         });
       };
-      displayParams.getHandler = () => this.getHandler(column, true);
+      displayParams.getHandler = () => this.getHandler(column2, true);
       displayParams.source = "init";
     }
     return _getFloatingFilterCompDetails(userCompFactory, colDef, params, defaultFloatingFilterType);
   }
-  getCurrentFloatingFilterParentModel(column) {
-    return this.getModelFromFilterWrapper(this.cachedFilter(column) ?? { column });
+  getCurrentFloatingFilterParentModel(column2) {
+    return this.getModelFromFilterWrapper(this.cachedFilter(column2) ?? { column: column2 });
   }
-  destroyFilterUi(filterWrapper, column, compDetails, createFilterUi) {
-    const source = "paramsUpdated";
+  destroyFilterUi(filterWrapper, column2, compDetails, createFilterUi) {
+    const source2 = "paramsUpdated";
     if (filterWrapper.isHandler) {
-      const colId = column.getColId();
+      const colId = column2.getColId();
       delete this.initialModel[colId];
       this.state.delete(colId);
       const filterUi = filterWrapper.filterUi;
@@ -59693,32 +59693,32 @@ var ColumnFilterService = class extends BeanStub {
           this.destroyBean(filter);
           eventSvc.dispatchEvent({
             type: "filterDestroyed",
-            source,
-            column
+            source: source2,
+            column: column2
           });
         });
       } else {
         eventSvc.dispatchEvent({
           type: "filterHandlerDestroyed",
-          source,
-          column
+          source: source2,
+          column: column2
         });
       }
     } else {
-      this.destroyFilter(column, source);
+      this.destroyFilter(column2, source2);
     }
   }
   // destroys the filter, so it no longer takes part
-  destroyFilter(column, source = "api") {
-    const colId = column.getColId();
+  destroyFilter(column2, source2 = "api") {
+    const colId = column2.getColId();
     const filterWrapper = this.allColumnFilters.get(colId);
     this.disposeColumnListener(colId);
     delete this.initialModel[colId];
     if (filterWrapper) {
-      this.disposeFilterWrapper(filterWrapper, source).then((wasActive) => {
+      this.disposeFilterWrapper(filterWrapper, source2).then((wasActive) => {
         if (wasActive && this.isAlive()) {
           this.beans.filterManager?.onFilterChanged({
-            columns: [column],
+            columns: [column2],
             source: "api"
           });
         }
@@ -59732,23 +59732,23 @@ var ColumnFilterService = class extends BeanStub {
       columnListener();
     }
   }
-  disposeFilterWrapper(filterWrapper, source) {
+  disposeFilterWrapper(filterWrapper, source2) {
     let isActive = false;
-    const { column, isHandler, filterUi } = filterWrapper;
-    const colId = column.getColId();
+    const { column: column2, isHandler, filterUi } = filterWrapper;
+    const colId = column2.getColId();
     if (isHandler) {
-      isActive = this.isHandlerActive(column);
+      isActive = this.isHandlerActive(column2);
       this.destroyBean(filterWrapper.handler);
       delete this.model[colId];
       this.state.delete(colId);
     }
     const removeFilter = () => {
-      this.setColFilterActive(column, false, "filterDestroyed");
+      this.setColFilterActive(column2, false, "filterDestroyed");
       this.allColumnFilters.delete(colId);
       this.eventSvc.dispatchEvent({
         type: "filterDestroyed",
-        source,
-        column
+        source: source2,
+        column: column2
       });
     };
     if (filterUi) {
@@ -59765,40 +59765,40 @@ var ColumnFilterService = class extends BeanStub {
     }
     return AgPromise.resolve(isActive);
   }
-  filterChangedCallbackFactory(column) {
+  filterChangedCallbackFactory(column2) {
     return (additionalEventAttributes) => {
       this.callOnFilterChangedOutsideRenderCycle({
         additionalEventAttributes,
-        columns: [column],
-        column,
+        columns: [column2],
+        column: column2,
         source: additionalEventAttributes?.source ?? "columnFilter"
       });
     };
   }
-  filterParamsChanged(colId, source = "api") {
+  filterParamsChanged(colId, source2 = "api") {
     const filterWrapper = this.allColumnFilters.get(colId);
     if (!filterWrapper) {
       return;
     }
     const beans = this.beans;
-    const column = filterWrapper.column;
-    const colDef = column.getColDef();
-    const isFilterAllowed = column.isFilterAllowed();
-    const defaultFilter = this.getDefaultFilter(column);
+    const column2 = filterWrapper.column;
+    const colDef = column2.getColDef();
+    const isFilterAllowed = column2.isFilterAllowed();
+    const defaultFilter = this.getDefaultFilter(column2);
     const selectableFilter = beans.selectableFilter;
-    const filterDef = selectableFilter?.isSelectable(colDef) ? selectableFilter.getFilterDef(column, colDef) : colDef;
-    const handlerFunc = isFilterAllowed ? this.createHandlerFunc(column, filterDef, this.getDefaultFilter(column)) : void 0;
+    const filterDef = selectableFilter?.isSelectable(colDef) ? selectableFilter.getFilterDef(column2, colDef) : colDef;
+    const handlerFunc = isFilterAllowed ? this.createHandlerFunc(column2, filterDef, this.getDefaultFilter(column2)) : void 0;
     const isHandler = !!handlerFunc;
     const wasHandler = filterWrapper.isHandler;
     if (wasHandler != isHandler) {
-      this.destroyFilter(column, "paramsUpdated");
+      this.destroyFilter(column2, "paramsUpdated");
       return;
     }
-    const { compDetails, createFilterUi } = (isFilterAllowed ? this.createFilterComp(column, filterDef, defaultFilter, (params) => params, isHandler, "colDef") : null) ?? { compDetails: null, createFilterUi: null };
+    const { compDetails, createFilterUi } = (isFilterAllowed ? this.createFilterComp(column2, filterDef, defaultFilter, (params) => params, isHandler, "colDef") : null) ?? { compDetails: null, createFilterUi: null };
     const newFilterParams = compDetails?.params ?? _mergeFilterParamsWithApplicationProvidedParams(
       beans.userCompFactory,
       filterDef,
-      this.createFilterCompParams(column, isHandler, "colDef")
+      this.createFilterCompParams(column2, isHandler, "colDef")
     );
     if (wasHandler) {
       const handlerGenerator = handlerFunc?.handlerNameOrCallback ?? handlerFunc?.filterHandler;
@@ -59806,7 +59806,7 @@ var ColumnFilterService = class extends BeanStub {
       if (filterWrapper.handlerGenerator != handlerGenerator) {
         const oldHandler = filterWrapper.handler;
         const { handler, handlerParams } = this.createHandlerFromFunc(
-          column,
+          column2,
           handlerFunc.filterHandler,
           newFilterParams
         );
@@ -59818,12 +59818,12 @@ var ColumnFilterService = class extends BeanStub {
         this.destroyBean(oldHandler);
         if (existingModel != null) {
           this.beans.filterManager?.onFilterChanged({
-            columns: [column],
-            source
+            columns: [column2],
+            source: source2
           });
         }
       } else {
-        const handlerParams = this.createHandlerParams(column, compDetails?.params);
+        const handlerParams = this.createHandlerParams(column2, compDetails?.params);
         filterWrapper.handlerParams = handlerParams;
         filterWrapper.handler.refresh?.({
           ...handlerParams,
@@ -59833,28 +59833,28 @@ var ColumnFilterService = class extends BeanStub {
       }
     }
     if (this.areFilterCompsDifferent(filterWrapper.filterUi?.compDetails ?? null, compDetails) || !filterWrapper.filterUi || !compDetails) {
-      this.destroyFilterUi(filterWrapper, column, compDetails, createFilterUi);
+      this.destroyFilterUi(filterWrapper, column2, compDetails, createFilterUi);
       return;
     }
     filterWrapper.filterUi.filterParams = newFilterParams;
     getFilterUiFromWrapper(filterWrapper, wasHandler)?.then((filter) => {
       const shouldRefreshFilter = filter?.refresh ? filter.refresh(newFilterParams) : true;
       if (shouldRefreshFilter === false) {
-        this.destroyFilterUi(filterWrapper, column, compDetails, createFilterUi);
+        this.destroyFilterUi(filterWrapper, column2, compDetails, createFilterUi);
       } else {
         this.dispatchLocalEvent({
           type: "filterParamsChanged",
-          column,
+          column: column2,
           params: newFilterParams
         });
       }
     });
   }
-  refreshHandlerAndUi(column, model, source, createIfMissing, additionalEventAttributes) {
-    const filterWrapper = this.cachedFilter(column);
+  refreshHandlerAndUi(column2, model, source2, createIfMissing, additionalEventAttributes) {
+    const filterWrapper = this.cachedFilter(column2);
     if (!filterWrapper) {
       if (createIfMissing) {
-        this.getOrCreateFilterWrapper(column, true);
+        this.getOrCreateFilterWrapper(column2, true);
       }
       return AgPromise.resolve();
     }
@@ -59879,17 +59879,17 @@ var ColumnFilterService = class extends BeanStub {
       handler,
       handlerParams,
       model,
-      this.state.get(column.getColId()) ?? { model },
-      source,
+      this.state.get(column2.getColId()) ?? { model },
+      source2,
       additionalEventAttributes
     );
   }
-  setColumnFilterWrapper(column, filterWrapper) {
-    const colId = column.getColId();
+  setColumnFilterWrapper(column2, filterWrapper) {
+    const colId = column2.getColId();
     this.allColumnFilters.set(colId, filterWrapper);
     this.allColumnListeners.set(
       colId,
-      this.addManagedListeners(column, { colDefChanged: () => this.filterParamsChanged(colId) })[0]
+      this.addManagedListeners(column2, { colDefChanged: () => this.filterParamsChanged(colId) })[0]
     );
   }
   areFilterCompsDifferent(oldCompDetails, newCompDetails) {
@@ -59906,12 +59906,12 @@ var ColumnFilterService = class extends BeanStub {
     const gridColumns = this.beans.colModel.getCols();
     return gridColumns.some((col) => col.getColDef().floatingFilter);
   }
-  getFilterInstance(key) {
-    const column = this.beans.colModel.getColDefCol(key);
-    if (!column) {
+  getFilterInstance(key2) {
+    const column2 = this.beans.colModel.getColDefCol(key2);
+    if (!column2) {
       return Promise.resolve(void 0);
     }
-    const filterPromise = this.getOrCreateFilterUi(column);
+    const filterPromise = this.getOrCreateFilterUi(column2);
     if (!filterPromise) {
       return Promise.resolve(null);
     }
@@ -59922,38 +59922,38 @@ var ColumnFilterService = class extends BeanStub {
     });
   }
   processFilterModelUpdateQueue() {
-    this.modelUpdates.forEach(({ model, source }) => this.setModel(model, source));
+    this.modelUpdates.forEach(({ model, source: source2 }) => this.setModel(model, source2));
     this.modelUpdates = [];
-    this.columnModelUpdates.forEach(({ key, model, resolve }) => {
-      this.setModelForColumn(key, model).then(() => resolve());
+    this.columnModelUpdates.forEach(({ key: key2, model, resolve }) => {
+      this.setModelForColumn(key2, model).then(() => resolve());
     });
     this.columnModelUpdates = [];
   }
-  getModelForColumn(column, useUnapplied) {
+  getModelForColumn(column2, useUnapplied) {
     if (useUnapplied) {
       const { state, model } = this;
-      const colId = column.getColId();
+      const colId = column2.getColId();
       const colState = state.get(colId);
       if (colState) {
         return colState.model ?? null;
       }
       return _getFilterModel(model, colId);
     }
-    const filterWrapper = this.cachedFilter(column);
+    const filterWrapper = this.cachedFilter(column2);
     return filterWrapper ? this.getModelFromFilterWrapper(filterWrapper) : null;
   }
-  setModelForColumn(key, model) {
+  setModelForColumn(key2, model) {
     if (this.beans.dataTypeSvc?.isPendingInference) {
       let resolve = () => {
       };
       const promise = new Promise((res) => {
         resolve = res;
       });
-      this.columnModelUpdates.push({ key, model, resolve });
+      this.columnModelUpdates.push({ key: key2, model, resolve });
       return promise;
     }
     return new Promise((resolve) => {
-      this.setModelForColumnLegacy(key, model).then((result) => resolve(result));
+      this.setModelForColumnLegacy(key2, model).then((result) => resolve(result));
     });
   }
   getStateForColumn(colId) {
@@ -59961,9 +59961,9 @@ var ColumnFilterService = class extends BeanStub {
       model: _getFilterModel(this.model, colId)
     };
   }
-  setModelForColumnLegacy(key, model) {
-    const column = this.beans.colModel.getColDefCol(key);
-    const filterWrapper = column ? this.getOrCreateFilterWrapper(column, true) : null;
+  setModelForColumnLegacy(key2, model) {
+    const column2 = this.beans.colModel.getColDefCol(key2);
+    const filterWrapper = column2 ? this.getOrCreateFilterWrapper(column2, true) : null;
     return filterWrapper ? this.setModelOnFilterWrapper(filterWrapper, model) : AgPromise.resolve();
   }
   setColDefPropsForDataType(colDef, dataTypeDefinition, formatValue) {
@@ -60000,25 +60000,25 @@ var ColumnFilterService = class extends BeanStub {
     }
   }
   // additionalEventAttributes is used by provided simple floating filter, so it can add 'floatingFilter=true' to the event
-  setColFilterActive(column, active, source, additionalEventAttributes) {
-    if (column.filterActive !== active) {
-      column.filterActive = active;
-      column.dispatchColEvent("filterActiveChanged", source);
+  setColFilterActive(column2, active, source2, additionalEventAttributes) {
+    if (column2.filterActive !== active) {
+      column2.filterActive = active;
+      column2.dispatchColEvent("filterActiveChanged", source2);
     }
-    column.dispatchColEvent("filterChanged", source, additionalEventAttributes);
+    column2.dispatchColEvent("filterChanged", source2, additionalEventAttributes);
   }
   setModelOnFilterWrapper(filterWrapper, newModel, justCreated) {
     return new AgPromise((resolve) => {
       if (filterWrapper.isHandler) {
-        const column = filterWrapper.column;
-        const colId = column.getColId();
+        const column2 = filterWrapper.column;
+        const colId = column2.getColId();
         const existingModel = this.model[colId];
         this.updateStoredModel(colId, newModel);
         if (justCreated && newModel === existingModel) {
           resolve();
           return;
         }
-        this.refreshHandlerAndUi(column, newModel, "api").then(() => resolve());
+        this.refreshHandlerAndUi(column2, newModel, "api").then(() => resolve());
         return;
       }
       const uiPromise = getFilterUiFromWrapper(filterWrapper);
@@ -60050,44 +60050,44 @@ var ColumnFilterService = class extends BeanStub {
     };
     this.state.set(colId, newState);
   }
-  filterModified(column, additionalEventAttributes) {
-    this.getOrCreateFilterUi(column)?.then((filterInstance) => {
+  filterModified(column2, additionalEventAttributes) {
+    this.getOrCreateFilterUi(column2)?.then((filterInstance) => {
       this.eventSvc.dispatchEvent({
         type: "filterModified",
-        column,
+        column: column2,
         filterInstance,
         ...additionalEventAttributes
       });
     });
   }
-  filterUiChanged(column, additionalEventAttributes) {
+  filterUiChanged(column2, additionalEventAttributes) {
     if (this.gos.get("enableFilterHandlers")) {
       this.eventSvc.dispatchEvent({
         type: "filterUiChanged",
-        column,
+        column: column2,
         ...additionalEventAttributes
       });
     }
   }
-  floatingFilterUiChanged(column, additionalEventAttributes) {
+  floatingFilterUiChanged(column2, additionalEventAttributes) {
     if (this.gos.get("enableFilterHandlers")) {
       this.eventSvc.dispatchEvent({
         type: "floatingFilterUiChanged",
-        column,
+        column: column2,
         ...additionalEventAttributes
       });
     }
   }
-  updateModel(column, action, additionalEventAttributes) {
-    const colId = column.getColId();
-    const filterWrapper = this.cachedFilter(column);
+  updateModel(column2, action, additionalEventAttributes) {
+    const colId = column2.getColId();
+    const filterWrapper = this.cachedFilter(column2);
     const getFilterUi = () => filterWrapper?.filterUi;
     _updateFilterModel(
       action,
       getFilterUi,
       () => _getFilterModel(this.model, colId),
       () => this.state.get(colId),
-      (state) => this.updateState(column, state),
+      (state) => this.updateState(column2, state),
       (model) => getFilterUi()?.filterParams?.onModelChange(model, additionalEventAttributes),
       filterWrapper?.isHandler ? filterWrapper.handler.processModelToApply?.bind(filterWrapper.handler) : void 0
     );
@@ -60095,22 +60095,22 @@ var ColumnFilterService = class extends BeanStub {
   updateAllModels(action, additionalEventAttributes) {
     const promises = [];
     this.allColumnFilters.forEach((filter, colId) => {
-      const column = this.beans.colModel.getColDefCol(colId);
-      if (column) {
+      const column2 = this.beans.colModel.getColDefCol(colId);
+      if (column2) {
         _updateFilterModel(
           action,
           () => filter.filterUi,
           () => _getFilterModel(this.model, colId),
           () => this.state.get(colId),
-          (state) => this.updateState(column, state),
+          (state) => this.updateState(column2, state),
           (model) => {
             this.updateStoredModel(colId, model);
             this.dispatchLocalEvent({
               type: "filterAction",
-              column,
+              column: column2,
               action
             });
-            promises.push(this.refreshHandlerAndUi(column, model, "ui"));
+            promises.push(this.refreshHandlerAndUi(column2, model, "ui"));
           },
           filter?.isHandler ? filter.handler.processModelToApply?.bind(filter.handler) : void 0
         );
@@ -60126,19 +60126,19 @@ var ColumnFilterService = class extends BeanStub {
       });
     }
   }
-  updateOrRefreshFilterUi(column) {
-    const colId = column.getColId();
+  updateOrRefreshFilterUi(column2) {
+    const colId = column2.getColId();
     getAndRefreshFilterUi(
-      () => this.cachedFilter(column)?.filterUi,
+      () => this.cachedFilter(column2)?.filterUi,
       () => _getFilterModel(this.model, colId),
       () => this.state.get(colId)
     );
   }
-  updateState(column, state) {
-    this.state.set(column.getColId(), state);
+  updateState(column2, state) {
+    this.state.set(column2.getColId(), state);
     this.dispatchLocalEvent({
       type: "filterStateChanged",
-      column,
+      column: column2,
       state
     });
   }
@@ -60173,13 +60173,13 @@ var ColumnFilterService = class extends BeanStub {
       isGlobal
     });
   }
-  shouldKeepStateOnDetach(column, lastContainerType) {
+  shouldKeepStateOnDetach(column2, lastContainerType) {
     if (lastContainerType === "newFiltersToolPanel") {
       return true;
     }
     const filterPanelSvc = this.beans.filterPanelSvc;
     if (filterPanelSvc?.isActive) {
-      return !!filterPanelSvc.getState(column.getColId());
+      return !!filterPanelSvc.getState(column2.getColId());
     }
     return false;
   }
@@ -60194,8 +60194,8 @@ var ColumnFilterService = class extends BeanStub {
 function isAnyFilterPresent(beans) {
   return !!beans.filterManager?.isAnyFilterPresent();
 }
-function onFilterChanged(beans, source = "api") {
-  beans.filterManager?.onFilterChanged({ source });
+function onFilterChanged(beans, source2 = "api") {
+  beans.filterManager?.onFilterChanged({ source: source2 });
 }
 var FilterManager = class extends BeanStub {
   constructor() {
@@ -60249,20 +60249,20 @@ var FilterManager = class extends BeanStub {
     const doesFilterPass = this.gos.get("doesExternalFilterPass");
     return typeof doesFilterPass === "function" && doesFilterPass(node);
   }
-  setFilterState(model, state, source = "api") {
+  setFilterState(model, state, source2 = "api") {
     if (this.isAdvFilterEnabled()) {
       return;
     }
-    this.colFilter?.setState(model, state, source);
+    this.colFilter?.setState(model, state, source2);
   }
-  setFilterModel(model, source = "api", skipWarning) {
+  setFilterModel(model, source2 = "api", skipWarning) {
     if (this.isAdvFilterEnabled()) {
       if (!skipWarning) {
         this.warnAdvFilters();
       }
       return;
     }
-    this.colFilter?.setModel(model, source);
+    this.colFilter?.setModel(model, source2);
   }
   getFilterModel() {
     return this.colFilter?.getModel() ?? {};
@@ -60307,11 +60307,11 @@ var FilterManager = class extends BeanStub {
     }
   }
   onFilterChanged(params = {}) {
-    const { source, additionalEventAttributes, columns = [] } = params;
+    const { source: source2, additionalEventAttributes, columns = [] } = params;
     this.externalFilterPresent = this.isExternalFilterPresentCallback();
     (this.colFilter ? this.colFilter.updateBeforeFilterChanged(params) : AgPromise.resolve()).then(() => {
       const filterChangedEvent = {
-        source,
+        source: source2,
         type: "filterChanged",
         columns
       };
@@ -60376,16 +60376,16 @@ var FilterManager = class extends BeanStub {
     return true;
   }
   // for group filters, can change dynamically whether they are allowed or not
-  isFilterAllowed(column) {
+  isFilterAllowed(column2) {
     if (this.isAdvFilterEnabled()) {
       return false;
     }
-    return !!this.colFilter?.isFilterAllowed(column);
+    return !!this.colFilter?.isFilterAllowed(column2);
   }
   getAdvFilterModel() {
     return this.isAdvFilterEnabled() ? this.advancedFilter.getModel() : null;
   }
-  setAdvFilterModel(expression, source = "api") {
+  setAdvFilterModel(expression, source2 = "api") {
     if (!this.isAdvFilterEnabled()) {
       return;
     }
@@ -60394,13 +60394,13 @@ var FilterManager = class extends BeanStub {
       return;
     }
     this.advancedFilter.setModel(expression ?? null);
-    this.onFilterChanged({ source });
+    this.onFilterChanged({ source: source2 });
   }
-  toggleAdvFilterBuilder(show, source) {
+  toggleAdvFilterBuilder(show, source2) {
     if (!this.isAdvFilterEnabled()) {
       return;
     }
-    this.advancedFilter.getCtrl().toggleFilterBuilder({ source, force: show });
+    this.advancedFilter.getCtrl().toggleFilterBuilder({ source: source2, force: show });
   }
   updateAdvFilterColumns() {
     if (!this.isAdvFilterEnabled()) {
@@ -60416,12 +60416,12 @@ var FilterManager = class extends BeanStub {
     }
     return !!this.colFilter?.hasFloatingFilters();
   }
-  getColumnFilterInstance(key) {
+  getColumnFilterInstance(key2) {
     if (this.isAdvFilterEnabled()) {
       this.warnAdvFilters();
       return Promise.resolve(void 0);
     }
-    return this.colFilter?.getFilterInstance(key) ?? Promise.resolve(void 0);
+    return this.colFilter?.getFilterInstance(key2) ?? Promise.resolve(void 0);
   }
   warnAdvFilters() {
     _warn(68);
@@ -60441,12 +60441,12 @@ var FilterManager = class extends BeanStub {
     }
     this.advFilterModelUpdateQueue = [];
   }
-  setColumnFilterModel(key, model) {
+  setColumnFilterModel(key2, model) {
     if (this.isAdvFilterEnabled()) {
       this.warnAdvFilters();
       return Promise.resolve();
     }
-    return this.colFilter?.setModelForColumn(key, model) ?? Promise.resolve();
+    return this.colFilter?.setModelForColumn(key2, model) ?? Promise.resolve();
   }
 };
 var FilterMenuFactory = class extends BeanStub {
@@ -60460,15 +60460,15 @@ var FilterMenuFactory = class extends BeanStub {
   hideActiveMenu() {
     this.hidePopup?.();
   }
-  showMenuAfterMouseEvent(column, mouseEvent, containerType, onClosedCallback) {
-    if (column && !column.isColumn) {
+  showMenuAfterMouseEvent(column2, mouseEvent, containerType, onClosedCallback) {
+    if (column2 && !column2.isColumn) {
       return;
     }
     this.showPopup(
-      column,
+      column2,
       (eMenu) => {
         this.popupSvc?.positionPopupUnderMouseEvent({
-          column,
+          column: column2,
           type: containerType,
           mouseEvent,
           ePopup: eMenu
@@ -60480,8 +60480,8 @@ var FilterMenuFactory = class extends BeanStub {
       onClosedCallback
     );
   }
-  showMenuAfterButtonClick(column, eventSource, containerType, onClosedCallback) {
-    if (column && !column.isColumn) {
+  showMenuAfterButtonClick(column2, eventSource, containerType, onClosedCallback) {
+    if (column2 && !column2.isColumn) {
       return;
     }
     let multiplier = -1;
@@ -60494,7 +60494,7 @@ var FilterMenuFactory = class extends BeanStub {
     const nudgeX = isLegacyMenuEnabled ? void 0 : 4 * multiplier;
     const nudgeY = isLegacyMenuEnabled ? void 0 : 4;
     this.showPopup(
-      column,
+      column2,
       (eMenu) => {
         this.popupSvc?.positionPopupByComponent({
           type: containerType,
@@ -60505,7 +60505,7 @@ var FilterMenuFactory = class extends BeanStub {
           alignSide,
           keepWithinBounds: true,
           position: "under",
-          column
+          column: column2
         });
       },
       containerType,
@@ -60514,10 +60514,10 @@ var FilterMenuFactory = class extends BeanStub {
       onClosedCallback
     );
   }
-  showPopup(column, positionCallback, containerType, eventSource, isLegacyMenuEnabled, onClosedCallback) {
-    const comp = column ? this.createBean(new FilterComp(column, "COLUMN_MENU")) : void 0;
+  showPopup(column2, positionCallback, containerType, eventSource, isLegacyMenuEnabled, onClosedCallback) {
+    const comp = column2 ? this.createBean(new FilterComp(column2, "COLUMN_MENU")) : void 0;
     this.activeMenu = comp;
-    if (!comp?.hasFilter() || !column) {
+    if (!comp?.hasFilter() || !column2) {
       _error(57);
       return;
     }
@@ -60534,7 +60534,7 @@ var FilterMenuFactory = class extends BeanStub {
     const afterGuiDetached = () => comp?.afterGuiDetached();
     const anchorToElement = _isColumnMenuAnchoringEnabled(this.gos) ? eventSource ?? this.beans.ctrlsSvc.getGridBodyCtrl().eGridBody : void 0;
     const closedCallback = (e) => {
-      _setColMenuVisible(column, false, "contextMenu");
+      _setColMenuVisible(column2, false, "contextMenu");
       const isKeyboardEvent = e instanceof KeyboardEvent;
       if (this.tabListener) {
         this.tabListener = this.tabListener();
@@ -60545,7 +60545,7 @@ var FilterMenuFactory = class extends BeanStub {
       }
       afterGuiDetached();
       this.destroyBean(this.activeMenu);
-      this.dispatchVisibleChangedEvent(false, containerType, column);
+      this.dispatchVisibleChangedEvent(false, containerType, column2);
       onClosedCallback?.();
     };
     const translate = this.getLocaleTextFunc();
@@ -60566,8 +60566,8 @@ var FilterMenuFactory = class extends BeanStub {
       positionCallback(eMenu);
       comp.afterGuiAttached({ container: containerType, hidePopup });
     });
-    _setColMenuVisible(column, true, "contextMenu");
-    this.dispatchVisibleChangedEvent(true, containerType, column);
+    _setColMenuVisible(column2, true, "contextMenu");
+    this.dispatchVisibleChangedEvent(true, containerType, column2);
   }
   trapFocusWithin(e, menu) {
     if (e.key !== KeyCode.TAB || e.defaultPrevented || _findNextFocusableElement(this.beans, menu, false, e.shiftKey)) {
@@ -60576,18 +60576,18 @@ var FilterMenuFactory = class extends BeanStub {
     e.preventDefault();
     _focusInto(menu, e.shiftKey);
   }
-  dispatchVisibleChangedEvent(visible, containerType, column) {
+  dispatchVisibleChangedEvent(visible, containerType, column2) {
     this.eventSvc.dispatchEvent({
       type: "columnMenuVisibleChanged",
       visible,
       switchingTab: false,
       key: containerType,
-      column: column ?? null,
+      column: column2 ?? null,
       columnGroup: null
     });
   }
-  isMenuEnabled(column) {
-    return column.isFilterAllowed() && (column.getColDef().menuTabs ?? ["filterMenuTab"]).includes("filterMenuTab");
+  isMenuEnabled(column2) {
+    return column2.isFilterAllowed() && (column2.getColDef().menuTabs ?? ["filterMenuTab"]).includes("filterMenuTab");
   }
   showMenuAfterContextMenuEvent() {
   }
@@ -60601,24 +60601,24 @@ var FilterValueService = class extends BeanStub {
     super(...arguments);
     this.beanName = "filterValueSvc";
   }
-  getValue(column, rowNode, filterValueGetterOverride) {
+  getValue(column2, rowNode, filterValueGetterOverride) {
     if (!rowNode) {
       return;
     }
-    const colDef = column.getColDef();
+    const colDef = column2.getColDef();
     const { selectableFilter, valueSvc } = this.beans;
-    const filterValueGetter = filterValueGetterOverride ?? selectableFilter?.getFilterValueGetter(column.getColId()) ?? colDef.filterValueGetter;
+    const filterValueGetter = filterValueGetterOverride ?? selectableFilter?.getFilterValueGetter(column2.getColId()) ?? colDef.filterValueGetter;
     if (filterValueGetter) {
-      return this.executeFilterValueGetter(filterValueGetter, rowNode.data, column, rowNode, colDef);
+      return this.executeFilterValueGetter(filterValueGetter, rowNode.data, column2, rowNode, colDef);
     }
-    return valueSvc.getValue(column, rowNode);
+    return valueSvc.getValue(column2, rowNode);
   }
-  executeFilterValueGetter(valueGetter, data, column, node, colDef) {
+  executeFilterValueGetter(valueGetter, data, column2, node, colDef) {
     const { expressionSvc, valueSvc } = this.beans;
     const params = _addGridCommonParams(this.gos, {
       data,
       node,
-      column,
+      column: column2,
       colDef,
       getValue: valueSvc.getValueCallback.bind(valueSvc, node)
     });
@@ -60702,7 +60702,7 @@ var OptionsFactory = class {
       }
       const requiredProperties = [["displayKey"], ["displayName"], ["predicate", "test"]];
       const propertyCheck = (keys) => {
-        if (!keys.some((key) => filterOption[key] != null)) {
+        if (!keys.some((key2) => filterOption[key2] != null)) {
           _warn(72, { keys });
           return false;
         }
@@ -61647,14 +61647,14 @@ var DateFilter = class extends SimpleFilter {
     });
     return result;
   }
-  translate(key) {
-    if (key === "lessThan") {
+  translate(key2) {
+    if (key2 === "lessThan") {
       return super.translate("before");
     }
-    if (key === "greaterThan") {
+    if (key2 === "greaterThan") {
       return super.translate("after");
     }
-    return super.translate(key);
+    return super.translate(key2);
   }
 };
 var SimpleFilterHandler = class extends BeanStub {
@@ -61704,8 +61704,8 @@ var SimpleFilterHandler = class extends BeanStub {
     const cellValue = this.params.getValue(params.node);
     return models[combineFunction]((m) => this.individualConditionPasses(params, m, cellValue));
   }
-  getModelAsString(model, source) {
-    return this.filterModelFormatter.getModelAsString(model, source) ?? "";
+  getModelAsString(model, source2) {
+    return this.filterModelFormatter.getModelAsString(model, source2) ?? "";
   }
   validateModel(params) {
     const {
@@ -61874,9 +61874,9 @@ var SimpleFilterModelFormatter = class extends BeanStub {
   // used by:
   // 1) NumberFloatingFilter & TextFloatingFilter: Always, for both when editable and read only.
   // 2) DateFloatingFilter: Only when read only (as we show text rather than a date picker when read only)
-  getModelAsString(model, source) {
+  getModelAsString(model, source2) {
     const translate = this.getLocaleTextFunc();
-    const forToolPanel = source === "filterToolPanel";
+    const forToolPanel = source2 === "filterToolPanel";
     if (!model) {
       return forToolPanel ? translateForFilter(this, "filterSummaryInactive") : null;
     }
@@ -61884,7 +61884,7 @@ var SimpleFilterModelFormatter = class extends BeanStub {
     if (isCombined) {
       const combinedModel = model;
       const conditions = combinedModel.conditions ?? [];
-      const customOptions = conditions.map((condition) => this.getModelAsString(condition, source));
+      const customOptions = conditions.map((condition) => this.getModelAsString(condition, source2));
       const joinOperatorTranslateKey = combinedModel.operator === "AND" ? "andCondition" : "orCondition";
       return customOptions.join(` ${translateForFilter(this, joinOperatorTranslateKey)} `);
     } else if (model.type === "blank" || model.type === "notBlank") {
@@ -61941,10 +61941,10 @@ var DateFilterModelFormatter = class extends SimpleFilterModelFormatter {
   constructor(optionsFactory, filterParams) {
     super(optionsFactory, filterParams, (value) => {
       const { dataTypeSvc, valueSvc } = this.beans;
-      const column = filterParams.column;
-      const dateFormatFn = dataTypeSvc?.getDateFormatterFunction(column);
+      const column2 = filterParams.column;
+      const dateFormatFn = dataTypeSvc?.getDateFormatterFunction(column2);
       const valueToFormat = dateFormatFn ? dateFormatFn(value ?? void 0) : value;
-      return valueSvc.formatValue(column, null, valueToFormat);
+      return valueSvc.formatValue(column2, null, valueToFormat);
     });
     this.filterTypeKeys = SCALAR_FILTER_TYPE_KEYS;
   }
@@ -62069,8 +62069,8 @@ var SimpleFloatingFilter = class extends Component {
       this.updateParams(params);
     }
     if (reactive) {
-      const { source, model } = reactiveParams;
-      if (source === "dataChanged" || source === "ui") {
+      const { source: source2, model } = reactiveParams;
+      if (source2 === "dataChanged" || source2 === "ui") {
         return;
       }
       this.onModelUpdated(model);
@@ -62890,9 +62890,9 @@ var TextFilterHandler = class extends SimpleFilterHandler {
     const formattedValues = values.map((v) => this.formatter(v)) || [];
     const cellValueFormatted = this.formatter(cellValue);
     const {
-      api: api2,
+      api,
       colDef,
-      column,
+      column: column2,
       context,
       filterParams: { textFormatter }
     } = this.params;
@@ -62902,9 +62902,9 @@ var TextFilterHandler = class extends SimpleFilterHandler {
       return !isBlank(cellValue);
     }
     const matcherParams = {
-      api: api2,
+      api,
       colDef,
-      column,
+      column: column2,
       context,
       node: params.node,
       data: params.data,
@@ -63070,8 +63070,8 @@ var QuickFilterService = class extends BeanStub {
     }
   }
   doesRowPassNoCache(node, filterPart) {
-    return this.colsToUse.some((column) => {
-      const part = this.getTextForColumn(column, node);
+    return this.colsToUse.some((column2) => {
+      const part = this.getTextForColumn(column2, node);
       return _exists(part) && part.includes(filterPart);
     });
   }
@@ -63095,15 +63095,15 @@ var QuickFilterService = class extends BeanStub {
       node.quickFilterAggregateText = this.getAggText(node);
     }
   }
-  getTextForColumn(column, node) {
-    let value = this.beans.filterValueSvc.getValue(column, node);
-    const colDef = column.getColDef();
+  getTextForColumn(column2, node) {
+    let value = this.beans.filterValueSvc.getValue(column2, node);
+    const colDef = column2.getColDef();
     if (colDef.getQuickFilterText) {
       const params = _addGridCommonParams(this.gos, {
         value,
         node,
         data: node.data,
-        column,
+        column: column2,
         colDef
       });
       value = colDef.getQuickFilterText(params);
@@ -63112,8 +63112,8 @@ var QuickFilterService = class extends BeanStub {
   }
   getAggText(node) {
     const stringParts = [];
-    for (const column of this.colsToUse) {
-      const part = this.getTextForColumn(column, node);
+    for (const column2 of this.colsToUse) {
+      const part = this.getTextForColumn(column2, node);
       if (_exists(part)) {
         stringParts.push(part);
       }
@@ -63271,8 +63271,8 @@ var TooltipService = class extends BeanStub {
     }
     const gos = this.gos;
     const isTooltipWhenTruncated = _isShowTooltipWhenTruncated(gos);
-    const { column, eGui } = ctrl;
-    const colDef = column.getColDef();
+    const { column: column2, eGui } = ctrl;
+    const colDef = column2.getColDef();
     if (!shouldDisplayTooltip && isTooltipWhenTruncated && !colDef.headerComponent) {
       shouldDisplayTooltip = _isElementOverflowingCallback(
         () => eGui.querySelector(".ag-header-cell-text")
@@ -63280,18 +63280,18 @@ var TooltipService = class extends BeanStub {
     }
     const location = "header";
     const headerLocation = "header";
-    const valueFormatted = this.beans.colNames.getDisplayNameForColumn(column, headerLocation, true);
+    const valueFormatted = this.beans.colNames.getDisplayNameForColumn(column2, headerLocation, true);
     const value = passedValue ?? valueFormatted;
     const tooltipCtrl = {
       getGui: () => eGui,
       getLocation: () => location,
       getTooltipValue: () => passedValue ?? colDef?.headerTooltipValueGetter?.(
-        _addGridCommonParams(gos, { location, colDef, column, value, valueFormatted })
+        _addGridCommonParams(gos, { location, colDef, column: column2, value, valueFormatted })
       ) ?? colDef?.headerTooltip,
       shouldDisplayTooltip,
       getAdditionalParams: () => ({
-        column,
-        colDef: column.getColDef()
+        column: column2,
+        colDef: column2.getColDef()
       })
     };
     let tooltipFeature = this.createTooltipFeature(tooltipCtrl);
@@ -63307,8 +63307,8 @@ var TooltipService = class extends BeanStub {
     }
     const gos = this.gos;
     const isTooltipWhenTruncated = _isShowTooltipWhenTruncated(gos);
-    const { column, eGui } = ctrl;
-    const colDef = column.getColGroupDef();
+    const { column: column2, eGui } = ctrl;
+    const colDef = column2.getColGroupDef();
     if (!shouldDisplayTooltip && isTooltipWhenTruncated && !colDef?.headerGroupComponent) {
       shouldDisplayTooltip = _isElementOverflowingCallback(
         () => eGui.querySelector(".ag-header-group-text")
@@ -63316,18 +63316,18 @@ var TooltipService = class extends BeanStub {
     }
     const location = "headerGroup";
     const headerLocation = "header";
-    const valueFormatted = this.beans.colNames.getDisplayNameForColumnGroup(column, headerLocation);
+    const valueFormatted = this.beans.colNames.getDisplayNameForColumnGroup(column2, headerLocation);
     const value = passedValue ?? valueFormatted;
     const tooltipCtrl = {
       getGui: () => eGui,
       getLocation: () => location,
       getTooltipValue: () => passedValue ?? colDef?.headerTooltipValueGetter?.(
-        _addGridCommonParams(gos, { location, colDef, column, value, valueFormatted })
+        _addGridCommonParams(gos, { location, colDef, column: column2, value, valueFormatted })
       ) ?? colDef?.headerTooltip,
       shouldDisplayTooltip,
       getAdditionalParams: () => {
         const additionalParams = {
-          column
+          column: column2
         };
         if (colDef) {
           additionalParams.colDef = colDef;
@@ -63341,7 +63341,7 @@ var TooltipService = class extends BeanStub {
   enableCellTooltipFeature(ctrl, value, shouldDisplayTooltip) {
     const { beans } = this;
     const { gos, editSvc } = beans;
-    const { column, rowNode } = ctrl;
+    const { column: column2, rowNode } = ctrl;
     let location = "cell";
     const getTooltipValue = () => {
       const isEditing2 = !!editSvc?.isEditing(ctrl);
@@ -63351,18 +63351,18 @@ var TooltipService = class extends BeanStub {
         return errorMessages;
       }
       location = "cell";
-      const colDef = column.getColDef();
+      const colDef = column2.getColDef();
       const data = rowNode.data;
       if (colDef.tooltipField && _exists(data)) {
-        return _getValueUsingField(data, colDef.tooltipField, column.isTooltipFieldContainsDots());
+        return _getValueUsingField(data, colDef.tooltipField, column2.isTooltipFieldContainsDots());
       }
       const valueGetter = colDef.tooltipValueGetter;
       if (valueGetter) {
         return valueGetter(
           _addGridCommonParams(gos, {
             location: "cell",
-            colDef: column.getColDef(),
-            column,
+            colDef: column2.getColDef(),
+            column: column2,
             rowIndex: ctrl.cellPosition.rowIndex,
             node: rowNode,
             data: rowNode.data,
@@ -63382,7 +63382,7 @@ var TooltipService = class extends BeanStub {
           if (errorMessages) {
             return true;
           }
-          const isTooltipEnabled = column.isTooltipEnabled();
+          const isTooltipEnabled = column2.isTooltipEnabled();
           if (!isTooltipEnabled) {
             return false;
           }
@@ -63402,8 +63402,8 @@ var TooltipService = class extends BeanStub {
       getTooltipValue: value != null ? () => value : getTooltipValue,
       shouldDisplayTooltip,
       getAdditionalParams: () => ({
-        column,
-        colDef: column.getColDef(),
+        column: column2,
+        colDef: column2.getColDef(),
         rowIndex: ctrl.cellPosition.rowIndex,
         node: rowNode,
         data: rowNode.data,
@@ -63456,9 +63456,9 @@ var TooltipService = class extends BeanStub {
     }
     return cellCtrl.createBean(tooltipFeature, context);
   }
-  initCol(column) {
-    const { colDef } = column;
-    column.tooltipEnabled = _exists(colDef.tooltipField) || _exists(colDef.tooltipValueGetter) || _exists(colDef.tooltipComponent);
+  initCol(column2) {
+    const { colDef } = column2;
+    column2.tooltipEnabled = _exists(colDef.tooltipField) || _exists(colDef.tooltipValueGetter) || _exists(colDef.tooltipComponent);
   }
   createTooltipFeature(tooltipCtrl, beans) {
     return this.beans.registry.createDynamicBean("tooltipFeature", false, tooltipCtrl, beans);
@@ -63553,11 +63553,11 @@ var UndoRedoService = class extends BeanStub {
       if (!shouldCaptureAction) {
         return;
       }
-      const { rowPinned, rowIndex, column, oldValue, value } = event;
+      const { rowPinned, rowIndex, column: column2, oldValue, value } = event;
       const cellValueChange = {
         rowPinned,
         rowIndex,
-        columnId: column.getColId(),
+        columnId: column2.getColId(),
         newValue: value,
         oldValue
       };
@@ -63609,33 +63609,33 @@ var UndoRedoService = class extends BeanStub {
   getCurrentRedoStackSize() {
     return this.redoStack?.getCurrentStackSize() ?? 0;
   }
-  undo(source) {
+  undo(source2) {
     const { eventSvc, undoStack, redoStack } = this;
     eventSvc.dispatchEvent({
       type: "undoStarted",
-      source
+      source: source2
     });
     const operationPerformed = this.undoRedo(undoStack, redoStack, "initialRange", "oldValue", "undo");
     eventSvc.dispatchEvent({
       type: "undoEnded",
-      source,
+      source: source2,
       operationPerformed
     });
   }
-  redo(source) {
+  redo(source2) {
     const { eventSvc, undoStack, redoStack } = this;
     eventSvc.dispatchEvent({
       type: "redoStarted",
-      source
+      source: source2
     });
     const operationPerformed = this.undoRedo(redoStack, undoStack, "finalRange", "newValue", "redo");
     eventSvc.dispatchEvent({
       type: "redoEnded",
-      source,
+      source: source2,
       operationPerformed
     });
   }
-  undoRedo(undoRedoStack, opposingUndoRedoStack, rangeProperty, cellValueChangeProperty, source) {
+  undoRedo(undoRedoStack, opposingUndoRedoStack, rangeProperty, cellValueChangeProperty, source2) {
     if (!undoRedoStack) {
       return false;
     }
@@ -63646,7 +63646,7 @@ var UndoRedoService = class extends BeanStub {
     this.processAction(
       undoRedoAction,
       (cellValueChange) => cellValueChange[cellValueChangeProperty],
-      source
+      source2
     );
     if (undoRedoAction instanceof RangeUndoRedoAction) {
       this.processRange(undoRedoAction.ranges || [undoRedoAction[rangeProperty]]);
@@ -63656,7 +63656,7 @@ var UndoRedoService = class extends BeanStub {
     opposingUndoRedoStack.push(undoRedoAction);
     return true;
   }
-  processAction(action, valueExtractor, source) {
+  processAction(action, valueExtractor, source2) {
     for (const cellValueChange of action.cellValueChanges) {
       const { rowIndex, rowPinned, columnId } = cellValueChange;
       const rowPosition = { rowIndex, rowPinned };
@@ -63664,7 +63664,7 @@ var UndoRedoService = class extends BeanStub {
       if (!currentRow.displayed) {
         continue;
       }
-      currentRow.setDataValue(columnId, valueExtractor(cellValueChange), source);
+      currentRow.setDataValue(columnId, valueExtractor(cellValueChange), source2);
     }
   }
   processRange(ranges) {
@@ -63711,14 +63711,14 @@ var UndoRedoService = class extends BeanStub {
   setLastFocusedCell(lastFocusedCell) {
     const { rowIndex, columnId, rowPinned } = lastFocusedCell;
     const { colModel, focusSvc, rangeSvc } = this.beans;
-    const column = colModel.getCol(columnId);
-    if (!column) {
+    const column2 = colModel.getCol(columnId);
+    if (!column2) {
       return;
     }
     const { scrollFeature } = this.gridBodyCtrl;
     scrollFeature.ensureIndexVisible(rowIndex);
-    scrollFeature.ensureColumnVisible(column);
-    const cellPosition = { rowIndex, column, rowPinned };
+    scrollFeature.ensureColumnVisible(column2);
+    const cellPosition = { rowIndex, column: column2, rowPinned };
     focusSvc.setFocusedCell({ ...cellPosition, forceBrowserFocus: true });
     rangeSvc?.setRangeToCell(cellPosition);
   }
@@ -63781,21 +63781,21 @@ var UndoRedoService = class extends BeanStub {
       bulkEditingStopped: ({ changes }) => this.stopBigChange("bulkEditing", changes)
     });
   }
-  startBigChange(key) {
-    this.updateBigChange(key, true);
+  startBigChange(key2) {
+    this.updateBigChange(key2, true);
   }
-  updateBigChange(key, value) {
-    if (key === "bulkEditing") {
+  updateBigChange(key2, value) {
+    if (key2 === "bulkEditing") {
       this.bulkEditing = value;
     } else {
       this.batchEditing = value;
     }
   }
-  stopBigChange(key, changes) {
-    if (key === "bulkEditing" && !this.bulkEditing || key === "batchEditing" && !this.batchEditing) {
+  stopBigChange(key2, changes) {
+    if (key2 === "bulkEditing" && !this.bulkEditing || key2 === "batchEditing" && !this.batchEditing) {
       return;
     }
-    this.updateBigChange(key, false);
+    this.updateBigChange(key2, false);
     if (changes?.length === 0) {
       return;
     }
@@ -63919,8 +63919,8 @@ var SimpleCellEditor = class extends AgAbstractCellEditor {
       eEditor.setStartValue(startValue);
     }
     this.addGuiEventListener("keydown", (event) => {
-      const { key } = event;
-      if (key === KeyCode.PAGE_UP || key === KeyCode.PAGE_DOWN) {
+      const { key: key2 } = event;
+      if (key2 === KeyCode.PAGE_UP || key2 === KeyCode.PAGE_DOWN) {
         event.preventDefault();
       }
     });
@@ -64212,8 +64212,8 @@ var LargeTextCellEditor = class extends AgAbstractCellEditor {
     return value?.toString() ?? value;
   }
   onKeyDown(event) {
-    const key = event.key;
-    if (key === KeyCode.LEFT || key === KeyCode.UP || key === KeyCode.RIGHT || key === KeyCode.DOWN || event.shiftKey && key === KeyCode.ENTER) {
+    const key2 = event.key;
+    if (key2 === KeyCode.LEFT || key2 === KeyCode.UP || key2 === KeyCode.RIGHT || key2 === KeyCode.DOWN || event.shiftKey && key2 === KeyCode.ENTER) {
       event.stopPropagation();
     }
   }
@@ -64550,9 +64550,9 @@ function getVerticalPixelRange(beans) {
 function getHorizontalPixelRange(beans) {
   return beans.ctrlsSvc.getScrollFeature().getHScrollPosition();
 }
-function ensureColumnVisible(beans, key, position = "auto") {
+function ensureColumnVisible(beans, key2, position = "auto") {
   beans.frameworkOverrides.wrapIncoming(
-    () => beans.ctrlsSvc.getScrollFeature().ensureColumnVisible(key, position),
+    () => beans.ctrlsSvc.getScrollFeature().ensureColumnVisible(key2, position),
     "ensureVisible"
   );
 }
@@ -64582,7 +64582,7 @@ function getEditingCells(beans) {
   const positions = [];
   edits?.forEach((editRow, rowNode) => {
     const { rowIndex, rowPinned } = rowNode;
-    editRow.forEach((editValue, column) => {
+    editRow.forEach((editValue, column2) => {
       const { editorValue, pendingValue, sourceValue: oldValue, state } = editValue;
       const diff = _sourceAndPendingDiffer(editValue);
       let newValue = editorValue ?? pendingValue;
@@ -64593,9 +64593,9 @@ function getEditingCells(beans) {
         newValue,
         oldValue,
         state,
-        column,
-        colId: column.getColId(),
-        colKey: column.getColId(),
+        column: column2,
+        colId: column2.getColId(),
+        colKey: column2.getColId(),
         rowIndex,
         rowPinned
       };
@@ -64630,10 +64630,10 @@ function isEditing(beans, cellPosition) {
   return beans.editSvc?.isEditing(cellCtrl) ?? false;
 }
 function startEditingCell(beans, params) {
-  const { key, colKey, rowIndex, rowPinned } = params;
+  const { key: key2, colKey, rowIndex, rowPinned } = params;
   const { editSvc, colModel } = beans;
-  const column = colModel.getCol(colKey);
-  if (!column) {
+  const column2 = colModel.getCol(colKey);
+  if (!column2) {
     _warn(12, { colKey });
     return;
   }
@@ -64646,7 +64646,7 @@ function startEditingCell(beans, params) {
     _warn(290, { rowIndex, rowPinned });
     return;
   }
-  if (!column.isCellEditable(rowNode)) {
+  if (!column2.isCellEditable(rowNode)) {
     return;
   }
   const notPinned = rowPinned == null;
@@ -64657,10 +64657,10 @@ function startEditingCell(beans, params) {
   editSvc?.startEditing(
     {
       rowNode,
-      column
+      column: column2
     },
     {
-      event: key ? new KeyboardEvent("keydown", { key }) : void 0,
+      event: key2 ? new KeyboardEvent("keydown", { key: key2 }) : void 0,
       source: "api"
     }
   );
@@ -64695,7 +64695,7 @@ var PopupEditorWrapper = class extends AgPopupComponent {
     this.addManagedElementListeners(eGui, { keydown: listener });
   }
 };
-function shouldStartEditing(beans, { column }, event, cellStartedEdit, source = "ui") {
+function shouldStartEditing(beans, { column: column2 }, event, cellStartedEdit, source2 = "ui") {
   if (event instanceof KeyboardEvent && (event.key === KeyCode.TAB || event.key === KeyCode.ENTER || event.key === KeyCode.F2 || event.key === KeyCode.BACKSPACE && cellStartedEdit)) {
     return true;
   }
@@ -64703,7 +64703,7 @@ function shouldStartEditing(beans, { column }, event, cellStartedEdit, source = 
   if (extendingRange) {
     return false;
   }
-  const colDef = column?.getColDef();
+  const colDef = column2?.getColDef();
   const clickCount = deriveClickCount(beans.gos, colDef);
   const type = event?.type;
   if (type === "click" && event?.detail === 1 && clickCount === 1) {
@@ -64712,7 +64712,7 @@ function shouldStartEditing(beans, { column }, event, cellStartedEdit, source = 
   if (type === "dblclick" && event?.detail === 2 && clickCount === 2) {
     return true;
   }
-  if (source === "api") {
+  if (source2 === "api") {
     return cellStartedEdit ?? false;
   }
   return false;
@@ -64729,18 +64729,18 @@ function deriveClickCount(gos, colDef) {
   }
   return 2;
 }
-function isCellEditable(beans, { rowNode, column }, _source = "ui") {
-  const editable = column.getColDef().editable;
+function isCellEditable(beans, { rowNode, column: column2 }, _source = "ui") {
+  const editable = column2.getColDef().editable;
   const editModelSvc = beans.editModelSvc;
-  return column.isColumnFunc(rowNode, editable) || !!editModelSvc && editModelSvc.hasEdits({ rowNode, column }, { withOpenEditor: true });
+  return column2.isColumnFunc(rowNode, editable) || !!editModelSvc && editModelSvc.hasEdits({ rowNode, column: column2 }, { withOpenEditor: true });
 }
-function isFullRowCellEditable(beans, position, source = "ui") {
-  const editable = isCellEditable(beans, position, source);
-  if (editable === true || source === "ui") {
+function isFullRowCellEditable(beans, position, source2 = "ui") {
+  const editable = isCellEditable(beans, position, source2);
+  if (editable === true || source2 === "ui") {
     return editable;
   }
   const columns = beans.colModel.getCols();
-  return columns.some((col) => isCellEditable(beans, { rowNode: position.rowNode, column: col }, source));
+  return columns.some((col) => isCellEditable(beans, { rowNode: position.rowNode, column: col }, source2));
 }
 var editHighlightFn = (edit, includeEditing = false) => {
   if (edit !== void 0) {
@@ -64750,31 +64750,31 @@ var editHighlightFn = (edit, includeEditing = false) => {
 function _hasEdits(beans, position, includeEditing = false) {
   return editHighlightFn(beans.editModelSvc?.getEdit(position), includeEditing);
 }
-var nodeHasLeafEdit = (children, editModelSvc, column) => {
+var nodeHasLeafEdit = (children, editModelSvc, column2) => {
   if (!children) {
     return;
   }
   for (let i = 0, len = children.length; i < len; ++i) {
     const child = children[i];
     if (child.data) {
-      const highlight = editHighlightFn(editModelSvc?.getEdit({ rowNode: child, column })) || editHighlightFn(editModelSvc?.getEdit({ rowNode: child.pinnedSibling, column }));
+      const highlight = editHighlightFn(editModelSvc?.getEdit({ rowNode: child, column: column2 })) || editHighlightFn(editModelSvc?.getEdit({ rowNode: child.pinnedSibling, column: column2 }));
       if (highlight) {
         return true;
       }
     }
-    if (nodeHasLeafEdit(child.childrenAfterGroup, editModelSvc, column)) {
+    if (nodeHasLeafEdit(child.childrenAfterGroup, editModelSvc, column2)) {
       return true;
     }
   }
 };
 function _hasLeafEdits(beans, position) {
-  const { column, rowNode } = position;
+  const { column: column2, rowNode } = position;
   if (beans.gos.get("groupTotalRow") && !rowNode?.footer) {
     return false;
   }
-  return nodeHasLeafEdit(rowNode?.childrenAfterGroup, beans.editModelSvc, column);
+  return nodeHasLeafEdit(rowNode?.childrenAfterGroup, beans.editModelSvc, column2);
 }
-function _hasPinnedEdits(beans, { rowNode, column }) {
+function _hasPinnedEdits(beans, { rowNode, column: column2 }) {
   rowNode = rowNode.pinnedSibling;
   if (!rowNode) {
     return;
@@ -64782,7 +64782,7 @@ function _hasPinnedEdits(beans, { rowNode, column }) {
   return editHighlightFn(
     beans.editModelSvc?.getEdit({
       rowNode,
-      column
+      column: column2
     })
   );
 }
@@ -64833,8 +64833,8 @@ var RowEditStyleFeature = class extends BeanStub {
       edits = editModelSvc?.getEditRow(rowNode);
     }
     if (edits) {
-      const editing = Array.from(edits.keys()).some((column) => {
-        const position = { rowNode, column };
+      const editing = Array.from(edits.keys()).some((column2) => {
+        const position = { rowNode, column: column2 };
         return _hasEdits(beans, position, true) || _hasLeafEdits(beans, position) || _hasPinnedEdits(beans, position);
       });
       this.applyStyle(hasErrors, editing);
@@ -64868,7 +64868,7 @@ var purgeRows = ({ rowModel, pinnedRowModel, editModelSvc }, rowNodes) => {
 };
 var purgeCells = ({ editModelSvc }, rowNodes, columns) => {
   for (const rowNode of rowNodes) {
-    editModelSvc?.getEditRow(rowNode)?.forEach((_, column) => !columns.has(column) && editModelSvc.removeEdits({ rowNode, column }));
+    editModelSvc?.getEditRow(rowNode)?.forEach((_, column2) => !columns.has(column2) && editModelSvc.removeEdits({ rowNode, column: column2 }));
   }
 };
 var _refreshEditCells = (beans) => () => {
@@ -64975,18 +64975,18 @@ var EditService = class extends BeanStub {
     this.strategy.destroy();
     this.strategy = this.destroyBean(this.strategy);
   }
-  shouldStartEditing(position, event, cellStartedEdit, source = "ui") {
-    const shouldStart = shouldStartEditing(this.beans, position, event, cellStartedEdit, source);
+  shouldStartEditing(position, event, cellStartedEdit, source2 = "ui") {
+    const shouldStart = shouldStartEditing(this.beans, position, event, cellStartedEdit, source2);
     if (shouldStart) {
       this.strategy ?? (this.strategy = this.createStrategy());
     }
     return shouldStart;
   }
-  shouldStopEditing(position, event, source = "ui") {
-    return this.strategy?.shouldStop(position, event, source) ?? null;
+  shouldStopEditing(position, event, source2 = "ui") {
+    return this.strategy?.shouldStop(position, event, source2) ?? null;
   }
-  shouldCancelEditing(position, event, source = "ui") {
-    return this.strategy?.shouldCancel(position, event, source) ?? null;
+  shouldCancelEditing(position, event, source2 = "ui") {
+    return this.strategy?.shouldCancel(position, event, source2) ?? null;
   }
   validateEdit() {
     return _validateEdit(this.beans);
@@ -64999,7 +64999,7 @@ var EditService = class extends BeanStub {
   }
   /** @returns whether to prevent default on event */
   startEditing(position, params) {
-    const { startedEdit = true, event = null, source = "ui", ignoreEventKey = false, silent } = params;
+    const { startedEdit = true, event = null, source: source2 = "ui", ignoreEventKey = false, silent } = params;
     this.strategy ?? (this.strategy = this.createStrategy());
     if (!this.isCellEditable(position, "api")) {
       return;
@@ -65009,13 +65009,13 @@ var EditService = class extends BeanStub {
       cellCtrl.onCompAttachedFuncs.push(() => this.startEditing(position, params));
       return;
     }
-    const res = this.shouldStartEditing(position, event, startedEdit, source);
-    if (res === false && source !== "api") {
+    const res = this.shouldStartEditing(position, event, startedEdit, source2);
+    if (res === false && source2 !== "api") {
       this.isEditing(position) && this.stopEditing();
       return;
     }
-    if (!this.batch && this.shouldStopEditing(position, void 0, source) && !params.continueEditing) {
-      this.stopEditing(void 0, { source });
+    if (!this.batch && this.shouldStopEditing(position, void 0, source2) && !params.continueEditing) {
+      this.stopEditing(void 0, { source: source2 });
     }
     if (res && this.isBatchEditing()) {
       this.dispatchBatchEvent("batchEditingStarted", /* @__PURE__ */ new Map());
@@ -65023,22 +65023,22 @@ var EditService = class extends BeanStub {
     this.strategy.start({
       position,
       event,
-      source,
+      source: source2,
       ignoreEventKey,
       startedEdit,
       silent
     });
   }
   stopEditing(position, params) {
-    const { event, cancel, source = "ui", forceCancel, forceStop } = params || {};
+    const { event, cancel, source: source2 = "ui", forceCancel, forceStop } = params || {};
     const { beans, model } = this;
-    if (STOP_EDIT_SOURCE_TRANSFORM_KEYS.has(source)) {
+    if (STOP_EDIT_SOURCE_TRANSFORM_KEYS.has(source2)) {
       if (this.isBatchEditing()) {
         this.bulkRefresh(position);
         return false;
       }
     }
-    const treatAsSource = this.committing ? STOP_EDIT_SOURCE_TRANSFORM[source] : source;
+    const treatAsSource = this.committing ? STOP_EDIT_SOURCE_TRANSFORM[source2] : source2;
     const isEditingOrBatchWithEdits = this.committing || this.isEditing(position) || this.isBatchEditing() && model.hasEdits(position, CHECK_SIBLING);
     if (!isEditingOrBatchWithEdits || !this.strategy || this.stopping) {
       return false;
@@ -65055,24 +65055,24 @@ var EditService = class extends BeanStub {
     if (willStop || willCancel) {
       _syncFromEditors(beans, { persist: true, isCancelling: willCancel || cancel, isStopping: willStop });
       const freshEdits = model.getEditMap();
-      const editsToDelete = this.processEdits(freshEdits, cancel, source);
+      const editsToDelete = this.processEdits(freshEdits, cancel, source2);
       this.strategy?.stop(cancel, event);
       for (const position2 of editsToDelete) {
         model.clearEditValue(position2);
       }
       this.bulkRefresh(void 0, edits);
-      for (const pos of model.getEditPositions(freshEdits)) {
-        const cellCtrl2 = _getCellCtrl(beans, pos);
-        const valueChanged = _sourceAndPendingDiffer(pos);
+      for (const pos2 of model.getEditPositions(freshEdits)) {
+        const cellCtrl2 = _getCellCtrl(beans, pos2);
+        const valueChanged = _sourceAndPendingDiffer(pos2);
         cellCtrl2?.refreshCell({ force: true, suppressFlash: !valueChanged });
       }
       edits = freshEdits;
       res || (res = willStop);
     } else if (event instanceof KeyboardEvent && this.batch && this.strategy?.midBatchInputsAllowed(position) && this.isEditing(position, { withOpenEditor: true })) {
-      const { key } = event;
-      const isEnter = key === KeyCode.ENTER;
-      const isEscape = key === KeyCode.ESCAPE;
-      const isTab = key === KeyCode.TAB;
+      const { key: key2 } = event;
+      const isEnter = key2 === KeyCode.ENTER;
+      const isEscape = key2 === KeyCode.ESCAPE;
+      const isTab = key2 === KeyCode.TAB;
       if (isEnter || isTab || isEscape) {
         if (isEnter || isTab) {
           _syncFromEditors(beans, { persist: true });
@@ -65123,26 +65123,26 @@ var EditService = class extends BeanStub {
     if (!isKeyBoardEvent || suppressNavigateAfterEdit) {
       return;
     }
-    const { key, shiftKey } = event;
+    const { key: key2, shiftKey } = event;
     const navAfterEdit = this.gos.get("enterNavigatesVerticallyAfterEdit");
-    if (key !== KeyCode.ENTER || !navAfterEdit) {
+    if (key2 !== KeyCode.ENTER || !navAfterEdit) {
       return;
     }
     const direction = shiftKey ? KeyCode.UP : KeyCode.DOWN;
     this.beans.navigation?.navigateToNextCell(null, direction, cellPosition, false);
   }
-  processEdits(edits, cancel = false, source) {
+  processEdits(edits, cancel = false, source2) {
     const rowNodes = Array.from(edits.keys());
     const hasValidationErrors = this.model.getCellValidationModel().getCellValidationMap().size > 0 || this.model.getRowValidationModel().getRowValidationMap().size > 0;
     const editsToDelete = [];
     for (const rowNode of rowNodes) {
       const editRow = edits.get(rowNode);
-      for (const column of editRow.keys()) {
-        const editValue = editRow.get(column);
-        const position = { rowNode, column };
+      for (const column2 of editRow.keys()) {
+        const editValue = editRow.get(column2);
+        const position = { rowNode, column: column2 };
         const valueChanged = _sourceAndPendingDiffer(editValue);
         if (!cancel && valueChanged && !hasValidationErrors) {
-          const success = this.setNodeDataValue(rowNode, column, editValue.pendingValue, void 0, source);
+          const success = this.setNodeDataValue(rowNode, column2, editValue.pendingValue, void 0, source2);
           if (!success) {
             editsToDelete.push(position);
           }
@@ -65151,15 +65151,15 @@ var EditService = class extends BeanStub {
     }
     return editsToDelete;
   }
-  setNodeDataValue(rowNode, column, newValue, refreshCell, originalSource = "edit") {
+  setNodeDataValue(rowNode, column2, newValue, refreshCell, originalSource = "edit") {
     const { beans } = this;
-    const cellCtrl = _getCellCtrl(beans, { rowNode, column });
+    const cellCtrl = _getCellCtrl(beans, { rowNode, column: column2 });
     const translatedSource = INTERNAL_EDITOR_SOURCES.has(originalSource) ? "edit" : originalSource;
     if (cellCtrl) {
       cellCtrl.suppressRefreshCell = true;
     }
     this.commitNextEdit();
-    const success = rowNode.setDataValue(column, newValue, translatedSource);
+    const success = rowNode.setDataValue(column2, newValue, translatedSource);
     if (cellCtrl) {
       cellCtrl.suppressRefreshCell = false;
     }
@@ -65181,8 +65181,8 @@ var EditService = class extends BeanStub {
     }
     this.beans.rowRenderer.refreshCells(refreshParams);
   }
-  dispatchEditValuesChanged({ rowNode, column }, edit = {}) {
-    if (!rowNode || !column || !edit) {
+  dispatchEditValuesChanged({ rowNode, column: column2 }, edit = {}) {
+    if (!rowNode || !column2 || !edit) {
       return;
     }
     const { pendingValue, sourceValue } = edit;
@@ -65192,13 +65192,13 @@ var EditService = class extends BeanStub {
       node: rowNode,
       rowIndex,
       rowPinned,
-      column,
+      column: column2,
       source: "api",
       data,
       newValue: pendingValue,
       oldValue: sourceValue,
       value: pendingValue,
-      colDef: column.getColDef()
+      colDef: column2.getColDef()
     });
   }
   bulkRefresh(position = {}, editMap, params = {}) {
@@ -65209,14 +65209,14 @@ var EditService = class extends BeanStub {
         this.refCell(position, this.model.getEdit(position), params);
       } else if (editMap) {
         editModelSvc?.getEditMap(false)?.forEach((editRow, rowNode) => {
-          for (const column of editRow.keys()) {
-            this.refCell({ rowNode, column }, editRow.get(column), params);
+          for (const column2 of editRow.keys()) {
+            this.refCell({ rowNode, column: column2 }, editRow.get(column2), params);
           }
         });
       }
     }
   }
-  refCell({ rowNode, column }, edit, params = {}) {
+  refCell({ rowNode, column: column2 }, edit, params = {}) {
     const { beans, gos } = this;
     const updatedNodes = /* @__PURE__ */ new Set([rowNode]);
     const refreshNodes = /* @__PURE__ */ new Set();
@@ -65240,21 +65240,21 @@ var EditService = class extends BeanStub {
       parent = parent.parent;
     }
     for (const node of updatedNodes) {
-      this.dispatchEditValuesChanged({ rowNode: node, column }, edit);
+      this.dispatchEditValuesChanged({ rowNode: node, column: column2 }, edit);
     }
     for (const node of updatedNodes) {
-      _getCellCtrl(beans, { rowNode: node, column })?.refreshCell(params);
+      _getCellCtrl(beans, { rowNode: node, column: column2 })?.refreshCell(params);
     }
     for (const node of refreshNodes) {
-      _getCellCtrl(beans, { rowNode: node, column })?.refreshCell(params);
+      _getCellCtrl(beans, { rowNode: node, column: column2 })?.refreshCell(params);
     }
   }
-  stopAllEditing(cancel = false, source = "ui") {
+  stopAllEditing(cancel = false, source2 = "ui") {
     if (this.isEditing()) {
-      this.stopEditing(void 0, { cancel, source });
+      this.stopEditing(void 0, { cancel, source: source2 });
     }
   }
-  isCellEditable(position, source = "ui") {
+  isCellEditable(position, source2 = "ui") {
     const { rowNode } = position;
     const { gos, beans } = this;
     if (rowNode.group) {
@@ -65266,7 +65266,7 @@ var EditService = class extends BeanStub {
         return false;
       }
     }
-    const isEditable = getEditType(gos) === "fullRow" ? isFullRowCellEditable(beans, position, source) : isCellEditable(beans, position, source);
+    const isEditable = getEditType(gos) === "fullRow" ? isFullRowCellEditable(beans, position, source2) : isCellEditable(beans, position, source2);
     if (isEditable) {
       this.strategy ?? (this.strategy = this.createStrategy());
     }
@@ -65326,12 +65326,12 @@ var EditService = class extends BeanStub {
     }
     return invalid;
   }
-  moveToNextCell(prev, backwards, event, source = "ui") {
+  moveToNextCell(prev, backwards, event, source2 = "ui") {
     let res;
     const editing = this.isEditing();
     const preventNavigation = editing && this.checkNavWithValidation(void 0, event) === "block-stop";
     if (prev instanceof CellCtrl && editing) {
-      res = this.strategy?.moveToNextEditingCell(prev, backwards, event, source, preventNavigation);
+      res = this.strategy?.moveToNextEditingCell(prev, backwards, event, source2, preventNavigation);
     }
     if (res === null) {
       return res;
@@ -65342,20 +65342,20 @@ var EditService = class extends BeanStub {
     }
     return res;
   }
-  getCellDataValue({ rowNode, column }, preferEditor = true) {
-    if (!rowNode || !column) {
+  getCellDataValue({ rowNode, column: column2 }, preferEditor = true) {
+    if (!rowNode || !column2) {
       return void 0;
     }
-    let edit = this.model.getEdit({ rowNode, column });
+    let edit = this.model.getEdit({ rowNode, column: column2 });
     const pinnedSibling = rowNode.pinnedSibling;
     if (pinnedSibling) {
-      const siblingEdit = this.model.getEdit({ rowNode: pinnedSibling, column });
+      const siblingEdit = this.model.getEdit({ rowNode: pinnedSibling, column: column2 });
       if (siblingEdit) {
         edit = siblingEdit;
       }
     }
     const newValue = preferEditor ? edit?.editorValue ?? edit?.pendingValue : edit?.pendingValue;
-    return newValue === UNEDITED || !edit ? edit?.sourceValue ?? this.valueSvc.getValue(column, rowNode, false, "api") : newValue;
+    return newValue === UNEDITED || !edit ? edit?.sourceValue ?? this.valueSvc.getValue(column2, rowNode, false, "api") : newValue;
   }
   addStopEditingWhenGridLosesFocus(viewports) {
     _addStopEditingWhenGridLosesFocus(this, this.beans, viewports);
@@ -65373,7 +65373,7 @@ var EditService = class extends BeanStub {
       }
       const { beans } = this;
       this.strategy ?? (this.strategy = this.createStrategy());
-      const source = this.isBatchEditing() ? "ui" : this.committing ? eventSource ?? "api" : "api";
+      const source2 = this.isBatchEditing() ? "ui" : this.committing ? eventSource ?? "api" : "api";
       if (!eventSource || KEEP_EDITOR_SOURCES.has(eventSource)) {
         _syncFromEditor(beans, position, newValue, eventSource, void 0, { persist: true });
         return this.setNodeDataValue(position.rowNode, position.column, newValue, true, eventSource);
@@ -65385,7 +65385,7 @@ var EditService = class extends BeanStub {
         }
         if (existing.sourceValue !== newValue) {
           _syncFromEditor(beans, position, newValue, eventSource, void 0, { persist: true });
-          this.stopEditing(position, { source, suppressNavigateAfterEdit: true });
+          this.stopEditing(position, { source: source2, suppressNavigateAfterEdit: true });
           return true;
         }
         if (existing.sourceValue === newValue) {
@@ -65398,7 +65398,7 @@ var EditService = class extends BeanStub {
         }
       }
       _syncFromEditor(beans, position, newValue, eventSource, void 0, { persist: true });
-      this.stopEditing(position, { source, suppressNavigateAfterEdit: true });
+      this.stopEditing(position, { source: source2, suppressNavigateAfterEdit: true });
       return true;
     } finally {
       this.committing = false;
@@ -65420,7 +65420,7 @@ var EditService = class extends BeanStub {
     if (!hasEdits) {
       return;
     }
-    const { rowNode, column } = position;
+    const { rowNode, column: column2 } = position;
     const { compDetails, valueToDisplay } = params;
     if (compDetails) {
       const { params: params2 } = compDetails;
@@ -65428,8 +65428,8 @@ var EditService = class extends BeanStub {
       return { compDetails };
     }
     const editRow = this.model.getEditRow(position.rowNode, CHECK_SIBLING);
-    if (valueToDisplay !== void 0 && editRow?.has(column)) {
-      return { valueToDisplay: this.valueSvc.getValue(column, rowNode) };
+    if (valueToDisplay !== void 0 && editRow?.has(column2)) {
+      return { valueToDisplay: this.valueSvc.getValue(column2, rowNode) };
     }
   }
   cleanupEditors() {
@@ -65458,14 +65458,14 @@ var EditService = class extends BeanStub {
       oldValue: edit.sourceValue
     }));
   }
-  applyBulkEdit({ rowNode, column }, ranges) {
+  applyBulkEdit({ rowNode, column: column2 }, ranges) {
     if (!ranges || ranges.length === 0) {
       return;
     }
     const { beans, rangeSvc, valueSvc } = this;
     _syncFromEditors(beans, { persist: true });
     const edits = this.model.getEditMap(true);
-    const editValue = edits.get(rowNode)?.get(column)?.pendingValue;
+    const editValue = edits.get(rowNode)?.get(column2)?.pendingValue;
     if (!this.batch) {
       this.eventSvc.dispatchEvent({ type: "bulkEditingStarted" });
     }
@@ -65476,14 +65476,14 @@ var EditService = class extends BeanStub {
           return;
         }
         const editRow = edits.get(rowNode2) ?? /* @__PURE__ */ new Map();
-        for (const column2 of range.columns) {
-          if (!column2) {
+        for (const column22 of range.columns) {
+          if (!column22) {
             continue;
           }
-          if (this.isCellEditable({ rowNode: rowNode2, column: column2 }, "api")) {
-            const sourceValue = valueSvc.getValue(column2, rowNode2, true, "api");
+          if (this.isCellEditable({ rowNode: rowNode2, column: column22 }, "api")) {
+            const sourceValue = valueSvc.getValue(column22, rowNode2, true, "api");
             let pendingValue = valueSvc.parseValue(
-              column2,
+              column22,
               rowNode2 ?? null,
               editValue,
               sourceValue
@@ -65491,7 +65491,7 @@ var EditService = class extends BeanStub {
             if (Number.isNaN(pendingValue)) {
               pendingValue = null;
             }
-            editRow.set(column2, {
+            editRow.set(column22, {
               editorValue: void 0,
               pendingValue,
               sourceValue,
@@ -65519,7 +65519,7 @@ var EditService = class extends BeanStub {
       this.eventSvc.dispatchEvent({ type: "bulkEditingStopped", changes: this.toEventChangeList(edits) });
     });
     this.bulkRefresh();
-    const cellCtrl = _getCellCtrl(beans, { rowNode, column });
+    const cellCtrl = _getCellCtrl(beans, { rowNode, column: column2 });
     if (cellCtrl) {
       cellCtrl.focusCell(true);
     }
@@ -65534,8 +65534,8 @@ var EditService = class extends BeanStub {
     const { beans } = this;
     const { colModel, valueSvc } = beans;
     const edits = /* @__PURE__ */ new Map();
-    for (let { colId, column, colKey, rowIndex, rowPinned, newValue: pendingValue, state } of cells) {
-      const col = colId ? colModel.getCol(colId) : colKey ? colModel.getCol(colKey) : column;
+    for (let { colId, column: column2, colKey, rowIndex, rowPinned, newValue: pendingValue, state } of cells) {
+      const col = colId ? colModel.getCol(colId) : colKey ? colModel.getCol(colKey) : column2;
       if (!col) {
         continue;
       }
@@ -65617,9 +65617,9 @@ var BaseEditStrategy = class extends BeanStub {
     const { gos, editModelSvc } = beans;
     const isFocusCleared = event.type === "cellFocusCleared";
     if (editSvc.isEditing(void 0, { withOpenEditor: true })) {
-      const { column, rowIndex, rowPinned } = event;
+      const { column: column2, rowIndex, rowPinned } = event;
       const cellPositionFromEvent = {
-        column,
+        column: column2,
         rowNode: _getRowNode(beans, { rowIndex, rowPinned })
       };
       const isBlock = gos.get("invalidEditValueMode") === "block";
@@ -65685,14 +65685,14 @@ var BaseEditStrategy = class extends BeanStub {
     const positions = this.model.getEditPositions();
     const discard = [];
     if (rowNode) {
-      for (const pos of positions) {
-        if (pos.rowNode !== rowNode) {
-          discard.push(pos);
+      for (const pos2 of positions) {
+        if (pos2.rowNode !== rowNode) {
+          discard.push(pos2);
         }
       }
     } else {
-      for (const pos of positions) {
-        discard.push(pos);
+      for (const pos2 of positions) {
+        discard.push(pos2);
       }
     }
     _destroyEditors(this.beans, discard);
@@ -65714,8 +65714,8 @@ var BaseEditStrategy = class extends BeanStub {
   }
   setupEditors(params) {
     const { event, ignoreEventKey = false, startedEdit, position, cells = this.model.getEditPositions() } = params;
-    const key = event instanceof KeyboardEvent && !ignoreEventKey && event.key || void 0;
-    _setupEditors(this.beans, cells, position, key, event, startedEdit);
+    const key2 = event instanceof KeyboardEvent && !ignoreEventKey && event.key || void 0;
+    _setupEditors(this.beans, cells, position, key2, event, startedEdit);
   }
   dispatchCellEvent(position, event, type, payload) {
     const cellCtrl = _getCellCtrl(this.beans, position);
@@ -65732,15 +65732,15 @@ var BaseEditStrategy = class extends BeanStub {
       this.eventSvc.dispatchEvent(rowCtrl.createRowEvent(type));
     }
   }
-  shouldStop(_position, event, source = "ui") {
+  shouldStop(_position, event, source2 = "ui") {
     const batch = this.editSvc.isBatchEditing();
-    if (batch && source === "api") {
+    if (batch && source2 === "api") {
       return true;
     }
-    if (batch && (source === "ui" || source === "edit")) {
+    if (batch && (source2 === "ui" || source2 === "edit")) {
       return false;
     }
-    if (source === "api") {
+    if (source2 === "api") {
       return true;
     }
     if (event instanceof KeyboardEvent && !batch) {
@@ -65748,7 +65748,7 @@ var BaseEditStrategy = class extends BeanStub {
     }
     return null;
   }
-  shouldCancel(_position, event, source = "ui") {
+  shouldCancel(_position, event, source2 = "ui") {
     const batch = this.editSvc.isBatchEditing();
     if (event instanceof KeyboardEvent && !batch) {
       const result = event.key === KeyCode.ESCAPE;
@@ -65756,10 +65756,10 @@ var BaseEditStrategy = class extends BeanStub {
         return true;
       }
     }
-    if (batch && source === "api") {
+    if (batch && source2 === "api") {
       return true;
     }
-    if (source === "api") {
+    if (source2 === "api") {
       return true;
     }
     return false;
@@ -65770,9 +65770,9 @@ var BaseEditStrategy = class extends BeanStub {
     }
     const cells = [];
     edits.forEach((editRow, rowNode) => {
-      editRow.forEach((cellData, column) => {
+      editRow.forEach((cellData, column2) => {
         if (cellData.state === "editing") {
-          cells.push({ ...cellData, rowNode, column });
+          cells.push({ ...cellData, rowNode, column: column2 });
         }
       });
     });
@@ -65782,8 +65782,8 @@ var BaseEditStrategy = class extends BeanStub {
     this.model?.setEditMap(edits);
     if (cells.length > 0) {
       const position = cells.at(-1);
-      const key = position.pendingValue === UNEDITED ? void 0 : position.pendingValue;
-      this.start({ position, event: new KeyboardEvent("keydown", { key }), source: "api" });
+      const key2 = position.pendingValue === UNEDITED ? void 0 : position.pendingValue;
+      this.start({ position, event: new KeyboardEvent("keydown", { key: key2 }), source: "api" });
       const cellCtrl = _getCellCtrl(this.beans, position);
       if (cellCtrl) {
         this.setFocusInOnEditor(cellCtrl);
@@ -65837,13 +65837,13 @@ var FullRowEditStrategy = class extends BaseEditStrategy {
     this.startedRows.push(rowNode);
     const columns = this.beans.visibleCols.allCols;
     const cells = [];
-    for (const column of columns) {
-      if (!column.isCellEditable(rowNode)) {
+    for (const column2 of columns) {
+      if (!column2.isCellEditable(rowNode)) {
         continue;
       }
       const position2 = {
         rowNode,
-        column
+        column: column2
       };
       cells.push(position2);
       if (!this.model.hasEdits(position2)) {
@@ -65918,7 +65918,7 @@ var FullRowEditStrategy = class extends BaseEditStrategy {
     this.startedRows.length = 0;
   }
   // returns null if no navigation should be performed
-  moveToNextEditingCell(prevCell, backwards, event, source = "ui", preventNavigation = false) {
+  moveToNextEditingCell(prevCell, backwards, event, source2 = "ui", preventNavigation = false) {
     const prevPos = prevCell.cellPosition;
     let nextCell;
     this.model.suspend(true);
@@ -65973,7 +65973,7 @@ var FullRowEditStrategy = class extends BaseEditStrategy {
       if (suppressStartEditOnTab) {
         nextCell.focusCell(true, event);
       } else {
-        this.editSvc.startEditing(nextCell, { startedEdit: true, event, source, ignoreEventKey: true });
+        this.editSvc.startEditing(nextCell, { startedEdit: true, event, source: source2, ignoreEventKey: true });
       }
     }
     prevCell.rowCtrl?.refreshRow({ suppressFlash: true, force: true });
@@ -65981,13 +65981,13 @@ var FullRowEditStrategy = class extends BaseEditStrategy {
   }
   restoreEditors() {
     this.model.getEditMap().forEach(
-      (rowEdits, rowNode) => rowEdits.forEach(({ state }, column) => {
+      (rowEdits, rowNode) => rowEdits.forEach(({ state }, column2) => {
         if (state !== "editing") {
           return;
         }
         const cellCtrl = _getCellCtrl(this.beans, {
           rowNode,
-          column
+          column: column2
         });
         if (cellCtrl && !cellCtrl.comp?.getCellEditor()) {
           _setupEditor(this.beans, cellCtrl, { silent: true });
@@ -66006,16 +66006,16 @@ var SingleCellEditStrategy = class extends BaseEditStrategy {
     super(...arguments);
     this.beanName = "singleCell";
   }
-  shouldStop(position, event, source = "ui") {
-    const res = super.shouldStop(position, event, source);
+  shouldStop(position, event, source2 = "ui") {
+    const res = super.shouldStop(position, event, source2);
     if (res !== null) {
       return res;
     }
-    const { rowNode, column } = position || {};
-    if ((!this.rowNode || !this.column) && rowNode && column) {
+    const { rowNode, column: column2 } = position || {};
+    if ((!this.rowNode || !this.column) && rowNode && column2) {
       return null;
     }
-    return this.rowNode !== rowNode || this.column !== column;
+    return this.rowNode !== rowNode || this.column !== column2;
   }
   midBatchInputsAllowed(position) {
     return this.model.hasEdits(position);
@@ -66053,9 +66053,9 @@ var SingleCellEditStrategy = class extends BaseEditStrategy {
   }
   onCellFocusChanged(event) {
     const { colModel, editSvc } = this.beans;
-    const { rowIndex, column, rowPinned } = event;
+    const { rowIndex, column: column2, rowPinned } = event;
     const rowNode = _getRowNode(this.beans, { rowIndex, rowPinned });
-    const curColId = _getColId(column);
+    const curColId = _getColId(column2);
     const curCol = colModel.getCol(curColId);
     const previous = event["previousParams"];
     if (previous) {
@@ -66070,7 +66070,7 @@ var SingleCellEditStrategy = class extends BaseEditStrategy {
     super.onCellFocusChanged(event);
   }
   // returns null if no navigation should be performed
-  moveToNextEditingCell(prevCell, backwards, event, source = "ui", preventNavigation = false) {
+  moveToNextEditingCell(prevCell, backwards, event, source2 = "ui", preventNavigation = false) {
     const focusedCell = this.beans.focusSvc.getFocusedCell();
     if (focusedCell) {
       prevCell = _getCellByPosition(this.beans, focusedCell) ?? prevCell;
@@ -66120,7 +66120,7 @@ var SingleCellEditStrategy = class extends BaseEditStrategy {
       if (suppressStartEditOnTab) {
         nextCell.focusCell(true, event);
       } else {
-        this.editSvc.startEditing(nextCell, { startedEdit: true, event, source, ignoreEventKey: true });
+        this.editSvc.startEditing(nextCell, { startedEdit: true, event, source: source2, ignoreEventKey: true });
       }
     }
     if (nextEditable && !preventNavigation) {
@@ -66287,15 +66287,15 @@ var SelectionColService = class extends BeanStub {
     updateOrders(putSelectionColsFirstInList);
   }
   updateColumns(event) {
-    const source = _convertColumnEventSourceType(event.source);
+    const source2 = _convertColumnEventSourceType(event.source);
     for (const col of this.columns?.list ?? []) {
       const newColDef = this.createSelectionColDef(event.currentValue);
-      col.setColDef(newColDef, null, source);
-      _applyColumnState(this.beans, { state: [{ ...newColDef, colId: col.getColId() }] }, source);
+      col.setColDef(newColDef, null, source2);
+      _applyColumnState(this.beans, { state: [{ ...newColDef, colId: col.getColId() }] }, source2);
     }
   }
-  getColumn(key) {
-    return this.columns?.list.find((col) => _columnsMatch(col, key)) ?? null;
+  getColumn(key2) {
+    return this.columns?.list.find((col) => _columnsMatch(col, key2)) ?? null;
   }
   getColumns() {
     return this.columns?.list ?? null;
@@ -66353,7 +66353,7 @@ var SelectionColService = class extends BeanStub {
     this.createBean(col);
     return [col];
   }
-  onSelectionOptionsChanged(current2, prev, source) {
+  onSelectionOptionsChanged(current2, prev, source2) {
     const prevCheckbox = prev && typeof prev !== "string" ? _getCheckboxes(prev) : void 0;
     const currCheckbox = current2 && typeof current2 !== "string" ? _getCheckboxes(current2) : void 0;
     const checkboxHasChanged = prevCheckbox !== currCheckbox;
@@ -66364,7 +66364,7 @@ var SelectionColService = class extends BeanStub {
     const prevLocation = _getCheckboxLocation(prev);
     const locationChanged = currLocation !== prevLocation;
     if (checkboxHasChanged || headerCheckboxHasChanged || locationChanged) {
-      this.beans.colModel.refreshAll(source);
+      this.beans.colModel.refreshAll(source2);
     }
   }
   destroy() {
@@ -66391,13 +66391,13 @@ var SelectionColService = class extends BeanStub {
     if (numVisibleCols === 0) {
       return;
     }
-    const column = this.columns.list[0];
-    if (!column.isVisible()) {
+    const column2 = this.columns.list[0];
+    if (!column2.isVisible()) {
       return;
     }
     const hideSelectionCol = () => {
       let cols;
-      switch (column.pinned) {
+      switch (column2.pinned) {
         case "left":
         case true:
           cols = leftCols;
@@ -66408,7 +66408,7 @@ var SelectionColService = class extends BeanStub {
         default:
           cols = centerCols;
       }
-      cols && _removeFromArray(cols, column);
+      cols && _removeFromArray(cols, column2);
     };
     const rowNumbersCol = this.beans.rowNumbersSvc?.getColumn(ROW_NUMBERS_COLUMN_ID);
     const expectedNumCols = rowNumbersCol ? 2 : 1;
@@ -66432,26 +66432,26 @@ function setNodesSelected(beans, params) {
   if (!allNodesValid) {
     return;
   }
-  const { nodes, source, newValue } = params;
-  beans.selectionSvc?.setNodesSelected({ nodes, source: source ?? "api", newValue });
+  const { nodes, source: source2, newValue } = params;
+  beans.selectionSvc?.setNodesSelected({ nodes, source: source2 ?? "api", newValue });
 }
-function selectAll(beans, selectAll2, source = "apiSelectAll") {
-  beans.selectionSvc?.selectAllRowNodes({ source, selectAll: selectAll2 });
+function selectAll(beans, selectAll2, source2 = "apiSelectAll") {
+  beans.selectionSvc?.selectAllRowNodes({ source: source2, selectAll: selectAll2 });
 }
-function deselectAll(beans, selectAll2, source = "apiSelectAll") {
-  beans.selectionSvc?.deselectAllRowNodes({ source, selectAll: selectAll2 });
+function deselectAll(beans, selectAll2, source2 = "apiSelectAll") {
+  beans.selectionSvc?.deselectAllRowNodes({ source: source2, selectAll: selectAll2 });
 }
-function selectAllFiltered(beans, source = "apiSelectAllFiltered") {
-  beans.selectionSvc?.selectAllRowNodes({ source, selectAll: "filtered" });
+function selectAllFiltered(beans, source2 = "apiSelectAllFiltered") {
+  beans.selectionSvc?.selectAllRowNodes({ source: source2, selectAll: "filtered" });
 }
-function deselectAllFiltered(beans, source = "apiSelectAllFiltered") {
-  beans.selectionSvc?.deselectAllRowNodes({ source, selectAll: "filtered" });
+function deselectAllFiltered(beans, source2 = "apiSelectAllFiltered") {
+  beans.selectionSvc?.deselectAllRowNodes({ source: source2, selectAll: "filtered" });
 }
-function selectAllOnCurrentPage(beans, source = "apiSelectAllCurrentPage") {
-  beans.selectionSvc?.selectAllRowNodes({ source, selectAll: "currentPage" });
+function selectAllOnCurrentPage(beans, source2 = "apiSelectAllCurrentPage") {
+  beans.selectionSvc?.selectAllRowNodes({ source: source2, selectAll: "currentPage" });
 }
-function deselectAllOnCurrentPage(beans, source = "apiSelectAllCurrentPage") {
-  beans.selectionSvc?.deselectAllRowNodes({ source, selectAll: "currentPage" });
+function deselectAllOnCurrentPage(beans, source2 = "apiSelectAllCurrentPage") {
+  beans.selectionSvc?.deselectAllRowNodes({ source: source2, selectAll: "currentPage" });
 }
 function getSelectedNodes(beans) {
   return beans.selectionSvc?.getSelectedNodes() ?? [];
@@ -66492,11 +66492,11 @@ var SelectionService = class extends BaseSelectionService {
     super.destroy();
     this.resetNodes();
   }
-  handleSelectionEvent(event, rowNode, source) {
+  handleSelectionEvent(event, rowNode, source2) {
     if (this.isRowSelectionBlocked(rowNode)) {
       return 0;
     }
-    const selection = this.inferNodeSelections(rowNode, event.shiftKey, event.metaKey || event.ctrlKey, source);
+    const selection = this.inferNodeSelections(rowNode, event.shiftKey, event.metaKey || event.ctrlKey, source2);
     if (selection == null) {
       return 0;
     }
@@ -66505,9 +66505,9 @@ var SelectionService = class extends BaseSelectionService {
       if (selection.reset) {
         this.resetNodes();
       } else {
-        this.selectRange(selection.deselect, false, source);
+        this.selectRange(selection.deselect, false, source2);
       }
-      return this.selectRange(selection.select, true, source);
+      return this.selectRange(selection.select, true, source2);
     } else {
       const newValue = selection.checkFilteredNodes ? recursiveCanNodesBeSelected(selection.node) : selection.newValue;
       return this.setNodesSelected({
@@ -66516,7 +66516,7 @@ var SelectionService = class extends BaseSelectionService {
         clearSelection: selection.clearSelection,
         keepDescendants: selection.keepDescendants,
         event,
-        source
+        source: source2
       });
     }
   }
@@ -66526,7 +66526,7 @@ var SelectionService = class extends BaseSelectionService {
     suppressFinishActions,
     nodes,
     event,
-    source,
+    source: source2,
     keepDescendants = false
   }) {
     if (nodes.length === 0) {
@@ -66555,52 +66555,52 @@ var SelectionService = class extends BaseSelectionService {
       }
       const skipThisNode = this.groupSelectsFiltered && node.group && !gos.get("treeData");
       if (!skipThisNode) {
-        const thisNodeWasSelected = this.selectRowNode(node, newValue, event, source);
+        const thisNodeWasSelected = this.selectRowNode(node, newValue, event, source2);
         if (thisNodeWasSelected) {
           this.detailSelection.delete(node.id);
           updatedCount++;
         }
       }
       if (this.groupSelectsDescendants && node.childrenAfterGroup?.length) {
-        updatedCount += this.selectChildren(node, newValue, source);
+        updatedCount += this.selectChildren(node, newValue, source2);
       }
     }
     if (!suppressFinishActions) {
-      if (nodes.length === 1 && source === "api") {
+      if (nodes.length === 1 && source2 === "api") {
         this.selectionCtx.setRoot(_normaliseSiblingRef(nodes[0]));
       }
       const clearOtherNodes = newValue && (clearSelection || !this.isMultiSelect());
       if (clearOtherNodes) {
-        updatedCount += this.clearOtherNodes(_normaliseSiblingRef(nodes[0]), keepDescendants, source);
+        updatedCount += this.clearOtherNodes(_normaliseSiblingRef(nodes[0]), keepDescendants, source2);
       }
       if (updatedCount > 0) {
-        this.updateGroupsFromChildrenSelections(source);
-        this.dispatchSelectionChanged(source);
+        this.updateGroupsFromChildrenSelections(source2);
+        this.dispatchSelectionChanged(source2);
       }
     }
     return updatedCount;
   }
   // not to be mixed up with 'cell range selection' where you drag the mouse, this is row range selection, by
   // holding down 'shift'.
-  selectRange(nodesToSelect, value, source) {
+  selectRange(nodesToSelect, value, source2) {
     let updatedCount = 0;
     nodesToSelect.forEach((node) => {
       const rowNode = _normaliseSiblingRef(node);
       if (rowNode.group && this.groupSelectsDescendants) {
         return;
       }
-      const nodeWasSelected = this.selectRowNode(rowNode, value, void 0, source);
+      const nodeWasSelected = this.selectRowNode(rowNode, value, void 0, source2);
       if (nodeWasSelected) {
         updatedCount++;
       }
     });
     if (updatedCount > 0) {
-      this.updateGroupsFromChildrenSelections(source);
-      this.dispatchSelectionChanged(source);
+      this.updateGroupsFromChildrenSelections(source2);
+      this.dispatchSelectionChanged(source2);
     }
     return updatedCount;
   }
-  selectChildren(node, newValue, source) {
+  selectChildren(node, newValue, source2) {
     const children = this.groupSelectsFiltered ? node.childrenAfterAggFilter : node.childrenAfterGroup;
     if (!children) {
       return 0;
@@ -66609,7 +66609,7 @@ var SelectionService = class extends BaseSelectionService {
       newValue,
       clearSelection: false,
       suppressFinishActions: true,
-      source,
+      source: source2,
       nodes: children
     });
   }
@@ -66630,14 +66630,14 @@ var SelectionService = class extends BaseSelectionService {
    */
   filterFromSelection(predicate) {
     const newSelectedNodes = /* @__PURE__ */ new Map();
-    this.selectedNodes.forEach((rowNode, key) => {
+    this.selectedNodes.forEach((rowNode, key2) => {
       if (predicate(rowNode)) {
-        newSelectedNodes.set(key, rowNode);
+        newSelectedNodes.set(key2, rowNode);
       }
     });
     this.selectedNodes = newSelectedNodes;
   }
-  updateGroupsFromChildrenSelections(source, changedPath) {
+  updateGroupsFromChildrenSelections(source2, changedPath) {
     if (!this.groupSelectsDescendants) {
       return false;
     }
@@ -66657,12 +66657,12 @@ var SelectionService = class extends BaseSelectionService {
     changedPath.forEachChangedNodeDepthFirst((rowNode) => {
       if (rowNode !== rootNode) {
         const selected = this.calculateSelectedFromChildren(rowNode);
-        selectionChanged = this.selectRowNode(rowNode, selected === null ? false : selected, void 0, source) || selectionChanged;
+        selectionChanged = this.selectRowNode(rowNode, selected === null ? false : selected, void 0, source2) || selectionChanged;
       }
     });
     return selectionChanged;
   }
-  clearOtherNodes(rowNodeToKeepSelected, keepDescendants, source) {
+  clearOtherNodes(rowNodeToKeepSelected, keepDescendants, source2) {
     const groupsToRefresh = /* @__PURE__ */ new Map();
     let updatedCount = 0;
     this.selectedNodes.forEach((otherRowNode) => {
@@ -66675,7 +66675,7 @@ var SelectionService = class extends BaseSelectionService {
           newValue: false,
           clearSelection: false,
           suppressFinishActions: true,
-          source
+          source: source2
         });
         if (this.groupSelectsDescendants && otherRowNode.parent) {
           groupsToRefresh.set(otherRowNode.parent.id, otherRowNode.parent);
@@ -66684,7 +66684,7 @@ var SelectionService = class extends BaseSelectionService {
     });
     groupsToRefresh.forEach((group) => {
       const selected = this.calculateSelectedFromChildren(group);
-      this.selectRowNode(group, selected === null ? false : selected, void 0, source);
+      this.selectRowNode(group, selected === null ? false : selected, void 0, source2);
     });
     return updatedCount;
   }
@@ -66741,11 +66741,11 @@ var SelectionService = class extends BaseSelectionService {
       rowNode.__selected = false;
     }
   }
-  reset(source) {
+  reset(source2) {
     const selectionCount = this.getSelectionCount();
     this.resetNodes();
     if (selectionCount) {
-      this.dispatchSelectionChanged(source);
+      this.dispatchSelectionChanged(source2);
     }
   }
   resetNodes() {
@@ -66785,11 +66785,11 @@ var SelectionService = class extends BaseSelectionService {
   isEmpty() {
     return this.getSelectionCount() === 0;
   }
-  deselectAllRowNodes({ source, selectAll: selectAll2 }) {
+  deselectAllRowNodes({ source: source2, selectAll: selectAll2 }) {
     const rowModelClientSide = _isClientSideRowModel(this.gos);
     let updatedNodes = false;
     const callback = (rowNode) => {
-      const updated = this.selectRowNode(_normaliseSiblingRef(rowNode), false, void 0, source);
+      const updated = this.selectRowNode(_normaliseSiblingRef(rowNode), false, void 0, source2);
       updatedNodes || (updatedNodes = updated);
     };
     if (selectAll2 === "currentPage" || selectAll2 === "filtered") {
@@ -66800,15 +66800,15 @@ var SelectionService = class extends BaseSelectionService {
       this.getNodesToSelect(selectAll2).forEach(callback);
     } else {
       this.selectedNodes.forEach(callback);
-      this.reset(source);
+      this.reset(source2);
     }
     this.selectionCtx.selectAll = false;
     if (rowModelClientSide && this.groupSelectsDescendants) {
-      const updated = this.updateGroupsFromChildrenSelections(source);
+      const updated = this.updateGroupsFromChildrenSelections(source2);
       updatedNodes || (updatedNodes = updated);
     }
     if (updatedNodes) {
-      this.dispatchSelectionChanged(source);
+      this.dispatchSelectionChanged(source2);
     }
   }
   getSelectedCounts(selectAll2) {
@@ -66895,25 +66895,25 @@ var SelectionService = class extends BaseSelectionService {
     if (!this.canSelectAll()) {
       return;
     }
-    const { source, selectAll: selectAll2 } = params;
+    const { source: source2, selectAll: selectAll2 } = params;
     let updatedNodes = false;
     this.getNodesToSelect(selectAll2).forEach((rowNode) => {
-      const updated = this.selectRowNode(_normaliseSiblingRef(rowNode), true, void 0, source);
+      const updated = this.selectRowNode(_normaliseSiblingRef(rowNode), true, void 0, source2);
       updatedNodes || (updatedNodes = updated);
     });
     selectionCtx.selectAll = true;
     if (_isClientSideRowModel(gos) && this.groupSelectsDescendants) {
-      const updated = this.updateGroupsFromChildrenSelections(source);
+      const updated = this.updateGroupsFromChildrenSelections(source2);
       updatedNodes || (updatedNodes = updated);
     }
     if (updatedNodes) {
-      this.dispatchSelectionChanged(source);
+      this.dispatchSelectionChanged(source2);
     }
   }
   getSelectionState() {
     return this.isEmpty() ? null : Array.from(this.selectedNodes.keys());
   }
-  setSelectionState(state, source, clearSelection) {
+  setSelectionState(state, source2, clearSelection) {
     if (!state) {
       state = [];
     }
@@ -66934,7 +66934,7 @@ var SelectionService = class extends BaseSelectionService {
     this.setNodesSelected({
       newValue: true,
       nodes,
-      source
+      source: source2
     });
   }
   canSelectAll() {
@@ -66953,7 +66953,7 @@ var SelectionService = class extends BaseSelectionService {
     if (!_isRowSelection(gos)) {
       return;
     }
-    const source = "selectableChanged";
+    const source2 = "selectableChanged";
     const skipLeafNodes = changedPath !== void 0;
     const isCSRMGroupSelectsDescendants = _isClientSideRowModel(gos) && this.groupSelectsDescendants;
     const nodesToDeselect = [];
@@ -66984,11 +66984,11 @@ var SelectionService = class extends BaseSelectionService {
       this.setNodesSelected({
         nodes: nodesToDeselect,
         newValue: false,
-        source
+        source: source2
       });
     }
     if (!skipLeafNodes && isCSRMGroupSelectsDescendants) {
-      this.updateGroupsFromChildrenSelections?.(source);
+      this.updateGroupsFromChildrenSelections?.(source2);
     }
   }
   // only called by CSRM
@@ -67058,10 +67058,10 @@ var SelectionService = class extends BaseSelectionService {
       }
     }
   }
-  dispatchSelectionChanged(source) {
+  dispatchSelectionChanged(source2) {
     this.eventSvc.dispatchEvent({
       type: "selectionChanged",
-      source,
+      source: source2,
       selectedNodes: this.getSelectedNodes(),
       serverSideState: null
     });
@@ -67070,10 +67070,10 @@ var SelectionService = class extends BaseSelectionService {
 function _normaliseSiblingRef(node) {
   return _isManualPinnedRow(node) ? node.pinnedSibling : node.footer ? node.sibling : node;
 }
-function _isAllSelected(api2) {
+function _isAllSelected(api) {
   let selectedCount = 0;
   let notSelectedCount = 0;
-  api2.forEachNode((node) => {
+  api.forEachNode((node) => {
     if (node.isSelected()) {
       selectedCount++;
     } else if (node.selectable) {
@@ -67221,7 +67221,7 @@ var AlignedGridsService = class extends BeanStub {
         _error(19);
       }
       return refOrComp.api;
-    }).filter((api2) => !!api2 && !api2.isDestroyed());
+    }).filter((api) => !!api && !api.isDestroyed());
     return apis;
   }
   isGridApi(ref) {
@@ -67245,11 +67245,11 @@ var AlignedGridsService = class extends BeanStub {
     if (this.consuming) {
       return;
     }
-    for (const api2 of this.getAlignedGridApis()) {
-      if (api2.isDestroyed()) {
+    for (const api of this.getAlignedGridApis()) {
+      if (api.isDestroyed()) {
         continue;
       }
-      api2.dispatchEvent(event);
+      api.dispatchEvent(event);
     }
   }
   // common logic across all consume methods. very little common logic, however extracting
@@ -67282,8 +67282,8 @@ var AlignedGridsService = class extends BeanStub {
   extractDataFromEvent(event, func) {
     const result = [];
     if (event.columns) {
-      event.columns.forEach((column) => {
-        result.push(func(column));
+      event.columns.forEach((column2) => {
+        result.push(func(column2));
       });
     } else if (event.column) {
       result.push(func(event.column));
@@ -67369,8 +67369,8 @@ var AlignedGridsService = class extends BeanStub {
       case "columnResized": {
         const resizedEvent = colEvent;
         const columnWidths = {};
-        for (const column of masterColumns) {
-          columnWidths[column.getId()] = { key: column.getColId(), newWidth: column.getActualWidth() };
+        for (const column2 of masterColumns) {
+          columnWidths[column2.getId()] = { key: column2.getColId(), newWidth: column2.getActualWidth() };
         }
         for (const col of resizedEvent.flexColumns ?? []) {
           if (columnWidths[col.getId()]) {
@@ -67388,8 +67388,8 @@ var AlignedGridsService = class extends BeanStub {
     }
     const gridBodyCon = ctrlsSvc.getGridBodyCtrl();
     const isVerticalScrollShowing = gridBodyCon.isVerticalScrollShowing();
-    for (const api2 of this.getAlignedGridApis()) {
-      api2.setGridOption("alwaysShowVerticalScroll", isVerticalScrollShowing);
+    for (const api of this.getAlignedGridApis()) {
+      api.setGridOption("alwaysShowVerticalScroll", isVerticalScrollShowing);
     }
   }
 };
@@ -67648,16 +67648,16 @@ var ClientSideNodeManager = class extends BeanStub {
     this.eventSvc.dispatchEvent({ type: "rowDataUpdateStarted", firstRowData: data?.length ? data[0] : null });
   }
   deselect(nodes) {
-    const source = "rowDataChanged";
+    const source2 = "rowDataChanged";
     const selectionSvc = this.beans.selectionSvc;
     if (nodes.length) {
-      selectionSvc?.setNodesSelected({ newValue: false, nodes, suppressFinishActions: true, source });
+      selectionSvc?.setNodesSelected({ newValue: false, nodes, suppressFinishActions: true, source: source2 });
     }
-    selectionSvc?.updateGroupsFromChildrenSelections?.(source);
+    selectionSvc?.updateGroupsFromChildrenSelections?.(source2);
     if (nodes.length) {
       this.eventSvc.dispatchEvent({
         type: "selectionChanged",
-        source,
+        source: source2,
         selectedNodes: selectionSvc?.getSelectedNodes() ?? null,
         serverSideState: null
       });
@@ -67869,7 +67869,7 @@ var SortStage = class extends BeanStub {
   sort(sortOptions, useDeltaSort, changedRowNodes, changedPath) {
     const { gos, colModel, rowGroupColsSvc, rowNodeSorter, rowRenderer, showRowGroupCols } = this.beans;
     const groupMaintainOrder = gos.get("groupMaintainOrder");
-    const groupColumnsPresent = colModel.getCols().some((c) => c.isRowGroupActive());
+    const groupColumnsPresent = colModel.getCols().some((c2) => c2.isRowGroupActive());
     const groupCols = rowGroupColsSvc?.columns;
     const isPivotMode = colModel.isPivotMode();
     const postSortFunc = gos.getCallback("postSortRows");
@@ -67924,8 +67924,8 @@ var SortStage = class extends BeanStub {
     }
     if (_isColumnsSortingCoupledToGroup(this.gos)) {
       for (let i = 0; i < sortOptionsLen; ++i) {
-        const column = sortOptions[i].column;
-        if (column.isPrimary() && column.isRowGroupActive()) {
+        const column2 = sortOptions[i].column;
+        if (column2.isPrimary() && column2.isRowGroupActive()) {
           return true;
         }
       }
@@ -68913,8 +68913,8 @@ var GridSerializer = class extends BeanStub {
       return;
     }
     const rowAccumulator = gridSerializingSession.onNewBodyRow(node);
-    columnsToExport.forEach((column, index) => {
-      rowAccumulator.onColumn(column, index, node);
+    columnsToExport.forEach((column2, index) => {
+      rowAccumulator.onColumn(column2, index, node);
     });
     if (params.getCustomContentBelowRow) {
       const content = params.getCustomContentBelowRow(_addGridCommonParams(this.gos, { node }));
@@ -68971,8 +68971,8 @@ var GridSerializer = class extends BeanStub {
     return (gridSerializingSession) => {
       if (!params.skipColumnHeaders) {
         const gridRowIterator = gridSerializingSession.onNewHeaderRow();
-        columnsToExport.forEach((column, index) => {
-          gridRowIterator.onColumn(column, index, void 0);
+        columnsToExport.forEach((column2, index) => {
+          gridRowIterator.onColumn(column2, index, void 0);
         });
       }
       return gridSerializingSession;
@@ -69086,7 +69086,7 @@ var GridSerializer = class extends BeanStub {
       columnsToExport = visibleCols.allCols;
     }
     columnsToExport = columnsToExport.filter(
-      (column) => filterSpecialColumns(column) && (skipRowGroups && !isTreeData ? !isColumnGroupAutoCol(column) : true)
+      (column2) => filterSpecialColumns(column2) && (skipRowGroups && !isTreeData ? !isColumnGroupAutoCol(column2) : true)
     );
     return columnsToExport;
   }
@@ -69222,11 +69222,11 @@ var CsvSerializingSession = class extends BaseGridSerializingSession {
       onColumn: this.onNewHeaderRowColumn.bind(this)
     };
   }
-  onNewHeaderRowColumn(column, index) {
+  onNewHeaderRowColumn(column2, index) {
     if (index != 0) {
       this.result += this.columnSeparator;
     }
-    this.result += this.putInQuotes(this.extractHeaderValue(column));
+    this.result += this.putInQuotes(this.extractHeaderValue(column2));
   }
   onNewBodyRow() {
     this.beginNewLine();
@@ -69234,11 +69234,11 @@ var CsvSerializingSession = class extends BaseGridSerializingSession {
       onColumn: this.onNewBodyRowColumn.bind(this)
     };
   }
-  onNewBodyRowColumn(column, index, node) {
+  onNewBodyRowColumn(column2, index, node) {
     if (index != 0) {
       this.result += this.columnSeparator;
     }
-    const rowCellValue = this.extractRowCellValue(column, index, index, "csv", node);
+    const rowCellValue = this.extractRowCellValue(column2, index, index, "csv", node);
     this.result += this.putInQuotes(rowCellValue.valueFormatted ?? rowCellValue.value);
   }
   putInQuotes(value) {
@@ -70343,9 +70343,9 @@ function migrateV32_1(state) {
   state.cellSelection = jsonGet(state, "rangeSelection");
   return state;
 }
-function jsonGet(json, key) {
+function jsonGet(json, key2) {
   if (json && typeof json === "object") {
-    return json[key];
+    return json[key2];
   }
 }
 var StateService = class extends BeanStub {
@@ -70399,8 +70399,8 @@ var StateService = class extends BeanStub {
       colDelayRenderSvc?.hideColumns("columnState");
     }
     const [newColumnsLoadedDestroyFunc, rowCountReadyDestroyFunc, firstDataRenderedDestroyFunc] = this.addManagedEventListeners({
-      newColumnsLoaded: ({ source }) => {
-        if (source === "gridInitializing") {
+      newColumnsLoaded: ({ source: source2 }) => {
+        if (source2 === "gridInitializing") {
           newColumnsLoadedDestroyFunc();
           suppressEventsAndDispatchInitEvent(() => {
             this.setupStateOnColumnsInitialised(initialState, !!partialColumnState);
@@ -70434,20 +70434,20 @@ var StateService = class extends BeanStub {
     delete state.partialColumnState;
     this.cachedState = state;
     this.startSuppressEvents();
-    const source = "api";
+    const source2 = "api";
     const ignoreSet = propertiesToIgnore ? new Set(propertiesToIgnore) : void 0;
-    this.setGridReadyState(state, source, ignoreSet);
-    this.setColumnsInitialisedState(state, source, !!ignoreSet, ignoreSet);
-    this.setRowCountState(state, source, ignoreSet);
+    this.setGridReadyState(state, source2, ignoreSet);
+    this.setColumnsInitialisedState(state, source2, !!ignoreSet, ignoreSet);
+    this.setRowCountState(state, source2, ignoreSet);
     setTimeout(() => {
       if (this.isAlive()) {
-        this.setFirstDataRenderedState(state, source, ignoreSet);
+        this.setFirstDataRenderedState(state, source2, ignoreSet);
       }
-      this.stopSuppressEvents(source);
+      this.stopSuppressEvents(source2);
     });
   }
-  setGridReadyState(state, source, ignoreSet) {
-    if (source === "api" && !ignoreSet?.has("sideBar")) {
+  setGridReadyState(state, source2, ignoreSet) {
+    if (source2 === "api" && !ignoreSet?.has("sideBar")) {
       this.beans.sideBar?.comp?.setState(state.sideBar);
     }
     this.updateCachedState("sideBar", this.getSideBarState());
@@ -70473,9 +70473,9 @@ var StateService = class extends BeanStub {
     ]);
     this.updateCachedState("columnGroup", this.getColumnGroupState());
   }
-  setColumnsInitialisedState(state, source, partialColumnState, ignoreSet) {
-    this.setColumnState(state, source, partialColumnState, ignoreSet);
-    this.setColumnGroupState(state, source, ignoreSet);
+  setColumnsInitialisedState(state, source2, partialColumnState, ignoreSet) {
+    this.setColumnState(state, source2, partialColumnState, ignoreSet);
+    this.setColumnGroupState(state, source2, ignoreSet);
     this.updateColumnAndGroupState();
   }
   setupStateOnColumnsInitialised(initialState, partialColumnState) {
@@ -70495,7 +70495,7 @@ var StateService = class extends BeanStub {
       columnGroupOpened: () => this.updateCachedState("columnGroup", this.getColumnGroupState())
     });
   }
-  setRowCountState(state, source, ignoreSet) {
+  setRowCountState(state, source2, ignoreSet) {
     const {
       filter: filterState,
       rowGroupExpansion: rowGroupExpansionState,
@@ -70503,18 +70503,18 @@ var StateService = class extends BeanStub {
       rowSelection: rowSelectionState,
       pagination: paginationState
     } = state;
-    const shouldSetState = (prop, propState) => !ignoreSet?.has(prop) && (propState || source === "api");
+    const shouldSetState = (prop, propState) => !ignoreSet?.has(prop) && (propState || source2 === "api");
     if (shouldSetState("filter", filterState)) {
       this.setFilterState(filterState);
     }
     if (shouldSetState("rowGroupExpansion", rowGroupExpansionState)) {
-      this.setRowGroupExpansionState(ssrmRowGroupExpansion, rowGroupExpansionState, source);
+      this.setRowGroupExpansionState(ssrmRowGroupExpansion, rowGroupExpansionState, source2);
     }
     if (shouldSetState("rowSelection", rowSelectionState)) {
-      this.setRowSelectionState(rowSelectionState, source);
+      this.setRowSelectionState(rowSelectionState, source2);
     }
     if (shouldSetState("pagination", paginationState)) {
-      this.setPaginationState(paginationState, source);
+      this.setPaginationState(paginationState, source2);
     }
     const updateCachedState = this.updateCachedState.bind(this);
     updateCachedState("filter", this.getFilterState());
@@ -70570,7 +70570,7 @@ var StateService = class extends BeanStub {
       });
     }
   }
-  setFirstDataRenderedState(state, source, ignoreSet) {
+  setFirstDataRenderedState(state, source2, ignoreSet) {
     const {
       scroll: scrollState,
       cellSelection: cellSelectionState,
@@ -70578,7 +70578,7 @@ var StateService = class extends BeanStub {
       columnOrder: columnOrderState,
       rowPinning
     } = state;
-    const shouldSetState = (prop, propState) => !ignoreSet?.has(prop) && (propState || source === "api");
+    const shouldSetState = (prop, propState) => !ignoreSet?.has(prop) && (propState || source2 === "api");
     if (shouldSetState("focusedCell", focusedCellState)) {
       this.setFocusedCellState(focusedCellState);
     }
@@ -70591,7 +70591,7 @@ var StateService = class extends BeanStub {
     if (shouldSetState("rowPinning", rowPinning)) {
       this.setRowPinningState(rowPinning);
     }
-    this.setColumnPivotState(!!columnOrderState?.orderedColIds, source);
+    this.setColumnPivotState(!!columnOrderState?.orderedColIds, source2);
     const updateCachedState = this.updateCachedState.bind(this);
     updateCachedState("sideBar", this.getSideBarState());
     updateCachedState("focusedCell", this.getFocusedCellState());
@@ -70622,7 +70622,7 @@ var StateService = class extends BeanStub {
     const beans = this.beans;
     return convertColumnState(_getColumnState(beans), beans.colModel.isPivotMode());
   }
-  setColumnState(state, source, partialColumnState, ignoreSet) {
+  setColumnState(state, source2, partialColumnState, ignoreSet) {
     const {
       sort: sortState,
       rowGroup: groupState,
@@ -70635,7 +70635,7 @@ var StateService = class extends BeanStub {
     } = state;
     let forceSetState = false;
     const shouldSetState = (prop, propState) => {
-      const shouldSet = !ignoreSet?.has(prop) && !!(propState || source === "api");
+      const shouldSet = !ignoreSet?.has(prop) && !!(propState || source2 === "api");
       forceSetState || (forceSetState = shouldSet);
       return shouldSet;
     };
@@ -70692,7 +70692,7 @@ var StateService = class extends BeanStub {
       });
       this.gos.updateGridOptions({
         options: { pivotMode: !!pivotState?.pivotMode },
-        source
+        source: source2
       });
     }
     if (shouldSetPivotState || !partialColumnState) {
@@ -70743,11 +70743,11 @@ var StateService = class extends BeanStub {
           applyOrder,
           defaultState
         },
-        source
+        source2
       );
     }
   }
-  setColumnPivotState(applyOrder, source) {
+  setColumnPivotState(applyOrder, source2) {
     const columnStates = this.columnStates;
     this.columnStates = void 0;
     const columnGroupStates = this.columnGroupStates;
@@ -70770,11 +70770,11 @@ var StateService = class extends BeanStub {
           state: secondaryColumnStates,
           applyOrder
         },
-        source
+        source2
       );
     }
     if (columnGroupStates) {
-      colGroupSvc?.setColumnGroupState(columnGroupStates, source);
+      colGroupSvc?.setColumnGroupState(columnGroupStates, source2);
     }
   }
   getColumnGroupState() {
@@ -70785,9 +70785,9 @@ var StateService = class extends BeanStub {
     const columnGroupState = colGroupSvc.getColumnGroupState();
     return _convertColumnGroupState(columnGroupState);
   }
-  setColumnGroupState(state, source, ignoreSet) {
+  setColumnGroupState(state, source2, ignoreSet) {
     const colGroupSvc = this.beans.colGroupSvc;
-    if (!colGroupSvc || ignoreSet?.has("columnGroup") || source !== "api" && !Object.prototype.hasOwnProperty.call(state, "columnGroup")) {
+    if (!colGroupSvc || ignoreSet?.has("columnGroup") || source2 !== "api" && !Object.prototype.hasOwnProperty.call(state, "columnGroup")) {
       return;
     }
     const openColumnGroups = new Set(state.columnGroup?.openColumnGroupIds);
@@ -70811,7 +70811,7 @@ var StateService = class extends BeanStub {
     if (stateItems.length) {
       this.columnGroupStates = stateItems;
     }
-    colGroupSvc.setColumnGroupState(stateItems, source);
+    colGroupSvc.setColumnGroupState(stateItems, source2);
   }
   getFilterState() {
     const filterManager = this.beans.filterManager;
@@ -70845,7 +70845,7 @@ var StateService = class extends BeanStub {
         type,
         startRow,
         endRow,
-        colIds: columns.map((column) => column.getColId()),
+        colIds: columns.map((column2) => column2.getColId()),
         startColId: startColumn.getColId()
       };
     });
@@ -70860,9 +70860,9 @@ var StateService = class extends BeanStub {
     for (const cellRange of cellSelectionState?.cellRanges ?? []) {
       const columns = [];
       for (const colId of cellRange.colIds) {
-        const column = colModel.getCol(colId);
-        if (column) {
-          columns.push(column);
+        const column2 = colModel.getCol(colId);
+        if (column2) {
+          columns.push(column2);
         }
       }
       if (!columns.length) {
@@ -70872,7 +70872,7 @@ var StateService = class extends BeanStub {
       if (!startColumn) {
         const allColumns = visibleCols.allCols;
         const columnSet = new Set(columns);
-        startColumn = allColumns.find((column) => columnSet.has(column));
+        startColumn = allColumns.find((column2) => columnSet.has(column2));
       }
       cellRanges.push({
         ...cellRange,
@@ -70916,9 +70916,9 @@ var StateService = class extends BeanStub {
     }
     const focusedCell = this.beans.focusSvc.getFocusedCell();
     if (focusedCell) {
-      const { column, rowIndex, rowPinned } = focusedCell;
+      const { column: column2, rowIndex, rowPinned } = focusedCell;
       return {
-        colId: column.getColId(),
+        colId: column2.getColId(),
         rowIndex,
         rowPinned
       };
@@ -70955,13 +70955,13 @@ var StateService = class extends BeanStub {
     }
     return { page, pageSize };
   }
-  setPaginationState(paginationState, source) {
+  setPaginationState(paginationState, source2) {
     const { pagination, gos } = this.beans;
     if (!pagination) {
       return;
     }
     const { pageSize, page } = paginationState ?? { page: 0, pageSize: gos.get("paginationPageSize") };
-    const isInit = source === "gridInitializing";
+    const isInit = source2 === "gridInitializing";
     if (pageSize && !gos.get("paginationAutoPageSize")) {
       pagination.setPageSize(pageSize, isInit ? "initialState" : "pageSizeSelector");
     }
@@ -70982,8 +70982,8 @@ var StateService = class extends BeanStub {
     const noSelections = !selectionState || !Array.isArray(selectionState) && (selectionState.selectAll === false || selectionState.selectAllChildren === false) && !selectionState?.toggledNodes?.length;
     return noSelections ? void 0 : selectionState;
   }
-  setRowSelectionState(rowSelectionState, source) {
-    this.beans.selectionSvc?.setSelectionState(rowSelectionState, source, source === "api");
+  setRowSelectionState(rowSelectionState, source2) {
+    this.beans.selectionSvc?.setSelectionState(rowSelectionState, source2, source2 === "api");
   }
   getRowGroupExpansionState() {
     const { expansionSvc } = this.beans;
@@ -71003,21 +71003,21 @@ var StateService = class extends BeanStub {
       pinnedRowModel?.reset();
     }
   }
-  setRowGroupExpansionState(ssrmRowGroupExpansionState, rowGroupExpansionState, source) {
+  setRowGroupExpansionState(ssrmRowGroupExpansionState, rowGroupExpansionState, source2) {
     const expansionSvc = this.beans.expansionSvc;
     if (!expansionSvc) {
       return;
     }
     const newExpansionState = rowGroupExpansionState ?? { expandedRowGroupIds: [], collapsedRowGroupIds: [] };
-    expansionSvc.setExpansionState(newExpansionState, source);
+    expansionSvc.setExpansionState(newExpansionState, source2);
   }
   updateColumnState(features) {
     const newColumnState = this.getColumnState();
     let hasChanged = false;
     const cachedState = this.cachedState;
-    for (const key of Object.keys(newColumnState)) {
-      const value = newColumnState[key];
-      if (!_jsonEquals(value, cachedState[key])) {
+    for (const key2 of Object.keys(newColumnState)) {
+      const value = newColumnState[key2];
+      if (!_jsonEquals(value, cachedState[key2])) {
         hasChanged = true;
       }
     }
@@ -71029,24 +71029,24 @@ var StateService = class extends BeanStub {
       this.dispatchStateUpdateEvent(features);
     }
   }
-  updateCachedState(key, value) {
-    const existingValue = this.cachedState[key];
-    this.setCachedStateValue(key, value);
+  updateCachedState(key2, value) {
+    const existingValue = this.cachedState[key2];
+    this.setCachedStateValue(key2, value);
     if (!_jsonEquals(value, existingValue)) {
-      this.dispatchStateUpdateEvent([key]);
+      this.dispatchStateUpdateEvent([key2]);
     }
   }
-  setCachedStateValue(key, value) {
+  setCachedStateValue(key2, value) {
     this.cachedState = {
       ...this.cachedState,
-      [key]: value
+      [key2]: value
     };
   }
   refreshStaleState() {
     const staleStateKeys = this.staleStateKeys;
-    for (const key of staleStateKeys) {
-      if (key === "rowSelection") {
-        this.setCachedStateValue(key, this.getRowSelectionState());
+    for (const key2 of staleStateKeys) {
+      if (key2 === "rowSelection") {
+        this.setCachedStateValue(key2, this.getRowSelectionState());
       }
     }
     staleStateKeys.clear();
@@ -71055,8 +71055,8 @@ var StateService = class extends BeanStub {
     if (this.suppressEvents) {
       return;
     }
-    for (const source of sources) {
-      this.queuedUpdateSources.add(source);
+    for (const source2 of sources) {
+      this.queuedUpdateSources.add(source2);
     }
     this.dispatchStateUpdateEventDebounced();
   }
@@ -71074,7 +71074,7 @@ var StateService = class extends BeanStub {
     this.suppressEvents = true;
     this.beans.colAnimation?.setSuppressAnimation(true);
   }
-  stopSuppressEvents(source) {
+  stopSuppressEvents(source2) {
     setTimeout(() => {
       this.suppressEvents = false;
       this.queuedUpdateSources.clear();
@@ -71082,7 +71082,7 @@ var StateService = class extends BeanStub {
         return;
       }
       this.beans.colAnimation?.setSuppressAnimation(false);
-      this.dispatchStateUpdateEvent([source]);
+      this.dispatchStateUpdateEvent([source2]);
     });
   }
   suppressEventsAndDispatchInitEvent(updateFunc) {
@@ -71777,9 +71777,9 @@ var PaginationService = class extends BeanStub {
     this.calculatePages();
     this.dispatchPaginationChangedEvent({ newPageSize: true });
   }
-  setPageSize(size, source) {
+  setPageSize(size, source2) {
     const currentSize = this.pageSize;
-    switch (source) {
+    switch (source2) {
       case "autoCalculated":
         this.pageSizeAutoCalculated = size;
         break;
@@ -71996,8 +71996,8 @@ function refreshCells(beans, params = {}) {
 }
 function refreshHeader(beans) {
   beans.frameworkOverrides.wrapIncoming(() => {
-    for (const c of beans.ctrlsSvc.getHeaderRowContainerCtrls()) {
-      c.refresh();
+    for (const c2 of beans.ctrlsSvc.getHeaderRowContainerCtrls()) {
+      c2.refresh();
     }
   });
 }
@@ -72143,7 +72143,7 @@ var ColumnAutosizeService = class extends BeanStub {
         defaultMaxWidth,
         defaultMinWidth,
         columnLimits = [],
-        source = "api"
+        source: source2 = "api"
       } = params;
       const { animationFrameSvc, renderStatus, colModel, autoWidthCalc, visibleCols } = this.beans;
       animationFrameSvc?.flushAllFrames();
@@ -72167,40 +72167,40 @@ var ColumnAutosizeService = class extends BeanStub {
       while (changesThisTimeAround !== 0) {
         changesThisTimeAround = 0;
         const updatedColumns = [];
-        for (const key of colKeys) {
-          if (!key || isSpecialCol(key)) {
+        for (const key2 of colKeys) {
+          if (!key2 || isSpecialCol(key2)) {
             continue;
           }
-          const column = colModel.getCol(key);
-          if (!column || columnsAutoSized.has(column)) {
+          const column2 = colModel.getCol(key2);
+          if (!column2 || columnsAutoSized.has(column2)) {
             continue;
           }
-          const preferredWidth = autoWidthCalc.getPreferredWidthForColumn(column, shouldSkipHeader);
+          const preferredWidth = autoWidthCalc.getPreferredWidthForColumn(column2, shouldSkipHeader);
           if (preferredWidth > 0) {
-            const columnLimit = columnLimitsIndex[column.colId] ?? {};
+            const columnLimit = columnLimitsIndex[column2.colId] ?? {};
             columnLimit.minWidth ?? (columnLimit.minWidth = defaultMinWidth);
             columnLimit.maxWidth ?? (columnLimit.maxWidth = defaultMaxWidth);
-            const newWidth = normaliseColumnWidth(column, preferredWidth, columnLimit);
-            column.setActualWidth(newWidth, source);
-            columnsAutoSized.add(column);
+            const newWidth = normaliseColumnWidth(column2, preferredWidth, columnLimit);
+            column2.setActualWidth(newWidth, source2);
+            columnsAutoSized.add(column2);
             changesThisTimeAround++;
           }
-          updatedColumns.push(column);
+          updatedColumns.push(column2);
         }
         if (updatedColumns.length) {
-          visibleCols.refresh(source);
+          visibleCols.refresh(source2);
         }
       }
       if (!shouldSkipHeaderGroups) {
-        this.autoSizeColumnGroupsByColumns(colKeys, source, stopAtGroup);
+        this.autoSizeColumnGroupsByColumns(colKeys, source2, stopAtGroup);
       }
       resolve(columnsAutoSized);
     });
   }
-  autoSizeColumn(key, source, skipHeader) {
-    this.autoSizeCols({ colKeys: [key], skipHeader, skipHeaderGroups: true, source });
+  autoSizeColumn(key2, source2, skipHeader) {
+    this.autoSizeCols({ colKeys: [key2], skipHeader, skipHeaderGroups: true, source: source2 });
   }
-  autoSizeColumnGroupsByColumns(keys, source, stopAtGroup) {
+  autoSizeColumnGroupsByColumns(keys, source2, stopAtGroup) {
     const { colModel, ctrlsSvc } = this.beans;
     const columnGroups = /* @__PURE__ */ new Set();
     const columns = colModel.getColsForKeys(keys);
@@ -72221,7 +72221,7 @@ var ColumnAutosizeService = class extends BeanStub {
           break;
         }
       }
-      headerGroupCtrl?.resizeLeafColumnsToFit(source);
+      headerGroupCtrl?.resizeLeafColumnsToFit(source2);
     }
   }
   autoSizeAllColumns(params) {
@@ -72231,10 +72231,10 @@ var ColumnAutosizeService = class extends BeanStub {
     }
     this.autoSizeCols({ colKeys: this.beans.visibleCols.allCols, ...params });
   }
-  addColumnAutosizeListeners(element, column) {
+  addColumnAutosizeListeners(element, column2) {
     const skipHeaderOnAutoSize = this.gos.get("skipHeaderOnAutoSize");
     const autoSizeColListener = () => {
-      this.autoSizeColumn(column, "uiColumnResized", skipHeaderOnAutoSize);
+      this.autoSizeColumn(column2, "uiColumnResized", skipHeaderOnAutoSize);
     };
     element.addEventListener("dblclick", autoSizeColListener);
     const touchListener = new TouchListener(element);
@@ -72249,9 +72249,9 @@ var ColumnAutosizeService = class extends BeanStub {
     const listener = () => {
       const keys = [];
       const leafCols = columnGroup.getDisplayedLeafColumns();
-      for (const column of leafCols) {
-        if (!column.getColDef().suppressAutoSize) {
-          keys.push(column.getColId());
+      for (const column2 of leafCols) {
+        if (!column2.getColDef().suppressAutoSize) {
+          keys.push(column2.getColId());
         }
       }
       if (keys.length > 0) {
@@ -72295,14 +72295,14 @@ var ColumnAutosizeService = class extends BeanStub {
     }
   }
   // called from api
-  sizeColumnsToFit(gridWidth, source = "sizeColumnsToFit", silent, params) {
+  sizeColumnsToFit(gridWidth, source2 = "sizeColumnsToFit", silent, params) {
     if (this.shouldQueueResizeOperations) {
-      this.pushResizeOperation(() => this.sizeColumnsToFit(gridWidth, source, silent, params));
+      this.pushResizeOperation(() => this.sizeColumnsToFit(gridWidth, source2, silent, params));
       return;
     }
     const limitsMap = {};
-    for (const { key, ...dimensions } of params?.columnLimits ?? []) {
-      limitsMap[typeof key === "string" ? key : key.getColId()] = dimensions;
+    for (const { key: key2, ...dimensions } of params?.columnLimits ?? []) {
+      limitsMap[typeof key2 === "string" ? key2 : key2.getColId()] = dimensions;
     }
     const allDisplayedColumns = this.beans.visibleCols.allCols;
     if (gridWidth <= 0 || !allDisplayedColumns.length) {
@@ -72314,14 +72314,14 @@ var ColumnAutosizeService = class extends BeanStub {
     }
     const doColumnsAlreadyFit = gridWidth === currentTotalColumnWidth;
     if (doColumnsAlreadyFit) {
-      const doAllColumnsSatisfyConstraints = allDisplayedColumns.every((column) => {
-        if (column.colDef.suppressSizeToFit) {
+      const doAllColumnsSatisfyConstraints = allDisplayedColumns.every((column2) => {
+        if (column2.colDef.suppressSizeToFit) {
           return true;
         }
-        const widthOverride = limitsMap?.[column.getId()];
+        const widthOverride = limitsMap?.[column2.getId()];
         const minWidth = widthOverride?.minWidth ?? params?.defaultMinWidth;
         const maxWidth = widthOverride?.maxWidth ?? params?.defaultMaxWidth;
-        const colWidth = column.getActualWidth();
+        const colWidth = column2.getActualWidth();
         return (minWidth == null || colWidth >= minWidth) && (maxWidth == null || colWidth <= maxWidth);
       });
       if (doAllColumnsSatisfyConstraints) {
@@ -72330,79 +72330,79 @@ var ColumnAutosizeService = class extends BeanStub {
     }
     const colsToSpread = [];
     const colsToNotSpread = [];
-    for (const column of allDisplayedColumns) {
-      const isIncluded = params?.colKeys?.some((key) => _columnsMatch(column, key)) ?? true;
-      if (column.getColDef().suppressSizeToFit || !isIncluded) {
-        colsToNotSpread.push(column);
+    for (const column2 of allDisplayedColumns) {
+      const isIncluded = params?.colKeys?.some((key2) => _columnsMatch(column2, key2)) ?? true;
+      if (column2.getColDef().suppressSizeToFit || !isIncluded) {
+        colsToNotSpread.push(column2);
       } else {
-        colsToSpread.push(column);
+        colsToSpread.push(column2);
       }
     }
     const colsToDispatchEventFor = colsToSpread.slice(0);
     let finishedResizing = false;
-    const moveToNotSpread = (column) => {
-      _removeFromArray(colsToSpread, column);
-      colsToNotSpread.push(column);
+    const moveToNotSpread = (column2) => {
+      _removeFromArray(colsToSpread, column2);
+      colsToNotSpread.push(column2);
     };
-    for (const column of colsToSpread) {
-      column.resetActualWidth(source);
-      const widthOverride = limitsMap?.[column.getId()];
+    for (const column2 of colsToSpread) {
+      column2.resetActualWidth(source2);
+      const widthOverride = limitsMap?.[column2.getId()];
       const minOverride = widthOverride?.minWidth ?? params?.defaultMinWidth;
       const maxOverride = widthOverride?.maxWidth ?? params?.defaultMaxWidth;
-      const colWidth = column.getActualWidth();
+      const colWidth = column2.getActualWidth();
       if (typeof minOverride === "number" && colWidth < minOverride) {
-        column.setActualWidth(minOverride, source, true);
+        column2.setActualWidth(minOverride, source2, true);
       } else if (typeof maxOverride === "number" && colWidth > maxOverride) {
-        column.setActualWidth(maxOverride, source, true);
+        column2.setActualWidth(maxOverride, source2, true);
       }
     }
     while (!finishedResizing) {
       finishedResizing = true;
       const availablePixels = gridWidth - getWidthOfColsInList(colsToNotSpread);
       if (availablePixels <= 0) {
-        for (const column of colsToSpread) {
-          const newWidth = limitsMap?.[column.getId()]?.minWidth ?? params?.defaultMinWidth ?? column.minWidth;
-          column.setActualWidth(newWidth, source, true);
+        for (const column2 of colsToSpread) {
+          const newWidth = limitsMap?.[column2.getId()]?.minWidth ?? params?.defaultMinWidth ?? column2.minWidth;
+          column2.setActualWidth(newWidth, source2, true);
         }
       } else {
         const scale = availablePixels / getWidthOfColsInList(colsToSpread);
         let pixelsForLastCol = availablePixels;
         for (let i = colsToSpread.length - 1; i >= 0; i--) {
-          const column = colsToSpread[i];
-          const widthOverride = limitsMap?.[column.getId()];
+          const column2 = colsToSpread[i];
+          const widthOverride = limitsMap?.[column2.getId()];
           const minOverride = widthOverride?.minWidth ?? params?.defaultMinWidth;
           const maxOverride = widthOverride?.maxWidth ?? params?.defaultMaxWidth;
-          const colMinWidth = column.getMinWidth();
-          const colMaxWidth = column.getMaxWidth();
+          const colMinWidth = column2.getMinWidth();
+          const colMaxWidth = column2.getMaxWidth();
           const minWidth = typeof minOverride === "number" && minOverride > colMinWidth ? minOverride : colMinWidth;
           const maxWidth = typeof maxOverride === "number" && maxOverride < colMaxWidth ? maxOverride : colMaxWidth;
-          let newWidth = Math.round(column.getActualWidth() * scale);
+          let newWidth = Math.round(column2.getActualWidth() * scale);
           if (newWidth < minWidth) {
             newWidth = minWidth;
-            moveToNotSpread(column);
+            moveToNotSpread(column2);
             finishedResizing = false;
           } else if (newWidth > maxWidth) {
             newWidth = maxWidth;
-            moveToNotSpread(column);
+            moveToNotSpread(column2);
             finishedResizing = false;
           } else if (i === 0) {
             newWidth = pixelsForLastCol;
           }
-          column.setActualWidth(newWidth, source, true);
+          column2.setActualWidth(newWidth, source2, true);
           pixelsForLastCol -= newWidth;
         }
       }
     }
     for (const col of colsToDispatchEventFor) {
-      col.fireColumnWidthChangedEvent(source);
+      col.fireColumnWidthChangedEvent(source2);
     }
     const visibleCols = this.beans.visibleCols;
-    visibleCols.setLeftValues(source);
+    visibleCols.setLeftValues(source2);
     visibleCols.updateBodyWidths();
     if (silent) {
       return;
     }
-    dispatchColumnResizedEvent(this.eventSvc, colsToDispatchEventFor, true, source);
+    dispatchColumnResizedEvent(this.eventSvc, colsToDispatchEventFor, true, source2);
   }
   applyAutosizeStrategy() {
     const { gos, colDelayRenderSvc } = this.beans;
@@ -72417,8 +72417,8 @@ var ColumnAutosizeService = class extends BeanStub {
       const type = autoSizeStrategy.type;
       if (type === "fitGridWidth") {
         const { columnLimits: propColumnLimits, defaultMinWidth, defaultMaxWidth } = autoSizeStrategy;
-        const columnLimits = propColumnLimits?.map(({ colId: key, minWidth, maxWidth }) => ({
-          key,
+        const columnLimits = propColumnLimits?.map(({ colId: key2, minWidth, maxWidth }) => ({
+          key: key2,
           minWidth,
           maxWidth
         }));
@@ -72438,11 +72438,11 @@ var ColumnAutosizeService = class extends BeanStub {
       if (!this.isAlive()) {
         return;
       }
-      const source = "autosizeColumns";
+      const source2 = "autosizeColumns";
       if (colKeys) {
-        this.autoSizeCols({ ...params, source, colKeys });
+        this.autoSizeCols({ ...params, source: source2, colKeys });
       } else {
-        this.autoSizeAllColumns({ ...params, source });
+        this.autoSizeAllColumns({ ...params, source: source2 });
       }
       this.beans.colDelayRenderSvc?.revealColumns(params.type);
     });
@@ -72462,12 +72462,12 @@ var ColumnAutosizeService = class extends BeanStub {
     super.destroy();
   }
 };
-function normaliseColumnWidth(column, newWidth, limits = {}) {
-  const minWidth = limits.minWidth ?? column.getMinWidth();
+function normaliseColumnWidth(column2, newWidth, limits = {}) {
+  const minWidth = limits.minWidth ?? column2.getMinWidth();
   if (newWidth < minWidth) {
     newWidth = minWidth;
   }
-  const maxWidth = limits.maxWidth ?? column.getMaxWidth();
+  const maxWidth = limits.maxWidth ?? column2.getMaxWidth();
   if (newWidth > maxWidth) {
     newWidth = maxWidth;
   }
@@ -72586,16 +72586,16 @@ var CellSpan = class {
   }
 };
 var RowSpanCache = class extends BeanStub {
-  constructor(column) {
+  constructor(column2) {
     super();
-    this.column = column;
+    this.column = column2;
   }
   buildCache(pinned) {
     const {
-      column,
+      column: column2,
       beans: { gos, pinnedRowModel, rowModel, valueSvc, pagination }
     } = this;
-    const { colDef } = column;
+    const { colDef } = column2;
     const oldMap = this.getNodeMap(pinned);
     const newMap = /* @__PURE__ */ new Map();
     const isFullWidthCellFunc = gos.getCallback("isFullWidthRow");
@@ -72618,17 +72618,17 @@ var RowSpanCache = class extends BeanStub {
       }
       if (lastNode == null || node.level !== lastNode.level || // no span across groups
       node.footer || spanData && node.rowIndex - 1 !== spanData?.getLastNode().rowIndex) {
-        setNewHead(node, valueSvc.getValue(column, node));
+        setNewHead(node, valueSvc.getValue(column2, node));
         return;
       }
-      const value = valueSvc.getValue(column, node);
+      const value = valueSvc.getValue(column2, node);
       if (isCustomCompare) {
         const params = _addGridCommonParams(gos, {
           valueA: lastValue,
           nodeA: lastNode,
           valueB: value,
           nodeB: node,
-          column,
+          column: column2,
           colDef
         });
         if (!customCompare(params)) {
@@ -72645,7 +72645,7 @@ var RowSpanCache = class extends BeanStub {
           oldSpan.reset();
           spanData = oldSpan;
         } else {
-          spanData = new CellSpan(column, lastNode);
+          spanData = new CellSpan(column2, lastNode);
         }
         newMap.set(lastNode, spanData);
       }
@@ -72715,16 +72715,16 @@ var RowSpanService = class extends BeanStub {
    * When a new column is created with spanning (or spanning changes for a column)
    * @param column column that is now spanning
    */
-  register(column) {
+  register(column2) {
     const { gos } = this.beans;
     if (!gos.get("enableCellSpan")) {
       return;
     }
-    if (this.spanningColumns.has(column)) {
+    if (this.spanningColumns.has(column2)) {
       return;
     }
-    const cache = this.createManagedBean(new RowSpanCache(column));
-    this.spanningColumns.set(column, cache);
+    const cache = this.createManagedBean(new RowSpanCache(column2));
+    this.spanningColumns.set(column2, cache);
     cache.buildCache("top");
     cache.buildCache("bottom");
     cache.buildCache("center");
@@ -72738,8 +72738,8 @@ var RowSpanService = class extends BeanStub {
    * When a new column is destroyed with spanning (or spanning changes for a column)
    * @param column column that is now spanning
    */
-  deregister(column) {
-    this.spanningColumns.delete(column);
+  deregister(column2) {
+    this.spanningColumns.delete(column2);
   }
   // called when data changes, as this could be a hot path it's debounced
   // it uses timeouts instead of debounce so that it can be cancelled by `modelUpdated`
@@ -72932,8 +72932,8 @@ var SpannedCellCtrl = class extends CellCtrl {
 var SpannedRowCtrl = class extends RowCtrl {
   onRowIndexChanged() {
     super.onRowIndexChanged();
-    for (const c of this.getAllCellCtrls()) {
-      c.refreshAriaRowIndex();
+    for (const c2 of this.getAllCellCtrls()) {
+      c2.refreshAriaRowIndex();
     }
   }
   getInitialRowClasses(_rowContainerType) {
@@ -73121,10 +73121,10 @@ var CellCustomStyleFeature = class extends BeanStub {
     this.applyClassesFromColDef();
   }
   applyCellClassRules() {
-    const { column, cellComp } = this;
-    const colDef = column.colDef;
+    const { column: column2, cellComp } = this;
+    const colDef = column2.colDef;
     const cellClassRules = colDef.cellClassRules;
-    const cellClassParams = this.getCellClassParams(column, colDef);
+    const cellClassParams = this.getCellClassParams(column2, colDef);
     processClassRules(
       this.beans.expressionSvc,
       // if current was previous, skip
@@ -73137,15 +73137,15 @@ var CellCustomStyleFeature = class extends BeanStub {
     this.cellClassRules = cellClassRules;
   }
   applyUserStyles() {
-    const column = this.column;
-    const colDef = column.colDef;
+    const column2 = this.column;
+    const colDef = column2.colDef;
     const cellStyle = colDef.cellStyle;
     if (!cellStyle) {
       return;
     }
     let styles2;
     if (typeof cellStyle === "function") {
-      const cellStyleParams = this.getCellClassParams(column, colDef);
+      const cellStyleParams = this.getCellClassParams(column2, colDef);
       styles2 = cellStyle(cellStyleParams);
     } else {
       styles2 = cellStyle;
@@ -73155,9 +73155,9 @@ var CellCustomStyleFeature = class extends BeanStub {
     }
   }
   applyClassesFromColDef() {
-    const { column, cellComp } = this;
-    const colDef = column.colDef;
-    const cellClassParams = this.getCellClassParams(column, colDef);
+    const { column: column2, cellComp } = this;
+    const colDef = column2.colDef;
+    const cellClassParams = this.getCellClassParams(column2, colDef);
     for (const className of this.staticClasses) {
       cellComp.toggleCss(className, false);
     }
@@ -73167,14 +73167,14 @@ var CellCustomStyleFeature = class extends BeanStub {
       cellComp.toggleCss(className, true);
     }
   }
-  getCellClassParams(column, colDef) {
+  getCellClassParams(column2, colDef) {
     const { value, rowNode } = this.cellCtrl;
     return _addGridCommonParams(this.beans.gos, {
       value,
       data: rowNode.data,
       node: rowNode,
       colDef,
-      column,
+      column: column2,
       rowIndex: rowNode.rowIndex
     });
   }
@@ -73232,8 +73232,8 @@ var RowStyleModule = {
   version: VERSION,
   beans: [RowStyleService]
 };
-function isColumnHovered(beans, column) {
-  return !!beans.colHover?.isHovered(column);
+function isColumnHovered(beans, column2) {
+  return !!beans.colHover?.isHovered(column2);
 }
 var HoverFeature = class extends BeanStub {
   constructor(columns, element) {
@@ -73288,32 +73288,32 @@ var ColumnHoverService = class extends BeanStub {
   clearMouseOver() {
     this.updateState(null);
   }
-  isHovered(column) {
+  isHovered(column2) {
     if (!this.gos.get("columnHoverHighlight")) {
       return false;
     }
     const selectedColumns = this.selectedColumns;
-    return !!selectedColumns && selectedColumns.indexOf(column) >= 0;
+    return !!selectedColumns && selectedColumns.indexOf(column2) >= 0;
   }
-  addHeaderColumnHoverListener(compBean, comp, column) {
+  addHeaderColumnHoverListener(compBean, comp, column2) {
     const listener = () => {
-      const isHovered = this.isHovered(column);
+      const isHovered = this.isHovered(column2);
       comp.toggleCss("ag-column-hover", isHovered);
     };
     compBean.addManagedEventListeners({ columnHoverChanged: listener });
     listener();
   }
-  onCellColumnHover(column, cellComp) {
+  onCellColumnHover(column2, cellComp) {
     if (!cellComp) {
       return;
     }
-    const isHovered = this.isHovered(column);
+    const isHovered = this.isHovered(column2);
     cellComp.toggleCss(CSS_COLUMN_HOVER, isHovered);
   }
-  addHeaderFilterColumnHoverListener(compBean, comp, column, eGui) {
-    this.createHoverFeature(compBean, [column], eGui);
+  addHeaderFilterColumnHoverListener(compBean, comp, column2, eGui) {
+    this.createHoverFeature(compBean, [column2], eGui);
     const listener = () => {
-      const hovered = this.isHovered(column);
+      const hovered = this.isHovered(column2);
       comp.toggleCss("ag-column-hover", hovered);
     };
     compBean.addManagedEventListeners({ columnHoverChanged: listener });
@@ -73514,14 +73514,14 @@ var RowAutoHeightService = class extends BeanStub {
    * @param cellHeight the height to set, undefined if the cell has just been destroyed
    * @param column the column of the cell
    */
-  setRowAutoHeight(rowNode, cellHeight, column) {
+  setRowAutoHeight(rowNode, cellHeight, column2) {
     rowNode.__autoHeights ?? (rowNode.__autoHeights = {});
     if (cellHeight == void 0) {
-      delete rowNode.__autoHeights[column.getId()];
+      delete rowNode.__autoHeights[column2.getId()];
       return;
     }
-    const previousCellHeight = rowNode.__autoHeights[column.getId()];
-    rowNode.__autoHeights[column.getId()] = cellHeight;
+    const previousCellHeight = rowNode.__autoHeights[column2.getId()];
+    rowNode.__autoHeights[column2.getId()] = cellHeight;
     if (previousCellHeight !== cellHeight) {
       this.requestCheckAutoHeight();
     }
@@ -73564,7 +73564,7 @@ var RowAutoHeightService = class extends BeanStub {
     }
     this.wasEverActive = true;
     const eParentCell = eCellWrapper.parentElement;
-    const { rowNode, column } = cellCtrl;
+    const { rowNode, column: column2 } = cellCtrl;
     const beans = this.beans;
     const measureHeight = (timesCalled) => {
       if (this.beans.editSvc?.isEditing(cellCtrl)) {
@@ -73586,14 +73586,14 @@ var RowAutoHeightService = class extends BeanStub {
           return;
         }
       }
-      this.setRowAutoHeight(rowNode, autoHeight, column);
+      this.setRowAutoHeight(rowNode, autoHeight, column2);
     };
     const listener = () => measureHeight(0);
     listener();
     const destroyResizeObserver = _observeResize(beans, eCellWrapper, listener);
     compBean.addDestroyFunc(() => {
       destroyResizeObserver();
-      this.setRowAutoHeight(rowNode, void 0, column);
+      this.setRowAutoHeight(rowNode, void 0, column2);
     });
     return true;
   }
@@ -73695,12 +73695,12 @@ var showJsComp = (compDetails, context, eParent, ref) => {
   let comp;
   let compGui;
   let destroyed = false;
-  promise.then((c) => {
+  promise.then((c2) => {
     if (destroyed) {
-      context.destroyBean(c);
+      context.destroyBean(c2);
       return;
     }
-    comp = c;
+    comp = c2;
     compGui = comp.getGui();
     eParent.appendChild(compGui);
     setRef(ref, comp);
@@ -73751,7 +73751,7 @@ var CssClasses = class _CssClasses {
     return res;
   }
   toString() {
-    const res = Object.keys(this.classesMap).filter((key) => this.classesMap[key]).join(" ");
+    const res = Object.keys(this.classesMap).filter((key2) => this.classesMap[key2]).join(" ");
     return res;
   }
 };
@@ -73809,21 +73809,21 @@ function getNextValueIfDifferent(prev, next, maintainOrder) {
   const prevMap = /* @__PURE__ */ new Map();
   const nextMap = /* @__PURE__ */ new Map();
   for (let i = 0; i < next.length; i++) {
-    const c = next[i];
-    nextMap.set(c.instanceId, c);
+    const c2 = next[i];
+    nextMap.set(c2.instanceId, c2);
   }
   for (let i = 0; i < prev.length; i++) {
-    const c = prev[i];
-    prevMap.set(c.instanceId, c);
-    if (nextMap.has(c.instanceId)) {
-      oldValues.push(c);
+    const c2 = prev[i];
+    prevMap.set(c2.instanceId, c2);
+    if (nextMap.has(c2.instanceId)) {
+      oldValues.push(c2);
     }
   }
   for (let i = 0; i < next.length; i++) {
-    const c = next[i];
-    const instanceId = c.instanceId;
+    const c2 = next[i];
+    const instanceId = c2.instanceId;
     if (!prevMap.has(instanceId)) {
-      newValues.push(c);
+      newValues.push(c2);
     }
   }
   if (oldValues.length === prev.length && newValues.length === 0) {
@@ -73930,11 +73930,11 @@ var CustomContext = reactExports.createContext({
 });
 var CustomWrapperComp = (params) => {
   const { initialProps, addUpdateCallback, CustomComponentClass, setMethods } = params;
-  const [{ key, ...props }, setProps] = reactExports.useState(initialProps);
+  const [{ key: key2, ...props }, setProps] = reactExports.useState(initialProps);
   reactExports.useEffect(() => {
     addUpdateCallback((newProps) => setProps(newProps));
   }, []);
-  return /* @__PURE__ */ React20.createElement(CustomContext.Provider, { value: { setMethods } }, /* @__PURE__ */ React20.createElement(CustomComponentClass, { key, ...props }));
+  return /* @__PURE__ */ React20.createElement(CustomContext.Provider, { value: { setMethods } }, /* @__PURE__ */ React20.createElement(CustomComponentClass, { key: key2, ...props }));
 };
 var customWrapperComp_default = reactExports.memo(CustomWrapperComp);
 var counter = 0;
@@ -75093,9 +75093,9 @@ var PopupEditorComp = (props) => {
           ePopupGui.appendChild(eChildGui);
         }
       }
-      const { column, rowNode } = cellCtrl;
+      const { column: column2, rowNode } = cellCtrl;
       const positionParams = {
-        column,
+        column: column2,
         rowNode,
         type: "popupCellEditor",
         eventSource: eParentCell,
@@ -76389,7 +76389,7 @@ var AgGridReactUi = (props) => {
     const mergedGridOps = _combineAttributesAndGridOptions(
       props.gridOptions,
       props,
-      Object.keys(props).filter((key) => !excludeReactCompProps.has(key))
+      Object.keys(props).filter((key2) => !excludeReactCompProps.has(key2))
     );
     const processQueuedUpdates = () => {
       if (ready.current) {
@@ -76429,9 +76429,9 @@ var AgGridReactUi = (props) => {
           if (ctx.isDestroyed()) {
             return;
           }
-          const api2 = apiRef.current;
-          if (api2) {
-            props.passGridApi?.(api2);
+          const api = apiRef.current;
+          if (api) {
+            props.passGridApi?.(api);
           }
         }
       );
@@ -76636,8 +76636,8 @@ var DetailCellRenderer = reactExports.forwardRef((props, ref) => {
       checkRowSizeFunc();
     }
   }, []);
-  const registerGridApi = reactExports.useCallback((api2) => {
-    ctrlRef.current?.registerDetailWithMaster(api2);
+  const registerGridApi = reactExports.useCallback((api) => {
+    ctrlRef.current?.registerDetailWithMaster(api);
   }, []);
   return /* @__PURE__ */ React20.createElement("div", { className: topClassName, ref: setRef2 }, detailGridOptions && /* @__PURE__ */ React20.createElement(
     AgGridReactUi,
@@ -76661,8 +76661,8 @@ var ReactFrameworkOverrides = class extends VanillaFrameworkOverrides {
       agGroupRowRenderer: groupCellRenderer_default,
       agDetailCellRenderer: DetailCellRenderer
     };
-    this.wrapIncoming = (callback, source) => {
-      if (source === "ensureVisible") {
+    this.wrapIncoming = (callback, source2) => {
+      if (source2 === "ensureVisible") {
         return runWithoutFlushSync(callback);
       }
       return callback();
@@ -76697,10 +76697,10 @@ var AgGridReact = class extends reactExports.Component {
   constructor() {
     super(...arguments);
     this.apiListeners = [];
-    this.setGridApi = (api2) => {
-      this.api = api2;
+    this.setGridApi = (api) => {
+      this.api = api;
       for (const listener of this.apiListeners) {
-        listener(api2);
+        listener(api);
       }
     };
   }
@@ -76859,17 +76859,17 @@ const ScansGrid = () => {
 const ScanList = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
-  const api2 = useStore((state) => state.api);
+  const api = useStore((state) => state.api);
   reactExports.useEffect(() => {
     const fetchScans = async () => {
-      const scansInfo = await api2?.getScans();
+      const scansInfo = await api?.getScans();
       if (scansInfo) {
         setResultsDir(scansInfo.results_dir);
         setScans(scansInfo.scans);
       }
     };
     void fetchScans();
-  }, [api2, setScans, setResultsDir]);
+  }, [api, setScans, setResultsDir]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, { bordered: false }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ExtendedFindProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScansGrid, {}) })
@@ -76917,13 +76917,13 @@ const AppRouter = createHashRouter(
   ],
   { basename: "" }
 );
-const App = ({ api: api2 }) => {
+const App = ({ api }) => {
   reactExports.useEffect(() => {
-    useStore.getState().setApi(api2);
-  }, [api2]);
+    useStore.getState().setApi(api);
+  }, [api]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(RouterProvider2, { router: AppRouter });
 };
-const scoutServerClient = () => {
+const apiScoutServer = () => {
   return {
     getScan: async (scanLocation) => {
       const response = await fetch(
@@ -76945,6 +76945,1192 @@ const scoutServerClient = () => {
     }
   };
 };
+let vscodeApi;
+const getVscodeApi = () => {
+  if (window.acquireVsCodeApi) {
+    if (vscodeApi === void 0) {
+      vscodeApi = window.acquireVsCodeApi();
+    }
+    return vscodeApi;
+  } else {
+    return void 0;
+  }
+};
+const kMethodGetScan = "get_scan";
+const kMethodGetScans = "get_scans";
+const kJsonRpcVersion = "2.0";
+function webViewJsonRpcClient(vscode) {
+  const target = {
+    postMessage: (data) => {
+      console.log("postMessage", data);
+      vscode.postMessage(data);
+    },
+    onMessage: (handler) => {
+      const onMessage = (ev) => {
+        console.log("onMessage", ev);
+        handler(ev.data);
+      };
+      window.addEventListener("message", onMessage);
+      return () => {
+        window.removeEventListener("message", onMessage);
+      };
+    }
+  };
+  return jsonRpcPostMessageRequestTransport(target).request;
+}
+function jsonRpcPostMessageRequestTransport(target) {
+  const requests = /* @__PURE__ */ new Map();
+  const disconnect = target.onMessage((ev) => {
+    const response = asJsonRpcResponse(ev);
+    if (response) {
+      const request = requests.get(response.id);
+      if (request) {
+        requests.delete(response.id);
+        if (response.error) {
+          request.reject(response.error);
+        } else {
+          request.resolve(response.result);
+        }
+      }
+    }
+  });
+  return {
+    request: (method, params) => {
+      return new Promise((resolve, reject) => {
+        const requestId = Math.floor(Math.random() * 1e6);
+        requests.set(requestId, { resolve, reject });
+        const request = {
+          jsonrpc: kJsonRpcVersion,
+          id: requestId,
+          method,
+          params
+        };
+        target.postMessage(request);
+      });
+    },
+    disconnect
+  };
+}
+function isJsonRpcMessage(message) {
+  return message.jsonrpc !== void 0 && message.id !== void 0;
+}
+function asJsonRpcMessage(data) {
+  if (isJsonRpcMessage(data) && data.jsonrpc === kJsonRpcVersion) {
+    return data;
+  }
+  return null;
+}
+function asJsonRpcResponse(data) {
+  const message = asJsonRpcMessage(data);
+  if (message) {
+    return message;
+  }
+  return null;
+}
+var Space_Separator = /[\u1680\u2000-\u200A\u202F\u205F\u3000]/;
+var ID_Start = /[\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u0860-\u086A\u08A0-\u08B4\u08B6-\u08BD\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u09FC\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C80\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D54-\u0D56\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u1884\u1887-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1C80-\u1C88\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2E2F\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312E\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FEA\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AE\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF2D-\uDF4A\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDCB0-\uDCD3\uDCD8-\uDCFB\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD805[\uDC00-\uDC34\uDC47-\uDC4A\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD806[\uDCA0-\uDCDF\uDCFF\uDE00\uDE0B-\uDE32\uDE3A\uDE50\uDE5C-\uDE83\uDE86-\uDE89\uDEC0-\uDEF8]|\uD807[\uDC00-\uDC08\uDC0A-\uDC2E\uDC40\uDC72-\uDC8F\uDD00-\uDD06\uDD08\uDD09\uDD0B-\uDD30\uDD46]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD81C-\uD820\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872\uD874-\uD879][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50\uDF93-\uDF9F\uDFE0\uDFE1]|\uD821[\uDC00-\uDFEC]|\uD822[\uDC00-\uDEF2]|\uD82C[\uDC00-\uDD1E\uDD70-\uDEFB]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD83A[\uDC00-\uDCC4\uDD00-\uDD43]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1\uDEB0-\uDFFF]|\uD87A[\uDC00-\uDFE0]|\uD87E[\uDC00-\uDE1D]/;
+var ID_Continue = /[\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0300-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u0483-\u0487\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F2\u0610-\u061A\u0620-\u0669\u066E-\u06D3\u06D5-\u06DC\u06DF-\u06E8\u06EA-\u06FC\u06FF\u0710-\u074A\u074D-\u07B1\u07C0-\u07F5\u07FA\u0800-\u082D\u0840-\u085B\u0860-\u086A\u08A0-\u08B4\u08B6-\u08BD\u08D4-\u08E1\u08E3-\u0963\u0966-\u096F\u0971-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BC-\u09C4\u09C7\u09C8\u09CB-\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09E6-\u09F1\u09FC\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A59-\u0A5C\u0A5E\u0A66-\u0A75\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABC-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AD0\u0AE0-\u0AE3\u0AE6-\u0AEF\u0AF9-\u0AFF\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3C-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B66-\u0B6F\u0B71\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD0\u0BD7\u0BE6-\u0BEF\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C66-\u0C6F\u0C80-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBC-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CE6-\u0CEF\u0CF1\u0CF2\u0D00-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D44\u0D46-\u0D48\u0D4A-\u0D4E\u0D54-\u0D57\u0D5F-\u0D63\u0D66-\u0D6F\u0D7A-\u0D7F\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2\u0DF3\u0E01-\u0E3A\u0E40-\u0E4E\u0E50-\u0E59\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0EC8-\u0ECD\u0ED0-\u0ED9\u0EDC-\u0EDF\u0F00\u0F18\u0F19\u0F20-\u0F29\u0F35\u0F37\u0F39\u0F3E-\u0F47\u0F49-\u0F6C\u0F71-\u0F84\u0F86-\u0F97\u0F99-\u0FBC\u0FC6\u1000-\u1049\u1050-\u109D\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135D-\u135F\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1714\u1720-\u1734\u1740-\u1753\u1760-\u176C\u176E-\u1770\u1772\u1773\u1780-\u17D3\u17D7\u17DC\u17DD\u17E0-\u17E9\u180B-\u180D\u1810-\u1819\u1820-\u1877\u1880-\u18AA\u18B0-\u18F5\u1900-\u191E\u1920-\u192B\u1930-\u193B\u1946-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u19D0-\u19D9\u1A00-\u1A1B\u1A20-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AA7\u1AB0-\u1ABD\u1B00-\u1B4B\u1B50-\u1B59\u1B6B-\u1B73\u1B80-\u1BF3\u1C00-\u1C37\u1C40-\u1C49\u1C4D-\u1C7D\u1C80-\u1C88\u1CD0-\u1CD2\u1CD4-\u1CF9\u1D00-\u1DF9\u1DFB-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u203F\u2040\u2054\u2071\u207F\u2090-\u209C\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D7F-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2DE0-\u2DFF\u2E2F\u3005-\u3007\u3021-\u302F\u3031-\u3035\u3038-\u303C\u3041-\u3096\u3099\u309A\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312E\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FEA\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA62B\uA640-\uA66F\uA674-\uA67D\uA67F-\uA6F1\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AE\uA7B0-\uA7B7\uA7F7-\uA827\uA840-\uA873\uA880-\uA8C5\uA8D0-\uA8D9\uA8E0-\uA8F7\uA8FB\uA8FD\uA900-\uA92D\uA930-\uA953\uA960-\uA97C\uA980-\uA9C0\uA9CF-\uA9D9\uA9E0-\uA9FE\uAA00-\uAA36\uAA40-\uAA4D\uAA50-\uAA59\uAA60-\uAA76\uAA7A-\uAAC2\uAADB-\uAADD\uAAE0-\uAAEF\uAAF2-\uAAF6\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABEA\uABEC\uABED\uABF0-\uABF9\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE00-\uFE0F\uFE20-\uFE2F\uFE33\uFE34\uFE4D-\uFE4F\uFE70-\uFE74\uFE76-\uFEFC\uFF10-\uFF19\uFF21-\uFF3A\uFF3F\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDDFD\uDE80-\uDE9C\uDEA0-\uDED0\uDEE0\uDF00-\uDF1F\uDF2D-\uDF4A\uDF50-\uDF7A\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDCA0-\uDCA9\uDCB0-\uDCD3\uDCD8-\uDCFB\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE38-\uDE3A\uDE3F\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE6\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC00-\uDC46\uDC66-\uDC6F\uDC7F-\uDCBA\uDCD0-\uDCE8\uDCF0-\uDCF9\uDD00-\uDD34\uDD36-\uDD3F\uDD50-\uDD73\uDD76\uDD80-\uDDC4\uDDCA-\uDDCC\uDDD0-\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE37\uDE3E\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEEA\uDEF0-\uDEF9\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3C-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF50\uDF57\uDF5D-\uDF63\uDF66-\uDF6C\uDF70-\uDF74]|\uD805[\uDC00-\uDC4A\uDC50-\uDC59\uDC80-\uDCC5\uDCC7\uDCD0-\uDCD9\uDD80-\uDDB5\uDDB8-\uDDC0\uDDD8-\uDDDD\uDE00-\uDE40\uDE44\uDE50-\uDE59\uDE80-\uDEB7\uDEC0-\uDEC9\uDF00-\uDF19\uDF1D-\uDF2B\uDF30-\uDF39]|\uD806[\uDCA0-\uDCE9\uDCFF\uDE00-\uDE3E\uDE47\uDE50-\uDE83\uDE86-\uDE99\uDEC0-\uDEF8]|\uD807[\uDC00-\uDC08\uDC0A-\uDC36\uDC38-\uDC40\uDC50-\uDC59\uDC72-\uDC8F\uDC92-\uDCA7\uDCA9-\uDCB6\uDD00-\uDD06\uDD08\uDD09\uDD0B-\uDD36\uDD3A\uDD3C\uDD3D\uDD3F-\uDD47\uDD50-\uDD59]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD81C-\uD820\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872\uD874-\uD879][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDE60-\uDE69\uDED0-\uDEED\uDEF0-\uDEF4\uDF00-\uDF36\uDF40-\uDF43\uDF50-\uDF59\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF8F-\uDF9F\uDFE0\uDFE1]|\uD821[\uDC00-\uDFEC]|\uD822[\uDC00-\uDEF2]|\uD82C[\uDC00-\uDD1E\uDD70-\uDEFB]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9D\uDC9E]|\uD834[\uDD65-\uDD69\uDD6D-\uDD72\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB\uDFCE-\uDFFF]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD838[\uDC00-\uDC06\uDC08-\uDC18\uDC1B-\uDC21\uDC23\uDC24\uDC26-\uDC2A]|\uD83A[\uDC00-\uDCC4\uDCD0-\uDCD6\uDD00-\uDD4A\uDD50-\uDD59]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1\uDEB0-\uDFFF]|\uD87A[\uDC00-\uDFE0]|\uD87E[\uDC00-\uDE1D]|\uDB40[\uDD00-\uDDEF]/;
+var unicode = {
+  Space_Separator,
+  ID_Start,
+  ID_Continue
+};
+var util = {
+  isSpaceSeparator(c2) {
+    return typeof c2 === "string" && unicode.Space_Separator.test(c2);
+  },
+  isIdStartChar(c2) {
+    return typeof c2 === "string" && (c2 >= "a" && c2 <= "z" || c2 >= "A" && c2 <= "Z" || c2 === "$" || c2 === "_" || unicode.ID_Start.test(c2));
+  },
+  isIdContinueChar(c2) {
+    return typeof c2 === "string" && (c2 >= "a" && c2 <= "z" || c2 >= "A" && c2 <= "Z" || c2 >= "0" && c2 <= "9" || c2 === "$" || c2 === "_" || c2 === "‌" || c2 === "‍" || unicode.ID_Continue.test(c2));
+  },
+  isDigit(c2) {
+    return typeof c2 === "string" && /[0-9]/.test(c2);
+  },
+  isHexDigit(c2) {
+    return typeof c2 === "string" && /[0-9A-Fa-f]/.test(c2);
+  }
+};
+let source;
+let parseState;
+let stack;
+let pos;
+let line;
+let column;
+let token;
+let key;
+let root$1;
+var parse = function parse2(text, reviver) {
+  source = String(text);
+  parseState = "start";
+  stack = [];
+  pos = 0;
+  line = 1;
+  column = 0;
+  token = void 0;
+  key = void 0;
+  root$1 = void 0;
+  do {
+    token = lex();
+    parseStates[parseState]();
+  } while (token.type !== "eof");
+  if (typeof reviver === "function") {
+    return internalize({ "": root$1 }, "", reviver);
+  }
+  return root$1;
+};
+function internalize(holder, name, reviver) {
+  const value = holder[name];
+  if (value != null && typeof value === "object") {
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        const key2 = String(i);
+        const replacement = internalize(value, key2, reviver);
+        if (replacement === void 0) {
+          delete value[key2];
+        } else {
+          Object.defineProperty(value, key2, {
+            value: replacement,
+            writable: true,
+            enumerable: true,
+            configurable: true
+          });
+        }
+      }
+    } else {
+      for (const key2 in value) {
+        const replacement = internalize(value, key2, reviver);
+        if (replacement === void 0) {
+          delete value[key2];
+        } else {
+          Object.defineProperty(value, key2, {
+            value: replacement,
+            writable: true,
+            enumerable: true,
+            configurable: true
+          });
+        }
+      }
+    }
+  }
+  return reviver.call(holder, name, value);
+}
+let lexState;
+let buffer;
+let doubleQuote;
+let sign;
+let c;
+function lex() {
+  lexState = "default";
+  buffer = "";
+  doubleQuote = false;
+  sign = 1;
+  for (; ; ) {
+    c = peek();
+    const token2 = lexStates[lexState]();
+    if (token2) {
+      return token2;
+    }
+  }
+}
+function peek() {
+  if (source[pos]) {
+    return String.fromCodePoint(source.codePointAt(pos));
+  }
+}
+function read() {
+  const c2 = peek();
+  if (c2 === "\n") {
+    line++;
+    column = 0;
+  } else if (c2) {
+    column += c2.length;
+  } else {
+    column++;
+  }
+  if (c2) {
+    pos += c2.length;
+  }
+  return c2;
+}
+const lexStates = {
+  default() {
+    switch (c) {
+      case "	":
+      case "\v":
+      case "\f":
+      case " ":
+      case " ":
+      case "\uFEFF":
+      case "\n":
+      case "\r":
+      case "\u2028":
+      case "\u2029":
+        read();
+        return;
+      case "/":
+        read();
+        lexState = "comment";
+        return;
+      case void 0:
+        read();
+        return newToken("eof");
+    }
+    if (util.isSpaceSeparator(c)) {
+      read();
+      return;
+    }
+    return lexStates[parseState]();
+  },
+  comment() {
+    switch (c) {
+      case "*":
+        read();
+        lexState = "multiLineComment";
+        return;
+      case "/":
+        read();
+        lexState = "singleLineComment";
+        return;
+    }
+    throw invalidChar(read());
+  },
+  multiLineComment() {
+    switch (c) {
+      case "*":
+        read();
+        lexState = "multiLineCommentAsterisk";
+        return;
+      case void 0:
+        throw invalidChar(read());
+    }
+    read();
+  },
+  multiLineCommentAsterisk() {
+    switch (c) {
+      case "*":
+        read();
+        return;
+      case "/":
+        read();
+        lexState = "default";
+        return;
+      case void 0:
+        throw invalidChar(read());
+    }
+    read();
+    lexState = "multiLineComment";
+  },
+  singleLineComment() {
+    switch (c) {
+      case "\n":
+      case "\r":
+      case "\u2028":
+      case "\u2029":
+        read();
+        lexState = "default";
+        return;
+      case void 0:
+        read();
+        return newToken("eof");
+    }
+    read();
+  },
+  value() {
+    switch (c) {
+      case "{":
+      case "[":
+        return newToken("punctuator", read());
+      case "n":
+        read();
+        literal("ull");
+        return newToken("null", null);
+      case "t":
+        read();
+        literal("rue");
+        return newToken("boolean", true);
+      case "f":
+        read();
+        literal("alse");
+        return newToken("boolean", false);
+      case "-":
+      case "+":
+        if (read() === "-") {
+          sign = -1;
+        }
+        lexState = "sign";
+        return;
+      case ".":
+        buffer = read();
+        lexState = "decimalPointLeading";
+        return;
+      case "0":
+        buffer = read();
+        lexState = "zero";
+        return;
+      case "1":
+      case "2":
+      case "3":
+      case "4":
+      case "5":
+      case "6":
+      case "7":
+      case "8":
+      case "9":
+        buffer = read();
+        lexState = "decimalInteger";
+        return;
+      case "I":
+        read();
+        literal("nfinity");
+        return newToken("numeric", Infinity);
+      case "N":
+        read();
+        literal("aN");
+        return newToken("numeric", NaN);
+      case '"':
+      case "'":
+        doubleQuote = read() === '"';
+        buffer = "";
+        lexState = "string";
+        return;
+    }
+    throw invalidChar(read());
+  },
+  identifierNameStartEscape() {
+    if (c !== "u") {
+      throw invalidChar(read());
+    }
+    read();
+    const u = unicodeEscape();
+    switch (u) {
+      case "$":
+      case "_":
+        break;
+      default:
+        if (!util.isIdStartChar(u)) {
+          throw invalidIdentifier();
+        }
+        break;
+    }
+    buffer += u;
+    lexState = "identifierName";
+  },
+  identifierName() {
+    switch (c) {
+      case "$":
+      case "_":
+      case "‌":
+      case "‍":
+        buffer += read();
+        return;
+      case "\\":
+        read();
+        lexState = "identifierNameEscape";
+        return;
+    }
+    if (util.isIdContinueChar(c)) {
+      buffer += read();
+      return;
+    }
+    return newToken("identifier", buffer);
+  },
+  identifierNameEscape() {
+    if (c !== "u") {
+      throw invalidChar(read());
+    }
+    read();
+    const u = unicodeEscape();
+    switch (u) {
+      case "$":
+      case "_":
+      case "‌":
+      case "‍":
+        break;
+      default:
+        if (!util.isIdContinueChar(u)) {
+          throw invalidIdentifier();
+        }
+        break;
+    }
+    buffer += u;
+    lexState = "identifierName";
+  },
+  sign() {
+    switch (c) {
+      case ".":
+        buffer = read();
+        lexState = "decimalPointLeading";
+        return;
+      case "0":
+        buffer = read();
+        lexState = "zero";
+        return;
+      case "1":
+      case "2":
+      case "3":
+      case "4":
+      case "5":
+      case "6":
+      case "7":
+      case "8":
+      case "9":
+        buffer = read();
+        lexState = "decimalInteger";
+        return;
+      case "I":
+        read();
+        literal("nfinity");
+        return newToken("numeric", sign * Infinity);
+      case "N":
+        read();
+        literal("aN");
+        return newToken("numeric", NaN);
+    }
+    throw invalidChar(read());
+  },
+  zero() {
+    switch (c) {
+      case ".":
+        buffer += read();
+        lexState = "decimalPoint";
+        return;
+      case "e":
+      case "E":
+        buffer += read();
+        lexState = "decimalExponent";
+        return;
+      case "x":
+      case "X":
+        buffer += read();
+        lexState = "hexadecimal";
+        return;
+    }
+    return newToken("numeric", sign * 0);
+  },
+  decimalInteger() {
+    switch (c) {
+      case ".":
+        buffer += read();
+        lexState = "decimalPoint";
+        return;
+      case "e":
+      case "E":
+        buffer += read();
+        lexState = "decimalExponent";
+        return;
+    }
+    if (util.isDigit(c)) {
+      buffer += read();
+      return;
+    }
+    return newToken("numeric", sign * Number(buffer));
+  },
+  decimalPointLeading() {
+    if (util.isDigit(c)) {
+      buffer += read();
+      lexState = "decimalFraction";
+      return;
+    }
+    throw invalidChar(read());
+  },
+  decimalPoint() {
+    switch (c) {
+      case "e":
+      case "E":
+        buffer += read();
+        lexState = "decimalExponent";
+        return;
+    }
+    if (util.isDigit(c)) {
+      buffer += read();
+      lexState = "decimalFraction";
+      return;
+    }
+    return newToken("numeric", sign * Number(buffer));
+  },
+  decimalFraction() {
+    switch (c) {
+      case "e":
+      case "E":
+        buffer += read();
+        lexState = "decimalExponent";
+        return;
+    }
+    if (util.isDigit(c)) {
+      buffer += read();
+      return;
+    }
+    return newToken("numeric", sign * Number(buffer));
+  },
+  decimalExponent() {
+    switch (c) {
+      case "+":
+      case "-":
+        buffer += read();
+        lexState = "decimalExponentSign";
+        return;
+    }
+    if (util.isDigit(c)) {
+      buffer += read();
+      lexState = "decimalExponentInteger";
+      return;
+    }
+    throw invalidChar(read());
+  },
+  decimalExponentSign() {
+    if (util.isDigit(c)) {
+      buffer += read();
+      lexState = "decimalExponentInteger";
+      return;
+    }
+    throw invalidChar(read());
+  },
+  decimalExponentInteger() {
+    if (util.isDigit(c)) {
+      buffer += read();
+      return;
+    }
+    return newToken("numeric", sign * Number(buffer));
+  },
+  hexadecimal() {
+    if (util.isHexDigit(c)) {
+      buffer += read();
+      lexState = "hexadecimalInteger";
+      return;
+    }
+    throw invalidChar(read());
+  },
+  hexadecimalInteger() {
+    if (util.isHexDigit(c)) {
+      buffer += read();
+      return;
+    }
+    return newToken("numeric", sign * Number(buffer));
+  },
+  string() {
+    switch (c) {
+      case "\\":
+        read();
+        buffer += escape();
+        return;
+      case '"':
+        if (doubleQuote) {
+          read();
+          return newToken("string", buffer);
+        }
+        buffer += read();
+        return;
+      case "'":
+        if (!doubleQuote) {
+          read();
+          return newToken("string", buffer);
+        }
+        buffer += read();
+        return;
+      case "\n":
+      case "\r":
+        throw invalidChar(read());
+      case "\u2028":
+      case "\u2029":
+        separatorChar(c);
+        break;
+      case void 0:
+        throw invalidChar(read());
+    }
+    buffer += read();
+  },
+  start() {
+    switch (c) {
+      case "{":
+      case "[":
+        return newToken("punctuator", read());
+    }
+    lexState = "value";
+  },
+  beforePropertyName() {
+    switch (c) {
+      case "$":
+      case "_":
+        buffer = read();
+        lexState = "identifierName";
+        return;
+      case "\\":
+        read();
+        lexState = "identifierNameStartEscape";
+        return;
+      case "}":
+        return newToken("punctuator", read());
+      case '"':
+      case "'":
+        doubleQuote = read() === '"';
+        lexState = "string";
+        return;
+    }
+    if (util.isIdStartChar(c)) {
+      buffer += read();
+      lexState = "identifierName";
+      return;
+    }
+    throw invalidChar(read());
+  },
+  afterPropertyName() {
+    if (c === ":") {
+      return newToken("punctuator", read());
+    }
+    throw invalidChar(read());
+  },
+  beforePropertyValue() {
+    lexState = "value";
+  },
+  afterPropertyValue() {
+    switch (c) {
+      case ",":
+      case "}":
+        return newToken("punctuator", read());
+    }
+    throw invalidChar(read());
+  },
+  beforeArrayValue() {
+    if (c === "]") {
+      return newToken("punctuator", read());
+    }
+    lexState = "value";
+  },
+  afterArrayValue() {
+    switch (c) {
+      case ",":
+      case "]":
+        return newToken("punctuator", read());
+    }
+    throw invalidChar(read());
+  },
+  end() {
+    throw invalidChar(read());
+  }
+};
+function newToken(type, value) {
+  return {
+    type,
+    value,
+    line,
+    column
+  };
+}
+function literal(s) {
+  for (const c2 of s) {
+    const p = peek();
+    if (p !== c2) {
+      throw invalidChar(read());
+    }
+    read();
+  }
+}
+function escape() {
+  const c2 = peek();
+  switch (c2) {
+    case "b":
+      read();
+      return "\b";
+    case "f":
+      read();
+      return "\f";
+    case "n":
+      read();
+      return "\n";
+    case "r":
+      read();
+      return "\r";
+    case "t":
+      read();
+      return "	";
+    case "v":
+      read();
+      return "\v";
+    case "0":
+      read();
+      if (util.isDigit(peek())) {
+        throw invalidChar(read());
+      }
+      return "\0";
+    case "x":
+      read();
+      return hexEscape();
+    case "u":
+      read();
+      return unicodeEscape();
+    case "\n":
+    case "\u2028":
+    case "\u2029":
+      read();
+      return "";
+    case "\r":
+      read();
+      if (peek() === "\n") {
+        read();
+      }
+      return "";
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
+    case "6":
+    case "7":
+    case "8":
+    case "9":
+      throw invalidChar(read());
+    case void 0:
+      throw invalidChar(read());
+  }
+  return read();
+}
+function hexEscape() {
+  let buffer2 = "";
+  let c2 = peek();
+  if (!util.isHexDigit(c2)) {
+    throw invalidChar(read());
+  }
+  buffer2 += read();
+  c2 = peek();
+  if (!util.isHexDigit(c2)) {
+    throw invalidChar(read());
+  }
+  buffer2 += read();
+  return String.fromCodePoint(parseInt(buffer2, 16));
+}
+function unicodeEscape() {
+  let buffer2 = "";
+  let count = 4;
+  while (count-- > 0) {
+    const c2 = peek();
+    if (!util.isHexDigit(c2)) {
+      throw invalidChar(read());
+    }
+    buffer2 += read();
+  }
+  return String.fromCodePoint(parseInt(buffer2, 16));
+}
+const parseStates = {
+  start() {
+    if (token.type === "eof") {
+      throw invalidEOF();
+    }
+    push();
+  },
+  beforePropertyName() {
+    switch (token.type) {
+      case "identifier":
+      case "string":
+        key = token.value;
+        parseState = "afterPropertyName";
+        return;
+      case "punctuator":
+        pop();
+        return;
+      case "eof":
+        throw invalidEOF();
+    }
+  },
+  afterPropertyName() {
+    if (token.type === "eof") {
+      throw invalidEOF();
+    }
+    parseState = "beforePropertyValue";
+  },
+  beforePropertyValue() {
+    if (token.type === "eof") {
+      throw invalidEOF();
+    }
+    push();
+  },
+  beforeArrayValue() {
+    if (token.type === "eof") {
+      throw invalidEOF();
+    }
+    if (token.type === "punctuator" && token.value === "]") {
+      pop();
+      return;
+    }
+    push();
+  },
+  afterPropertyValue() {
+    if (token.type === "eof") {
+      throw invalidEOF();
+    }
+    switch (token.value) {
+      case ",":
+        parseState = "beforePropertyName";
+        return;
+      case "}":
+        pop();
+    }
+  },
+  afterArrayValue() {
+    if (token.type === "eof") {
+      throw invalidEOF();
+    }
+    switch (token.value) {
+      case ",":
+        parseState = "beforeArrayValue";
+        return;
+      case "]":
+        pop();
+    }
+  },
+  end() {
+  }
+};
+function push() {
+  let value;
+  switch (token.type) {
+    case "punctuator":
+      switch (token.value) {
+        case "{":
+          value = {};
+          break;
+        case "[":
+          value = [];
+          break;
+      }
+      break;
+    case "null":
+    case "boolean":
+    case "numeric":
+    case "string":
+      value = token.value;
+      break;
+  }
+  if (root$1 === void 0) {
+    root$1 = value;
+  } else {
+    const parent = stack[stack.length - 1];
+    if (Array.isArray(parent)) {
+      parent.push(value);
+    } else {
+      Object.defineProperty(parent, key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
+    }
+  }
+  if (value !== null && typeof value === "object") {
+    stack.push(value);
+    if (Array.isArray(value)) {
+      parseState = "beforeArrayValue";
+    } else {
+      parseState = "beforePropertyName";
+    }
+  } else {
+    const current2 = stack[stack.length - 1];
+    if (current2 == null) {
+      parseState = "end";
+    } else if (Array.isArray(current2)) {
+      parseState = "afterArrayValue";
+    } else {
+      parseState = "afterPropertyValue";
+    }
+  }
+}
+function pop() {
+  stack.pop();
+  const current2 = stack[stack.length - 1];
+  if (current2 == null) {
+    parseState = "end";
+  } else if (Array.isArray(current2)) {
+    parseState = "afterArrayValue";
+  } else {
+    parseState = "afterPropertyValue";
+  }
+}
+function invalidChar(c2) {
+  if (c2 === void 0) {
+    return syntaxError(`JSON5: invalid end of input at ${line}:${column}`);
+  }
+  return syntaxError(`JSON5: invalid character '${formatChar(c2)}' at ${line}:${column}`);
+}
+function invalidEOF() {
+  return syntaxError(`JSON5: invalid end of input at ${line}:${column}`);
+}
+function invalidIdentifier() {
+  column -= 5;
+  return syntaxError(`JSON5: invalid identifier character at ${line}:${column}`);
+}
+function separatorChar(c2) {
+  console.warn(`JSON5: '${formatChar(c2)}' in strings is not valid ECMAScript; consider escaping`);
+}
+function formatChar(c2) {
+  const replacements = {
+    "'": "\\'",
+    '"': '\\"',
+    "\\": "\\\\",
+    "\b": "\\b",
+    "\f": "\\f",
+    "\n": "\\n",
+    "\r": "\\r",
+    "	": "\\t",
+    "\v": "\\v",
+    "\0": "\\0",
+    "\u2028": "\\u2028",
+    "\u2029": "\\u2029"
+  };
+  if (replacements[c2]) {
+    return replacements[c2];
+  }
+  if (c2 < " ") {
+    const hexString = c2.charCodeAt(0).toString(16);
+    return "\\x" + ("00" + hexString).substring(hexString.length);
+  }
+  return c2;
+}
+function syntaxError(message) {
+  const err = new SyntaxError(message);
+  err.lineNumber = line;
+  err.columnNumber = column;
+  return err;
+}
+var stringify = function stringify2(value, replacer, space) {
+  const stack2 = [];
+  let indent = "";
+  let propertyList;
+  let replacerFunc;
+  let gap = "";
+  let quote2;
+  if (replacer != null && typeof replacer === "object" && !Array.isArray(replacer)) {
+    space = replacer.space;
+    quote2 = replacer.quote;
+    replacer = replacer.replacer;
+  }
+  if (typeof replacer === "function") {
+    replacerFunc = replacer;
+  } else if (Array.isArray(replacer)) {
+    propertyList = [];
+    for (const v of replacer) {
+      let item;
+      if (typeof v === "string") {
+        item = v;
+      } else if (typeof v === "number" || v instanceof String || v instanceof Number) {
+        item = String(v);
+      }
+      if (item !== void 0 && propertyList.indexOf(item) < 0) {
+        propertyList.push(item);
+      }
+    }
+  }
+  if (space instanceof Number) {
+    space = Number(space);
+  } else if (space instanceof String) {
+    space = String(space);
+  }
+  if (typeof space === "number") {
+    if (space > 0) {
+      space = Math.min(10, Math.floor(space));
+      gap = "          ".substr(0, space);
+    }
+  } else if (typeof space === "string") {
+    gap = space.substr(0, 10);
+  }
+  return serializeProperty("", { "": value });
+  function serializeProperty(key2, holder) {
+    let value2 = holder[key2];
+    if (value2 != null) {
+      if (typeof value2.toJSON5 === "function") {
+        value2 = value2.toJSON5(key2);
+      } else if (typeof value2.toJSON === "function") {
+        value2 = value2.toJSON(key2);
+      }
+    }
+    if (replacerFunc) {
+      value2 = replacerFunc.call(holder, key2, value2);
+    }
+    if (value2 instanceof Number) {
+      value2 = Number(value2);
+    } else if (value2 instanceof String) {
+      value2 = String(value2);
+    } else if (value2 instanceof Boolean) {
+      value2 = value2.valueOf();
+    }
+    switch (value2) {
+      case null:
+        return "null";
+      case true:
+        return "true";
+      case false:
+        return "false";
+    }
+    if (typeof value2 === "string") {
+      return quoteString(value2);
+    }
+    if (typeof value2 === "number") {
+      return String(value2);
+    }
+    if (typeof value2 === "object") {
+      return Array.isArray(value2) ? serializeArray(value2) : serializeObject(value2);
+    }
+    return void 0;
+  }
+  function quoteString(value2) {
+    const quotes = {
+      "'": 0.1,
+      '"': 0.2
+    };
+    const replacements = {
+      "'": "\\'",
+      '"': '\\"',
+      "\\": "\\\\",
+      "\b": "\\b",
+      "\f": "\\f",
+      "\n": "\\n",
+      "\r": "\\r",
+      "	": "\\t",
+      "\v": "\\v",
+      "\0": "\\0",
+      "\u2028": "\\u2028",
+      "\u2029": "\\u2029"
+    };
+    let product = "";
+    for (let i = 0; i < value2.length; i++) {
+      const c2 = value2[i];
+      switch (c2) {
+        case "'":
+        case '"':
+          quotes[c2]++;
+          product += c2;
+          continue;
+        case "\0":
+          if (util.isDigit(value2[i + 1])) {
+            product += "\\x00";
+            continue;
+          }
+      }
+      if (replacements[c2]) {
+        product += replacements[c2];
+        continue;
+      }
+      if (c2 < " ") {
+        let hexString = c2.charCodeAt(0).toString(16);
+        product += "\\x" + ("00" + hexString).substring(hexString.length);
+        continue;
+      }
+      product += c2;
+    }
+    const quoteChar = quote2 || Object.keys(quotes).reduce((a, b) => quotes[a] < quotes[b] ? a : b);
+    product = product.replace(new RegExp(quoteChar, "g"), replacements[quoteChar]);
+    return quoteChar + product + quoteChar;
+  }
+  function serializeObject(value2) {
+    if (stack2.indexOf(value2) >= 0) {
+      throw TypeError("Converting circular structure to JSON5");
+    }
+    stack2.push(value2);
+    let stepback = indent;
+    indent = indent + gap;
+    let keys = propertyList || Object.keys(value2);
+    let partial = [];
+    for (const key2 of keys) {
+      const propertyString = serializeProperty(key2, value2);
+      if (propertyString !== void 0) {
+        let member = serializeKey(key2) + ":";
+        if (gap !== "") {
+          member += " ";
+        }
+        member += propertyString;
+        partial.push(member);
+      }
+    }
+    let final;
+    if (partial.length === 0) {
+      final = "{}";
+    } else {
+      let properties;
+      if (gap === "") {
+        properties = partial.join(",");
+        final = "{" + properties + "}";
+      } else {
+        let separator = ",\n" + indent;
+        properties = partial.join(separator);
+        final = "{\n" + indent + properties + ",\n" + stepback + "}";
+      }
+    }
+    stack2.pop();
+    indent = stepback;
+    return final;
+  }
+  function serializeKey(key2) {
+    if (key2.length === 0) {
+      return quoteString(key2);
+    }
+    const firstChar = String.fromCodePoint(key2.codePointAt(0));
+    if (!util.isIdStartChar(firstChar)) {
+      return quoteString(key2);
+    }
+    for (let i = firstChar.length; i < key2.length; i++) {
+      if (!util.isIdContinueChar(String.fromCodePoint(key2.codePointAt(i)))) {
+        return quoteString(key2);
+      }
+    }
+    return key2;
+  }
+  function serializeArray(value2) {
+    if (stack2.indexOf(value2) >= 0) {
+      throw TypeError("Converting circular structure to JSON5");
+    }
+    stack2.push(value2);
+    let stepback = indent;
+    indent = indent + gap;
+    let partial = [];
+    for (let i = 0; i < value2.length; i++) {
+      const propertyString = serializeProperty(String(i), value2);
+      partial.push(propertyString !== void 0 ? propertyString : "null");
+    }
+    let final;
+    if (partial.length === 0) {
+      final = "[]";
+    } else {
+      if (gap === "") {
+        let properties = partial.join(",");
+        final = "[" + properties + "]";
+      } else {
+        let separator = ",\n" + indent;
+        let properties = partial.join(separator);
+        final = "[\n" + indent + properties + ",\n" + stepback + "]";
+      }
+    }
+    stack2.pop();
+    indent = stepback;
+    return final;
+  }
+};
+const JSON5 = {
+  parse,
+  stringify
+};
+var lib = JSON5;
+const apiVscode = (rpcClient) => {
+  return {
+    getScan: async (scanLocation) => {
+      const response = await rpcClient(kMethodGetScan, [scanLocation]);
+      if (response) {
+        return lib.parse(response);
+      } else {
+        throw new Error(`Invalid response for getScan for scan: ${scanLocation}`);
+      }
+    },
+    getScans: async () => {
+      console.log({ rpcClient });
+      const response = await rpcClient(kMethodGetScans, []);
+      console.log({ response });
+      if (response) {
+        return lib.parse(response);
+      } else {
+        throw new Error("Invalid response for getScans");
+      }
+    }
+  };
+};
 const containerId = "app";
 const container = document.getElementById(containerId);
 if (!container) {
@@ -76954,6 +78140,16 @@ if (!container) {
   );
 }
 const root = clientExports.createRoot(container);
-const api = scoutServerClient();
-root.render(/* @__PURE__ */ jsxRuntimeExports.jsx(App, { api }));
+const selectApi = () => {
+  const vscodeApi2 = getVscodeApi();
+  if (vscodeApi2) {
+    const vscodeClient = webViewJsonRpcClient(vscodeApi2);
+    return apiVscode(vscodeClient);
+  } else {
+    return apiScoutServer();
+  }
+};
+const embeddedState = document.getElementById("scanview-state");
+console.log("Embedded state:", embeddedState);
+root.render(/* @__PURE__ */ jsxRuntimeExports.jsx(App, { api: selectApi() }));
 //# sourceMappingURL=index.js.map

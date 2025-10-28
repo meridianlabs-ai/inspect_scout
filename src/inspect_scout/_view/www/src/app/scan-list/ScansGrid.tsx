@@ -14,8 +14,8 @@ import { useStore } from '../../state/store';
 
 import styles from './ScansGrid.module.css';
 import { useNavigate, useParams } from 'react-router-dom';
-import { basename, dirname, toRelativePath } from '../../utils/path';
-import { getRelativePathFromParams, isValidScanPath } from '../../router/url';
+import { dirname, toRelativePath } from '../../utils/path';
+import { getRelativePathFromParams } from '../../router/url';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);

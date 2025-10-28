@@ -6,7 +6,7 @@ from typing import Literal
 class Preprocessor:
     exclude_system: bool = True
     exclude_reasoning: bool = False
-    exclude_tool_calls: bool = False
+    exclude_tool_usage: bool = False
 
 
 @dataclass

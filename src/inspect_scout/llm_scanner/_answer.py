@@ -42,9 +42,12 @@ def _yes_no_result(output: ModelOutput, message_id_map: list[str]) -> Result:
     if match:
         answer = match.group(1).lower()
         explanation = output.completion[: match.start()].strip()
+        references = extract_references(explanation, message_id_map)
+
+        # Use a match instead of if/else so that answers other than yes or no flow
+        # to the bottom.
         match answer:
             case "yes":
-                references = extract_references(explanation, message_id_map)
                 return Result(
                     value=True,
                     answer="Yes",
@@ -56,6 +59,7 @@ def _yes_no_result(output: ModelOutput, message_id_map: list[str]) -> Result:
                     value=False,
                     answer="No",
                     explanation=explanation,
+                    references=references,
                 )
 
     return Result(value=False, explanation=output.completion)

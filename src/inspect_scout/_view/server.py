@@ -124,7 +124,8 @@ def view_server_app(
         scans = await scan_list_async(validated_results_dir)
 
         return InspectPydanticJSONResponse(
-            content={"scans": scans}, media_type="application/json"
+            content={"results_dir": validated_results_dir, "scans": scans},
+            media_type="application/json",
         )
 
     # location is expected to be a path relative to the results_dir

@@ -1,14 +1,24 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
-import { scansRoute } from "../../router/url";
+import { scansRoute, getRelativePathFromParams } from "../../router/url";
+import { useStore } from "../../state/store";
+import { toAbsolutePath } from "../../utils/path";
+import { Navbar } from "../navbar/Navbar";
 
 export const ScanDetail: React.FC = () => {
-  const { scan_location } = useParams<{ scan_location: string }>();
+  const params = useParams<{ "*": string }>();
+  const relativePath = getRelativePathFromParams(params);
+  const resultsDir = useStore((state) => state.resultsDir);
+
+  // Convert relative path back to absolute path
+  const absolutePath = resultsDir ? toAbsolutePath(relativePath, resultsDir) : relativePath;
 
   // TODO: Replace with actual scan data fetching from your store or API
   // For now, just display the scan location
 
   return (
+    <>
+    <Navbar/>
     <div className="container mt-5">
       <div className="row">
         <div className="col">
@@ -21,7 +31,7 @@ export const ScanDetail: React.FC = () => {
                 </Link>
               </li>
               <li className="breadcrumb-item active" aria-current="page">
-                {scan_location}
+                {relativePath}
               </li>
             </ol>
           </nav>
@@ -35,8 +45,9 @@ export const ScanDetail: React.FC = () => {
             <div className="card-body">
               <h5 className="card-title">Scan Location</h5>
               <p className="card-text">
-                <code>{scan_location}</code>
+                <code>{relativePath}</code>
               </p>
+              <small className="text-muted">Full path: {absolutePath}</small>
 
               <hr />
 
@@ -49,5 +60,6 @@ export const ScanDetail: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };

@@ -38,6 +38,8 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
+    "ag-grid-community": "^34.3.0",
+    "ag-grid-react": "^34.3.0",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.12.1",
     "clsx": "^2.1.1",
@@ -45,6 +47,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4",
+    "react-virtuoso": "^4.14.1",
     "zustand": "^5.0.8"
   },
   "resolutions": {

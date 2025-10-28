@@ -1,7 +1,12 @@
 import { Scan } from '../types';
 
+export interface ScansInfo {
+  results_dir: string;
+  scans: Scan[];
+}
+
 export interface ScanApi {
-  getScans(): Promise<Scan[]>;
+  getScans(): Promise<ScansInfo>;
   getScan(scanLocation: string): Promise<Scan>;
 }
 
@@ -14,16 +19,16 @@ export const scoutServerClient = (): ScanApi => {
       if (!response.ok) {
         throw new Error(`Failed to fetch scan: ${response.statusText}`);
       }
-      return (await response.json()) as Scan
+      return (await response.json()) as Scan;
     },
-    getScans: async (): Promise<Scan[]> => {
+    getScans: async (): Promise<ScansInfo> => {
       const response = await fetch('/api/scans');
 
       if (!response.ok) {
         throw new Error(`Failed to fetch scans: ${response.statusText}`);
       }
-      const responseObj = await response.json() as { scans: Scan[] };
-      return responseObj.scans;
+      const responseObj = (await response.json()) as ScansInfo;
+      return responseObj
     },
   };
 };

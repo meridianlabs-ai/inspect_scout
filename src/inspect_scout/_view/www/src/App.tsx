@@ -2,7 +2,8 @@ import { FC, useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { AppRouter } from "./AppRouter";
 import { ScanApi } from "./api/api";
-import { useStore } from "./store/store";
+import { useStore } from "./state/store";
+import "./App.css";
 
 export interface AppProps {
   api: ScanApi;

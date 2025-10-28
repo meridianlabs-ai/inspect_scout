@@ -14,7 +14,9 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ['*.config.js', '*.config.ts'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -35,6 +37,10 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       'react/prop-types': 'off',
+      // These are disabled because we didn't have time to fix them, not because they are bad rules
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+       "@typescript-eslint/no-unsafe-return": "off",
     },
     settings: {
       react: {

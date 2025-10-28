@@ -1,15 +1,15 @@
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [
     react({
-      jsxRuntime: "automatic",
+      jsxRuntime: 'automatic',
     }),
   ],
-  base: "",
+  base: '',
   build: {
-    outDir: "dist",
+    outDir: 'dist',
     minify: false,
     rollupOptions: {
       output: {
@@ -19,5 +19,10 @@ export default defineConfig({
       },
     },
     sourcemap: true,
+  },
+  define: {
+    __LOGGING_FILTER__: JSON.stringify(
+      process.env.DEV_LOGGING_NAMESPACES || '*'
+    ),
   },
 });

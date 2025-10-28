@@ -11,8 +11,8 @@
 
 .breadcrumbs {
   border-left: solid var(--bs-border-color) 1px;
-  padding-left: 0.5em;
-  margin-bottom: 0;
+  padding-left: 0.5em !important;
+  margin-bottom: 0 !important;
   min-width: 0;
   overflow: hidden;
   width: max-content;
@@ -45,7 +45,7 @@
 }
 
 .toolbarButton {
-  color: var(--bs-body);
+  color: var(--bs-body-color);
 }
 
 .toolbarButton:hover {

@@ -76723,11 +76723,12 @@ const ScansGrid = () => {
   const data = reactExports.useMemo(() => {
     const rows = [];
     scans.forEach((scan) => {
-      console.log({ s: scan.spec });
       const row = {
         timestamp: scan.spec.timestamp,
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
+        model: scan.spec.model.model,
+        complete: scan.complete,
         scanners: Object.keys(scan.spec.scanners).map((s) => s)
       };
       rows.push(row);
@@ -76737,9 +76738,19 @@ const ScansGrid = () => {
   const columnDefs = reactExports.useMemo(() => {
     const baseColumns = [
       {
+        field: "complete",
+        headerName: "",
+        initialWidth: 60,
+        minWidth: 60,
+        sortable: true,
+        filter: true,
+        resizable: true,
+        cellRenderer: (params) => params.value ? "✅" : "❌"
+      },
+      {
         field: "timestamp",
         headerName: "Time",
-        width: 150,
+        initialWidth: 150,
         minWidth: 100,
         sortable: true,
         filter: true,
@@ -76748,7 +76759,7 @@ const ScansGrid = () => {
       {
         field: "scanId",
         headerName: "Scan Id",
-        width: 150,
+        initialWidth: 150,
         minWidth: 100,
         sortable: true,
         filter: true,
@@ -76757,19 +76768,33 @@ const ScansGrid = () => {
       {
         field: "scanName",
         headerName: "Name",
-        width: 120,
+        initialWidth: 120,
         minWidth: 80,
         sortable: true,
         filter: true,
         resizable: true
+      },
+      {
+        field: "model",
+        headerName: "Model",
+        initialWidth: 120,
+        minWidth: 80,
+        sortable: true,
+        filter: true,
+        resizable: true
+      },
+      {
+        field: "scanners",
+        headerName: "Scanners",
+        flex: 1,
+        minWidth: 150,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        cellRenderer: (params) => params.value.join(", ")
       }
     ];
     return baseColumns;
-  }, []);
-  const onRowSelected = reactExports.useCallback((event) => {
-    if (event.node.isSelected() && event.data) {
-      console.log(`Selected: ScanId="${event.data.scanId}ş`);
-    }
   }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     AgGridReact,
@@ -76783,7 +76808,6 @@ const ScansGrid = () => {
       },
       suppressCellFocus: true,
       rowSelection: "single",
-      onRowSelected,
       theme: themeBalham,
       enableCellTextSelection: true,
       autoSizeStrategy: { type: "fitCellContents" },

@@ -1,7 +1,6 @@
 import type {
   ColDef,
   RowClickedEvent,
-  RowSelectedEvent,
   StateUpdatedEvent,
 } from 'ag-grid-community';
 import {
@@ -10,7 +9,7 @@ import {
   themeBalham,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
-import { FC, useCallback, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useStore } from '../../state/store';
 
 import styles from './ScansGrid.module.css';
@@ -22,6 +21,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const GRID_STATE_NAME = "ScansGrid";
 
 interface ScanRow {
+  complete: boolean;
+  model: string;
   timestamp: string;
   scanId: string;
   scanName: string;
@@ -47,11 +48,12 @@ export const ScansGrid: FC = () => {
     const rows: ScanRow[] = [];
 
     scans.forEach((scan) => {
-      console.log({ s: scan.spec });
       const row: ScanRow = {
         timestamp: scan.spec.timestamp,
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
+        model: scan.spec.model.model,
+        complete: scan.complete,
         scanners: Object.keys(scan.spec.scanners).map((s) => s),
       };
       rows.push(row);
@@ -64,9 +66,19 @@ export const ScansGrid: FC = () => {
   const columnDefs = useMemo((): ColDef<ScanRow>[] => {
     const baseColumns: ColDef<ScanRow>[] = [
       {
+        field: 'complete',
+        headerName: '',
+        initialWidth: 60,
+        minWidth: 60,
+        sortable: true,
+        filter: true,
+        resizable: true,
+        cellRenderer: (params: { value: any; }) => (params.value ? '✅' : '❌'),
+      },
+      {
         field: 'timestamp',
         headerName: 'Time',
-        width: 150,
+        initialWidth: 150,
         minWidth: 100,
         sortable: true,
         filter: true,
@@ -75,7 +87,7 @@ export const ScansGrid: FC = () => {
       {
         field: 'scanId',
         headerName: 'Scan Id',
-        width: 150,
+        initialWidth: 150,
         minWidth: 100,
         sortable: true,
         filter: true,
@@ -84,22 +96,34 @@ export const ScansGrid: FC = () => {
       {
         field: 'scanName',
         headerName: 'Name',
-        width: 120,
+        initialWidth: 120,
         minWidth: 80,
         sortable: true,
         filter: true,
         resizable: true,
       },
+      {
+        field: 'model',
+        headerName: 'Model',
+        initialWidth: 120,
+        minWidth: 80,
+        sortable: true,
+        filter: true,
+        resizable: true,
+      },
+      {
+        field: 'scanners',
+        headerName: 'Scanners',
+        flex: 1,
+        minWidth: 150,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        cellRenderer: (params: { value: any[]; }) => params.value.join(', '),
+      }
     ];
 
     return baseColumns;
-  }, []);
-
-  // Handle row selection
-  const onRowSelected = useCallback((event: RowSelectedEvent<ScanRow>) => {
-    if (event.node.isSelected() && event.data) {
-      console.log(`Selected: ScanId="${event.data.scanId}ş`);
-    }
   }, []);
 
   return (
@@ -114,7 +138,6 @@ export const ScansGrid: FC = () => {
         }}
         suppressCellFocus={true}
         rowSelection="single"
-        onRowSelected={onRowSelected}
         theme={themeBalham}
         enableCellTextSelection={true}
         autoSizeStrategy={{ type: 'fitCellContents' }}

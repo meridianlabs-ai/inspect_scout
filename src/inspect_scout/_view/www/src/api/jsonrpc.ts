@@ -64,12 +64,10 @@ export function webViewJsonRpcClient(
 ): (method: string, params?: any) => Promise<any> {
   const target: PostMessageTarget = {
     postMessage: (data: any) => {
-      console.log("postMessage", data);
       vscode.postMessage(data);
     },
     onMessage: (handler: (data: any) => void) => {      
       const onMessage = (ev: MessageEvent) => {
-        console.log("onMessage", ev);
         handler(ev.data);
       };
       window.addEventListener("message", onMessage);

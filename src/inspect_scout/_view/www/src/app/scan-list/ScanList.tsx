@@ -8,6 +8,7 @@ export const ScanList: FC = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);
+  const scans = useStore((state) => state.scans);
 
   useEffect(() => {
     const fetchScans = async () => {
@@ -22,9 +23,9 @@ export const ScanList: FC = () => {
 
   return (
     <>
-      <Navbar bordered={false}/>
+      <Navbar bordered={false} />
       <ExtendedFindProvider>
-        <ScansGrid />
+        {scans.length > 0 && <ScansGrid />}
       </ExtendedFindProvider>
     </>
   );

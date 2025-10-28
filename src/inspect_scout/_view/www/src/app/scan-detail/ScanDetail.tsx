@@ -7,6 +7,7 @@ import { Navbar } from '../navbar/Navbar';
 export const ScanDetail: React.FC = () => {
   const params = useParams<{ '*': string }>();
   const relativePath = getRelativePathFromParams(params);
+  const singleFileMode = useStore((state) => state.singleFileMode);
   
   const resultsDir = useStore((state) => state.resultsDir);
   const setResultsDir = useStore((state) => state.setResultsDir);
@@ -35,12 +36,9 @@ export const ScanDetail: React.FC = () => {
     void fetchScans();
   }, [resultsDir, relativePath, api, setSelectedScan, setResultsDir, setScans]);
 
-  // TODO: Replace with actual scan data fetching from your store or API
-  // For now, just display the scan location
-
   return (
     <>
-      <Navbar />
+      {singleFileMode || <Navbar />}
       <div style={{ height: '100%', overflowY: 'auto', padding: '16px' }}>
         {selectedScan ? (
           <pre>{JSON.stringify(selectedScan, null, 2)}</pre>

@@ -32,8 +32,5 @@ const selectApi = (): ScanApi => {
   }
 };
 
-const embeddedState = document.getElementById("scanview-state");
-console.log("Embedded state:", embeddedState);
-
 // Render the app
 root.render(<App api={selectApi()} />);

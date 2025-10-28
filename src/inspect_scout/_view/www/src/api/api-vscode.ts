@@ -19,9 +19,7 @@ export const apiVscode = (
       
     },
     getScans: async (): Promise<ScansInfo> => {
-      console.log({rpcClient});
       const response = await rpcClient(kMethodGetScans, []) as string;
-      console.log({response});
       if (response) {
         return JSON5.parse<ScansInfo>(response);
       } else {

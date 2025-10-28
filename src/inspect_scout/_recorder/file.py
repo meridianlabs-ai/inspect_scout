@@ -259,7 +259,7 @@ class FileRecorder(ScanRecorder):
         scans_dir = UPath(scans_location)
         return [
             await FileRecorder.status(scan_dir.as_posix())
-            for scan_dir in scans_dir.glob("scan_id=*")
+            for scan_dir in scans_dir.rglob("scan_id=*")
         ]
 
 

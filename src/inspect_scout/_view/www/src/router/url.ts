@@ -1,6 +1,10 @@
 // Route URL patterns
 export const kScansRouteUrlPattern = '/scans';
+export const kScansWithPathRouteUrlPattern = '/scans/*';
 export const kScanRouteUrlPattern = '/scan/*';
+
+// Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
+export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 
 // Helper functions to generate routes
 export const scanRoute = (relativePath: string) => {
@@ -15,6 +19,18 @@ export const scansRoute = (relativePath?: string) => {
   } else {
     return '/scans';
   }
+};
+
+/**
+ * Validates if a path matches the scan_id pattern.
+ * The path must end with scan_id=[22 characters of alphanumeric, underscore, dot, or dash]
+ *
+ * @param path - The path to validate
+ * @returns true if the path is valid, false otherwise
+ */
+export const isValidScanPath = (path: string): boolean => {
+  path = path.startsWith('/') ? path : "/" + path;
+  return kScanIdPattern.test(path);
 };
 
 /**

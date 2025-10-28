@@ -18351,13 +18351,19 @@ function RouterProvider2(props) {
   return /* @__PURE__ */ reactExports.createElement(RouterProvider, { flushSync: reactDomExports.flushSync, ...props });
 }
 const kScansRouteUrlPattern = "/scans";
+const kScansWithPathRouteUrlPattern = "/scans/*";
 const kScanRouteUrlPattern = "/scan/*";
+const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 const scansRoute = (relativePath) => {
   if (relativePath) {
     return `/scans/${encodeURIComponent(relativePath)}`;
   } else {
     return "/scans";
   }
+};
+const isValidScanPath = (path) => {
+  path = path.startsWith("/") ? path : "/" + path;
+  return kScanIdPattern.test(path);
 };
 const getRelativePathFromParams = (params) => {
   return params["*"] || "";
@@ -19740,7 +19746,6 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
   const baseResultsName = basename(resultsDir || "");
   const params = useParams();
   const currentPath = getRelativePathFromParams(params);
-  console.log(resultsDir, currentPath);
   const pathContainerRef = reactExports.useRef(null);
   const backUrl = scansRoute(ensureTrailingSlash(dirname(currentPath || "")));
   const segments = reactExports.useMemo(() => {
@@ -76716,6 +76721,8 @@ const styles = {
 ModuleRegistry.registerModules([AllCommunityModule]);
 const GRID_STATE_NAME = "ScansGrid";
 const ScansGrid = () => {
+  const params = useParams();
+  const paramsRelativePath = getRelativePathFromParams(params);
   const scans = useStore((state) => state.scans);
   const navigate = useNavigate();
   const gridStates = useStore((state) => state.gridStates);
@@ -76725,51 +76732,51 @@ const ScansGrid = () => {
     return gridStates[GRID_STATE_NAME] || {};
   }, [gridStates]);
   const data = reactExports.useMemo(() => {
+    const dirs = /* @__PURE__ */ new Set();
     const rows = [];
     scans.forEach((scan) => {
-      console.log({ scan });
       const relativeLocation = toRelativePath(scan.location, resultsDir || "");
-      const row = {
-        timestamp: scan.spec.timestamp,
-        location: scan.location,
-        relativeLocation,
-        scanId: scan.spec.scan_id,
-        scanName: scan.spec.scan_name,
-        model: scan.spec.model.model,
-        status: scan.errors.length > 1 ? "error" : scan.complete ? "complete" : "incomplete",
-        scanners: Object.keys(scan.spec.scanners).map((s) => s)
-      };
-      rows.push(row);
+      const dir = dirname(relativeLocation);
+      if (dir === paramsRelativePath) {
+        const row = {
+          icon: scan.errors.length > 1 ? "❌" : scan.complete ? "✅" : "⏳",
+          timestamp: scan.spec.timestamp,
+          location: scan.location,
+          relativeLocation,
+          scanId: scan.spec.scan_id,
+          scanName: scan.spec.scan_name,
+          model: scan.spec.model.model,
+          status: scan.errors.length > 1 ? "error" : scan.complete ? "complete" : "incomplete",
+          scanners: Object.keys(scan.spec.scanners).map((s) => s)
+        };
+        rows.push(row);
+      }
+      if (!dirs.has(dir) && dir !== "" && dir !== paramsRelativePath) {
+        dirs.add(dir);
+        const dirRow = {
+          timestamp: "",
+          location: "",
+          icon: "📁",
+          relativeLocation: dir,
+          scanId: "",
+          scanName: dir,
+          model: "",
+          status: "incomplete",
+          scanners: []
+        };
+        rows.push(dirRow);
+      }
     });
     return rows;
-  }, [scans, resultsDir]);
+  }, [scans, resultsDir, paramsRelativePath]);
   const columnDefs = reactExports.useMemo(() => {
     const baseColumns = [
       {
-        field: "status",
+        field: "icon",
         headerName: "",
         initialWidth: 60,
         minWidth: 60,
         maxWidth: 60,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        cellRenderer: (params) => params.value === "error" ? "❌" : params.value === "complete" ? "✅" : "⏳"
-      },
-      {
-        field: "timestamp",
-        headerName: "Time",
-        initialWidth: 150,
-        minWidth: 100,
-        sortable: true,
-        filter: true,
-        resizable: true
-      },
-      {
-        field: "scanId",
-        headerName: "Scan Id",
-        initialWidth: 150,
-        minWidth: 100,
         sortable: true,
         filter: true,
         resizable: true
@@ -76779,6 +76786,15 @@ const ScansGrid = () => {
         headerName: "Name",
         initialWidth: 120,
         minWidth: 80,
+        sortable: true,
+        filter: true,
+        resizable: true
+      },
+      {
+        field: "scanId",
+        headerName: "Scan Id",
+        initialWidth: 150,
+        minWidth: 100,
         sortable: true,
         filter: true,
         resizable: true
@@ -76800,7 +76816,16 @@ const ScansGrid = () => {
         sortable: false,
         filter: false,
         resizable: true,
-        valueFormatter: (params) => params.value.join(", ")
+        valueFormatter: (params2) => params2.value.join(", ")
+      },
+      {
+        field: "timestamp",
+        headerName: "Time",
+        initialWidth: 150,
+        minWidth: 100,
+        sortable: true,
+        filter: true,
+        resizable: true
       }
     ];
     return baseColumns;
@@ -76853,6 +76878,14 @@ const ScanList = () => {
 const AppLayout = () => {
   return /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {});
 };
+const ValidatedScanDetail = () => {
+  const params = useParams();
+  const relativePath = getRelativePathFromParams(params);
+  if (!isValidScanPath(relativePath)) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(Navigate, { to: `/scans/${relativePath}`, replace: true });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(ScanDetail, {});
+};
 const AppRouter = createHashRouter(
   [
     {
@@ -76868,8 +76901,12 @@ const AppRouter = createHashRouter(
           element: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanList, {})
         },
         {
+          path: kScansWithPathRouteUrlPattern,
+          element: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanList, {})
+        },
+        {
           path: kScanRouteUrlPattern,
-          element: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanDetail, {})
+          element: /* @__PURE__ */ jsxRuntimeExports.jsx(ValidatedScanDetail, {})
         }
       ]
     },

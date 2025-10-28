@@ -1163,57 +1163,6 @@ pre[class*="language-"] {
 }
 /* END PrismJS */
 
-/* SVG Icon styles - following Bootstrap Icons pattern */
-.inspect-icon-16::before {
-  content: "";
-  width: 1em;
-  height: 1em;
-  display: inline-block;
-  vertical-align: middle;
-  mask: url("../img/inspect-16.svg") no-repeat center / contain;
-  -webkit-mask: url("../img/inspect-16.svg") no-repeat center / contain;
-}
-
-.inspect-icon-back::before {
-  content: "";
-  width: 1em;
-  height: 1em;
-  display: inline-block;
-  vertical-align: middle;
-  mask: url("../img/inspect-back.svg") no-repeat center / contain;
-  -webkit-mask: url("../img/inspect-back.svg") no-repeat center / contain;
-}
-
-.inspect-icon-forward::before {
-  content: "";
-  width: 1em;
-  height: 1em;
-  display: inline-block;
-  vertical-align: middle;
-  mask: url("../img/inspect-forward.svg") no-repeat center / contain;
-  -webkit-mask: url("../img/inspect-forward.svg") no-repeat center / contain;
-}
-
-.inspect-icon-file::before {
-  content: "";
-  width: 1em;
-  height: 1em;
-  display: inline-block;
-  vertical-align: middle;
-  mask: url("../img/inspect-file.svg") no-repeat center / contain;
-  -webkit-mask: url("../img/inspect-file.svg") no-repeat center / contain;
-}
-
-.inspect-icon-home::before {
-  content: "";
-  width: 1em;
-  height: 1em;
-  display: inline-block;
-  vertical-align: middle;
-  mask: url("../img/inspect-home.svg") no-repeat center / contain;
-  -webkit-mask: url("../img/inspect-home.svg") no-repeat center / contain;
-}
-
 /* Use this very carefully, find relies upon checking the 
 document selection to determine if it should skip a find match
 so disabling selection can break that functionality */

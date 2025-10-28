@@ -30,9 +30,6 @@ interface ScanRow {
 }
 
 export const ScansGrid: FC = () => {
-  //const gridState = useStore((state) => state.logs.samplesListState.gridState);
-  //const setGridState = useStore((state) => state.logsActions.setGridState);
-
   const scans = useStore((state) => state.scans);
   const navigate = useNavigate();
 

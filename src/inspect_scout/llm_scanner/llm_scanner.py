@@ -12,7 +12,7 @@ from inspect_ai.model import (
 from .. import Result, Scanner, scanner
 from .._scanner.util import _message_id
 from .._transcript.types import Transcript
-from ._answer import answer_prompt_prefix_suffix, result_for_answer
+from ._answer import answer_portion_template, result_for_answer
 from ._types import AnswerType, Preprocessor
 
 DEFAULT_SCANNER_TEMPLATE = """
@@ -25,8 +25,11 @@ Here is an LLM conversation:
 {answer_prompt}
 """
 
-answer_text = """
-Your response should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to. The last line of your response should be of the following format:"""
+DEFAULT_EXPLANATION_TEXT = (
+    "Your response should include an explanation of your assessment. It should include "
+    "the message id's (e.g. '[M2]') to clarify which message(s) you are referring "
+    "to."
+)
 
 
 @scanner(messages="all")
@@ -65,10 +68,11 @@ def llm_scanner(
         preprocessor = Preprocessor()
     if scanner_template is None:
         scanner_template = DEFAULT_SCANNER_TEMPLATE
+    explanation_text = DEFAULT_EXPLANATION_TEXT
 
-    answer_prefix, answer_suffix = answer_prompt_prefix_suffix(answer)
-
-    answer_prompt = f"{answer_prefix}\n{prompt}\n{answer_text} {answer_suffix}"
+    answer_prompt = answer_portion_template(answer).format(
+        prompt=prompt, explanation_text=explanation_text
+    )
 
     async def scan(transcript: Transcript) -> Result:
         filtered_messages = _filter_messages(transcript.messages, preprocessor)
@@ -80,9 +84,8 @@ def llm_scanner(
             answer_prompt=answer_prompt,
         )
 
-        return result_for_answer(
-            answer, await get_model(model).generate(resolved_prompt), message_id_map
-        )
+        model_output = await get_model(model).generate(resolved_prompt)
+        return result_for_answer(answer, model_output, message_id_map)
 
     return scan
 

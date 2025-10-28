@@ -13,12 +13,14 @@ from ._types import AnswerType
 from ._util import extract_references
 
 
-def answer_prompt_prefix_suffix(_answer: AnswerType) -> tuple[str, str]:
+def answer_portion_template(_answer: AnswerType) -> str:
     match _answer.type:
         case "bool":
             return (
-                "Answer the following yes or no question:",
-                "'ANSWER: Yes' or 'ANSWER: No' (without quotes).",
+                "Answer the following yes or no question: {prompt}\n\n"
+                "{explanation_text}\n\n"
+                "The last line of your response should be of the following format:\n"
+                "'ANSWER: Yes' or 'ANSWER: No' (without quotes)."
             )
         case t:
             raise NotImplementedError(f"Support for '{t}' not yet implemented")

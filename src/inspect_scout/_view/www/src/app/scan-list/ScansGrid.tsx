@@ -24,6 +24,7 @@ interface ScanRow {
   complete: boolean;
   model: string;
   timestamp: string;
+  location: string;
   scanId: string;
   scanName: string;
   scanners: string[];
@@ -47,6 +48,7 @@ export const ScansGrid: FC = () => {
     scans.forEach((scan) => {
       const row: ScanRow = {
         timestamp: scan.spec.timestamp,
+        location: scan.location,
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
         model: scan.spec.model.model,
@@ -67,6 +69,7 @@ export const ScansGrid: FC = () => {
         headerName: '',
         initialWidth: 60,
         minWidth: 60,
+        maxWidth: 60,
         sortable: true,
         filter: true,
         resizable: true,
@@ -111,12 +114,12 @@ export const ScansGrid: FC = () => {
       {
         field: 'scanners',
         headerName: 'Scanners',
-        flex: 1,
-        minWidth: 150,
+        initialWidth: 120,
+        minWidth: 120,
         sortable: false,
         filter: false,
         resizable: true,
-        cellRenderer: (params: { value: any[]; }) => params.value.join(', '),
+        valueFormatter: (params: { value: any[]; }) => params.value.join(', '),
       }
     ];
 
@@ -134,17 +137,16 @@ export const ScansGrid: FC = () => {
           resizable: true,
         }}
         suppressCellFocus={true}
-        rowSelection="single"
         theme={themeBalham}
         enableCellTextSelection={true}
-        autoSizeStrategy={{ type: 'fitCellContents' }}
+        autoSizeStrategy={{ type: "fitGridWidth" }}
         initialState={gridState}
         onStateUpdated={(e: StateUpdatedEvent<ScanRow>) => {
           setGridState(GRID_STATE_NAME, e.state);
         }}
         onRowClicked={(e: RowClickedEvent<ScanRow>) => {
           if (e.data) {
-            void navigate(`/scan/${e.data.scanId}`);
+            void navigate(`/scan/${e.data.location}`);
           }
         }}
       />

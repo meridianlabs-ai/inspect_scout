@@ -19471,6 +19471,9 @@ const useStore = create()(
         setScans: (scans) => set2((state) => {
           state.scans = scans;
         }),
+        setSelectedScan: (scan) => set2((state) => {
+          state.selectedScan = scan;
+        }),
         setSelectedScanLocation: (location) => set2((state) => {
           state.selectedScanLocation = location;
         }),
@@ -19810,34 +19813,28 @@ const ScanDetail = () => {
   const relativePath = getRelativePathFromParams(params);
   const resultsDir = useStore((state) => state.resultsDir);
   const absolutePath = resultsDir ? toAbsolutePath(relativePath, resultsDir) : relativePath;
+  const setSelectedScan = useStore((state) => state.setSelectedScan);
+  const selectedScan = useStore((state) => state.selectedScan);
+  const api2 = useStore((state) => state.api);
+  reactExports.useEffect(() => {
+    const fetchScans = async () => {
+      const scansInfo = await api2?.getScan(absolutePath);
+      if (scansInfo) {
+        setSelectedScan(scansInfo);
+      }
+    };
+    void fetchScans();
+  }, [absolutePath, api2, setSelectedScan]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "container mt-5", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "row", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "col", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("nav", { "aria-label": "breadcrumb", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("ol", { className: "breadcrumb", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "breadcrumb-item", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Link, { to: scansRoute(), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: "bi bi-arrow-left me-2" }),
-          "Scans"
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: "breadcrumb-item active", "aria-current": "page", children: relativePath })
-      ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { className: "mb-4", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: "bi bi-file-earmark-text me-2" }),
-        "Scan Detail"
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Scan Detail" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+        "Scan Location: ",
+        absolutePath
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "card", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "card-body", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h5", { className: "card-title", children: "Scan Location" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "card-text", children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: relativePath }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("small", { className: "text-muted", children: [
-          "Full path: ",
-          absolutePath
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("hr", {}),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "alert alert-info", role: "alert", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: "bi bi-info-circle me-2" }),
-          "TODO: Load and display scan details for this location"
-        ] })
-      ] }) })
-    ] }) }) })
+      selectedScan ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedScan, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." })
+    ] })
   ] });
 };
 const ExtendedFindContext = reactExports.createContext(null);
@@ -76725,6 +76722,7 @@ const ScansGrid = () => {
     scans.forEach((scan) => {
       const row = {
         timestamp: scan.spec.timestamp,
+        location: scan.location,
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
         model: scan.spec.model.model,
@@ -76742,6 +76740,7 @@ const ScansGrid = () => {
         headerName: "",
         initialWidth: 60,
         minWidth: 60,
+        maxWidth: 60,
         sortable: true,
         filter: true,
         resizable: true,
@@ -76786,12 +76785,12 @@ const ScansGrid = () => {
       {
         field: "scanners",
         headerName: "Scanners",
-        flex: 1,
-        minWidth: 150,
+        initialWidth: 120,
+        minWidth: 120,
         sortable: false,
         filter: false,
         resizable: true,
-        cellRenderer: (params) => params.value.join(", ")
+        valueFormatter: (params) => params.value.join(", ")
       }
     ];
     return baseColumns;
@@ -76807,17 +76806,16 @@ const ScansGrid = () => {
         resizable: true
       },
       suppressCellFocus: true,
-      rowSelection: "single",
       theme: themeBalham,
       enableCellTextSelection: true,
-      autoSizeStrategy: { type: "fitCellContents" },
+      autoSizeStrategy: { type: "fitGridWidth" },
       initialState: gridState,
       onStateUpdated: (e) => {
         setGridState(GRID_STATE_NAME, e.state);
       },
       onRowClicked: (e) => {
         if (e.data) {
-          void navigate(`/scan/${e.data.scanId}`);
+          void navigate(`/scan/${e.data.location}`);
         }
       }
     }
@@ -76887,7 +76885,9 @@ const scoutServerClient = () => {
       if (!response.ok) {
         throw new Error(`Failed to fetch scan: ${response.statusText}`);
       }
-      return await response.json();
+      const responsObj = await response.json();
+      console.log("Fetch response for scan:", responsObj);
+      return responsObj;
     },
     getScans: async () => {
       const response = await fetch("/api/scans");
@@ -76895,6 +76895,7 @@ const scoutServerClient = () => {
         throw new Error(`Failed to fetch scans: ${response.statusText}`);
       }
       const responseObj = await response.json();
+      console.log("Fetch response for scan2:", responseObj);
       return responseObj;
     }
   };

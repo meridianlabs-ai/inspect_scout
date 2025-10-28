@@ -9,6 +9,7 @@ import { GridState } from 'ag-grid-community';
 interface StoreState {
   api?: ScanApi;
   scans: Scan[];
+  selectedScan?: Scan;
   selectedScanLocation?: string;
   resultsDir?: string;
   properties: Record<string, Record<string, unknown>>;
@@ -19,6 +20,7 @@ interface StoreState {
 
   setApi(api: ScanApi): void;
   setScans: (scans: Scan[]) => void;
+  setSelectedScan: (scan: Scan) => void;
   setSelectedScanLocation: (location: string) => void;
   setResultsDir: (dir: string) => void;
 
@@ -45,8 +47,6 @@ interface StoreState {
     value: { startIndex: number; endIndex: number }
   ) => void;
   clearVisibleRange: (name: string) => void;
-
-
 }
 
 export const useStore = create<StoreState>()(
@@ -71,7 +71,10 @@ export const useStore = create<StoreState>()(
           set((state) => {
             state.scans = scans;
           }),
-
+        setSelectedScan: (scan: Scan) =>
+          set((state) => {
+            state.selectedScan = scan;
+          }),
         setSelectedScanLocation: (location: string) =>
           set((state) => {
             state.selectedScanLocation = location;
@@ -181,7 +184,7 @@ export const useStore = create<StoreState>()(
               gridStates: newGridStates,
             };
           });
-        }
+        },
       })),
       {
         name: 'inspect-scout-storage',

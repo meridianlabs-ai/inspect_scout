@@ -19578,6 +19578,19 @@ const useStore = create()(
     )
   )
 );
+function r(e) {
+  var t, f, n = "";
+  if ("string" == typeof e || "number" == typeof e) n += e;
+  else if ("object" == typeof e) if (Array.isArray(e)) {
+    var o = e.length;
+    for (t = 0; t < o; t++) e[t] && (f = r(e[t])) && (n && (n += " "), n += f);
+  } else for (f in e) e[f] && (n && (n += " "), n += f);
+  return n;
+}
+function clsx() {
+  for (var e, t, f = 0, n = "", o = arguments.length; f < o; f++) (e = arguments[f]) && (t = r(e)) && (n && (n += " "), n += t);
+  return n;
+}
 const basename = (path) => {
   if (!path) {
     return "";
@@ -19609,23 +19622,6 @@ const toRelativePath = (absolutePath, basePath) => {
   }
   return normalizedPath;
 };
-const toAbsolutePath = (relativePath, baseDir) => {
-  const normalizedResultsDir = ensureTrailingSlash(baseDir);
-  return normalizedResultsDir + relativePath;
-};
-function r(e) {
-  var t, f, n = "";
-  if ("string" == typeof e || "number" == typeof e) n += e;
-  else if ("object" == typeof e) if (Array.isArray(e)) {
-    var o = e.length;
-    for (t = 0; t < o; t++) e[t] && (f = r(e[t])) && (n && (n += " "), n += f);
-  } else for (f in e) e[f] && (n && (n += " "), n += f);
-  return n;
-}
-function clsx() {
-  for (var e, t, f = 0, n = "", o = arguments.length; f < o; f++) (e = arguments[f]) && (t = r(e)) && (n && (n += " "), n += t);
-  return n;
-}
 const prettyDirUri = (uri) => {
   if (uri.startsWith("file://")) {
     return uri.replace("file://", "");
@@ -19744,6 +19740,7 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
   const baseResultsName = basename(resultsDir || "");
   const params = useParams();
   const currentPath = getRelativePathFromParams(params);
+  console.log(resultsDir, currentPath);
   const pathContainerRef = reactExports.useRef(null);
   const backUrl = scansRoute(ensureTrailingSlash(dirname(currentPath || "")));
   const segments = reactExports.useMemo(() => {
@@ -19820,19 +19817,27 @@ const ScanDetail = () => {
   const params = useParams();
   const relativePath = getRelativePathFromParams(params);
   const resultsDir = useStore((state) => state.resultsDir);
-  const absolutePath = resultsDir ? toAbsolutePath(relativePath, resultsDir) : relativePath;
-  const setSelectedScan = useStore((state) => state.setSelectedScan);
+  const setResultsDir = useStore((state) => state.setResultsDir);
   const selectedScan = useStore((state) => state.selectedScan);
+  const setSelectedScan = useStore((state) => state.setSelectedScan);
+  const setScans = useStore((state) => state.setScans);
   const api2 = useStore((state) => state.api);
   reactExports.useEffect(() => {
     const fetchScans = async () => {
-      const scansInfo = await api2?.getScan(absolutePath);
+      if (resultsDir === void 0) {
+        const scansInfo2 = await api2?.getScans();
+        if (scansInfo2) {
+          setResultsDir(scansInfo2.results_dir);
+          setScans(scansInfo2.scans);
+        }
+      }
+      const scansInfo = await api2?.getScan(relativePath);
       if (scansInfo) {
         setSelectedScan(scansInfo);
       }
     };
     void fetchScans();
-  }, [absolutePath, api2, setSelectedScan]);
+  }, [resultsDir, relativePath, api2, setSelectedScan, setResultsDir, setScans]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", overflowY: "auto", padding: "16px" }, children: selectedScan ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedScan, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." }) })
@@ -76722,6 +76727,7 @@ const ScansGrid = () => {
   const data = reactExports.useMemo(() => {
     const rows = [];
     scans.forEach((scan) => {
+      console.log({ scan });
       const relativeLocation = toRelativePath(scan.location, resultsDir || "");
       const row = {
         timestamp: scan.spec.timestamp,
@@ -76730,7 +76736,7 @@ const ScansGrid = () => {
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
         model: scan.spec.model.model,
-        complete: scan.complete,
+        status: scan.errors.length > 1 ? "error" : scan.complete ? "complete" : "incomplete",
         scanners: Object.keys(scan.spec.scanners).map((s) => s)
       };
       rows.push(row);
@@ -76740,7 +76746,7 @@ const ScansGrid = () => {
   const columnDefs = reactExports.useMemo(() => {
     const baseColumns = [
       {
-        field: "complete",
+        field: "status",
         headerName: "",
         initialWidth: 60,
         minWidth: 60,
@@ -76748,7 +76754,7 @@ const ScansGrid = () => {
         sortable: true,
         filter: true,
         resizable: true,
-        cellRenderer: (params) => params.value ? "✅" : "❌"
+        cellRenderer: (params) => params.value === "error" ? "❌" : params.value === "complete" ? "✅" : "⏳"
       },
       {
         field: "timestamp",
@@ -76890,7 +76896,6 @@ const scoutServerClient = () => {
         throw new Error(`Failed to fetch scan: ${response.statusText}`);
       }
       const responsObj = await response.json();
-      console.log("Fetch response for scan:", responsObj);
       return responsObj;
     },
     getScans: async () => {
@@ -76899,7 +76904,6 @@ const scoutServerClient = () => {
         throw new Error(`Failed to fetch scans: ${response.statusText}`);
       }
       const responseObj = await response.json();
-      console.log("Fetch response for scan2:", responseObj);
       return responseObj;
     }
   };

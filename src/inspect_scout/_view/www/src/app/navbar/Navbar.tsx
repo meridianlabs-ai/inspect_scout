@@ -22,7 +22,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
 
   const params = useParams<{ '*': string }>();
   const currentPath = getRelativePathFromParams(params);
-
+  
   const pathContainerRef = useRef<HTMLDivElement>(null);
   const backUrl = scansRoute(ensureTrailingSlash(dirname(currentPath || '')));
 

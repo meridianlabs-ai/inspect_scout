@@ -22,7 +22,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const GRID_STATE_NAME = "ScansGrid";
 
 interface ScanRow {
-  complete: boolean;
+  status: "incomplete" | "complete" | "error";
   model: string;
   timestamp: string;
   location: string;
@@ -50,7 +50,6 @@ export const ScansGrid: FC = () => {
     const rows: ScanRow[] = [];
 
     scans.forEach((scan) => {
-
       const relativeLocation = toRelativePath(scan.location, resultsDir || '');
       const row: ScanRow = {
         timestamp: scan.spec.timestamp,
@@ -59,7 +58,7 @@ export const ScansGrid: FC = () => {
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
         model: scan.spec.model.model,
-        complete: scan.complete,
+        status: scan.errors.length > 1 ? "error" : scan.complete ? "complete" : "incomplete",
         scanners: Object.keys(scan.spec.scanners).map((s) => s),
       };
       rows.push(row);
@@ -72,7 +71,7 @@ export const ScansGrid: FC = () => {
   const columnDefs = useMemo((): ColDef<ScanRow>[] => {
     const baseColumns: ColDef<ScanRow>[] = [
       {
-        field: 'complete',
+        field: 'status',
         headerName: '',
         initialWidth: 60,
         minWidth: 60,
@@ -80,7 +79,7 @@ export const ScansGrid: FC = () => {
         sortable: true,
         filter: true,
         resizable: true,
-        cellRenderer: (params: { value: any; }) => (params.value ? '✅' : '❌'),
+        cellRenderer: (params: { value: any; }) => (params.value === "error" ? '❌' : params.value === "complete" ? '✅' : '⏳'),
       },
       {
         field: 'timestamp',

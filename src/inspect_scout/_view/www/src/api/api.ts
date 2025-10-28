@@ -21,7 +21,6 @@ export const scoutServerClient = (): ScanApi => {
         throw new Error(`Failed to fetch scan: ${response.statusText}`);
       }
       const responsObj = (await response.json()) as Scan;
-      console.log('Fetch response for scan:', responsObj);
       return responsObj
     },
     getScans: async (): Promise<ScansInfo> => {
@@ -30,7 +29,6 @@ export const scoutServerClient = (): ScanApi => {
         throw new Error(`Failed to fetch scans: ${response.statusText}`);
       }
       const responseObj = (await response.json()) as ScansInfo;
-      console.log('Fetch response for scan2:', responseObj);
 
       return responseObj
     },

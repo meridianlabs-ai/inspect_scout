@@ -3,12 +3,13 @@ import { useStore } from '../../state/store';
 import { Navbar } from '../navbar/Navbar';
 import { ExtendedFindProvider } from '../../components/ExtendedFindContext';
 import { ScansGrid } from './ScansGrid';
+import { ActivityBar } from '../../components/ActivityBar';
 
 export const ScanList: FC = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);
-  const scans = useStore((state) => state.scans);
+  const loading = useStore((state) => state.loading)
 
   useEffect(() => {
     const fetchScans = async () => {
@@ -24,8 +25,9 @@ export const ScanList: FC = () => {
   return (
     <>
       <Navbar bordered={false} />
+      <ActivityBar animating={!!loading} />
       <ExtendedFindProvider>
-        {scans.length > 0 && <ScansGrid />}
+        <ScansGrid />
       </ExtendedFindProvider>
     </>
   );

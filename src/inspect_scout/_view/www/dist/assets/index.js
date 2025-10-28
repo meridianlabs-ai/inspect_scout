@@ -19470,6 +19470,7 @@ const useStore = create()(
         listPositions: {},
         visibleRanges: {},
         gridStates: {},
+        loading: 0,
         // Actions
         setApi: (api) => set2((state) => {
           state.api = api;
@@ -19581,6 +19582,15 @@ const useStore = create()(
           set2((state) => {
             state.hasInitializedEmbeddedData = initialized;
           });
+        },
+        setLoading: (loading) => {
+          set2((state) => {
+            if (loading) {
+              state.loading += 1;
+            } else {
+              state.loading = Math.max(0, state.loading - 1);
+            }
+          });
         }
       })),
       {
@@ -19653,7 +19663,7 @@ const left = "_left_wkjps_31";
 const right = "_right_wkjps_41";
 const toolbarButton = "_toolbarButton_wkjps_50";
 const pathContainer = "_pathContainer_wkjps_58";
-const styles$1 = {
+const styles$2 = {
   header,
   bordered,
   breadcrumbs,
@@ -19786,47 +19796,69 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
       className: clsx(
         "text-size-smaller",
         "header-nav",
-        styles$1.header,
-        bordered2 ? styles$1.bordered : void 0
+        styles$2.header,
+        bordered2 ? styles$2.bordered : void 0
       ),
       "aria-label": "breadcrumb",
       "data-unsearchable": true,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$1.left), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$1.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(Icons.back) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$2.left), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$2.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(Icons.back) }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Link,
             {
               to: scansRoute(),
-              className: clsx(styles$1.toolbarButton),
+              className: clsx(styles$2.toolbarButton),
               onClick: () => {
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(Icons.home) })
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$1.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$1.breadcrumbs), children: visibleSegments?.map((segment, index) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$2.breadcrumbs), children: visibleSegments?.map((segment, index) => {
             const isLast = index === visibleSegments.length - 1;
             const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$1.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
+              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$2.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "li",
                 {
                   className: clsx(
-                    styles$1.pathLink,
+                    styles$2.pathLink,
                     "breadcrumb-item",
                     isLast ? "active" : void 0
                   ),
-                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$1.pathSegment), children: segment.text })
+                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$2.pathSegment), children: segment.text })
                 }
               )
             ] }, index);
           }) }) : "" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$1.right), children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.right), children })
       ]
     }
   );
+};
+const wrapper = "_wrapper_1tajk_1";
+const container$1 = "_container_1tajk_12";
+const animate = "_animate_1tajk_21";
+const styles$1 = {
+  wrapper,
+  container: container$1,
+  animate
+};
+const ActivityBar = ({ animating }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$1.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: clsx(styles$1.container),
+      role: "progressbar",
+      "aria-label": "Progress bar",
+      "aria-valuenow": 25,
+      "aria-valuemin": 0,
+      "aria-valuemax": 100,
+      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.animate })
+    }
+  ) });
 };
 const ScanDetail = () => {
   const params = useParams();
@@ -19838,6 +19870,7 @@ const ScanDetail = () => {
   const setSelectedScan = useStore((state) => state.setSelectedScan);
   const setScans = useStore((state) => state.setScans);
   const api = useStore((state) => state.api);
+  const loading = useStore((state) => state.loading);
   reactExports.useEffect(() => {
     const fetchScans = async () => {
       if (resultsDir === void 0) {
@@ -19856,6 +19889,7 @@ const ScanDetail = () => {
   }, [resultsDir, relativePath, api, setSelectedScan, setResultsDir, setScans]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     singleFileMode || /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", overflowY: "auto", padding: "16px" }, children: selectedScan ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedScan, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." }) })
   ] });
 };
@@ -30182,10 +30216,10 @@ function _isUseApplyButton(params) {
   return (params.buttons?.indexOf("apply") ?? -1) >= 0;
 }
 var FilterWrapperComp = class extends Component {
-  constructor(column2, wrapper, eventParent, updateModel, isGlobalButtons, enableGlobalButtonCheck) {
+  constructor(column2, wrapper2, eventParent, updateModel, isGlobalButtons, enableGlobalButtonCheck) {
     super();
     this.column = column2;
-    this.wrapper = wrapper;
+    this.wrapper = wrapper2;
     this.eventParent = eventParent;
     this.updateModel = updateModel;
     this.isGlobalButtons = isGlobalButtons;
@@ -30352,7 +30386,7 @@ var FilterComp = class extends Component {
     return this.wrapper != null;
   }
   getFilter() {
-    return this.wrapper?.then((wrapper) => wrapper.comp) ?? null;
+    return this.wrapper?.then((wrapper2) => wrapper2.comp) ?? null;
   }
   afterInit() {
     return this.wrapper?.then(() => {
@@ -30360,14 +30394,14 @@ var FilterComp = class extends Component {
   }
   afterGuiAttached(params) {
     this.afterGuiAttachedParams = params;
-    this.wrapper?.then((wrapper) => {
+    this.wrapper?.then((wrapper2) => {
       this.comp?.afterGuiAttached(params);
-      wrapper?.comp?.afterGuiAttached?.(params);
+      wrapper2?.comp?.afterGuiAttached?.(params);
     });
   }
   afterGuiDetached() {
-    this.wrapper?.then((wrapper) => {
-      wrapper?.comp?.afterGuiDetached?.();
+    this.wrapper?.then((wrapper2) => {
+      wrapper2?.comp?.afterGuiDetached?.();
     });
   }
   createFilter(init) {
@@ -30378,18 +30412,18 @@ var FilterComp = class extends Component {
     } = this;
     const filterPromise = colFilter.getFilterUiForDisplay(column2) ?? null;
     this.wrapper = filterPromise;
-    filterPromise?.then((wrapper) => {
-      if (!wrapper) {
+    filterPromise?.then((wrapper2) => {
+      if (!wrapper2) {
         return;
       }
-      const { isHandler, comp } = wrapper;
+      const { isHandler, comp } = wrapper2;
       let filterGui;
       if (isHandler) {
         const enableGlobalButtonCheck = !!this.enableGlobalButtonCheck;
         const displayComp = this.createBean(
           new FilterWrapperComp(
             column2,
-            wrapper,
+            wrapper2,
             colFilter,
             colFilter.updateModel.bind(colFilter),
             enableGlobalButtonCheck && colFilter.isGlobalButtons,
@@ -55041,7 +55075,7 @@ var RowRenderer = class extends BeanStub {
     this.updateContainerHeights();
     this.scrollToTopIfNewData(params);
     const recycleRows = !params.domLayoutChanged && !!params.recycleRows;
-    const animate = params.animate && _isAnimateRows(this.gos);
+    const animate2 = params.animate && _isAnimateRows(this.gos);
     const rowsToRecycle = recycleRows ? this.getRowsToRecycle() : null;
     if (!recycleRows) {
       this.removeAllRowComps();
@@ -55055,7 +55089,7 @@ var RowRenderer = class extends BeanStub {
         this.updateContainerHeights(extraHeight);
       }
     }
-    this.recycleRows(rowsToRecycle, animate);
+    this.recycleRows(rowsToRecycle, animate2);
     this.gridBodyCtrl.updateRowCount();
     if (!params.onlyBody) {
       this.refreshFloatingRowComps(gos.get("enableRowPinning") ? recycleRows : void 0);
@@ -55406,26 +55440,26 @@ var RowRenderer = class extends BeanStub {
     }
     return ret;
   }
-  recycleRows(rowsToRecycle, animate = false, afterScroll = false) {
+  recycleRows(rowsToRecycle, animate2 = false, afterScroll = false) {
     const indexesToDraw = this.calculateIndexesToDraw(rowsToRecycle);
     if (this.printLayout || afterScroll) {
-      animate = false;
+      animate2 = false;
     }
-    this.removeRowCompsNotToDraw(indexesToDraw, !animate);
+    this.removeRowCompsNotToDraw(indexesToDraw, !animate2);
     for (const rowIndex of indexesToDraw) {
-      this.createOrUpdateRowCtrl(rowIndex, rowsToRecycle, animate, afterScroll);
+      this.createOrUpdateRowCtrl(rowIndex, rowsToRecycle, animate2, afterScroll);
     }
     if (rowsToRecycle) {
       const { animationFrameSvc } = this.beans;
       const useAnimationFrame = animationFrameSvc?.active && afterScroll && !this.printLayout;
       if (useAnimationFrame) {
         animationFrameSvc.addDestroyTask(() => {
-          this.destroyRowCtrls(rowsToRecycle, animate);
+          this.destroyRowCtrls(rowsToRecycle, animate2);
           this.updateAllRowCtrls();
           this.dispatchDisplayedRowsChanged();
         });
       } else {
-        this.destroyRowCtrls(rowsToRecycle, animate);
+        this.destroyRowCtrls(rowsToRecycle, animate2);
       }
     }
     this.updateAllRowCtrls();
@@ -55474,7 +55508,7 @@ var RowRenderer = class extends BeanStub {
       return true;
     });
   }
-  createOrUpdateRowCtrl(rowIndex, rowsToRecycle, animate, afterScroll) {
+  createOrUpdateRowCtrl(rowIndex, rowsToRecycle, animate2, afterScroll) {
     let rowNode;
     let rowCtrl = this.rowCtrlsByRowIndex[rowIndex];
     if (!rowCtrl) {
@@ -55490,7 +55524,7 @@ var RowRenderer = class extends BeanStub {
         rowNode = this.rowModel.getRow(rowIndex);
       }
       if (_exists(rowNode)) {
-        rowCtrl = this.createRowCon(rowNode, animate, afterScroll);
+        rowCtrl = this.createRowCon(rowNode, animate2, afterScroll);
       } else {
         return;
       }
@@ -55500,7 +55534,7 @@ var RowRenderer = class extends BeanStub {
     }
     this.rowCtrlsByRowIndex[rowIndex] = rowCtrl;
   }
-  destroyRowCtrls(rowCtrlsMap, animate) {
+  destroyRowCtrls(rowCtrlsMap, animate2) {
     const executeInAWhileFuncs = [];
     if (rowCtrlsMap) {
       for (const rowCtrl of Object.values(rowCtrlsMap)) {
@@ -55511,8 +55545,8 @@ var RowRenderer = class extends BeanStub {
           this.cachedRowCtrls.addRow(rowCtrl);
           continue;
         }
-        rowCtrl.destroyFirstPass(!animate);
-        if (animate) {
+        rowCtrl.destroyFirstPass(!animate2);
+        if (animate2) {
           const instanceId = rowCtrl.instanceId;
           this.zombieRowCtrls[instanceId] = rowCtrl;
           executeInAWhileFuncs.push(() => {
@@ -55524,7 +55558,7 @@ var RowRenderer = class extends BeanStub {
         }
       }
     }
-    if (animate) {
+    if (animate2) {
       executeInAWhileFuncs.push(() => {
         if (this.isAlive()) {
           this.updateAllRowCtrls();
@@ -55686,13 +55720,13 @@ var RowRenderer = class extends BeanStub {
     }
     return this.beans.pagination?.isRowInPage(rowNode.rowIndex) ?? true;
   }
-  createRowCon(rowNode, animate, afterScroll) {
+  createRowCon(rowNode, animate2, afterScroll) {
     const rowCtrlFromCache = this.cachedRowCtrls?.getRow(rowNode) ?? null;
     if (rowCtrlFromCache) {
       return rowCtrlFromCache;
     }
     const useAnimationFrameForCreate = afterScroll && !this.printLayout && !!this.beans.animationFrameSvc?.active;
-    const res = new RowCtrl(rowNode, this.beans, animate, useAnimationFrameForCreate, this.printLayout);
+    const res = new RowCtrl(rowNode, this.beans, animate2, useAnimationFrameForCreate, this.printLayout);
     return res;
   }
   getRenderedNodes() {
@@ -57481,22 +57515,22 @@ function _convertColumnGroupState(columnGroupState) {
 }
 var BaseComponentWrapper = class {
   wrap(OriginalConstructor, mandatoryMethods, optionalMethods, componentType) {
-    const wrapper = this.createWrapper(OriginalConstructor, componentType);
+    const wrapper2 = this.createWrapper(OriginalConstructor, componentType);
     for (const methodName of mandatoryMethods ?? []) {
-      this.createMethod(wrapper, methodName, true);
+      this.createMethod(wrapper2, methodName, true);
     }
     for (const methodName of optionalMethods ?? []) {
-      this.createMethod(wrapper, methodName, false);
+      this.createMethod(wrapper2, methodName, false);
     }
-    return wrapper;
+    return wrapper2;
   }
-  createMethod(wrapper, methodName, mandatory) {
-    wrapper.addMethod(methodName, this.createMethodProxy(wrapper, methodName, mandatory));
+  createMethod(wrapper2, methodName, mandatory) {
+    wrapper2.addMethod(methodName, this.createMethodProxy(wrapper2, methodName, mandatory));
   }
-  createMethodProxy(wrapper, methodName, mandatory) {
+  createMethodProxy(wrapper2, methodName, mandatory) {
     return function() {
-      if (wrapper.hasMethod(methodName)) {
-        return wrapper.callMethod(methodName, arguments);
+      if (wrapper2.hasMethod(methodName)) {
+        return wrapper2.callMethod(methodName, arguments);
       }
       if (mandatory) {
         _warn(49, { methodName });
@@ -59188,8 +59222,8 @@ var ColumnFilterService = class extends BeanStub {
     return true;
   }
   getHandlerParams(column2) {
-    const wrapper = this.allColumnFilters.get(column2.getColId());
-    return wrapper?.isHandler ? wrapper.handlerParams : void 0;
+    const wrapper2 = this.allColumnFilters.get(column2.getColId());
+    return wrapper2?.isHandler ? wrapper2.handlerParams : void 0;
   }
   // sometimes (especially in React) the filter can call onFilterChanged when we are in the middle
   // of a render cycle. this would be bad, so we wait for render cycle to complete when this happens.
@@ -59612,18 +59646,18 @@ var ColumnFilterService = class extends BeanStub {
   onColumnsChanged() {
     const columns = [];
     const { colModel, filterManager, groupFilter } = this.beans;
-    this.allColumnFilters.forEach((wrapper, colId) => {
+    this.allColumnFilters.forEach((wrapper2, colId) => {
       let currentColumn;
-      if (wrapper.column.isPrimary()) {
+      if (wrapper2.column.isPrimary()) {
         currentColumn = colModel.getColDefCol(colId);
       } else {
         currentColumn = colModel.getCol(colId);
       }
-      if (currentColumn && currentColumn === wrapper.column) {
+      if (currentColumn && currentColumn === wrapper2.column) {
         return;
       }
-      columns.push(wrapper.column);
-      this.disposeFilterWrapper(wrapper, "columnChanged");
+      columns.push(wrapper2.column);
+      this.disposeFilterWrapper(wrapper2, "columnChanged");
       this.disposeColumnListener(colId);
     });
     const allFiltersAreGroupFilters = groupFilter && columns.every((col) => groupFilter.isGroupFilter(col));
@@ -75094,10 +75128,10 @@ var PopupEditorComp = (props) => {
     const { compDetails } = editDetails;
     const useModelPopup = gos.get("stopEditingWhenCellsLoseFocus");
     let hideEditorPopup = void 0;
-    let wrapper;
+    let wrapper2;
     if (!context.isDestroyed()) {
-      wrapper = context.createBean(editSvc.createPopupEditorWrapper(compDetails.params));
-      const ePopupGui = wrapper.getGui();
+      wrapper2 = context.createBean(editSvc.createPopupEditorWrapper(compDetails.params));
+      const ePopupGui = wrapper2.getGui();
       if (props.jsChildComp) {
         const eChildGui = props.jsChildComp.getGui();
         if (eChildGui) {
@@ -75127,12 +75161,12 @@ var PopupEditorComp = (props) => {
         ariaOwns: eParentCell
       });
       hideEditorPopup = addPopupRes ? addPopupRes.hideFunc : void 0;
-      setPopupEditorWrapper(wrapper);
+      setPopupEditorWrapper(wrapper2);
       props.jsChildComp?.afterGuiAttached?.();
     }
     return () => {
       hideEditorPopup?.();
-      context.destroyBean(wrapper);
+      context.destroyBean(wrapper2);
     };
   });
   reactExports.useLayoutEffect(() => {
@@ -76871,7 +76905,7 @@ const ScanList = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);
-  const scans = useStore((state) => state.scans);
+  const loading = useStore((state) => state.loading);
   reactExports.useEffect(() => {
     const fetchScans = async () => {
       const scansInfo = await api?.getScans();
@@ -76884,7 +76918,8 @@ const ScanList = () => {
   }, [api, setScans, setResultsDir]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, { bordered: false }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(ExtendedFindProvider, { children: scans.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(ScansGrid, {}) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ExtendedFindProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScansGrid, {}) })
   ] });
 };
 var Space_Separator = /[\u1680\u2000-\u200A\u202F\u205F\u3000]/;

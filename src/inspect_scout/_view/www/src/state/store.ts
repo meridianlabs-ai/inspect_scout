@@ -19,6 +19,7 @@ interface StoreState {
   gridStates: Record<string, GridState>;
   singleFileMode?: boolean;
   hasInitializedEmbeddedData?: boolean;
+  loading: number;
 
   setApi(api: ScanApi): void;
   setScans: (scans: Scan[]) => void;
@@ -52,6 +53,8 @@ interface StoreState {
 
   setSingleFileMode: (enabled: boolean) => void;
   setHasInitializedEmbeddedData: (initialized: boolean) => void;
+
+  setLoading: (loading: boolean) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -66,6 +69,7 @@ export const useStore = create<StoreState>()(
         listPositions: {},
         visibleRanges: {},
         gridStates: {},
+        loading: 0,
 
         // Actions
         setApi: (api: ScanApi) =>
@@ -199,7 +203,17 @@ export const useStore = create<StoreState>()(
           set((state) => {
             state.hasInitializedEmbeddedData = initialized;
           });
-        }
+        },
+        setLoading: (loading: boolean) => {
+          set((state) => {
+            // increment or decrement loading counter
+            if (loading) {
+              state.loading += 1;
+            } else {
+              state.loading = Math.max(0, state.loading - 1);
+            }
+          });
+        },
       })),
       {
         name: 'inspect-scout-storage',

@@ -24,6 +24,14 @@ def deception() -> Scanner[Transcript]:
     )
 
 
+@scanner(messages="all")
+def efficiency() -> Scanner[Transcript]:
+    return llm_scanner(
+        "On a scale of 1 to 10, how efficiently did the assistant perform",
+        answer=AnswerType(type="number"),
+    )
+
+
 @scanner(messages=["assistant"])
 def target_word_scanner(target_word: str) -> Scanner[ChatMessageAssistant]:
     target_word = target_word.lower()

@@ -19601,6 +19601,14 @@ const ensureTrailingSlash = (path) => {
   }
   return path.endsWith("/") ? path : path + "/";
 };
+const toRelativePath = (absolutePath, basePath) => {
+  const normalizedResultsDir = ensureTrailingSlash(basePath).replace("file://", "");
+  const normalizedPath = absolutePath.startsWith("file://") ? decodeURIComponent(absolutePath.replace("file://", "")) : absolutePath;
+  if (normalizedPath.startsWith(normalizedResultsDir)) {
+    return normalizedPath.substring(normalizedResultsDir.length);
+  }
+  return normalizedPath;
+};
 const toAbsolutePath = (relativePath, baseDir) => {
   const normalizedResultsDir = ensureTrailingSlash(baseDir);
   return normalizedResultsDir + relativePath;
@@ -19827,14 +19835,7 @@ const ScanDetail = () => {
   }, [absolutePath, api2, setSelectedScan]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px" }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Scan Detail" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-        "Scan Location: ",
-        absolutePath
-      ] }),
-      selectedScan ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedScan, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." })
-    ] })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", overflowY: "auto", padding: "16px" }, children: selectedScan ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedScan, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." }) })
   ] });
 };
 const ExtendedFindContext = reactExports.createContext(null);
@@ -76714,15 +76715,18 @@ const ScansGrid = () => {
   const navigate = useNavigate();
   const gridStates = useStore((state) => state.gridStates);
   const setGridState = useStore((state) => state.setGridState);
+  const resultsDir = useStore((state) => state.resultsDir);
   const gridState = reactExports.useMemo(() => {
     return gridStates[GRID_STATE_NAME] || {};
   }, [gridStates]);
   const data = reactExports.useMemo(() => {
     const rows = [];
     scans.forEach((scan) => {
+      const relativeLocation = toRelativePath(scan.location, resultsDir || "");
       const row = {
         timestamp: scan.spec.timestamp,
         location: scan.location,
+        relativeLocation,
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
         model: scan.spec.model.model,
@@ -76732,7 +76736,7 @@ const ScansGrid = () => {
       rows.push(row);
     });
     return rows;
-  }, [scans]);
+  }, [scans, resultsDir]);
   const columnDefs = reactExports.useMemo(() => {
     const baseColumns = [
       {
@@ -76815,7 +76819,7 @@ const ScansGrid = () => {
       },
       onRowClicked: (e) => {
         if (e.data) {
-          void navigate(`/scan/${e.data.location}`);
+          void navigate(`/scan/${e.data.relativeLocation}`);
         }
       }
     }

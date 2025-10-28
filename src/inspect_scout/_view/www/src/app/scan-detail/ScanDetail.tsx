@@ -35,9 +35,7 @@ export const ScanDetail: React.FC = () => {
   return (
     <>
       <Navbar />
-      <div style={{ padding: '16px' }}>
-        <h2>Scan Detail</h2>
-        <p>Scan Location: {absolutePath}</p>
+      <div style={{ height: "100%", overflowY: "auto", padding: '16px' }}>
         {selectedScan ? (
           <pre>{JSON.stringify(selectedScan, null, 2)}</pre>
         ) : (

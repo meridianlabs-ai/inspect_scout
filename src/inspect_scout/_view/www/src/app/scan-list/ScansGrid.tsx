@@ -14,6 +14,7 @@ import { useStore } from '../../state/store';
 
 import styles from './ScansGrid.module.css';
 import { useNavigate } from 'react-router-dom';
+import { toRelativePath } from '../../utils/path';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -25,6 +26,7 @@ interface ScanRow {
   model: string;
   timestamp: string;
   location: string;
+  relativeLocation: string;
   scanId: string;
   scanName: string;
   scanners: string[];
@@ -37,6 +39,8 @@ export const ScansGrid: FC = () => {
   const gridStates = useStore((state) => state.gridStates);
   const setGridState = useStore((state) => state.setGridState);
 
+  const resultsDir = useStore((state) => state.resultsDir);
+
   const gridState = useMemo(() => {
     return gridStates[GRID_STATE_NAME] || {};
   }, [gridStates]);
@@ -46,9 +50,12 @@ export const ScansGrid: FC = () => {
     const rows: ScanRow[] = [];
 
     scans.forEach((scan) => {
+
+      const relativeLocation = toRelativePath(scan.location, resultsDir || '');
       const row: ScanRow = {
         timestamp: scan.spec.timestamp,
         location: scan.location,
+        relativeLocation: relativeLocation,
         scanId: scan.spec.scan_id,
         scanName: scan.spec.scan_name,
         model: scan.spec.model.model,
@@ -59,7 +66,7 @@ export const ScansGrid: FC = () => {
     });
 
     return rows;
-  }, [scans]);
+  }, [scans, resultsDir]);
 
   // Create column definitions
   const columnDefs = useMemo((): ColDef<ScanRow>[] => {
@@ -146,7 +153,7 @@ export const ScansGrid: FC = () => {
         }}
         onRowClicked={(e: RowClickedEvent<ScanRow>) => {
           if (e.data) {
-            void navigate(`/scan/${e.data.location}`);
+            void navigate(`/scan/${e.data.relativeLocation}`);
           }
         }}
       />

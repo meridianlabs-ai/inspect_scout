@@ -1,3 +1,4 @@
+import os
 from typing import Any, Literal
 
 import click
@@ -10,6 +11,8 @@ from inspect_ai._cli.util import (
 )
 from inspect_ai._util.config import resolve_args
 from inspect_ai._util.error import PrerequisiteError
+from inspect_ai._util.file import filesystem
+from inspect_ai.log._file import list_eval_logs
 from inspect_ai.model import BatchConfig, GenerateConfig
 from typing_extensions import Unpack
 
@@ -333,6 +336,13 @@ def scan_command(
 
     # resolve transcripts (could be from ScanJob)
     tx = transcripts_from(transcripts) if len(transcripts) > 0 else scanjob.transcripts
+    if tx is None:
+        # see if we can auto-discover transcripts from inspect logs
+        inspect_log_dir = os.environ.get("INSPECT_LOG_DIR", "./logs")
+        fs = filesystem(inspect_log_dir)
+        if fs.exists(inspect_log_dir) and len(list_eval_logs(inspect_log_dir)) > 0:
+            tx = transcripts_from(inspect_log_dir)
+
     if tx is None:
         raise PrerequisiteError(
             "No transcripts specified for scanning (pass as --transcripts or include in @scanjob)"

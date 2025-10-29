@@ -125,8 +125,13 @@ def view_server_app(
         )
 
     @app.get("/scans")
-    async def scans(request: Request) -> Response:
-        validated_results_dir = _ensure_not_none(results_dir, "results_dir is required")
+    async def scans(
+        request: Request,
+        query_results_dir: str | None = Query(None, alias="results_dir"),
+    ) -> Response:
+        validated_results_dir = _ensure_not_none(
+            query_results_dir or results_dir, "results_dir is required"
+        )
         await _validate_list(request, validated_results_dir)
         scans = await scan_list_async(validated_results_dir)
 

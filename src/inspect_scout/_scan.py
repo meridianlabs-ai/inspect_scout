@@ -370,6 +370,13 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> Status:
         finally:
             tg.cancel_scope.cancel()
 
+    global _scan_async_running
+    if _scan_async_running:
+        raise RuntimeError(
+            "You can only have a single scan running at once in a process."
+        )
+    _scan_async_running = True
+
     try:
         async with anyio.create_task_group() as tg:
             tg.start_soon(run, tg)
@@ -378,10 +385,15 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> Status:
     except anyio.get_cancelled_exc_class():
         # Cancelled exceptions are expected and handled by _scan_async_inner
         pass
+    finally:
+        _scan_async_running = False
 
     assert result is not None, "scan async did not return a result."
 
     return result
+
+
+_scan_async_running = False
 
 
 async def _scan_async_inner(

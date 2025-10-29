@@ -1,35 +1,9 @@
+import { ReactNode, useCallback, useRef } from 'react';
 import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useRef,
-} from "react";
-
-// The search context provides global search assistance. We generally use the
-// browser to perform searches using 'find', but this allows for virtual lists
-// and other virtualized components to register themselves to be notified when a
-// search is requested and no matches are found. In this case, they can 'look ahead'
-// and scroll an item into view if it is likely/certain to contain the search term.
-
-// Find will call this when an extended find is requested
-export type ExtendedFindFn = (
-  term: string,
-  direction: "forward" | "backward",
-  onContentReady: () => void,
-) => Promise<boolean>;
-
-// The context provides an extended search function and a way for the active
-// virtual lists to register themselves.
-interface ExtendedFindContextType {
-  extendedFindTerm: (
-    term: string,
-    direction: "forward" | "backward",
-  ) => Promise<boolean>;
-  registerVirtualList: (id: string, searchFn: ExtendedFindFn) => () => void;
-}
-
-const ExtendedFindContext = createContext<ExtendedFindContextType | null>(null);
+  ExtendedFindContext,
+  ExtendedFindContextType,
+  ExtendedFindFn,
+} from './ExtendedFindContext';
 
 interface ExtendedFindProviderProps {
   children: ReactNode;
@@ -47,7 +21,7 @@ export const ExtendedFindProvider = ({
   const extendedFindTerm = useCallback(
     async (
       term: string,
-      direction: "forward" | "backward",
+      direction: 'forward' | 'backward'
     ): Promise<boolean> => {
       // Try each registered virtual list
       for (const [, searchFn] of virtualLists.current) {
@@ -82,7 +56,7 @@ export const ExtendedFindProvider = ({
       }
       return false;
     },
-    [],
+    []
   );
 
   const registerVirtualList = useCallback(
@@ -92,7 +66,7 @@ export const ExtendedFindProvider = ({
         virtualLists.current.delete(id);
       };
     },
-    [],
+    []
   );
 
   const contextValue: ExtendedFindContextType = {
@@ -105,12 +79,4 @@ export const ExtendedFindProvider = ({
       {children}
     </ExtendedFindContext.Provider>
   );
-};
-
-export const useExtendedFind = (): ExtendedFindContextType => {
-  const context = useContext(ExtendedFindContext);
-  if (!context) {
-    throw new Error("useSearch must be used within a SearchProvider");
-  }
-  return context;
 };

@@ -1,7 +1,7 @@
 import { FC, useEffect } from 'react';
 import { useStore } from '../../state/store';
 import { Navbar } from '../navbar/Navbar';
-import { ExtendedFindProvider } from '../../components/ExtendedFindContext';
+import { ExtendedFindProvider } from '../../components/ExtendedFindProvider';
 import { ScansGrid } from './ScansGrid';
 import { ActivityBar } from '../../components/ActivityBar';
 

@@ -96,6 +96,8 @@ export const useStore = create<StoreState>()(
 
         setPropertyValue<T>(id: string, propertyName: string, value: T) {
           set((state) => {
+            // TODO: We need to turn on noUncheckedIndexedAccess
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!state.properties[id]) {
               state.properties[id] = {};
             }
@@ -108,15 +110,23 @@ export const useStore = create<StoreState>()(
           propertyName: string,
           defaultValue: T
         ): T | undefined {
+          // TODO: We need to turn on noUncheckedIndexedAccess
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const value = get().properties[id]?.[propertyName];
           return value !== undefined ? (value as T) : defaultValue;
         },
 
         removePropertyValue(id: string, propertyName: string) {
           set((state) => {
+            // TODO: We need to turn on noUncheckedIndexedAccess
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (state.properties[id]) {
+              // TODO: Revisit
+              // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
               delete state.properties[id][propertyName];
               if (Object.keys(state.properties[id]).length === 0) {
+                // TODO: Revisit
+                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
                 delete state.properties[id];
               }
             }
@@ -140,6 +150,8 @@ export const useStore = create<StoreState>()(
           set((state) => {
             // Remove the key
             const newListPositions = { ...state.listPositions };
+            // TODO: Revisit
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete newListPositions[name];
 
             return {
@@ -170,6 +182,8 @@ export const useStore = create<StoreState>()(
           set((state) => {
             // Remove the key
             const newVisibleRanges = { ...state.visibleRanges };
+            // TODO: Revisit
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete newVisibleRanges[name];
 
             return {
@@ -186,6 +200,8 @@ export const useStore = create<StoreState>()(
         clearGridState: (name: string) => {
           set((state) => {
             const newGridStates = { ...state.gridStates };
+            // TODO: Revisit
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete newGridStates[name];
 
             return {

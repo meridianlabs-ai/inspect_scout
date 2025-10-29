@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "types": ["css-modules"],
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -22,6 +18,7 @@
     "checkJs": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "useUnknownInCatchVariables": true,
     "skipLibCheck": true,
     "plugins": [
       {
@@ -29,13 +26,6 @@
       }
     ]
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "*.config.js",
-    "*.config.ts"
-  ]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "*.config.js", "*.config.ts"]
 }

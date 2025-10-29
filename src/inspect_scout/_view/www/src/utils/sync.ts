@@ -10,7 +10,7 @@ export function sleep(ms: number): Promise<void> {
  * at most once per every `wait` milliseconds. The throttled function will run as much
  * as it can, without ever going more than once per `wait` duration.
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
   options: { leading?: boolean; trailing?: boolean } = {}
@@ -24,6 +24,10 @@ export function throttle<T extends (...args: any[]) => any>(
     previous = options.leading === false ? 0 : Date.now();
     timeout = null;
     result = func(...(args === null ? [] : args)) as ReturnType<T>;
+    // TODO: eslint thinks that the conditional is unnecessary, but it seems that
+    // the call to func could have a side effect of mutating timeout if it makes
+    // a call to throttled below
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!timeout) {
       args = null;
     }
@@ -62,7 +66,8 @@ export function throttle<T extends (...args: any[]) => any>(
  * Creates a debounced version of a function that delays invoking the function
  * until after `wait` milliseconds have passed since the last time it was invoked.
  */
-export function debounce<T extends (...args: any[]) => any>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function debounce<T extends (...args: any[]) => unknown>(
   func: T,
   wait: number,
   options: { leading?: boolean; trailing?: boolean } = {}
@@ -81,7 +86,12 @@ export function debounce<T extends (...args: any[]) => any>(
       timeout = null;
       if (!options.leading) {
         result = func(...args) as ReturnType<T>;
+        // TODO: eslint thinks that the conditional is unnecessary, but it seems
+        // that the call to func could have a side effect of mutating timeout if
+        // it makes a call to debounced below
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!timeout) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           args = null!;
         }
       }
@@ -100,6 +110,7 @@ export function debounce<T extends (...args: any[]) => any>(
 
     if (callNow) {
       result = func(...args) as ReturnType<T>;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       args = null!;
     }
 

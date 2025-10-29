@@ -47,6 +47,8 @@ export const ScansGrid: FC = () => {
   const resultsDir = useStore((state) => state.resultsDir);
 
   const gridState = useMemo(() => {
+    // TODO: We need to turn on noUncheckedIndexedAccess
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return gridStates[GRID_STATE_NAME] || {};
   }, [gridStates]);
 
@@ -147,7 +149,8 @@ export const ScansGrid: FC = () => {
         sortable: false,
         filter: false,
         resizable: true,
-        valueFormatter: (params: { value: any[] }) => params.value.join(", "),
+        valueFormatter: (params: { value: unknown[] }) =>
+          params.value.join(", "),
       },
       {
         field: "timestamp",

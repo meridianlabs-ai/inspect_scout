@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { VSCodeApi } from "../utils/vscode";
 
 // Type definitions
@@ -9,11 +8,11 @@ interface JsonRpcMessage {
 
 interface JsonRpcRequest extends JsonRpcMessage {
   method: string;
-  params?: any;
+  params?: unknown;
 }
 
 interface JsonRpcResponse extends JsonRpcMessage {
-  result?: any;
+  result?: unknown;
   error?: JsonRpcError;
 }
 
@@ -22,18 +21,18 @@ interface JsonRpcError {
   message: string;
   data?: {
     description?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
 interface RequestHandlers {
-  resolve: (value: any) => void;
+  resolve: (value: unknown) => void;
   reject: (error: JsonRpcError) => void;
 }
 
 interface PostMessageTarget {
-  postMessage: (data: any) => void;
-  onMessage: (handler: (data: any) => void) => () => void;
+  postMessage: (data: unknown) => void;
+  onMessage: (handler: (data: unknown) => void) => () => void;
 }
 
 // Constants
@@ -61,12 +60,12 @@ export const kJsonRpcVersion = "2.0";
 
 export function webViewJsonRpcClient(
   vscode: VSCodeApi
-): (method: string, params?: any) => Promise<any> {
+): (method: string, params?: unknown) => Promise<unknown> {
   const target: PostMessageTarget = {
-    postMessage: (data: any) => {
+    postMessage: (data: unknown) => {
       vscode.postMessage(data);
     },
-    onMessage: (handler: (data: any) => void) => {
+    onMessage: (handler: (data: unknown) => void) => {
       const onMessage = (ev: MessageEvent) => {
         handler(ev.data);
       };
@@ -81,24 +80,33 @@ export function webViewJsonRpcClient(
 
 export function jsonRpcError(
   message: string,
-  data?: any,
+  data?: unknown,
   code?: number
 ): JsonRpcError {
-  if (typeof data === "string") {
-    data = {
-      description: data,
-    };
+  let errorData: { description?: string; [key: string]: unknown } | undefined;
+
+  if (data !== undefined) {
+    if (typeof data === "string") {
+      errorData = { description: data };
+    } else if (typeof data === "object" && data !== null) {
+      errorData = data as { description?: string; [key: string]: unknown };
+    } else {
+      errorData = {
+        description: JSON.stringify(data),
+      };
+    }
   }
+
   return {
     code: code || -3200,
     message,
-    data,
+    data: errorData,
   };
 }
 
 export function asJsonRpcError(error: unknown): JsonRpcError {
   if (typeof error === "object" && error !== null) {
-    const err = error as { message?: string; data?: any; code?: number };
+    const err = error as { message?: string; data?: unknown; code?: number };
     if (typeof err.message === "string") {
       return jsonRpcError(err.message, err.data, err.code);
     }
@@ -108,7 +116,7 @@ export function asJsonRpcError(error: unknown): JsonRpcError {
 
 export function jsonRpcPostMessageRequestTransport(target: PostMessageTarget) {
   const requests = new Map<number, RequestHandlers>();
-  const disconnect = target.onMessage((ev: any) => {
+  const disconnect = target.onMessage((ev: unknown) => {
     const response = asJsonRpcResponse(ev);
     if (response) {
       const request = requests.get(response.id);
@@ -124,7 +132,7 @@ export function jsonRpcPostMessageRequestTransport(target: PostMessageTarget) {
   });
 
   return {
-    request: (method: string, params?: any): Promise<any> => {
+    request: (method: string, params?: unknown): Promise<unknown> => {
       return new Promise((resolve, reject) => {
         const requestId = Math.floor(Math.random() * 1e6);
         requests.set(requestId, { resolve, reject });
@@ -144,13 +152,13 @@ export function jsonRpcPostMessageRequestTransport(target: PostMessageTarget) {
 export function jsonRpcPostMessageServer(
   target: PostMessageTarget,
   methods:
-    | { [key: string]: (params: any) => Promise<any> }
-    | ((name: string) => ((params: any) => Promise<any>) | undefined)
+    | { [key: string]: (params: unknown) => Promise<unknown> }
+    | ((name: string) => ((params: unknown) => Promise<unknown>) | undefined)
 ): () => void {
   const lookupMethod =
     typeof methods === "function" ? methods : (name: string) => methods[name];
 
-  return target.onMessage((data: any) => {
+  return target.onMessage((data: unknown) => {
     const request = asJsonRpcRequest(data);
     if (request) {
       const method = lookupMethod(request.method);
@@ -163,7 +171,7 @@ export function jsonRpcPostMessageServer(
         .then((value) => {
           target.postMessage(jsonRpcResponse(request, value));
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           target.postMessage({
             jsonrpc: request.jsonrpc,
             id: request.id,
@@ -174,23 +182,28 @@ export function jsonRpcPostMessageServer(
   });
 }
 
-function isJsonRpcMessage(message: any): message is JsonRpcMessage {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  return message.jsonrpc !== undefined && message.id !== undefined;
+function isJsonRpcMessage(message: unknown): message is JsonRpcMessage {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    "jsonrpc" in message &&
+    "id" in message
+  );
 }
 
 function isJsonRpcRequest(message: JsonRpcMessage): message is JsonRpcRequest {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return (message as JsonRpcRequest).method !== undefined;
 }
 
-function asJsonRpcMessage(data: any): JsonRpcMessage | null {
+function asJsonRpcMessage(data: unknown): JsonRpcMessage | null {
   if (isJsonRpcMessage(data) && data.jsonrpc === kJsonRpcVersion) {
     return data;
   }
   return null;
 }
 
-function asJsonRpcRequest(data: any): JsonRpcRequest | null {
+function asJsonRpcRequest(data: unknown): JsonRpcRequest | null {
   const message = asJsonRpcMessage(data);
   if (message && isJsonRpcRequest(message)) {
     return message;
@@ -198,7 +211,7 @@ function asJsonRpcRequest(data: any): JsonRpcRequest | null {
   return null;
 }
 
-function asJsonRpcResponse(data: any): JsonRpcResponse | null {
+function asJsonRpcResponse(data: unknown): JsonRpcResponse | null {
   const message = asJsonRpcMessage(data);
   if (message) {
     return message as JsonRpcResponse;
@@ -208,7 +221,7 @@ function asJsonRpcResponse(data: any): JsonRpcResponse | null {
 
 function jsonRpcResponse(
   request: JsonRpcRequest,
-  result: any
+  result: unknown
 ): JsonRpcResponse {
   return {
     jsonrpc: request.jsonrpc,

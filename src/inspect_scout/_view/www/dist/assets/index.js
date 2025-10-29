@@ -19988,7 +19988,10 @@ const ensureTrailingSlash = (path) => {
   return path.endsWith("/") ? path : path + "/";
 };
 const toRelativePath = (absolutePath, basePath) => {
-  const normalizedResultsDir = ensureTrailingSlash(basePath).replace("file://", "");
+  const normalizedResultsDir = ensureTrailingSlash(basePath).replace(
+    "file://",
+    ""
+  );
   const normalizedPath = absolutePath.startsWith("file://") ? decodeURIComponent(absolutePath.replace("file://", "")) : absolutePath;
   if (normalizedPath.startsWith(normalizedResultsDir)) {
     return normalizedPath.substring(normalizedResultsDir.length);
@@ -20002,14 +20005,14 @@ const prettyDirUri = (uri) => {
     return uri;
   }
 };
-const header = "_header_wkjps_1";
-const bordered = "_bordered_wkjps_11";
-const breadcrumbs = "_breadcrumbs_wkjps_15";
-const ellipsis = "_ellipsis_wkjps_26";
-const left = "_left_wkjps_31";
-const right = "_right_wkjps_41";
-const toolbarButton = "_toolbarButton_wkjps_50";
-const pathContainer = "_pathContainer_wkjps_58";
+const header = "_header_ctaca_1";
+const bordered = "_bordered_ctaca_11";
+const breadcrumbs = "_breadcrumbs_ctaca_15";
+const ellipsis = "_ellipsis_ctaca_26";
+const left = "_left_ctaca_31";
+const right = "_right_ctaca_41";
+const toolbarButton = "_toolbarButton_ctaca_50";
+const pathContainer = "_pathContainer_ctaca_58";
 const styles$2 = {
   header,
   bordered,
@@ -20161,7 +20164,7 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
               children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(Icons.home) })
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$2.breadcrumbs), children: visibleSegments?.map((segment, index) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$2.breadcrumbs), children: visibleSegments.map((segment, index) => {
             const isLast = index === visibleSegments.length - 1;
             const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
@@ -78384,8 +78387,12 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const setResultsDir = useStore((state) => state.setResultsDir);
   const setSingleFileMode = useStore((state) => state.setSingleFileMode);
-  const hasInitializedEmbeddedData = useStore((state) => state.hasInitializedEmbeddedData);
-  const setHasInitializedEmbeddedData = useStore((state) => state.setHasInitializedEmbeddedData);
+  const hasInitializedEmbeddedData = useStore(
+    (state) => state.hasInitializedEmbeddedData
+  );
+  const setHasInitializedEmbeddedData = useStore(
+    (state) => state.setHasInitializedEmbeddedData
+  );
   reactExports.useEffect(() => {
     if (hasInitializedEmbeddedData) {
       return;
@@ -78398,7 +78405,13 @@ const AppLayout = () => {
       void navigate(`/scan/${scan}`, { replace: true });
     }
     setHasInitializedEmbeddedData(true);
-  }, [navigate, hasInitializedEmbeddedData, setSingleFileMode, setHasInitializedEmbeddedData, setResultsDir]);
+  }, [
+    navigate,
+    hasInitializedEmbeddedData,
+    setSingleFileMode,
+    setHasInitializedEmbeddedData,
+    setResultsDir
+  ]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {});
 };
 const ValidatedScanDetail = () => {
@@ -78533,7 +78546,7 @@ function jsonRpcPostMessageRequestTransport(target) {
   };
 }
 function isJsonRpcMessage(message) {
-  return message.jsonrpc !== void 0 && message.id !== void 0;
+  return typeof message === "object" && message !== null && "jsonrpc" in message && "id" in message;
 }
 function asJsonRpcMessage(data) {
   if (isJsonRpcMessage(data) && data.jsonrpc === kJsonRpcVersion) {
@@ -78551,11 +78564,15 @@ function asJsonRpcResponse(data) {
 const apiVscode = (rpcClient) => {
   return {
     getScan: async (scanLocation) => {
-      const response = await rpcClient(kMethodGetScan, [scanLocation]);
+      const response = await rpcClient(kMethodGetScan, [
+        scanLocation
+      ]);
       if (response) {
         return lib.parse(response);
       } else {
-        throw new Error(`Invalid response for getScan for scan: ${scanLocation}`);
+        throw new Error(
+          `Invalid response for getScan for scan: ${scanLocation}`
+        );
       }
     },
     getScans: async () => {

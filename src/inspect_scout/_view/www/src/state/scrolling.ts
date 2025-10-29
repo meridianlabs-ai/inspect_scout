@@ -105,6 +105,8 @@ export function useStatefulScrollPosition<
     }
 
     // Set up scroll listener
+    // TODO: This isn't supposed to be needed. review
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (element.addEventListener) {
       element.addEventListener("scroll", handleScroll);
     } else {
@@ -113,6 +115,8 @@ export function useStatefulScrollPosition<
 
     // Clean up
     return () => {
+      // TODO: This isn't supposed to be needed. review
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (element.removeEventListener) {
         element.removeEventListener("scroll", handleScroll);
       } else {
@@ -125,7 +129,8 @@ export function useStatefulScrollPosition<
 }
 
 // Define a type for the debounced function that includes the cancel method
-type DebouncedFunction<T extends (...args: any[]) => any> = T & {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DebouncedFunction<T extends (...args: any[]) => unknown> = T & {
   cancel: () => void;
   flush: () => void;
 };
@@ -210,6 +215,8 @@ export const useVirtuosoState = (
   const visibleRanges = useStore((state) => state.visibleRanges);
   const visibleRange = useMemo(() => {
     return (
+      // TODO: We need to turn on noUncheckedIndexedAccess
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       visibleRanges[elementKey] || {
         startIndex: 0,
         endIndex: 0,
@@ -220,7 +227,7 @@ export const useVirtuosoState = (
   return { getRestoreState, isScrolling, visibleRange, setVisibleRange };
 };
 
-export function useRafThrottle<T extends (...args: any[]) => any>(
+export function useRafThrottle<T extends (...args: unknown[]) => unknown>(
   callback: T
 ): (...args: Parameters<T>) => void {
   const rafRef = useRef<number | null>(null);

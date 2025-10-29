@@ -78,7 +78,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
         <div className={clsx(styles.pathContainer)} ref={pathContainerRef}>
           {resultsDir ? (
             <ol className={clsx("breadcrumb", styles.breadcrumbs)}>
-              {visibleSegments?.map((segment, index) => {
+              {visibleSegments.map((segment, index) => {
                 const isLast = index === visibleSegments.length - 1;
                 const shouldShowEllipsis =
                   showEllipsis && index === 1 && visibleSegments.length >= 2;

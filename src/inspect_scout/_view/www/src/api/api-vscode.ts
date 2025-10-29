@@ -5,7 +5,7 @@ import { ScanApi, ScansInfo } from "./api";
 import { kMethodGetScan, kMethodGetScans } from "./jsonrpc";
 
 export const apiVscode = (
-  rpcClient: (method: string, params?: any) => Promise<any>
+  rpcClient: (method: string, params?: unknown) => Promise<unknown>
 ): ScanApi => {
   return {
     getScan: async (scanLocation: string): Promise<Scan> => {

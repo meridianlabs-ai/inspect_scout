@@ -4,6 +4,7 @@
   "description": "Inspect Scout viewer for evaluation logs.",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@10.20.0",
   "scripts": {
     "build": "vite build",
     "watch": "vite build --watch",
@@ -14,7 +15,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "typecheck": "tsc --noEmit",
-    "check": "yarn lint:fix && yarn format && yarn typecheck"
+    "check": "pnpm lint:fix && pnpm format && pnpm typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
@@ -52,7 +53,9 @@
     "react-virtuoso": "^4.14.1",
     "zustand": "^5.0.8"
   },
-  "resolutions": {
-    "yaml": "^2.4.2"
+  "pnpm": {
+    "overrides": {
+      "yaml": "^2.4.2"
+    }
   }
 }

@@ -12528,7 +12528,7 @@ var clientExports = requireClient();
 var reactExports = requireReact();
 const React20 = /* @__PURE__ */ getDefaultExportFromCjs(reactExports);
 /**
- * react-router v7.9.4
+ * react-router v7.9.5
  *
  * Copyright (c) Remix Software Inc.
  *
@@ -12853,19 +12853,23 @@ function convertRoutesToDataRoutes(routes, mapRouteProperties2, parentPath = [],
     if (isIndexRoute(route)) {
       let indexRoute = {
         ...route,
-        ...mapRouteProperties2(route),
         id
       };
-      manifest[id] = indexRoute;
+      manifest[id] = mergeRouteUpdates(
+        indexRoute,
+        mapRouteProperties2(indexRoute)
+      );
       return indexRoute;
     } else {
       let pathOrLayoutRoute = {
         ...route,
-        ...mapRouteProperties2(route),
         id,
         children: void 0
       };
-      manifest[id] = pathOrLayoutRoute;
+      manifest[id] = mergeRouteUpdates(
+        pathOrLayoutRoute,
+        mapRouteProperties2(pathOrLayoutRoute)
+      );
       if (route.children) {
         pathOrLayoutRoute.children = convertRoutesToDataRoutes(
           route.children,
@@ -12877,6 +12881,17 @@ function convertRoutesToDataRoutes(routes, mapRouteProperties2, parentPath = [],
       }
       return pathOrLayoutRoute;
     }
+  });
+}
+function mergeRouteUpdates(route, updates) {
+  return Object.assign(route, {
+    ...updates,
+    ...typeof updates.lazy === "object" && updates.lazy != null ? {
+      lazy: {
+        ...route.lazy,
+        ...updates.lazy
+      }
+    } : {}
   });
 }
 function matchRoutes(routes, locationArg, basename2 = "/") {
@@ -13271,6 +13286,247 @@ var ErrorResponseImpl = class {
 function isRouteErrorResponse(error) {
   return error != null && typeof error.status === "number" && typeof error.statusText === "string" && typeof error.internal === "boolean" && "data" in error;
 }
+function getRoutePattern(paths) {
+  return paths.filter(Boolean).join("/").replace(/\/\/*/g, "/") || "/";
+}
+var UninstrumentedSymbol = Symbol("Uninstrumented");
+function getRouteInstrumentationUpdates(fns, route) {
+  let aggregated = {
+    lazy: [],
+    "lazy.loader": [],
+    "lazy.action": [],
+    "lazy.middleware": [],
+    middleware: [],
+    loader: [],
+    action: []
+  };
+  fns.forEach(
+    (fn) => fn({
+      id: route.id,
+      index: route.index,
+      path: route.path,
+      instrument(i) {
+        let keys = Object.keys(aggregated);
+        for (let key2 of keys) {
+          if (i[key2]) {
+            aggregated[key2].push(i[key2]);
+          }
+        }
+      }
+    })
+  );
+  let updates = {};
+  if (typeof route.lazy === "function" && aggregated.lazy.length > 0) {
+    let instrumented = wrapImpl(aggregated.lazy, route.lazy, () => void 0);
+    if (instrumented) {
+      updates.lazy = instrumented;
+    }
+  }
+  if (typeof route.lazy === "object") {
+    let lazyObject = route.lazy;
+    ["middleware", "loader", "action"].forEach((key2) => {
+      let lazyFn = lazyObject[key2];
+      let instrumentations = aggregated[`lazy.${key2}`];
+      if (typeof lazyFn === "function" && instrumentations.length > 0) {
+        let instrumented = wrapImpl(instrumentations, lazyFn, () => void 0);
+        if (instrumented) {
+          updates.lazy = Object.assign(updates.lazy || {}, {
+            [key2]: instrumented
+          });
+        }
+      }
+    });
+  }
+  ["loader", "action"].forEach((key2) => {
+    let handler = route[key2];
+    if (typeof handler === "function" && aggregated[key2].length > 0) {
+      let original = handler[UninstrumentedSymbol] ?? handler;
+      let instrumented = wrapImpl(
+        aggregated[key2],
+        original,
+        (...args) => getHandlerInfo(args[0])
+      );
+      if (instrumented) {
+        instrumented[UninstrumentedSymbol] = original;
+        updates[key2] = instrumented;
+      }
+    }
+  });
+  if (route.middleware && route.middleware.length > 0 && aggregated.middleware.length > 0) {
+    updates.middleware = route.middleware.map((middleware) => {
+      let original = middleware[UninstrumentedSymbol] ?? middleware;
+      let instrumented = wrapImpl(
+        aggregated.middleware,
+        original,
+        (...args) => getHandlerInfo(args[0])
+      );
+      if (instrumented) {
+        instrumented[UninstrumentedSymbol] = original;
+        return instrumented;
+      }
+      return middleware;
+    });
+  }
+  return updates;
+}
+function instrumentClientSideRouter(router, fns) {
+  let aggregated = {
+    navigate: [],
+    fetch: []
+  };
+  fns.forEach(
+    (fn) => fn({
+      instrument(i) {
+        let keys = Object.keys(i);
+        for (let key2 of keys) {
+          if (i[key2]) {
+            aggregated[key2].push(i[key2]);
+          }
+        }
+      }
+    })
+  );
+  if (aggregated.navigate.length > 0) {
+    let navigate = router.navigate[UninstrumentedSymbol] ?? router.navigate;
+    let instrumentedNavigate = wrapImpl(
+      aggregated.navigate,
+      navigate,
+      (...args) => {
+        let [to, opts] = args;
+        return {
+          to: typeof to === "number" || typeof to === "string" ? to : to ? createPath(to) : ".",
+          ...getRouterInfo(router, opts ?? {})
+        };
+      }
+    );
+    if (instrumentedNavigate) {
+      instrumentedNavigate[UninstrumentedSymbol] = navigate;
+      router.navigate = instrumentedNavigate;
+    }
+  }
+  if (aggregated.fetch.length > 0) {
+    let fetch2 = router.fetch[UninstrumentedSymbol] ?? router.fetch;
+    let instrumentedFetch = wrapImpl(aggregated.fetch, fetch2, (...args) => {
+      let [key2, , href, opts] = args;
+      return {
+        href: href ?? ".",
+        fetcherKey: key2,
+        ...getRouterInfo(router, opts ?? {})
+      };
+    });
+    if (instrumentedFetch) {
+      instrumentedFetch[UninstrumentedSymbol] = fetch2;
+      router.fetch = instrumentedFetch;
+    }
+  }
+  return router;
+}
+function wrapImpl(impls, handler, getInfo) {
+  if (impls.length === 0) {
+    return null;
+  }
+  return async (...args) => {
+    let result = await recurseRight(
+      impls,
+      getInfo(...args),
+      () => handler(...args),
+      impls.length - 1
+    );
+    if (result.type === "error") {
+      throw result.value;
+    }
+    return result.value;
+  };
+}
+async function recurseRight(impls, info, handler, index) {
+  let impl = impls[index];
+  let result;
+  if (!impl) {
+    try {
+      let value = await handler();
+      result = { type: "success", value };
+    } catch (e) {
+      result = { type: "error", value: e };
+    }
+  } else {
+    let handlerPromise = void 0;
+    let callHandler = async () => {
+      if (handlerPromise) {
+        console.error("You cannot call instrumented handlers more than once");
+      } else {
+        handlerPromise = recurseRight(impls, info, handler, index - 1);
+      }
+      result = await handlerPromise;
+      invariant(result, "Expected a result");
+      if (result.type === "error" && result.value instanceof Error) {
+        return { status: "error", error: result.value };
+      }
+      return { status: "success", error: void 0 };
+    };
+    try {
+      await impl(callHandler, info);
+    } catch (e) {
+      console.error("An instrumentation function threw an error:", e);
+    }
+    if (!handlerPromise) {
+      await callHandler();
+    }
+    await handlerPromise;
+  }
+  if (result) {
+    return result;
+  }
+  return {
+    type: "error",
+    value: new Error("No result assigned in instrumentation chain.")
+  };
+}
+function getHandlerInfo(args) {
+  let { request, context, params, unstable_pattern } = args;
+  return {
+    request: getReadonlyRequest(request),
+    params: { ...params },
+    unstable_pattern,
+    context: getReadonlyContext(context)
+  };
+}
+function getRouterInfo(router, opts) {
+  return {
+    currentUrl: createPath(router.state.location),
+    ..."formMethod" in opts ? { formMethod: opts.formMethod } : {},
+    ..."formEncType" in opts ? { formEncType: opts.formEncType } : {},
+    ..."formData" in opts ? { formData: opts.formData } : {},
+    ..."body" in opts ? { body: opts.body } : {}
+  };
+}
+function getReadonlyRequest(request) {
+  return {
+    method: request.method,
+    url: request.url,
+    headers: {
+      get: (...args) => request.headers.get(...args)
+    }
+  };
+}
+function getReadonlyContext(context) {
+  if (isPlainObject$1(context)) {
+    let frozen = { ...context };
+    Object.freeze(frozen);
+    return frozen;
+  } else {
+    return {
+      get: (ctx) => context.get(ctx)
+    };
+  }
+}
+var objectProtoNames = Object.getOwnPropertyNames(Object.prototype).sort().join("\0");
+function isPlainObject$1(thing) {
+  if (thing === null || typeof thing !== "object") {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(thing);
+  return proto === Object.prototype || proto === null || Object.getOwnPropertyNames(proto).sort().join("\0") === objectProtoNames;
+}
 var validMutationMethodsArr = [
   "POST",
   "PUT",
@@ -13328,7 +13584,20 @@ function createRouter(init) {
     "You must provide a non-empty routes array to createRouter"
   );
   let hydrationRouteProperties2 = init.hydrationRouteProperties || [];
-  let mapRouteProperties2 = init.mapRouteProperties || defaultMapRouteProperties;
+  let _mapRouteProperties = init.mapRouteProperties || defaultMapRouteProperties;
+  let mapRouteProperties2 = _mapRouteProperties;
+  if (init.unstable_instrumentations) {
+    let instrumentations = init.unstable_instrumentations;
+    mapRouteProperties2 = (route) => {
+      return {
+        ..._mapRouteProperties(route),
+        ...getRouteInstrumentationUpdates(
+          instrumentations.map((i) => i.route).filter(Boolean),
+          route
+        )
+      };
+    };
+  }
   let manifest = {};
   let dataRoutes = convertRoutesToDataRoutes(
     init.routes,
@@ -15080,6 +15349,12 @@ function createRouter(init) {
       updateState(newState);
     }
   };
+  if (init.unstable_instrumentations) {
+    router = instrumentClientSideRouter(
+      router,
+      init.unstable_instrumentations.map((i) => i.router).filter(Boolean)
+    );
+  }
   return router;
 }
 function isSubmissionNavigation(opts) {
@@ -15259,6 +15534,7 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
     actionResult,
     actionStatus
   };
+  let pattern = getRoutePattern(matches.map((m) => m.route.path));
   let dsMatches = matches.map((match, index) => {
     let { route } = match;
     let forceShouldLoad = null;
@@ -15282,6 +15558,7 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
         mapRouteProperties2,
         manifest,
         request,
+        pattern,
         match,
         lazyRoutePropertiesToSkip,
         scopedContext,
@@ -15302,6 +15579,7 @@ function getMatchesToLoad(request, scopedContext, mapRouteProperties2, manifest,
       mapRouteProperties2,
       manifest,
       request,
+      pattern,
       match,
       lazyRoutePropertiesToSkip,
       scopedContext,
@@ -15726,12 +16004,17 @@ function runClientMiddlewarePipeline(args, handler) {
   }
 }
 async function runMiddlewarePipeline(args, handler, processResult2, isResult, errorHandler) {
-  let { matches, request, params, context } = args;
+  let { matches, request, params, context, unstable_pattern } = args;
   let tuples = matches.flatMap(
     (m) => m.route.middleware ? m.route.middleware.map((fn) => [m.route.id, fn]) : []
   );
   let result = await callRouteMiddleware(
-    { request, params, context },
+    {
+      request,
+      params,
+      context,
+      unstable_pattern
+    },
     tuples,
     handler,
     processResult2,
@@ -15809,7 +16092,7 @@ function getDataStrategyMatchLazyPromises(mapRouteProperties2, manifest, request
     handler: lazyRoutePromises.lazyHandlerPromise
   };
 }
-function getDataStrategyMatch(mapRouteProperties2, manifest, request, match, lazyRoutePropertiesToSkip, scopedContext, shouldLoad, unstable_shouldRevalidateArgs = null) {
+function getDataStrategyMatch(mapRouteProperties2, manifest, request, unstable_pattern, match, lazyRoutePropertiesToSkip, scopedContext, shouldLoad, unstable_shouldRevalidateArgs = null) {
   let isUsingNewApi = false;
   let _lazyPromises = getDataStrategyMatchLazyPromises(
     mapRouteProperties2,
@@ -15840,9 +16123,10 @@ function getDataStrategyMatch(mapRouteProperties2, manifest, request, match, laz
       let { lazy, loader, middleware } = match.route;
       let callHandler = isUsingNewApi || shouldLoad || handlerOverride && !isMutationMethod(request.method) && (lazy || loader);
       let isMiddlewareOnlyRoute = middleware && middleware.length > 0 && !loader && !lazy;
-      if (callHandler && !isMiddlewareOnlyRoute) {
+      if (callHandler && (isMutationMethod(request.method) || !isMiddlewareOnlyRoute)) {
         return callLoaderOrAction({
           request,
+          unstable_pattern,
           match,
           lazyHandlerPromise: _lazyPromises?.handler,
           lazyRoutePromise: _lazyPromises?.route,
@@ -15876,6 +16160,7 @@ function getTargetedDataStrategyMatches(mapRouteProperties2, manifest, request, 
       mapRouteProperties2,
       manifest,
       request,
+      getRoutePattern(matches.map((m) => m.route.path)),
       match,
       lazyRoutePropertiesToSkip,
       scopedContext,
@@ -15890,6 +16175,7 @@ async function callDataStrategyImpl(dataStrategyImpl, request, matches, fetcherK
   }
   let dataStrategyArgs = {
     request,
+    unstable_pattern: getRoutePattern(matches.map((m) => m.route.path)),
     params: matches[0].params,
     context: scopedContext,
     matches
@@ -15926,6 +16212,7 @@ async function callDataStrategyImpl(dataStrategyImpl, request, matches, fetcherK
 }
 async function callLoaderOrAction({
   request,
+  unstable_pattern,
   match,
   lazyHandlerPromise,
   lazyRoutePromise,
@@ -15952,6 +16239,7 @@ async function callLoaderOrAction({
       return handler(
         {
           request,
+          unstable_pattern,
           params: match.params,
           context: scopedContext
         },
@@ -17950,7 +18238,7 @@ var isBrowser = typeof window !== "undefined" && typeof window.document !== "und
 try {
   if (isBrowser) {
     window.__reactRouterVersion = // @ts-expect-error
-    "7.9.4";
+    "7.9.5";
   }
 } catch (e) {
 }
@@ -17966,7 +18254,8 @@ function createHashRouter(routes, opts) {
     hydrationRouteProperties,
     dataStrategy: opts?.dataStrategy,
     patchRoutesOnNavigation: opts?.patchRoutesOnNavigation,
-    window: opts?.window
+    window: opts?.window,
+    unstable_instrumentations: opts?.unstable_instrumentations
   }).initialize();
 }
 function parseHydrationData() {
@@ -18846,21 +19135,29 @@ function isDraftable(value) {
   return isPlainObject(value) || Array.isArray(value) || !!value[DRAFTABLE] || !!value.constructor?.[DRAFTABLE] || isMap(value) || isSet(value);
 }
 var objectCtorString = Object.prototype.constructor.toString();
+var cachedCtorStrings = /* @__PURE__ */ new WeakMap();
 function isPlainObject(value) {
   if (!value || typeof value !== "object")
     return false;
-  const proto = getPrototypeOf(value);
-  if (proto === null) {
+  const proto = Object.getPrototypeOf(value);
+  if (proto === null || proto === Object.prototype)
     return true;
-  }
   const Ctor = Object.hasOwnProperty.call(proto, "constructor") && proto.constructor;
   if (Ctor === Object)
     return true;
-  return typeof Ctor == "function" && Function.toString.call(Ctor) === objectCtorString;
+  if (typeof Ctor !== "function")
+    return false;
+  let ctorString = cachedCtorStrings.get(Ctor);
+  if (ctorString === void 0) {
+    ctorString = Function.toString.call(Ctor);
+    cachedCtorStrings.set(Ctor, ctorString);
+  }
+  return ctorString === objectCtorString;
 }
-function each(obj, iter) {
+function each(obj, iter, strict = true) {
   if (getArchtype(obj) === 0) {
-    Reflect.ownKeys(obj).forEach((key2) => {
+    const keys = strict ? Reflect.ownKeys(obj) : Object.keys(obj);
+    keys.forEach((key2) => {
       iter(key2, obj[key2], obj);
     });
   } else {
@@ -18944,10 +19241,10 @@ function freeze(obj, deep = false) {
     return obj;
   if (getArchtype(obj) > 1) {
     Object.defineProperties(obj, {
-      set: { value: dontMutateFrozenCollections },
-      add: { value: dontMutateFrozenCollections },
-      clear: { value: dontMutateFrozenCollections },
-      delete: { value: dontMutateFrozenCollections }
+      set: dontMutateMethodOverride,
+      add: dontMutateMethodOverride,
+      clear: dontMutateMethodOverride,
+      delete: dontMutateMethodOverride
     });
   }
   Object.freeze(obj);
@@ -18958,7 +19255,12 @@ function freeze(obj, deep = false) {
 function dontMutateFrozenCollections() {
   die(2);
 }
+var dontMutateMethodOverride = {
+  value: dontMutateFrozenCollections
+};
 function isFrozen(obj) {
+  if (obj === null || typeof obj !== "object")
+    return true;
   return Object.isFrozen(obj);
 }
 var plugins = {};
@@ -19046,11 +19348,13 @@ function processResult(result, scope) {
 function finalize(rootScope, value, path) {
   if (isFrozen(value))
     return value;
+  const useStrictIteration = rootScope.immer_.shouldUseStrictIteration();
   const state = value[DRAFT_STATE];
   if (!state) {
     each(
       value,
-      (key2, childValue) => finalizeProperty(rootScope, state, value, key2, childValue, path)
+      (key2, childValue) => finalizeProperty(rootScope, state, value, key2, childValue, path),
+      useStrictIteration
     );
     return value;
   }
@@ -19073,7 +19377,16 @@ function finalize(rootScope, value, path) {
     }
     each(
       resultEach,
-      (key2, childValue) => finalizeProperty(rootScope, state, result, key2, childValue, path, isSet2)
+      (key2, childValue) => finalizeProperty(
+        rootScope,
+        state,
+        result,
+        key2,
+        childValue,
+        path,
+        isSet2
+      ),
+      useStrictIteration
     );
     maybeFreeze(rootScope, result, false);
     if (path && rootScope.patches_) {
@@ -19088,6 +19401,16 @@ function finalize(rootScope, value, path) {
   return state.copy_;
 }
 function finalizeProperty(rootScope, parentState, targetObject, prop, childValue, rootPath, targetIsSet) {
+  if (childValue == null) {
+    return;
+  }
+  if (typeof childValue !== "object" && !targetIsSet) {
+    return;
+  }
+  const childIsFrozen = isFrozen(childValue);
+  if (childIsFrozen && !targetIsSet) {
+    return;
+  }
   if (isDraft(childValue)) {
     const path = rootPath && parentState && parentState.type_ !== 3 && // Set objects are atomic since they have no keys.
     !has(parentState.assigned_, prop) ? rootPath.concat(prop) : void 0;
@@ -19100,8 +19423,11 @@ function finalizeProperty(rootScope, parentState, targetObject, prop, childValue
   } else if (targetIsSet) {
     targetObject.add(childValue);
   }
-  if (isDraftable(childValue) && !isFrozen(childValue)) {
+  if (isDraftable(childValue) && !childIsFrozen) {
     if (!rootScope.immer_.autoFreeze_ && rootScope.unfinalizedDrafts_ < 1) {
+      return;
+    }
+    if (parentState && parentState.base_ && parentState.base_[prop] === childValue && childIsFrozen) {
       return;
     }
     finalize(rootScope, childValue);
@@ -19296,6 +19622,7 @@ var Immer2 = class {
   constructor(config) {
     this.autoFreeze_ = true;
     this.useStrictShallowCopy_ = false;
+    this.useStrictIteration_ = true;
     this.produce = (base, recipe, patchListener) => {
       if (typeof base === "function" && typeof recipe !== "function") {
         const defaultBase = recipe;
@@ -19358,6 +19685,8 @@ var Immer2 = class {
       this.setAutoFreeze(config.autoFreeze);
     if (typeof config?.useStrictShallowCopy === "boolean")
       this.setUseStrictShallowCopy(config.useStrictShallowCopy);
+    if (typeof config?.useStrictIteration === "boolean")
+      this.setUseStrictIteration(config.useStrictIteration);
   }
   createDraft(base) {
     if (!isDraftable(base))
@@ -19393,6 +19722,18 @@ var Immer2 = class {
    */
   setUseStrictShallowCopy(value) {
     this.useStrictShallowCopy_ = value;
+  }
+  /**
+   * Pass false to use faster iteration that skips non-enumerable properties
+   * but still handles symbols for compatibility.
+   *
+   * By default, strict iteration is enabled (includes all own properties).
+   */
+  setUseStrictIteration(value) {
+    this.useStrictIteration_ = value;
+  }
+  shouldUseStrictIteration() {
+    return this.useStrictIteration_;
   }
   applyPatches(base, patches) {
     let i;
@@ -19432,17 +19773,23 @@ function currentImpl(value) {
     return value;
   const state = value[DRAFT_STATE];
   let copy;
+  let strict = true;
   if (state) {
     if (!state.modified_)
       return state.base_;
     state.finalized_ = true;
     copy = shallowCopy(value, state.scope_.immer_.useStrictShallowCopy_);
+    strict = state.scope_.immer_.shouldUseStrictIteration();
   } else {
     copy = shallowCopy(value, true);
   }
-  each(copy, (key2, childValue) => {
-    set(copy, key2, currentImpl(childValue));
-  });
+  each(
+    copy,
+    (key2, childValue) => {
+      set(copy, key2, currentImpl(childValue));
+    },
+    strict
+  );
   if (state) {
     state.finalized_ = false;
   }
@@ -21446,7 +21793,7 @@ var ModuleRegistry = class {
     }
   }
 };
-var VERSION = "34.3.0";
+var VERSION = "34.3.1";
 var MAX_URL_LENGTH = 2e3;
 var MIN_PARAM_LENGTH = 100;
 var VERSION_PARAM_NAME = "_version_";
@@ -50012,7 +50359,8 @@ function _createEditorParams(beans, position, key2, cellStartedEdit) {
   const agColumn = beans.colModel.getCol(position.column.getId());
   const { rowNode, column: column2 } = position;
   const editor = cellCtrl.comp?.getCellEditor();
-  const initialNewValue = editSvc?.getCellDataValue(position, false) ?? (editor ? _valueFromEditor(beans, editor)?.editorValue : void 0);
+  const cellDataValue = editSvc?.getCellDataValue(position, false);
+  const initialNewValue = cellDataValue === void 0 ? editor ? _valueFromEditor(beans, editor)?.editorValue : void 0 : cellDataValue;
   const value = initialNewValue === UNEDITED ? valueSvc.getValueForDisplay(agColumn, rowNode)?.value : initialNewValue;
   return _addGridCommonParams(gos, {
     value: enableGroupEditing ? initialNewValue : value,
@@ -65878,14 +66226,20 @@ var FullRowEditStrategy = class extends BaseEditStrategy {
     if (this.rowNode !== rowNode) {
       super.cleanupEditors(position);
     }
-    this.dispatchRowEvent({ rowNode }, "rowEditingStarted", silent);
-    this.startedRows.push(rowNode);
     const columns = this.beans.visibleCols.allCols;
     const cells = [];
+    const editableColumns = [];
     for (const column2 of columns) {
-      if (!column2.isCellEditable(rowNode)) {
-        continue;
+      if (column2.isCellEditable(rowNode)) {
+        editableColumns.push(column2);
       }
+    }
+    if (editableColumns.length == 0) {
+      return;
+    }
+    this.dispatchRowEvent({ rowNode }, "rowEditingStarted", silent);
+    this.startedRows.push(rowNode);
+    for (const column2 of editableColumns) {
       const position2 = {
         rowNode,
         column: column2

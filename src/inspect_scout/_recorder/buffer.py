@@ -10,6 +10,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.appdirs import inspect_data_dir
+from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
 from upath import UPath
 
@@ -334,7 +335,7 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
 
 def read_scan_errors(error_file: str) -> list[Error]:
     try:
-        with open(error_file, "r") as f:
+        with file(error_file, "r") as f:
             errors: list[Error] = []
             reader = jsonlines.Reader(f)
             for error in reader.iter(type=dict):
@@ -346,7 +347,8 @@ def read_scan_errors(error_file: str) -> list[Error]:
 
 def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> Summary:
     try:
-        with open(scan_dir.joinpath(SCAN_SUMMARY).as_posix(), "r") as f:
+        scan_summary = scan_dir.joinpath(SCAN_SUMMARY)
+        with file(scan_summary.as_posix(), "r") as f:
             summary = f.read().strip()
             if summary:
                 return Summary.model_validate_json(summary)

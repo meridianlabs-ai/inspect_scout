@@ -271,6 +271,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#creating-a-scanner" id="toc-creating-a-scanner" class="nav-link" data-scroll-target="#creating-a-scanner">Creating a Scanner</a></li>
   <li><a href="#running-a-scan" id="toc-running-a-scan" class="nav-link" data-scroll-target="#running-a-scan">Running a Scan</a></li>
+  <li><a href="#transcript-metadata" id="toc-transcript-metadata" class="nav-link" data-scroll-target="#transcript-metadata">Transcript Metadata</a></li>
   <li><a href="#adding-a-scanner" id="toc-adding-a-scanner" class="nav-link" data-scroll-target="#adding-a-scanner">Adding a Scanner</a></li>
   <li><a href="#scan-jobs" id="toc-scan-jobs" class="nav-link" data-scroll-target="#scan-jobs">Scan Jobs</a></li>
   <li><a href="#scan-results" id="toc-scan-results" class="nav-link" data-scroll-target="#scan-results">Scan Results</a></li>
@@ -406,22 +407,32 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>We can now run that scanner on our log files. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> will be called once for each sample trajectory in the log (total samples * epochs):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">--transcripts</span> ./logs <span class="at">-model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
+<section id="transcript-metadata" class="level3">
+<h3 class="anchored" data-anchor-id="transcript-metadata">Transcript Metadata</h3>
+<p>In the example above we used only the <code>transcript.messages</code> field. If your scanner needs to access additional metadata about the sample it is processing (e.g.&nbsp;id, epoch, metadata, tags, score, etc.) you can use the <code>transcript.metadata</code> field. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>transcript.metadata.sample_id        <span class="co"># sample uuid </span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>transcript.metadata.<span class="bu">id</span>               <span class="co"># dataset sample id </span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>transcript.metadata.epoch            <span class="co"># sample epoch</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>transcript.metadata.sample_metadata  <span class="co"># sample metadata</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>transcript.metadata.score            <span class="co"># sample score </span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#logmetadata">LogMetadata</a></span> class for details on all of the fields included in <code>transcript.metadata</code>.</p>
+</section>
 <section id="adding-a-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="adding-a-scanner">Adding a Scanner</h3>
 <p>Let’s add another scanner that looks for uses of Java in tool calls:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(events<span class="op">=</span>[<span class="st">"tool"</span>]) </span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> java_tool_usages() <span class="op">-&gt;</span> Scanner[ToolEvent]:</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(event: ToolEvent) <span class="op">-&gt;</span> Result:</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="st">"java"</span> <span class="kw">in</span> <span class="bu">str</span>(event.arguments).lower():</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>                value<span class="op">=</span><span class="va">True</span>, </span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>                explanation<span class="op">=</span><span class="bu">str</span>(event.arguments)</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>)</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>       </span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(events<span class="op">=</span>[<span class="st">"tool"</span>]) </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> java_tool_usages() <span class="op">-&gt;</span> Scanner[ToolEvent]:</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(event: ToolEvent) <span class="op">-&gt;</span> Result:</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="st">"java"</span> <span class="kw">in</span> <span class="bu">str</span>(event.arguments).lower():</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>                value<span class="op">=</span><span class="va">True</span>, </span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>                explanation<span class="op">=</span><span class="bu">str</span>(event.arguments)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>       </span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Note that we specify <code>events=["tool"]</code> to constrain reading to only tool events, and that our function takes an individual event rather than a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>.</p>
 <p>If you add this scanner to the same source file as the <code>ctf_environment()</code> scanner then <code>scout scan</code> will run both of the scanners using the same <code>scout scan scanner.py</code> command,</p>
 <p>See the <a href="./scanners.html">Scanners</a> article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.</p>
@@ -434,59 +445,59 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-with-filename-file">
 <pre><strong>scanner.py</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-filename="scanner.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ScanJob, scanjob</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> job() <span class="op">-&gt;</span> ScanJob:</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        scanners<span class="op">=</span>[ctf_environment(), java_tool_usages()],</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        transcripts<span class="op">=</span><span class="st">"./logs"</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        model<span class="op">=</span><span class="st">"openai/gpt-5"</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename="scanner.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ScanJob, scanjob</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> job() <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        scanners<span class="op">=</span>[ctf_environment(), java_tool_usages()],</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        transcripts<span class="op">=</span><span class="st">"./logs"</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        model<span class="op">=</span><span class="st">"openai/gpt-5"</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>You can then use the same command to run the job (<code>scout scan</code> will prefer a <span class="citation" data-cites="scanjob">@scanjob</span> defined in a file to individual scanners):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>You can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>scan.yaml</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="scan.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">scanners</span><span class="kw">:</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> deception</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">file</span><span class="kw">:</span><span class="at"> scanner.py</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> java_tool_usages</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">file</span><span class="kw">:</span><span class="at"> scanner.py</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">transcripts</span><span class="kw">:</span><span class="at"> logs</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/gpt-5</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-filename="scan.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">scanners</span><span class="kw">:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> deception</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">file</span><span class="kw">:</span><span class="at"> scanner.py</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> java_tool_usages</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">file</span><span class="kw">:</span><span class="at"> scanner.py</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">transcripts</span><span class="kw">:</span><span class="at"> logs</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/gpt-5</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Which can be executed with:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scan.yaml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scan.yaml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="scan-results" class="level3">
 <h3 class="anchored" data-anchor-id="scan-results">Scan Results</h3>
 <p>By default, the results of scans are written into the <code>./scans</code> directory. You can override this using the <code>--results</code> option—both file paths and S3 buckets are supported.</p>
 <p>Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database (there will be a table for each scanner).</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># results as pandas data frames</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co"># results as duckdb database </span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_db(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> results:</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># run queries to read data frames</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> results.conn.execute(<span class="st">"SELECT ..."</span>).fetch_df()</span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># results as pandas data frames</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="co"># results as duckdb database </span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_db(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> results:</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># run queries to read data frames</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> results.conn.execute(<span class="st">"SELECT ..."</span>).fetch_df()</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="./results.html">Results</a> article for more details on the columns available in the data frames returned by <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results">scan_results()</a></span>.</p>
 </section>
 <section id="handling-errors" class="level3">
 <h3 class="anchored" data-anchor-id="handling-errors">Handling Errors</h3>
 <p>If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the <code>scan resume</code> command. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan resume <span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan resume <span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with <code>scan resume</code> or complete the scan (ignoring errors) with <code>scan complete</code>:</p>
 <p><img src="images/scan-resume.png" class="img-fluid"></p>
 </section>
@@ -494,44 +505,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="transcripts" class="level2">
 <h2 class="anchored" data-anchor-id="transcripts">Transcripts</h2>
 <p>In the example(s) above we scanned the samples from a single Inspect log file. More commonly though you’ll target an entire log directory or a subset of logs in that directory. For example, here we scan all of Cybench logs in the <code>./logs</code> directory:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> scan, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(<span class="st">"./logs"</span>)</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>status <span class="op">=</span> scan(</span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    scanners <span class="op">=</span> [ctf_environment(), tool_errors()],</span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts</span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> scan, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(<span class="st">"./logs"</span>)</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>status <span class="op">=</span> scan(</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    scanners <span class="op">=</span> [ctf_environment(), tool_errors()],</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The <code>log_metadata</code> object (aliased to <code>m</code>) provides a typed way to specified <code>where()</code> clauses for filtering transcripts.</p>
 <p>Note that doing this query required us to switch to the Python <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> API. We can still use the CLI if we wrap our transcript query in a <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scanjob">ScanJob</a></span>:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>cybench_scan.py</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from_logs(logs)</span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts</span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from_logs, log_metadata <span class="im">as</span> m</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from_logs(logs)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Then from the CLI:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The <code>-S</code> argument enables you to pass arguments to the <code>@scanjob</code> function (in this case determining what directory to read logs from).</p>
 <p>See the article on <a href="./transcripts.html">Transcripts</a> to learn more about the various ways to read and filter transcripts.</p>
 </section>

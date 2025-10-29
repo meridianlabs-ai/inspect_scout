@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, TypeVar, override
+from typing import Any, TypeVar
 
 import anyio
 import uvicorn
@@ -18,6 +18,7 @@ from inspect_scout._scanlist import scan_list_async
 from inspect_scout._scanresults import scan_results
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
+from typing_extensions import override
 from upath import UPath
 
 

@@ -125,11 +125,11 @@ processing (e.g. id, epoch, metadata, tags, score, etc.) you can use the
 `transcript.metadata` field. For example:
 
 ``` python
-transcript.metadata.sample_id        # sample uuid 
-transcript.metadata.id               # dataset sample id 
-transcript.metadata.epoch            # sample epoch
-transcript.metadata.sample_metadata  # sample metadata
-transcript.metadata.score            # sample score 
+transcript.metadata["sample_id"]        # sample uuid 
+transcript.metadata["id"]               # dataset sample id 
+transcript.metadata["epoch"]            # sample epoch
+transcript.metadata["sample_metadata"]  # sample metadata
+transcript.metadata["score"]            # sample score 
 ```
 
 See the `LogMetadata` class for details on all of the fields included in

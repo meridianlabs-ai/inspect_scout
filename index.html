@@ -410,11 +410,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="transcript-metadata" class="level3">
 <h3 class="anchored" data-anchor-id="transcript-metadata">Transcript Metadata</h3>
 <p>In the example above we used only the <code>transcript.messages</code> field. If your scanner needs to access additional metadata about the sample it is processing (e.g.&nbsp;id, epoch, metadata, tags, score, etc.) you can use the <code>transcript.metadata</code> field. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>transcript.metadata.sample_id        <span class="co"># sample uuid </span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>transcript.metadata.<span class="bu">id</span>               <span class="co"># dataset sample id </span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>transcript.metadata.epoch            <span class="co"># sample epoch</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>transcript.metadata.sample_metadata  <span class="co"># sample metadata</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>transcript.metadata.score            <span class="co"># sample score </span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_id"</span>]        <span class="co"># sample uuid </span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"id"</span>]               <span class="co"># dataset sample id </span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"epoch"</span>]            <span class="co"># sample epoch</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_metadata"</span>]  <span class="co"># sample metadata</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"score"</span>]            <span class="co"># sample score </span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#logmetadata">LogMetadata</a></span> class for details on all of the fields included in <code>transcript.metadata</code>.</p>
 </section>
 <section id="adding-a-scanner" class="level3">

@@ -4,19 +4,19 @@ import {
   Outlet,
   useParams,
   useNavigate,
-} from "react-router-dom";
-import { useEffect, useState } from "react";
-import { ScanDetail } from "./app/scan-detail/ScanDetail";
+} from 'react-router-dom';
+import { useEffect } from 'react';
+import { ScanDetail } from './app/scan-detail/ScanDetail';
 import {
   kScansRouteUrlPattern,
   kScansWithPathRouteUrlPattern,
   kScanRouteUrlPattern,
   isValidScanPath,
   getRelativePathFromParams,
-} from "./router/url";
-import { ScanList } from "./app/scan-list/ScanList";
-import { getEmbeddedScanState } from "./utils/embeddedState";
-import { useStore } from "./state/store";
+} from './router/url';
+import { ScanList } from './app/scan-list/ScanList';
+import { getEmbeddedScanState } from './utils/embeddedState';
+import { useStore } from './state/store';
 
 // Create a layout component that handles embedded state and tracks route changes
 const AppLayout = () => {

@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from inspect_scout._scanspec import ScannerSpec
 from inspect_scout._transcript.database import transcripts_from_logs
+from inspect_scout._util.decorator import split_spec
 
 from ._scanner.scanner import Scanner
 from ._scanner.types import ScannerInput
@@ -369,6 +370,9 @@ def scanjob(
 
 
 def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None:
+    # split out name
+    file, job = split_spec(file)
+
     # compute path
     scanjob_path = Path(file).resolve()
 
@@ -385,11 +389,13 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
             # create scanjob
             load_module(scanjob_path)
             scanjob_decorators = parse_decorators(scanjob_path, "scanjob")
-            if len(scanjob_decorators) > 1:
+            if job is not None and job in [deco[0] for deco in scanjob_decorators]:
+                return scanjob_create(job, scanjob_args)
+            elif len(scanjob_decorators) > 1:
                 raise PrerequisiteError(
-                    f"More than one @scanjob decorated function found in '{file}"
+                    f"More than one @scanjob decorated function found in '{file}. Please use file@job to designate a specific job"
                 )
-            elif len(scanjob_decorators) == 1:
+            elif job is None and len(scanjob_decorators) == 1:
                 return scanjob_create(scanjob_decorators[0][0], scanjob_args)
             else:
                 return None

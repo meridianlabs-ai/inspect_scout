@@ -34,6 +34,8 @@ from inspect_ai.model._chat_message import ChatMessage
 from inspect_ai.scorer import Metric
 from typing_extensions import overload
 
+from inspect_scout._util.decorator import split_spec
+
 from .._transcript.types import (
     EventType,
     MessageType,
@@ -365,6 +367,8 @@ def metrics_for_scanner(
 def scanners_from_file(
     file: str, scanner_args: dict[str, Any]
 ) -> list[Scanner[ScannerInput]]:
+    file, job = split_spec(file)
+
     # compute path
     scanner_path = Path(file).resolve()
 
@@ -378,6 +382,10 @@ def scanners_from_file(
         load_module(scanner_path)
         scanners: list[Scanner[ScannerInput]] = []
         for decorator, _ in parse_decorators(scanner_path, "scanner"):
+            # filter by job
+            if job is not None and decorator != job:
+                continue
+
             scanner_fn = registry_lookup("scanner", decorator)
             if scanner_fn is None:
                 raise PrerequisiteError(f"{scanner_fn} was not found in the registry")

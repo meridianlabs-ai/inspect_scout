@@ -33,7 +33,7 @@ def efficiency() -> Scanner[Transcript]:
 
 
 @scanner(messages=["assistant"])
-def target_word_scanner(target_word: str) -> Scanner[ChatMessageAssistant]:
+def target_word_scanner(target_word: str = "quill") -> Scanner[ChatMessageAssistant]:
     target_word = target_word.lower()
 
     async def execute(message: ChatMessageAssistant) -> Result:

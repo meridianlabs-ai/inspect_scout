@@ -25,6 +25,8 @@ from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
 
+from inspect_scout._view.notify import view_notify_scan
+
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -586,6 +588,9 @@ async def _scan_async_inner(
 
         # report scan complete
         display().scan_complete(scan_status)
+
+        # notify view
+        view_notify_scan(scan_status.location)
 
         # return status
         return scan_status

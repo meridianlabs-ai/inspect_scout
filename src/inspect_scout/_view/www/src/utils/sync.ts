@@ -13,7 +13,7 @@ export function sleep(ms: number): Promise<void> {
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
-  options: { leading?: boolean; trailing?: boolean } = {},
+  options: { leading?: boolean; trailing?: boolean } = {}
 ): (...args: Parameters<T>) => ReturnType<T> {
   let args: Parameters<T> | null;
   let result: ReturnType<T>;
@@ -65,7 +65,7 @@ export function throttle<T extends (...args: any[]) => any>(
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
-  options: { leading?: boolean; trailing?: boolean } = {},
+  options: { leading?: boolean; trailing?: boolean } = {}
 ): (...args: Parameters<T>) => ReturnType<T> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
   let args: Parameters<T>;

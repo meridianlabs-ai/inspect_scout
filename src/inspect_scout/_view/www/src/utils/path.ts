@@ -72,8 +72,14 @@ export const ensureTrailingSlash = (path?: string): string => {
  * Handles nested subdirectories within the results directory.
  * For example: "/Users/user/scans/subdir/scan_id=123" -> "subdir/scan_id=123"
  */
-export const toRelativePath = (absolutePath: string, basePath: string): string => {
-  const normalizedResultsDir = ensureTrailingSlash(basePath).replace("file://", "");
+export const toRelativePath = (
+  absolutePath: string,
+  basePath: string
+): string => {
+  const normalizedResultsDir = ensureTrailingSlash(basePath).replace(
+    "file://",
+    ""
+  );
   const normalizedPath = absolutePath.startsWith("file://")
     ? decodeURIComponent(absolutePath.replace("file://", ""))
     : absolutePath;
@@ -90,7 +96,10 @@ export const toRelativePath = (absolutePath: string, basePath: string): string =
  * Converts a relative path to an absolute path based on the results directory.
  * For example: "subdir/scan_id=123" + "/Users/user/scans/" -> "/Users/user/scans/subdir/scan_id=123"
  */
-export const toAbsolutePath = (relativePath: string, baseDir: string): string => {
+export const toAbsolutePath = (
+  relativePath: string,
+  baseDir: string
+): string => {
   const normalizedResultsDir = ensureTrailingSlash(baseDir);
   return normalizedResultsDir + relativePath;
 };

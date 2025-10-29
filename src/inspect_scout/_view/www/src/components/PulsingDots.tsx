@@ -26,7 +26,7 @@ export const PulsingDots: FC<PulsingDotsProps> = ({
           : size === "medium"
             ? styles.medium
             : styles.large,
-        className,
+        className
       )}
       role="status"
     >
@@ -36,7 +36,7 @@ export const PulsingDots: FC<PulsingDotsProps> = ({
             key={`dot-${index}`}
             className={clsx(
               styles.dot,
-              subtle ? styles.subtle : styles.primary,
+              subtle ? styles.subtle : styles.primary
             )}
             style={{ animationDelay: `${index * 0.2}s` }}
           />

@@ -1,5 +1,5 @@
-import JSON5 from 'json5';
-import { basename, dirname } from './path';
+import JSON5 from "json5";
+import { basename, dirname } from "./path";
 
 export interface EmbeddedScanState {
   dir: string;
@@ -12,7 +12,7 @@ export interface EmbeddedScanState {
  */
 export function getEmbeddedScanState(): EmbeddedScanState | null {
   const embeddedState = document.getElementById(
-    'scanview-state'
+    "scanview-state"
   ) as HTMLScriptElement | null;
 
   if (!embeddedState || !embeddedState.textContent) {
@@ -24,14 +24,14 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
       embeddedState.textContent
     );
 
-    if (state.type === 'updateState' && state.url) {
+    if (state.type === "updateState" && state.url) {
       const url = state.url;
       const dir = dirname(url);
       const scan = basename(url);
       return { dir, scan };
     }
   } catch (error) {
-    console.error('Failed to parse embedded state:', error);
+    console.error("Failed to parse embedded state:", error);
   }
 
   return null;

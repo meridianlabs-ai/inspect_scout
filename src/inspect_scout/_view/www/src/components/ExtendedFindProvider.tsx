@@ -1,9 +1,9 @@
-import { ReactNode, useCallback, useRef } from 'react';
+import { ReactNode, useCallback, useRef } from "react";
 import {
   ExtendedFindContext,
   ExtendedFindContextType,
   ExtendedFindFn,
-} from './ExtendedFindContext';
+} from "./ExtendedFindContext";
 
 interface ExtendedFindProviderProps {
   children: ReactNode;
@@ -21,7 +21,7 @@ export const ExtendedFindProvider = ({
   const extendedFindTerm = useCallback(
     async (
       term: string,
-      direction: 'forward' | 'backward'
+      direction: "forward" | "backward"
     ): Promise<boolean> => {
       // Try each registered virtual list
       for (const [, searchFn] of virtualLists.current) {

@@ -12,20 +12,11 @@ export function useProperty<T>(
   const defaultValue = options?.defaultValue;
   const cleanup = options?.cleanup ?? true;
 
-  const setPropertyValue = useStore(
-    (state) => state.setPropertyValue
-  );
-  const removePropertyValue = useStore(
-    (state) => state.removePropertyValue
-  );
+  const setPropertyValue = useStore((state) => state.setPropertyValue);
+  const removePropertyValue = useStore((state) => state.removePropertyValue);
   const propertyValue = useStore(
     useCallback(
-      (state) =>
-        state.getPropertyValue(
-          id,
-          propertyName,
-          defaultValue
-        ),
+      (state) => state.getPropertyValue(id, propertyName, defaultValue),
       [id, propertyName, defaultValue]
     )
   );

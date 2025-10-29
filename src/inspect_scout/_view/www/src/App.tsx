@@ -9,10 +9,10 @@ export interface AppProps {
   api: ScanApi;
 }
 
-export const App: FC<AppProps> = ({api}) => {
+export const App: FC<AppProps> = ({ api }) => {
   useEffect(() => {
     useStore.getState().setApi(api);
-  }, [api])
+  }, [api]);
 
   return <RouterProvider router={AppRouter} />;
 };

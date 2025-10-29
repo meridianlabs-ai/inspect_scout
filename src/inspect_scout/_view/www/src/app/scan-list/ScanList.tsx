@@ -1,15 +1,15 @@
-import { FC, useEffect } from 'react';
-import { useStore } from '../../state/store';
-import { Navbar } from '../navbar/Navbar';
-import { ExtendedFindProvider } from '../../components/ExtendedFindProvider';
-import { ScansGrid } from './ScansGrid';
-import { ActivityBar } from '../../components/ActivityBar';
+import { FC, useEffect } from "react";
+import { useStore } from "../../state/store";
+import { Navbar } from "../navbar/Navbar";
+import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { ScansGrid } from "./ScansGrid";
+import { ActivityBar } from "../../components/ActivityBar";
 
 export const ScanList: FC = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);
-  const loading = useStore((state) => state.loading)
+  const loading = useStore((state) => state.loading);
 
   useEffect(() => {
     const fetchScans = async () => {

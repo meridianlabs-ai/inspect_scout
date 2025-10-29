@@ -13,7 +13,7 @@ interface TruncatedBreadcrumbs {
 
 export const useBreadcrumbTruncation = (
   segments: BreadcrumbSegment[],
-  containerRef: RefObject<HTMLElement | null>,
+  containerRef: RefObject<HTMLElement | null>
 ): TruncatedBreadcrumbs => {
   const [truncatedData, setTruncatedData] = useState<TruncatedBreadcrumbs>({
     visibleSegments: segments,

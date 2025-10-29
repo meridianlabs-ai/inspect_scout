@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext } from "react";
 
 // The search context provides global search assistance. We generally use the
 // browser to perform searches using 'find', but this allows for virtual lists
@@ -9,7 +9,7 @@ import { createContext, useContext } from 'react';
 // Find will call this when an extended find is requested
 export type ExtendedFindFn = (
   term: string,
-  direction: 'forward' | 'backward',
+  direction: "forward" | "backward",
   onContentReady: () => void
 ) => Promise<boolean>;
 
@@ -18,7 +18,7 @@ export type ExtendedFindFn = (
 export interface ExtendedFindContextType {
   extendedFindTerm: (
     term: string,
-    direction: 'forward' | 'backward'
+    direction: "forward" | "backward"
   ) => Promise<boolean>;
   registerVirtualList: (id: string, searchFn: ExtendedFindFn) => () => void;
 }
@@ -29,7 +29,7 @@ export const ExtendedFindContext =
 export const useExtendedFind = (): ExtendedFindContextType => {
   const context = useContext(ExtendedFindContext);
   if (!context) {
-    throw new Error('useSearch must be used within a SearchProvider');
+    throw new Error("useSearch must be used within a SearchProvider");
   }
   return context;
 };

@@ -60,13 +60,13 @@ export const kJsonRpcInternalError = -32603;
 export const kJsonRpcVersion = "2.0";
 
 export function webViewJsonRpcClient(
-  vscode: VSCodeApi,
+  vscode: VSCodeApi
 ): (method: string, params?: any) => Promise<any> {
   const target: PostMessageTarget = {
     postMessage: (data: any) => {
       vscode.postMessage(data);
     },
-    onMessage: (handler: (data: any) => void) => {      
+    onMessage: (handler: (data: any) => void) => {
       const onMessage = (ev: MessageEvent) => {
         handler(ev.data);
       };
@@ -82,7 +82,7 @@ export function webViewJsonRpcClient(
 export function jsonRpcError(
   message: string,
   data?: any,
-  code?: number,
+  code?: number
 ): JsonRpcError {
   if (typeof data === "string") {
     data = {
@@ -145,7 +145,7 @@ export function jsonRpcPostMessageServer(
   target: PostMessageTarget,
   methods:
     | { [key: string]: (params: any) => Promise<any> }
-    | ((name: string) => ((params: any) => Promise<any>) | undefined),
+    | ((name: string) => ((params: any) => Promise<any>) | undefined)
 ): () => void {
   const lookupMethod =
     typeof methods === "function" ? methods : (name: string) => methods[name];
@@ -208,7 +208,7 @@ function asJsonRpcResponse(data: any): JsonRpcResponse | null {
 
 function jsonRpcResponse(
   request: JsonRpcRequest,
-  result: any,
+  result: any
 ): JsonRpcResponse {
   return {
     jsonrpc: request.jsonrpc,
@@ -220,7 +220,7 @@ function jsonRpcResponse(
 function jsonRpcErrorResponse(
   request: JsonRpcRequest,
   code: number,
-  message: string,
+  message: string
 ): JsonRpcResponse {
   return {
     jsonrpc: request.jsonrpc,
@@ -233,6 +233,6 @@ function methodNotFoundResponse(request: JsonRpcRequest): JsonRpcResponse {
   return jsonRpcErrorResponse(
     request,
     kJsonRpcMethodNotFound,
-    `Method '${request.method}' not found.`,
+    `Method '${request.method}' not found.`
   );
 }

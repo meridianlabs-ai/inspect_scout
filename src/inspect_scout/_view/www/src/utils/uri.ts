@@ -20,7 +20,7 @@ export const directoryRelativeUrl = (file: string, dir?: string): string => {
     // Split the path into segments and encode each segment
     const segments = relativePath.split("/");
     const encodedSegments = segments.map((segment) =>
-      encodeURIComponent(segment),
+      encodeURIComponent(segment)
     );
 
     // Join the encoded segments back together
@@ -65,7 +65,7 @@ export function encodePathParts(url: string): string {
     fullUrl.pathname = fullUrl.pathname
       .split("/")
       .map((segment) =>
-        segment ? encodeURIComponent(decodeURIComponent(segment)) : "",
+        segment ? encodeURIComponent(decodeURIComponent(segment)) : ""
       )
       .join("/");
     return fullUrl.toString();
@@ -74,7 +74,7 @@ export function encodePathParts(url: string): string {
     return url
       .split("/")
       .map((segment) =>
-        segment ? encodeURIComponent(decodeURIComponent(segment)) : "",
+        segment ? encodeURIComponent(decodeURIComponent(segment)) : ""
       )
       .join("/");
   }

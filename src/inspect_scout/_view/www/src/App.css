@@ -186,8 +186,8 @@ body[class^="vscode-"] {
 }
 
 body {
-    --ag-background-color: var(--bs-body-bg);
-    --ag-foreground-color: var(--bs-body-color);
+  --ag-background-color: var(--bs-body-bg);
+  --ag-foreground-color: var(--bs-body-color);
 }
 
 html.vscode {

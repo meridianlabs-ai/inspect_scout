@@ -12,26 +12,25 @@ export function useStatefulScrollPosition<
   elementRef: RefObject<T | null>,
   elementKey: string,
   delay = 1000,
-  scrollable = true,
+  scrollable = true
 ) {
-  const getScrollPosition = useStore(
-    (state) => state.getScrollPosition,
-  );
-  const setScrollPosition = useStore(
-    (state) => state.setScrollPosition,
-  );
+  const getScrollPosition = useStore((state) => state.getScrollPosition);
+  const setScrollPosition = useStore((state) => state.setScrollPosition);
 
   // Create debounced scroll handler
-  const handleScrollInner = useCallback((e: Event) => {
-    const target = e.target as HTMLElement;
-    const position = target.scrollTop;
-    log.debug(`Storing scroll position`, elementKey, position);
-    setScrollPosition(elementKey, position);
-  }, [elementKey, setScrollPosition]);
+  const handleScrollInner = useCallback(
+    (e: Event) => {
+      const target = e.target as HTMLElement;
+      const position = target.scrollTop;
+      log.debug(`Storing scroll position`, elementKey, position);
+      setScrollPosition(elementKey, position);
+    },
+    [elementKey, setScrollPosition]
+  );
 
   const handleScroll = useMemo(
     () => debounce(handleScrollInner, delay),
-    [handleScrollInner, delay],
+    [handleScrollInner, delay]
   );
 
   // Function to manually restore scroll position
@@ -89,7 +88,7 @@ export function useStatefulScrollPosition<
             // Either success or max attempts reached
             if (attempts >= maxAttempts) {
               log.debug(
-                `Failed to restore scroll after ${maxAttempts} attempts`,
+                `Failed to restore scroll after ${maxAttempts} attempts`
               );
             }
             return;
@@ -134,19 +133,18 @@ type DebouncedFunction<T extends (...args: any[]) => any> = T & {
 export const useVirtuosoState = (
   virtuosoRef: RefObject<VirtuosoHandle | null>,
   elementKey: string,
-  delay = 1000,
+  delay = 1000
 ) => {
-  
   const restoreState = useStore(
-    useCallback((state) => state.listPositions[elementKey], [elementKey]),
+    useCallback((state) => state.listPositions[elementKey], [elementKey])
   );
 
   const setListPosition = useStore(
-    useCallback((state) => state.setListPosition, []),
+    useCallback((state) => state.setListPosition, [])
   );
 
   const clearListPosition = useStore(
-    useCallback((state) => state.clearListPosition, []),
+    useCallback((state) => state.clearListPosition, [])
   );
 
   // Properly type the debounced function ref
@@ -160,7 +158,7 @@ export const useVirtuosoState = (
       log.debug(`Storing list state: [${elementKey}]`, state);
       setListPosition(elementKey, state);
     },
-    [elementKey, setListPosition],
+    [elementKey, setListPosition]
   );
 
   // Setup the debounced function once
@@ -200,15 +198,13 @@ export const useVirtuosoState = (
 
   const getRestoreState = useCallback(() => stateRef.current, []);
 
-  const setVisibleRangeRaw = useStore(
-    (state) => state.setVisibleRange,
-  );
+  const setVisibleRangeRaw = useStore((state) => state.setVisibleRange);
 
   const setVisibleRange = useCallback(
     (value: { startIndex: number; endIndex: number }) => {
       setVisibleRangeRaw(elementKey, value);
     },
-    [setVisibleRangeRaw, elementKey],
+    [setVisibleRangeRaw, elementKey]
   );
 
   const visibleRanges = useStore((state) => state.visibleRanges);
@@ -225,9 +221,8 @@ export const useVirtuosoState = (
 };
 
 export function useRafThrottle<T extends (...args: any[]) => any>(
-  callback: T,
+  callback: T
 ): (...args: Parameters<T>) => void {
-
   const rafRef = useRef<number | null>(null);
   const callbackRef = useRef<T>(callback);
 
@@ -265,7 +260,7 @@ export function useScrollTrack(
   elementIds: string[],
   onElementVisible: (id: string) => void,
   scrollRef?: RefObject<HTMLElement | null>,
-  options?: { topOffset?: number; checkInterval?: number },
+  options?: { topOffset?: number; checkInterval?: number }
 ) {
   const currentVisibleRef = useRef<string | null>(null);
   const lastCheckRef = useRef<number>(0);

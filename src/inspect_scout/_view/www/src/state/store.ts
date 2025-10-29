@@ -1,10 +1,10 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
-import { Scan } from '../types';
-import { ScanApi } from '../api/api';
-import { StateSnapshot } from 'react-virtuoso';
-import { GridState } from 'ag-grid-community';
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
+import { Scan } from "../types";
+import { ScanApi } from "../api/api";
+import { StateSnapshot } from "react-virtuoso";
+import { GridState } from "ag-grid-community";
 
 interface StoreState {
   api?: ScanApi;
@@ -216,7 +216,7 @@ export const useStore = create<StoreState>()(
         },
       })),
       {
-        name: 'inspect-scout-storage',
+        name: "inspect-scout-storage",
         partialize: (state) => ({
           scans: state.scans,
           selectedScanLocation: state.selectedScanLocation,

@@ -81,7 +81,7 @@ export const LiveVirtualList = <T,>({
     "follow",
     {
       defaultValue: null,
-    },
+    }
   );
   const isAutoScrollingRef = useRef(false);
 
@@ -142,7 +142,7 @@ export const LiveVirtualList = <T,>({
         }
       });
     },
-    [followOutput, live, scrollRef, listHandle],
+    [followOutput, live, scrollRef, listHandle]
   );
 
   const [, forceRender] = useState({});
@@ -171,7 +171,7 @@ export const LiveVirtualList = <T,>({
         return false;
       }
     },
-    [],
+    []
   );
 
   // Search in data function
@@ -179,8 +179,8 @@ export const LiveVirtualList = <T,>({
     async (
       term: string,
       direction: "forward" | "backward",
-      onContentReady: () => void,
-    // eslint-disable-next-line @typescript-eslint/require-await
+      onContentReady: () => void
+      // eslint-disable-next-line @typescript-eslint/require-await
     ) => {
       if (!data.length || !term) return false;
 
@@ -212,7 +212,14 @@ export const LiveVirtualList = <T,>({
 
       return false;
     },
-    [data, searchInItem, defaultSearchInItem, visibleRange.endIndex, visibleRange.startIndex, listHandle],
+    [
+      data,
+      searchInItem,
+      defaultSearchInItem,
+      visibleRange.endIndex,
+      visibleRange.startIndex,
+      listHandle,
+    ]
   );
 
   // Register with search context
@@ -275,7 +282,7 @@ export const LiveVirtualList = <T,>({
       // Also call the original isScrolling callback from useVirtuosoState
       isScrolling(scrolling);
     },
-    [isScrolling],
+    [isScrolling]
   );
 
   return (

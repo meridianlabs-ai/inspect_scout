@@ -2,28 +2,28 @@ import type {
   ColDef,
   RowClickedEvent,
   StateUpdatedEvent,
-} from 'ag-grid-community';
+} from "ag-grid-community";
 import {
   AllCommunityModule,
   ModuleRegistry,
   themeBalham,
-} from 'ag-grid-community';
-import { AgGridReact } from 'ag-grid-react';
-import { FC, useMemo } from 'react';
-import { useStore } from '../../state/store';
+} from "ag-grid-community";
+import { AgGridReact } from "ag-grid-react";
+import { FC, useMemo } from "react";
+import { useStore } from "../../state/store";
 
-import styles from './ScansGrid.module.css';
-import { useNavigate, useParams } from 'react-router-dom';
-import { dirname, toRelativePath } from '../../utils/path';
-import { getRelativePathFromParams } from '../../router/url';
+import styles from "./ScansGrid.module.css";
+import { useNavigate, useParams } from "react-router-dom";
+import { dirname, toRelativePath } from "../../utils/path";
+import { getRelativePathFromParams } from "../../router/url";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const GRID_STATE_NAME = 'ScansGrid';
+const GRID_STATE_NAME = "ScansGrid";
 
 interface ScanRow {
-  status: 'incomplete' | 'complete' | 'error';
+  status: "incomplete" | "complete" | "error";
   icon: string;
   model: string;
   timestamp: string;
@@ -35,7 +35,7 @@ interface ScanRow {
 }
 
 export const ScansGrid: FC = () => {
-  const params = useParams<{ '*': string }>();
+  const params = useParams<{ "*": string }>();
   const paramsRelativePath = getRelativePathFromParams(params);
 
   const scans = useStore((state) => state.scans);
@@ -56,44 +56,44 @@ export const ScansGrid: FC = () => {
     const rows: ScanRow[] = [];
 
     scans.forEach((scan) => {
-      const relativeLocation = toRelativePath(scan.location, resultsDir || '');
+      const relativeLocation = toRelativePath(scan.location, resultsDir || "");
 
       const dir = dirname(relativeLocation);
-        if (dir === paramsRelativePath) {
-          const row: ScanRow = {
-            icon: scan.errors.length > 1 ? '❌' : scan.complete ? '✅' : '⏳',
-            timestamp: scan.spec.timestamp,
-            location: scan.location,
-            relativeLocation: relativeLocation,
-            scanId: scan.spec.scan_id,
-            scanName: scan.spec.scan_name,
-            model: scan.spec.model.model,
-            status:
-              scan.errors.length > 1
-                ? 'error'
-                : scan.complete
-                  ? 'complete'
-                  : 'incomplete',
-            scanners: Object.keys(scan.spec.scanners).map((s) => s),
-          };
-          rows.push(row);
-        }
+      if (dir === paramsRelativePath) {
+        const row: ScanRow = {
+          icon: scan.errors.length > 1 ? "❌" : scan.complete ? "✅" : "⏳",
+          timestamp: scan.spec.timestamp,
+          location: scan.location,
+          relativeLocation: relativeLocation,
+          scanId: scan.spec.scan_id,
+          scanName: scan.spec.scan_name,
+          model: scan.spec.model.model,
+          status:
+            scan.errors.length > 1
+              ? "error"
+              : scan.complete
+                ? "complete"
+                : "incomplete",
+          scanners: Object.keys(scan.spec.scanners).map((s) => s),
+        };
+        rows.push(row);
+      }
 
-        if (!dirs.has(dir) && dir !== '' && dir !== paramsRelativePath) {
-          dirs.add(dir);
-          const dirRow: ScanRow = {
-            timestamp: '',
-            location: '',
-            icon: '📁',
-            relativeLocation: dir,
-            scanId: '',
-            scanName: dir,
-            model: '',
-            status: 'incomplete',
-            scanners: [],
-          };
-          rows.push(dirRow);
-        }
+      if (!dirs.has(dir) && dir !== "" && dir !== paramsRelativePath) {
+        dirs.add(dir);
+        const dirRow: ScanRow = {
+          timestamp: "",
+          location: "",
+          icon: "📁",
+          relativeLocation: dir,
+          scanId: "",
+          scanName: dir,
+          model: "",
+          status: "incomplete",
+          scanners: [],
+        };
+        rows.push(dirRow);
+      }
     });
 
     return rows;
@@ -103,8 +103,8 @@ export const ScansGrid: FC = () => {
   const columnDefs = useMemo((): ColDef<ScanRow>[] => {
     const baseColumns: ColDef<ScanRow>[] = [
       {
-        field: 'icon',
-        headerName: '',
+        field: "icon",
+        headerName: "",
         initialWidth: 60,
         minWidth: 60,
         maxWidth: 60,
@@ -113,8 +113,8 @@ export const ScansGrid: FC = () => {
         resizable: true,
       },
       {
-        field: 'scanName',
-        headerName: 'Name',
+        field: "scanName",
+        headerName: "Name",
         initialWidth: 120,
         minWidth: 80,
         sortable: true,
@@ -122,8 +122,8 @@ export const ScansGrid: FC = () => {
         resizable: true,
       },
       {
-        field: 'scanId',
-        headerName: 'Scan Id',
+        field: "scanId",
+        headerName: "Scan Id",
         initialWidth: 150,
         minWidth: 100,
         sortable: true,
@@ -131,8 +131,8 @@ export const ScansGrid: FC = () => {
         resizable: true,
       },
       {
-        field: 'model',
-        headerName: 'Model',
+        field: "model",
+        headerName: "Model",
         initialWidth: 120,
         minWidth: 80,
         sortable: true,
@@ -140,18 +140,18 @@ export const ScansGrid: FC = () => {
         resizable: true,
       },
       {
-        field: 'scanners',
-        headerName: 'Scanners',
+        field: "scanners",
+        headerName: "Scanners",
         initialWidth: 120,
         minWidth: 120,
         sortable: false,
         filter: false,
         resizable: true,
-        valueFormatter: (params: { value: any[] }) => params.value.join(', '),
+        valueFormatter: (params: { value: any[] }) => params.value.join(", "),
       },
       {
-        field: 'timestamp',
-        headerName: 'Time',
+        field: "timestamp",
+        headerName: "Time",
         initialWidth: 150,
         minWidth: 100,
         sortable: true,
@@ -176,7 +176,7 @@ export const ScansGrid: FC = () => {
         suppressCellFocus={true}
         theme={themeBalham}
         enableCellTextSelection={true}
-        autoSizeStrategy={{ type: 'fitGridWidth' }}
+        autoSizeStrategy={{ type: "fitGridWidth" }}
         initialState={gridState}
         onStateUpdated={(e: StateUpdatedEvent<ScanRow>) => {
           setGridState(GRID_STATE_NAME, e.state);

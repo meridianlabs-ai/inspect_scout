@@ -1,7 +1,7 @@
 // Route URL patterns
-export const kScansRouteUrlPattern = '/scans';
-export const kScansWithPathRouteUrlPattern = '/scans/*';
-export const kScanRouteUrlPattern = '/scan/*';
+export const kScansRouteUrlPattern = "/scans";
+export const kScansWithPathRouteUrlPattern = "/scans/*";
+export const kScanRouteUrlPattern = "/scan/*";
 
 // Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
 export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
@@ -9,15 +9,15 @@ export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 // Helper functions to generate routes
 export const scanRoute = (relativePath: string) => {
   // Split the path and encode each segment separately to preserve slashes
-  const segments = relativePath.split('/').map(encodeURIComponent);
-  return `/scan/${segments.join('/')}`;
+  const segments = relativePath.split("/").map(encodeURIComponent);
+  return `/scan/${segments.join("/")}`;
 };
 
 export const scansRoute = (relativePath?: string) => {
   if (relativePath) {
     return `/scans/${encodeURIComponent(relativePath)}`;
   } else {
-    return '/scans';
+    return "/scans";
   }
 };
 
@@ -29,7 +29,7 @@ export const scansRoute = (relativePath?: string) => {
  * @returns true if the path is valid, false otherwise
  */
 export const isValidScanPath = (path: string): boolean => {
-  path = path.startsWith('/') ? path : "/" + path;
+  path = path.startsWith("/") ? path : "/" + path;
   return kScanIdPattern.test(path);
 };
 
@@ -42,7 +42,7 @@ export const isValidScanPath = (path: string): boolean => {
  * const relativePath = getRelativePathFromParams(params);
  */
 export const getRelativePathFromParams = (
-  params: Readonly<Partial<{ '*': string }>>
+  params: Readonly<Partial<{ "*": string }>>
 ): string => {
-  return params['*'] || '';
+  return params["*"] || "";
 };

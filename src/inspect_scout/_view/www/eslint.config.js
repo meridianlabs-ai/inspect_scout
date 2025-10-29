@@ -7,7 +7,7 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist/', 'node_modules/', 'build/']
+    ignores: ['dist/', 'node_modules/', 'build/', '*.config.?s'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -38,9 +38,9 @@ export default tseslint.config(
       ],
       'react/prop-types': 'off',
       // These are disabled because we didn't have time to fix them, not because they are bad rules
-      "no-unused-vars": "off",
-      "@typescript-eslint/no-explicit-any": "off",
-       "@typescript-eslint/no-unsafe-return": "off",
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
     },
     settings: {
       react: {

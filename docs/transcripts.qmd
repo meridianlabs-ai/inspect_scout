@@ -58,6 +58,10 @@ transcripts = (
 )
 ```
 
+## Transcript Fields
+
+{{< include _transcript_fields.md >}}
+
 ## Scanning Transcripts
 
 Once you have established your list of transcripts to scan, just pass them to the `scan()` function:

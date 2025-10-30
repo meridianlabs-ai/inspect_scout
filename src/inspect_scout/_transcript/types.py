@@ -45,8 +45,17 @@ class TranscriptInfo(BaseModel):
     source_uri: str
     """URI for source data (e.g. log file path)"""
 
+    score: JsonValue | None = Field(default=None)
+    """Main score assigned to transcript (optional)"""
+
+    scores: dict[str, JsonValue] = Field(default_factory=dict)
+    """All scores assigned to transcript."""
+
+    variables: dict[str, JsonValue] = Field(default_factory=dict)
+    """Variables (e.g. to be used in a prompt template) associated with transcript (e.g. sample metadata)."""
+
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
-    """e.g. eval config (model, scores, task params, etc.)."""
+    """Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.)."""
 
 
 class Transcript(TranscriptInfo):

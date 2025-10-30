@@ -97,22 +97,8 @@ Transcripts are the most common input to scanners, and are read from one or more
 
 ### Transcript Fields
 
-Each `Transcript` has the following fields:
+{{< include _transcript_fields.md >}}
 
-| Field | Type | Description |
-|------------------------|------------------------|------------------------|
-| `id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log). |
-| `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log) |
-| `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `metadata` | dict\[str, JsonValue\] | Eval configuration metadata (e.g. task, model, scores, etc.). See `LogMetadata` for details. |
-| `messages` | list\[ChatMessage\] | Message history from `EvalSample` |
-| `events` | list\[Event\] | Event history from `EvalSample` |
-
-: {tbl-colwidths=\[20,30,50\]}
-
-The `metadata` field includes fields read from eval sample metadata. For example:
-
-{{< include _transcript_metadata.md >}}
 
 ### Content Filtering
 
@@ -203,13 +189,13 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
     return scan
 ```
 
-## Scanners as Scorers
+## Scanners as Scorers {#scanners-as-scorers}
 
-You have likely certainly that scanners are very simillar to Inspect [Scorers](https://inspect.aisi.org.uk/scorers.html). This is by design, and it is actually possible to use scanners directly as Inspect scorers. 
+You have likely certainly that scanners are very simillar to Inspect [Scorers](https://inspect.aisi.org.uk/scorers.html). This is by design, and it is actually possible to use scanners directly as Inspect scorers.
 
 For example, for the `confusion()` scorer we implemented above:
 
-```python
+``` python
 @scanner(messages="all")
 def confusion() -> Scanner[Transcript]:
     
@@ -237,7 +223,7 @@ def confusion() -> Scanner[Transcript]:
 
 We can use this directly in an Inspect `Task` as follows:
 
-```python
+``` python
 from .scanners import confusion
 
 @task
@@ -250,20 +236,20 @@ def mytask():
 
 We can also use it with the `inspect score` command:
 
-```bash
+``` bash
 inspect score --scorer scanners.py@confusion <logfile.eval>
 ```
 
 The metrics used for the scorer will default to `accuracy()` and `stderr()`---however, you can also explicitly specify metrics on the `@scanner` decorator:
 
-```python
+``` python
 @scanner(messages="all", metrics=[accuracy(), bootstrap_stderr()])
 def confusion() -> Scanner[Transcript]: ...
 ```
 
 If you are interfacing with code that expects only `Scorer` instances, you can also use the `as_scorer()` function from Inspect Scout to explicitly convert your scanner to a scorer:
 
-```python
+``` python
 from inspect_ai import eval
 from inspect_scout import as_scorer
 
@@ -272,7 +258,6 @@ from .scanners import confusion
 
 eval(ctf_task(scorer=as_scorer(confusion())))
 ```
-
 
 ## Custom Loaders {#loaders}
 

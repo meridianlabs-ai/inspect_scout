@@ -89,6 +89,8 @@ def ctf_environment() -> Scanner[Transcript]:
 
 4.  As with scorers, results also include additional context (here the extracted answer and full model completion).
 
+Above we used only the `messages` field from the `transcript`, but `Transcript` includes many other fields with additional context. See  [Transcript Fields](transcripts.qmd#transcript-fields) for additional details.
+
 ### Running a Scan
 
 We can now run that scanner on our log files. The `Scanner` will be called once for each sample trajectory in the log (total samples \* epochs):
@@ -130,13 +132,6 @@ Note that we specify `events=["tool"]` to constrain reading to only tool events,
 If you add this scanner to the same source file as the `ctf_environment()` scanner then `scout scan` will run both of the scanners using the same `scout scan scanner.py` command,
 
 See the [Scanners](scanners.qmd) article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.
-
-
-### Transcript Metadata
-
-In the transcript scanner example above we used only the `transcript.messages` field. If your scanner needs to access additional metadata about the sample it is processing (e.g. id, epoch, metadata, tags, score, etc.) you can use the `transcript.metadata` field. For example:
-
-{{< include _transcript_metadata.md >}}
 
 ### Scan Jobs
 

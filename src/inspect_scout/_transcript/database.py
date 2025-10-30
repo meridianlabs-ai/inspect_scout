@@ -40,6 +40,7 @@ from inspect_ai.analysis._dataframe.util import (
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
+from pydantic import JsonValue
 from typing_extensions import override
 
 from inspect_scout._util.async_zip import AsyncZipReader
@@ -262,6 +263,14 @@ class EvalLogTranscriptsDB:
                 if column in row_dict:
                     row_dict[column] = json.loads(row_dict[column])
 
+            # extract additional fields we'll use in TranscriptInfo
+            score = row_dict.get("score", None)
+            scores: dict[str, JsonValue] = {}
+            for key, value in row_dict.items():
+                if key.startswith("score_"):
+                    scores[key.replace("score_", "", 1)] = value
+            variables = row_dict.get("sample_metadata", {})
+
             # ensure we have required fields
             if (
                 transcript_id is None
@@ -280,6 +289,9 @@ class EvalLogTranscriptsDB:
                     id=transcript_id,
                     source_id=transcript_source_id,
                     source_uri=transcript_source_uri,
+                    score=score,
+                    scores=scores,
+                    variables=variables,
                     metadata=metadata,
                 )
             )

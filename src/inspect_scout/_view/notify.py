@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from inspect_ai._util.vscode import vscode_workspace_id
+
 from inspect_scout._util.appdirs import scout_data_dir
 
 # lightweight tracking of when the last scan completed

@@ -10,7 +10,6 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -222,4 +221,4 @@ scans/
 /.luarc.json
 
 # node
-node_modules/
+/src/inspect_scout/_view/www/node_modules

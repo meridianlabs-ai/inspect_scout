@@ -1,4 +1,5 @@
 from inspect_ai._util._async import run_coroutine
+from upath import UPath
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._recorder.recorder import (
@@ -85,3 +86,9 @@ async def scan_results_db_async(scan_location: str) -> ResultsDB:
     """
     recorder = scan_recorder_type_for_location(scan_location)
     return await recorder.results_db(scan_location)
+
+
+def remove_scan_results(scan_location: str) -> None:
+    scan_path = UPath(scan_location)
+    if scan_path.exists():
+        scan_path.rmdir(recursive=True)

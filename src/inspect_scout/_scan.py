@@ -25,6 +25,7 @@ from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util._anyio import inner_exception
 from rich.console import RenderableType
 
+from inspect_scout._util.attachments import resolve_event_attachments
 from inspect_scout._view.notify import view_notify_scan
 
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
@@ -537,7 +538,9 @@ async def _scan_async_inner(
                                     input=loader_result,
                                     result=result,
                                     error=error,
-                                    events=inspect_transcript.events,
+                                    events=resolve_event_attachments(
+                                        inspect_transcript
+                                    ),
                                     model_usage=model_usage(),
                                 )
                             )

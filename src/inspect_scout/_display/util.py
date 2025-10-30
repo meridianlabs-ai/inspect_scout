@@ -1,3 +1,5 @@
+import shlex
+
 from inspect_ai._display.core.rich import rich_theme
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.registry import is_model_dict, is_registry_dict
@@ -13,12 +15,14 @@ def scan_interrupted_message(status: Status) -> str:
     theme = rich_theme()
     return (
         f"\n[bold][{theme.error}]scan interrupted, resume scan with:[/{theme.error}]\n\n"
-        + f'[bold][{theme.light}]scout scan resume "{pretty_path(status.location)}"[/{theme.light}][/bold]\n'
+        + f"[bold][{theme.light}]scout scan resume {shlex.quote(pretty_path(status.location))}[/{theme.light}][/bold]\n"
     )
 
 
 def scan_complete_message(status: Status) -> str:
-    return f'\n[bold]scan complete:[/bold] "{pretty_path(status.location)}"\n'
+    return (
+        f"\n[bold]scan complete:[/bold] {shlex.quote(pretty_path(status.location))}\n"
+    )
 
 
 def scan_errors_message(status: Status) -> str:
@@ -26,8 +30,8 @@ def scan_errors_message(status: Status) -> str:
     return "\n".join(
         [
             f"\n[bold]{len(status.errors)} scan errors occurred![/bold]\n",
-            f'Resume (retrying errors):   [bold][{theme.light}]scout scan resume "{pretty_path(status.location)}"[/{theme.light}][/bold]\n',
-            f'Complete (ignoring errors): [bold][{theme.light}]scout scan complete "{pretty_path(status.location)}"[/{theme.light}][/bold]\n',
+            f"Resume (retrying errors):   [bold][{theme.light}]scout scan resume {shlex.quote(pretty_path(status.location))}[/{theme.light}][/bold]\n",
+            f"Complete (ignoring errors): [bold][{theme.light}]scout scan complete {shlex.quote(pretty_path(status.location))}[/{theme.light}][/bold]\n",
         ]
     )
 

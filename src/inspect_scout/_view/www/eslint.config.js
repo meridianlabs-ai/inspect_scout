@@ -34,7 +34,6 @@ export default tseslint.config(
       ...reactPlugin.configs["jsx-runtime"].rules,
       ...reactHooksPlugin.configs.recommended.rules,
       ...reactRefreshPlugin.configs.recommended.rules,
-      "react/prop-types": "off",
       // We may want to remove the disables below as we see fit
       "@typescript-eslint/restrict-template-expressions": "off",
       "@typescript-eslint/no-unnecessary-type-parameters": "off",

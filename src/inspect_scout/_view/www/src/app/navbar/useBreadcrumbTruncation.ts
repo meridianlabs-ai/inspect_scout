@@ -66,6 +66,11 @@ export const useBreadcrumbTruncation = (
       const firstSegment = segments[0];
       const lastSegment = segments[segments.length - 1];
 
+      if (!firstSegment || !lastSegment) {
+        container.removeChild(testElement);
+        return;
+      }
+
       let maxVisible = 2; // Start with just first and last
 
       // Try adding segments from the end (most recent path) first

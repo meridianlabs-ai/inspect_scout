@@ -10,6 +10,10 @@ export const filename = (path: string): string => {
   const pathparts = path.split("/");
   const basename = pathparts.slice(-1)[0];
 
+  if (!basename) {
+    return "";
+  }
+
   // Special case for .hidden files
   if (basename.startsWith(".") && !basename.substring(1).includes(".")) {
     return basename;
@@ -17,7 +21,7 @@ export const filename = (path: string): string => {
 
   const match = basename.match(/(.*)\.\S+$/);
   if (match) {
-    return match[1];
+    return match[1] ?? "";
   } else {
     return path;
   }
@@ -29,7 +33,7 @@ export const basename = (path: string): string => {
   }
   path = path.endsWith("/") ? path.slice(0, -1) : path;
   const pathparts = path.split("/");
-  return pathparts.slice(-1)[0];
+  return pathparts.slice(-1)[0] ?? "";
 };
 
 /**

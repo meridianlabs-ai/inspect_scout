@@ -215,8 +215,6 @@ export const useVirtuosoState = (
   const visibleRanges = useStore((state) => state.visibleRanges);
   const visibleRange = useMemo(() => {
     return (
-      // TODO: We need to turn on noUncheckedIndexedAccess
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       visibleRanges[elementKey] || {
         startIndex: 0,
         endIndex: 0,

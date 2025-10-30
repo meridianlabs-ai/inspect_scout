@@ -96,8 +96,6 @@ export const useStore = create<StoreState>()(
 
         setPropertyValue<T>(id: string, propertyName: string, value: T) {
           set((state) => {
-            // TODO: We need to turn on noUncheckedIndexedAccess
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!state.properties[id]) {
               state.properties[id] = {};
             }
@@ -110,16 +108,12 @@ export const useStore = create<StoreState>()(
           propertyName: string,
           defaultValue: T
         ): T | undefined {
-          // TODO: We need to turn on noUncheckedIndexedAccess
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const value = get().properties[id]?.[propertyName];
           return value !== undefined ? (value as T) : defaultValue;
         },
 
         removePropertyValue(id: string, propertyName: string) {
           set((state) => {
-            // TODO: We need to turn on noUncheckedIndexedAccess
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (state.properties[id]) {
               // TODO: Revisit
               // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
@@ -163,12 +157,7 @@ export const useStore = create<StoreState>()(
           });
         },
         getVisibleRange: (name: string) => {
-          const state = get();
-          if (Object.keys(state.visibleRanges).includes(name)) {
-            return state.visibleRanges[name];
-          } else {
-            return { startIndex: 0, endIndex: 0 };
-          }
+          return get().visibleRanges[name] ?? { startIndex: 0, endIndex: 0 };
         },
         setVisibleRange: (
           name: string,

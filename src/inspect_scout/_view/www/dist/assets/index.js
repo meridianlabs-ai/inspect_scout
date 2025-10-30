@@ -19883,12 +19883,7 @@ const useStore = create()(
           });
         },
         getVisibleRange: (name) => {
-          const state = get();
-          if (Object.keys(state.visibleRanges).includes(name)) {
-            return state.visibleRanges[name];
-          } else {
-            return { startIndex: 0, endIndex: 0 };
-          }
+          return get().visibleRanges[name] ?? { startIndex: 0, endIndex: 0 };
         },
         setVisibleRange: (name, value) => {
           set2((state) => {
@@ -19970,7 +19965,7 @@ const basename = (path) => {
   }
   path = path.endsWith("/") ? path.slice(0, -1) : path;
   const pathparts = path.split("/");
-  return pathparts.slice(-1)[0];
+  return pathparts.slice(-1)[0] ?? "";
 };
 const dirname = (path) => {
   path = path.endsWith("/") ? path.slice(0, -1) : path;
@@ -20061,6 +20056,10 @@ const useBreadcrumbTruncation = (segments, containerRef) => {
       }
       const firstSegment = segments[0];
       const lastSegment = segments[segments.length - 1];
+      if (!firstSegment || !lastSegment) {
+        container2.removeChild(testElement);
+        return;
+      }
       let maxVisible = 2;
       for (let endCount = 1; endCount < segments.length - 1; endCount++) {
         const candidateSegments = [
@@ -77131,7 +77130,7 @@ const ScansGrid = () => {
   const setGridState = useStore((state) => state.setGridState);
   const resultsDir = useStore((state) => state.resultsDir);
   const gridState = reactExports.useMemo(() => {
-    return gridStates[GRID_STATE_NAME] || {};
+    return gridStates[GRID_STATE_NAME];
   }, [gridStates]);
   const data = reactExports.useMemo(() => {
     const dirs = /* @__PURE__ */ new Set();

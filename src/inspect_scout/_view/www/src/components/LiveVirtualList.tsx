@@ -146,7 +146,9 @@ export const LiveVirtualList = <T,>({
   );
 
   const [, forceRender] = useState({});
-  const forceUpdate = useCallback(() => { forceRender({}); }, []);
+  const forceUpdate = useCallback(() => {
+    forceRender({});
+  }, []);
   useEffect(() => {
     // Force a re-render after initial mount
     // This is here only because in VScode, for some reason,
@@ -156,7 +158,9 @@ export const LiveVirtualList = <T,>({
     const timer = setTimeout(() => {
       forceUpdate();
     }, 0);
-    return () => { clearTimeout(timer); };
+    return () => {
+      clearTimeout(timer);
+    };
   }, [forceUpdate]);
 
   // Default search function that uses JSON.stringify as fallback
@@ -196,7 +200,8 @@ export const LiveVirtualList = <T,>({
       const step = direction === "forward" ? 1 : -1;
 
       for (let i = searchStart; i >= 0 && i < data.length; i += step) {
-        if (searchFn(data[i], term)) {
+        const item = data[i];
+        if (item && searchFn(item, term)) {
           // Found a match! Set up callback and scroll to it
           pendingSearchCallback.current = onContentReady;
 
@@ -241,7 +246,9 @@ export const LiveVirtualList = <T,>({
     const parent = scrollRef?.current;
     if (parent) {
       parent.addEventListener("scroll", handleScroll);
-      return () => { parent.removeEventListener("scroll", handleScroll); };
+      return () => {
+        parent.removeEventListener("scroll", handleScroll);
+      };
     }
   }, [scrollRef, handleScroll]);
 
@@ -259,7 +266,9 @@ export const LiveVirtualList = <T,>({
         });
         hasScrolled.current = true;
       }, 50);
-      return () => { clearTimeout(timer); };
+      return () => {
+        clearTimeout(timer);
+      };
     }
   }, [initialTopMostItemIndex, listHandle, offsetTop]);
 

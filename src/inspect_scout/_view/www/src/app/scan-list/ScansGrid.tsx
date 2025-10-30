@@ -47,9 +47,7 @@ export const ScansGrid: FC = () => {
   const resultsDir = useStore((state) => state.resultsDir);
 
   const gridState = useMemo(() => {
-    // TODO: We need to turn on noUncheckedIndexedAccess
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    return gridStates[GRID_STATE_NAME] || {};
+    return gridStates[GRID_STATE_NAME];
   }, [gridStates]);
 
   // Transform logDetails into flat rows

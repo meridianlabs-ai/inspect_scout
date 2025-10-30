@@ -8,6 +8,7 @@ from os import PathLike
 from types import TracebackType
 from typing import (
     Any,
+    Final,
     Iterator,
     Sequence,
     Type,
@@ -256,6 +257,11 @@ class EvalLogTranscriptsDB:
             transcript_source_id = row_dict.get("eval_id", None)
             transcript_source_uri = row_dict.get("log", None)
 
+            # materialize JSON columns
+            for column in JSON_COLUMNS:
+                if column in row_dict:
+                    row_dict[column] = json.loads(row_dict[column])
+
             # ensure we have required fields
             if (
                 transcript_id is None
@@ -407,7 +413,7 @@ TranscriptColumns: list[Column] = (
         EvalColumn("solver", path="eval.solver"),
         EvalColumn("solver_args", path="eval.solver_args", default={}),
         EvalColumn("model", path="eval.model", required=True),
-        EvalColumn("generate_config", path="eval.model_generate_config"),
+        EvalColumn("generate_config", path="eval.model_generate_config", default={}),
         EvalColumn("model_roles", path="eval.model_roles", default={}),
         SampleColumn("id", path="id", required=True, type=str),
         SampleColumn("epoch", path="epoch", required=True),
@@ -421,3 +427,12 @@ TranscriptColumns: list[Column] = (
         SampleColumn("limit", path="limit", default=""),
     ]
 )
+
+JSON_COLUMNS: Final[list[str]] = [
+    "eval_metadata",
+    "task_args",
+    "solver_args",
+    "generate_config",
+    "model_roles",
+    "sample_metadata",
+]

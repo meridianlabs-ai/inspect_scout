@@ -12,7 +12,6 @@ from typing import (
     Sequence,
     Type,
     TypeAlias,
-    overload,
 )
 
 import pandas as pd
@@ -23,7 +22,6 @@ from inspect_ai.analysis._dataframe.evals.columns import (
     EvalId,
     EvalLogPath,
 )
-from inspect_ai.analysis._dataframe.evals.table import EVAL_ID, EVAL_LOG_PATH
 from inspect_ai.analysis._dataframe.extract import (
     list_as_str,
     remove_namespace,
@@ -34,7 +32,7 @@ from inspect_ai.analysis._dataframe.samples.columns import SampleColumn
 from inspect_ai.analysis._dataframe.samples.extract import (
     sample_total_tokens,
 )
-from inspect_ai.analysis._dataframe.samples.table import SAMPLE_ID, samples_df
+from inspect_ai.analysis._dataframe.samples.table import samples_df
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
 )
@@ -61,7 +59,7 @@ LogPaths: TypeAlias = (
 class EvalLogTranscripts(Transcripts):
     """Collection of transcripts for scanning."""
 
-    def __init__(self, logs: LogPaths | pd.DataFrame | ScanTranscripts) -> None:
+    def __init__(self, logs: LogPaths | ScanTranscripts) -> None:
         super().__init__()
         if isinstance(logs, ScanTranscripts):
             self._logs: LogPaths | pd.DataFrame = self._logs_df_from_snapshot(logs)
@@ -189,28 +187,7 @@ class EvalLogTranscriptsDB:
         if not isinstance(logs, pd.DataFrame):
             self._transcripts_df = samples_df(logs, TranscriptColumns)
         else:
-            # ensure we have an EVAL_ID
-            if EVAL_ID not in logs.columns:
-                raise ValueError(
-                    f"Transcripts data frame does not have an '{EVAL_ID}' column."
-                )
-
-            # ensure we have a log path
-            if EVAL_LOG_PATH not in logs.columns:
-                raise ValueError(
-                    f"Transcripts data frame does not have a '{EVAL_LOG_PATH}' column."
-                )
-
-            # if there is no sample id then we need to blow out the samples from the logs
-            if SAMPLE_ID not in logs.columns:
-                logs = logs[EVAL_LOG_PATH].to_list()
-                self._transcripts_df = samples_df(logs, TranscriptColumns)
-            else:
-                if "id" not in logs.columns or "epoch" not in logs.columns:
-                    raise ValueError(
-                        "Transcripts data frame must contain both 'id' and 'epoch' columns."
-                    )
-                self._transcripts_df = logs
+            self._transcripts_df = logs
 
         # sqlite connection (starts out none)
         self._conn: sqlite3.Connection | None = None
@@ -364,21 +341,11 @@ class EvalLogTranscriptsDB:
         return "", []
 
 
-@overload
-def transcripts_from_logs(logs: LogPaths) -> Transcripts: ...
-
-
-@overload
-def transcripts_from_logs(logs: pd.DataFrame) -> Transcripts: ...
-
-
-def transcripts_from_logs(logs: LogPaths | pd.DataFrame) -> Transcripts:
+def transcripts_from_logs(logs: LogPaths) -> Transcripts:
     """Read sample transcripts from eval logs.
 
-    Logs can be specified by file or directory path(s) or alternatively an [evals_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df) or [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df)
-
     Args:
-        logs: Log paths as file(s), directories, or data frame.
+        logs: Log paths as file(s) or directories.
 
     Returns:
         Transcripts: Collection of transcripts for scanning.

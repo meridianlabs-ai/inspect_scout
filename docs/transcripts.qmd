@@ -28,19 +28,6 @@ transcripts = transcripts_from_logs(
 )
 ```
 
-You can also specify transcripts using an [evals_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df) or [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df) read using the Inspect log data frame functions:
-
-```python
-from inspect_ai.analysis import samples_df
-from inspect_scout import transcripts_from_logs
-
-# read samples, filter as required, etc.
-samples = samples_df("./logs")
-
-# transcripts
-transcripts = transcripts_from_logs(samples)
-```
-
 ## Filtering Transcripts
 
 If you want to scan only a subset of transcripts, you can use the `.where()` method to narrow down the collection. For example:
@@ -87,5 +74,3 @@ scan(
 ```
 
 If you want to do transcript filtering and then invoke your scan from the CLI using `scout scan`, then perform the filtering inside a `@scanjob`. For example:
-
-{{< include _scanjob-transcripts.md >}}

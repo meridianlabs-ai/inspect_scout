@@ -136,16 +136,7 @@ See the [Scanners](scanners.qmd) article for more details on creating scanners, 
 
 In the transcript scanner example above we used only the `transcript.messages` field. If your scanner needs to access additional metadata about the sample it is processing (e.g. id, epoch, metadata, tags, score, etc.) you can use the `transcript.metadata` field. For example:
 
-```python
-transcript.metadata["sample_id"]        # sample uuid 
-transcript.metadata["id"]               # dataset sample id 
-transcript.metadata["epoch"]            # sample epoch
-transcript.metadata["sample_metadata"]  # sample metadata
-transcript.metadata["score"]            # sample score 
-```
-
-See the `LogMetadata` class for details on all of the fields included in `transcript.metadata`.
-
+{{< include _transcript_metadata.md >}}
 
 ### Scan Jobs
 

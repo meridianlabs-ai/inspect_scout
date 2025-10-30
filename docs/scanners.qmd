@@ -110,6 +110,10 @@ Each `Transcript` has the following fields:
 
 : {tbl-colwidths=\[20,30,50\]}
 
+The `metadata` field includes fields read from eval sample metadata. For example:
+
+{{< include _transcript_metadata.md >}}
+
 ### Content Filtering
 
 Note that the `messages` and `events` fields will not be populated unless you specify a `messages` or `events` filter on your scanner. For example, this scanner will see all messages and events:

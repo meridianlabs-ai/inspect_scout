@@ -219,6 +219,10 @@ async def scan_async(
     scanjob._limit = limit or scanjob._limit
     scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
 
+    # tags and metadata
+    scanjob._tags = tags
+    scanjob._metadata = metadata
+
     # derive max_connections if not specified
     scanjob._generate_config = (
         model_config or scanjob._generate_config or GenerateConfig()

@@ -13,13 +13,14 @@ from inspect_ai._view.fastapi_server import (
     InspectJsonResponse,
     OnlyDirAccessPolicy,
 )
-from inspect_scout._display._display import display
-from inspect_scout._scanlist import scan_list_async
-from inspect_scout._scanresults import scan_results
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 from typing_extensions import override
 from upath import UPath
+
+from inspect_scout._display._display import display
+from inspect_scout._scanlist import scan_list_async
+from inspect_scout._scanresults import remove_scan_results, scan_results
 
 
 class InspectPydanticJSONResponse(JSONResponse):
@@ -140,15 +141,16 @@ def view_server_app(
             media_type="application/json",
         )
 
-    # location is expected to be a path relative to the results_dir
-    @app.get("/scan/{location:path}")
-    async def scan(request: Request, location: str) -> Response:
-        validated_results_dir = _ensure_not_none(results_dir, "results_dir is required")
-
+    @app.get("/scan/{scan:path}")
+    async def scan(request: Request, scan: str) -> Response:
         # convert to absolute path
-        results_path = UPath(validated_results_dir)
-        location_path = UPath(location)
-        scan_path = results_path / location_path
+        scan_path = UPath(scan)
+        if not scan_path.is_absolute():
+            validated_results_dir = _ensure_not_none(
+                results_dir, "results_dir is required"
+            )
+            results_path = UPath(validated_results_dir)
+            scan_path = results_path / scan_path
 
         # validate
         await _validate_read(request, scan_path)
@@ -158,6 +160,23 @@ def view_server_app(
         return InspectPydanticJSONResponse(
             content=result, media_type="application/json"
         )
+
+    @app.get("/scan-delete/{scan:path}")
+    async def scan_delete(request: Request, scan: str) -> Response:
+        # convert to absolute path
+        scan_path = UPath(scan)
+        if not scan_path.is_absolute():
+            validated_results_dir = _ensure_not_none(
+                results_dir, "results_dir is required"
+            )
+            results_path = UPath(validated_results_dir)
+            scan_path = results_path / scan_path
+
+        await _validate_delete(request, scan_path)
+
+        remove_scan_results(scan_path.as_posix())
+
+        return InspectPydanticJSONResponse(content=True, media_type="application/json")
 
     return app
 

@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from inspect_ai._view.view import view_acquire_port
+
 from inspect_scout._scan import top_level_async_init
 from inspect_scout._util.appdirs import scout_data_dir
 from inspect_scout._view.server import view_server

@@ -32,23 +32,6 @@ transcripts = transcripts_from_logs(
 )
 ```
 
-You can also specify transcripts using an
-[evals_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#evals_df)
-or
-[samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df)
-read using the Inspect log data frame functions:
-
-``` python
-from inspect_ai.analysis import samples_df
-from inspect_scout import transcripts_from_logs
-
-# read samples, filter as required, etc.
-samples = samples_df("./logs")
-
-# transcripts
-transcripts = transcripts_from_logs(samples)
-```
-
 ## Filtering Transcripts
 
 If you want to scan only a subset of transcripts, you can use the
@@ -85,6 +68,40 @@ transcripts = (
 )
 ```
 
+## Transcript Fields
+
+The `Transcript` type is defined somewhat generally to accommodate other
+non-Inspect transcript sources in the future. Here are the available
+`Transcript` fields and how these map back onto Inspect logs:
+
+| Field | Type | Description |
+|----|----|----|
+| `id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log). |
+| `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log) |
+| `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
+| `score` | JsonValue | Main score assigned to transcript (optional). |
+| `scores` | dict\[str, JsonValue\] | All scores assigned to transcript (optional). |
+| `variables` | dict\[str, JsonValue\] | Variables (e.g. to be used in a prompt template) associated with transcript. For Inspect logs this is `Sample.metadata`. |
+| `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). See `LogMetadata` for details on metadata available for Inspect logs. |
+| `messages` | list\[ChatMessage\] | Message history from `EvalSample` |
+| `events` | list\[Event\] | Event history from `EvalSample` |
+
+The `metadata` field includes fields read from eval sample metadata. For
+example:
+
+``` python
+transcript.metadata["sample_id"]        # sample uuid 
+transcript.metadata["id"]               # dataset sample id 
+transcript.metadata["epoch"]            # sample epoch
+transcript.metadata["eval_metadata"]    # eval metadata
+transcript.metadata["sample_metadata"]  # sample metadata
+transcript.metadata["score"]            # main sample score 
+transcript.metadata["score_<scorer>"]   # named sample scores
+```
+
+See the `LogMetadata` class for details on all of the fields included in
+`transcript.metadata` for Inspect logs.
+
 ## Scanning Transcripts
 
 Once you have established your list of transcripts to scan, just pass
@@ -104,33 +121,3 @@ scan(
 If you want to do transcript filtering and then invoke your scan from
 the CLI using `scout scan`, then perform the filtering inside a
 `@scanjob`. For example:
-
-**cybench_scan.py**
-
-``` python
-from inspect_scout (
-    import ScanJob, scanjob, transcripts_from_logs, log_metadata as m
-)
-
-from .scanners import deception, tool_errors
-
-@scanjob
-def cybench_job(logs: str = "./logs") -> ScanJob:
-
-    transcripts = transcripts_from_logs(logs)
-    transcripts = transcripts.where(m.task_name == "cybench")
-
-    return ScanJob(
-        scanners = [deception(), java_tool_usages()],
-        transcripts = transcripts
-    )
-```
-
-Then from the CLI:
-
-``` bash
-scout scan cybench.py -S logs=./logs --model openai/gpt-5
-```
-
-The `-S` argument enables you to pass arguments to the `@scanjob`
-function (in this case determining what directory to read logs from).

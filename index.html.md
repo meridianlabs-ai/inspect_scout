@@ -107,6 +107,11 @@ Lines 33-37
 As with scorers, results also include additional context (here the
 extracted answer and full model completion).
 
+Above we used only the `messages` field from the `transcript`, but
+`Transcript` includes many other fields with additional context. See
+[Transcript Fields](transcripts.qmd#transcript-fields) for additional
+details.
+
 ### Running a Scan
 
 We can now run that scanner on our log files. The `Scanner` will be
@@ -114,26 +119,19 @@ called once for each sample trajectory in the log (total samples \*
 epochs):
 
 ``` bash
-scout scan scanner.py --transcripts ./logs -model openai/gpt-5
+scout scan scanner.py -T ./logs -model openai/gpt-5
 ```
 
-### Transcript Metadata
+You can also address individual scanners using `@<scanner-name>`. For
+example:
 
-In the example above we used only the `transcript.messages` field. If
-your scanner needs to access additional metadata about the sample it is
-processing (e.g. id, epoch, metadata, tags, score, etc.) you can use the
-`transcript.metadata` field. For example:
-
-``` python
-transcript.metadata["sample_id"]        # sample uuid 
-transcript.metadata["id"]               # dataset sample id 
-transcript.metadata["epoch"]            # sample epoch
-transcript.metadata["sample_metadata"]  # sample metadata
-transcript.metadata["score"]            # sample score 
+``` bash
+scout scan scanner.py@ctf_environment -T ./logs -model openai/gpt-5
 ```
 
-See the `LogMetadata` class for details on all of the fields included in
-`transcript.metadata`.
+Note that if no `-T` argument is provided then Scout will use the
+current `INSPECT_LOG_DIR` (by default “./logs”) so the `-T` above is not
+strictly necessary.
 
 ### Adding a Scanner
 

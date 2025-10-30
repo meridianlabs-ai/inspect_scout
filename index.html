@@ -271,7 +271,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#creating-a-scanner" id="toc-creating-a-scanner" class="nav-link" data-scroll-target="#creating-a-scanner">Creating a Scanner</a></li>
   <li><a href="#running-a-scan" id="toc-running-a-scan" class="nav-link" data-scroll-target="#running-a-scan">Running a Scan</a></li>
-  <li><a href="#transcript-metadata" id="toc-transcript-metadata" class="nav-link" data-scroll-target="#transcript-metadata">Transcript Metadata</a></li>
   <li><a href="#adding-a-scanner" id="toc-adding-a-scanner" class="nav-link" data-scroll-target="#adding-a-scanner">Adding a Scanner</a></li>
   <li><a href="#scan-jobs" id="toc-scan-jobs" class="nav-link" data-scroll-target="#scan-jobs">Scan Jobs</a></li>
   <li><a href="#scan-results" id="toc-scan-results" class="nav-link" data-scroll-target="#scan-results">Scan Results</a></li>
@@ -401,21 +400,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span data-code-cell="annotated-cell-2" data-code-lines="33,34,35,36,37" data-code-annotation="4">As with scorers, results also include additional context (here the extracted answer and full model completion).</span>
 </dd>
 </dl>
+<p>Above we used only the <code>messages</code> field from the <code>transcript</code>, but <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> includes many other fields with additional context. See <a href="./transcripts.html#transcript-fields">Transcript Fields</a> for additional details.</p>
 </section>
 <section id="running-a-scan" class="level3">
 <h3 class="anchored" data-anchor-id="running-a-scan">Running a Scan</h3>
 <p>We can now run that scanner on our log files. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> will be called once for each sample trajectory in the log (total samples * epochs):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">--transcripts</span> ./logs <span class="at">-model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="transcript-metadata" class="level3">
-<h3 class="anchored" data-anchor-id="transcript-metadata">Transcript Metadata</h3>
-<p>In the example above we used only the <code>transcript.messages</code> field. If your scanner needs to access additional metadata about the sample it is processing (e.g.&nbsp;id, epoch, metadata, tags, score, etc.) you can use the <code>transcript.metadata</code> field. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_id"</span>]        <span class="co"># sample uuid </span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"id"</span>]               <span class="co"># dataset sample id </span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"epoch"</span>]            <span class="co"># sample epoch</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_metadata"</span>]  <span class="co"># sample metadata</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"score"</span>]            <span class="co"># sample score </span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#logmetadata">LogMetadata</a></span> class for details on all of the fields included in <code>transcript.metadata</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">-model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can also address individual scanners using <code>@&lt;scanner-name&gt;</code>. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py@ctf_environment <span class="at">-T</span> ./logs <span class="at">-model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Note that if no <code>-T</code> argument is provided then Scout will use the current <code>INSPECT_LOG_DIR</code> (by default “./logs”) so the <code>-T</code> above is not strictly necessary.</p>
 </section>
 <section id="adding-a-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="adding-a-scanner">Adding a Scanner</h3>

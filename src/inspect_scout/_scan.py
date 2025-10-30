@@ -44,7 +44,7 @@ from ._recorder.factory import (
 from ._recorder.recorder import ScanRecorder, Status
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob, ScanJobConfig
-from ._scanner.loader import Loader, config_for_loader
+from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
@@ -509,17 +509,18 @@ async def _scan_async_inner(
                     results: list[ResultReport] = []
 
                     scanner_config = config_for_scanner(job.scanner)
-                    # Need to use typing magic rather than this case
-                    loader: Loader[Transcript] = scanner_config.loader
+                    loader = scanner_config.loader
 
                     async for loader_result in loader(job.union_transcript):
                         try:
+                            result: Result | None = None
+                            error: Error | None = None
+
                             type_and_ids = get_input_type_and_ids(loader_result)
                             if type_and_ids is None:
                                 continue
 
-                            result: Result | None = await job.scanner(loader_result)
-                            error: Error | None = None
+                            result = await job.scanner(loader_result)
 
                         # Special case for errors that should bring down the scan
                         except PrerequisiteError:
@@ -721,7 +722,7 @@ async def _parse_jobs(
         )
 
 
-def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
+def _content_for_scanner(scanner: Scanner[ScannerInput]) -> TranscriptContent:
     """
     Grab the TranscriptContent for the passed scanner
 

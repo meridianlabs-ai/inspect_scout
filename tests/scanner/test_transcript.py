@@ -710,10 +710,6 @@ async def test_metadata_extraction(db):
     assert "status" in metadata
     assert "retries" in metadata
 
-    # sample_id and log should not be in metadata
-    assert "sample_id" not in metadata
-    assert "log" not in metadata
-
 
 @pytest.mark.asyncio
 async def test_none_comparison_in_db(db):

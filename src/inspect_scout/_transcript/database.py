@@ -275,12 +275,16 @@ class EvalLogTranscriptsDB:
             row_dict = dict(zip(column_names, row, strict=True))
 
             # extract required fields
-            transcript_id = row_dict.pop("sample_id", None)
-            transcript_source_id = row_dict.pop("eval_id", None)
-            transcript_source_uri = row_dict.pop("log", None)
+            transcript_id = row_dict.get("sample_id", None)
+            transcript_source_id = row_dict.get("eval_id", None)
+            transcript_source_uri = row_dict.get("log", None)
 
             # ensure we have required fields
-            if transcript_id is None or transcript_source_uri is None:
+            if (
+                transcript_id is None
+                or transcript_source_id is None
+                or transcript_source_uri is None
+            ):
                 raise ValueError(
                     f"Missing required fields: sample_id={transcript_id}, log={transcript_source_uri}"
                 )

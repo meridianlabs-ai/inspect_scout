@@ -367,6 +367,9 @@ async def scan_complete_async(
     return status
 
 
+_scan_async_running = False
+
+
 async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> Status:
     result: Status | None = None
 
@@ -398,9 +401,6 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> Status:
     assert result is not None, "scan async did not return a result."
 
     return result
-
-
-_scan_async_running = False
 
 
 async def _scan_async_inner(

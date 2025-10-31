@@ -645,7 +645,10 @@ async def test_worklist_with_named_scanners_dict():
     transcript_ids = await get_n_transcript_ids(4)
 
     # Pass scanners as dict with custom names
-    scanners_dict = {"custom_a": original_name_a_factory(), "custom_b": original_name_b_factory()}
+    scanners_dict = {
+        "custom_a": original_name_a_factory(),
+        "custom_b": original_name_b_factory(),
+    }
 
     # Create worklist using the dict keys (custom names)
     worklist = [

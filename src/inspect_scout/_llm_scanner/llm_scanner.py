@@ -12,10 +12,10 @@ from .._scanner.result import Result
 from .._scanner.scanner import Scanner, scanner
 from .._scanner.util import _message_id
 from .._transcript.types import Transcript
-from .answer import answer_portion_template, result_for_answer
+from .answer import answer_from_argument
 from .extract import message_as_str
 from .prompt import LLMScannerPrompt
-from .types import LLMScannerAnswer, LLMScannerLabels, LLMScannerMessages
+from .types import LLMScannerLabels, LLMScannerMessages
 
 
 @scanner(messages="all")
@@ -50,18 +50,12 @@ def llm_scanner(
         messages = LLMScannerMessages()
     if isinstance(prompt, str):
         prompt = LLMScannerPrompt(question=prompt)
-    if isinstance(answer, str):
-        resolved_answer = LLMScannerAnswer(type=answer)
-    else:
-        resolved_answer = LLMScannerAnswer(
-            type="labels", labels=answer.labels, multi_classification=answer.multiple
-        )
+    resolved_answer = answer_from_argument(answer)
 
     async def scan(transcript: Transcript) -> Result:
         variables = _variables_for_transcript(transcript)
 
-        answer_template = answer_portion_template(resolved_answer)
-        answer_prompt = answer_template.format(
+        answer_prompt = resolved_answer.answer_portion_template().format(
             question=prompt.question, explanation_text=prompt.explanation, **variables
         )
 
@@ -74,7 +68,7 @@ def llm_scanner(
         )
 
         model_output = await get_model(model).generate(resolved_prompt)
-        return result_for_answer(resolved_answer, model_output, message_id_map)
+        return resolved_answer.result_for_answer(model_output, message_id_map)
 
     return scan
 

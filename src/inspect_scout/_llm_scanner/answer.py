@@ -1,5 +1,5 @@
 import re
-from typing import Sequence
+from typing import Literal, Protocol, Sequence
 
 from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
@@ -11,119 +11,163 @@ from inspect_ai.model import (
 )
 from inspect_ai.scorer._common import normalize_number
 
+from inspect_scout._llm_scanner.types import LLMScannerLabels
+
 from .._scanner.result import Result
 from .prompt import BOOL_ANSWER_TEMPLATE, LABELS_ANSWER_TEMPLATE, NUMBER_ANSWER_TEMPLATE
-from .types import LLMScannerAnswer
 from .util import extract_references
 
 
-def answer_portion_template(answer: LLMScannerAnswer) -> str:
-    match answer.type:
-        case "bool":
-            return BOOL_ANSWER_TEMPLATE
-        case "number":
-            return NUMBER_ANSWER_TEMPLATE
-        case "labels":
-            if not answer.labels:
-                raise ValueError("Must have labels")
-            formatted_choices, letters = _answer_options(answer.labels)
-            return LABELS_ANSWER_TEMPLATE.format(
-                formatted_choices=formatted_choices, letters=letters
-            )
-        case t:
-            raise NotImplementedError(f"Support for '{t}' not yet implemented")
+class Answer(Protocol):
+    """Protocol for LLM scanner answer types."""
+
+    def answer_portion_template(self) -> str:
+        """Return the answer template string."""
+        ...
+
+    def result_for_answer(
+        self, output: ModelOutput, message_id_map: list[str]
+    ) -> Result:
+        """Extract and return the result from model output."""
+        ...
 
 
-def result_for_answer(
-    _answer: LLMScannerAnswer, output: ModelOutput, message_id_map: list[str]
-) -> Result:
-    match _answer.type:
-        case "bool":
-            return _bool_result(output, message_id_map)
-        case "number":
-            return _number_result(output, message_id_map)
-        case "labels":
-            if not _answer.labels:
-                raise ValueError("Must have labels")
-            return _labels_result(_answer.labels, output, message_id_map)
-        case t:
-            raise NotImplementedError(f"Support for '{t}' not yet implemented")
-
-
-def _bool_result(output: ModelOutput, message_id_map: list[str]) -> Result:
-    match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
-
-    if match:
-        answer = match.group(1).lower()
-        explanation = output.completion[: match.start()].strip()
-        references = extract_references(explanation, message_id_map)
-
-        # Use a match instead of if/else so that answers other than yes or no flow
-        # to the bottom.
+def answer_from_argument(
+    answer: Literal["bool", "number", "str"] | LLMScannerLabels,
+) -> Answer:
+    if isinstance(answer, str):
         match answer:
-            case "yes":
-                return Result(
-                    value=True,
-                    answer="Yes",
-                    explanation=explanation,
-                    references=references,
-                )
-            case "no":
-                return Result(
-                    value=False,
-                    answer="No",
-                    explanation=explanation,
-                    references=references,
-                )
-
-    return Result(value=False, explanation=output.completion)
+            case "bool":
+                return _BoolAnswer()
+            case "number":
+                return _NumberAnswer()
+            case "str":
+                return _StrAnswer()
+            case _:
+                raise ValueError(f"Invalid answer type: {answer}")
+    else:
+        return LabelsAnswer(labels=answer.labels, multi_classification=answer.multiple)
 
 
-def _labels_result(
-    labels: Sequence[str], output: ModelOutput, message_id_map: list[str]
-) -> Result:
-    match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
+class _BoolAnswer(Answer):
+    """Answer implementation for yes/no questions."""
 
-    if match:
-        answer_letter = match.group(1).upper()
-        explanation = output.completion[: match.start()].strip()
-        references = extract_references(explanation, message_id_map)
+    def answer_portion_template(self) -> str:
+        return BOOL_ANSWER_TEMPLATE
 
-        # Generate valid characters for all labels
-        valid_characters = [_answer_character(i) for i in range(len(labels))]
+    def result_for_answer(
+        self, output: ModelOutput, message_id_map: list[str]
+    ) -> Result:
+        match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
 
-        # Find if the answer matches any valid character
-        if answer_letter in valid_characters:
-            index = valid_characters.index(answer_letter)
-            return Result(
-                value=answer_letter,
-                answer=labels[index],
-                explanation=explanation,
-                references=references,
-            )
-
-    return Result(value=None, explanation=output.completion)
-
-
-def _number_result(output: ModelOutput, message_id_map: list[str]) -> Result:
-    match = re.search(ANSWER_PATTERN_WORD, output.completion)
-
-    if match:
-        answer = _safe_str_to_float(match.group(1))
-
-        if answer is not None:
+        if match:
+            answer = match.group(1).lower()
             explanation = output.completion[: match.start()].strip()
             references = extract_references(explanation, message_id_map)
 
-            return Result(
-                value=answer,
-                # TODO: I'm not sure when it makes sense to provide answer
-                # answer="Yes",
-                explanation=explanation,
-                references=references,
-            )
+            # Use a match instead of if/else so that answers other than yes or no flow
+            # to the bottom.
+            match answer:
+                case "yes":
+                    return Result(
+                        value=True,
+                        answer="Yes",
+                        explanation=explanation,
+                        references=references,
+                    )
+                case "no":
+                    return Result(
+                        value=False,
+                        answer="No",
+                        explanation=explanation,
+                        references=references,
+                    )
 
-    return Result(value=False, explanation=output.completion)
+        return Result(value=False, explanation=output.completion)
+
+
+class _NumberAnswer(Answer):
+    """Answer implementation for numeric questions."""
+
+    def answer_portion_template(self) -> str:
+        return NUMBER_ANSWER_TEMPLATE
+
+    def result_for_answer(
+        self, output: ModelOutput, message_id_map: list[str]
+    ) -> Result:
+        match = re.search(ANSWER_PATTERN_WORD, output.completion)
+
+        if match:
+            answer = _safe_str_to_float(match.group(1))
+
+            if answer is not None:
+                explanation = output.completion[: match.start()].strip()
+                references = extract_references(explanation, message_id_map)
+
+                return Result(
+                    value=answer,
+                    # TODO: I'm not sure when it makes sense to provide answer
+                    # answer="Yes",
+                    explanation=explanation,
+                    references=references,
+                )
+
+        return Result(value=False, explanation=output.completion)
+
+
+class LabelsAnswer(Answer):
+    """Answer implementation for multiple choice questions."""
+
+    def __init__(self, labels: list[str], multi_classification: bool = False) -> None:
+        self.labels = labels
+        self.multi_classification = multi_classification
+
+    def answer_portion_template(self) -> str:
+        if not self.labels:
+            raise ValueError("Must have labels")
+        formatted_choices, letters = _answer_options(self.labels)
+        return LABELS_ANSWER_TEMPLATE.format(
+            formatted_choices=formatted_choices, letters=letters
+        )
+
+    def result_for_answer(
+        self, output: ModelOutput, message_id_map: list[str]
+    ) -> Result:
+        if not self.labels:
+            raise ValueError("Must have labels")
+        match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
+
+        if match:
+            answer_letter = match.group(1).upper()
+            explanation = output.completion[: match.start()].strip()
+            references = extract_references(explanation, message_id_map)
+
+            # Generate valid characters for all labels
+            valid_characters = [_answer_character(i) for i in range(len(self.labels))]
+
+            # Find if the answer matches any valid character
+            if answer_letter in valid_characters:
+                index = valid_characters.index(answer_letter)
+                return Result(
+                    value=answer_letter,
+                    answer=self.labels[index],
+                    explanation=explanation,
+                    references=references,
+                )
+
+        return Result(value=None, explanation=output.completion)
+
+
+class _StrAnswer(Answer):
+    """Answer implementation for free-text questions (not yet implemented)."""
+
+    def answer_portion_template(self) -> str:
+        raise NotImplementedError("Support for 'str' not yet implemented")
+
+    def result_for_answer(
+        self, _output: ModelOutput, _message_id_map: list[str]
+    ) -> Result:
+        raise NotImplementedError("Support for 'str' not yet implemented")
 
 
 def _safe_str_to_float(maybe_numeric: str) -> float | None:

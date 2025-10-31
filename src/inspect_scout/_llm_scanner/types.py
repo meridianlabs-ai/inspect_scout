@@ -1,28 +1,10 @@
-from dataclasses import dataclass
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
 
-@dataclass
-class LLMScannerMessages:
+class LLMScannerMessages(NamedTuple):
     exclude_system: bool = True
     exclude_reasoning: bool = False
     exclude_tool_usage: bool = False
-
-
-@dataclass
-class LLMScannerAnswer:
-    type: Literal[
-        # rate on 1-10, xxx
-        "number",
-        # yes/no
-        "bool",
-        # list discussed celebrities by name
-        "str",
-        # Which of the categories defined above are xxx
-        "labels",
-    ]
-    labels: list[str] | None = None
-    multi_classification: bool = False
 
 
 class LLMScannerLabels(NamedTuple):

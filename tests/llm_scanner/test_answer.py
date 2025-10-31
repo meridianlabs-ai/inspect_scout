@@ -3,14 +3,14 @@
 import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout._llm_scanner.answer import answer_portion_template, result_for_answer
-from inspect_scout._llm_scanner.types import AnswerType
+from inspect_scout._llm_scanner.types import LLMScannerAnswer
 
 
 @pytest.mark.parametrize(
     "answer_type,expected_fragments",
     [
         (
-            AnswerType(type="bool"),
+            LLMScannerAnswer(type="bool"),
             [
                 "Answer the following yes or no question: {prompt}",
                 "{explanation_text}",
@@ -18,7 +18,7 @@ from inspect_scout._llm_scanner.types import AnswerType
             ],
         ),
         (
-            AnswerType(type="number"),
+            LLMScannerAnswer(type="number"),
             [
                 "Answer the following numeric question: {prompt}",
                 "{explanation_text}",
@@ -26,7 +26,9 @@ from inspect_scout._llm_scanner.types import AnswerType
             ],
         ),
         (
-            AnswerType(type="labels", labels=["Choice A", "Choice B", "Choice C"]),
+            LLMScannerAnswer(
+                type="labels", labels=["Choice A", "Choice B", "Choice C"]
+            ),
             [
                 "Answer the following multiple choice question: {prompt}",
                 "A) Choice A\nB) Choice B\nC) Choice C",
@@ -37,7 +39,7 @@ from inspect_scout._llm_scanner.types import AnswerType
     ],
 )
 def test_answer_templates(
-    answer_type: AnswerType, expected_fragments: list[str]
+    answer_type: LLMScannerAnswer, expected_fragments: list[str]
 ) -> None:
     """Answer templates contain expected fragments."""
     result = answer_portion_template(answer_type)
@@ -50,7 +52,7 @@ def test_unsupported_answer_type() -> None:
     with pytest.raises(
         NotImplementedError, match="Support for 'str' not yet implemented"
     ):
-        answer_portion_template(AnswerType(type="str"))
+        answer_portion_template(LLMScannerAnswer(type="str"))
 
 
 @pytest.mark.parametrize(
@@ -70,7 +72,7 @@ def test_bool_results(
     expected_explanation: str,
 ) -> None:
     """Bool results parse various completion patterns."""
-    answer = AnswerType(type="bool")
+    answer = LLMScannerAnswer(type="bool")
     output = ModelOutput(model="test", completion=completion)
 
     result = result_for_answer(answer, output, [])
@@ -93,7 +95,7 @@ def test_number_results(
     completion: str, expected_value: float | bool, expected_explanation: str
 ) -> None:
     """Number results parse various completion patterns."""
-    answer = AnswerType(type="number")
+    answer = LLMScannerAnswer(type="number")
     output = ModelOutput(model="test", completion=completion)
 
     result = result_for_answer(answer, output, [])
@@ -138,7 +140,7 @@ def test_labels_results(
     expected_explanation: str,
 ) -> None:
     """Labels results parse various completion patterns."""
-    answer = AnswerType(type="labels", labels=labels)
+    answer = LLMScannerAnswer(type="labels", labels=labels)
     output = ModelOutput(model="test", completion=completion)
 
     result = result_for_answer(answer, output, [])

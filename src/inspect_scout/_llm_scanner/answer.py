@@ -12,11 +12,11 @@ from inspect_ai.model import (
 from inspect_ai.scorer._common import normalize_number
 
 from .._scanner.result import Result
-from .types import AnswerType
+from .types import LLMScannerAnswer
 from .util import extract_references
 
 
-def answer_portion_template(answer: AnswerType) -> str:
+def answer_portion_template(answer: LLMScannerAnswer) -> str:
     match answer.type:
         case "bool":
             return (
@@ -48,7 +48,7 @@ def answer_portion_template(answer: AnswerType) -> str:
 
 
 def result_for_answer(
-    _answer: AnswerType, output: ModelOutput, message_id_map: list[str]
+    _answer: LLMScannerAnswer, output: ModelOutput, message_id_map: list[str]
 ) -> Result:
     match _answer.type:
         case "bool":

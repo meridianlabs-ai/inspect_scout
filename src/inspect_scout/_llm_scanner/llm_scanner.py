@@ -1,10 +1,12 @@
 from functools import reduce
+from typing import Literal
 
 from inspect_ai.model import (
     ChatMessage,
     Model,
     get_model,
 )
+from pydantic import JsonValue
 
 from .._scanner.result import Result
 from .._scanner.scanner import Scanner, scanner
@@ -12,91 +14,88 @@ from .._scanner.util import _message_id
 from .._transcript.types import Transcript
 from .answer import answer_portion_template, result_for_answer
 from .extract import message_as_str
-from .types import AnswerType, Preprocessor
-
-DEFAULT_SCANNER_TEMPLATE = """
-Here is an LLM conversation:
-
-===================================
-{messages}
-===================================
-
-{answer_prompt}
-"""
-
-DEFAULT_EXPLANATION_TEXT = (
-    "Your response should include an explanation of your assessment. It should include "
-    "the message id's (e.g. '[M2]') to clarify which message(s) you are referring "
-    "to."
-)
-
-# class ScannerPrompt(NamedTuple):
-#     prompt: str
-#     answer_prompt:
-#     scanner_template: str | None = None
+from .prompt import LLMScannerPrompt
+from .types import LLMScannerAnswer, LLMScannerLabels, LLMScannerMessages
 
 
 @scanner(messages="all")
 def llm_scanner(
-    prompt: str,
-    answer: AnswerType,
-    scanner_template: str | None = None,
+    *,
+    prompt: str | LLMScannerPrompt,
+    answer: Literal["bool", "number", "str"] | LLMScannerLabels,
+    messages: LLMScannerMessages | None = None,
     model: str | Model | None = None,
-    preprocessor: Preprocessor | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
-    This scanner presents a conversation transcript to an LLM along with a custom
-    prompt and answer specification, enabling automated analysis of conversations
-    for specific patterns, behaviors, or outcomes.
+    This scanner presents a conversation transcript to an LLM along with a custom prompt and answer specification, enabling automated analysis of conversations for specific patterns, behaviors, or outcomes.
 
     Args:
-        prompt: The question or instruction to provide to the scanner LLM about
-            what to analyze in the conversation (e.g., "Did the assistant refuse
-            the request?")
-        answer: Specification of the expected answer format - can be a string for
-            direct answers, a list of strings for classification, or bool for yes/no questions
-        scanner_template: Optional custom template for formatting the prompt. Must
-            include {messages} and {answer_prompt} placeholders. Defaults to DEFAULT_SCANNER_TEMPLATE
-        model: Optional model specification - can be a model name string or Model
-            instance. If None, uses the default model
-        preprocessor: Optional Preprocessor to filter conversation messages before
-            analysis. Controls exclusion of system messages, reasoning tokens, and
-            tool calls. Defaults to no filtering
+        prompt: The prompt to provide to the scanner LLM about
+            what to analyze in the conversation (e.g., "Did the assistant refuse the request?"). Pass a `str` to just provide top level instructions; Pass `ScannerPrompt` for further customization.
+        answer: Specification of the expected answer format.
+            Pass "bool", "number", or "str for simple answer
+            of `LLMScannerLabels` for classification.
+        template: Optional template for formatting the prompt.
+            Must include {messages} and {answer_prompt} placeholders. Defaults to DEFAULT_SCANNER_TEMPLATE
+        messages: Filter conversation messages before analysis.
+            Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to filtering system messages.
+        model: Optional model specification. Can be a model
+            name string or Model instance. If None, uses the default model
 
     Returns:
-        A Scanner function that analyzes Transcript instances and returns Results based
-        on the LLM's assessment according to the specified prompt and answer format
+        A Scanner function that analyzes Transcript instances and returns Results based on the LLM's assessment according to the specified prompt and answer format
     """
-    if preprocessor is None:
-        preprocessor = Preprocessor()
-    if scanner_template is None:
-        scanner_template = DEFAULT_SCANNER_TEMPLATE
-    explanation_text = DEFAULT_EXPLANATION_TEXT
-
-    answer_prompt = answer_portion_template(answer).format(
-        prompt=prompt, explanation_text=explanation_text
-    )
-
-    async def scan(transcript: Transcript) -> Result:
-        messages_str, message_id_map = _messages_with_ids(
-            transcript.messages, preprocessor
+    if messages is None:
+        messages = LLMScannerMessages()
+    if isinstance(prompt, str):
+        prompt = LLMScannerPrompt(instructions=prompt)
+    if isinstance(answer, str):
+        resolved_answer = LLMScannerAnswer(type=answer)
+    else:
+        resolved_answer = LLMScannerAnswer(
+            type="labels", labels=answer.labels, multi_classification=answer.multiple
         )
 
-        resolved_prompt = scanner_template.format(
+    async def scan(transcript: Transcript) -> Result:
+        variables = _variables_for_transcript(transcript)
+
+        answer_prompt = answer_portion_template(resolved_answer).format(
+            prompt=prompt.template, explanation_text=prompt.explanation, **variables
+        )
+
+        messages_str, message_id_map = _messages_with_ids(transcript.messages, messages)
+
+        resolved_prompt = prompt.template.format(
             messages=messages_str,
-            prompt=prompt,
+            prompt=prompt.template,
             answer_prompt=answer_prompt,
+            **variables,
         )
 
         model_output = await get_model(model).generate(resolved_prompt)
-        return result_for_answer(answer, model_output, message_id_map)
+        return result_for_answer(resolved_answer, model_output, message_id_map)
 
     return scan
 
 
+def _variables_for_transcript(transcript: Transcript) -> dict[str, JsonValue]:
+    variables = dict(transcript.variables)
+    # remove builtins to avoid conflicts
+    variables.pop("prompt", None)
+    variables.pop("explanation_text", None)
+    variables.pop("messages", None)
+    variables.pop("answer_prompt", None)
+    # add scores
+    variables["score"] = transcript.score or ""
+    variables = variables | {
+        f"score_{name}": value for name, value in transcript.scores.items()
+    }
+    return variables
+
+
 def _messages_with_ids(
-    messages: list[ChatMessage], preprocessor: Preprocessor
+    messages: list[ChatMessage], preprocessor: LLMScannerMessages
 ) -> tuple[str, list[str]]:
     """Format messages with 1-based local message IDs prepended.
 

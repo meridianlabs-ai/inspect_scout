@@ -1,4 +1,5 @@
 from .llm_scanner import llm_scanner
-from .types import AnswerType, Preprocessor
+from .prompt import LLMScannerPrompt
+from .types import LLMScannerLabels, LLMScannerMessages
 
-__all__ = ["llm_scanner", "AnswerType", "Preprocessor"]
+__all__ = ["llm_scanner", "LLMScannerLabels", "LLMScannerPrompt", "LLMScannerMessages"]

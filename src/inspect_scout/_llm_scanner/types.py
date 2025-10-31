@@ -1,16 +1,16 @@
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, NamedTuple
 
 
 @dataclass
-class Preprocessor:
+class LLMScannerMessages:
     exclude_system: bool = True
     exclude_reasoning: bool = False
     exclude_tool_usage: bool = False
 
 
 @dataclass
-class AnswerType:
+class LLMScannerAnswer:
     type: Literal[
         # rate on 1-10, xxx
         "number",
@@ -23,3 +23,16 @@ class AnswerType:
     ]
     labels: list[str] | None = None
     multi_classification: bool = False
+
+
+class LLMScannerLabels(NamedTuple):
+    """Label descriptions for LLM scanner."""
+
+    labels: list[str]
+    """List of label descriptions.
+
+    Label values (e.g. A, B, C) will be provided automatically.
+    """
+
+    multiple: bool = False
+    """Allow answers with multiple labels."""

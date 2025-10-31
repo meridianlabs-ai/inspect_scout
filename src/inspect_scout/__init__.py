@@ -1,4 +1,9 @@
-from ._llm_scanner import AnswerType, Preprocessor, llm_scanner
+from ._llm_scanner import (
+    LLMScannerLabels,
+    LLMScannerMessages,
+    LLMScannerPrompt,
+    llm_scanner,
+)
 from ._recorder.recorder import (
     Results,
     ResultsDB,
@@ -97,8 +102,9 @@ __all__ = [
     "as_scorer",
     # llm_scanner
     "llm_scanner",
-    "Preprocessor",
-    "AnswerType",
+    "LLMScannerPrompt",
+    "LLMScannerMessages",
+    "LLMScannerLabels",
     # version
     "__version__",
 ]

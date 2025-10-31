@@ -1,5 +1,5 @@
 import base64
-from typing import Any, Callable, TypeAlias, TypeVar, Union
+from typing import Any, Callable
 
 import dill  # type: ignore
 from pydantic import BaseModel, Field, JsonValue, field_serializer, field_validator
@@ -18,19 +18,6 @@ class ValidationCase(BaseModel):
     """Target value that the scanner is expected to output."""
 
 
-VT = TypeVar("VT", bound=JsonValue)
-
-ValidationPredicate: TypeAlias = Union[
-    Callable[[VT, VT], bool],
-    Callable[[dict[str, JsonValue], dict[str, JsonValue]], dict[str, bool]],
-]
-"""Validation function use to compare scanner result to target.
-
-Can either be a function that compares single values and returns a `bool`,
-or compares `dict` of values and returns `dict[str,bool]`.
-"""
-
-
 class Validation(BaseModel):
     """Validation for a scanner."""
 
@@ -39,24 +26,26 @@ class Validation(BaseModel):
     cases: list[ValidationCase]
     """Cases to compare scanner values against."""
 
-    predicate: ValidationPredicate[JsonValue] | None = Field(default=None)
-    """Predicate for comparing scanner results to validation targets.
+    predicate: Callable[[JsonValue, JsonValue], bool] | None = Field(default=None)
+    """Predicate for comparing scanner results to validation targets."""
 
-    Defaults to an equality based comparison.
-    """
+    multi_predicate: (
+        Callable[[dict[str, JsonValue], dict[str, JsonValue]], dict[str, bool]] | None
+    ) = Field(default=None)
+    """Predicate for comparing a dict of scanner results to a dict of validation targets."""
 
-    @field_serializer("predicate")
+    @field_serializer("predicate", "multi_predicate")
     def serialize_predicate(
-        self, predicate: ValidationPredicate[JsonValue] | None, _info: Any
+        self, predicate: Callable[..., Any], _info: Any
     ) -> str | None:
         if predicate is None:
             return None
         pickled = dill.dumps(predicate)
         return base64.b64encode(pickled).decode("ascii")
 
-    @field_validator("predicate", mode="before")
+    @field_validator("predicate", "multi_predicate", mode="before")
     @classmethod
-    def deserialize_predicate(cls, v: Any) -> ValidationPredicate[JsonValue] | None:
+    def deserialize_predicate(cls, v: Any) -> Callable[..., Any] | None:
         if v is None or callable(v):
             return v  # type: ignore[no-any-return]
         if isinstance(v, str):

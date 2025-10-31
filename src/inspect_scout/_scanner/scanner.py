@@ -86,7 +86,7 @@ class Scanner(Protocol[T]):
 class ScannerConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
     # TODO: I want to make loader non-optional, but this obviously isn't right
-    loader: Loader[Any] = field(default=cast(Loader[Any], None))
+    loader: Loader[ScannerInput] = field(default=cast(Loader[ScannerInput], None))
 
 
 ScannerFactory = Callable[P, Scanner[T]]
@@ -306,7 +306,7 @@ def scanner(
                 # TODO: how are we ensuring that the writer of a custom loader sets
                 # the proper content filter? We could do it for them, but I'm not
                 # sure how - syntactically
-                scanner_config.loader = cast(Loader[Any], loader)
+                scanner_config.loader = cast(Loader[ScannerInput], loader)
             else:
                 scanner_config.loader = create_implicit_loader(
                     scanner_fn, scanner_config.content

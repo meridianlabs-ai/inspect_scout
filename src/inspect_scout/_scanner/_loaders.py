@@ -13,10 +13,10 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
-from inspect_scout._transcript.util import filter_list, filter_transcript
-
 from .._transcript.types import Transcript, TranscriptContent
+from .._transcript.util import filter_list, filter_transcript
 from .loader import Loader, loader
+from .types import ScannerInput
 
 
 def _IdentityLoader(
@@ -37,9 +37,9 @@ def _IdentityLoader(
 def _ListLoader(
     message_or_event: Literal["message", "event"],
     content: TranscriptContent,
-) -> Loader[Any]:
+) -> Loader[ScannerInput]:
     @loader(name="ListLoader", content=content)
-    def the_factory() -> Loader[Any]:
+    def the_factory() -> Loader[ScannerInput]:
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncIterator[list[ChatMessage] | list[Event]]:
@@ -53,9 +53,9 @@ def _ListLoader(
 def _ListItemLoader(
     message_or_event: Literal["message", "event"],
     content: TranscriptContent,
-) -> Loader[Any]:
+) -> Loader[ScannerInput]:
     @loader(name="ListItemLoader", content=content)
-    def the_factory() -> Loader[Any]:
+    def the_factory() -> Loader[ScannerInput]:
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncIterator[ChatMessage | Event]:
@@ -70,7 +70,7 @@ def _ListItemLoader(
 
 def create_implicit_loader(
     scanner_fn: Callable[..., Any], content: TranscriptContent
-) -> Loader[Any]:
+) -> Loader[ScannerInput]:
     """Create appropriate loader based on scanner function's input type annotation.
 
     Args:

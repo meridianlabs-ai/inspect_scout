@@ -18,8 +18,6 @@ class AnswerType:
         "bool",
         # list discussed celebrities by name
         "str",
-        # A,B,C,D
-        "label",
         # Which of the categories defined above are xxx
         "labels",
     ]

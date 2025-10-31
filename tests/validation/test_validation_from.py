@@ -1,11 +1,9 @@
 """Tests for validation_from function."""
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import pytest
-import yaml
 from inspect_scout._validation import Validation, ValidationCase
 from inspect_scout._validation import validation as validation_from
 

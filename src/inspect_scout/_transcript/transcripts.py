@@ -5,8 +5,10 @@ from typing import (
     Iterator,
 )
 
+from inspect_scout._validation.types import Validation
+
 from .._scanspec import ScanTranscripts
-from .metadata import Condition
+from .metadata import Column, Condition
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
 
@@ -42,6 +44,59 @@ class Transcripts(abc.ABC):
            Transcripts: Transcripts for scanning.
         """
         transcripts = deepcopy(self)
+        transcripts._where.append(condition)
+        return transcripts
+
+    def for_validation(self, validation: Validation) -> "Transcripts":
+        """Filter transcripts to only those with IDs matching validation cases.
+
+        Args:
+            validation: Validation object containing cases with target IDs.
+
+        Returns:
+            Transcripts: Filtered transcripts collection.
+        """
+        transcripts = deepcopy(self)
+
+        # Extract all IDs from validation cases
+        all_ids: list[str] = []
+        for case in validation.cases:
+            if isinstance(case.id, str):
+                all_ids.append(case.id)
+            else:  # list[str]
+                all_ids.extend(case.id)
+
+        # Remove duplicates while preserving order
+        unique_ids = list(dict.fromkeys(all_ids))
+
+        # Handle edge case of empty validation cases
+        if not unique_ids:
+            # Return empty result set by using an impossible condition
+            sample_id_column = Column("sample_id")
+            condition = sample_id_column.in_([])
+            transcripts._where.append(condition)
+            return transcripts
+
+        # Create efficient IN condition
+        # Note: SQLite has a default limit of 999 parameters per query
+        # If we exceed this, we'll need to split into chunks
+        MAX_SQL_PARAMS = 999
+        sample_id_column = Column("sample_id")
+
+        if len(unique_ids) <= MAX_SQL_PARAMS:
+            # Simple case: single IN clause
+            condition = sample_id_column.in_(unique_ids)
+        else:
+            # Split into chunks and OR them together
+            chunks = [
+                unique_ids[i : i + MAX_SQL_PARAMS]
+                for i in range(0, len(unique_ids), MAX_SQL_PARAMS)
+            ]
+            conditions = [sample_id_column.in_(chunk) for chunk in chunks]
+            condition = conditions[0]
+            for cond in conditions[1:]:
+                condition = condition | cond
+
         transcripts._where.append(condition)
         return transcripts
 

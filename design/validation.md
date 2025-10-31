@@ -1,4 +1,30 @@
 
+
+```default
+"cybench_deception.csv"
+"id", "target_foo", "target_bar"
+"ef453da45", "true", 33
+"ef4533345", "false", 33
+"ef4533345", "true", 44
+```
+
+"id", "target"
+"ef453da45", "true",
+
+
+```yaml
+- id: ef453da45
+  target: true
+```
+
+```yaml
+- id: ef453da45
+  target:
+      foo: true
+      bar: 33
+```
+
+
 ```python
 from typing import Protocol, TypeAlias
 
@@ -33,12 +59,12 @@ class ValidationCase:
 
 
 class ValidationPredicate(Protocol):
-    async def __call__(self, value: JsonValue, target: JsonValue) -> bool: ...
+    async def __call__(self, value: JsonValue, target: JsonValue) -> bool | dict[str,bool]: ...
 
 
 class Validation:
     cases: str | pd.DataFrame
-    comparer: ValidationPredicate | None
+    predicate: ValidationPredicate | None
 
 
 Validations: TypeAlias = dict[str, Validation]

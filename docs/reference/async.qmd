@@ -4,7 +4,9 @@ reference: inspect_scout.async
 ---
 
 ::: {.callout-note}
-The Async API is available for async programs that want to use `inspect_scout` as an embedded library. Normal usage of Scout (e.g. in a script or notebook) should prefer the corresponding sync functions (e.g. `scan()`, `scan_resume().`, etc.)
+The Async API is available for async programs that want to use `inspect_scout` as an embedded library. 
+
+Normal usage of Scout (e.g. in a script or notebook) should prefer the corresponding sync functions (e.g. `scan()`, `scan_resume().`, etc.). This will provide optimal parallelism (sharing transcript parses across scanners, using multiple processes, etc.) compared to multiple concurrent calls to `scan_async()` (as in that case you would lose the pooled transcript parsing and create unwanted resource contention).
 :::
 
 ### scan_async

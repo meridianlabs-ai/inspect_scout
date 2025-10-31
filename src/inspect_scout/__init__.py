@@ -24,6 +24,7 @@ from ._scanresults import (
 )
 from ._scanspec import (
     ScannerSpec,
+    ScannerWork,
     ScanOptions,
     ScanRevision,
     ScanSpec,
@@ -56,6 +57,7 @@ __all__ = [
     "ScanSpec",
     "ScanOptions",
     "ScannerSpec",
+    "ScannerWork",
     "ScanRevision",
     "ScanTranscripts",
     "TranscriptField",

@@ -26,7 +26,7 @@ from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
 from pydantic import BaseModel, ConfigDict, Field
 
-from inspect_scout._scanspec import ScannerSpec
+from inspect_scout._scanspec import ScannerSpec, ScannerWork
 from inspect_scout._transcript.database import transcripts_from_logs
 from inspect_scout._util.decorator import split_spec
 
@@ -46,6 +46,9 @@ class ScanJobConfig(BaseModel):
 
     scanners: list[ScannerSpec] | dict[str, ScannerSpec] | None = Field(default=None)
     """Scanners to apply to transcripts."""
+
+    worklist: list[ScannerWork] | None = Field(default=None)
+    """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
     results: str | None = Field(default=None)
     """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
@@ -106,6 +109,7 @@ class ScanJob:
         transcripts: Transcripts | None = None,
         scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
         | dict[str, Scanner[ScannerInput]],
+        worklist: Sequence[ScannerWork] | None = None,
         results: str | None = None,
         model: str | Model | None = None,
         model_base_url: str | None = None,
@@ -123,6 +127,7 @@ class ScanJob:
     ):
         # save transcripts and name
         self._transcripts = transcripts
+        self._worklist = worklist
         self._name = name
         self._results = results
         self._model = (
@@ -205,6 +210,11 @@ class ScanJob:
     def transcripts(self) -> Transcripts | None:
         """Trasnscripts to scan."""
         return self._transcripts
+
+    @property
+    def worklist(self) -> Sequence[ScannerWork] | None:
+        """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
+        return self._worklist
 
     @property
     def scanners(self) -> dict[str, Scanner[ScannerInput]]:

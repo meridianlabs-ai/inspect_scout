@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Set, cast
+from typing import Any, Sequence, Set, cast
 
 import importlib_metadata
 from inspect_ai._util.constants import PKG_NAME as INSPECT_PKG_NAME
@@ -29,6 +29,7 @@ from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
 from ._scanner.types import ScannerInput
 from ._scanspec import (
     ScannerSpec,
+    ScannerWork,
     ScanOptions,
     ScanRevision,
     ScanSpec,
@@ -47,6 +48,9 @@ class ScanContext:
 
     scanners: dict[str, Scanner[ScannerInput]]
     """Scanners to apply to transcripts."""
+
+    worklist: Sequence[ScannerWork]
+    """Transcript ids to process for each scanner."""
 
 
 async def create_scan(scanjob: ScanJob) -> ScanContext:
@@ -83,6 +87,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
             options=options or ScanOptions(),
             transcripts=await scanjob.transcripts.snapshot(),
             scanners=_spec_scanners(scanjob.scanners),
+            worklist=list(scanjob.worklist) if scanjob.worklist else None,
             tags=scanjob.tags,
             metadata=scanjob.metadata,
             model=ModelConfig(
@@ -99,7 +104,14 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         )
 
     return ScanContext(
-        spec=spec, transcripts=scanjob.transcripts, scanners=scanjob.scanners
+        spec=spec,
+        transcripts=scanjob.transcripts,
+        scanners=scanjob.scanners,
+        worklist=scanjob.worklist
+        if scanjob.worklist is not None
+        else await _default_worklist(
+            scanjob.transcripts, list(scanjob.scanners.keys())
+        ),
     )
 
 
@@ -111,11 +123,27 @@ async def resume_scan(scan_location: str) -> ScanContext:
         raise PrerequisiteError(f"Scan at '{scan_location}' is already complete.")
 
     spec = status.spec
-    return ScanContext(
-        spec=spec,
-        transcripts=await transcripts_from_snapshot(spec.transcripts),
-        scanners=_scanners_from_spec(spec.scanners),
+    transcripts = await transcripts_from_snapshot(spec.transcripts)
+    scanners = _scanners_from_spec(spec.scanners)
+    worklist = (
+        spec.worklist
+        if spec.worklist is not None
+        else await _default_worklist(transcripts, list(scanners.keys()))
     )
+    return ScanContext(
+        spec=spec, transcripts=transcripts, scanners=scanners, worklist=worklist
+    )
+
+
+async def _default_worklist(
+    transcripts: Transcripts, scanners: Sequence[str]
+) -> Sequence[ScannerWork]:
+    async with transcripts:
+        transcript_ids = [tr.id for tr in await transcripts.index()]
+        return [
+            ScannerWork(scanner=scanner, transcripts=transcript_ids)
+            for scanner in scanners
+        ]
 
 
 def _spec_scanners(

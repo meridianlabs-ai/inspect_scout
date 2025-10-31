@@ -1,4 +1,5 @@
 import re
+from typing import Sequence
 
 from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
@@ -18,8 +19,8 @@ from ._types import AnswerType
 from ._util import extract_references
 
 
-def answer_portion_template(_answer: AnswerType) -> str:
-    match _answer.type:
+def answer_portion_template(answer: AnswerType) -> str:
+    match answer.type:
         case "bool":
             return (
                 "Answer the following yes or no question: {prompt}\n\n"
@@ -33,6 +34,17 @@ def answer_portion_template(_answer: AnswerType) -> str:
                 "{explanation_text}\n\n"
                 "The last line of your response should be of the following format:\n"
                 "'ANSWER: xxx' (without quotes) where xxx is the numeric value."
+            )
+        case "labels":
+            if not answer.labels:
+                raise ValueError("Must have labels")
+            formatted_choices, letters = _answer_options(answer.labels)
+            return (
+                f"Answer the following multiple choice question: {{prompt}}\n\n"
+                f"{formatted_choices}\n\n"
+                f"{{explanation_text}}\n\n"
+                f"The last line of your response should be of the following format:\n"
+                f"'ANSWER: $LETTER' (without quotes) where LETTER is one of {letters}."
             )
         case t:
             raise NotImplementedError(f"Support for '{t}' not yet implemented")
@@ -107,3 +119,26 @@ def _safe_str_to_float(maybe_numeric: str) -> float | None:
         return str_to_float(maybe_numeric)
     except ValueError:
         return None
+
+
+def _answer_options(choices: Sequence[str]) -> tuple[str, str]:
+    r"""
+    Returns the `choices` formatted as a multiple choice question, e.g.:
+
+    ["choice 1", "choice 2", "choice 3"] ->
+        ("A) choice 1\nB) choice 2\nC) choice 3", "A,B,C"])
+    """
+    characters = [_answer_character(i) for i in range(len(choices))]
+    formatted = "\n".join(
+        [f"{char}) {choice}" for char, choice in zip(characters, choices, strict=True)]
+    )
+    return (formatted, ",".join(characters))
+
+
+def _answer_character(index: int) -> str:
+    r"""
+    Helper to go from array index to char, for example:
+
+        0 -> 'A', 1 -> 'B', etc
+    """
+    return chr(ord("A") + index) if index < 26 else str(index - 25)

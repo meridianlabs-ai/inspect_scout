@@ -32,6 +32,22 @@ def efficiency() -> Scanner[Transcript]:
     )
 
 
+@scanner(messages="all")
+def efficiency_labels() -> Scanner[Transcript]:
+    return llm_scanner(
+        "How efficiently did the assistant perform?",
+        answer=AnswerType(
+            type="labels",
+            labels=[
+                "Very efficiently",
+                "Somewhat efficiently",
+                "Inefficiently",
+                "Whoa baby",
+            ],
+        ),
+    )
+
+
 @scanner(messages=["assistant"])
 def target_word_scanner(target_word: str = "quill") -> Scanner[ChatMessageAssistant]:
     target_word = target_word.lower()

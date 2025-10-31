@@ -345,9 +345,9 @@ async def test_worklist_empty_transcript_list():
         try:
             tables = db.conn.execute("SHOW TABLES").fetchall()
             table_names = [t[0] for t in tables]
-            assert (
-                "scanner_b" not in table_names
-            ), "scanner_b should not have a table when processing no transcripts"
+            assert "scanner_b" not in table_names, (
+                "scanner_b should not have a table when processing no transcripts"
+            )
         finally:
             db.conn.close()
 
@@ -496,7 +496,9 @@ async def test_worklist_with_resume():
             count1 = db.conn.execute(
                 'SELECT COUNT(*) FROM "resume_scanner"'
             ).fetchone()[0]
-            assert count1 == 3, f"Should have processed 3 transcripts in first scan, got {count1}"
+            assert count1 == 3, (
+                f"Should have processed 3 transcripts in first scan, got {count1}"
+            )
         finally:
             db.conn.close()
 

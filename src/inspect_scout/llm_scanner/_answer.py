@@ -58,6 +58,10 @@ def result_for_answer(
             return _bool_result(output, message_id_map)
         case "number":
             return _number_result(output, message_id_map)
+        case "labels":
+            if not _answer.labels:
+                raise ValueError("Must have labels")
+            return _labels_result(_answer.labels, output, message_id_map)
         case t:
             raise NotImplementedError(f"Support for '{t}' not yet implemented")
 
@@ -89,6 +93,32 @@ def _bool_result(output: ModelOutput, message_id_map: list[str]) -> Result:
                 )
 
     return Result(value=False, explanation=output.completion)
+
+
+def _labels_result(
+    labels: Sequence[str], output: ModelOutput, message_id_map: list[str]
+) -> Result:
+    match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
+
+    if match:
+        answer_letter = match.group(1).upper()
+        explanation = output.completion[: match.start()].strip()
+        references = extract_references(explanation, message_id_map)
+
+        # Generate valid characters for all labels
+        valid_characters = [_answer_character(i) for i in range(len(labels))]
+
+        # Find if the answer matches any valid character
+        if answer_letter in valid_characters:
+            index = valid_characters.index(answer_letter)
+            return Result(
+                value=answer_letter,
+                answer=labels[index],
+                explanation=explanation,
+                references=references,
+            )
+
+    return Result(value=None, explanation=output.completion)
 
 
 def _number_result(output: ModelOutput, message_id_map: list[str]) -> Result:

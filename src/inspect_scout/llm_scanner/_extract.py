@@ -85,7 +85,7 @@ def _text_from_content(
                 )
                 # We need to bracket it with a start/finish since it could be multiple
                 # lines long, and we need to distinguish it from content text's
-                else f"\n<reasoning>{reasoning}</reasoning>"
+                else f"\n<think>{reasoning}</think>"
             )
 
         case "tool_use":

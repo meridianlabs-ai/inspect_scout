@@ -12,6 +12,7 @@ from inspect_ai.model import (
 from inspect_ai.scorer._common import normalize_number
 
 from .._scanner.result import Result
+from .prompt import BOOL_ANSWER_TEMPLATE, LABELS_ANSWER_TEMPLATE, NUMBER_ANSWER_TEMPLATE
 from .types import LLMScannerAnswer
 from .util import extract_references
 
@@ -19,29 +20,15 @@ from .util import extract_references
 def answer_portion_template(answer: LLMScannerAnswer) -> str:
     match answer.type:
         case "bool":
-            return (
-                "Answer the following yes or no question: {prompt}\n\n"
-                "{explanation_text}\n\n"
-                "The last line of your response should be of the following format:\n"
-                "'ANSWER: xxx' (without quotes) where xxx is the numeric value."
-            )
+            return BOOL_ANSWER_TEMPLATE
         case "number":
-            return (
-                "Answer the following numeric question: {prompt}\n\n"
-                "{explanation_text}\n\n"
-                "The last line of your response should be of the following format:\n"
-                "'ANSWER: xxx' (without quotes) where xxx is the numeric value."
-            )
+            return NUMBER_ANSWER_TEMPLATE
         case "labels":
             if not answer.labels:
                 raise ValueError("Must have labels")
             formatted_choices, letters = _answer_options(answer.labels)
-            return (
-                f"Answer the following multiple choice question: {{prompt}}\n\n"
-                f"{formatted_choices}\n\n"
-                f"{{explanation_text}}\n\n"
-                f"The last line of your response should be of the following format:\n"
-                f"'ANSWER: $LETTER' (without quotes) where LETTER is one of {letters}."
+            return LABELS_ANSWER_TEMPLATE.format(
+                formatted_choices=formatted_choices, letters=letters
             )
         case t:
             raise NotImplementedError(f"Support for '{t}' not yet implemented")

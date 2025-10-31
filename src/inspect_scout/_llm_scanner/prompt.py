@@ -20,8 +20,8 @@ DEFAULT_EXPLANATION_TEXT = (
 class LLMScannerPrompt(NamedTuple):
     """Prompt for scanner."""
 
-    instructions: str
-    """Scanner instructions."""
+    question: str
+    """Question for the scanner to answer."""
 
     explanation: str = DEFAULT_EXPLANATION_TEXT
     """Prompt the model to explain its answer and to include messages indexes. This variable is used in the generation of the default {answer_prompt}."""
@@ -31,6 +31,29 @@ class LLMScannerPrompt(NamedTuple):
 
     The scanner template may use the following variables:
 
-    - {messages} (transcript messsage history as string)
+    - {messages} (transcript message history as string)
     - {answer_prompt} (prompt the model for a specific type of answer and explanation ).
     """
+
+
+BOOL_ANSWER_TEMPLATE = (
+    "Answer the following yes or no question: {question}\n\n"
+    "{explanation_text}\n\n"
+    "The last line of your response should be of the following format:\n"
+    "'ANSWER: xxx' (without quotes) where xxx is the numeric value."
+)
+
+NUMBER_ANSWER_TEMPLATE = (
+    "Answer the following numeric question: {question}\n\n"
+    "{explanation_text}\n\n"
+    "The last line of your response should be of the following format:\n"
+    "'ANSWER: xxx' (without quotes) where xxx is the numeric value."
+)
+
+LABELS_ANSWER_TEMPLATE = (
+    "Answer the following multiple choice question: {{question}}\n\n"
+    "{formatted_choices}\n\n"
+    "{{explanation_text}}\n\n"
+    "The last line of your response should be of the following format:\n"
+    "'ANSWER: $LETTER' (without quotes) where LETTER is one of {letters}."
+)

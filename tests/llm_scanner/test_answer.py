@@ -12,7 +12,7 @@ from inspect_scout._llm_scanner.types import LLMScannerAnswer
         (
             LLMScannerAnswer(type="bool"),
             [
-                "Answer the following yes or no question: {prompt}",
+                "Answer the following yes or no question: {question}",
                 "{explanation_text}",
                 "'ANSWER: xxx' (without quotes) where xxx is the numeric value",
             ],
@@ -20,7 +20,7 @@ from inspect_scout._llm_scanner.types import LLMScannerAnswer
         (
             LLMScannerAnswer(type="number"),
             [
-                "Answer the following numeric question: {prompt}",
+                "Answer the following numeric question: {question}",
                 "{explanation_text}",
                 "'ANSWER: xxx' (without quotes) where xxx is the numeric value",
             ],
@@ -30,7 +30,7 @@ from inspect_scout._llm_scanner.types import LLMScannerAnswer
                 type="labels", labels=["Choice A", "Choice B", "Choice C"]
             ),
             [
-                "Answer the following multiple choice question: {prompt}",
+                "Answer the following multiple choice question: {question}",
                 "A) Choice A\nB) Choice B\nC) Choice C",
                 "{explanation_text}",
                 "'ANSWER: $LETTER' (without quotes) where LETTER is one of A,B,C",

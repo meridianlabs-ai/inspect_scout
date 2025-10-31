@@ -49,7 +49,7 @@ def llm_scanner(
     if messages is None:
         messages = LLMScannerMessages()
     if isinstance(prompt, str):
-        prompt = LLMScannerPrompt(instructions=prompt)
+        prompt = LLMScannerPrompt(question=prompt)
     if isinstance(answer, str):
         resolved_answer = LLMScannerAnswer(type=answer)
     else:
@@ -60,15 +60,15 @@ def llm_scanner(
     async def scan(transcript: Transcript) -> Result:
         variables = _variables_for_transcript(transcript)
 
-        answer_prompt = answer_portion_template(resolved_answer).format(
-            prompt=prompt.template, explanation_text=prompt.explanation, **variables
+        answer_template = answer_portion_template(resolved_answer)
+        answer_prompt = answer_template.format(
+            question=prompt.question, explanation_text=prompt.explanation, **variables
         )
 
         messages_str, message_id_map = _messages_with_ids(transcript.messages, messages)
 
         resolved_prompt = prompt.template.format(
             messages=messages_str,
-            prompt=prompt.template,
             answer_prompt=answer_prompt,
             **variables,
         )

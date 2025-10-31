@@ -11,12 +11,9 @@ from inspect_ai.model import (
 )
 from inspect_ai.scorer._common import normalize_number
 
-from inspect_scout import (
-    Result,
-)
-
-from ._types import AnswerType
-from ._util import extract_references
+from .._scanner.result import Result
+from .types import AnswerType
+from .util import extract_references
 
 
 def answer_portion_template(answer: AnswerType) -> str:

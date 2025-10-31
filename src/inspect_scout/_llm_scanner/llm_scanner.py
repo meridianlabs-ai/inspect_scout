@@ -6,12 +6,13 @@ from inspect_ai.model import (
     get_model,
 )
 
-from .. import Result, Scanner, scanner
+from .._scanner.result import Result
+from .._scanner.scanner import Scanner, scanner
 from .._scanner.util import _message_id
 from .._transcript.types import Transcript
-from ._answer import answer_portion_template, result_for_answer
-from ._extract import message_as_str
-from ._types import AnswerType, Preprocessor
+from .answer import answer_portion_template, result_for_answer
+from .extract import message_as_str
+from .types import AnswerType, Preprocessor
 
 DEFAULT_SCANNER_TEMPLATE = """
 Here is an LLM conversation:

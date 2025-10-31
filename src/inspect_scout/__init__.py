@@ -1,3 +1,4 @@
+from ._llm_scanner import AnswerType, Preprocessor, llm_scanner
 from ._recorder.recorder import (
     Results,
     ResultsDB,
@@ -40,7 +41,6 @@ from ._transcript.types import (
     Transcript,
     TranscriptInfo,
 )
-from .llm_scanner import AnswerType, Preprocessor, llm_scanner
 
 try:
     from ._version import __version__

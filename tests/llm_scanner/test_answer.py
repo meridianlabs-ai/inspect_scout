@@ -2,8 +2,8 @@
 
 import pytest
 from inspect_ai.model import ModelOutput
-from inspect_scout.llm_scanner._answer import answer_portion_template, result_for_answer
-from inspect_scout.llm_scanner._types import AnswerType
+from inspect_scout._llm_scanner.answer import answer_portion_template, result_for_answer
+from inspect_scout._llm_scanner.types import AnswerType
 
 
 @pytest.mark.parametrize(

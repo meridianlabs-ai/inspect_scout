@@ -15,7 +15,7 @@ from inspect_ai.model import (
     ChatMessageUser,
 )
 from inspect_ai.tool import ToolCall, ToolCallError
-from inspect_scout.llm_scanner._extract import message_as_str
+from inspect_scout._llm_scanner.extract import message_as_str
 
 
 @pytest.mark.parametrize(

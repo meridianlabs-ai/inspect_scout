@@ -10,9 +10,9 @@ from inspect_scout import (
     scanner,
     transcripts_from_logs,
 )
+from inspect_scout._llm_scanner import AnswerType, llm_scanner
 from inspect_scout._scanjob import ScanJob, scanjob
 from inspect_scout._transcript.types import Transcript
-from inspect_scout.llm_scanner import AnswerType, llm_scanner
 from rich import print
 
 

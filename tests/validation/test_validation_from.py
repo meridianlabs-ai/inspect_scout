@@ -6,9 +6,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 import yaml
-
-from inspect_scout._validation import Validation, ValidationCase, validation_from
-
+from inspect_scout._validation import Validation, ValidationCase
+from inspect_scout._validation import validation as validation_from
 
 # CSV Tests
 
@@ -365,7 +364,8 @@ test,123"""
     csv_file.write_text(csv_content)
 
     with pytest.raises(
-        ValueError, match="must contain either a 'target' column or 'target_\\*' columns"
+        ValueError,
+        match="must contain either a 'target' column or 'target_\\*' columns",
     ):
         validation_from(csv_file)
 

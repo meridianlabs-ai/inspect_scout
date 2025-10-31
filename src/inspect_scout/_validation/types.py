@@ -27,7 +27,7 @@ class Validation(BaseModel):
     """Cases to compare scanner values against."""
 
     predicate: Callable[[JsonValue, JsonValue], bool] | None = Field(default=None)
-    """Predicate for comparing scanner results to validation targets."""
+    """Predicate for comparing scanner results to validation targets (defaults to equality comparison)."""
 
     multi_predicate: (
         Callable[[dict[str, JsonValue], dict[str, JsonValue]], dict[str, bool]] | None

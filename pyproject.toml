@@ -53,6 +53,7 @@ dev = [
     "pyarrow-stubs>=20.0.0.20250928",
     "types-jsonschema",
     "types-psutil",
+    "types-PyYAML"
 ]
 doc = [
     "jupyter",

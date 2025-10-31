@@ -1,24 +1,34 @@
 import json
 from pathlib import Path
+from typing import Any, Callable
 
 import pandas as pd
 import yaml
-from upath import UPath
+from pydantic import JsonValue
 
 from .types import Validation, ValidationCase
 
 
-def validation_from(file: str | Path | UPath | pd.DataFrame) -> Validation:
+def validation(
+    cases: str | Path | pd.DataFrame,
+    predicate: Callable[[JsonValue, JsonValue], bool] | None = None,
+    multi_predicate: Callable[
+        [dict[str, JsonValue], dict[str, JsonValue]], dict[str, bool]
+    ]
+    | None = None,
+) -> Validation:
     """Read validation cases from a file or data frame.
 
     Args:
-        file: Path to a CSV, YAML, JSON, or JSONL file with validation cases, or data frame with validation cases.
+        cases: Path to a CSV, YAML, JSON, or JSONL file with validation cases, or data frame with validation cases.
+        predicate: Predicate for comparing scanner results to validation targets (defaults to equality comparison).
+        multi_predicate: Predicate for comparing a dict of scanner results to a dict of validation targets (defaults to pairwise equality comparison).
     """
     # Load data into DataFrame if not already one
-    if isinstance(file, pd.DataFrame):
-        df = file
+    if isinstance(cases, pd.DataFrame):
+        df = cases
     else:
-        df = _load_file(file)
+        df = _load_file(cases)
 
     # Validate required columns
     if "id" not in df.columns:
@@ -32,19 +42,21 @@ def validation_from(file: str | Path | UPath | pd.DataFrame) -> Validation:
 
     if target_cols:
         # Multiple target_* columns - create dict targets
-        cases = _create_cases_with_dict_target(df, target_cols)
+        validate_cases = _create_cases_with_dict_target(df, target_cols)
     elif "target" in df.columns:
         # Single target column
-        cases = _create_cases_with_single_target(df)
+        validate_cases = _create_cases_with_single_target(df)
     else:
         raise ValueError(
             "Validation data must contain either a 'target' column or 'target_*' columns"
         )
 
-    return Validation(cases=cases)
+    return Validation(
+        cases=validate_cases, predicate=predicate, multi_predicate=multi_predicate
+    )
 
 
-def _load_file(file: str | Path | UPath) -> pd.DataFrame:
+def _load_file(file: str | Path) -> pd.DataFrame:
     """Load a file into a DataFrame based on its extension."""
     path = Path(file) if isinstance(file, str) else file
     suffix = str(path.suffix).lower()
@@ -98,7 +110,7 @@ def _load_file(file: str | Path | UPath) -> pd.DataFrame:
 def _convert_csv_types(df: pd.DataFrame) -> pd.DataFrame:
     """Convert CSV string types to appropriate Python types."""
 
-    def convert_value(val: object) -> object:
+    def convert_value(val: Any) -> Any:
         """Convert a single value to the appropriate type."""
         # Handle NaN/None
         if pd.isna(val):

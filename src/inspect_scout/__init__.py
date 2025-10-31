@@ -50,7 +50,7 @@ from ._transcript.types import (
 from ._validation import (
     Validation,
     ValidationCase,
-    validation_from,
+    validation,
 )
 
 try:
@@ -115,7 +115,7 @@ __all__ = [
     # validation
     "Validation",
     "ValidationCase",
-    "validation_from",
+    "validation",
     # version
     "__version__",
 ]

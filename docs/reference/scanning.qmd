@@ -15,6 +15,7 @@ reference: inspect_scout
 ### ScanJob
 ### ScanJobConfig
 ### ScannerSpec
+### ScannerWork
 
 ## Status
 

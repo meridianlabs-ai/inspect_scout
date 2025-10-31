@@ -83,7 +83,7 @@ class ScanDisplayPlain(ScanDisplay):
             f"{scan_title(scan.spec)}",
         )
         self._print(scan_config(scan.spec), "\n")
-        self._total_scans = transcripts * len(scan.scanners)
+        self._total_scans = sum(len(work.transcripts) for work in scan.worklist)
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
         self._parsing = self._scanning = self._idle = self._buffered = 0

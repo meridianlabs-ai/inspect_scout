@@ -49,7 +49,7 @@ from ._scanner.result import Error, Result, ResultReport
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
 from ._scanner.util import get_input_type_and_ids
-from ._scanspec import ScanSpec
+from ._scanspec import ScannerWork, ScanSpec
 from ._transcript.transcripts import Transcripts
 from ._transcript.types import (
     Transcript,
@@ -70,6 +70,7 @@ def scan(
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
+    worklist: Sequence[ScannerWork] | None = None,
     results: str | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
@@ -96,6 +97,7 @@ def scan(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
+        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts).
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
@@ -122,6 +124,7 @@ def scan(
         scan_async(
             scanners=scanners,
             transcripts=transcripts,
+            worklist=worklist,
             results=results,
             model=model,
             model_config=model_config,
@@ -145,6 +148,7 @@ async def scan_async(
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
+    worklist: Sequence[ScannerWork] | None = None,
     results: str | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
@@ -170,6 +174,7 @@ async def scan_async(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
+        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts).
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
@@ -197,7 +202,7 @@ async def scan_async(
     elif isinstance(scanners, ScanJobConfig):
         scanjob = ScanJob.from_config(scanners)
     else:
-        scanjob = ScanJob(scanners=scanners)
+        scanjob = ScanJob(scanners=scanners, worklist=worklist)
 
     # see if we are overriding the scanjob with additional args
     scanjob._transcripts = transcripts or scanjob.transcripts
@@ -708,9 +713,18 @@ async def _parse_jobs(
     scanner_names = list(context.scanners.keys())
     name_to_index = {name: idx for idx, name in enumerate(scanner_names)}
 
+    # build scanner->transcript_ids map from worklist
+    scanner_to_transcript_ids = {
+        work.scanner: work.transcripts for work in context.worklist
+    }
+
     for transcript_info in await transcripts.index():
         scanner_indices_for_transcript: list[int] = []
         for name in scanner_names:
+            # if its not in the worklist then move on
+            if transcript_info.id not in scanner_to_transcript_ids.get(name, []):
+                continue
+            # if its already recorded then move on
             if await recorder.is_recorded(transcript_info, name):
                 continue
             scanner_indices_for_transcript.append(name_to_index[name])

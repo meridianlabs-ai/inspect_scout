@@ -109,7 +109,7 @@ class ScanDisplayRich(
         self._scan = scan
         self._scan_location = scan_location
         self._transcripts = transcripts
-        self._total_scans = transcripts * len(scan.scanners)
+        self._total_scans = sum(len(work.transcripts) for work in scan.worklist)
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
         self._metrics: ScanMetrics | None = None

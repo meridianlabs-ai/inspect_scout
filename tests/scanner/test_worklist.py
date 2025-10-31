@@ -118,8 +118,8 @@ def scanner_4_factory() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def default_a() -> Scanner[Transcript]:
+@scanner(name="default_a", messages="all")
+def default_a_factory() -> Scanner[Transcript]:
     """Default scanner A."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -128,8 +128,8 @@ def default_a() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def default_b() -> Scanner[Transcript]:
+@scanner(name="default_b", messages="all")
+def default_b_factory() -> Scanner[Transcript]:
     """Default scanner B."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -138,8 +138,8 @@ def default_b() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def spec_scanner() -> Scanner[Transcript]:
+@scanner(name="spec_scanner", messages="all")
+def spec_scanner_factory() -> Scanner[Transcript]:
     """Scanner for spec persistence test."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -148,8 +148,8 @@ def spec_scanner() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def resume_scanner() -> Scanner[Transcript]:
+@scanner(name="resume_scanner", messages="all")
+def resume_scanner_factory() -> Scanner[Transcript]:
     """Scanner for resume test."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -158,8 +158,8 @@ def resume_scanner() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def subset_scanner() -> Scanner[Transcript]:
+@scanner(name="subset_scanner", messages="all")
+def subset_scanner_factory() -> Scanner[Transcript]:
     """Scanner for subset test."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -168,8 +168,8 @@ def subset_scanner() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def resilient_scanner() -> Scanner[Transcript]:
+@scanner(name="resilient_scanner", messages="all")
+def resilient_scanner_factory() -> Scanner[Transcript]:
     """Scanner for resilient test."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -178,8 +178,8 @@ def resilient_scanner() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def db_scanner_a() -> Scanner[Transcript]:
+@scanner(name="db_scanner_a", messages="all")
+def db_scanner_a_factory() -> Scanner[Transcript]:
     """DB Scanner A."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -188,8 +188,8 @@ def db_scanner_a() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def db_scanner_b() -> Scanner[Transcript]:
+@scanner(name="db_scanner_b", messages="all")
+def db_scanner_b_factory() -> Scanner[Transcript]:
     """DB Scanner B."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -198,8 +198,8 @@ def db_scanner_b() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def original_name_a() -> Scanner[Transcript]:
+@scanner(name="original_name_a", messages="all")
+def original_name_a_factory() -> Scanner[Transcript]:
     """Original name scanner A."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -208,8 +208,8 @@ def original_name_a() -> Scanner[Transcript]:
     return scan_transcript
 
 
-@scanner(messages="all")
-def original_name_b() -> Scanner[Transcript]:
+@scanner(name="original_name_b", messages="all")
+def original_name_b_factory() -> Scanner[Transcript]:
     """Original name scanner B."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
@@ -364,7 +364,7 @@ async def test_worklist_single_scanner_subset():
     # Run scan with all transcripts available but worklist limiting to 5
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
-            scanners=[subset_scanner()],
+            scanners=[subset_scanner_factory()],
             transcripts=transcripts_from_logs(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
@@ -399,7 +399,7 @@ async def test_worklist_nonexistent_transcript_ids():
     # Run scan - should not error, just process valid IDs
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
-            scanners=[resilient_scanner()],
+            scanners=[resilient_scanner_factory()],
             transcripts=transcripts_from_logs(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
@@ -418,7 +418,7 @@ async def test_worklist_default_behavior_without_worklist():
     # Run scan WITHOUT worklist (default behavior)
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
-            scanners=[default_a(), default_b()],
+            scanners=[default_a_factory(), default_b_factory()],
             transcripts=transcripts_from_logs(LOGS_DIR),
             # Note: No worklist parameter - should process all transcripts
             results=tmpdir,
@@ -449,7 +449,7 @@ async def test_worklist_spec_persistence():
     # Run scan
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
-            scanners=[spec_scanner()],
+            scanners=[spec_scanner_factory()],
             transcripts=transcripts_from_logs(LOGS_DIR),
             worklist=original_worklist,
             results=tmpdir,
@@ -483,7 +483,7 @@ async def test_worklist_with_resume():
     with tempfile.TemporaryDirectory() as tmpdir:
         # First scan - process with worklist but limit to 3
         result1 = scan(
-            scanners=[resume_scanner()],
+            scanners=[resume_scanner_factory()],
             transcripts=transcripts_from_logs(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
@@ -598,7 +598,7 @@ async def test_worklist_results_database_filtering():
     # Run scan
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
-            scanners=[db_scanner_a(), db_scanner_b()],
+            scanners=[db_scanner_a_factory(), db_scanner_b_factory()],
             transcripts=transcripts_from_logs(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
@@ -645,7 +645,7 @@ async def test_worklist_with_named_scanners_dict():
     transcript_ids = await get_n_transcript_ids(4)
 
     # Pass scanners as dict with custom names
-    scanners_dict = {"custom_a": original_name_a(), "custom_b": original_name_b()}
+    scanners_dict = {"custom_a": original_name_a_factory(), "custom_b": original_name_b_factory()}
 
     # Create worklist using the dict keys (custom names)
     worklist = [

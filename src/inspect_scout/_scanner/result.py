@@ -97,6 +97,7 @@ class ResultReport(BaseModel):
                 columns["value_type"] = (
                     "array" if isinstance(self.result.value, list) else "object"
                 )
+            columns["answer"] = self.result.answer
             columns["explanation"] = self.result.explanation
             columns["metadata"] = to_json_str_safe(self.result.metadata or {})
 
@@ -116,6 +117,7 @@ class ResultReport(BaseModel):
         elif self.error is not None:
             columns["value"] = None
             columns["value_type"] = "null"
+            columns["answer"] = None
             columns["explanation"] = None
             columns["metadata"] = to_json_str_safe({})
             columns["message_references"] = to_json_str_safe([])

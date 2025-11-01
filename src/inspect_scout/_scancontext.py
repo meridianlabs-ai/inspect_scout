@@ -22,7 +22,7 @@ from inspect_ai.model._model_config import (
 
 from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
 from inspect_scout._util.process import default_max_processes
-from inspect_scout._validation.types import Validation
+from inspect_scout._validation.types import ValidationSet
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
@@ -53,7 +53,7 @@ class ScanContext:
     worklist: Sequence[ScannerWork]
     """Transcript ids to process for each scanner."""
 
-    validation: Validation | None
+    validation: ValidationSet | None
     """Validation cases to apply."""
 
 

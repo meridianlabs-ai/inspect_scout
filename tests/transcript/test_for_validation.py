@@ -3,7 +3,7 @@
 from typing import Any
 
 from inspect_scout._transcript.transcripts import Transcripts
-from inspect_scout._validation import Validation, ValidationCase
+from inspect_scout._validation import ValidationCase, ValidationSet
 
 
 class MockTranscripts(Transcripts):
@@ -30,7 +30,7 @@ class MockTranscripts(Transcripts):
 
 def test_for_validation_single_id() -> None:
     """Test for_validation with a single ID."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="transcript_1", target=True),
             ValidationCase(id="transcript_2", target=False),
@@ -53,7 +53,7 @@ def test_for_validation_single_id() -> None:
 
 def test_for_validation_list_ids() -> None:
     """Test for_validation with list IDs."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id=["transcript_1", "transcript_2"], target=True),
             ValidationCase(id="transcript_3", target=False),
@@ -74,7 +74,7 @@ def test_for_validation_list_ids() -> None:
 
 def test_for_validation_mixed_ids() -> None:
     """Test for_validation with mixed single and list IDs."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="transcript_1", target=True),
             ValidationCase(id=["transcript_2", "transcript_3"], target=False),
@@ -94,7 +94,7 @@ def test_for_validation_mixed_ids() -> None:
 
 def test_for_validation_duplicate_ids() -> None:
     """Test for_validation removes duplicate IDs."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="transcript_1", target=True),
             ValidationCase(id="transcript_1", target=False),  # Duplicate
@@ -117,7 +117,7 @@ def test_for_validation_duplicate_ids() -> None:
 
 def test_for_validation_preserves_order() -> None:
     """Test for_validation preserves ID order when deduplicating."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="id_c", target=True),
             ValidationCase(id="id_a", target=False),
@@ -138,7 +138,7 @@ def test_for_validation_preserves_order() -> None:
 
 def test_for_validation_empty_cases() -> None:
     """Test for_validation with empty validation cases."""
-    validation = Validation(cases=[])
+    validation = ValidationSet(cases=[])
 
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
@@ -157,7 +157,7 @@ def test_for_validation_large_id_list() -> None:
     """Test for_validation with >999 IDs (SQLite parameter limit)."""
     # Create 1500 validation cases to exceed SQLite's 999 parameter limit
     cases = [ValidationCase(id=f"id_{i}", target=i % 2 == 0) for i in range(1500)]
-    validation = Validation(cases=cases)
+    validation = ValidationSet(cases=cases)
 
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
@@ -180,7 +180,7 @@ def test_for_validation_combines_with_existing_conditions() -> None:
     """Test that for_validation combines with existing where conditions."""
     from inspect_scout._transcript.metadata import metadata as m
 
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="transcript_1", target=True),
             ValidationCase(id="transcript_2", target=False),
@@ -209,7 +209,7 @@ def test_for_validation_combines_with_existing_conditions() -> None:
 
 def test_for_validation_sql_generation_sqlite() -> None:
     """Test SQL generation for SQLite dialect."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="id1", target=True),
             ValidationCase(id="id2", target=False),
@@ -228,7 +228,7 @@ def test_for_validation_sql_generation_sqlite() -> None:
 
 def test_for_validation_sql_generation_postgres() -> None:
     """Test SQL generation for PostgreSQL dialect."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="id1", target=True),
             ValidationCase(id="id2", target=False),
@@ -248,7 +248,7 @@ def test_for_validation_sql_generation_postgres() -> None:
 
 def test_for_validation_sql_generation_duckdb() -> None:
     """Test SQL generation for DuckDB dialect."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="id1", target=True),
             ValidationCase(id="id2", target=False),
@@ -267,7 +267,7 @@ def test_for_validation_sql_generation_duckdb() -> None:
 
 def test_for_validation_does_not_modify_original() -> None:
     """Test that for_validation does not modify the original Transcripts object."""
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="transcript_1", target=True),
         ]
@@ -291,7 +291,7 @@ def test_for_validation_with_predicate() -> None:
     def custom_predicate(value: Any, target: Any) -> bool:
         return bool(value == target)
 
-    validation = Validation(
+    validation = ValidationSet(
         cases=[
             ValidationCase(id="transcript_1", target=True),
         ],
@@ -313,7 +313,7 @@ def test_for_validation_chunk_boundary() -> None:
     """Test for_validation at exactly 999 IDs (boundary case)."""
     # Create exactly 999 validation cases
     cases = [ValidationCase(id=f"id_{i}", target=True) for i in range(999)]
-    validation = Validation(cases=cases)
+    validation = ValidationSet(cases=cases)
 
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
@@ -331,7 +331,7 @@ def test_for_validation_just_over_chunk_boundary() -> None:
     """Test for_validation with 1000 IDs (just over boundary)."""
     # Create 1000 validation cases (1 more than limit)
     cases = [ValidationCase(id=f"id_{i}", target=True) for i in range(1000)]
-    validation = Validation(cases=cases)
+    validation = ValidationSet(cases=cases)
 
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)

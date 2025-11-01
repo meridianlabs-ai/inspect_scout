@@ -6,18 +6,18 @@ import pandas as pd
 import yaml
 from pydantic import JsonValue
 
-from .types import Validation, ValidationCase
+from .types import ValidationCase, ValidationSet
 
 
-def validation(
+def validation_set(
     cases: str | Path | pd.DataFrame,
     predicate: Callable[[JsonValue, JsonValue], bool] | None = None,
     multi_predicate: Callable[
         [dict[str, JsonValue], dict[str, JsonValue]], dict[str, bool]
     ]
     | None = None,
-) -> Validation:
-    """Read validation cases from a file or data frame.
+) -> ValidationSet:
+    """Create a validation set by reading cases from a file or data frame.
 
     Args:
         cases: Path to a CSV, YAML, JSON, or JSONL file with validation cases, or data frame with validation cases.
@@ -51,7 +51,7 @@ def validation(
             "Validation data must contain either a 'target' column or 'target_*' columns"
         )
 
-    return Validation(
+    return ValidationSet(
         cases=validate_cases, predicate=predicate, multi_predicate=multi_predicate
     )
 

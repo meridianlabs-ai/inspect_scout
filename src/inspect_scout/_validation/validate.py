@@ -1,10 +1,10 @@
 from pydantic import JsonValue
 
-from .types import Validation
+from .types import ValidationSet
 
 
 def validate(
-    validation: Validation,
+    validation: ValidationSet,
     value: JsonValue,
     target: JsonValue,
 ) -> bool:
@@ -13,7 +13,7 @@ def validate(
 
 
 def validate_dict(
-    validation: Validation,
+    validation: ValidationSet,
     value: JsonValue,
     target: dict[str, JsonValue],
 ) -> dict[str, bool]:

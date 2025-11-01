@@ -18,8 +18,8 @@ class ValidationCase(BaseModel):
     """Target value that the scanner is expected to output."""
 
 
-class Validation(BaseModel):
-    """Validation for a scanner."""
+class ValidationSet(BaseModel):
+    """Validation set for a scanner."""
 
     model_config = {"arbitrary_types_allowed": True}
 

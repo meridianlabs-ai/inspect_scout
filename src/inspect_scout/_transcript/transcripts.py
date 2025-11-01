@@ -5,7 +5,7 @@ from typing import (
     Iterator,
 )
 
-from inspect_scout._validation.types import Validation
+from inspect_scout._validation.types import ValidationSet
 
 from .._scanspec import ScanTranscripts
 from .metadata import Column, Condition
@@ -47,7 +47,7 @@ class Transcripts(abc.ABC):
         transcripts._where.append(condition)
         return transcripts
 
-    def for_validation(self, validation: Validation) -> "Transcripts":
+    def for_validation(self, validation: ValidationSet) -> "Transcripts":
         """Filter transcripts to only those with IDs matching validation cases.
 
         Args:

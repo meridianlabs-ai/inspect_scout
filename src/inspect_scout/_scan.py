@@ -31,7 +31,7 @@ from pydantic import TypeAdapter
 from rich.console import RenderableType
 
 from inspect_scout._util.attachments import resolve_event_attachments
-from inspect_scout._validation.types import Validation
+from inspect_scout._validation.types import ValidationSet
 from inspect_scout._view.notify import view_notify_scan
 
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
@@ -66,7 +66,7 @@ from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.log import init_log
 from ._util.process import default_max_processes
-from ._validation import validation as validation_from
+from ._validation import validation_set as validation_from
 
 logger = getLogger(__name__)
 
@@ -79,7 +79,7 @@ def scan(
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
-    validation: Validation | str | Path | pd.DataFrame | None = None,
+    validation: ValidationSet | str | Path | pd.DataFrame | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -160,7 +160,7 @@ async def scan_async(
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
-    validation: Validation | str | Path | pd.DataFrame | None = None,
+    validation: ValidationSet | str | Path | pd.DataFrame | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -213,7 +213,7 @@ async def scan_async(
         worklist = _worklist_from(worklist)
 
     # resolve validation
-    if validation is not None and not isinstance(validation, Validation):
+    if validation is not None and not isinstance(validation, ValidationSet):
         validation = validation_from(validation)
 
     # resolve scanjob

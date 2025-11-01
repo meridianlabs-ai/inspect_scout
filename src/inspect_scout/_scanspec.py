@@ -11,7 +11,7 @@ from pydantic import (
 from shortuuid import uuid
 from typing_extensions import Literal, NotRequired, Required, TypedDict
 
-from inspect_scout._validation.types import Validation
+from inspect_scout._validation.types import ValidationSet
 
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.process import default_max_processes
@@ -153,7 +153,7 @@ class ScanSpec(BaseModel):
     worklist: list[ScannerWork] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
-    validation: Validation | None = Field(default=None)
+    validation: ValidationSet | None = Field(default=None)
     """Validation cases to apply."""
 
     @field_serializer("timestamp")

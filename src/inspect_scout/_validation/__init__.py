@@ -1,4 +1,4 @@
-from .types import Validation, ValidationCase
-from .validation import validation
+from .types import ValidationCase, ValidationSet
+from .validation import validation_set
 
-__all__ = ["Validation", "ValidationCase", "validation"]
+__all__ = ["ValidationSet", "ValidationCase", "validation_set"]

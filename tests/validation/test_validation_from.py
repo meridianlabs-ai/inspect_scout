@@ -6,8 +6,8 @@ from typing import Any
 
 import pandas as pd
 import pytest
-from inspect_scout._validation import Validation, ValidationCase
-from inspect_scout._validation import validation as validation_from
+from inspect_scout._validation import ValidationCase, ValidationSet
+from inspect_scout._validation import validation_set as validation_from
 
 # CSV Tests
 
@@ -468,7 +468,7 @@ def test_validation_object_structure() -> None:
 
     validation = validation_from(df)
 
-    assert isinstance(validation, Validation)
+    assert isinstance(validation, ValidationSet)
     assert isinstance(validation.cases, list)
     assert isinstance(validation.cases[0], ValidationCase)
     assert validation.predicate is None

@@ -1,13 +1,14 @@
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
-    AsyncIterator,
     Callable,
     Literal,
     ParamSpec,
     Protocol,
     TypeVar,
     cast,
+    overload,
 )
 
 from inspect_ai._util._async import is_callable_coroutine
@@ -35,6 +36,8 @@ LOADER_CONFIG = "loader_config"
 
 # Use bounded TypeVar (covariant for loader output)
 TLoaderResult = TypeVar("TLoaderResult", bound=ScannerInput, covariant=True)
+# TypeVar for overload signatures (invariant for proper type inference)
+TLoader = TypeVar("TLoader", bound=ScannerInput)
 P = ParamSpec("P")
 
 
@@ -62,6 +65,86 @@ class LoaderConfig:
 
 
 LoaderFactory = Callable[P, Loader[TLoaderResult]]
+
+
+# Overloads for better type inference when users add type annotations
+# These use a TypeVar to preserve the specific return type from user annotations
+@overload
+def loader(
+    *,
+    name: str | None = None,
+    messages: Literal["all"],
+    events: None = None,
+    content: None = None,
+) -> Callable[
+    [Callable[P, Loader[TLoader]]],
+    Callable[P, Loader[TLoader]],
+]: ...
+
+
+@overload
+def loader(
+    *,
+    name: str | None = None,
+    messages: list[MessageType],
+    events: None = None,
+    content: None = None,
+) -> Callable[
+    [Callable[P, Loader[TLoader]]],
+    Callable[P, Loader[TLoader]],
+]: ...
+
+
+@overload
+def loader(
+    *,
+    name: str | None = None,
+    messages: None = None,
+    events: Literal["all"] = ...,
+    content: None = None,
+) -> Callable[
+    [Callable[P, Loader[TLoader]]],
+    Callable[P, Loader[TLoader]],
+]: ...
+
+
+@overload
+def loader(
+    *,
+    name: str | None = None,
+    messages: None = None,
+    events: list[EventType] = ...,
+    content: None = None,
+) -> Callable[
+    [Callable[P, Loader[TLoader]]],
+    Callable[P, Loader[TLoader]],
+]: ...
+
+
+@overload
+def loader(
+    *,
+    name: str | None = None,
+    messages: list[MessageType] | Literal["all"],
+    events: list[EventType] | Literal["all"],
+    content: None = None,
+) -> Callable[
+    [Callable[P, Loader[TLoader]]],
+    Callable[P, Loader[TLoader]],
+]: ...
+
+
+@overload
+def loader(
+    *,
+    name: str | None = None,
+    messages: list[MessageType] | Literal["all"] | None = None,
+    events: list[EventType] | Literal["all"] | None = None,
+    content: TranscriptContent,
+) -> Callable[
+    [Callable[P, Loader[TLoader]]],
+    Callable[P, Loader[TLoader]],
+]: ...
 
 
 def loader(

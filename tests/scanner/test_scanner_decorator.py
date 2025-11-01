@@ -1,7 +1,7 @@
 """Tests for the scanner decorator functionality."""
 
-from collections.abc import Callable
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 import pytest
 from inspect_ai._util.registry import registry_info
@@ -129,8 +129,8 @@ def test_scanner_with_loader() -> None:
     from inspect_scout._transcript.types import Transcript
 
     @loader(name="test_loader", messages="all")  # type: ignore[arg-type]
-    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
-        async def load(transcripts: Transcript) -> AsyncGenerator[Transcript, None]:
+    def test_loader() -> Callable[[Transcript], AsyncIterator[Transcript]]:
+        async def load(transcripts: Transcript) -> AsyncIterator[Transcript]:
             yield transcripts
 
         return load

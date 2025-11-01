@@ -1,7 +1,7 @@
 """Tests for the loader functionality."""
 
-from collections.abc import Callable
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 import pytest
 from inspect_ai._util.registry import registry_info
@@ -10,7 +10,7 @@ from inspect_ai.model._chat_message import (
     ChatMessageAssistant,
     ChatMessageUser,
 )
-from inspect_scout._scanner.loader import LOADER_CONFIG, loader
+from inspect_scout._scanner.loader import LOADER_CONFIG, Loader, loader
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
 from inspect_scout._transcript.types import Transcript
@@ -21,11 +21,11 @@ from inspect_scout._transcript.types import Transcript
 def test_loader_creates_config() -> None:
     """Loader decorator should add config."""
 
-    @loader(name="test_loader", messages="all")  # type: ignore[arg-type]
-    def test_loader() -> Callable[[Transcript], AsyncGenerator[ChatMessage, None]]:
+    @loader(name="test_loader", messages="all")
+    def test_loader() -> Loader[ChatMessage]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[ChatMessage, None]:
+        ) -> AsyncIterator[ChatMessage]:
             for msg in transcript.messages:
                 yield msg
 
@@ -39,10 +39,10 @@ def test_loader_with_message_filter() -> None:
     """Loader can have message filters."""
 
     @loader(messages=["user"])  # type: ignore[arg-type]
-    def test_loader() -> Callable[[Transcript], AsyncGenerator[ChatMessageUser, None]]:
+    def test_loader() -> Callable[[Transcript], AsyncIterator[ChatMessageUser]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[ChatMessageUser, None]:
+        ) -> AsyncIterator[ChatMessageUser]:
             for msg in transcript.messages:
                 if msg.role == "user" and isinstance(msg, ChatMessageUser):
                     yield msg
@@ -58,10 +58,10 @@ def test_loader_with_event_filter() -> None:
     from inspect_ai.event._event import Event
 
     @loader(events=["model", "tool"])  # type: ignore[arg-type]
-    def test_loader() -> Callable[[Transcript], AsyncGenerator[Event, None]]:
+    def test_loader() -> Callable[[Transcript], AsyncIterator[Event]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[Event, None]:
+        ) -> AsyncIterator[Event]:
             for event in transcript.events:
                 if event.event in ["model", "tool"]:
                     yield event
@@ -94,10 +94,10 @@ def test_loader_requires_filter() -> None:
     with pytest.raises(RuntimeError):
 
         @loader(name="no_filter_loader")  # type: ignore[arg-type]
-        def test_loader() -> Callable[[Transcript], AsyncGenerator[ChatMessage, None]]:
+        def test_loader() -> Callable[[Transcript], AsyncIterator[ChatMessage]]:
             async def load(
                 transcript: Transcript,
-            ) -> AsyncGenerator[ChatMessage, None]:
+            ) -> AsyncIterator[ChatMessage]:
                 for msg in transcript.messages:
                     yield msg
 
@@ -110,10 +110,10 @@ def test_loader_with_both_filters() -> None:
     """Loader can have both message and event filters."""
 
     @loader(messages=["user"], events=["model"])  # type: ignore[arg-type]
-    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
+    def test_loader() -> Callable[[Transcript], AsyncIterator[Transcript]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[Transcript, None]:
+        ) -> AsyncIterator[Transcript]:
             yield transcript
 
         return load
@@ -131,12 +131,10 @@ def test_scanner_with_custom_loader() -> None:
     """Scanner can use a custom loader."""
 
     @loader(messages=["user"])  # type: ignore[arg-type]
-    def user_message_loader() -> Callable[
-        [Transcript], AsyncGenerator[ChatMessageUser, None]
-    ]:
+    def user_message_loader() -> Callable[[Transcript], AsyncIterator[ChatMessageUser]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[ChatMessageUser, None]:
+        ) -> AsyncIterator[ChatMessageUser]:
             for msg in transcript.messages:
                 if msg.role == "user" and isinstance(msg, ChatMessageUser):
                     yield msg
@@ -164,10 +162,10 @@ def test_loader_type_transformation() -> None:
     from inspect_ai.event._event import Event
 
     @loader(name="event_extractor", events="all")  # type: ignore[arg-type]
-    def event_loader() -> Callable[[Transcript], AsyncGenerator[Event, None]]:
+    def event_loader() -> Callable[[Transcript], AsyncIterator[Event]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[Event, None]:
+        ) -> AsyncIterator[Event]:
             for event in transcript.events:
                 yield event
 
@@ -192,10 +190,10 @@ def test_loader_with_custom_logic() -> None:
     @loader(name="long_message_loader", messages="all")  # type: ignore[arg-type]
     def long_message_loader(
         min_length: int = 100,
-    ) -> Callable[[Transcript], AsyncGenerator[ChatMessage, None]]:
+    ) -> Callable[[Transcript], AsyncIterator[ChatMessage]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[ChatMessage, None]:
+        ) -> AsyncIterator[ChatMessage]:
             for msg in transcript.messages:
                 content = (
                     msg.text
@@ -230,10 +228,10 @@ def test_loader_added_to_registry() -> None:
     """Loader should be added to registry."""
 
     @loader(name="registry_test_loader", messages="all")  # type: ignore[arg-type]
-    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
+    def test_loader() -> Callable[[Transcript], AsyncIterator[Transcript]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[Transcript, None]:
+        ) -> AsyncIterator[Transcript]:
             yield transcript
 
         return load
@@ -249,10 +247,10 @@ def test_loader_factory_with_parameters() -> None:
     @loader(name="parameterized_loader", messages=["assistant"])  # type: ignore[arg-type]
     def param_loader(
         include_model: bool = True,
-    ) -> Callable[[Transcript], AsyncGenerator[ChatMessageAssistant, None]]:
+    ) -> Callable[[Transcript], AsyncIterator[ChatMessageAssistant]]:
         async def load(
             transcript: Transcript,
-        ) -> AsyncGenerator[ChatMessageAssistant, None]:
+        ) -> AsyncIterator[ChatMessageAssistant]:
             for msg in transcript.messages:
                 if msg.role == "assistant" and isinstance(msg, ChatMessageAssistant):
                     if include_model or not hasattr(msg, "model"):

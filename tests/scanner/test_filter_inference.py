@@ -1,7 +1,7 @@
 """Tests for automatic filter inference from type annotations."""
 
-from collections.abc import Callable
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 import pytest
 from inspect_ai._util.registry import registry_info
@@ -196,8 +196,8 @@ def test_no_inference_with_loader() -> None:
     from inspect_scout import loader
 
     @loader(name="test_loader", messages="all")  # type: ignore[arg-type]
-    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
-        async def load(transcripts: Transcript) -> AsyncGenerator[Transcript, None]:
+    def test_loader() -> Callable[[Transcript], AsyncIterator[Transcript]]:
+        async def load(transcripts: Transcript) -> AsyncIterator[Transcript]:
             yield transcripts
 
         return load

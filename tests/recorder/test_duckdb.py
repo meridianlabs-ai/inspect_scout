@@ -77,7 +77,9 @@ class TestResultsDB:
 
         with db:
             # Should be able to use the connection
-            count = db.conn.execute("SELECT COUNT(*) FROM message_length").fetchone()[0]  # type: ignore[index]
+            result = db.conn.execute("SELECT COUNT(*) FROM message_length").fetchone()
+            assert result is not None
+            count = result[0]
             assert count > 0
 
         # Connection should be closed after context exit
@@ -148,17 +150,17 @@ class TestToFile:
 
         try:
             # Get original count
-            original_count = db.conn.execute(  # type: ignore[index]
-                "SELECT COUNT(*) FROM word_counter"
-            ).fetchone()[0]
+            result = db.conn.execute("SELECT COUNT(*) FROM word_counter").fetchone()
+            assert result is not None
+            original_count = result[0]
 
             db.to_file(str(db_file))
 
             # Check count in file
             verify_conn = duckdb.connect(str(db_file))
-            file_count = verify_conn.execute(  # type: ignore[index]
-                "SELECT COUNT(*) FROM word_counter"
-            ).fetchone()[0]
+            result = verify_conn.execute("SELECT COUNT(*) FROM word_counter").fetchone()
+            assert result is not None
+            file_count = result[0]
 
             assert file_count == original_count
 

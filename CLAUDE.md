@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Code Style Guidelines
 - **Formatting**: Follow Google style convention. Use ruff for formatting
 - **Imports**: Use isort order (enforced by ruff)
-- **Types**: Strict typing is required. All functions must have type annotations
+- **Types**: Strict typing is required. All functions must have type annotations, including function in tests.
 - **Naming**: Use snake_case for variables, functions, methods; PascalCase for classes
 - **Docstrings**: Google-style docstrings required for public APIs
 - **Error Handling**: Use appropriate exception types; include context in error messages

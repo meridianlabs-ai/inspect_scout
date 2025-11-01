@@ -1,5 +1,6 @@
 """Tests for the loader functionality."""
 
+from collections.abc import Callable
 from typing import AsyncGenerator
 
 import pytest
@@ -21,7 +22,7 @@ def test_loader_creates_config() -> None:
     """Loader decorator should add config."""
 
     @loader(name="test_loader", messages="all")
-    def test_loader():  # type: ignore[no-untyped-def]
+    def test_loader() -> Callable[[Transcript], AsyncGenerator[ChatMessage, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[ChatMessage, None]:
@@ -38,7 +39,7 @@ def test_loader_with_message_filter() -> None:
     """Loader can have message filters."""
 
     @loader(messages=["user"])
-    def test_loader():  # type: ignore[no-untyped-def]
+    def test_loader() -> Callable[[Transcript], AsyncGenerator[ChatMessageUser, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[ChatMessageUser, None]:
@@ -57,7 +58,7 @@ def test_loader_with_event_filter() -> None:
     from inspect_ai.event._event import Event
 
     @loader(events=["model", "tool"])
-    def test_loader():  # type: ignore[no-untyped-def]
+    def test_loader() -> Callable[[Transcript], AsyncGenerator[Event, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[Event, None]:
@@ -79,7 +80,7 @@ def test_loader_requires_async() -> None:
     with pytest.raises(TypeError, match="not declared as an async callable"):
 
         @loader(name="bad_loader", messages="all")
-        def test_loader():  # type: ignore[no-untyped-def]
+        def test_loader() -> Callable[[Transcript], Transcript]:
             def load(transcripts: Transcript) -> Transcript:  # Not async!
                 return transcripts
 
@@ -93,7 +94,7 @@ def test_loader_requires_filter() -> None:
     with pytest.raises(RuntimeError):
 
         @loader(name="no_filter_loader")
-        def test_loader():  # type: ignore[no-untyped-def]
+        def test_loader() -> Callable[[Transcript], AsyncGenerator[ChatMessage, None]]:
             async def load(
                 transcript: Transcript,
             ) -> AsyncGenerator[ChatMessage, None]:
@@ -109,7 +110,7 @@ def test_loader_with_both_filters() -> None:
     """Loader can have both message and event filters."""
 
     @loader(messages=["user"], events=["model"])
-    def test_loader():  # type: ignore[no-untyped-def]
+    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[Transcript, None]:
@@ -130,7 +131,7 @@ def test_scanner_with_custom_loader() -> None:
     """Scanner can use a custom loader."""
 
     @loader(messages=["user"])
-    def user_message_loader():  # type: ignore[no-untyped-def]
+    def user_message_loader() -> Callable[[Transcript], AsyncGenerator[ChatMessageUser, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[ChatMessageUser, None]:
@@ -161,7 +162,7 @@ def test_loader_type_transformation() -> None:
     from inspect_ai.event._event import Event
 
     @loader(name="event_extractor", events="all")
-    def event_loader():  # type: ignore[no-untyped-def]
+    def event_loader() -> Callable[[Transcript], AsyncGenerator[Event, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[Event, None]:
@@ -187,7 +188,9 @@ def test_loader_with_custom_logic() -> None:
     """Loader can implement custom filtering/transformation logic."""
 
     @loader(name="long_message_loader", messages="all")
-    def long_message_loader(min_length: int = 100):  # type: ignore[no-untyped-def]
+    def long_message_loader(
+        min_length: int = 100,
+    ) -> Callable[[Transcript], AsyncGenerator[ChatMessage, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[ChatMessage, None]:
@@ -225,7 +228,7 @@ def test_loader_added_to_registry() -> None:
     """Loader should be added to registry."""
 
     @loader(name="registry_test_loader", messages="all")
-    def test_loader():  # type: ignore[no-untyped-def]
+    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[Transcript, None]:
@@ -242,7 +245,9 @@ def test_loader_factory_with_parameters() -> None:
     """Loader factory can accept parameters."""
 
     @loader(name="parameterized_loader", messages=["assistant"])
-    def param_loader(include_model: bool = True):  # type: ignore[no-untyped-def]
+    def param_loader(
+        include_model: bool = True,
+    ) -> Callable[[Transcript], AsyncGenerator[ChatMessageAssistant, None]]:
         async def load(
             transcript: Transcript,
         ) -> AsyncGenerator[ChatMessageAssistant, None]:

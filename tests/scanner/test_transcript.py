@@ -565,7 +565,7 @@ def test_postgres_parameter_numbering() -> None:
 
 
 @pytest.mark.asyncio
-async def test_connect_disconnect():  # type: ignore[no-untyped-def]
+async def test_connect_disconnect() -> None:
     """Test database connection and disconnection."""
     df = create_test_dataframe(5)
     db = EvalLogTranscriptsDB(df)
@@ -580,7 +580,7 @@ async def test_connect_disconnect():  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_query_all(db):  # type: ignore[no-untyped-def]
+async def test_query_all(db: EvalLogTranscriptsDB) -> None:
     """Test querying all records."""
     results = list(await db.query(where=[]))
     assert len(results) == 20
@@ -594,7 +594,7 @@ async def test_query_all(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_query_with_filter(db):  # type: ignore[no-untyped-def]
+async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
     """Test querying with filters."""
     # Filter by model
     results = list(await db.query(where=[m.model == "gpt-4"]))
@@ -608,7 +608,7 @@ async def test_query_with_filter(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_query_with_multiple_conditions(db):  # type: ignore[no-untyped-def]
+async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
     """Test querying with multiple conditions."""
     conditions = [m.model == "gpt-4", m.score > 0.6]
     results = list(await db.query(where=conditions))
@@ -619,7 +619,7 @@ async def test_query_with_multiple_conditions(db):  # type: ignore[no-untyped-de
 
 
 @pytest.mark.asyncio
-async def test_query_with_limit(db):  # type: ignore[no-untyped-def]
+async def test_query_with_limit(db: EvalLogTranscriptsDB) -> None:
     """Test querying with limit."""
     results = list(await db.query(where=[], limit=5))
     assert len(results) == 5
@@ -630,7 +630,7 @@ async def test_query_with_limit(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_query_with_shuffle(db):  # type: ignore[no-untyped-def]
+async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
     """Test querying with shuffle."""
     # Get results without shuffle
     results1 = list(await db.query(where=[], limit=10))
@@ -650,14 +650,14 @@ async def test_query_with_shuffle(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_count_all(db):  # type: ignore[no-untyped-def]
+async def test_count_all(db: EvalLogTranscriptsDB) -> None:
     """Test counting all records."""
     count = await db.count(where=[])
     assert count == 20
 
 
 @pytest.mark.asyncio
-async def test_count_with_filter(db):  # type: ignore[no-untyped-def]
+async def test_count_with_filter(db: EvalLogTranscriptsDB) -> None:
     """Test counting with filters."""
     # Count by model
     count = await db.count(where=[m.model == "gpt-4"])
@@ -669,7 +669,7 @@ async def test_count_with_filter(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_count_with_limit(db):  # type: ignore[no-untyped-def]
+async def test_count_with_limit(db: EvalLogTranscriptsDB) -> None:
     """Test counting with limit."""
     count = await db.count(where=[], limit=5)
     assert count == 5
@@ -681,7 +681,7 @@ async def test_count_with_limit(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_complex_queries(db):  # type: ignore[no-untyped-def]
+async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
     """Test complex queries with multiple operators."""
     # Complex condition
     conditions = [
@@ -697,7 +697,7 @@ async def test_complex_queries(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_metadata_extraction(db):  # type: ignore[no-untyped-def]
+async def test_metadata_extraction(db: EvalLogTranscriptsDB) -> None:
     """Test that metadata is properly extracted."""
     results = list(await db.query(where=[], limit=1))
     assert len(results) == 1
@@ -713,7 +713,7 @@ async def test_metadata_extraction(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_none_comparison_in_db(db):  # type: ignore[no-untyped-def]
+async def test_none_comparison_in_db(db: EvalLogTranscriptsDB) -> None:
     """Test that == None and != None work correctly in database queries."""
     # Using == None (should behave same as is_null())
     results_eq_none = list(await db.query(where=[m.error_message == None]))  # noqa: E711
@@ -730,7 +730,7 @@ async def test_none_comparison_in_db(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_null_value_handling(db):  # type: ignore[no-untyped-def]
+async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
     """Test handling of NULL values in metadata."""
     # Query for null error_message
     results = list(await db.query(where=[m.error_message.is_null()]))

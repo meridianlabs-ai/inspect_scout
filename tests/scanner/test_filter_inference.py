@@ -1,6 +1,8 @@
 """Tests for automatic filter inference from type annotations."""
 
-from typing import Any
+from collections.abc import Callable
+from typing import Any, AsyncGenerator
+
 import pytest
 from inspect_ai._util.registry import registry_info
 from inspect_ai.event._model import ModelEvent
@@ -194,10 +196,9 @@ def test_no_inference_with_loader() -> None:
     from inspect_scout import loader
 
     @loader(name="test_loader", messages="all")
-    def test_loader():  # type: ignore[no-untyped-def]
-        async def load(transcripts):  # type: ignore[no-untyped-def]
-            for t in transcripts:
-                yield t
+    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
+        async def load(transcripts: Transcript) -> AsyncGenerator[Transcript, None]:
+            yield transcripts
 
         return load
 
@@ -240,7 +241,7 @@ def test_no_inference_without_type_hints() -> None:
     with pytest.raises(ValueError, match="requires at least one of"):
 
         @scanner()
-        def untyped_scanner():  # type: ignore[no-untyped-def]  # No type annotation
+        def untyped_scanner() -> Callable[[Any], Any]:
             async def scan(message):  # type: ignore[no-untyped-def]  # No type annotation
                 return Result(value={"ok": True})
 

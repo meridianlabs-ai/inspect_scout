@@ -1,6 +1,8 @@
 """Tests for runtime type validation in the scanner module."""
 
-from typing import Any
+from collections.abc import Callable
+from typing import Any, AsyncGenerator
+
 import pytest
 from inspect_ai._util.registry import registry_info
 from inspect_ai.event._event import Event
@@ -317,7 +319,7 @@ def test_no_type_hints() -> None:
     """Scanner without type hints should not raise."""
 
     @scanner(messages=["system"])
-    def test_scanner():  # type: ignore[no-untyped-def]
+    def test_scanner() -> Callable[[Any], Any]:
         async def scan(message):  # type: ignore[no-untyped-def]
             return Result(value={"ok": True})
 
@@ -333,10 +335,9 @@ def test_scanner_without_filters_but_with_loader() -> None:
     from inspect_scout._scanner.loader import loader
 
     @loader(name="test_loader", messages="all")
-    def test_loader():  # type: ignore[no-untyped-def]
-        async def load(transcripts):  # type: ignore[no-untyped-def]
-            for t in transcripts:
-                yield t
+    def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
+        async def load(transcripts: Transcript) -> AsyncGenerator[Transcript, None]:
+            yield transcripts
 
         return load
 

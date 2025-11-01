@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import pytest
@@ -63,6 +63,13 @@ def create_log_dataframe(num_samples: int = 10) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
+def get_property_doc(prop: property) -> str:
+    """Get docstring from a property descriptor."""
+    assert prop.fget is not None
+    assert prop.fget.__doc__ is not None
+    return prop.fget.__doc__
+
+
 @pytest_asyncio.fixture
 async def db() -> Any:
     """Create and connect to a test database."""
@@ -115,13 +122,11 @@ def test_typed_properties_exist() -> None:
 def test_typed_properties_have_docstrings() -> None:
     """Test that typed properties have meaningful docstrings."""
     # Properties are descriptors, so we need to check their fget docstrings
-    assert "Globally unique id for eval" in LogMetadata.eval_id.fget.__doc__  # type: ignore[attr-defined]
-    assert "Model used for eval" in LogMetadata.model.fget.__doc__  # type: ignore[attr-defined]
-    assert "Task name" in LogMetadata.task_name.fget.__doc__  # type: ignore[attr-defined]
-    assert "Headline score value" in LogMetadata.score.fget.__doc__  # type: ignore[attr-defined]
-    assert (
-        "Total time that the sample was running" in LogMetadata.total_time.fget.__doc__  # type: ignore[attr-defined]
-    )
+    assert "Globally unique id for eval" in get_property_doc(LogMetadata.eval_id)
+    assert "Model used for eval" in get_property_doc(LogMetadata.model)
+    assert "Task name" in get_property_doc(LogMetadata.task_name)
+    assert "Headline score value" in get_property_doc(LogMetadata.score)
+    assert "Total time that the sample was running" in get_property_doc(LogMetadata.total_time)
 
 
 # ============================================================================
@@ -432,7 +437,7 @@ def test_mixing_log_and_base_metadata() -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_with_typed_properties(db):  # type: ignore[no-untyped-def]
+async def test_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     """Test database queries using typed properties."""
     # Filter by model
     results = await db.query(where=[lm.model == "gpt-4"])
@@ -451,7 +456,7 @@ async def test_query_with_typed_properties(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_complex_query_with_typed_properties(db):  # type: ignore[no-untyped-def]
+async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     """Test complex database queries using typed properties."""
     # Complex condition with multiple typed properties
     conditions = [
@@ -467,7 +472,7 @@ async def test_complex_query_with_typed_properties(db):  # type: ignore[no-untyp
 
 
 @pytest.mark.asyncio
-async def test_count_with_typed_properties(db):  # type: ignore[no-untyped-def]
+async def test_count_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     """Test counting records using typed properties."""
     # Count all with specific model
     count = await db.count(where=[lm.model == "gpt-4"])
@@ -487,7 +492,7 @@ async def test_count_with_typed_properties(db):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_transcripts_with_log_metadata():  # type: ignore[no-untyped-def]
+async def test_transcripts_with_log_metadata() -> None:
     """Test using LogMetadata with the Transcripts API."""
     df = create_log_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -510,14 +515,14 @@ async def test_transcripts_with_log_metadata():  # type: ignore[no-untyped-def]
         results = list(await db.query(conditions))
         for result in results:
             assert result.metadata["model"] == "gpt-4"
-            assert result.metadata["epoch"] > 1  # type: ignore[operator]
+            assert cast(int, result.metadata["epoch"]) > 1
             assert result.metadata["solver"] == "cot"
     finally:
         await db.disconnect()
 
 
 @pytest.mark.asyncio
-async def test_transcripts_complex_filtering():  # type: ignore[no-untyped-def]
+async def test_transcripts_complex_filtering() -> None:
     """Test complex filtering scenarios with Transcripts and LogMetadata."""
     df = create_log_dataframe(30)
     db = EvalLogTranscriptsDB(df)
@@ -542,9 +547,9 @@ async def test_transcripts_complex_filtering():  # type: ignore[no-untyped-def]
 
             # Check the OR condition
             if meta["model"] == "gpt-4":
-                assert meta["total_tokens"] > 150  # type: ignore[operator]
+                assert cast(int, meta["total_tokens"]) > 150
             elif meta["model"] == "claude-3":
-                assert meta["total_tokens"] > 160  # type: ignore[operator]
+                assert cast(int, meta["total_tokens"]) > 160
             else:
                 pytest.fail(f"Unexpected model: {meta['model']}")
 
@@ -555,7 +560,7 @@ async def test_transcripts_complex_filtering():  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_transcripts_with_shuffle_and_limit():  # type: ignore[no-untyped-def]
+async def test_transcripts_with_shuffle_and_limit() -> None:
     """Test that shuffle and limit work with LogMetadata filters."""
     df = create_log_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -577,7 +582,7 @@ async def test_transcripts_with_shuffle_and_limit():  # type: ignore[no-untyped-
 
 
 @pytest.mark.asyncio
-async def test_query_json_metadata_fields():  # type: ignore[no-untyped-def]
+async def test_query_json_metadata_fields() -> None:
     """Test querying nested JSON fields in metadata columns."""
     df = create_log_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -668,7 +673,7 @@ def test_chaining_operations() -> None:
 
 
 @pytest.mark.asyncio
-async def test_empty_dataframe_with_log_metadata():  # type: ignore[no-untyped-def]
+async def test_empty_dataframe_with_log_metadata() -> None:
     """Test LogMetadata works with empty DataFrames."""
     df = pd.DataFrame(columns=["sample_id", "id", "eval_id", "log", "model", "epoch"])
     db = EvalLogTranscriptsDB(df)

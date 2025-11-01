@@ -471,8 +471,7 @@ def test_validation_object_structure() -> None:
     assert isinstance(validation, ValidationSet)
     assert isinstance(validation.cases, list)
     assert isinstance(validation.cases[0], ValidationCase)
-    assert validation.predicate is None
-    assert validation.multi_predicate is None
+    assert validation.predicate == "eq"
 
 
 def test_empty_dataframe() -> None:

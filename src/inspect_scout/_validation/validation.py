@@ -1,28 +1,26 @@
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 import yaml
-from pydantic import JsonValue
 
+from .predicates import ValidationPredicate
 from .types import ValidationCase, ValidationSet
 
 
 def validation_set(
     cases: str | Path | pd.DataFrame,
-    predicate: Callable[[JsonValue, JsonValue], bool] | None = None,
-    multi_predicate: Callable[
-        [dict[str, JsonValue], dict[str, JsonValue]], dict[str, bool]
-    ]
-    | None = None,
+    predicate: ValidationPredicate | None = "eq",
 ) -> ValidationSet:
     """Create a validation set by reading cases from a file or data frame.
 
     Args:
         cases: Path to a CSV, YAML, JSON, or JSONL file with validation cases, or data frame with validation cases.
         predicate: Predicate for comparing scanner results to validation targets (defaults to equality comparison).
-        multi_predicate: Predicate for comparing a dict of scanner results to a dict of validation targets (defaults to pairwise equality comparison).
+            For single-value targets, compares value to target directly.
+            For dict targets, string/single-value predicates are applied to each key,
+            while multi-value predicates receive the full dicts.
     """
     # Load data into DataFrame if not already one
     if isinstance(cases, pd.DataFrame):
@@ -51,9 +49,7 @@ def validation_set(
             "Validation data must contain either a 'target' column or 'target_*' columns"
         )
 
-    return ValidationSet(
-        cases=validate_cases, predicate=predicate, multi_predicate=multi_predicate
-    )
+    return ValidationSet(cases=validate_cases, predicate=predicate)
 
 
 def _load_file(file: str | Path) -> pd.DataFrame:

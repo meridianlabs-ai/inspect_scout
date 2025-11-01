@@ -49,6 +49,7 @@ from ._transcript.types import (
 )
 from ._validation import (
     ValidationCase,
+    ValidationPredicate,
     ValidationSet,
     validation_set,
 )
@@ -115,6 +116,7 @@ __all__ = [
     # validation
     "ValidationSet",
     "ValidationCase",
+    "ValidationPredicate",
     "validation_set",
     # version
     "__version__",

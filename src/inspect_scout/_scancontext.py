@@ -22,6 +22,7 @@ from inspect_ai.model._model_config import (
 
 from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
 from inspect_scout._util.process import default_max_processes
+from inspect_scout._validation.types import Validation
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
@@ -51,6 +52,9 @@ class ScanContext:
 
     worklist: Sequence[ScannerWork]
     """Transcript ids to process for each scanner."""
+
+    validation: Validation | None
+    """Validation cases to apply."""
 
 
 async def create_scan(scanjob: ScanJob) -> ScanContext:
@@ -88,6 +92,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
             transcripts=await scanjob.transcripts.snapshot(),
             scanners=_spec_scanners(scanjob.scanners),
             worklist=list(scanjob.worklist) if scanjob.worklist else None,
+            validation=scanjob.validation,
             tags=scanjob.tags,
             metadata=scanjob.metadata,
             model=ModelConfig(
@@ -112,6 +117,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         else await _default_worklist(
             scanjob.transcripts, list(scanjob.scanners.keys())
         ),
+        validation=scanjob.validation,
     )
 
 
@@ -131,7 +137,11 @@ async def resume_scan(scan_location: str) -> ScanContext:
         else await _default_worklist(transcripts, list(scanners.keys()))
     )
     return ScanContext(
-        spec=spec, transcripts=transcripts, scanners=scanners, worklist=worklist
+        spec=spec,
+        transcripts=transcripts,
+        scanners=scanners,
+        worklist=worklist,
+        validation=spec.validation,
     )
 
 

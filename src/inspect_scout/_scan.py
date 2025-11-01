@@ -1,10 +1,14 @@
+import json
 import os
 import sys
 import traceback
 from logging import getLogger
+from pathlib import Path
 from typing import Any, AsyncIterator, Mapping, Sequence
 
 import anyio
+import pandas as pd
+import yaml
 from anyio.abc import TaskGroup
 from dotenv import find_dotenv, load_dotenv
 from inspect_ai._eval.context import init_model_context
@@ -23,9 +27,11 @@ from inspect_ai.model._model_config import (
 )
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util._anyio import inner_exception
+from pydantic import TypeAdapter
 from rich.console import RenderableType
 
 from inspect_scout._util.attachments import resolve_event_attachments
+from inspect_scout._validation.types import Validation
 from inspect_scout._view.notify import view_notify_scan
 
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
@@ -60,6 +66,7 @@ from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.log import init_log
 from ._util.process import default_max_processes
+from ._validation import validation as validation_from
 
 logger = getLogger(__name__)
 
@@ -70,8 +77,9 @@ def scan(
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
-    worklist: Sequence[ScannerWork] | None = None,
     results: str | None = None,
+    worklist: Sequence[ScannerWork] | str | Path | None = None,
+    validation: Validation | str | Path | pd.DataFrame | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -97,8 +105,9 @@ def scan(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
-        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts).
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
+        validation: Validation cases to apply.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
         model_config: `GenerationConfig` for calls to the model.
@@ -124,8 +133,9 @@ def scan(
         scan_async(
             scanners=scanners,
             transcripts=transcripts,
-            worklist=worklist,
             results=results,
+            worklist=worklist,
+            validation=validation,
             model=model,
             model_config=model_config,
             model_base_url=model_base_url,
@@ -148,8 +158,9 @@ async def scan_async(
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
-    worklist: Sequence[ScannerWork] | None = None,
     results: str | None = None,
+    worklist: Sequence[ScannerWork] | str | Path | None = None,
+    validation: Validation | str | Path | pd.DataFrame | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -174,8 +185,9 @@ async def scan_async(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
-        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts).
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
+        validation: Validation cases to apply.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
         model_config: `GenerationConfig` for calls to the model.
@@ -196,13 +208,21 @@ async def scan_async(
     """
     top_level_async_init(log_level)
 
+    # resolve worklist
+    if isinstance(worklist, str | Path):
+        worklist = _worklist_from(worklist)
+
+    # resolve validation
+    if validation is not None and not isinstance(validation, Validation):
+        validation = validation_from(validation)
+
     # resolve scanjob
     if isinstance(scanners, ScanJob):
         scanjob = scanners
     elif isinstance(scanners, ScanJobConfig):
         scanjob = ScanJob.from_config(scanners)
     else:
-        scanjob = ScanJob(scanners=scanners, worklist=worklist)
+        scanjob = ScanJob(scanners=scanners, worklist=worklist, validation=validation)
 
     # see if we are overriding the scanjob with additional args
     scanjob._transcripts = transcripts or scanjob.transcripts
@@ -775,3 +795,22 @@ def _reports_for_parse_error(
         )
         for idx in job.scanner_indices
     ]
+
+
+def _worklist_from(file: str | Path) -> list[ScannerWork]:
+    with open(file, "r") as f:
+        contents = f.read().strip()
+
+    if contents.startswith("["):
+        data = json.loads(contents)
+    else:
+        data = yaml.safe_load(contents)
+
+    if not isinstance(data, list):
+        raise PrerequisiteError(
+            f"Worklist data from JSON or YAML file must be a list (found type {type(data)})"
+        )
+
+    # validate with pydantic
+    adapter = TypeAdapter[list[ScannerWork]](list[ScannerWork])
+    return adapter.validate_python(data)

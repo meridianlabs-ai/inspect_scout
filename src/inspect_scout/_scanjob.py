@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from inspect_scout._scanspec import ScannerSpec, ScannerWork
 from inspect_scout._transcript.database import transcripts_from_logs
 from inspect_scout._util.decorator import split_spec
+from inspect_scout._validation.types import Validation
 
 from ._scanner.scanner import Scanner
 from ._scanner.types import ScannerInput
@@ -49,6 +50,9 @@ class ScanJobConfig(BaseModel):
 
     worklist: list[ScannerWork] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
+
+    validation: Validation | None = Field(default=None)
+    """Validation cases to apply."""
 
     results: str | None = Field(default=None)
     """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
@@ -110,6 +114,7 @@ class ScanJob:
         scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
         | dict[str, Scanner[ScannerInput]],
         worklist: Sequence[ScannerWork] | None = None,
+        validation: Validation | None = None,
         results: str | None = None,
         model: str | Model | None = None,
         model_base_url: str | None = None,
@@ -128,6 +133,7 @@ class ScanJob:
         # save transcripts and name
         self._transcripts = transcripts
         self._worklist = worklist
+        self._validation = validation
         self._name = name
         self._results = results
         self._model = (
@@ -215,6 +221,11 @@ class ScanJob:
     def worklist(self) -> Sequence[ScannerWork] | None:
         """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
         return self._worklist
+
+    @property
+    def validation(self) -> Validation | None:
+        """Validation cases to apply."""
+        return self._validation
 
     @property
     def scanners(self) -> dict[str, Scanner[ScannerInput]]:

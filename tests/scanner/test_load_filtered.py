@@ -3,7 +3,7 @@
 import io
 import json
 import time
-from typing import Counter
+from typing import Any, Counter, cast
 
 import pytest
 from inspect_ai._util.asyncfiles import AsyncFilesystem
@@ -14,7 +14,7 @@ from inspect_scout._transcript.types import EventFilter, MessageFilter
 from inspect_scout._util.async_zip import AsyncZipReader
 
 
-def create_json_stream(data: dict) -> io.BytesIO:
+def create_json_stream(data: dict[str, Any]) -> io.BytesIO:
     """Create an async-compatible BytesIO stream from dictionary data."""
     return io.BytesIO(json.dumps(data).encode())
 
@@ -402,12 +402,26 @@ async def test_attachment_resolution_in_nested_structures() -> None:
 
     # Check event arguments resolution with lists
     assert isinstance(result.events[0], ToolEvent)
-    assert result.events[0].arguments["list_input"][0] == "Resolved B"  # type:ignore
-    assert result.events[0].arguments["list_input"][1]["nested_key"] == "Resolved C"  # type:ignore
+    assert cast(list[Any], result.events[0].arguments["list_input"])[0] == "Resolved B"
+    assert (
+        cast(
+            dict[str, Any], cast(list[Any], result.events[0].arguments["list_input"])[1]
+        )["nested_key"]
+        == "Resolved C"
+    )
 
     # Check event arguments resolution with nested dicts
-    assert result.events[0].arguments["dict_input"]["key1"] == "Resolved D"  # type:ignore
-    assert result.events[0].arguments["dict_input"]["nested"]["key2"] == "Resolved E"  # type:ignore
+    assert (
+        cast(dict[str, Any], result.events[0].arguments["dict_input"])["key1"]
+        == "Resolved D"
+    )
+    assert (
+        cast(
+            dict[str, Any],
+            cast(dict[str, Any], result.events[0].arguments["dict_input"])["nested"],
+        )["key2"]
+        == "Resolved E"
+    )
 
 
 @pytest.mark.slow

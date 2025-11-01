@@ -50,7 +50,7 @@ jobs:
           python -m pip install .[dev]
       - name: Run mypy
         run: |
-          mypy src examples --python-executable $(which python)
+          mypy src examples tests --python-executable $(which python)
 
   py-test:
     runs-on: ubuntu-latest

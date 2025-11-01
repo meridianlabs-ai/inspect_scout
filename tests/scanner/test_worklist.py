@@ -248,7 +248,9 @@ def verify_scanner_results(
 
         # Verify count
         count_query = f'SELECT COUNT(*) as count FROM "{scanner_name}"'
-        count = db.conn.execute(count_query).fetchone()[0]
+        _result = db.conn.execute(count_query).fetchone()
+        assert _result is not None
+        count = _result[0]
         assert count == len(expected_transcript_ids), (
             f"Scanner '{scanner_name}' has {count} results, "
             f"expected {len(expected_transcript_ids)}"
@@ -263,7 +265,7 @@ def verify_scanner_results(
 
 
 @pytest.mark.asyncio
-async def test_worklist_basic_filtering():
+async def test_worklist_basic_filtering() -> None:
     """Verify that a worklist correctly restricts which transcripts are processed."""
     # Get 5 transcript IDs
     transcript_ids = await get_n_transcript_ids(5)
@@ -291,7 +293,7 @@ async def test_worklist_basic_filtering():
 
 
 @pytest.mark.asyncio
-async def test_worklist_no_overlap():
+async def test_worklist_no_overlap() -> None:
     """Verify scanners with completely disjoint worklists."""
     # Get 4 transcript IDs
     transcript_ids = await get_n_transcript_ids(4)
@@ -317,7 +319,7 @@ async def test_worklist_no_overlap():
 
 
 @pytest.mark.asyncio
-async def test_worklist_empty_transcript_list():
+async def test_worklist_empty_transcript_list() -> None:
     """Verify scanner with empty transcript list processes nothing."""
     # Get 3 transcript IDs
     transcript_ids = await get_n_transcript_ids(3)
@@ -353,7 +355,7 @@ async def test_worklist_empty_transcript_list():
 
 
 @pytest.mark.asyncio
-async def test_worklist_single_scanner_subset():
+async def test_worklist_single_scanner_subset() -> None:
     """Verify a single scanner can process a subset of transcripts."""
     # Get 5 transcript IDs from available transcripts
     transcript_ids = await get_n_transcript_ids(5)
@@ -380,7 +382,7 @@ async def test_worklist_single_scanner_subset():
 
 
 @pytest.mark.asyncio
-async def test_worklist_nonexistent_transcript_ids():
+async def test_worklist_nonexistent_transcript_ids() -> None:
     """Verify system handles gracefully when worklist contains non-existent IDs."""
     # Get 2 valid transcript IDs
     valid_ids = await get_n_transcript_ids(2)
@@ -410,7 +412,7 @@ async def test_worklist_nonexistent_transcript_ids():
 
 
 @pytest.mark.asyncio
-async def test_worklist_default_behavior_without_worklist():
+async def test_worklist_default_behavior_without_worklist() -> None:
     """Verify omitting worklist results in all scanners processing all transcripts."""
     # Get 10 transcript IDs
     transcript_ids = await get_n_transcript_ids(10)
@@ -436,7 +438,7 @@ async def test_worklist_default_behavior_without_worklist():
 
 
 @pytest.mark.asyncio
-async def test_worklist_spec_persistence():
+async def test_worklist_spec_persistence() -> None:
     """Verify worklist is correctly stored in scan spec."""
     # Get transcript IDs
     transcript_ids = await get_n_transcript_ids(3)
@@ -470,7 +472,7 @@ async def test_worklist_spec_persistence():
 
 
 @pytest.mark.asyncio
-async def test_worklist_with_resume():
+async def test_worklist_with_resume() -> None:
     """Verify worklist is preserved and respected when resuming a scan."""
     # Get transcript IDs - need enough to ensure we can limit and resume
     all_transcript_ids = await get_n_transcript_ids(10)
@@ -493,9 +495,11 @@ async def test_worklist_with_resume():
         # Verify partial completion (scan should have processed 3)
         db = scan_results_db(result1.location)
         try:
-            count1 = db.conn.execute(
+            _count_result = db.conn.execute(
                 'SELECT COUNT(*) FROM "resume_scanner"'
-            ).fetchone()[0]
+            ).fetchone()
+            assert _count_result is not None
+            count1 = _count_result[0]
             assert count1 == 3, (
                 f"Should have processed 3 transcripts in first scan, got {count1}"
             )
@@ -532,7 +536,7 @@ async def test_worklist_with_resume():
 
 
 @pytest.mark.asyncio
-async def test_worklist_partial_overlap_many_scanners():
+async def test_worklist_partial_overlap_many_scanners() -> None:
     """Test complex scenario with many scanners and various overlaps."""
     # Get 8 transcript IDs (A, B, C, D, E, F, G, H)
     transcript_ids = await get_n_transcript_ids(8)
@@ -573,18 +577,18 @@ async def test_worklist_partial_overlap_many_scanners():
         # Verify total scan operations count
         # Should be 4 + 3 + 3 + 3 = 13 total results
         db = scan_results_db(result.location)
-        total_count = sum(
-            [
-                db.conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
-                for name in ["scanner_1", "scanner_2", "scanner_3", "scanner_4"]
-            ]
-        )
+        counts = []
+        for name in ["scanner_1", "scanner_2", "scanner_3", "scanner_4"]:
+            _res = db.conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()
+            assert _res is not None
+            counts.append(_res[0])
+        total_count = sum(counts)
         db.conn.close()
         assert total_count == 13, f"Expected 13 total results, got {total_count}"
 
 
 @pytest.mark.asyncio
-async def test_worklist_results_database_filtering():
+async def test_worklist_results_database_filtering() -> None:
     """Verify scan results database correctly reflects worklist filtering."""
     # Get transcript IDs
     transcript_ids = await get_n_transcript_ids(5)
@@ -639,7 +643,7 @@ async def test_worklist_results_database_filtering():
 
 
 @pytest.mark.asyncio
-async def test_worklist_with_named_scanners_dict():
+async def test_worklist_with_named_scanners_dict() -> None:
     """Verify worklist works with scanners passed as a dict with explicit names."""
     # Get transcript IDs
     transcript_ids = await get_n_transcript_ids(4)

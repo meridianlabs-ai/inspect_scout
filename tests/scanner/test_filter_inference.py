@@ -1,5 +1,8 @@
 """Tests for automatic filter inference from type annotations."""
 
+from collections.abc import AsyncIterator, Callable
+from typing import Any
+
 import pytest
 from inspect_ai._util.registry import registry_info
 from inspect_ai.event._model import ModelEvent
@@ -14,7 +17,7 @@ from inspect_scout import Result, Scanner, Transcript, scanner
 from inspect_scout._scanner.scanner import SCANNER_CONFIG
 
 
-def test_infer_single_message_type():
+def test_infer_single_message_type() -> None:
     """Scanner with specific message type should infer filter."""
 
     @scanner()  # No explicit messages filter
@@ -24,11 +27,11 @@ def test_infer_single_message_type():
 
         return scan
 
-    instance = user_scanner()
+    instance: Any = user_scanner()
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages == ["user"]
 
 
-def test_infer_union_message_types():
+def test_infer_union_message_types() -> None:
     """Scanner with union of message types should infer filters."""
 
     @scanner()  # No explicit filters
@@ -38,14 +41,14 @@ def test_infer_union_message_types():
 
         return scan
 
-    instance = multi_scanner()
+    instance: Any = multi_scanner()
     assert set(registry_info(instance).metadata[SCANNER_CONFIG].content.messages) == {
         "system",
         "user",
     }
 
 
-def test_infer_assistant_type():
+def test_infer_assistant_type() -> None:
     """Scanner with assistant type should infer filter."""
 
     @scanner()
@@ -55,13 +58,13 @@ def test_infer_assistant_type():
 
         return scan
 
-    instance = assistant_scanner()
+    instance: Any = assistant_scanner()
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages == [
         "assistant"
     ]
 
 
-def test_infer_list_message_type():
+def test_infer_list_message_type() -> None:
     """Scanner with list of specific message type should infer filter."""
 
     @scanner()
@@ -71,13 +74,13 @@ def test_infer_list_message_type():
 
         return scan
 
-    instance = batch_scanner()
+    instance: Any = batch_scanner()
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages == [
         "assistant"
     ]
 
 
-def test_infer_event_type():
+def test_infer_event_type() -> None:
     """Scanner with specific event type should infer filter."""
 
     @scanner()
@@ -87,11 +90,11 @@ def test_infer_event_type():
 
         return scan
 
-    instance = model_scanner()
+    instance: Any = model_scanner()
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.events == ["model"]
 
 
-def test_infer_union_event_types():
+def test_infer_union_event_types() -> None:
     """Scanner with union of event types should infer filters."""
 
     @scanner()
@@ -101,14 +104,14 @@ def test_infer_union_event_types():
 
         return scan
 
-    instance = event_scanner()
+    instance: Any = event_scanner()
     assert set(registry_info(instance).metadata[SCANNER_CONFIG].content.events) == {
         "model",
         "tool",
     }
 
 
-def test_no_inference_for_base_message_type():
+def test_no_inference_for_base_message_type() -> None:
     """Scanner with base ChatMessage type should require explicit filter."""
     with pytest.raises(ValueError, match="requires at least one of"):
 
@@ -122,7 +125,7 @@ def test_no_inference_for_base_message_type():
         base_scanner()
 
 
-def test_no_inference_for_transcript():
+def test_no_inference_for_transcript() -> None:
     """Scanner with Transcript type should require explicit filters."""
     with pytest.raises(ValueError, match="requires at least one of"):
 
@@ -136,7 +139,7 @@ def test_no_inference_for_transcript():
         transcript_scanner()
 
 
-def test_explicit_filter_overrides_inference():
+def test_explicit_filter_overrides_inference() -> None:
     """Explicit filter should take precedence over type inference."""
 
     @scanner(messages=["system"])  # Explicit filter
@@ -146,14 +149,14 @@ def test_explicit_filter_overrides_inference():
 
         return scan
 
-    instance = explicit_scanner()
+    instance: Any = explicit_scanner()
     # Should use explicit filter (no inference needed)
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages == [
         "system"
     ]
 
 
-def test_inference_with_custom_name():
+def test_inference_with_custom_name() -> None:
     """Filter inference should work with custom scanner name."""
 
     @scanner(name="custom_inferred")
@@ -163,14 +166,14 @@ def test_inference_with_custom_name():
 
         return scan
 
-    instance = named_scanner()
+    instance: Any = named_scanner()
     assert registry_info(instance).name == "custom_inferred"
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages == [
         "assistant"
     ]
 
 
-def test_inference_with_factory_pattern():
+def test_inference_with_factory_pattern() -> None:
     """Filter inference should work with factory pattern."""
 
     @scanner()
@@ -182,25 +185,24 @@ def test_inference_with_factory_pattern():
 
         return scan
 
-    instance = parameterized_scanner(threshold=5)
+    instance: Any = parameterized_scanner(threshold=5)
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages == [
         "assistant"
     ]
 
 
-def test_no_inference_with_loader():
+def test_no_inference_with_loader() -> None:
     """No filter inference when loader is provided."""
     from inspect_scout import loader
 
-    @loader(name="test_loader", messages="all")
-    def test_loader():
-        async def load(transcripts):
-            for t in transcripts:
-                yield t
+    @loader(name="test_loader", messages="all")  # type: ignore[arg-type]
+    def test_loader() -> Callable[[Transcript], AsyncIterator[Transcript]]:
+        async def load(transcripts: Transcript) -> AsyncIterator[Transcript]:
+            yield transcripts
 
         return load
 
-    loader_instance = test_loader()
+    loader_instance: Any = test_loader()
 
     # Should work without filters when loader is provided
     @scanner(loader=loader_instance)
@@ -210,14 +212,14 @@ def test_no_inference_with_loader():
 
         return scan
 
-    instance = loader_scanner()
+    instance: Any = loader_scanner()
     assert registry_info(instance).metadata[SCANNER_CONFIG].loader
     # No messages or events should be inferred
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages is None
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages is None
 
 
-def test_no_inference_with_mixed_message_event_union():
+def test_no_inference_with_mixed_message_event_union() -> None:
     """Scanner with union of messages and events should require explicit filters or Transcript."""
     with pytest.raises(ValueError, match="requires at least one of"):
 
@@ -234,13 +236,13 @@ def test_no_inference_with_mixed_message_event_union():
         mixed_scanner()
 
 
-def test_no_inference_without_type_hints():
+def test_no_inference_without_type_hints() -> None:
     """Scanner without type hints should require explicit filters."""
     with pytest.raises(ValueError, match="requires at least one of"):
 
         @scanner()
-        def untyped_scanner():  # No type annotation
-            async def scan(message):  # No type annotation
+        def untyped_scanner() -> Callable[[Any], Any]:
+            async def scan(message):  # type: ignore[no-untyped-def]  # No type annotation
                 return Result(value={"ok": True})
 
             return scan
@@ -248,7 +250,7 @@ def test_no_inference_without_type_hints():
         untyped_scanner()
 
 
-def test_decorator_without_parentheses():
+def test_decorator_without_parentheses() -> None:
     """Scanner decorator can be used without parentheses when types can be inferred."""
 
     @scanner  # No parentheses!
@@ -258,11 +260,11 @@ def test_decorator_without_parentheses():
 
         return scan
 
-    instance = user_scanner()
+    instance: Any = user_scanner()
     assert registry_info(instance).metadata[SCANNER_CONFIG].content.messages == ["user"]
 
 
-def test_decorator_without_parentheses_with_union():
+def test_decorator_without_parentheses_with_union() -> None:
     """Scanner decorator without parentheses works with union types."""
 
     @scanner  # No parentheses!
@@ -272,14 +274,14 @@ def test_decorator_without_parentheses_with_union():
 
         return scan
 
-    instance = multi_scanner()
+    instance: Any = multi_scanner()
     assert set(registry_info(instance).metadata[SCANNER_CONFIG].content.messages) == {
         "system",
         "user",
     }
 
 
-def test_decorator_without_parentheses_fails_for_base_type():
+def test_decorator_without_parentheses_fails_for_base_type() -> None:
     """Scanner decorator without parentheses should fail for base ChatMessage type."""
     with pytest.raises(ValueError, match="requires at least one of"):
 

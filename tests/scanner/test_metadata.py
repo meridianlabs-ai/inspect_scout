@@ -12,7 +12,7 @@ from inspect_scout._transcript.metadata import (
 )
 
 
-def test_equality():
+def test_equality() -> None:
     """Test equality operator."""
     filter = m.model == "gpt-4"
     sql, params = filter.to_sql("sqlite")
@@ -20,7 +20,7 @@ def test_equality():
     assert params == ["gpt-4"]
 
 
-def test_equality_with_none():
+def test_equality_with_none() -> None:
     """Test equality with None becomes IS NULL."""
     filter = m.status == None  # noqa: E711
     sql, params = filter.to_sql("sqlite")
@@ -28,7 +28,7 @@ def test_equality_with_none():
     assert params == []
 
 
-def test_inequality():
+def test_inequality() -> None:
     """Test inequality operator."""
     filter = m.score != 0.5
     sql, params = filter.to_sql("sqlite")
@@ -36,7 +36,7 @@ def test_inequality():
     assert params == [0.5]
 
 
-def test_inequality_with_none():
+def test_inequality_with_none() -> None:
     """Test inequality with None becomes IS NOT NULL."""
     filter = m.status != None  # noqa: E711
     sql, params = filter.to_sql("sqlite")
@@ -44,7 +44,7 @@ def test_inequality_with_none():
     assert params == []
 
 
-def test_comparison_operators():
+def test_comparison_operators() -> None:
     """Test <, <=, >, >= operators."""
     filters = [
         (m.score < 0.8, '"score" < ?', [0.8]),
@@ -58,7 +58,7 @@ def test_comparison_operators():
         assert params == expected_params
 
 
-def test_in_operator():
+def test_in_operator() -> None:
     """Test IN operator."""
     filter = m.model.in_(["gpt-4", "claude"])
     sql, params = filter.to_sql("sqlite")
@@ -66,7 +66,7 @@ def test_in_operator():
     assert params == ["gpt-4", "claude"]
 
 
-def test_in_operator_empty():
+def test_in_operator_empty() -> None:
     """Test IN with empty list."""
     filter = m.model.in_([])
     sql, params = filter.to_sql("sqlite")
@@ -74,7 +74,7 @@ def test_in_operator_empty():
     assert params == []
 
 
-def test_not_in_operator():
+def test_not_in_operator() -> None:
     """Test NOT IN operator."""
     filter = m.model.not_in(["gpt-3.5", "davinci"])
     sql, params = filter.to_sql("sqlite")
@@ -82,7 +82,7 @@ def test_not_in_operator():
     assert params == ["gpt-3.5", "davinci"]
 
 
-def test_not_in_operator_empty():
+def test_not_in_operator_empty() -> None:
     """Test NOT IN with empty list."""
     filter = m.model.not_in([])
     sql, params = filter.to_sql("sqlite")
@@ -90,7 +90,7 @@ def test_not_in_operator_empty():
     assert params == []
 
 
-def test_like_operator():
+def test_like_operator() -> None:
     """Test LIKE operator."""
     filter = m.message.like("%error%")
     sql, params = filter.to_sql("sqlite")
@@ -98,7 +98,7 @@ def test_like_operator():
     assert params == ["%error%"]
 
 
-def test_not_like_operator():
+def test_not_like_operator() -> None:
     """Test NOT LIKE operator."""
     filter = m.message.not_like("%success%")
     sql, params = filter.to_sql("sqlite")
@@ -106,7 +106,7 @@ def test_not_like_operator():
     assert params == ["%success%"]
 
 
-def test_is_null():
+def test_is_null() -> None:
     """Test IS NULL."""
     filter = m.error.is_null()
     sql, params = filter.to_sql("sqlite")
@@ -114,7 +114,7 @@ def test_is_null():
     assert params == []
 
 
-def test_is_not_null():
+def test_is_not_null() -> None:
     """Test IS NOT NULL."""
     filter = m.error.is_not_null()
     sql, params = filter.to_sql("sqlite")
@@ -122,7 +122,7 @@ def test_is_not_null():
     assert params == []
 
 
-def test_between():
+def test_between() -> None:
     """Test BETWEEN operator."""
     filter = m.score.between(0.3, 0.7)
     sql, params = filter.to_sql("sqlite")
@@ -130,7 +130,7 @@ def test_between():
     assert params == [0.3, 0.7]
 
 
-def test_between_with_none_raises():
+def test_between_with_none_raises() -> None:
     """Test BETWEEN with None bounds raises ValueError."""
     with pytest.raises(ValueError, match="BETWEEN operator requires non-None bounds"):
         m.score.between(None, 0.7)
@@ -138,7 +138,7 @@ def test_between_with_none_raises():
         m.score.between(0.3, None)
 
 
-def test_not_between():
+def test_not_between() -> None:
     """Test NOT BETWEEN operator."""
     filter = m.score.not_between(0.3, 0.7)
     sql, params = filter.to_sql("sqlite")
@@ -146,7 +146,7 @@ def test_not_between():
     assert params == [0.3, 0.7]
 
 
-def test_and_operator():
+def test_and_operator() -> None:
     """Test AND operator."""
     filter = (m.model == "gpt-4") & (m.score > 0.8)
     sql, params = filter.to_sql("sqlite")
@@ -154,7 +154,7 @@ def test_and_operator():
     assert params == ["gpt-4", 0.8]
 
 
-def test_or_operator():
+def test_or_operator() -> None:
     """Test OR operator."""
     filter = (m.status == "error") | (m.retries > 3)
     sql, params = filter.to_sql("sqlite")
@@ -162,7 +162,7 @@ def test_or_operator():
     assert params == ["error", 3]
 
 
-def test_not_operator():
+def test_not_operator() -> None:
     """Test NOT operator."""
     filter = ~(m.enabled == True)  # noqa: E712
     sql, params = filter.to_sql("sqlite")
@@ -170,7 +170,7 @@ def test_not_operator():
     assert params == [True]
 
 
-def test_complex_combination():
+def test_complex_combination() -> None:
     """Test complex logical combinations."""
     filter = ((m.model == "gpt-4") & (m.score > 0.8)) | (
         (m.model == "claude") & (m.score > 0.7)
@@ -180,7 +180,7 @@ def test_complex_combination():
     assert params == ["gpt-4", 0.8, "claude", 0.7]
 
 
-def test_sqlite_json_path():
+def test_sqlite_json_path() -> None:
     """Test SQLite json_extract for dotted paths."""
     filter = m["config.temperature"] > 0.5
     sql, params = filter.to_sql("sqlite")
@@ -188,7 +188,7 @@ def test_sqlite_json_path():
     assert params == [0.5]
 
 
-def test_postgres_json_path():
+def test_postgres_json_path() -> None:
     """Test PostgreSQL arrow operators for dotted paths."""
     filter = m["config.temperature"] > 0.5
     sql, params = filter.to_sql("postgres")
@@ -198,7 +198,7 @@ def test_postgres_json_path():
     assert params == [0.5]
 
 
-def test_duckdb_json_path():
+def test_duckdb_json_path() -> None:
     """Test DuckDB json_extract for dotted paths."""
     filter = m["config.model.name"] == "gpt-4"
     sql, params = filter.to_sql("duckdb")
@@ -208,7 +208,7 @@ def test_duckdb_json_path():
     assert params == ["gpt-4"]
 
 
-def test_deep_nesting():
+def test_deep_nesting() -> None:
     """Test deeply nested JSON paths."""
     filter = m["a.b.c.d.e"] == 42
     sql, params = filter.to_sql("sqlite")
@@ -217,7 +217,7 @@ def test_deep_nesting():
     assert params == [42]
 
 
-def test_ilike_postgres():
+def test_ilike_postgres() -> None:
     """Test ILIKE in PostgreSQL."""
     filter = m.name.ilike("%test%")
     sql, params = filter.to_sql("postgres")
@@ -225,7 +225,7 @@ def test_ilike_postgres():
     assert params == ["%test%"]
 
 
-def test_ilike_sqlite():
+def test_ilike_sqlite() -> None:
     """Test ILIKE fallback in SQLite."""
     filter = m.name.ilike("%test%")
     sql, params = filter.to_sql("sqlite")
@@ -233,7 +233,7 @@ def test_ilike_sqlite():
     assert params == ["%test%"]
 
 
-def test_ilike_duckdb():
+def test_ilike_duckdb() -> None:
     """Test ILIKE fallback in DuckDB."""
     filter = m.name.ilike("%test%")
     sql, params = filter.to_sql("duckdb")
@@ -241,7 +241,7 @@ def test_ilike_duckdb():
     assert params == ["%test%"]
 
 
-def test_not_ilike_postgres():
+def test_not_ilike_postgres() -> None:
     """Test NOT ILIKE in PostgreSQL."""
     filter = m.name.not_ilike("%test%")
     sql, params = filter.to_sql("postgres")
@@ -249,7 +249,7 @@ def test_not_ilike_postgres():
     assert params == ["%test%"]
 
 
-def test_not_ilike_fallback():
+def test_not_ilike_fallback() -> None:
     """Test NOT ILIKE fallback."""
     filter = m.name.not_ilike("%test%")
     sql, params = filter.to_sql("sqlite")
@@ -257,7 +257,7 @@ def test_not_ilike_fallback():
     assert params == ["%test%"]
 
 
-def test_postgres_single_param():
+def test_postgres_single_param() -> None:
     """Test single parameter uses $1."""
     filter = m.model == "gpt-4"
     sql, params = filter.to_sql("postgres")
@@ -265,7 +265,7 @@ def test_postgres_single_param():
     assert params == ["gpt-4"]
 
 
-def test_postgres_multiple_params():
+def test_postgres_multiple_params() -> None:
     """Test multiple parameters use $1, $2, etc."""
     filter = (m.model == "gpt-4") & (m.score > 0.8)
     sql, params = filter.to_sql("postgres")
@@ -273,7 +273,7 @@ def test_postgres_multiple_params():
     assert params == ["gpt-4", 0.8]
 
 
-def test_postgres_in_params():
+def test_postgres_in_params() -> None:
     """Test IN clause parameters."""
     filter = m.model.in_(["a", "b", "c"])
     sql, params = filter.to_sql("postgres")
@@ -281,7 +281,7 @@ def test_postgres_in_params():
     assert params == ["a", "b", "c"]
 
 
-def test_postgres_between_params():
+def test_postgres_between_params() -> None:
     """Test BETWEEN parameters."""
     filter = m.score.between(0.3, 0.7)
     sql, params = filter.to_sql("postgres")
@@ -289,7 +289,7 @@ def test_postgres_between_params():
     assert params == [0.3, 0.7]
 
 
-def test_postgres_cast_for_integer_comparison():
+def test_postgres_cast_for_integer_comparison() -> None:
     """Test casting JSON to integer for comparison."""
     filter = m["config.max_tokens"] > 100
     sql, params = filter.to_sql("postgres")
@@ -297,7 +297,7 @@ def test_postgres_cast_for_integer_comparison():
     assert params == [100]
 
 
-def test_postgres_cast_for_float_comparison():
+def test_postgres_cast_for_float_comparison() -> None:
     """Test casting JSON to float for comparison."""
     filter = m["config.temperature"] > 0.5
     sql, params = filter.to_sql("postgres")
@@ -305,7 +305,7 @@ def test_postgres_cast_for_float_comparison():
     assert params == [0.5]
 
 
-def test_postgres_cast_for_boolean_comparison():
+def test_postgres_cast_for_boolean_comparison() -> None:
     """Test casting JSON to boolean for comparison."""
     filter = m["config.enabled"] == True  # noqa: E712
     sql, params = filter.to_sql("postgres")
@@ -313,7 +313,7 @@ def test_postgres_cast_for_boolean_comparison():
     assert params == [True]
 
 
-def test_postgres_no_cast_for_string_comparison():
+def test_postgres_no_cast_for_string_comparison() -> None:
     """Test no casting for string comparison."""
     filter = m["config.model"] == "gpt-4"
     sql, params = filter.to_sql("postgres")
@@ -323,7 +323,7 @@ def test_postgres_no_cast_for_string_comparison():
     assert params == ["gpt-4"]
 
 
-def test_postgres_no_cast_for_like_operator():
+def test_postgres_no_cast_for_like_operator() -> None:
     """Test no casting for LIKE operator."""
     filter = m["config.message"].like("%error%")
     sql, params = filter.to_sql("postgres")
@@ -331,7 +331,7 @@ def test_postgres_no_cast_for_like_operator():
     assert params == ["%error%"]
 
 
-def test_postgres_cast_for_between_operator():
+def test_postgres_cast_for_between_operator() -> None:
     """Test casting for BETWEEN operator."""
     filter = m["config.score"].between(0.3, 0.7)
     sql, params = filter.to_sql("postgres")
@@ -339,7 +339,7 @@ def test_postgres_cast_for_between_operator():
     assert params == [0.3, 0.7]
 
 
-def test_double_quote_in_column_name():
+def test_double_quote_in_column_name() -> None:
     """Test escaping double quotes in column names."""
     col = Column('col"with"quotes')
     filter = col == "value"
@@ -348,7 +348,7 @@ def test_double_quote_in_column_name():
     assert params == ["value"]
 
 
-def test_single_quote_in_json_path_sqlite():
+def test_single_quote_in_json_path_sqlite() -> None:
     """Test escaping single quotes in JSON paths for SQLite."""
     col = Column("data.key'with'quotes")
     filter = col == "value"
@@ -357,7 +357,7 @@ def test_single_quote_in_json_path_sqlite():
     assert params == ["value"]
 
 
-def test_single_quote_in_json_path_postgres():
+def test_single_quote_in_json_path_postgres() -> None:
     """Test escaping single quotes in JSON paths for PostgreSQL."""
     col = Column("data.key'with'quotes")
     filter = col == "value"
@@ -366,7 +366,7 @@ def test_single_quote_in_json_path_postgres():
     assert params == ["value"]
 
 
-def test_bracket_notation_simple():
+def test_bracket_notation_simple() -> None:
     """Test bracket notation for simple columns."""
     filter = m["model"] == "gpt-4"
     sql, params = filter.to_sql("sqlite")
@@ -374,7 +374,7 @@ def test_bracket_notation_simple():
     assert params == ["gpt-4"]
 
 
-def test_bracket_notation_json_path():
+def test_bracket_notation_json_path() -> None:
     """Test bracket notation for JSON paths."""
     filter = m["config.temperature"] > 0.5
     sql, params = filter.to_sql("sqlite")
@@ -382,7 +382,7 @@ def test_bracket_notation_json_path():
     assert params == [0.5]
 
 
-def test_enum_values():
+def test_enum_values() -> None:
     """Test enum value strings."""
     assert Operator.EQ.value == "="
     assert Operator.NE.value == "!="
@@ -390,20 +390,20 @@ def test_enum_values():
     assert LogicalOperator.OR.value == "OR"
 
 
-def test_dialect_enum():
+def test_dialect_enum() -> None:
     """Test SQLDialect enum values."""
     assert SQLDialect.SQLITE.value == "sqlite"
     assert SQLDialect.DUCKDB.value == "duckdb"
     assert SQLDialect.POSTGRES.value == "postgres"
 
 
-def test_underscore_attribute_raises():
+def test_underscore_attribute_raises() -> None:
     """Test that accessing underscore attributes raises AttributeError."""
     with pytest.raises(AttributeError):
         _ = m._private
 
 
-def test_dialect_string_conversion():
+def test_dialect_string_conversion() -> None:
     """Test converting string to SQLDialect enum."""
     filter = m.test == "value"
     sql1, _ = filter.to_sql("sqlite")
@@ -411,7 +411,7 @@ def test_dialect_string_conversion():
     assert sql1 == sql2
 
 
-def test_complex_nested_conditions():
+def test_complex_nested_conditions() -> None:
     """Test deeply nested logical conditions."""
     filter = ~(((m.a == 1) & (m.b == 2)) | ((m.c == 3) & (m.d == 4)))
     sql, params = filter.to_sql("sqlite")
@@ -420,7 +420,7 @@ def test_complex_nested_conditions():
 
 
 # Tests for issues that need fixes (currently would fail)
-def test_postgres_in_with_json_casting():
+def test_postgres_in_with_json_casting() -> None:
     """Test IN operator with JSON path needs casting in Postgres."""
     filter = m["config.level"].in_([1, 2, 3])
     sql, params = filter.to_sql("postgres")
@@ -430,7 +430,7 @@ def test_postgres_in_with_json_casting():
     assert params == [1, 2, 3]
 
 
-def test_array_index_sqlite():
+def test_array_index_sqlite() -> None:
     """Test array indexing in SQLite JSON paths."""
     filter = m["data.items.0.name"] == "first"
     sql, params = filter.to_sql("sqlite")
@@ -439,7 +439,7 @@ def test_array_index_sqlite():
     assert params == ["first"]
 
 
-def test_array_index_postgres():
+def test_array_index_postgres() -> None:
     """Test array indexing in PostgreSQL."""
     filter = m["data.items.0.name"] == "first"
     sql, params = filter.to_sql("postgres")
@@ -449,7 +449,7 @@ def test_array_index_postgres():
     assert params == ["first"]
 
 
-def test_key_with_dot_sqlite():
+def test_key_with_dot_sqlite() -> None:
     """Test JSON key containing dot in SQLite."""
     filter = m['data."user.name"'] == "alice"
     sql, params = filter.to_sql("sqlite")
@@ -458,7 +458,7 @@ def test_key_with_dot_sqlite():
     assert params == ["alice"]
 
 
-def test_in_with_null_values():
+def test_in_with_null_values() -> None:
     """Test IN operator with NULL in the list."""
     filter = m.status.in_(["active", None, "pending"])
     sql, params = filter.to_sql("sqlite")
@@ -467,7 +467,7 @@ def test_in_with_null_values():
     assert params == ["active", "pending"]  # None filtered out
 
 
-def test_duckdb_json_extract_function():
+def test_duckdb_json_extract_function() -> None:
     """Test DuckDB uses json_extract for better compatibility."""
     filter = m["config.level"] > 5
     sql, params = filter.to_sql("duckdb")
@@ -476,7 +476,7 @@ def test_duckdb_json_extract_function():
     assert params == [5]
 
 
-def test_duckdb_json_type_casting():
+def test_duckdb_json_type_casting() -> None:
     """Test DuckDB casts JSON values for type-safe comparisons."""
     filter = m["config.threshold"] > 0.5
     sql, params = filter.to_sql("duckdb")
@@ -485,7 +485,7 @@ def test_duckdb_json_type_casting():
     assert params == [0.5]
 
 
-def test_bracket_notation_array_access():
+def test_bracket_notation_array_access() -> None:
     """Test bracket notation for array access."""
     filter = m["items[0].name"] == "first"
     sql, params = filter.to_sql("sqlite")
@@ -494,7 +494,7 @@ def test_bracket_notation_array_access():
     assert params == ["first"]
 
 
-def test_multiple_brackets():
+def test_multiple_brackets() -> None:
     """Test multiple bracket indices."""
     filter = m["data[0][2].value"] == 42
     sql, params = filter.to_sql("sqlite")
@@ -502,7 +502,7 @@ def test_multiple_brackets():
     assert params == [42]
 
 
-def test_base_only_bracket():
+def test_base_only_bracket() -> None:
     """Test bracket notation without dots."""
     filter = m["array[1]"] == "test"
     sql, params = filter.to_sql("sqlite")
@@ -511,7 +511,7 @@ def test_base_only_bracket():
     assert params == ["test"]
 
 
-def test_sqlite_key_with_hyphen():
+def test_sqlite_key_with_hyphen() -> None:
     """Test SQLite JSONPath with hyphenated keys."""
     filter = m["data.user-name"] == "alice"
     sql, params = filter.to_sql("sqlite")
@@ -520,7 +520,7 @@ def test_sqlite_key_with_hyphen():
     assert params == ["alice"]
 
 
-def test_sqlite_key_with_space():
+def test_sqlite_key_with_space() -> None:
     """Test SQLite JSONPath with spaces in keys."""
     filter = m['data."user name"'] == "bob"
     sql, params = filter.to_sql("sqlite")
@@ -528,7 +528,7 @@ def test_sqlite_key_with_space():
     assert params == ["bob"]
 
 
-def test_duckdb_like_with_json_path():
+def test_duckdb_like_with_json_path() -> None:
     """Test DuckDB casts JSON to VARCHAR for LIKE operations."""
     filter = m["config.message"].like("%error%")
     sql, params = filter.to_sql("duckdb")
@@ -537,7 +537,7 @@ def test_duckdb_like_with_json_path():
     assert params == ["%error%"]
 
 
-def test_duckdb_ilike_with_json_path():
+def test_duckdb_ilike_with_json_path() -> None:
     """Test DuckDB casts JSON to VARCHAR for ILIKE operations."""
     filter = m["config.message"].ilike("%ERROR%")
     sql, params = filter.to_sql("duckdb")

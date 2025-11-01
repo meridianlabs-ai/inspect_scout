@@ -1,10 +1,13 @@
+import json
 import os
 import sys
 import traceback
 from logging import getLogger
+from pathlib import Path
 from typing import Any, AsyncIterator, Mapping, Sequence
 
 import anyio
+import yaml
 from anyio.abc import TaskGroup
 from dotenv import find_dotenv, load_dotenv
 from inspect_ai._eval.context import init_model_context
@@ -23,9 +26,11 @@ from inspect_ai.model._model_config import (
 )
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util._anyio import inner_exception
+from pydantic import TypeAdapter
 from rich.console import RenderableType
 
 from inspect_scout._util.attachments import resolve_event_attachments
+from inspect_scout._validation.types import ValidationSet
 from inspect_scout._view.notify import view_notify_scan
 
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
@@ -70,8 +75,9 @@ def scan(
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
-    worklist: Sequence[ScannerWork] | None = None,
     results: str | None = None,
+    worklist: Sequence[ScannerWork] | str | Path | None = None,
+    validation: ValidationSet | dict[str, ValidationSet] | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -97,8 +103,9 @@ def scan(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
-        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts).
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
+        validation: Validation cases to evaluate for scanners.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
         model_config: `GenerationConfig` for calls to the model.
@@ -124,8 +131,9 @@ def scan(
         scan_async(
             scanners=scanners,
             transcripts=transcripts,
-            worklist=worklist,
             results=results,
+            worklist=worklist,
+            validation=validation,
             model=model,
             model_config=model_config,
             model_base_url=model_base_url,
@@ -148,8 +156,9 @@ async def scan_async(
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
-    worklist: Sequence[ScannerWork] | None = None,
     results: str | None = None,
+    worklist: Sequence[ScannerWork] | str | Path | None = None,
+    validation: ValidationSet | dict[str, ValidationSet] | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -174,8 +183,9 @@ async def scan_async(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
-        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts).
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
+        validation: Validation cases to apply for scanners.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
         model_config: `GenerationConfig` for calls to the model.
@@ -196,6 +206,10 @@ async def scan_async(
     """
     top_level_async_init(log_level)
 
+    # resolve worklist
+    if isinstance(worklist, str | Path):
+        worklist = _worklist_from(worklist)
+
     # resolve scanjob
     if isinstance(scanners, ScanJob):
         scanjob = scanners
@@ -213,6 +227,10 @@ async def scan_async(
     scanjob._results = (
         results or scanjob._results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
     )
+
+    # resolve validation
+    if validation is not None:
+        scanjob._validation = _resolve_validation(validation, scanjob)
 
     # initialize scan config
     scanjob._max_transcripts = (
@@ -775,3 +793,45 @@ def _reports_for_parse_error(
         )
         for idx in job.scanner_indices
     ]
+
+
+def _worklist_from(file: str | Path) -> list[ScannerWork]:
+    with open(file, "r") as f:
+        contents = f.read().strip()
+
+    if contents.startswith("["):
+        data = json.loads(contents)
+    else:
+        data = yaml.safe_load(contents)
+
+    if not isinstance(data, list):
+        raise PrerequisiteError(
+            f"Worklist data from JSON or YAML file must be a list (found type {type(data)})"
+        )
+
+    # validate with pydantic
+    adapter = TypeAdapter[list[ScannerWork]](list[ScannerWork])
+    return adapter.validate_python(data)
+
+
+def _resolve_validation(
+    validation: ValidationSet | dict[str, ValidationSet],
+    scanjob: ScanJob,
+) -> dict[str, ValidationSet]:
+    if isinstance(validation, dict):
+        # confirm all keys correspond to scanners
+        for s in validation.keys():
+            if s not in scanjob.scanners:
+                raise ValueError(
+                    f"Validation referended scanner '{s}' however there is no scanner of that name passed to the scan."
+                )
+
+        return validation
+    else:
+        # if a  single validation set was passed then confirm
+        # that there is only a single scanner
+        if len(scanjob.scanners) > 1:
+            raise ValueError(
+                "Validation sets must be specified as a dict of scanner:validation when there is more than one scanner."
+            )
+        return {next(iter(scanjob.scanners)): validation}

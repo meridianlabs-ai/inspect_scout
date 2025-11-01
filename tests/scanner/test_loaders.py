@@ -40,7 +40,7 @@ async def _transcript(input: Transcript) -> Any:
     pass
 
 
-async def _no_hint(input) -> Any:  # type:ignore
+async def _no_hint(input) -> Any:  # type: ignore[no-untyped-def]
     pass
 
 

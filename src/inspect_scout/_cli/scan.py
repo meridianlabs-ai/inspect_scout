@@ -105,6 +105,18 @@ class ScanGroup(click.Group):
     envvar="SCOUT_SCAN_RESULTS",
 )
 @click.option(
+    "--worklist",
+    type=click.Path(exists=True),
+    help="Transcript ids to process for each scanner (JSON or YAML file).",
+    envvar="SCOUT_SCAN_WORKLIST",
+)
+@click.option(
+    "--validation",
+    type=click.Path(exists=True),
+    help="Validation cases to apply.",
+    envvar="SCOUT_SCAN_VALIDATION",
+)
+@click.option(
     "--model",
     type=str,
     help="Model used by default for llm scanners.",
@@ -264,6 +276,8 @@ def scan_command(
     s: tuple[str, ...],
     transcripts: tuple[str, ...],
     results: str,
+    worklist: str | None,
+    validation: str | None,
     model: str | None,
     model_base_url: str | None,
     m: tuple[str, ...] | None,
@@ -377,6 +391,8 @@ def scan_command(
         scanners=scanjob,
         transcripts=tx,
         results=results,
+        worklist=worklist,
+        validation=validation,
         model=model,
         model_config=scan_model_config,
         model_base_url=model_base_url,

@@ -1,3 +1,4 @@
+from typing import Any
 """Tests for load_filtered_transcript function."""
 
 import io
@@ -14,7 +15,7 @@ from inspect_scout._transcript.types import EventFilter, MessageFilter
 from inspect_scout._util.async_zip import AsyncZipReader
 
 
-def create_json_stream(data: dict) -> io.BytesIO:
+def create_json_stream(data: dict[str, Any]) -> io.BytesIO:
     """Create an async-compatible BytesIO stream from dictionary data."""
     return io.BytesIO(json.dumps(data).encode())
 

@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -63,7 +64,7 @@ def create_log_dataframe(num_samples: int = 10) -> pd.DataFrame:
 
 
 @pytest_asyncio.fixture
-async def db():
+async def db() -> Any:
     """Create and connect to a test database."""
     df = create_log_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -77,7 +78,7 @@ async def db():
 # ============================================================================
 
 
-def test_typed_properties_exist():
+def test_typed_properties_exist() -> None:
     """Test that all typed properties exist and return Column objects."""
     # ID columns
     assert lm.sample_id.name == "sample_id"
@@ -111,15 +112,15 @@ def test_typed_properties_exist():
     assert lm.limit.name == "limit"
 
 
-def test_typed_properties_have_docstrings():
+def test_typed_properties_have_docstrings() -> None:
     """Test that typed properties have meaningful docstrings."""
     # Properties are descriptors, so we need to check their fget docstrings
-    assert "Globally unique id for eval" in LogMetadata.eval_id.fget.__doc__
-    assert "Model used for eval" in LogMetadata.model.fget.__doc__
-    assert "Task name" in LogMetadata.task_name.fget.__doc__
-    assert "Headline score value" in LogMetadata.score.fget.__doc__
+    assert "Globally unique id for eval" in LogMetadata.eval_id.fget.__doc__  # type: ignore[attr-defined]
+    assert "Model used for eval" in LogMetadata.model.fget.__doc__  # type: ignore[attr-defined]
+    assert "Task name" in LogMetadata.task_name.fget.__doc__  # type: ignore[attr-defined]
+    assert "Headline score value" in LogMetadata.score.fget.__doc__  # type: ignore[attr-defined]
     assert (
-        "Total time that the sample was running" in LogMetadata.total_time.fget.__doc__
+        "Total time that the sample was running" in LogMetadata.total_time.fget.__doc__  # type: ignore[attr-defined]
     )
 
 
@@ -128,7 +129,7 @@ def test_typed_properties_have_docstrings():
 # ============================================================================
 
 
-def test_sql_generation_simple_equality():
+def test_sql_generation_simple_equality() -> None:
     """Test SQL generation for simple equality using typed properties."""
     # Model equality
     condition = lm.model == "gpt-4"
@@ -149,7 +150,7 @@ def test_sql_generation_simple_equality():
     assert params == ["cot"]
 
 
-def test_sql_generation_comparison_operators():
+def test_sql_generation_comparison_operators() -> None:
     """Test SQL generation for comparison operators using typed properties."""
     # Greater than
     condition = lm.epoch > 1
@@ -176,7 +177,7 @@ def test_sql_generation_comparison_operators():
     assert params == ["cot"]
 
 
-def test_sql_generation_complex_conditions():
+def test_sql_generation_complex_conditions() -> None:
     """Test SQL generation for complex conditions using typed properties."""
     # AND condition
     condition = (lm.model == "gpt-4") & (lm.epoch > 1)
@@ -202,7 +203,7 @@ def test_sql_generation_complex_conditions():
     assert len(params) == 5
 
 
-def test_sql_generation_null_handling():
+def test_sql_generation_null_handling() -> None:
     """Test SQL generation for NULL handling using typed properties."""
     # IS NULL
     condition = lm.limit.is_null()
@@ -229,7 +230,7 @@ def test_sql_generation_null_handling():
     assert params == []
 
 
-def test_sql_generation_in_operators():
+def test_sql_generation_in_operators() -> None:
     """Test SQL generation for IN operators using typed properties."""
     # IN
     condition = lm.model.in_(["gpt-4", "claude-3", "gemini-pro"])
@@ -244,7 +245,7 @@ def test_sql_generation_in_operators():
     assert params == ["cot", "react"]
 
 
-def test_sql_generation_like_operators():
+def test_sql_generation_like_operators() -> None:
     """Test SQL generation for LIKE operators using typed properties."""
     # LIKE
     condition = lm.task_name.like("math%")
@@ -265,7 +266,7 @@ def test_sql_generation_like_operators():
     assert params == ["%GPT%"]
 
 
-def test_sql_generation_between_operators():
+def test_sql_generation_between_operators() -> None:
     """Test SQL generation for BETWEEN operators using typed properties."""
     # BETWEEN
     condition = lm.epoch.between(1, 5)
@@ -280,7 +281,7 @@ def test_sql_generation_between_operators():
     assert params == [10.0, 20.0]
 
 
-def test_sql_generation_different_dialects():
+def test_sql_generation_different_dialects() -> None:
     """Test SQL generation works across different SQL dialects."""
     condition = (lm.model == "gpt-4") & (lm.epoch > 1)
 
@@ -305,7 +306,7 @@ def test_sql_generation_different_dialects():
 # ============================================================================
 
 
-def test_dynamic_field_access():
+def test_dynamic_field_access() -> None:
     """Test that dynamic fields work with LogMetadata."""
     # Access dynamic score columns
     condition = lm["score_accuracy"] > 0.9
@@ -332,7 +333,7 @@ def test_dynamic_field_access():
     assert params == [100]
 
 
-def test_nested_json_fields():
+def test_nested_json_fields() -> None:
     """Test accessing nested JSON fields with LogMetadata."""
     # This tests that the base Metadata functionality is preserved
     condition = lm["config.nested.value"] > 10
@@ -348,7 +349,7 @@ def test_nested_json_fields():
     assert params == [10]
 
 
-def test_json_metadata_fields():
+def test_json_metadata_fields() -> None:
     """Test querying nested values in eval_metadata and sample_metadata."""
     # Query nested field in eval_metadata
     condition = lm["eval_metadata.experiment"] == "exp_5"
@@ -380,7 +381,7 @@ def test_json_metadata_fields():
 # ============================================================================
 
 
-def test_backward_compatibility_with_base_metadata():
+def test_backward_compatibility_with_base_metadata() -> None:
     """Test that LogMetadata is compatible with base Metadata."""
     # Both should generate identical SQL for the same conditions
 
@@ -415,7 +416,7 @@ def test_backward_compatibility_with_base_metadata():
     assert params_log == params_base
 
 
-def test_mixing_log_and_base_metadata():
+def test_mixing_log_and_base_metadata() -> None:
     """Test that LogMetadata conditions can be mixed with base Metadata conditions."""
     # Mix LogMetadata and base Metadata in the same query
     condition = (lm.model == "gpt-4") & (m.score > 0.8)
@@ -431,7 +432,7 @@ def test_mixing_log_and_base_metadata():
 
 
 @pytest.mark.asyncio
-async def test_query_with_typed_properties(db):
+async def test_query_with_typed_properties(db):  # type: ignore[no-untyped-def]
     """Test database queries using typed properties."""
     # Filter by model
     results = await db.query(where=[lm.model == "gpt-4"])
@@ -450,7 +451,7 @@ async def test_query_with_typed_properties(db):
 
 
 @pytest.mark.asyncio
-async def test_complex_query_with_typed_properties(db):
+async def test_complex_query_with_typed_properties(db):  # type: ignore[no-untyped-def]
     """Test complex database queries using typed properties."""
     # Complex condition with multiple typed properties
     conditions = [
@@ -466,7 +467,7 @@ async def test_complex_query_with_typed_properties(db):
 
 
 @pytest.mark.asyncio
-async def test_count_with_typed_properties(db):
+async def test_count_with_typed_properties(db):  # type: ignore[no-untyped-def]
     """Test counting records using typed properties."""
     # Count all with specific model
     count = await db.count(where=[lm.model == "gpt-4"])
@@ -486,7 +487,7 @@ async def test_count_with_typed_properties(db):
 
 
 @pytest.mark.asyncio
-async def test_transcripts_with_log_metadata():
+async def test_transcripts_with_log_metadata():  # type: ignore[no-untyped-def]
     """Test using LogMetadata with the Transcripts API."""
     df = create_log_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -509,14 +510,14 @@ async def test_transcripts_with_log_metadata():
         results = list(await db.query(conditions))
         for result in results:
             assert result.metadata["model"] == "gpt-4"
-            assert result.metadata["epoch"] > 1
+            assert result.metadata["epoch"] > 1  # type: ignore[operator]
             assert result.metadata["solver"] == "cot"
     finally:
         await db.disconnect()
 
 
 @pytest.mark.asyncio
-async def test_transcripts_complex_filtering():
+async def test_transcripts_complex_filtering():  # type: ignore[no-untyped-def]
     """Test complex filtering scenarios with Transcripts and LogMetadata."""
     df = create_log_dataframe(30)
     db = EvalLogTranscriptsDB(df)
@@ -541,9 +542,9 @@ async def test_transcripts_complex_filtering():
 
             # Check the OR condition
             if meta["model"] == "gpt-4":
-                assert meta["total_tokens"] > 150
+                assert meta["total_tokens"] > 150  # type: ignore[operator]
             elif meta["model"] == "claude-3":
-                assert meta["total_tokens"] > 160
+                assert meta["total_tokens"] > 160  # type: ignore[operator]
             else:
                 pytest.fail(f"Unexpected model: {meta['model']}")
 
@@ -554,7 +555,7 @@ async def test_transcripts_complex_filtering():
 
 
 @pytest.mark.asyncio
-async def test_transcripts_with_shuffle_and_limit():
+async def test_transcripts_with_shuffle_and_limit():  # type: ignore[no-untyped-def]
     """Test that shuffle and limit work with LogMetadata filters."""
     df = create_log_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -576,7 +577,7 @@ async def test_transcripts_with_shuffle_and_limit():
 
 
 @pytest.mark.asyncio
-async def test_query_json_metadata_fields():
+async def test_query_json_metadata_fields():  # type: ignore[no-untyped-def]
     """Test querying nested JSON fields in metadata columns."""
     df = create_log_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -609,7 +610,7 @@ async def test_query_json_metadata_fields():
 # ============================================================================
 
 
-def test_special_column_names():
+def test_special_column_names() -> None:
     """Test that special column names work correctly."""
     # Columns that might conflict with Python keywords or have special chars
 
@@ -626,7 +627,7 @@ def test_special_column_names():
     assert params == ["sample_001"]
 
 
-def test_all_operators_with_typed_properties():
+def test_all_operators_with_typed_properties() -> None:
     """Test that all operators work with typed properties."""
     # Test each operator type
     operators_tests = [
@@ -652,7 +653,7 @@ def test_all_operators_with_typed_properties():
         assert params == expected_params
 
 
-def test_chaining_operations():
+def test_chaining_operations() -> None:
     """Test that operations can be chained naturally."""
     # Build up a complex query step by step
     condition = lm.model == "gpt-4"
@@ -667,7 +668,7 @@ def test_chaining_operations():
 
 
 @pytest.mark.asyncio
-async def test_empty_dataframe_with_log_metadata():
+async def test_empty_dataframe_with_log_metadata():  # type: ignore[no-untyped-def]
     """Test LogMetadata works with empty DataFrames."""
     df = pd.DataFrame(columns=["sample_id", "id", "eval_id", "log", "model", "epoch"])
     db = EvalLogTranscriptsDB(df)
@@ -683,7 +684,7 @@ async def test_empty_dataframe_with_log_metadata():
     await db.disconnect()
 
 
-def test_type_hints_preserved():
+def test_type_hints_preserved() -> None:
     """Test that type hints are preserved and work correctly."""
     from inspect_scout._transcript.metadata import Column
 

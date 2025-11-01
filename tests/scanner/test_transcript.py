@@ -1,5 +1,6 @@
 """Comprehensive tests for the _transcript module."""
 
+from typing import Any
 import uuid
 
 import pandas as pd
@@ -41,7 +42,7 @@ def create_test_dataframe(num_samples: int = 10) -> pd.DataFrame:
 
 
 @pytest_asyncio.fixture
-async def db():
+async def db() -> Any:
     """Create and connect to a test database."""
     df = create_test_dataframe(20)
     db = EvalLogTranscriptsDB(df)
@@ -55,7 +56,7 @@ async def db():
 # ============================================================================
 
 
-def test_simple_equality():
+def test_simple_equality() -> None:
     """Test simple equality conditions."""
     condition = m.model == "gpt-4"
     sql, params = condition.to_sql("sqlite")
@@ -63,7 +64,7 @@ def test_simple_equality():
     assert params == ["gpt-4"]
 
 
-def test_comparison_operators():
+def test_comparison_operators() -> None:
     """Test all comparison operators."""
     # Greater than
     condition = m.score > 0.8
@@ -84,7 +85,7 @@ def test_comparison_operators():
     assert params == ["error"]
 
 
-def test_in_operator():
+def test_in_operator() -> None:
     """Test IN and NOT IN operators."""
     condition = m.model.in_(["gpt-4", "claude"])
     sql, params = condition.to_sql("sqlite")
@@ -97,7 +98,7 @@ def test_in_operator():
     assert params == ["error", "timeout"]
 
 
-def test_empty_in_operator():
+def test_empty_in_operator() -> None:
     """Test empty IN and NOT IN operators."""
     # Empty IN should always be false (nothing can be in an empty set)
     condition = m.model.in_([])
@@ -123,7 +124,7 @@ def test_empty_in_operator():
     assert params == []
 
 
-def test_null_operators():
+def test_null_operators() -> None:
     """Test NULL and NOT NULL operators."""
     condition = m.error_message.is_null()
     sql, params = condition.to_sql("sqlite")
@@ -136,7 +137,7 @@ def test_null_operators():
     assert params == []
 
 
-def test_none_comparison():
+def test_none_comparison() -> None:
     """Test that == None and != None map to IS NULL and IS NOT NULL."""
     # == None should map to IS NULL
     condition = m.error_message == None  # noqa: E711
@@ -168,7 +169,7 @@ def test_none_comparison():
     assert params == ["gpt-4"]
 
 
-def test_like_operator():
+def test_like_operator() -> None:
     """Test LIKE and NOT LIKE operators."""
     condition = m.error_message.like("%timeout%")
     sql, params = condition.to_sql("sqlite")
@@ -181,7 +182,7 @@ def test_like_operator():
     assert params == ["/tmp/%"]
 
 
-def test_ilike_operator():
+def test_ilike_operator() -> None:
     """Test ILIKE and NOT ILIKE operators for case-insensitive matching."""
     # PostgreSQL - native ILIKE support
     condition = m.error_message.ilike("%TIMEOUT%")
@@ -238,7 +239,7 @@ def test_ilike_operator():
     assert params == ["%Error%"]
 
 
-def test_between_operator():
+def test_between_operator() -> None:
     """Test BETWEEN and NOT BETWEEN operators."""
     condition = m.score.between(0.5, 0.9)
     sql, params = condition.to_sql("sqlite")
@@ -251,7 +252,7 @@ def test_between_operator():
     assert params == [1, 3]
 
 
-def test_between_with_null_bounds():
+def test_between_with_null_bounds() -> None:
     """Test that BETWEEN properly handles NULL bounds."""
     # NULL in lower bound should raise ValueError
     with pytest.raises(ValueError, match="BETWEEN operator requires non-None bounds"):
@@ -282,7 +283,7 @@ def test_between_with_null_bounds():
         m.retries.not_between(None, None)
 
 
-def test_logical_operators():
+def test_logical_operators() -> None:
     """Test AND, OR, and NOT logical operators."""
     # AND
     condition = (m.model == "gpt-4") & (m.score > 0.8)
@@ -303,7 +304,7 @@ def test_logical_operators():
     assert params == ["gpt-3.5-turbo"]
 
 
-def test_complex_nested_conditions():
+def test_complex_nested_conditions() -> None:
     """Test complex nested conditions."""
     condition = (
         ((m.model == "gpt-4") & (m.score > 0.8))
@@ -317,7 +318,7 @@ def test_complex_nested_conditions():
     assert len(params) == 4
 
 
-def test_bracket_notation():
+def test_bracket_notation() -> None:
     """Test bracket notation for column access."""
     condition = m["custom_field"] > 100
     sql, params = condition.to_sql("sqlite")
@@ -325,7 +326,7 @@ def test_bracket_notation():
     assert params == [100]
 
 
-def test_nested_json_paths():
+def test_nested_json_paths() -> None:
     """Test nested JSON path extraction with proper escaping."""
     # Simple nested path
     condition = m["metadata.config.temperature"] > 0.7
@@ -348,7 +349,7 @@ def test_nested_json_paths():
     assert params == [0.7]
 
 
-def test_column_name_escaping():
+def test_column_name_escaping() -> None:
     """Test that column names with special characters are properly escaped."""
     # Column name with double quotes
     condition = m['col"umn'] == "value"
@@ -368,7 +369,7 @@ def test_column_name_escaping():
     assert params == ["value"]
 
 
-def test_postgres_json_type_casting():
+def test_postgres_json_type_casting() -> None:
     """Test that PostgreSQL properly casts JSON values for comparisons."""
     # Integer comparison - should cast from text to bigint
     condition = m["metadata.retries"] > 3
@@ -430,7 +431,7 @@ def test_postgres_json_type_casting():
     assert params == [10]
 
 
-def test_postgres_casting_with_none():
+def test_postgres_casting_with_none() -> None:
     """Test PostgreSQL casting handles None values correctly."""
     # Comparison with None should not crash the casting logic
     condition = m["metadata.field"] == None  # noqa: E711
@@ -439,7 +440,7 @@ def test_postgres_casting_with_none():
     assert params == []
 
 
-def test_postgres_double_cast_correctness():
+def test_postgres_double_cast_correctness() -> None:
     """Test that the double cast (::text::type) works correctly for PostgreSQL JSON extraction."""
     # The ->> operator returns text, so we need ::text::type casting
 
@@ -465,7 +466,7 @@ def test_postgres_double_cast_correctness():
     assert params == ["test"]
 
 
-def test_no_casting_for_non_json_columns():
+def test_no_casting_for_non_json_columns() -> None:
     """Test that regular columns don't get cast in PostgreSQL."""
     # Regular column with integer - no casting
     condition = m.retries > 3
@@ -480,7 +481,7 @@ def test_no_casting_for_non_json_columns():
     assert params == [0.75]
 
 
-def test_deep_nested_paths():
+def test_deep_nested_paths() -> None:
     """Test deeply nested JSON paths."""
     condition = m["metadata.level1.level2.level3.value"] > 10
 
@@ -506,7 +507,7 @@ def test_deep_nested_paths():
     assert params == [10]
 
 
-def test_postgres_parameter_numbering():
+def test_postgres_parameter_numbering() -> None:
     """Test that PostgreSQL parameter numbering is correct (1-based)."""
     # Single parameter - should be $1
     condition = m.score > 0.5
@@ -564,7 +565,7 @@ def test_postgres_parameter_numbering():
 
 
 @pytest.mark.asyncio
-async def test_connect_disconnect():
+async def test_connect_disconnect():  # type: ignore[no-untyped-def]
     """Test database connection and disconnection."""
     df = create_test_dataframe(5)
     db = EvalLogTranscriptsDB(df)
@@ -579,7 +580,7 @@ async def test_connect_disconnect():
 
 
 @pytest.mark.asyncio
-async def test_query_all(db):
+async def test_query_all(db):  # type: ignore[no-untyped-def]
     """Test querying all records."""
     results = list(await db.query(where=[]))
     assert len(results) == 20
@@ -593,7 +594,7 @@ async def test_query_all(db):
 
 
 @pytest.mark.asyncio
-async def test_query_with_filter(db):
+async def test_query_with_filter(db):  # type: ignore[no-untyped-def]
     """Test querying with filters."""
     # Filter by model
     results = list(await db.query(where=[m.model == "gpt-4"]))
@@ -607,7 +608,7 @@ async def test_query_with_filter(db):
 
 
 @pytest.mark.asyncio
-async def test_query_with_multiple_conditions(db):
+async def test_query_with_multiple_conditions(db):  # type: ignore[no-untyped-def]
     """Test querying with multiple conditions."""
     conditions = [m.model == "gpt-4", m.score > 0.6]
     results = list(await db.query(where=conditions))
@@ -618,7 +619,7 @@ async def test_query_with_multiple_conditions(db):
 
 
 @pytest.mark.asyncio
-async def test_query_with_limit(db):
+async def test_query_with_limit(db):  # type: ignore[no-untyped-def]
     """Test querying with limit."""
     results = list(await db.query(where=[], limit=5))
     assert len(results) == 5
@@ -629,7 +630,7 @@ async def test_query_with_limit(db):
 
 
 @pytest.mark.asyncio
-async def test_query_with_shuffle(db):
+async def test_query_with_shuffle(db):  # type: ignore[no-untyped-def]
     """Test querying with shuffle."""
     # Get results without shuffle
     results1 = list(await db.query(where=[], limit=10))
@@ -649,14 +650,14 @@ async def test_query_with_shuffle(db):
 
 
 @pytest.mark.asyncio
-async def test_count_all(db):
+async def test_count_all(db):  # type: ignore[no-untyped-def]
     """Test counting all records."""
     count = await db.count(where=[])
     assert count == 20
 
 
 @pytest.mark.asyncio
-async def test_count_with_filter(db):
+async def test_count_with_filter(db):  # type: ignore[no-untyped-def]
     """Test counting with filters."""
     # Count by model
     count = await db.count(where=[m.model == "gpt-4"])
@@ -668,7 +669,7 @@ async def test_count_with_filter(db):
 
 
 @pytest.mark.asyncio
-async def test_count_with_limit(db):
+async def test_count_with_limit(db):  # type: ignore[no-untyped-def]
     """Test counting with limit."""
     count = await db.count(where=[], limit=5)
     assert count == 5
@@ -680,7 +681,7 @@ async def test_count_with_limit(db):
 
 
 @pytest.mark.asyncio
-async def test_complex_queries(db):
+async def test_complex_queries(db):  # type: ignore[no-untyped-def]
     """Test complex queries with multiple operators."""
     # Complex condition
     conditions = [
@@ -696,7 +697,7 @@ async def test_complex_queries(db):
 
 
 @pytest.mark.asyncio
-async def test_metadata_extraction(db):
+async def test_metadata_extraction(db):  # type: ignore[no-untyped-def]
     """Test that metadata is properly extracted."""
     results = list(await db.query(where=[], limit=1))
     assert len(results) == 1
@@ -712,7 +713,7 @@ async def test_metadata_extraction(db):
 
 
 @pytest.mark.asyncio
-async def test_none_comparison_in_db(db):
+async def test_none_comparison_in_db(db):  # type: ignore[no-untyped-def]
     """Test that == None and != None work correctly in database queries."""
     # Using == None (should behave same as is_null())
     results_eq_none = list(await db.query(where=[m.error_message == None]))  # noqa: E711
@@ -729,7 +730,7 @@ async def test_none_comparison_in_db(db):
 
 
 @pytest.mark.asyncio
-async def test_null_value_handling(db):
+async def test_null_value_handling(db):  # type: ignore[no-untyped-def]
     """Test handling of NULL values in metadata."""
     # Query for null error_message
     results = list(await db.query(where=[m.error_message.is_null()]))
@@ -754,21 +755,21 @@ async def test_null_value_handling(db):
 
 
 @pytest.mark.asyncio
-async def test_transcripts_query_integration():
+async def test_transcripts_query_integration() -> None:
     """Test end-to-end query through transcripts API."""
     df = create_test_dataframe(15)
-    t = transcripts_from_logs(df)
+    t = transcripts_from_logs(df)  # type: ignore[arg-type]
 
-    await t.db.connect()
+    await t.db.connect()  # type: ignore[attr-defined]
 
     # Test query
-    results = list(await t.db.query(where=[m.score > 0.7], limit=5))
+    results = list(await t.db.query(where=[m.score > 0.7], limit=5))  # type: ignore[attr-defined]
 
     assert len(results) <= 5
     for result in results:
         assert result.metadata["score"] > 0.7
 
-    await t.db.disconnect()
+    await t.db.disconnect()  # type: ignore[attr-defined]
 
 
 # ============================================================================
@@ -777,7 +778,7 @@ async def test_transcripts_query_integration():
 
 
 @pytest.mark.asyncio
-async def test_empty_dataframe():
+async def test_empty_dataframe() -> None:
     """Test with empty DataFrame."""
     df = pd.DataFrame(columns=["sample_id", "id", "epoch", "eval_id", "log"])
     db = EvalLogTranscriptsDB(df)
@@ -793,7 +794,7 @@ async def test_empty_dataframe():
 
 
 @pytest.mark.asyncio
-async def test_missing_required_columns():
+async def test_missing_required_columns() -> None:
     """Test error handling when required columns are missing."""
     # DataFrame with all required columns but one has None
     df = pd.DataFrame(
@@ -818,7 +819,7 @@ async def test_missing_required_columns():
 
 
 @pytest.mark.asyncio
-async def test_empty_in_clause_in_db(db):
+async def test_empty_in_clause_in_db(db: Any) -> None:
     """Test that empty IN/NOT IN work correctly in actual queries."""
     # Empty IN should return no results
     results = list(await db.query(where=[m.model.in_([])]))
@@ -843,7 +844,7 @@ async def test_empty_in_clause_in_db(db):
 
 
 @pytest.mark.asyncio
-async def test_large_in_clause():
+async def test_large_in_clause() -> None:
     """Test IN clause with many values."""
     df = create_test_dataframe(100)
     db = EvalLogTranscriptsDB(df)

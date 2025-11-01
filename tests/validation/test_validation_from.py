@@ -1,6 +1,8 @@
 """Tests for validation_from function."""
 
 import json
+from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -10,7 +12,7 @@ from inspect_scout._validation import validation as validation_from
 # CSV Tests
 
 
-def test_csv_with_headers_single_target(tmp_path):
+def test_csv_with_headers_single_target(tmp_path: Path) -> None:
     """Test CSV with headers and single target column."""
     csv_content = """id,target
 ef453da45,true
@@ -31,7 +33,7 @@ fffffffff,false
     assert validation.cases[2].target == 42
 
 
-def test_csv_without_headers_single_target(tmp_path):
+def test_csv_without_headers_single_target(tmp_path: Path) -> None:
     """Test CSV without headers (2-column format)."""
     csv_content = """ef453da45,true
 fffffffff,false
@@ -49,7 +51,7 @@ fffffffff,false
     assert validation.cases[1].target is False
 
 
-def test_csv_with_dict_target(tmp_path):
+def test_csv_with_dict_target(tmp_path: Path) -> None:
     """Test CSV with multiple target_* columns."""
     csv_content = """id,target_foo,target_bar
 ef453da45,true,33
@@ -70,7 +72,7 @@ ef4533346,true,44"""
     assert validation.cases[2].target == {"foo": True, "bar": 44}
 
 
-def test_csv_with_comma_separated_ids(tmp_path):
+def test_csv_with_comma_separated_ids(tmp_path: Path) -> None:
     """Test CSV with comma-separated IDs."""
     csv_content = """id,target
 "id1,id2",true
@@ -88,7 +90,7 @@ def test_csv_with_comma_separated_ids(tmp_path):
     assert validation.cases[1].target is False
 
 
-def test_csv_with_json_array_ids(tmp_path):
+def test_csv_with_json_array_ids(tmp_path: Path) -> None:
     """Test CSV with JSON-style array IDs."""
     csv_content = """id,target
 "[""ef453da45"",""ddddddd""]",true
@@ -109,7 +111,7 @@ def test_csv_with_json_array_ids(tmp_path):
 # YAML Tests
 
 
-def test_yaml_single_target(tmp_path):
+def test_yaml_single_target(tmp_path: Path) -> None:
     """Test YAML with single target values."""
     yaml_content = """- id: ef453da45
   target: true
@@ -132,7 +134,7 @@ def test_yaml_single_target(tmp_path):
     assert validation.cases[2].target == 42
 
 
-def test_yaml_with_dict_target(tmp_path):
+def test_yaml_with_dict_target(tmp_path: Path) -> None:
     """Test YAML with dict targets."""
     yaml_content = """- id: ef453da45
   target:
@@ -155,7 +157,7 @@ def test_yaml_with_dict_target(tmp_path):
     assert validation.cases[1].target == {"foo": False, "bar": 44}
 
 
-def test_yaml_with_array_ids(tmp_path):
+def test_yaml_with_array_ids(tmp_path: Path) -> None:
     """Test YAML with array IDs."""
     yaml_content = """- id: [ef453da45, ddddddd]
   target: true
@@ -174,7 +176,7 @@ def test_yaml_with_array_ids(tmp_path):
     assert validation.cases[1].target is False
 
 
-def test_yml_extension(tmp_path):
+def test_yml_extension(tmp_path: Path) -> None:
     """Test .yml extension works."""
     yaml_content = """- id: test
   target: true"""
@@ -192,7 +194,7 @@ def test_yml_extension(tmp_path):
 # JSON Tests
 
 
-def test_json_array_format(tmp_path):
+def test_json_array_format(tmp_path: Path) -> None:
     """Test JSON array format."""
     json_content = [
         {"id": "ef453da45", "target": True},
@@ -214,7 +216,7 @@ def test_json_array_format(tmp_path):
     assert validation.cases[2].target == 42
 
 
-def test_json_with_dict_target(tmp_path):
+def test_json_with_dict_target(tmp_path: Path) -> None:
     """Test JSON with dict targets."""
     json_content = [
         {"id": "ef453da45", "target": {"foo": True, "bar": 33}},
@@ -231,7 +233,7 @@ def test_json_with_dict_target(tmp_path):
     assert validation.cases[0].target == {"foo": True, "bar": 33}
 
 
-def test_json_with_array_ids(tmp_path):
+def test_json_with_array_ids(tmp_path: Path) -> None:
     """Test JSON with array IDs."""
     json_content = [
         {"id": ["ef453da45", "ddddddd"], "target": True},
@@ -251,7 +253,7 @@ def test_json_with_array_ids(tmp_path):
 # JSONL Tests
 
 
-def test_jsonl_format(tmp_path):
+def test_jsonl_format(tmp_path: Path) -> None:
     """Test JSONL (newline-delimited JSON) format."""
     jsonl_content = """{"id": "ef453da45", "target": true}
 {"id": "fffffffff", "target": false}
@@ -271,7 +273,7 @@ def test_jsonl_format(tmp_path):
     assert validation.cases[2].target == 42
 
 
-def test_jsonl_with_dict_target(tmp_path):
+def test_jsonl_with_dict_target(tmp_path: Path) -> None:
     """Test JSONL with dict targets."""
     jsonl_content = """{"id": "ef453da45", "target": {"foo": true, "bar": 33}}
 {"id": "fffffffff", "target": {"foo": false, "bar": 44}}"""
@@ -289,7 +291,7 @@ def test_jsonl_with_dict_target(tmp_path):
 # DataFrame Tests
 
 
-def test_dataframe_input_single_target():
+def test_dataframe_input_single_target() -> None:
     """Test direct DataFrame input with single target."""
     df = pd.DataFrame(
         {
@@ -305,7 +307,7 @@ def test_dataframe_input_single_target():
     assert validation.cases[0].target is True
 
 
-def test_dataframe_input_dict_target():
+def test_dataframe_input_dict_target() -> None:
     """Test direct DataFrame input with dict target."""
     df = pd.DataFrame(
         {
@@ -322,7 +324,7 @@ def test_dataframe_input_dict_target():
     assert validation.cases[0].target == {"foo": True, "bar": 33}
 
 
-def test_dataframe_with_list_ids():
+def test_dataframe_with_list_ids() -> None:
     """Test DataFrame with list IDs."""
     df = pd.DataFrame(
         {
@@ -341,7 +343,7 @@ def test_dataframe_with_list_ids():
 # Error Handling Tests
 
 
-def test_missing_id_column_error(tmp_path):
+def test_missing_id_column_error(tmp_path: Path) -> None:
     """Test error when id column is missing."""
     csv_content = """name,target
 test,true"""
@@ -353,7 +355,7 @@ test,true"""
         validation_from(csv_file)
 
 
-def test_missing_target_columns_error(tmp_path):
+def test_missing_target_columns_error(tmp_path: Path) -> None:
     """Test error when both target and target_* columns are missing."""
     csv_content = """id,value
 test,123"""
@@ -368,7 +370,7 @@ test,123"""
         validation_from(csv_file)
 
 
-def test_unsupported_file_format_error(tmp_path):
+def test_unsupported_file_format_error(tmp_path: Path) -> None:
     """Test error for unsupported file formats."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("some content")
@@ -380,7 +382,7 @@ def test_unsupported_file_format_error(tmp_path):
 # Type Conversion Tests
 
 
-def test_csv_type_inference_numbers(tmp_path):
+def test_csv_type_inference_numbers(tmp_path: Path) -> None:
     """Test automatic type inference for numbers in CSV."""
     csv_content = """id,target
 test1,42
@@ -401,7 +403,7 @@ test3,0"""
     assert isinstance(validation.cases[2].target, (int, float))
 
 
-def test_csv_type_inference_booleans(tmp_path):
+def test_csv_type_inference_booleans(tmp_path: Path) -> None:
     """Test automatic type inference for booleans in CSV."""
     csv_content = """id,target
 test1,true
@@ -420,7 +422,7 @@ test4,False"""
     assert validation.cases[3].target is False
 
 
-def test_csv_type_inference_strings(tmp_path):
+def test_csv_type_inference_strings(tmp_path: Path) -> None:
     """Test that strings remain strings in CSV."""
     csv_content = """id,target
 test1,hello
@@ -438,7 +440,7 @@ test2,world"""
 # Complex Scenarios
 
 
-def test_mixed_id_formats(tmp_path):
+def test_mixed_id_formats(tmp_path: Path) -> None:
     """Test file with both single and array IDs."""
     yaml_content = """- id: single_id
   target: true
@@ -455,7 +457,7 @@ def test_mixed_id_formats(tmp_path):
     assert validation.cases[1].id == ["array_id1", "array_id2"]
 
 
-def test_validation_object_structure():
+def test_validation_object_structure() -> None:
     """Test that Validation object has correct structure."""
     df = pd.DataFrame(
         {
@@ -473,7 +475,7 @@ def test_validation_object_structure():
     assert validation.multi_predicate is None
 
 
-def test_empty_dataframe():
+def test_empty_dataframe() -> None:
     """Test handling of empty DataFrame."""
     df = pd.DataFrame({"id": [], "target": []})
 
@@ -509,7 +511,9 @@ def test_empty_dataframe():
         ),
     ],
 )
-def test_all_formats_produce_same_output(tmp_path, file_ext, content_builder):
+def test_all_formats_produce_same_output(
+    tmp_path: Path, file_ext: str, content_builder: Any
+) -> None:
     """Test that all formats produce consistent output."""
     test_file = tmp_path / f"test{file_ext}"
     test_file.write_text(content_builder())
@@ -533,9 +537,9 @@ def test_all_formats_produce_same_output(tmp_path, file_ext, content_builder):
         (["already", "list"], ["already", "list"]),
     ],
 )
-def test_id_parsing_variations(id_input, expected_output):
+def test_id_parsing_variations(id_input: Any, expected_output: Any) -> None:
     """Test various ID parsing scenarios."""
-    from inspect_scout._validation._from import _parse_id
+    from inspect_scout._validation.validation import _parse_id
 
     result = _parse_id(id_input)
     assert result == expected_output

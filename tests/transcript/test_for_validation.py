@@ -1,32 +1,35 @@
 """Tests for Transcripts.for_validation() method."""
 
+from typing import Any, AsyncIterator
+
 from inspect_scout._transcript.transcripts import Transcripts
+from inspect_scout._transcript.types import TranscriptInfo
 from inspect_scout._validation import Validation, ValidationCase
 
 
 class MockTranscripts(Transcripts):
     """Mock implementation of Transcripts for testing."""
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "MockTranscripts":
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         return None
 
     async def count(self) -> int:
         return 0
 
-    async def index(self):
+    async def index(self) -> Any:
         return iter([])
 
-    async def _read(self, transcript, content):
+    async def _read(self, transcript: Any, content: Any) -> Any:
         raise NotImplementedError()
 
-    async def snapshot(self):
+    async def snapshot(self) -> Any:
         raise NotImplementedError()
 
 
-def test_for_validation_single_id():
+def test_for_validation_single_id() -> None:
     """Test for_validation with a single ID."""
     validation = Validation(
         cases=[
@@ -49,7 +52,7 @@ def test_for_validation_single_id():
     assert params == ["transcript_1", "transcript_2"]
 
 
-def test_for_validation_list_ids():
+def test_for_validation_list_ids() -> None:
     """Test for_validation with list IDs."""
     validation = Validation(
         cases=[
@@ -70,7 +73,7 @@ def test_for_validation_list_ids():
     assert params == ["transcript_1", "transcript_2", "transcript_3"]
 
 
-def test_for_validation_mixed_ids():
+def test_for_validation_mixed_ids() -> None:
     """Test for_validation with mixed single and list IDs."""
     validation = Validation(
         cases=[
@@ -90,7 +93,7 @@ def test_for_validation_mixed_ids():
     assert params == ["transcript_1", "transcript_2", "transcript_3", "transcript_4"]
 
 
-def test_for_validation_duplicate_ids():
+def test_for_validation_duplicate_ids() -> None:
     """Test for_validation removes duplicate IDs."""
     validation = Validation(
         cases=[
@@ -113,7 +116,7 @@ def test_for_validation_duplicate_ids():
     assert params == ["transcript_1", "transcript_2"]
 
 
-def test_for_validation_preserves_order():
+def test_for_validation_preserves_order() -> None:
     """Test for_validation preserves ID order when deduplicating."""
     validation = Validation(
         cases=[
@@ -134,7 +137,7 @@ def test_for_validation_preserves_order():
     assert params == ["id_c", "id_a", "id_b"]
 
 
-def test_for_validation_empty_cases():
+def test_for_validation_empty_cases() -> None:
     """Test for_validation with empty validation cases."""
     validation = Validation(cases=[])
 
@@ -151,7 +154,7 @@ def test_for_validation_empty_cases():
     assert params == []
 
 
-def test_for_validation_large_id_list():
+def test_for_validation_large_id_list() -> None:
     """Test for_validation with >999 IDs (SQLite parameter limit)."""
     # Create 1500 validation cases to exceed SQLite's 999 parameter limit
     cases = [ValidationCase(id=f"id_{i}", target=i % 2 == 0) for i in range(1500)]
@@ -174,7 +177,7 @@ def test_for_validation_large_id_list():
     assert sql.count("IN") == 2
 
 
-def test_for_validation_combines_with_existing_conditions():
+def test_for_validation_combines_with_existing_conditions() -> None:
     """Test that for_validation combines with existing where conditions."""
     from inspect_scout._transcript.metadata import metadata as m
 
@@ -187,9 +190,9 @@ def test_for_validation_combines_with_existing_conditions():
 
     transcripts = MockTranscripts()
     # Add an existing condition
-    transcripts = transcripts.where(m.model == "gpt-4")
+    transcripts_filtered = transcripts.where(m.model == "gpt-4")
     # Add validation filter
-    filtered = transcripts.for_validation(validation)
+    filtered = transcripts_filtered.for_validation(validation)
 
     # Should have 2 conditions now
     assert len(filtered._where) == 2
@@ -205,7 +208,7 @@ def test_for_validation_combines_with_existing_conditions():
     assert params2 == ["transcript_1", "transcript_2"]
 
 
-def test_for_validation_sql_generation_sqlite():
+def test_for_validation_sql_generation_sqlite() -> None:
     """Test SQL generation for SQLite dialect."""
     validation = Validation(
         cases=[
@@ -224,7 +227,7 @@ def test_for_validation_sql_generation_sqlite():
     assert params == ["id1", "id2"]
 
 
-def test_for_validation_sql_generation_postgres():
+def test_for_validation_sql_generation_postgres() -> None:
     """Test SQL generation for PostgreSQL dialect."""
     validation = Validation(
         cases=[
@@ -244,7 +247,7 @@ def test_for_validation_sql_generation_postgres():
     assert params == ["id1", "id2"]
 
 
-def test_for_validation_sql_generation_duckdb():
+def test_for_validation_sql_generation_duckdb() -> None:
     """Test SQL generation for DuckDB dialect."""
     validation = Validation(
         cases=[
@@ -263,7 +266,7 @@ def test_for_validation_sql_generation_duckdb():
     assert params == ["id1", "id2"]
 
 
-def test_for_validation_does_not_modify_original():
+def test_for_validation_does_not_modify_original() -> None:
     """Test that for_validation does not modify the original Transcripts object."""
     validation = Validation(
         cases=[
@@ -283,11 +286,11 @@ def test_for_validation_does_not_modify_original():
     assert len(filtered._where) == original_where_len + 1
 
 
-def test_for_validation_with_predicate():
+def test_for_validation_with_predicate() -> None:
     """Test for_validation works with validation that has a predicate."""
 
-    def custom_predicate(value, target):
-        return value == target
+    def custom_predicate(value: Any, target: Any) -> bool:
+        return bool(value == target)
 
     validation = Validation(
         cases=[
@@ -307,7 +310,7 @@ def test_for_validation_with_predicate():
     assert params == ["transcript_1"]
 
 
-def test_for_validation_chunk_boundary():
+def test_for_validation_chunk_boundary() -> None:
     """Test for_validation at exactly 999 IDs (boundary case)."""
     # Create exactly 999 validation cases
     cases = [ValidationCase(id=f"id_{i}", target=True) for i in range(999)]
@@ -325,7 +328,7 @@ def test_for_validation_chunk_boundary():
     assert sql == '"sample_id" IN (' + ", ".join(["?"] * 999) + ")"
 
 
-def test_for_validation_just_over_chunk_boundary():
+def test_for_validation_just_over_chunk_boundary() -> None:
     """Test for_validation with 1000 IDs (just over boundary)."""
     # Create 1000 validation cases (1 more than limit)
     cases = [ValidationCase(id=f"id_{i}", target=True) for i in range(1000)]

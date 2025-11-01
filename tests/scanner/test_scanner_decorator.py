@@ -9,7 +9,7 @@ from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
 # Scanner decorator tests
 
 
-def test_scanner_creates_config():
+def test_scanner_creates_config() -> None:
     @scanner(messages=["system"])
     def test_scanner() -> Scanner[ChatMessage]:
         async def scan(message: ChatMessage) -> Result:
@@ -23,7 +23,7 @@ def test_scanner_creates_config():
     assert config.content.messages == ["system"]
 
 
-def test_scanner_with_custom_name():
+def test_scanner_with_custom_name() -> None:
     """Scanner decorator should accept custom name."""
 
     @scanner(messages=["user"], name="custom_scanner")
@@ -37,7 +37,7 @@ def test_scanner_with_custom_name():
     assert registry_info(instance).name == "custom_scanner"
 
 
-def test_scanner_with_events():
+def test_scanner_with_events() -> None:
     """Scanner decorator should handle event filters."""
     from inspect_ai.event._event import Event
 
@@ -55,7 +55,7 @@ def test_scanner_with_events():
     ]
 
 
-def test_scanner_with_both_filters():
+def test_scanner_with_both_filters() -> None:
     """Scanner decorator should handle both message and event filters."""
     from inspect_scout._transcript.types import Transcript
 
@@ -72,7 +72,7 @@ def test_scanner_with_both_filters():
     assert config.content.events == ["model"]
 
 
-def test_scanner_requires_async():
+def test_scanner_requires_async() -> None:
     """Scanner must be async."""
     with pytest.raises(TypeError, match="not declared as an async callable"):
 
@@ -86,7 +86,7 @@ def test_scanner_requires_async():
         test_scanner()
 
 
-def test_scanner_requires_at_least_one_filter_or_loader():
+def test_scanner_requires_at_least_one_filter_or_loader() -> None:
     """Scanner decorator requires at least one filter or loader."""
     with pytest.raises(ValueError, match="requires at least one of"):
 
@@ -100,7 +100,7 @@ def test_scanner_requires_at_least_one_filter_or_loader():
         test_scanner()
 
 
-def test_scanner_factory_with_parameters():
+def test_scanner_factory_with_parameters() -> None:
     """Scanner factory can accept parameters."""
 
     @scanner(messages=["assistant"])
@@ -120,14 +120,14 @@ def test_scanner_factory_with_parameters():
     assert registry_info(scanner1).name == registry_info(scanner2).name
 
 
-def test_scanner_with_loader():
+def test_scanner_with_loader() -> None:
     """Scanner can use a custom loader."""
     from inspect_scout._scanner.loader import loader
     from inspect_scout._transcript.types import Transcript
 
     @loader(name="test_loader", messages="all")
-    def test_loader():
-        async def load(transcripts):
+    def test_loader():  # type: ignore[no-untyped-def]
+        async def load(transcripts):  # type: ignore[no-untyped-def]
             for t in transcripts:
                 yield t
 
@@ -147,7 +147,7 @@ def test_scanner_with_loader():
     assert registry_info(instance).metadata[SCANNER_CONFIG].loader == loader_instance
 
 
-def test_scanner_preserves_function_metadata():
+def test_scanner_preserves_function_metadata() -> None:
     """Scanner decorator should preserve function metadata."""
 
     @scanner(messages=["system"])
@@ -167,7 +167,7 @@ def test_scanner_preserves_function_metadata():
 # Scanner registry tests
 
 
-def test_scanner_added_to_registry():
+def test_scanner_added_to_registry() -> None:
     """Scanner should be added to registry."""
 
     @scanner(messages=["system"], name="registry_test_scanner")
@@ -182,7 +182,7 @@ def test_scanner_added_to_registry():
     assert registry_info(scanner_instance).name == "registry_test_scanner"
 
 
-def test_multiple_scanners_different_names():
+def test_multiple_scanners_different_names() -> None:
     """Multiple scanners can be registered with different names."""
 
     @scanner(messages=["system"], name="scanner_one")

@@ -1,5 +1,6 @@
 """Tests for runtime type validation in the scanner module."""
 
+from typing import Any
 import pytest
 from inspect_ai._util.registry import registry_info
 from inspect_ai.event._event import Event
@@ -19,7 +20,7 @@ from inspect_scout._transcript.types import Transcript
 # Valid scanner tests
 
 
-def test_base_type_with_filter():
+def test_base_type_with_filter() -> None:
     """Base ChatMessage type should work with any message filter."""
 
     @scanner(messages=["system", "user"])
@@ -36,7 +37,7 @@ def test_base_type_with_filter():
     ].content.messages == ["system", "user"]
 
 
-def test_exact_union_match():
+def test_exact_union_match() -> None:
     """Union type matching filter should work."""
 
     @scanner(messages=["system", "user"])
@@ -50,7 +51,7 @@ def test_exact_union_match():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_single_type_single_filter():
+def test_single_type_single_filter() -> None:
     """Single type with matching single filter should work."""
 
     @scanner(messages=["assistant"])
@@ -64,7 +65,7 @@ def test_single_type_single_filter():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_list_of_base_type():
+def test_list_of_base_type() -> None:
     """List of base type should work."""
 
     @scanner(messages=["system", "user"])
@@ -78,10 +79,10 @@ def test_list_of_base_type():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_list_of_specific_type():
+def test_list_of_specific_type() -> None:
     """List of specific type with matching filter should work."""
 
-    @scanner(messages=["assistant"])
+    @scanner(messages=["assistant"])  # type: ignore[type-var]
     def test_scanner() -> Scanner[list[ChatMessageAssistant]]:
         async def scan(messages: list[ChatMessageAssistant]) -> Result:
             return Result(value={"count": len(messages)})
@@ -92,10 +93,10 @@ def test_list_of_specific_type():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_list_of_union_type():
+def test_list_of_union_type() -> None:
     """List of union types should work."""
 
-    @scanner(messages=["system", "user"])
+    @scanner(messages=["system", "user"])  # type: ignore[type-var]
     def test_scanner() -> Scanner[list[ChatMessageSystem | ChatMessageUser]]:
         async def scan(
             messages: list[ChatMessageSystem | ChatMessageUser],
@@ -108,7 +109,7 @@ def test_list_of_union_type():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_messages_all_with_base_type():
+def test_messages_all_with_base_type() -> None:
     """messages='all' should work with ChatMessage."""
 
     @scanner(messages="all")
@@ -125,7 +126,7 @@ def test_messages_all_with_base_type():
     )
 
 
-def test_events_all_with_base_type():
+def test_events_all_with_base_type() -> None:
     """events='all' should work with Event."""
 
     @scanner(events="all")
@@ -141,7 +142,7 @@ def test_events_all_with_base_type():
     )
 
 
-def test_event_union_types():
+def test_event_union_types() -> None:
     """Event union types should work."""
 
     @scanner(events=["model", "tool"])
@@ -155,7 +156,7 @@ def test_event_union_types():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_transcript_with_both_filters():
+def test_transcript_with_both_filters() -> None:
     """Both message and event filters should require Transcript."""
 
     @scanner(messages=["user"], events=["model"])
@@ -169,7 +170,7 @@ def test_transcript_with_both_filters():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_all_message_types_union():
+def test_all_message_types_union() -> None:
     """Union of all message types should work with 'all'."""
 
     @scanner(messages="all")
@@ -193,7 +194,7 @@ def test_all_message_types_union():
 # Invalid scanner tests
 
 
-def test_subset_type_error():
+def test_subset_type_error() -> None:
     """Single type can't handle multiple filter types."""
     with pytest.raises(TypeError, match="must be able to handle all types"):
 
@@ -207,7 +208,7 @@ def test_subset_type_error():
         test_scanner()  # Validation happens here
 
 
-def test_wrong_type_error():
+def test_wrong_type_error() -> None:
     """Type not in filter should fail."""
     with pytest.raises(TypeError, match="must be able to handle all types"):
 
@@ -221,7 +222,7 @@ def test_wrong_type_error():
         test_scanner()
 
 
-def test_partial_union_error():
+def test_partial_union_error() -> None:
     """Union missing required types should fail."""
     with pytest.raises(TypeError, match="must be able to handle all types"):
 
@@ -237,7 +238,7 @@ def test_partial_union_error():
         test_scanner()
 
 
-def test_all_filter_with_specific_type():
+def test_all_filter_with_specific_type() -> None:
     """messages='all' with specific type should fail."""
     with pytest.raises(TypeError, match="must accept ChatMessage"):
 
@@ -251,7 +252,7 @@ def test_all_filter_with_specific_type():
         test_scanner()
 
 
-def test_events_all_with_specific_type():
+def test_events_all_with_specific_type() -> None:
     """events='all' with specific type should fail."""
     with pytest.raises(TypeError, match="must accept Event"):
 
@@ -265,11 +266,11 @@ def test_events_all_with_specific_type():
         test_scanner()
 
 
-def test_both_filters_without_transcript():
+def test_both_filters_without_transcript() -> None:
     """Both filters present but not accepting Transcript should fail."""
     with pytest.raises(TypeError, match="must accept Transcript"):
 
-        @scanner(messages=["user"], events=["model"])
+        @scanner(messages=["user"], events=["model"])  # type: ignore[arg-type]
         def test_scanner() -> Scanner[ChatMessage]:
             async def scan(message: ChatMessage) -> Result:
                 return Result(value={"bad": True})
@@ -279,11 +280,11 @@ def test_both_filters_without_transcript():
         test_scanner()
 
 
-def test_list_of_wrong_type():
+def test_list_of_wrong_type() -> None:
     """List of wrong type should fail."""
     with pytest.raises(TypeError, match="must be able to handle all types"):
 
-        @scanner(messages=["user"])
+        @scanner(messages=["user"])  # type: ignore[type-var]
         def test_scanner() -> Scanner[list[ChatMessageAssistant]]:
             async def scan(messages: list[ChatMessageAssistant]) -> Result:
                 return Result(value={"bad": True})
@@ -293,11 +294,11 @@ def test_list_of_wrong_type():
         test_scanner()
 
 
-def test_list_of_partial_union():
+def test_list_of_partial_union() -> None:
     """List of partial union should fail."""
     with pytest.raises(TypeError, match="must be able to handle all types"):
 
-        @scanner(messages=["system", "user", "assistant"])
+        @scanner(messages=["system", "user", "assistant"])  # type: ignore[type-var]
         def test_scanner() -> Scanner[list[ChatMessageSystem | ChatMessageUser]]:
             async def scan(
                 messages: list[ChatMessageSystem | ChatMessageUser],
@@ -312,12 +313,12 @@ def test_list_of_partial_union():
 # Edge case tests
 
 
-def test_no_type_hints():
+def test_no_type_hints() -> None:
     """Scanner without type hints should not raise."""
 
     @scanner(messages=["system"])
-    def test_scanner():
-        async def scan(message):
+    def test_scanner():  # type: ignore[no-untyped-def]
+        async def scan(message):  # type: ignore[no-untyped-def]
             return Result(value={"ok": True})
 
         return scan
@@ -327,13 +328,13 @@ def test_no_type_hints():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
 
 
-def test_scanner_without_filters_but_with_loader():
+def test_scanner_without_filters_but_with_loader() -> None:
     """Scanner with only a custom loader should work."""
     from inspect_scout._scanner.loader import loader
 
     @loader(name="test_loader", messages="all")
-    def test_loader():
-        async def load(transcripts):
+    def test_loader():  # type: ignore[no-untyped-def]
+        async def load(transcripts):  # type: ignore[no-untyped-def]
             for t in transcripts:
                 yield t
 
@@ -351,7 +352,7 @@ def test_scanner_without_filters_but_with_loader():
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG].loader
 
 
-def test_non_async_scanner():
+def test_non_async_scanner() -> None:
     """Non-async scanner should raise TypeError."""
     with pytest.raises(TypeError, match="not declared as an async callable"):
 
@@ -365,10 +366,10 @@ def test_non_async_scanner():
         test_scanner()
 
 
-def test_multiple_event_types():
+def test_multiple_event_types() -> None:
     """Multiple event types should work correctly."""
 
-    @scanner(events=["model", "tool", "error", "sample_init"])
+    @scanner(events=["model", "tool", "error", "sample_init"])  # type: ignore[list-item]
     def test_scanner() -> Scanner[Event]:
         async def scan(event: Event) -> Result:
             return Result(value={"event": event.event})
@@ -382,7 +383,7 @@ def test_multiple_event_types():
     )
 
 
-def test_all_supported_event_types():
+def test_all_supported_event_types() -> None:
     """Test all currently supported event types."""
     all_events = [
         "model",
@@ -402,7 +403,7 @@ def test_all_supported_event_types():
         "span_end",
     ]
 
-    @scanner(events=all_events)
+    @scanner(events=all_events)  # type: ignore[arg-type]
     def test_scanner() -> Scanner[Event]:
         async def scan(event: Event) -> Result:
             return Result(value={"ok": True})
@@ -434,13 +435,13 @@ def test_all_supported_event_types():
         ("all", ChatMessageAssistant, False),
     ],
 )
-def test_message_validation_matrix(filter_types, scanner_type, should_pass):
+def test_message_validation_matrix(filter_types: Any, scanner_type: Any, should_pass: bool) -> None:
     """Test various combinations of filters and types."""
     if should_pass:
 
         @scanner(messages=filter_types)
         def test_scanner() -> Scanner[scanner_type]:  # pyright: ignore[reportInvalidTypeForm]
-            async def scan(message: scanner_type) -> Result:  # type: ignore
+            async def scan(message: scanner_type) -> Result:
                 return Result(value={"ok": True})
 
             return scan
@@ -452,7 +453,7 @@ def test_message_validation_matrix(filter_types, scanner_type, should_pass):
 
             @scanner(messages=filter_types)
             def test_scanner() -> Scanner[scanner_type]:  # pyright: ignore[reportInvalidTypeForm]
-                async def scan(message: scanner_type) -> Result:  # type: ignore
+                async def scan(message: scanner_type) -> Result:
                     return Result(value={"bad": True})
 
                 return scan

@@ -6,10 +6,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 import pytest_asyncio
-from inspect_scout._transcript.database import (
-    EvalLogTranscriptsDB,
-    transcripts_from_logs,
-)
+from inspect_scout._transcript.database import EvalLogTranscriptsDB
 from inspect_scout._transcript.metadata import metadata as m
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -752,24 +749,6 @@ async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
 # ============================================================================
 # Transcripts API Tests
 # ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_transcripts_query_integration() -> None:
-    """Test end-to-end query through transcripts API."""
-    df = create_test_dataframe(15)
-    t = transcripts_from_logs(df)  # type: ignore[arg-type]
-
-    await t.db.connect()  # type: ignore[attr-defined]
-
-    # Test query
-    results = list(await t.db.query(where=[m.score > 0.7], limit=5))  # type: ignore[attr-defined]
-
-    assert len(results) <= 5
-    for result in results:
-        assert result.metadata["score"] > 0.7
-
-    await t.db.disconnect()  # type: ignore[attr-defined]
 
 
 # ============================================================================

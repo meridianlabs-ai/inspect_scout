@@ -1,9 +1,8 @@
 """Tests for Transcripts.for_validation() method."""
 
-from typing import Any, AsyncIterator
+from typing import Any
 
 from inspect_scout._transcript.transcripts import Transcripts
-from inspect_scout._transcript.types import TranscriptInfo
 from inspect_scout._validation import Validation, ValidationCase
 
 

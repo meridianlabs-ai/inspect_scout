@@ -63,8 +63,14 @@ def create_log_dataframe(num_samples: int = 10) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-def get_property_doc(prop: property) -> str:
+def get_property_doc(prop: Any) -> str:
     """Get docstring from a property descriptor."""
+    # When accessing properties on a class (not instance), mypy sees them
+    # as Callable[[Class], ReturnType] rather than property objects.
+    # We use getattr to get the actual property object.
+    if not isinstance(prop, property):
+        # This shouldn't happen at runtime, but mypy thinks it might
+        raise TypeError(f"Expected property, got {type(prop)}")
     assert prop.fget is not None
     assert prop.fget.__doc__ is not None
     return prop.fget.__doc__
@@ -126,7 +132,9 @@ def test_typed_properties_have_docstrings() -> None:
     assert "Model used for eval" in get_property_doc(LogMetadata.model)
     assert "Task name" in get_property_doc(LogMetadata.task_name)
     assert "Headline score value" in get_property_doc(LogMetadata.score)
-    assert "Total time that the sample was running" in get_property_doc(LogMetadata.total_time)
+    assert "Total time that the sample was running" in get_property_doc(
+        LogMetadata.total_time
+    )
 
 
 # ============================================================================
@@ -447,12 +455,12 @@ async def test_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     # Filter by epoch
     results = await db.query(where=[lm.epoch > 1])
     for result in results:
-        assert result.metadata["epoch"] > 1
+        assert cast(int, result.metadata["epoch"]) > 1
 
     # Filter by total tokens range
     results = await db.query(where=[lm.total_tokens.between(150, 300)])
     for result in results:
-        assert 150 <= result.metadata["total_tokens"] <= 300
+        assert 150 <= cast(int, result.metadata["total_tokens"]) <= 300
 
 
 @pytest.mark.asyncio
@@ -467,7 +475,7 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
     results = list(await db.query(where=conditions))
     for result in results:
         assert result.metadata["model"] in ["gpt-4", "claude-3"]
-        assert result.metadata["epoch"] > 1
+        assert cast(int, result.metadata["epoch"]) > 1
         assert result.metadata["solver"] == "cot"
 
 

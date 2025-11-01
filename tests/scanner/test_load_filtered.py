@@ -403,11 +403,25 @@ async def test_attachment_resolution_in_nested_structures() -> None:
     # Check event arguments resolution with lists
     assert isinstance(result.events[0], ToolEvent)
     assert cast(list[Any], result.events[0].arguments["list_input"])[0] == "Resolved B"
-    assert cast(dict[str, Any], cast(list[Any], result.events[0].arguments["list_input"])[1])["nested_key"] == "Resolved C"
+    assert (
+        cast(
+            dict[str, Any], cast(list[Any], result.events[0].arguments["list_input"])[1]
+        )["nested_key"]
+        == "Resolved C"
+    )
 
     # Check event arguments resolution with nested dicts
-    assert cast(dict[str, Any], result.events[0].arguments["dict_input"])["key1"] == "Resolved D"
-    assert cast(dict[str, Any], cast(dict[str, Any], result.events[0].arguments["dict_input"])["nested"])["key2"] == "Resolved E"
+    assert (
+        cast(dict[str, Any], result.events[0].arguments["dict_input"])["key1"]
+        == "Resolved D"
+    )
+    assert (
+        cast(
+            dict[str, Any],
+            cast(dict[str, Any], result.events[0].arguments["dict_input"])["nested"],
+        )["key2"]
+        == "Resolved E"
+    )
 
 
 @pytest.mark.slow

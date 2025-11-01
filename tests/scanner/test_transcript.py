@@ -1,7 +1,7 @@
 """Comprehensive tests for the _transcript module."""
 
-from typing import Any
 import uuid
+from typing import Any, cast
 
 import pandas as pd
 import pytest
@@ -604,7 +604,7 @@ async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
     # Filter by score range
     results = list(await db.query(where=[m.score > 0.7]))
     for result in results:
-        assert result.metadata["score"] > 0.7
+        assert cast(float, result.metadata["score"]) > 0.7
 
 
 @pytest.mark.asyncio
@@ -615,7 +615,7 @@ async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
 
     for result in results:
         assert result.metadata["model"] == "gpt-4"
-        assert result.metadata["score"] > 0.6
+        assert cast(float, result.metadata["score"]) > 0.6
 
 
 @pytest.mark.asyncio
@@ -692,7 +692,7 @@ async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
     results = list(await db.query(where=conditions))
     for result in results:
         assert result.metadata["model"] in ["gpt-4", "claude"]
-        assert result.metadata["score"] > 0.6
+        assert cast(float, result.metadata["score"]) > 0.6
         assert result.metadata.get("error_message") is None
 
 

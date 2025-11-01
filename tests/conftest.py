@@ -24,7 +24,9 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "flaky: mark test as flaky/unreliable")
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     if not config.getoption("--runslow"):
         skip_slow = pytest.mark.skip(reason="need --runslow option to run")
         for item in items:

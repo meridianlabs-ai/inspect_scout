@@ -195,14 +195,14 @@ def test_no_inference_with_loader() -> None:
     """No filter inference when loader is provided."""
     from inspect_scout import loader
 
-    @loader(name="test_loader", messages="all")
+    @loader(name="test_loader", messages="all")  # type: ignore[arg-type]
     def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
         async def load(transcripts: Transcript) -> AsyncGenerator[Transcript, None]:
             yield transcripts
 
         return load
 
-    loader_instance = test_loader()
+    loader_instance: Any = test_loader()
 
     # Should work without filters when loader is provided
     @scanner(loader=loader_instance)

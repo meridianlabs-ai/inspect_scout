@@ -334,7 +334,7 @@ def test_scanner_without_filters_but_with_loader() -> None:
     """Scanner with only a custom loader should work."""
     from inspect_scout._scanner.loader import loader
 
-    @loader(name="test_loader", messages="all")
+    @loader(name="test_loader", messages="all")  # type: ignore[arg-type]
     def test_loader() -> Callable[[Transcript], AsyncGenerator[Transcript, None]]:
         async def load(transcripts: Transcript) -> AsyncGenerator[Transcript, None]:
             yield transcripts
@@ -348,7 +348,7 @@ def test_scanner_without_filters_but_with_loader() -> None:
 
         return scan
 
-    scanner_instance = test_scanner()
+    scanner_instance: Any = test_scanner()
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
     assert registry_info(scanner_instance).metadata[SCANNER_CONFIG].loader
 
@@ -436,7 +436,9 @@ def test_all_supported_event_types() -> None:
         ("all", ChatMessageAssistant, False),
     ],
 )
-def test_message_validation_matrix(filter_types: Any, scanner_type: Any, should_pass: bool) -> None:
+def test_message_validation_matrix(
+    filter_types: Any, scanner_type: Any, should_pass: bool
+) -> None:
     """Test various combinations of filters and types."""
     if should_pass:
 

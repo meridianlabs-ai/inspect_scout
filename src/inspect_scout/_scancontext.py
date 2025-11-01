@@ -53,8 +53,8 @@ class ScanContext:
     worklist: Sequence[ScannerWork]
     """Transcript ids to process for each scanner."""
 
-    validation: ValidationSet | None
-    """Validation cases to apply."""
+    validation: dict[str, ValidationSet] | None
+    """Validation cases to apply for scanners."""
 
 
 async def create_scan(scanjob: ScanJob) -> ScanContext:

@@ -51,8 +51,8 @@ class ScanJobConfig(BaseModel):
     worklist: list[ScannerWork] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
-    validation: ValidationSet | None = Field(default=None)
-    """Validation cases to apply."""
+    validation: dict[str, ValidationSet] | None = Field(default=None)
+    """Validation cases to apply for scanners."""
 
     results: str | None = Field(default=None)
     """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
@@ -114,7 +114,7 @@ class ScanJob:
         scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
         | dict[str, Scanner[ScannerInput]],
         worklist: Sequence[ScannerWork] | None = None,
-        validation: ValidationSet | None = None,
+        validation: dict[str, ValidationSet] | None = None,
         results: str | None = None,
         model: str | Model | None = None,
         model_base_url: str | None = None,
@@ -223,7 +223,7 @@ class ScanJob:
         return self._worklist
 
     @property
-    def validation(self) -> ValidationSet | None:
+    def validation(self) -> dict[str, ValidationSet] | None:
         """Validation cases to apply."""
         return self._validation
 

@@ -5,7 +5,7 @@ from typing import (
     Iterator,
 )
 
-from inspect_scout._validation.types import ValidationSet
+from inspect_scout._validation.types import ValidationCase, ValidationSet
 
 from .._scanspec import ScanTranscripts
 from .metadata import Column, Condition
@@ -47,7 +47,9 @@ class Transcripts(abc.ABC):
         transcripts._where.append(condition)
         return transcripts
 
-    def for_validation(self, validation: ValidationSet) -> "Transcripts":
+    def for_validation(
+        self, validation: ValidationSet | dict[str, ValidationSet]
+    ) -> "Transcripts":
         """Filter transcripts to only those with IDs matching validation cases.
 
         Args:
@@ -58,9 +60,17 @@ class Transcripts(abc.ABC):
         """
         transcripts = deepcopy(self)
 
+        # merge all cases
+        cases: list[ValidationCase] = []
+        if isinstance(validation, dict):
+            for set in validation.values():
+                cases.extend(set.cases)
+        else:
+            cases = validation.cases
+
         # Extract all IDs from validation cases
         all_ids: list[str] = []
-        for case in validation.cases:
+        for case in cases:
             if isinstance(case.id, str):
                 all_ids.append(case.id)
             else:  # list[str]

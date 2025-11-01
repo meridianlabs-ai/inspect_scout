@@ -153,8 +153,8 @@ class ScanSpec(BaseModel):
     worklist: list[ScannerWork] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
-    validation: ValidationSet | None = Field(default=None)
-    """Validation cases to apply."""
+    validation: dict[str, ValidationSet] | None = Field(default=None)
+    """Validation cases to apply for scanners."""
 
     @field_serializer("timestamp")
     def serialize_created(self, timestamp: datetime) -> str:

@@ -7,7 +7,7 @@
 - [Welcome](https://meridianlabs-ai.github.io/inspect_scout/index.html.md): Installation and tutorial on basic usage.
 - [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/transcripts.html.md): Reading and filtering transcripts for scanning.
 - [Scanners](https://meridianlabs-ai.github.io/inspect_scout/scanners.html.md): Implementing custom scanners and loaders.
-- [LLM Scanner](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html.md): Customizable LLM scanner for scanning full conversation histories.
+- [LLM Scanner](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html.md): Customizable LLM scanner for model evaluation of transcripts.
 - [Results](https://meridianlabs-ai.github.io/inspect_scout/results.html.md): Collecting and analyzing scanner results.
 - [Validation](https://meridianlabs-ai.github.io/inspect_scout/validation.html.md): Validation of scanner results against ground truth target values.
 

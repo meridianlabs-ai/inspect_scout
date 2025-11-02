@@ -56,6 +56,14 @@ website:
           href: reference/results.qmd#results
         - text: ResultsDB
           href: reference/results.qmd#resultsdb
+        - text: validation_set
+          href: reference/results.qmd#validation_set
+        - text: ValidationSet
+          href: reference/results.qmd#validationset
+        - text: ValidationCase
+          href: reference/results.qmd#validationcase
+        - text: ValidationPredicate
+          href: reference/results.qmd#validationpredicate
       - section: transcript
         href: reference/transcript.qmd
         contents:
@@ -94,6 +102,14 @@ website:
           href: reference/scanner.qmd#error
         - text: Loader
           href: reference/scanner.qmd#loader
+        - text: llm_scanner
+          href: reference/scanner.qmd#llm_scanner
+        - text: LLMScannerPrompt
+          href: reference/scanner.qmd#llmscannerprompt
+        - text: LLMScannerMessages
+          href: reference/scanner.qmd#llmscannermessages
+        - text: LLMScannerLabels
+          href: reference/scanner.qmd#llmscannerlabels
         - text: messages_as_str
           href: reference/scanner.qmd#messages_as_str
         - text: MessageType

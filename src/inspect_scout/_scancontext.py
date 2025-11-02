@@ -47,7 +47,7 @@ class ScanContext:
     transcripts: Transcripts
     """Corpus of transcripts to scan."""
 
-    scanners: dict[str, Scanner[ScannerInput]]
+    scanners: dict[str, Scanner[Any]]
     """Scanners to apply to transcripts."""
 
     worklist: Sequence[ScannerWork]
@@ -157,7 +157,7 @@ async def _default_worklist(
 
 
 def _spec_scanners(
-    scanners: dict[str, Scanner[ScannerInput]],
+    scanners: dict[str, Scanner[Any]],
 ) -> dict[str, ScannerSpec]:
     return {
         k: ScannerSpec(
@@ -169,9 +169,9 @@ def _spec_scanners(
 
 def _scanners_from_spec(
     scanner_specs: dict[str, ScannerSpec],
-) -> dict[str, Scanner[ScannerInput]]:
+) -> dict[str, Scanner[Any]]:
     loaded: Set[str] = set()
-    scanners: dict[str, Scanner[ScannerInput]] = {}
+    scanners: dict[str, Scanner[Any]] = {}
     for name, scanner in scanner_specs.items():
         # we need to ensure that any files scanners were defined in have been loaded/parsed
         if scanner.file is not None and scanner.file not in loaded:
@@ -184,13 +184,13 @@ def _scanners_from_spec(
     return scanners
 
 
-def scanner_from_spec(scanner: ScannerSpec) -> Scanner[ScannerInput]:
+def scanner_from_spec(scanner: ScannerSpec) -> Scanner[Any]:
     if scanner.file is not None:
         load_module(Path(scanner.file))
     return scanner_create(scanner.name, scanner.params)
 
 
-def scanner_file(scanner: Scanner[ScannerInput]) -> str | None:
+def scanner_file(scanner: Scanner[Any]) -> str | None:
     file = cast(str | None, getattr(scanner, SCANNER_FILE_ATTR, None))
     if file:
         return cwd_relative_path(file)

@@ -2,6 +2,7 @@ from dataclasses import dataclass, fields
 from functools import reduce
 from typing import (
     AbstractSet,
+    Any,
     AsyncIterator,
     Awaitable,
     Callable,
@@ -66,7 +67,7 @@ class ScannerJob(NamedTuple):
     before being passed to the scanner.
     """
 
-    scanner: Scanner[ScannerInput]
+    scanner: Scanner[Any]
     """The specific scanner to apply to the (further filtered) transcript."""
 
     scanner_name: str

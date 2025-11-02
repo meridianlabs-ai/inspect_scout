@@ -111,8 +111,8 @@ class ScanJob:
         self,
         *,
         transcripts: Transcripts | None = None,
-        scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
-        | dict[str, Scanner[ScannerInput]],
+        scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]],
         worklist: Sequence[ScannerWork] | None = None,
         validation: dict[str, ValidationSet] | None = None,
         results: str | None = None,
@@ -160,7 +160,7 @@ class ScanJob:
 
         # resolve scanners and candidate names (we will ensure no duplicates)
         if isinstance(scanners, dict):
-            named_scanners: list[tuple[str, Scanner[ScannerInput]]] = list(
+            named_scanners: list[tuple[str, Scanner[Any]]] = list(
                 scanners.items()
             )
         else:
@@ -172,7 +172,7 @@ class ScanJob:
             ]
 
         # now built the dict, adding a numeric suffix for duplicated names
-        self._scanners: dict[str, Scanner[ScannerInput]] = {}
+        self._scanners: dict[str, Scanner[Any]] = {}
         name_counts = Counter(t[0] for t in named_scanners)
         current_counts: dict[str, int] = {k: 0 for k in name_counts.keys()}
         for name, scanner in named_scanners:
@@ -228,7 +228,7 @@ class ScanJob:
         return self._validation
 
     @property
-    def scanners(self) -> dict[str, Scanner[ScannerInput]]:
+    def scanners(self) -> dict[str, Scanner[Any]]:
         """Scanners to apply to transcripts."""
         return self._scanners
 

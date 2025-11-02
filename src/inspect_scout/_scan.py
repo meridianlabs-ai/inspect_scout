@@ -72,8 +72,8 @@ logger = getLogger(__name__)
 
 
 def scan(
-    scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
-    | dict[str, Scanner[ScannerInput]]
+    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+    | dict[str, Scanner[Any]]
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
@@ -153,8 +153,8 @@ def scan(
 
 
 async def scan_async(
-    scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
-    | dict[str, Scanner[ScannerInput]]
+    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+    | dict[str, Scanner[Any]]
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
@@ -768,7 +768,7 @@ async def _parse_jobs(
         )
 
 
-def _content_for_scanner(scanner: Scanner[ScannerInput]) -> TranscriptContent:
+def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
     """
     Grab the TranscriptContent for the passed scanner
 

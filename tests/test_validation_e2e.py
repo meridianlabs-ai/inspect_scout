@@ -787,30 +787,28 @@ def message_pair_loader_factory() -> Loader[Sequence[ChatMessage]]:
     return load
 
 
+# Scanner that processes message pairs
+@scanner(name="pair_scanner", loader=message_pair_loader_factory())
+def pair_scanner_factory() -> Scanner[Sequence[ChatMessage]]:
+    """Scanner that processes user/assistant message pairs."""
+
+    async def scan_pair(messages: Sequence[ChatMessage]) -> Result:
+        # Return True if user message is short and assistant message is long
+        user_msg = messages[0]
+        assistant_msg = messages[1]
+        value = len(user_msg.text) < 50 and len(assistant_msg.text) > 50
+        return Result(
+            value=value,
+            explanation=f"Pair scanner: user_len={len(user_msg.text)}, assistant_len={len(assistant_msg.text)}",
+        )
+
+    return scan_pair
+
+
 @pytest.mark.asyncio
 async def test_validation_message_pairs_with_list_ids_e2e() -> None:
     """Test validation with custom loader for message pairs and list IDs."""
     import json
-
-    # Get the loader instance
-    pair_loader: Any = message_pair_loader_factory()
-
-    # Scanner that processes message pairs
-    @scanner(name="pair_scanner", loader=pair_loader)
-    def pair_scanner_factory() -> Scanner[Sequence[ChatMessage]]:
-        """Scanner that processes user/assistant message pairs."""
-
-        async def scan_pair(messages: Sequence[ChatMessage]) -> Result:
-            # Return True if user message is short and assistant message is long
-            user_msg = messages[0]
-            assistant_msg = messages[1]
-            value = len(user_msg.text) < 50 and len(assistant_msg.text) > 50
-            return Result(
-                value=value,
-                explanation=f"Pair scanner: user_len={len(user_msg.text)}, assistant_len={len(assistant_msg.text)}",
-            )
-
-        return scan_pair
 
     # First pass: Run scan without validation to get message pair IDs
     with tempfile.TemporaryDirectory() as tmpdir:

@@ -65,6 +65,8 @@ TM = TypeVar(
 )
 TE = TypeVar("TE", bound=Transcript | Event | list[Event], contravariant=True)
 P = ParamSpec("P")
+# Invariant TypeVar for decorator overloads where type inference is needed
+TScan = TypeVar("TScan", bound=ScannerInput)
 
 
 class Scanner(Protocol[T]):
@@ -199,20 +201,20 @@ def scanner(factory: ScannerFactory[P, T], /) -> ScannerFactory[P, T]: ...
 @overload
 def scanner(
     *,
-    loader: Loader[T] | None = None,
+    loader: Loader[TScan] | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
-) -> Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]: ...
+) -> Callable[[ScannerFactory[P, TScan]], ScannerFactory[P, TScan]]: ...
 
 
 def scanner(
     factory: ScannerFactory[P, T] | None = None,
     *,
-    loader: Loader[T] | None = None,
+    loader: Loader[TScan] | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
@@ -222,6 +224,7 @@ def scanner(
 ) -> (
     ScannerFactory[P, T]
     | Callable[[ScannerFactory[P, T]], ScannerFactory[P, T]]
+    | Callable[[ScannerFactory[P, TScan]], ScannerFactory[P, TScan]]
     | Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]
     | Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]
 ):
@@ -345,7 +348,7 @@ def scanner(
     return decorate
 
 
-def config_for_scanner(scanner: Scanner[ScannerInput]) -> ScannerConfig:
+def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
 
 
@@ -366,7 +369,7 @@ def metrics_for_scanner(
 
 def scanners_from_file(
     file: str, scanner_args: dict[str, Any]
-) -> list[Scanner[ScannerInput]]:
+) -> list[Scanner[Any]]:
     file, job = split_spec(file)
 
     # compute path
@@ -380,7 +383,7 @@ def scanners_from_file(
     with chdir_python(scanner_path.parent.as_posix()):
         # create scanners
         load_module(scanner_path)
-        scanners: list[Scanner[ScannerInput]] = []
+        scanners: list[Scanner[Any]] = []
         for decorator, _ in parse_decorators(scanner_path, "scanner"):
             # filter by job
             if job is not None and decorator != job:
@@ -400,8 +403,8 @@ def scanners_from_file(
         return scanners
 
 
-def scanner_create(name: str, params: dict[str, Any]) -> Scanner[ScannerInput]:
+def scanner_create(name: str, params: dict[str, Any]) -> Scanner[Any]:
     obj = registry_lookup("scanner", name)
     assert callable(obj)
     kwargs = registry_kwargs(**params)
-    return cast(Scanner[ScannerInput], obj(**kwargs))
+    return cast(Scanner[Any], obj(**kwargs))

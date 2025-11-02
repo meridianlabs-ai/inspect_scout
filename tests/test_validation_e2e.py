@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from inspect_ai.event import Event
+from inspect_ai.model import ChatMessage
 from inspect_scout import (
     Result,
     Scanner,
@@ -571,3 +573,194 @@ async def test_validation_database_columns_e2e() -> None:
 
         finally:
             db.conn.close()
+
+
+# ============================================================================
+# Message and Event-Based Scanner Tests
+# ============================================================================
+
+
+@scanner(name="message_scanner", messages=["user"])
+def message_scanner_factory() -> Scanner[ChatMessage]:
+    """Scanner that processes individual user messages."""
+
+    async def scan_message(message: ChatMessage) -> Result:
+        # Return boolean based on message length
+        value = len(message.text) > 50
+        return Result(
+            value=value,
+            explanation=f"Message scanner: length={len(message.text)}, long={value}",
+        )
+
+    return scan_message
+
+
+@scanner(name="event_scanner", events=["model"])
+def event_scanner_factory() -> Scanner[Event]:
+    """Scanner that processes model events."""
+
+    async def scan_event(event: Event) -> Result:
+        # Return boolean based on event type
+        value = event.event == "model"
+        return Result(
+            value=value,
+            explanation=f"Event scanner: event={event.event}",
+        )
+
+    return scan_event
+
+
+@pytest.mark.asyncio
+async def test_validation_message_based_scanner_e2e() -> None:
+    """Test validation with message-based scanner."""
+    # First pass: Run scan without validation to get message IDs
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[message_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,  # Only scan 1 transcript
+        )
+
+        # Get results from first scan
+        results = scan_results(scan_result.location, scanner="message_scanner")
+        df_first = results.scanners["message_scanner"]
+
+        # Verify we have message-based results
+        assert len(df_first) > 0, "Should have processed some messages"
+        assert all(df_first["input_type"] == "message"), (
+            "Input type should be 'message'"
+        )
+
+        # Get first 3 message IDs from the results
+        import json
+
+        message_ids = []
+        for input_ids_json in df_first["input_ids"].head(3):
+            ids = json.loads(input_ids_json)
+            if isinstance(ids, list):
+                message_ids.extend(ids)
+            else:
+                message_ids.append(ids)
+
+    # Second pass: Run scan with validation for those message IDs
+    # Create validation set - target True for messages longer than 50 chars
+    validation = ValidationSet(
+        cases=[ValidationCase(id=msg_id, target=True) for msg_id in message_ids],
+        predicate="eq",
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[message_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            validation=validation,
+            results=tmpdir,
+            limit=1,  # Scan same transcript
+        )
+
+        # Get results with validation
+        results = scan_results(scan_result.location, scanner="message_scanner")
+        df = results.scanners["message_scanner"]
+
+        # Verify validation columns exist
+        assert "validation_target" in df.columns
+        assert "validation_result" in df.columns
+
+        # Verify we have results with validation data
+        df_validated = df[df["validation_result"].notna()]
+        assert len(df_validated) > 0, "Should have at least some validated messages"
+
+        # Verify input_type is "message"
+        assert all(df_validated["input_type"] == "message"), (
+            "Input type should be 'message' for message-based scanner"
+        )
+
+        # Verify validation targets are all True (as we set them)
+        assert all(df_validated["validation_target"] == True), (  # noqa: E712
+            "All validation targets should be True"
+        )
+
+        # Verify validation results are boolean
+        validation_results = df_validated["validation_result"].tolist()
+        assert all(isinstance(v, bool) for v in validation_results), (
+            "All validation results should be boolean"
+        )
+
+
+@pytest.mark.asyncio
+async def test_validation_event_based_scanner_e2e() -> None:
+    """Test validation with event-based scanner."""
+    # First pass: Run scan without validation to get event IDs
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[event_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,  # Only scan 1 transcript
+        )
+
+        # Get results from first scan
+        results = scan_results(scan_result.location, scanner="event_scanner")
+        df_first = results.scanners["event_scanner"]
+
+        # Verify we have event-based results
+        assert len(df_first) > 0, "Should have processed some events"
+        assert all(df_first["input_type"] == "event"), "Input type should be 'event'"
+
+        # Get first 3 event IDs from the results
+        import json
+
+        event_ids = []
+        for input_ids_json in df_first["input_ids"].head(3):
+            ids = json.loads(input_ids_json)
+            if isinstance(ids, list):
+                event_ids.extend(ids)
+            else:
+                event_ids.append(ids)
+
+    # Second pass: Run scan with validation for those event IDs
+    # Create validation set - target True (since scanner checks event.event == "model")
+    validation = ValidationSet(
+        cases=[ValidationCase(id=evt_id, target=True) for evt_id in event_ids],
+        predicate="eq",
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[event_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            validation=validation,
+            results=tmpdir,
+            limit=1,  # Scan same transcript
+        )
+
+        # Get results with validation
+        results = scan_results(scan_result.location, scanner="event_scanner")
+        df = results.scanners["event_scanner"]
+
+        # Verify validation columns exist
+        assert "validation_target" in df.columns
+        assert "validation_result" in df.columns
+
+        # Verify we have results with validation data
+        df_validated = df[df["validation_result"].notna()]
+        assert len(df_validated) > 0, "Should have at least some validated events"
+
+        # Verify input_type is "event"
+        assert all(df_validated["input_type"] == "event"), (
+            "Input type should be 'event' for event-based scanner"
+        )
+
+        # Verify validation targets are all True (as we set them)
+        assert all(df_validated["validation_target"] == True), (  # noqa: E712
+            "All validation targets should be True"
+        )
+
+        # Verify validation results are boolean
+        validation_results = df_validated["validation_result"].tolist()
+        assert all(isinstance(v, bool) for v in validation_results), (
+            "All validation results should be boolean"
+        )
+
+

@@ -33,7 +33,7 @@ class Answer(Protocol):
 
 
 def answer_from_argument(
-    answer: Literal["bool", "number", "str"] | LLMScannerLabels,
+    answer: Literal["bool", "number", "str"] | list[str] | LLMScannerLabels,
 ) -> Answer:
     if isinstance(answer, str):
         match answer:
@@ -45,6 +45,8 @@ def answer_from_argument(
                 return _StrAnswer()
             case _:
                 raise ValueError(f"Invalid answer type: {answer}")
+    elif isinstance(answer, list):
+        return LabelsAnswer(labels=answer)
     else:
         return LabelsAnswer(labels=answer.labels, multi_classification=answer.multiple)
 

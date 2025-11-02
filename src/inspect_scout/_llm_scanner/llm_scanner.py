@@ -1,6 +1,7 @@
 from functools import reduce
 from typing import Literal
 
+from inspect_ai._util.registry import RegistryInfo, set_registry_info
 from inspect_ai.model import (
     ChatMessage,
     Model,
@@ -22,9 +23,10 @@ from .types import LLMScannerLabels, LLMScannerMessages
 def llm_scanner(
     *,
     prompt: str | LLMScannerPrompt,
-    answer: Literal["bool", "number", "str"] | LLMScannerLabels,
+    answer: Literal["bool", "number", "str"] | list[str] | LLMScannerLabels,
     messages: LLMScannerMessages | None = None,
     model: str | Model | None = None,
+    name: str | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
@@ -33,15 +35,16 @@ def llm_scanner(
     Args:
         prompt: The prompt to provide to the scanner LLM about
             what to analyze in the conversation (e.g., "Did the assistant refuse the request?"). Pass a `str` to just provide top level instructions; Pass `ScannerPrompt` for further customization.
-        answer: Specification of the expected answer format.
-            Pass "bool", "number", or "str for simple answer
-            of `LLMScannerLabels` for classification.
+        answer: Specification of the answer format.
+            Pass `bool`, `number`, or `str` for simple answer; pass `list[str]`
+            for a set of labels; or pass `LLMScannerLabels` for multi-classification.
         template: Optional template for formatting the prompt.
             Must include {messages} and {answer_prompt} placeholders. Defaults to DEFAULT_SCANNER_TEMPLATE
         messages: Filter conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to filtering system messages.
         model: Optional model specification. Can be a model
             name string or Model instance. If None, uses the default model
+        name: Scanner name (use this to assign a name when passing `llm_scanner()` directly to `scan()` rather than delegating to it from another scanner).
 
     Returns:
         A Scanner function that analyzes Transcript instances and returns Results based on the LLM's assessment according to the specified prompt and answer format
@@ -69,6 +72,13 @@ def llm_scanner(
 
         model_output = await get_model(model).generate(resolved_prompt)
         return resolved_answer.result_for_answer(model_output, message_id_map)
+
+    # set registry info if a name was provided
+    if name is not None:
+        set_registry_info(
+            scan,
+            RegistryInfo(type="scanner", name=name),
+        )
 
     return scan
 

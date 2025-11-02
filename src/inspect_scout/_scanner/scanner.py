@@ -23,6 +23,7 @@ from inspect_ai._util.package import get_installed_package_name
 from inspect_ai._util.path import chdir_python, pretty_path
 from inspect_ai._util.registry import (
     RegistryInfo,
+    is_registry_object,
     registry_add,
     registry_info,
     registry_kwargs,
@@ -252,11 +253,17 @@ def scanner(
     events = normalize_events_filter(events) if events is not None else None
 
     def decorate(factory_fn: ScannerFactory[P, T]) -> ScannerFactory[P, T]:
-        scanner_name = name or str(getattr(factory_fn, "__name__", "scanner"))
-
         @wraps(factory_fn)
         def factory_wrapper(*args: P.args, **kwargs: P.kwargs) -> Scanner[T]:
             scanner_fn = factory_fn(*args, **kwargs)
+
+            # determine scanner name
+            if name is not None:
+                scanner_name = name
+            elif is_registry_object(scanner_fn):
+                scanner_name = registry_info(scanner_fn).name
+            else:
+                scanner_name = str(getattr(factory_fn, "__name__", "scanner"))
 
             if not is_callable_coroutine(scanner_fn):
                 raise TypeError(
@@ -336,6 +343,7 @@ def scanner(
 
             return scanner_fn
 
+        scanner_name = name or str(getattr(factory_fn, "__name__", "scanner"))
         scanner_factory_wrapper = cast(ScannerFactory[P, T], factory_wrapper)
         registry_add(
             scanner_factory_wrapper,

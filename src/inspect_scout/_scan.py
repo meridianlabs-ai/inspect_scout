@@ -857,8 +857,8 @@ async def _validate_scan(
     scan_ids: str | list[str],
     scan_result: Result,
 ) -> ResultValidation | None:
-    # normalize scan_ids to str | list[str]
-    scan_ids = scan_ids[0] if len(scan_ids) == 0 else scan_ids
+    # normalize scan_ids to str for single-element lists
+    scan_ids = scan_ids[0] if len(scan_ids) == 1 else scan_ids
 
     # is there a validation case for the scan_ids?
     v_case = next(

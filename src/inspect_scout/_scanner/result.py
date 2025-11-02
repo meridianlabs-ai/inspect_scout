@@ -138,23 +138,23 @@ class ResultReport(BaseModel):
 
         # report validation
         if self.validation is not None:
-            columns["target"] = (
+            columns["validation_target"] = (
                 to_json_str_safe(self.validation.target)
                 if isinstance(self.validation.target, list | dict)
                 else self.validation.target
             )
-            columns["validation"] = (
+            columns["validation_result"] = (
                 to_json_str_safe(self.validation.valid)
                 if isinstance(self.validation.valid, dict)
                 else self.validation.valid
             )
             if isinstance(self.validation.valid, dict):
                 for k, v in self.validation.valid.items():
-                    columns[f"validation_{k}"] = v
+                    columns[f"validation_result_{k}"] = v
 
         else:
-            columns["target"] = None
-            columns["validation"] = None
+            columns["validation_target"] = None
+            columns["validation_result"] = None
 
         # report tokens
         total_tokens = 0

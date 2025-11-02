@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field
 from inspect_scout._scanner.result import ResultReport
 from inspect_scout._transcript.types import TranscriptInfo
 
-# TODO: validations
-
 
 class ScannerSummary(BaseModel):
     """Summary of scanner results."""

@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 from inspect_scout._scanner.result import ResultReport
 from inspect_scout._transcript.types import TranscriptInfo
 
+# TODO: validations
+
 
 class ScannerSummary(BaseModel):
     """Summary of scanner results."""
@@ -14,10 +16,13 @@ class ScannerSummary(BaseModel):
     """Number of scans."""
 
     results: int = Field(default=0)
-    """Scans which returned not `None` results."""
+    """Scans which returned truthy results."""
 
     errors: int = Field(default=0)
     """Scans which resulted in errors."""
+
+    validations: list[bool | dict[str, bool]] = Field(default_factory=list)
+    """Results for validation cases."""
 
     tokens: int = Field(default=0)
     """Total tokens used for scanner."""
@@ -47,6 +52,8 @@ class Summary(BaseModel):
         agg_results = ScannerSummary()
         for result in results:
             agg_results.results += 1 if result.result and result.result.value else 0
+            if result.validation is not None:
+                agg_results.validations.append(result.validation.valid)
             agg_results.errors += 1 if result.error is not None else 0
             agg_results.tokens += sum(
                 [usage.total_tokens for usage in result.model_usage.values()]
@@ -66,6 +73,7 @@ class Summary(BaseModel):
         tot_results = self.scanners[scanner]
         tot_results.scans += 1
         tot_results.results += agg_results.results
+        tot_results.validations.extend(agg_results.validations)
         tot_results.errors += agg_results.errors
         tot_results.tokens += agg_results.tokens
         for model, usage in agg_results.model_usage.items():

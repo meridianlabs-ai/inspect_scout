@@ -54,6 +54,11 @@ class Error(BaseModel):
     """Error traceback."""
 
 
+class ResultValidation(BaseModel):
+    target: JsonValue
+    valid: bool | dict[str, bool]
+
+
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
@@ -64,6 +69,8 @@ class ResultReport(BaseModel):
     input: ScannerInput
 
     result: Result | None
+
+    validation: ResultValidation | None
 
     error: Error | None
 
@@ -128,6 +135,26 @@ class ResultReport(BaseModel):
             raise ValueError(
                 "A scan result must have either a 'result' or 'error' field."
             )
+
+        # report validation
+        if self.validation is not None:
+            columns["target"] = (
+                to_json_str_safe(self.validation.target)
+                if isinstance(self.validation.target, list | dict)
+                else self.validation.target
+            )
+            columns["validation"] = (
+                to_json_str_safe(self.validation.valid)
+                if isinstance(self.validation.valid, dict)
+                else self.validation.valid
+            )
+            if isinstance(self.validation.valid, dict):
+                for k, v in self.validation.valid.items():
+                    columns[f"validation_{k}"] = v
+
+        else:
+            columns["target"] = None
+            columns["validation"] = None
 
         # report tokens
         total_tokens = 0

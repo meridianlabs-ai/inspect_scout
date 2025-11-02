@@ -283,7 +283,7 @@ def scan_command(
     transcripts: tuple[str, ...],
     results: str,
     worklist: str | None,
-    v: tuple[str, ...],
+    validation: tuple[str, ...] | None,
     model: str | None,
     model_base_url: str | None,
     m: tuple[str, ...] | None,
@@ -369,7 +369,7 @@ def scan_command(
         )
 
     # parse validation
-    scan_validation = _parse_validation(v)
+    scan_validation = _parse_validation(validation)
 
     # resolve batch
     if isinstance(batch, str):
@@ -424,7 +424,7 @@ def _parse_comma_separated(value: str | None) -> list[str] | None:
 
 
 def _parse_validation(
-    v: tuple[str, ...],
+    v: tuple[str, ...] | None,
 ) -> ValidationSet | dict[str, ValidationSet] | None:
     """Parse command line validation arguments into validation set(s).
 

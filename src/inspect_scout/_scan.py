@@ -25,12 +25,14 @@ from inspect_ai.model._model_config import (
     model_roles_config_to_model_roles,
 )
 from inspect_ai.model._util import resolve_model_roles
+from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 from rich.console import RenderableType
 
 from inspect_scout._util.attachments import resolve_event_attachments
 from inspect_scout._validation.types import ValidationSet
+from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
@@ -50,7 +52,7 @@ from ._recorder.recorder import ScanRecorder, Status
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob, ScanJobConfig
 from ._scanner.loader import config_for_loader
-from ._scanner.result import Error, Result, ResultReport
+from ._scanner.result import Error, Result, ResultReport, ResultValidation
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.types import ScannerInput
 from ._scanner.util import get_input_type_and_ids
@@ -530,6 +532,7 @@ async def _scan_async_inner(
                     init_transcript(inspect_transcript)
 
                     results: list[ResultReport] = []
+                    validation: ResultValidation | None = None
 
                     scanner_config = config_for_scanner(job.scanner)
                     loader = scanner_config.loader
@@ -543,7 +546,17 @@ async def _scan_async_inner(
                             if type_and_ids is None:
                                 continue
 
-                            result = await job.scanner(loader_result)
+                            # do scan
+                            async with span("scan"):
+                                result = await job.scanner(loader_result)
+
+                            # do validation if we have one for this scanner/id
+                            if scan.validation and job.scanner_name in scan.validation:
+                                validation = await _validate_scan(
+                                    scan.validation[job.scanner_name],
+                                    type_and_ids[1],
+                                    result,
+                                )
 
                         # Special case for errors that should bring down the scan
                         except PrerequisiteError:
@@ -565,6 +578,7 @@ async def _scan_async_inner(
                                     input_ids=type_and_ids[1],
                                     input=loader_result,
                                     result=result,
+                                    validation=validation,
                                     error=error,
                                     events=resolve_event_attachments(
                                         inspect_transcript
@@ -782,6 +796,7 @@ def _reports_for_parse_error(
             input_ids=[job.transcript_info.id],
             input=placeholder_transcript,
             result=None,
+            validation=None,
             error=Error(
                 transcript_id=job.transcript_info.id,
                 scanner=scanner_names[idx],
@@ -835,3 +850,30 @@ def _resolve_validation(
                 "Validation sets must be specified as a dict of scanner:validation when there is more than one scanner."
             )
         return {next(iter(scanjob.scanners)): validation}
+
+
+async def _validate_scan(
+    validation_set: ValidationSet,
+    scan_ids: str | list[str],
+    scan_result: Result,
+) -> ResultValidation | None:
+    # normalize scan_ids to str | list[str]
+    scan_ids = scan_ids[0] if len(scan_ids) == 0 else scan_ids
+
+    # is there a validation case for the scan_ids?
+    v_case = next(
+        (c for c in validation_set.cases if c.id == scan_ids),
+        None,
+    )
+
+    # if so then perform the validation and return it
+    if v_case:
+        async with span("validation"):
+            valid = await validate(
+                validation_set,
+                scan_result,
+                v_case.target,
+            )
+            return ResultValidation(target=v_case.target, valid=valid)
+    else:
+        return None

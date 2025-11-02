@@ -1,19 +1,21 @@
 from pydantic import JsonValue
 
-from .predicates import get_predicate_type, resolve_predicate
+from inspect_scout._scanner.result import Result
+
+from .predicates import resolve_predicate
 from .types import ValidationSet
 
 
-def validate(
+async def validate(
     validation: ValidationSet,
-    value: JsonValue,
+    result: Result,
     target: JsonValue,
 ) -> bool | dict[str, bool]:
     """Validate a value against a target using the validation set's predicate.
 
     Args:
         validation: ValidationSet containing the predicate
-        value: The actual value to validate
+        result: The result to validate
         target: The expected target value (can be single value or dict)
 
     Returns:
@@ -26,52 +28,51 @@ def validate(
     """
     # Detect if target is a dict (multi-value validation)
     if isinstance(target, dict):
-        return _validate_dict(validation, value, target)
+        return await _validate_dict(validation, result, target)
     else:
-        return _validate_single(validation, value, target)
+        return await _validate_single(validation, result, target)
 
 
-def _validate_single(
+async def _validate_single(
     validation: ValidationSet,
-    value: JsonValue,
-    target: JsonValue,
+    result: Result,
+    target: list[JsonValue] | str | bool | int | float | None,
 ) -> bool:
-    """Validate a single value against a single target."""
-    predicate_type = get_predicate_type(validation.predicate)
-
-    if predicate_type == "multi":
-        raise TypeError(
-            "Cannot use multi-value predicate for single-value validation. "
-            "Target is a single value but predicate expects dict inputs."
-        )
-
-    # Resolve and apply predicate
     predicate_fn = resolve_predicate(validation.predicate)
-    return predicate_fn(value, target)  # type: ignore[arg-type,return-value]
+    valid = await predicate_fn(result, target)
+    if not isinstance(valid, bool):
+        raise RuntimeError(
+            f"Validation function must return bool for target of type '{type(target)}' (returned '{type(valid)}')"
+        )
+    return valid
 
 
-def _validate_dict(
+async def _validate_dict(
     validation: ValidationSet,
-    value: JsonValue,
+    result: Result,
     target: dict[str, JsonValue],
 ) -> dict[str, bool]:
-    """Validate a dict value against a dict target."""
     # Validate that value is also a dict
-    if not isinstance(value, dict):
+    if not isinstance(result.value, dict):
         raise ValueError(
-            f"Validation target has multiple values ({target}) but value is not a dict ({value})"
+            f"Validation target has multiple values ({target}) but value is not a dict ({result.value})"
         )
 
-    predicate_type = get_predicate_type(validation.predicate)
+    # resolve predicate
+    predicate_fn = resolve_predicate(validation.predicate)
 
-    if predicate_type in ("string", "single", "none"):
-        # String or single-value predicate: apply to each key individually
-        predicate_fn = resolve_predicate(validation.predicate)
+    # if its a callable then we pass the entire dict
+    if callable(validation.predicate):
+        valid = await predicate_fn(result, target)
+        if not isinstance(valid, dict):
+            raise RuntimeError(
+                f"Validation function must return dict for target of type dict (returned '{type(valid)}')"
+            )
+        return valid
+    else:
         return {
-            key: predicate_fn(value.get(key), target_val)  # type: ignore[arg-type,misc]
+            key: bool(
+                await predicate_fn(Result(value=result.value.get(key)), target_val)
+            )
             for key, target_val in target.items()
         }
-    else:  # multi
-        # Multi-value predicate: pass full dicts
-        predicate_fn = resolve_predicate(validation.predicate)
-        return predicate_fn(value, target)  # type: ignore[return-value]

@@ -2,8 +2,10 @@
 
 from typing import Any
 
+from inspect_scout._scanner.result import Result
 from inspect_scout._transcript.transcripts import Transcripts
 from inspect_scout._validation import ValidationCase, ValidationSet
+from pydantic import JsonValue
 
 
 class MockTranscripts(Transcripts):
@@ -288,8 +290,8 @@ def test_for_validation_does_not_modify_original() -> None:
 def test_for_validation_with_predicate() -> None:
     """Test for_validation works with validation that has a predicate."""
 
-    def custom_predicate(value: Any, target: Any) -> bool:
-        return bool(value == target)
+    async def custom_predicate(result: Result, target: JsonValue) -> bool:
+        return bool(result.value == target)
 
     validation = ValidationSet(
         cases=[

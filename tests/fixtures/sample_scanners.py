@@ -1,5 +1,7 @@
 """Sample scanner implementations for testing."""
 
+from collections.abc import Callable
+
 from inspect_ai.event._model import ModelEvent
 from inspect_ai.event._tool import (
     ToolEvent,
@@ -87,7 +89,7 @@ def valid_base_type_scanner() -> Scanner[ChatMessage]:
     return scan
 
 
-@scanner(messages=["assistant"])
+@scanner(messages=["assistant"])  # type: ignore[type-var]
 def valid_list_scanner() -> Scanner[list[ChatMessageAssistant]]:
     """Scanner that handles lists of messages."""
 
@@ -100,7 +102,7 @@ def valid_list_scanner() -> Scanner[list[ChatMessageAssistant]]:
 # Invalid scanners for testing (will be created dynamically in tests)
 
 
-def create_invalid_subset_scanner():
+def create_invalid_subset_scanner() -> Callable[[], Scanner[ChatMessageSystem]]:
     """Create scanner with subset type error."""
 
     @scanner(messages=["system", "user"])
@@ -113,7 +115,7 @@ def create_invalid_subset_scanner():
     return invalid_scanner
 
 
-def create_invalid_wrong_type_scanner():
+def create_invalid_wrong_type_scanner() -> Callable[[], Scanner[ChatMessageAssistant]]:
     """Create scanner with wrong type error."""
 
     @scanner(messages=["user"])
@@ -126,7 +128,7 @@ def create_invalid_wrong_type_scanner():
     return invalid_scanner
 
 
-def create_invalid_all_filter_scanner():
+def create_invalid_all_filter_scanner() -> Callable[[], Scanner[ChatMessageAssistant]]:
     """Create scanner with invalid 'all' filter usage."""
 
     @scanner(messages="all")

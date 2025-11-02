@@ -211,29 +211,33 @@ def scan_panel(
         resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
         resources.add_row(
             "memory",
-            f"{bytes_to_gigabytes(metrics.memory_usage)} / {bytes_to_gigabytes(total_memory())}",
+            f"{bytes_to_gigabytes(metrics.memory_usage)}/{bytes_to_gigabytes(total_memory())} GB",
         )
 
     # scanners
     scanners = Table.grid(expand=True)
     scanners.add_column()  # scanner
+    scanners.add_column(justify="right")  # validation
     scanners.add_column(justify="right")  # results
     scanners.add_column(justify="right")  # erorrs
-    scanners.add_column(justify="right")  # tokens/transcript
+    scanners.add_column(justify="right")  # tokens/scan
     scanners.add_column(justify="right")  # total tokens
     scanners.add_row(
         "[bold]scanner[/bold]",
+        "[bold]validation[/bold]",
         "[bold]results[/bold]",
         "[bold]errors[/bold]",
         "[bold]tokens/scan[/bold]",
-        "[bold]total tokens[/bold]",
+        "[bold]tokens[/bold]",
         style=theme.meta,
     )
     NONE = f"[{theme.light}]-[/{theme.light}]"
     for scanner in spec.scanners.keys():
         results = summary[scanner]
+        validation = _summary_validation(results.validations)
         scanners.add_row(
             scanner,
+            validation or NONE,
             f"{results.results:,}" if results.results else NONE,
             f"{results.errors:,}" if results.errors else NONE,
             f"{results.tokens // results.scans:,}"
@@ -266,8 +270,8 @@ def scan_panel(
                 *model_usage_summary(model, usage),
                 style=theme.light,
             )
-        body.add_row(usage_table, "", "")
-        body.add_row()
+        table.add_row(usage_table, "", "")
+        table.add_row()
 
     scanning_group: list[RenderableType] = []
     if progress:
@@ -311,4 +315,25 @@ def total_memory() -> int:
 
 def bytes_to_gigabytes(input: int) -> str:
     value = f"{input / 1024 / 1024 / 1024:.1f}".rstrip("0").rstrip(".")
-    return f"{value}gb"
+    return value
+
+
+def _summary_validation(validations: list[bool | dict[str, bool]]) -> str | None:
+    # no validations is none
+    if len(validations) == 0:
+        return None
+
+    # compute based on bool results
+    values = 0.0
+    valid = 0.0
+    for validation in validations:
+        if isinstance(validation, bool):
+            values += 1.0
+            if validation is True:
+                valid += 1.0
+        else:
+            for v in validation.values():
+                values += 1.0
+                if v is True:
+                    valid += 1.0
+    return f"{valid / values:.2f}"

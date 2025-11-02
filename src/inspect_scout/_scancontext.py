@@ -22,11 +22,11 @@ from inspect_ai.model._model_config import (
 
 from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
 from inspect_scout._util.process import default_max_processes
+from inspect_scout._validation.types import ValidationSet
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
 from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
-from ._scanner.types import ScannerInput
 from ._scanspec import (
     ScannerSpec,
     ScannerWork,
@@ -46,11 +46,14 @@ class ScanContext:
     transcripts: Transcripts
     """Corpus of transcripts to scan."""
 
-    scanners: dict[str, Scanner[ScannerInput]]
+    scanners: dict[str, Scanner[Any]]
     """Scanners to apply to transcripts."""
 
     worklist: Sequence[ScannerWork]
     """Transcript ids to process for each scanner."""
+
+    validation: dict[str, ValidationSet] | None
+    """Validation cases to apply for scanners."""
 
 
 async def create_scan(scanjob: ScanJob) -> ScanContext:
@@ -88,6 +91,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
             transcripts=await scanjob.transcripts.snapshot(),
             scanners=_spec_scanners(scanjob.scanners),
             worklist=list(scanjob.worklist) if scanjob.worklist else None,
+            validation=scanjob.validation,
             tags=scanjob.tags,
             metadata=scanjob.metadata,
             model=ModelConfig(
@@ -112,6 +116,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         else await _default_worklist(
             scanjob.transcripts, list(scanjob.scanners.keys())
         ),
+        validation=scanjob.validation,
     )
 
 
@@ -131,7 +136,11 @@ async def resume_scan(scan_location: str) -> ScanContext:
         else await _default_worklist(transcripts, list(scanners.keys()))
     )
     return ScanContext(
-        spec=spec, transcripts=transcripts, scanners=scanners, worklist=worklist
+        spec=spec,
+        transcripts=transcripts,
+        scanners=scanners,
+        worklist=worklist,
+        validation=spec.validation,
     )
 
 
@@ -147,7 +156,7 @@ async def _default_worklist(
 
 
 def _spec_scanners(
-    scanners: dict[str, Scanner[ScannerInput]],
+    scanners: dict[str, Scanner[Any]],
 ) -> dict[str, ScannerSpec]:
     return {
         k: ScannerSpec(
@@ -159,9 +168,9 @@ def _spec_scanners(
 
 def _scanners_from_spec(
     scanner_specs: dict[str, ScannerSpec],
-) -> dict[str, Scanner[ScannerInput]]:
+) -> dict[str, Scanner[Any]]:
     loaded: Set[str] = set()
-    scanners: dict[str, Scanner[ScannerInput]] = {}
+    scanners: dict[str, Scanner[Any]] = {}
     for name, scanner in scanner_specs.items():
         # we need to ensure that any files scanners were defined in have been loaded/parsed
         if scanner.file is not None and scanner.file not in loaded:
@@ -174,13 +183,13 @@ def _scanners_from_spec(
     return scanners
 
 
-def scanner_from_spec(scanner: ScannerSpec) -> Scanner[ScannerInput]:
+def scanner_from_spec(scanner: ScannerSpec) -> Scanner[Any]:
     if scanner.file is not None:
         load_module(Path(scanner.file))
     return scanner_create(scanner.name, scanner.params)
 
 
-def scanner_file(scanner: Scanner[ScannerInput]) -> str | None:
+def scanner_file(scanner: Scanner[Any]) -> str | None:
     file = cast(str | None, getattr(scanner, SCANNER_FILE_ATTR, None))
     if file:
         return cwd_relative_path(file)

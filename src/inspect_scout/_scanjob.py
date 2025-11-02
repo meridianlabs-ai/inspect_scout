@@ -29,9 +29,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from inspect_scout._scanspec import ScannerSpec, ScannerWork
 from inspect_scout._transcript.database import transcripts_from_logs
 from inspect_scout._util.decorator import split_spec
+from inspect_scout._validation.types import ValidationSet
 
 from ._scanner.scanner import Scanner
-from ._scanner.types import ScannerInput
 from ._transcript.transcripts import Transcripts
 
 
@@ -49,6 +49,9 @@ class ScanJobConfig(BaseModel):
 
     worklist: list[ScannerWork] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
+
+    validation: dict[str, ValidationSet] | None = Field(default=None)
+    """Validation cases to apply for scanners."""
 
     results: str | None = Field(default=None)
     """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
@@ -107,9 +110,10 @@ class ScanJob:
         self,
         *,
         transcripts: Transcripts | None = None,
-        scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
-        | dict[str, Scanner[ScannerInput]],
+        scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]],
         worklist: Sequence[ScannerWork] | None = None,
+        validation: dict[str, ValidationSet] | None = None,
         results: str | None = None,
         model: str | Model | None = None,
         model_base_url: str | None = None,
@@ -128,6 +132,7 @@ class ScanJob:
         # save transcripts and name
         self._transcripts = transcripts
         self._worklist = worklist
+        self._validation = validation
         self._name = name
         self._results = results
         self._model = (
@@ -154,9 +159,7 @@ class ScanJob:
 
         # resolve scanners and candidate names (we will ensure no duplicates)
         if isinstance(scanners, dict):
-            named_scanners: list[tuple[str, Scanner[ScannerInput]]] = list(
-                scanners.items()
-            )
+            named_scanners: list[tuple[str, Scanner[Any]]] = list(scanners.items())
         else:
             named_scanners = [
                 scanner
@@ -166,7 +169,7 @@ class ScanJob:
             ]
 
         # now built the dict, adding a numeric suffix for duplicated names
-        self._scanners: dict[str, Scanner[ScannerInput]] = {}
+        self._scanners: dict[str, Scanner[Any]] = {}
         name_counts = Counter(t[0] for t in named_scanners)
         current_counts: dict[str, int] = {k: 0 for k in name_counts.keys()}
         for name, scanner in named_scanners:
@@ -217,7 +220,12 @@ class ScanJob:
         return self._worklist
 
     @property
-    def scanners(self) -> dict[str, Scanner[ScannerInput]]:
+    def validation(self) -> dict[str, ValidationSet] | None:
+        """Validation cases to apply."""
+        return self._validation
+
+    @property
+    def scanners(self) -> dict[str, Scanner[Any]]:
         """Scanners to apply to transcripts."""
         return self._scanners
 

@@ -47,6 +47,12 @@ from ._transcript.types import (
     Transcript,
     TranscriptInfo,
 )
+from ._validation import (
+    ValidationCase,
+    ValidationPredicate,
+    ValidationSet,
+    validation_set,
+)
 
 try:
     from ._version import __version__
@@ -107,6 +113,11 @@ __all__ = [
     "LLMScannerPrompt",
     "LLMScannerMessages",
     "LLMScannerLabels",
+    # validation
+    "ValidationSet",
+    "ValidationCase",
+    "ValidationPredicate",
+    "validation_set",
     # version
     "__version__",
 ]

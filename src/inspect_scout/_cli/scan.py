@@ -16,6 +16,10 @@ from inspect_ai.log._file import list_eval_logs
 from inspect_ai.model import BatchConfig, GenerateConfig
 from typing_extensions import Unpack
 
+from inspect_scout._validation import validation_set
+from inspect_scout._validation.predicates import PREDICATES, ValidationPredicate
+from inspect_scout._validation.types import ValidationSet
+
 from .._scan import scan
 from .._scanjob import ScanJob, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
@@ -103,6 +107,20 @@ class ScanGroup(click.Group):
     default="./scans",
     help="Location to write scan results to.",
     envvar="SCOUT_SCAN_RESULTS",
+)
+@click.option(
+    "--worklist",
+    type=click.Path(exists=True),
+    help="Transcript ids to process for each scanner (JSON or YAML file).",
+    envvar="SCOUT_SCAN_WORKLIST",
+)
+@click.option(
+    "-V",
+    "--validation",
+    multiple=True,
+    type=str,
+    envvar="SCOUT_SCAN_MODEL_ARGS",
+    help="One or more validation sets to apply for scanners (e.g. -V myscanner:deception.csv)",
 )
 @click.option(
     "--model",
@@ -264,6 +282,8 @@ def scan_command(
     s: tuple[str, ...],
     transcripts: tuple[str, ...],
     results: str,
+    worklist: str | None,
+    validation: tuple[str, ...] | None,
     model: str | None,
     model_base_url: str | None,
     m: tuple[str, ...] | None,
@@ -310,7 +330,7 @@ def scan_command(
     scan_model_roles = parse_model_role_cli_args(model_role)
 
     # tags and metadata
-    scan_tags = parse_comma_separated(tags)
+    scan_tags = _parse_comma_separated(tags)
     scan_metadata = parse_cli_args(metadata)
 
     # shuffle
@@ -348,6 +368,9 @@ def scan_command(
             "No transcripts specified for scanning (pass as --transcripts or include in @scanjob)"
         )
 
+    # parse validation
+    scan_validation = _parse_validation(validation)
+
     # resolve batch
     if isinstance(batch, str):
         batch_config: bool | int | BatchConfig | None = BatchConfig.model_validate(
@@ -377,6 +400,8 @@ def scan_command(
         scanners=scanjob,
         transcripts=tx,
         results=results,
+        worklist=worklist,
+        validation=scan_validation,
         model=model,
         model_config=scan_model_config,
         model_base_url=model_base_url,
@@ -391,8 +416,113 @@ def scan_command(
     )
 
 
-def parse_comma_separated(value: str | None) -> list[str] | None:
+def _parse_comma_separated(value: str | None) -> list[str] | None:
     if value is not None:
         return value.split(",")
+    else:
+        return None
+
+
+def _parse_validation(
+    v: tuple[str, ...] | None,
+) -> ValidationSet | dict[str, ValidationSet] | None:
+    """Parse command line validation arguments into validation set(s).
+
+    The following formats are valid for the CLI:
+
+    -V deception.csv  this applies the deception.csv validation dataset to a single scanner (in this case the return value is ValidationSet)
+
+    -V myscanner:deception.csv  this applies the deception.csv validation dataset to the scanner named 'myscanner' (in this case dict[str, ValidationSet] is returned)
+
+    -V deception.csv:gt or myscanner:deception.csv:gt (in this case a predicate 'gt' is appended to the specification which will result in this predicate ending up in the validation set)
+
+    Note that multiple -V CLI args can be passed (that's why the 'v' is a tuple), so the following is valid:
+
+    -V myscanner:deception.csv -V yourscanner:thrift.csv
+
+    Args:
+        v: Tuple of validation specification strings from CLI.
+
+    Returns:
+        ValidationSet if single validation without scanner name,
+        dict[str, ValidationSet] if multiple validations or with scanner names,
+        None if no validations provided.
+
+    Raises:
+        click.UsageError: If the validation format is invalid.
+    """
+    if not v or len(v) == 0:
+        return None
+
+    # Parse each validation spec
+    validation_dict: dict[str, ValidationSet] = {}
+    single_validation: ValidationSet | None = None
+
+    for spec in v:
+        parts = spec.split(":")
+
+        scanner_name: str | None = None
+        file_path: str
+        predicate: ValidationPredicate = "eq"
+
+        if len(parts) == 1:
+            # Format: file.csv
+            file_path = parts[0]
+        elif len(parts) == 2:
+            # Format: scanner:file.csv OR file.csv:predicate
+            # Check if the last part is a known predicate
+            if parts[1] in PREDICATES:
+                # file.csv:predicate
+                file_path = parts[0]
+                predicate = parts[1]  # type: ignore[assignment]
+            else:
+                # scanner:file.csv
+                scanner_name = parts[0]
+                file_path = parts[1]
+        elif len(parts) == 3:
+            # Format: scanner:file.csv:predicate
+            scanner_name = parts[0]
+            file_path = parts[1]
+            if parts[2] not in PREDICATES:
+                raise click.UsageError(
+                    f"Unknown validation predicate '{parts[2]}'. Valid predicates: {', '.join(PREDICATES.keys())}"
+                )
+            predicate = parts[2]  # type: ignore[assignment]
+        else:
+            raise click.UsageError(
+                f"Invalid validation format: '{spec}'. Expected format: [scanner:]file[:predicate]"
+            )
+
+        # Load the validation set
+        try:
+            vset = validation_set(file_path, predicate=predicate)
+        except Exception as e:
+            raise click.UsageError(
+                f"Error loading validation file '{file_path}': {e}"
+            ) from e
+
+        # Store in appropriate structure
+        if scanner_name:
+            if scanner_name in validation_dict:
+                raise click.UsageError(
+                    f"Multiple validation sets specified for scanner '{scanner_name}'"
+                )
+            validation_dict[scanner_name] = vset
+        else:
+            if single_validation is not None:
+                raise click.UsageError(
+                    "Multiple validation sets without scanner names. Use format 'scanner:file.csv' to specify which scanner each validation applies to."
+                )
+            single_validation = vset
+
+    # Decide what to return based on what we collected
+    if validation_dict and single_validation:
+        raise click.UsageError(
+            "Cannot mix validation sets with and without scanner names. Either specify scanner names for all validations or for none."
+        )
+    elif validation_dict:
+        return validation_dict
+    elif single_validation:
+        return single_validation
     else:
         return None

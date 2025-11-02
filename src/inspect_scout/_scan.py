@@ -54,7 +54,6 @@ from ._scanjob import ScanJob, ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation
 from ._scanner.scanner import Scanner, config_for_scanner
-from ._scanner.types import ScannerInput
 from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScannerWork, ScanSpec
 from ._transcript.transcripts import Transcripts

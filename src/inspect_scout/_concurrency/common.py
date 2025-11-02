@@ -14,7 +14,6 @@ from typing import (
 
 from .._scanner.result import ResultReport
 from .._scanner.scanner import Scanner
-from .._scanner.types import ScannerInput
 from .._transcript.types import Transcript, TranscriptInfo
 
 

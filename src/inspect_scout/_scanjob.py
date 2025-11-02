@@ -32,7 +32,6 @@ from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
 
 from ._scanner.scanner import Scanner
-from ._scanner.types import ScannerInput
 from ._transcript.transcripts import Transcripts
 
 
@@ -160,9 +159,7 @@ class ScanJob:
 
         # resolve scanners and candidate names (we will ensure no duplicates)
         if isinstance(scanners, dict):
-            named_scanners: list[tuple[str, Scanner[Any]]] = list(
-                scanners.items()
-            )
+            named_scanners: list[tuple[str, Scanner[Any]]] = list(scanners.items())
         else:
             named_scanners = [
                 scanner

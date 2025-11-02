@@ -27,7 +27,6 @@ from inspect_scout._validation.types import ValidationSet
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
 from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
-from ._scanner.types import ScannerInput
 from ._scanspec import (
     ScannerSpec,
     ScannerWork,

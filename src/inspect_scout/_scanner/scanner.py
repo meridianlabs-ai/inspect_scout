@@ -367,9 +367,7 @@ def metrics_for_scanner(
     )
 
 
-def scanners_from_file(
-    file: str, scanner_args: dict[str, Any]
-) -> list[Scanner[Any]]:
+def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[Any]]:
     file, job = split_spec(file)
 
     # compute path

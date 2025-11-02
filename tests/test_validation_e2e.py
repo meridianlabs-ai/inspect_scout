@@ -1,8 +1,9 @@
 """End-to-end tests for the validation feature."""
 
 import tempfile
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import pytest
 from inspect_ai.event import Event
@@ -12,9 +13,11 @@ from inspect_scout import (
     Scanner,
     ValidationCase,
     ValidationSet,
+    loader,
     scan,
     scanner,
 )
+from inspect_scout._scanner.loader import Loader
 from inspect_scout._scanresults import scan_results, scan_results_db
 from inspect_scout._transcript.database import transcripts_from_logs
 from inspect_scout._transcript.types import Transcript
@@ -764,3 +767,129 @@ async def test_validation_event_based_scanner_e2e() -> None:
         )
 
 
+# ============================================================================
+# Message Pairs with List IDs Test
+# ============================================================================
+
+
+# Custom loader factory that yields user/assistant message pairs
+@loader(name="message_pair_loader", messages="all")
+def message_pair_loader_factory() -> Loader[Sequence[ChatMessage]]:
+    """Factory that returns a loader for user/assistant message pairs."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[Sequence[ChatMessage]]:
+        """Load pairs of consecutive user/assistant messages."""
+        messages = transcript.messages
+        for i in range(len(messages) - 1):
+            if messages[i].role == "user" and messages[i + 1].role == "assistant":
+                yield [messages[i], messages[i + 1]]
+
+    return load
+
+
+@pytest.mark.asyncio
+async def test_validation_message_pairs_with_list_ids_e2e() -> None:
+    """Test validation with custom loader for message pairs and list IDs."""
+    import json
+
+    # Get the loader instance
+    pair_loader: Any = message_pair_loader_factory()
+
+    # Scanner that processes message pairs
+    @scanner(name="pair_scanner", loader=pair_loader)
+    def pair_scanner_factory() -> Scanner[Sequence[ChatMessage]]:
+        """Scanner that processes user/assistant message pairs."""
+
+        async def scan_pair(messages: Sequence[ChatMessage]) -> Result:
+            # Return True if user message is short and assistant message is long
+            user_msg = messages[0]
+            assistant_msg = messages[1]
+            value = len(user_msg.text) < 50 and len(assistant_msg.text) > 50
+            return Result(
+                value=value,
+                explanation=f"Pair scanner: user_len={len(user_msg.text)}, assistant_len={len(assistant_msg.text)}",
+            )
+
+        return scan_pair
+
+    # First pass: Run scan without validation to get message pair IDs
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[pair_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,  # Only scan 1 transcript
+        )
+
+        # Get results from first scan
+        results = scan_results(scan_result.location, scanner="pair_scanner")
+        df_first = results.scanners["pair_scanner"]
+
+        # Verify we have message pair results
+        assert len(df_first) > 0, "Should have processed some message pairs"
+        assert all(df_first["input_type"] == "messages"), (
+            "Input type should be 'messages' (plural) for message pairs"
+        )
+
+        # Get first 3 message pair IDs from the results
+        message_pair_ids: list[list[str]] = []
+        for input_ids_json in df_first["input_ids"].head(3):
+            ids = json.loads(input_ids_json)
+            # For message pairs, input_ids should be a list of 2 IDs
+            assert isinstance(ids, list), "input_ids should be a list for message pairs"
+            assert len(ids) == 2, "input_ids should contain 2 message IDs for pairs"
+            message_pair_ids.append(ids)
+
+    # Second pass: Run scan with validation for those message pairs
+    # Create validation set with list IDs
+    validation = ValidationSet(
+        cases=[
+            ValidationCase(id=pair_ids, target=True) for pair_ids in message_pair_ids
+        ],
+        predicate="eq",
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[pair_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            validation=validation,
+            results=tmpdir,
+            limit=1,  # Scan same transcript
+        )
+
+        # Get results with validation
+        results = scan_results(scan_result.location, scanner="pair_scanner")
+        df = results.scanners["pair_scanner"]
+
+        # Verify validation columns exist
+        assert "validation_target" in df.columns
+        assert "validation_result" in df.columns
+
+        # Verify we have results with validation data
+        df_validated = df[df["validation_result"].notna()]
+        assert len(df_validated) > 0, (
+            "Should have at least some validated message pairs"
+        )
+
+        # Verify input_type is "messages" (plural)
+        assert all(df_validated["input_type"] == "messages"), (
+            "Input type should be 'messages' (plural) for message pairs"
+        )
+
+        # Verify input_ids contains lists of 2 IDs
+        for input_ids_json in df_validated["input_ids"]:
+            ids = json.loads(input_ids_json)
+            assert isinstance(ids, list), "input_ids should be a list"
+            assert len(ids) == 2, "input_ids should contain 2 IDs for message pairs"
+
+        # Verify validation targets are all True (as we set them)
+        assert all(df_validated["validation_target"] == True), (  # noqa: E712
+            "All validation targets should be True"
+        )
+
+        # Verify validation results are boolean
+        validation_results = df_validated["validation_result"].tolist()
+        assert all(isinstance(v, bool) for v in validation_results), (
+            "All validation results should be boolean"
+        )

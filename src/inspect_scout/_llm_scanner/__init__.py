@@ -1,4 +1,4 @@
-from .llm_scanner import llm_scanner
+from ._llm_scanner import llm_scanner
 from .prompt import LLMScannerPrompt
 from .types import LLMScannerLabels, LLMScannerMessages
 

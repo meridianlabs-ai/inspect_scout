@@ -25,6 +25,7 @@ ValidationPredicate: TypeAlias = (
     ]
     | PredicateFn
 )
+"""Predicate used to compare scanner result with target value."""
 
 
 # Numeric comparison predicates

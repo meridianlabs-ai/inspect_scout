@@ -38,8 +38,6 @@ def llm_scanner(
         answer: Specification of the answer format.
             Pass `bool`, `number`, or `str` for simple answer; pass `list[str]`
             for a set of labels; or pass `LLMScannerLabels` for multi-classification.
-        template: Optional template for formatting the prompt.
-            Must include {messages} and {answer_prompt} placeholders. Defaults to DEFAULT_SCANNER_TEMPLATE
         messages: Filter conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to filtering system messages.
         model: Optional model specification. Can be a model

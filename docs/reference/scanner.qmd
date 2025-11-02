@@ -12,6 +12,13 @@ reference: "inspect_scout"
 ### Error
 ### Loader
 
+## LLM Scanner
+
+### llm_scanner
+### LLMScannerPrompt
+### LLMScannerMessages
+### LLMScannerLabels
+
 ## Utils
 
 ### messages_as_str

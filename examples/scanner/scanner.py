@@ -3,14 +3,15 @@ from pathlib import Path
 
 from inspect_ai.model import ChatMessageAssistant
 from inspect_scout import (
+    LLMScannerLabels,
     Result,
     Scanner,
+    llm_scanner,
     scan,
     scan_resume,
     scanner,
     transcripts_from_logs,
 )
-from inspect_scout._llm_scanner import LLMScannerLabels, llm_scanner
 from inspect_scout._scanjob import ScanJob, scanjob
 from inspect_scout._transcript.types import Transcript
 from rich import print

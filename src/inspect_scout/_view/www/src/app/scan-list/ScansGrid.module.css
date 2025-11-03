@@ -1,3 +1,4 @@
 .gridWrapper {
   height: 100%;
+  border-top: solid 1px var(--bs-border-color);
 }

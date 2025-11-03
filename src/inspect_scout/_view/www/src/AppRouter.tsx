@@ -17,6 +17,7 @@ import {
 import { ScanList } from "./app/scan-list/ScanList";
 import { getEmbeddedScanState } from "./utils/embeddedState";
 import { useStore } from "./state/store";
+import { AppErrorBoundary } from "./AppErrorBoundary";
 
 // Create a layout component that handles embedded state and tracks route changes
 const AppLayout = () => {
@@ -57,7 +58,11 @@ const AppLayout = () => {
     setResultsDir,
   ]);
 
-  return <Outlet />;
+  return (
+    <AppErrorBoundary>
+      <Outlet />
+    </AppErrorBoundary>
+  );
 };
 
 // Wrapper component that validates scan path before rendering

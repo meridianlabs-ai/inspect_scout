@@ -45,6 +45,20 @@ body:not([class^="vscode-"]) button {
   --bs-nav-link-color: black;
 }
 
+/* AG Grid Theming */
+body {
+  --ag-background-color: var(--bs-body-bg);
+  --ag-foreground-color: var(--bs-body-color);
+  --ag-header-background-color: var(--bs-light-bg);
+  --ag-header-font-size: var(--inspect-font-size-small);
+  --ag-header-font-weight: 500;
+  --ag-header-text-color: var(--bs-secondary);
+  --ag-font-family: var(--bs-body-font-family);
+  --ag-wrapper-border: none;
+  --ag-row-hover-color: var(--bs-secondary-bg-subtle);
+  --ag-selected-row-background-color: var(--bs-secondary-bg-subtle);
+}
+
 #app {
   height: 100vh;
   overflow-y: hidden;
@@ -54,7 +68,7 @@ body:not([class^="vscode-"]) button {
   display: grid;
   height: 100vh;
   overflow-y: hidden;
-  grid-template-rows: max-content max-content max-content 1fr;
+  grid-template-rows: max-content max-content 1fr;
 }
 
 a {
@@ -185,11 +199,6 @@ body[class^="vscode-"] {
   --inspect-glass-opacity: 0.15;
 }
 
-body {
-  --ag-background-color: var(--bs-body-bg);
-  --ag-foreground-color: var(--bs-body-color);
-}
-
 html.vscode {
   font-size: 13px;
 }
@@ -215,6 +224,21 @@ body[class^="vscode-"] .modal-dialog {
 
 body[class^="vscode-"] .popover-arrow::before {
   border-left-color: var(--bs-border-color) !important;
+}
+
+body[class^="vscode-"]
+  [data-popper-placement^="bottom"]
+  > .popper-arrow-container
+  > div,
+body[class^="vscode-"]
+  [data-popper-placement^="left"]
+  > .popper-arrow-container
+  > div,
+body[class^="vscode-"]
+  [data-popper-placement^="right"]
+  > .popper-arrow-container
+  > div {
+  border-color: transparent transparent var(--bs-card-border-color) !important;
 }
 
 body[class^="vscode-"] .modal-content {
@@ -1167,6 +1191,72 @@ pre[class*="language-"] {
   color: red;
 }
 /* END PrismJS */
+
+/* SVG Icon styles - following Bootstrap Icons pattern */
+.ii::before {
+  background-color: currentColor;
+}
+
+.inspect-icon-16::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+  mask: url("../img/inspect-16.svg") no-repeat center / contain;
+  -webkit-mask: url("../img/inspect-16.svg") no-repeat center / contain;
+}
+
+.inspect-icon-back::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+  mask: url("../img/inspect-back.svg") no-repeat center / contain;
+  -webkit-mask: url("../img/inspect-back.svg") no-repeat center / contain;
+}
+
+.inspect-icon-forward::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+  mask: url("../img/inspect-forward.svg") no-repeat center / contain;
+  -webkit-mask: url("../img/inspect-forward.svg") no-repeat center / contain;
+}
+
+.inspect-icon-file::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+  mask: url("../img/inspect-file.svg") no-repeat center / contain;
+  -webkit-mask: url("../img/inspect-file.svg") no-repeat center / contain;
+}
+
+.inspect-icon-home::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+  mask: url("../img/inspect-home.svg") no-repeat center / contain;
+  -webkit-mask: url("../img/inspect-home.svg") no-repeat center / contain;
+}
+
+.inspect-icon-tasks::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+  margin-top: -2px;
+  mask: url("../img/tasks.svg") no-repeat center / contain;
+  -webkit-mask: url("../img/tasks.svg") no-repeat center / contain;
+}
 
 /* Use this very carefully, find relies upon checking the 
 document selection to determine if it should skip a find match

@@ -10,6 +10,7 @@ from inspect_ai.model import (
     ModelOutput,
 )
 from inspect_ai.scorer._common import normalize_number
+from jinja2 import Template
 from pydantic import JsonValue
 
 from inspect_scout._llm_scanner.types import LLMScannerLabels
@@ -165,7 +166,7 @@ class LabelsAnswer(Answer):
             if self.multi_classification
             else LABELS_ANSWER_FORMAT_SINGLE
         )
-        return format_template.format(letters=letters)
+        return Template(format_template).render(letters=letters)
 
     def result_for_answer(
         self, output: ModelOutput, message_id_map: list[str]

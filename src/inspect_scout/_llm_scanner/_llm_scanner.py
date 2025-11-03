@@ -7,6 +7,7 @@ from inspect_ai.model import (
     Model,
     get_model,
 )
+from jinja2 import Template
 from pydantic import JsonValue
 
 from .._scanner.extract import ContentFilter, message_as_str
@@ -40,10 +41,10 @@ def llm_scanner(
             for a set of labels; or pass `LLMScannerLabels` for multi-classification.
         template: Overall template for scanner prompt.
             The scanner template should include the following variables:
-              - {question} (question for the model to answer)
-              - {messages} (transcript message history as string)
-              - {answer_prompt} (prompt the model for a specific type of answer and explanation ).
-              - {answer_format} (instructions on formatting for value extraction)
+              - {{ question }} (question for the model to answer)
+              - {{ messages }} (transcript message history as string)
+              - {{ answer_prompt }} (prompt the model for a specific type of answer and explanation ).
+              - {{ answer_format }} (instructions on formatting for value extraction)
         messages: Filter conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to filtering system messages.
         model: Optional model specification. Can be a model
@@ -66,7 +67,7 @@ def llm_scanner(
             transcript.messages, messages
         )
 
-        resolved_prompt = template.format(
+        resolved_prompt = Template(template).render(
             messages=messages_str,
             question=question,
             answer_prompt=resolved_answer.prompt,

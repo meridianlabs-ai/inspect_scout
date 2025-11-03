@@ -19819,6 +19819,7 @@ const useStore = create()(
         visibleRanges: {},
         gridStates: {},
         loading: 0,
+        collapsed: {},
         // Actions
         setApi: (api) => set2((state) => {
           state.api = api;
@@ -19943,6 +19944,15 @@ const useStore = create()(
         setSelectedResultsTab: (tab2) => {
           set2((state) => {
             state.selectedResultsTab = tab2;
+          });
+        },
+        getCollapsed: (name, defaultValue) => {
+          const state = get();
+          return state.collapsed[name] ?? defaultValue ?? false;
+        },
+        setCollapsed: (name, value) => {
+          set2((state) => {
+            state.collapsed[name] = value;
           });
         }
       })),

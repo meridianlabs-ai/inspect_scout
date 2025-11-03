@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStore } from "./store";
 
 export function useProperty<T>(
@@ -55,3 +55,25 @@ export const usePrevious = <T>(value: T): T | undefined => {
 
   return previous;
 };
+
+
+export const useCollapsedState = (
+  id: string,
+  defaultValue?: boolean,
+  scope?: string,
+): [boolean, (value: boolean) => void] => {
+  const stateId = scope ? `${scope}-${id}` : id;
+
+  const collapsed = useStore((state) =>
+    state.getCollapsed(stateId, defaultValue),
+  );
+  const setCollapsed = useStore((state) => state.setCollapsed);
+
+  return useMemo(() => {
+    const set = (value: boolean) => {
+      setCollapsed(stateId, value);
+    };
+    return [collapsed, set];
+  }, [collapsed, setCollapsed, stateId]);
+};
+

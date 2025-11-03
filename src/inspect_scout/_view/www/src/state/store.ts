@@ -21,6 +21,8 @@ interface StoreState {
   hasInitializedEmbeddedData?: boolean;
   loading: number;
   selectedResultsTab?: string;
+  collapsed: Record<string, boolean>;
+
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
@@ -35,6 +37,9 @@ interface StoreState {
     defaultValue?: T
   ) => T | undefined;
   removePropertyValue: (id: string, propertyName: string) => void;
+
+  getCollapsed: (name: string, defaultValue?: boolean) => boolean;
+  setCollapsed: (name: string, value: boolean) => void;
 
   getScrollPosition: (path: string) => number | undefined;
   setScrollPosition: (path: string, position: number) => void;
@@ -73,6 +78,7 @@ export const useStore = create<StoreState>()(
         visibleRanges: {},
         gridStates: {},
         loading: 0,
+        collapsed:{},
 
         // Actions
         setApi: (api: ScanApi) =>
@@ -238,6 +244,16 @@ export const useStore = create<StoreState>()(
             state.selectedResultsTab = tab;
           });
         },
+        getCollapsed: (name: string, defaultValue?: boolean)  => {
+          const state = get();
+          return state.collapsed[name] ?? defaultValue ?? false;  
+        },
+        setCollapsed: (name: string, value: boolean)  => {
+          set((state) => {
+            state.collapsed[name] = value;
+          });
+
+        }
       })),
       {
         name: "inspect-scout-storage",

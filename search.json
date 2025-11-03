@@ -420,7 +420,57 @@
     "href": "index.html#scout-basics",
     "title": "Inspect Scout",
     "section": "Scout Basics",
-    "text": "Scout Basics\nBelow we’ll provide some simple examples of creating and using Scout scanners. Some core components we’ll make use of here include:\n\nTranscript — LLM conversation to analyze (e.g. an Inspect sample trajectory).\nScanner — Function that takes an input from a Transcript and returns a Result (conceptually very similar to an Inspect Scorer).\nResults — Data frame(s) that includes the results of scanners applied to transcripts.\n\n\nCreating a Scanner\nThe following illustrates the implementation of a simple LLM scanner (click on the numbers at right for further explanation):\n\n\nscanner.py\n\nfrom inspect_scout import (\n    Result, Scanner, Transcript, scanner, messages_as_str\n)\n\nfrom inspect_ai.model import get_model\n\n1@scanner(messages=\"all\")\ndef ctf_environment() -&gt; Scanner[Transcript]:\n    \n    async def scan(transcript: Transcript) -&gt; Result:\n\n        # call model\n2        output = await get_model().generate(\n            \"Here is a transcript of an LLM agent \" +\n            \"solving a cybersecurity challenge:\\n\\n\" +\n3            \"===================================\" +\n            messages_as_str(transcript.messages) +\n            \"===================================\\n\\n\" +\n            \"In the transcript above do you detect any \" +\n            \"instances of environment misconfiguration \" +\n            \"preventing the agent from completing it's \" + \n            \"task? If no, simply respond with 'No'. \" +\n            \"If yes, respond with 'Yes' followed by an \" +\n            \"explanation.\"\n        )\n\n        # extract the first word\n        match = re.match(r\"^\\w+\", output.completion.strip())\n\n        # return result\n        if match:\n            answer = match.group(0)\n4            return Result(\n                value=answer.lower() == \"yes\",\n                answer=answer,\n                explanation=output.completion,\n            )\n        else:\n            return Result(value=False, explanation=output.completion)\n\n    return scan\n\n\n1\n\nScanners are decorated with @scanner so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.\n\n2\n\nScanners frequently use models to perform scanning. Calling get_model() utilizes the default model for the scan job (which can be specified in the top level call to scan).\n\n3\n\nConvert the message history into a string for presentation to the model.\n\n4\n\nAs with scorers, results also include additional context (here the extracted answer and full model completion).\n\n\nAbove we used only the messages field from the transcript, but Transcript includes many other fields with additional context. See Transcript Fields for additional details.\n\n\nRunning a Scan\nWe can now run that scanner on our log files. The Scanner will be called once for each sample trajectory in the log (total samples * epochs):\nscout scan scanner.py -T ./logs -model openai/gpt-5\nYou can also address individual scanners using @&lt;scanner-name&gt;. For example:\nscout scan scanner.py@ctf_environment -T ./logs -model openai/gpt-5\nNote that if no -T argument is provided then Scout will use the current INSPECT_LOG_DIR (by default “./logs”) so the -T above is not strictly necessary.\n\n\nAdding a Scanner\nLet’s add another scanner that looks for uses of Java in tool calls:\n@scanner(events=[\"tool\"]) \ndef java_tool_usages() -&gt; Scanner[ToolEvent]:\n    \n    async def scan(event: ToolEvent) -&gt; Result:\n        if \"java\" in str(event.arguments).lower():\n            return Result(\n                value=True, \n                explanation=str(event.arguments)\n            )\n        else:\n            return Result(value=False)\n       \n    return scan\nNote that we specify events=[\"tool\"] to constrain reading to only tool events, and that our function takes an individual event rather than a Transcript.\nIf you add this scanner to the same source file as the ctf_environment() scanner then scout scan will run both of the scanners using the same scout scan scanner.py command,\nSee the Scanners article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.\n\n\nScan Jobs\nYou may want to import scanners from other modules and compose them into a ScanJob. To do this, add a @scanjob decorated function to your source file (it will be used in preference to @scanner decorated functions).\nA ScanJob can also include transcripts or any other option that you can pass to scout scan (e.g. model). For example:\n\n\nscanner.py\n\nfrom inspect_scout import ScanJob, scanjob\n\n@scanjob\ndef job() -&gt; ScanJob:\n    return ScanJob(\n        scanners=[ctf_environment(), java_tool_usages()],\n        transcripts=\"./logs\",\n        model=\"openai/gpt-5\"\n    )\n\nYou can then use the same command to run the job (scout scan will prefer a @scanjob defined in a file to individual scanners):\nscout scan scanner.py\nYou can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:\n\n\nscan.yaml\n\nscanners:\n  - name: deception\n    file: scanner.py\n  - name: java_tool_usages\n    file: scanner.py\n\ntranscripts: logs\n\nmodel: openai/gpt-5\n\nWhich can be executed with:\nscout scan scan.yaml\n\n\nScan Results\nBy default, the results of scans are written into the ./scans directory. You can override this using the --results option—both file paths and S3 buckets are supported.\nEach scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database (there will be a table for each scanner).\n# results as pandas data frames\nresults = scan_results(\"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\")\ndeception_df = results.scanners[\"deception\"]\ntool_errors_df = results.scanners[\"tool_errors\"]\n\n# results as duckdb database \nresults = scan_results_db(\"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\")\nwith results:\n    # run queries to read data frames\n    df = results.conn.execute(\"SELECT ...\").fetch_df()\n\n    # export entire database as file\n    results.to_file(\"results.duckdb\")\nSee the Results article for more details on the columns available in the data frames returned by scan_results().\n\n\nHandling Errors\nIf a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the scan resume command. For example:\nscout scan resume \"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\"\nIf errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with scan resume or complete the scan (ignoring errors) with scan complete:",
+    "text": "Scout Basics\nBelow we’ll provide some simple examples of creating and using Scout scanners. Some core components we’ll make use of here include:\n\nTranscript — LLM conversation to analyze (e.g. an Inspect sample trajectory).\nScanner — Function that takes an input from a Transcript and returns a Result (conceptually very similar to an Inspect Scorer).\nResults — Data frame(s) that includes the results of scanners applied to transcripts.\n\n\nCreating a Scanner\nThe following illustrates the implementation of a simple LLM scanner (click on the numbers at right for further explanation):\n\n\nscanner.py\n\nfrom inspect_scout import (\n    Result, Scanner, Transcript, scanner, messages_as_str\n)\n\nfrom inspect_ai.model import get_model\n\n1@scanner(messages=\"all\")\ndef ctf_environment() -&gt; Scanner[Transcript]:\n    \n    async def scan(transcript: Transcript) -&gt; Result:\n\n        # call model\n2        output = await get_model().generate(\n            \"Here is a transcript of an LLM agent \" +\n            \"solving a cybersecurity challenge:\\n\\n\" +\n3            \"===================================\" +\n            messages_as_str(transcript.messages) +\n            \"===================================\\n\\n\" +\n            \"In the transcript above do you detect any \" +\n            \"instances of environment misconfiguration \" +\n            \"preventing the agent from completing it's \" + \n            \"task? If no, simply respond with 'No'. \" +\n            \"If yes, respond with 'Yes' followed by an \" +\n            \"explanation.\"\n        )\n\n        # extract the first word\n        match = re.match(r\"^\\w+\", output.completion.strip())\n\n        # return result\n        if match:\n            answer = match.group(0)\n4            return Result(\n                value=answer.lower() == \"yes\",\n                answer=answer,\n                explanation=output.completion,\n            )\n        else:\n            return Result(value=False, explanation=output.completion)\n\n    return scan\n\n\n1\n\nScanners are decorated with @scanner so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.\n\n2\n\nScanners frequently use models to perform scanning. Calling get_model() utilizes the default model for the scan job (which can be specified in the top level call to scan).\n\n3\n\nConvert the message history into a string for presentation to the model.\n\n4\n\nAs with scorers, results also include additional context (here the extracted answer and full model completion).\n\n\nAbove we used only the messages field from the transcript, but Transcript includes many other fields with additional context. See Transcript Fields for additional details.\n\n\nRunning a Scan\nWe can now run that scanner on our log files. The Scanner will be called once for each sample trajectory in the log (total samples * epochs):\nscout scan scanner.py -T ./logs --model openai/gpt-5\nYou can also address individual scanners using @&lt;scanner-name&gt;. For example:\nscout scan scanner.py@ctf_environment -T ./logs --model openai/gpt-5\nNote that if no -T argument is provided then Scout will use the current INSPECT_LOG_DIR (by default ./logs) so the -T above is not strictly necessary.\nAs with Inspect AI, Inspect Scout will read your .env file for environmental options. So if your .env contained the following:\n\n\n.env\n\nSCOUT_SCAN_TRANSCRIPTS=./logs\nSCOUT_SCAN_MODEL=openai/gpt-5\n\nThen you could shorten the above command to:\nscout scan scanner.py \n\n\nEvent Scanner\nLet’s add another scanner that looks for uses of Java in tool calls:\n@scanner(events=[\"tool\"]) \ndef java_tool_usages() -&gt; Scanner[ToolEvent]:\n    \n    async def scan(event: ToolEvent) -&gt; Result:\n        if \"java\" in str(event.arguments).lower():\n            return Result(\n                value=True, \n                explanation=str(event.arguments)\n            )\n        else:\n            return Result(value=False)\n       \n    return scan\nNote that we specify events=[\"tool\"] to constrain reading to only tool events, and that our function takes an individual event rather than a Transcript.\nIf you add this scanner to the same source file as the ctf_environment() scanner then scout scan will run both of the scanners using the same scout scan scanner.py command,\nSee the Scanners article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "index.html#llm-scanner",
+    "href": "index.html#llm-scanner",
+    "title": "Inspect Scout",
+    "section": "LLM Scanner",
+    "text": "LLM Scanner\nThe example scanner above repeats several steps quite common to LLM-driven scanners (prompting, message history, answer extraction, etc.). There is a higher-level llm_scanner() function that includes these things automatically and provides several ways to configure its behavior. For example, we could re-write our scanner above as follows:\n\n\nscanner.py\n\nfrom inspect_scout import Transcript, llm_scanner, scanner\n\n@scanner(messages=\"all\")\ndef ctf_environment() -&gt; Scanner[Transcript]:\n    \n    return llm_scanner(\n        prompt = \"In the transcript above do you detect any \" +\n            \"instances of environment misconfiguration \" +\n            \"preventing the agent from completing it's task?\"\n        answer=\"bool\"\n    )\n\nFor additional details on using this scanner, see the LLM Scanner article.",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "index.html#scan-jobs",
+    "href": "index.html#scan-jobs",
+    "title": "Inspect Scout",
+    "section": "Scan Jobs",
+    "text": "Scan Jobs\nYou may want to import scanners from other modules and compose them into a ScanJob. To do this, add a @scanjob decorated function to your source file (it will be used in preference to @scanner decorated functions).\nA ScanJob can also include transcripts or any other option that you can pass to scout scan (e.g. model). For example:\n\n\nscanning.py\n\nfrom inspect_scout import ScanJob, scanjob\n\n@scanjob\ndef job() -&gt; ScanJob:\n    return ScanJob(\n        scanners=[ctf_environment(), java_tool_usages()],\n        transcripts=\"./logs\",\n        model=\"openai/gpt-5\"\n    )\n\nYou can then use the same command to run the job (scout scan will prefer a @scanjob defined in a file to individual scanners):\nscout scan scanning.py\nYou can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:\n\n\nscan.yaml\n\nscanners:\n  - name: deception\n    file: scanner.py\n  - name: java_tool_usages\n    file: scanner.py\n\ntranscripts: logs\n\nmodel: openai/gpt-5\n\nWhich can be executed with:\nscout scan scan.yaml",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "index.html#scan-results",
+    "href": "index.html#scan-results",
+    "title": "Inspect Scout",
+    "section": "Scan Results",
+    "text": "Scan Results\nBy default, the results of scans are written into the ./scans directory. You can override this using the --results option—both file paths and S3 buckets are supported.\nEach scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database (there will be a table for each scanner).\n# results as pandas data frames\nresults = scan_results(\"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\")\ndeception_df = results.scanners[\"deception\"]\ntool_errors_df = results.scanners[\"tool_errors\"]\n\n# results as duckdb database \nresults = scan_results_db(\"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\")\nwith results:\n    # run queries to read data frames\n    df = results.conn.execute(\"SELECT ...\").fetch_df()\n\n    # export entire database as file\n    results.to_file(\"results.duckdb\")\nSee the Results article for more details on the columns available in the data frames returned by scan_results().",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "index.html#validation",
+    "href": "index.html#validation",
+    "title": "Inspect Scout",
+    "section": "Validation",
+    "text": "Validation\nAs you are developing scanners you may want to validate them against some ground truth regarding what the ideal scanner result would be. You can do this by including a ValidationSet along with your scan. For example, imagine you had a validation set in the form of a CSV with id and target columns (representing the transcript_id and ideal target for the scanner):\n\n\nctf-validation.csv\n\nFg3KBpgFr6RSsEWmHBUqeo, true\nVFkCH7gXWpJYUYonvfHxrG, false\nSiEXpECj7U9nNAvM3H7JqB, true\n\nYou can then compute results from the validation set as you scan:\nscan(\n    scanners=[ctf_environment(), java_tool_usages()],\n    transcripts=\"./logs\",\n    validation={\n        \"ctf_environment\": validation_set(\"ctf-validation.csv\")\n    }\n)\nTo learn more see the article on Validation.",
+    "crumbs": [
+      "Getting Started"
+    ]
+  },
+  {
+    "objectID": "index.html#handling-errors",
+    "href": "index.html#handling-errors",
+    "title": "Inspect Scout",
+    "section": "Handling Errors",
+    "text": "Handling Errors\nIf a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the scan resume command. For example:\nscout scan resume \"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs\"\nIf errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with scan resume or complete the scan (ignoring errors) with scan complete:",
     "crumbs": [
       "Getting Started"
     ]
@@ -430,7 +480,7 @@
     "href": "index.html#transcripts",
     "title": "Inspect Scout",
     "section": "Transcripts",
-    "text": "Transcripts\nIn the example(s) above we scanned the samples from a single Inspect log file. More commonly though you’ll target an entire log directory or a subset of logs in that directory. For example, here we scan all of Cybench logs in the ./logs directory:\nfrom inspect_scout (\n    import scan, transcripts_from_logs, log_metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\ntranscripts = transcripts_from_logs(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nstatus = scan(\n    scanners = [ctf_environment(), tool_errors()],\n    transcripts = transcripts\n)\nThe log_metadata object (aliased to m) provides a typed way to specified where() clauses for filtering transcripts.\nNote that doing this query required us to switch to the Python scan() API. We can still use the CLI if we wrap our transcript query in a ScanJob:\n\n\ncybench_scan.py\n\nfrom inspect_scout (\n    import ScanJob, scanjob, transcripts_from_logs, log_metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\n@scanjob\ndef cybench_job(logs: str = \"./logs\") -&gt; ScanJob:\n\n    transcripts = transcripts_from_logs(logs)\n    transcripts = transcripts.where(m.task_name == \"cybench\")\n\n    return ScanJob(\n        scanners = [deception(), java_tool_usages()],\n        transcripts = transcripts\n    )\n\nThen from the CLI:\nscout scan cybench.py -S logs=./logs --model openai/gpt-5\nThe -S argument enables you to pass arguments to the @scanjob function (in this case determining what directory to read logs from).\nSee the article on Transcripts to learn more about the various ways to read and filter transcripts.",
+    "text": "Transcripts\nIn the example(s) above we scanned all of the samples within an Inspect log direcotry. Often though you’ll want to scan only a subset of logs in that directory. For example, here we scan all of Cybench logs in the ./logs directory:\nfrom inspect_scout (\n    import scan, transcripts_from_logs, log_metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\ntranscripts = transcripts_from_logs(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nstatus = scan(\n    scanners = [ctf_environment(), tool_errors()],\n    transcripts = transcripts\n)\nThe log_metadata object (aliased to m) provides a typed way to specified where() clauses for filtering transcripts.\nNote that doing this query required us to switch to the Python scan() API. We can still use the CLI if we wrap our transcript query in a ScanJob:\n\n\ncybench_scan.py\n\nfrom inspect_scout (\n    import ScanJob, scanjob, transcripts_from_logs, log_metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\n@scanjob\ndef cybench_job(logs: str = \"./logs\") -&gt; ScanJob:\n\n    transcripts = transcripts_from_logs(logs)\n    transcripts = transcripts.where(m.task_name == \"cybench\")\n\n    return ScanJob(\n        scanners = [deception(), java_tool_usages()],\n        transcripts = transcripts\n    )\n\nThen from the CLI:\nscout scan cybench.py -S logs=./logs --model openai/gpt-5\nThe -S argument enables you to pass arguments to the @scanjob function (in this case determining what directory to read logs from).\nSee the article on Transcripts to learn more about the various ways to read and filter transcripts.",
     "crumbs": [
       "Getting Started"
     ]
@@ -453,6 +503,78 @@
     "text": "Learning More\nSee the following articles to learn more about using Scout:\n\nTranscripts: Reading and filtering transcripts for scanning.\nScanners: Implementing custom scanners and loaders.\nLLM Scanner: Customizable LLM scanner for model evaluation of transcripts.\nResults: Collecting and analyzing scanner results.\nValidation: Validation of scanner results against ground truth target values.\nReference: Detailed documentation on the Scout Python API and CLI commands.",
     "crumbs": [
       "Getting Started"
+    ]
+  },
+  {
+    "objectID": "validation.html",
+    "href": "validation.html",
+    "title": "Validation",
+    "section": "",
+    "text": "When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some “ground truth” regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Validation"
+    ]
+  },
+  {
+    "objectID": "validation.html#overview",
+    "href": "validation.html#overview",
+    "title": "Validation",
+    "section": "",
+    "text": "When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some “ground truth” regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Validation"
+    ]
+  },
+  {
+    "objectID": "validation.html#validation-basics",
+    "href": "validation.html#validation-basics",
+    "title": "Validation",
+    "section": "Validation Basics",
+    "text": "Validation Basics\nA ValidationSet contains a list of ValidationCase, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and boolean indicating which value the scanner should have returned. For example:\n\n\nctf-validation.csv\n\nFg3KBpgFr6RSsEWmHBUqeo, true\nVFkCH7gXWpJYUYonvfHxrG, false\nSiEXpECj7U9nNAvM3H7JqB, true\n\nHow would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.\nUse the Copy UUID button to copy the ID for the transcript you are reviewing:\n\nYou’ll typically create a distinct validation set for each scanner, and then pass the validation sets to scan() as a dict mapping scanner to set:\n\n\nscanning.py\n\nfrom inspect_scout import scan, validation_set\n\nscan(\n    scanners=[ctf_environment(), java_tool_usages()],\n    transcripts=\"./logs\",\n    validation={\n        \"ctf_environment\": validation_set(\"ctf-validation.csv\")\n    }\n)\n\nYou can also specify validation sets on the command line. If the above scan was defined in a @scanjob you could add a validation set from the CLI using the -V option as follows:\nscout scan scanning.py -V ctf_environment:ctf_environment.csv\nThis example uses the simplest possible id and target pair (transcript _id =&gt; boolean). Other variations are possible, see the IDs and Targets section below for details. You can also use other file formats for validation sets (e.g. YAML), see Validation Files for details.\n\nValidation Results\nValidation results are reported in two ways:\n\nThe scan status/summary UI provides a running tabulation of the percentage of matching validations.\nThe data frame produced for each scanner includes columns for the validation:\n\nvalidation_target: Ideal scanner result\nvalidation_result: Result of comparing scanner value against validation_target",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Validation"
+    ]
+  },
+  {
+    "objectID": "validation.html#filtering-transcripts",
+    "href": "validation.html#filtering-transcripts",
+    "title": "Validation",
+    "section": "Filtering Transcripts",
+    "text": "Filtering Transcripts\nYour validation set will typically be only a subset of all of the transcripts you are scanning, and is intended to provide a rough heuristic on how prompt changes are impacting results. In some cases you will want to only evaluate transcript content that is included in the validation set. The Transcript class includes a filtering function to do this. For example:\nfrom inspect_scout import scan, transcripts_from_logs, validation_set\n\nvalidation = {\n    \"ctf_environment\": validation_set(\"ctf-validation.csv\")\n}\n\ntranscripts = transcripts_from_logs(\"./logs\")\ntranscripts = transcripts.for_validation(validation)\n\nscan(\n    scanners=[ctf_environment(), java_tool_usages()],\n    transcripts=transcripts,\n    validation=validation\n)",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Validation"
+    ]
+  },
+  {
+    "objectID": "validation.html#ids-and-targets",
+    "href": "validation.html#ids-and-targets",
+    "title": "Validation",
+    "section": "IDs and Targets",
+    "text": "IDs and Targets\nIn the above examples, we provided a validation set of transcript_id =&gt; boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom Loader). You can also use any valid JSON value as the target\nFor example, imagine we have a scanner that counts the incidences of “backtracking” in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =&gt; number:\n\n\nbacktracking.csv\n\nFg3KBpgFr6RSsEWmHBUqeo, 2\nVFkCH7gXWpJYUYonvfHxrG, 0\nSiEXpECj7U9nNAvM3H7JqB, 3\n\nIn the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:\n\n\nvalidation.csv\n\n\"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG\", true\n\n\nValue Dictionary\nIf our scanner produces a dict of values, we can also build a validation dataset which provides ground truth for each distinct field in the dict. To do this, we introduce column names as follows:\n\n\nvalidation.csv\n\nid, target_deception, target_backtracks\nFg3KBpgFr6RSsEWmHBUqeo, true, 2\nVFkCH7gXWpJYUYonvfHxrG, false, 0\n\n\n\nComparison Predicates\nThe examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. “gt”, “gte”, “contains”) or with a custom function. Specify the ValidationPredicate as a parameter to the validation_set() function:\nvalidation_set(cases=\"validation.csv\", predicate=\"gte\")",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Validation"
+    ]
+  },
+  {
+    "objectID": "validation.html#validation-files",
+    "href": "validation.html#validation-files",
+    "title": "Validation",
+    "section": "File Formats",
+    "text": "File Formats\nYou can specify a ValidationSet either in code, as a CSV, or as a YAML or JSON file. We’ve demonstrated CSV above, here is what as equivalent YAML file would look like for a single target:\n\n\nvalidation.yaml\n\n- id: Fg3KBpgFr6RSsEWmHBUqeo\n  target: true\n\n- id: VFkCH7gXWpJYUYonvfHxrG\n  target: false\n\nAnd for multiple targets:\n\n\nvalidation.yaml\n\n- id: Fg3KBpgFr6RSsEWmHBUqeo\n  target:\n     deception: true\n     backtracks: 2\n\n- id: VFkCH7gXWpJYUYonvfHxrG\n  target:\n     deception: false\n     backtracks: 0",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Validation"
     ]
   },
   {

@@ -119,21 +119,39 @@ called once for each sample trajectory in the log (total samples \*
 epochs):
 
 ``` bash
-scout scan scanner.py -T ./logs -model openai/gpt-5
+scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
 You can also address individual scanners using `@<scanner-name>`. For
 example:
 
 ``` bash
-scout scan scanner.py@ctf_environment -T ./logs -model openai/gpt-5
+scout scan scanner.py@ctf_environment -T ./logs --model openai/gpt-5
 ```
 
 Note that if no `-T` argument is provided then Scout will use the
-current `INSPECT_LOG_DIR` (by default “./logs”) so the `-T` above is not
+current `INSPECT_LOG_DIR` (by default `./logs`) so the `-T` above is not
 strictly necessary.
 
-### Adding a Scanner
+As with Inspect AI, Inspect Scout will read your `.env` file for
+[environmental
+options](https://inspect.aisi.org.uk/options.html#env-files). So if your
+`.env` contained the following:
+
+**.env**
+
+``` makefile
+SCOUT_SCAN_TRANSCRIPTS=./logs
+SCOUT_SCAN_MODEL=openai/gpt-5
+```
+
+Then you could shorten the above command to:
+
+``` bash
+scout scan scanner.py 
+```
+
+### Event Scanner
 
 Let’s add another scanner that looks for uses of Java in tool calls:
 
@@ -165,7 +183,34 @@ See the [Scanners](scanners.qmd) article for more details on creating
 scanners, including how to write scanners that accept a variety of
 inputs and how to use scanners directly as Inspect scorers.
 
-### Scan Jobs
+## LLM Scanner
+
+The example scanner above repeats several steps quite common to
+LLM-driven scanners (prompting, message history, answer extraction,
+etc.). There is a higher-level `llm_scanner()` function that includes
+these things automatically and provides several ways to configure its
+behavior. For example, we could re-write our scanner above as follows:
+
+**scanner.py**
+
+``` python
+from inspect_scout import Transcript, llm_scanner, scanner
+
+@scanner(messages="all")
+def ctf_environment() -> Scanner[Transcript]:
+    
+    return llm_scanner(
+        prompt = "In the transcript above do you detect any " +
+            "instances of environment misconfiguration " +
+            "preventing the agent from completing it's task?"
+        answer="bool"
+    )
+```
+
+For additional details on using this scanner, see the [LLM
+Scanner](llm_scanner.qmd) article.
+
+## Scan Jobs
 
 You may want to import scanners from other modules and compose them into
 a `ScanJob`. To do this, add a `@scanjob` decorated function to your
@@ -175,7 +220,7 @@ functions).
 A `ScanJob` can also include `transcripts` or any other option that you
 can pass to `scout scan` (e.g. `model`). For example:
 
-**scanner.py**
+**scanning.py**
 
 ``` python
 from inspect_scout import ScanJob, scanjob
@@ -190,10 +235,10 @@ def job() -> ScanJob:
 ```
 
 You can then use the same command to run the job (`scout scan` will
-prefer a @scanjob defined in a file to individual scanners):
+prefer a `@scanjob` defined in a file to individual scanners):
 
 ``` bash
-scout scan scanner.py
+scout scan scanning.py
 ```
 
 You can also specify a scan job using YAML or JSON. For example, the
@@ -219,7 +264,7 @@ Which can be executed with:
 scout scan scan.yaml
 ```
 
-### Scan Results
+## Scan Results
 
 By default, the results of scans are written into the `./scans`
 directory. You can override this using the `--results` option—both file
@@ -250,7 +295,38 @@ with results:
 See the [Results](results.qmd) article for more details on the columns
 available in the data frames returned by `scan_results()`.
 
-### Handling Errors
+## Validation
+
+As you are developing scanners you may want to validate them against
+some ground truth regarding what the ideal scanner result would be. You
+can do this by including a `ValidationSet` along with your scan. For
+example, imagine you had a validation set in the form of a CSV with `id`
+and `target` columns (representing the transcript_id and ideal target
+for the scanner):
+
+**ctf-validation.csv**
+
+``` default
+Fg3KBpgFr6RSsEWmHBUqeo, true
+VFkCH7gXWpJYUYonvfHxrG, false
+SiEXpECj7U9nNAvM3H7JqB, true
+```
+
+You can then compute results from the validation set as you scan:
+
+``` python
+scan(
+    scanners=[ctf_environment(), java_tool_usages()],
+    transcripts="./logs",
+    validation={
+        "ctf_environment": validation_set("ctf-validation.csv")
+    }
+)
+```
+
+To learn more see the article on [Validation](validation.qmd).
+
+## Handling Errors
 
 If a scan job is interrupted either due to cancellation (Ctrl+C) or a
 runtime error, you can resume the scan from where it left off using the
@@ -268,10 +344,10 @@ complete the scan (ignoring errors) with `scan complete`:
 
 ## Transcripts
 
-In the example(s) above we scanned the samples from a single Inspect log
-file. More commonly though you’ll target an entire log directory or a
-subset of logs in that directory. For example, here we scan all of
-Cybench logs in the `./logs` directory:
+In the example(s) above we scanned all of the samples within an Inspect
+log direcotry. Often though you’ll want to scan only a subset of logs in
+that directory. For example, here we scan all of Cybench logs in the
+`./logs` directory:
 
 ``` python
 from inspect_scout (

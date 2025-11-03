@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -73,10 +108,16 @@ ul.task-list li input[type="checkbox"] {
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript analysis for Inspect AI">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/sample-uuid.png">
 <meta property="og:site_name" content="Inspect Scout">
+<meta property="og:image:height" content="562">
+<meta property="og:image:width" content="1862">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript analysis for Inspect AI">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/sample-uuid.png">
+<meta name="twitter:image-height" content="562">
+<meta name="twitter:image-width" content="1862">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body class="nav-sidebar docked nav-fixed quarto-light">
@@ -236,8 +277,25 @@ ul.task-list li input[type="checkbox"] {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#validation-basics" id="toc-validation-basics" class="nav-link" data-scroll-target="#validation-basics">Validation Basics</a>
+  <ul class="collapse">
+  <li><a href="#validation-results" id="toc-validation-results" class="nav-link" data-scroll-target="#validation-results">Validation Results</a></li>
+  </ul></li>
+  <li><a href="#filtering-transcripts" id="toc-filtering-transcripts" class="nav-link" data-scroll-target="#filtering-transcripts">Filtering Transcripts</a></li>
+  <li><a href="#ids-and-targets" id="toc-ids-and-targets" class="nav-link" data-scroll-target="#ids-and-targets">IDs and Targets</a>
+  <ul class="collapse">
+  <li><a href="#value-dictionary" id="toc-value-dictionary" class="nav-link" data-scroll-target="#value-dictionary">Value Dictionary</a></li>
+  <li><a href="#comparison-predicates" id="toc-comparison-predicates" class="nav-link" data-scroll-target="#comparison-predicates">Comparison Predicates</a></li>
+  </ul></li>
+  <li><a href="#validation-files" id="toc-validation-files" class="nav-link" data-scroll-target="#validation-files">File Formats</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -261,8 +319,141 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some “ground truth” regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.</p>
+</section>
+<section id="validation-basics" class="level2">
+<h2 class="anchored" data-anchor-id="validation-basics">Validation Basics</h2>
+<p>A <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationset">ValidationSet</a></span> contains a list of <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationcase">ValidationCase</a></span>, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and boolean indicating which <code>value</code> the scanner should have returned. For example:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>ctf-validation.csv</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" data-filename="ctf-validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, true</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, false</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB, true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.</p>
+<p>Use the <strong>Copy UUID</strong> button to copy the ID for the transcript you are reviewing:</p>
+<p><img src="images/sample-uuid.png" class="border-bottom img-fluid"></p>
+<p>You’ll typically create a distinct validation set for each scanner, and then pass the validation sets to <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> as a dict mapping scanner to set:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scanning.py</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" data-filename="scanning.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, validation_set</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>scan(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    scanners<span class="op">=</span>[ctf_environment(), java_tool_usages()],</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span><span class="st">"./logs"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    validation<span class="op">=</span>{</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"ctf_environment"</span>: validation_set(<span class="st">"ctf-validation.csv"</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>You can also specify validation sets on the command line. If the above scan was defined in a <code>@scanjob</code> you could add a validation set from the CLI using the <code>-V</code> option as follows:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanning.py <span class="at">-V</span> ctf_environment:ctf_environment.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This example uses the simplest possible id and target pair (transcript _id =&gt; boolean). Other variations are possible, see the <a href="#ids-and-targets">IDs and Targets</a> section below for details. You can also use other file formats for validation sets (e.g.&nbsp;YAML), see <a href="#validation-files">Validation Files</a> for details.</p>
+<section id="validation-results" class="level3">
+<h3 class="anchored" data-anchor-id="validation-results">Validation Results</h3>
+<p>Validation results are reported in two ways:</p>
+<ul>
+<li><p>The scan status/summary UI provides a running tabulation of the percentage of matching validations.</p></li>
+<li><p>The data frame produced for each scanner includes columns for the validation:</p>
+<ul>
+<li><p><code>validation_target</code>: Ideal scanner result</p></li>
+<li><p><code>validation_result</code>: Result of comparing scanner <code>value</code> against <code>validation_target</code></p></li>
+</ul></li>
+</ul>
+</section>
+</section>
+<section id="filtering-transcripts" class="level2">
+<h2 class="anchored" data-anchor-id="filtering-transcripts">Filtering Transcripts</h2>
+<p>Your validation set will typically be only a subset of all of the transcripts you are scanning, and is intended to provide a rough heuristic on how prompt changes are impacting results. In some cases you will want to <em>only</em> evaluate transcript content that is included in the validation set. The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> class includes a filtering function to do this. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, transcripts_from_logs, validation_set</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>validation <span class="op">=</span> {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ctf_environment"</span>: validation_set(<span class="st">"ctf-validation.csv"</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(<span class="st">"./logs"</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts.for_validation(validation)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>scan(</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    scanners<span class="op">=</span>[ctf_environment(), java_tool_usages()],</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span>transcripts,</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    validation<span class="op">=</span>validation</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="ids-and-targets" class="level2">
+<h2 class="anchored" data-anchor-id="ids-and-targets">IDs and Targets</h2>
+<p>In the above examples, we provided a validation set of transcript_id =&gt; boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom <a href="scanner.qmd#loader">Loader</a>). You can also use any valid JSON value as the <code>target</code></p>
+<p>For example, imagine we have a scanner that counts the incidences of “backtracking” in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =&gt; number:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>backtracking.csv</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename="backtracking.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, 2</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, 0</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB, 3</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>validation.csv</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="value-dictionary" class="level3">
+<h3 class="anchored" data-anchor-id="value-dictionary">Value Dictionary</h3>
+<p>If our scanner produces a <code>dict</code> of values, we can also build a validation dataset which provides ground truth for each distinct field in the <code>dict</code>. To do this, we introduce column names as follows:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>validation.csv</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-filename="validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>id, target_deception, target_backtracks</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, true, 2</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, false, 0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="comparison-predicates" class="level3">
+<h3 class="anchored" data-anchor-id="comparison-predicates">Comparison Predicates</h3>
+<p>The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g.&nbsp;“gt”, “gte”, “contains”) or with a custom function. Specify the <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationpredicate">ValidationPredicate</a></span> as a parameter to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#validation_set">validation_set()</a></span> function:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>validation_set(cases<span class="op">=</span><span class="st">"validation.csv"</span>, predicate<span class="op">=</span><span class="st">"gte"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="validation-files" class="level2">
+<h2 class="anchored" data-anchor-id="validation-files">File Formats</h2>
+<p>You can specify a <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationset">ValidationSet</a></span> either in code, as a CSV, or as a YAML or JSON file. We’ve demonstrated CSV above, here is what as equivalent YAML file would look like for a single target:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>validation.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9" data-filename="validation.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> Fg3KBpgFr6RSsEWmHBUqeo</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>And for multiple targets:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>validation.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10" data-filename="validation.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> Fg3KBpgFr6RSsEWmHBUqeo</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">backtracks</span><span class="kw">:</span><span class="at"> </span><span class="dv">2</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">backtracks</span><span class="kw">:</span><span class="at"> </span><span class="dv">0</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -745,7 +936,7 @@ ul.task-list li input[type="checkbox"] {
 </a>
   </li>  
 </ul>
-    <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
+    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
     <div class="nav-footer-right">
       <ul class="footer-items list-unstyled">
     <li class="nav-item compact">

@@ -119,21 +119,39 @@ called once for each sample trajectory in the log (total samples \*
 epochs):
 
 ``` bash
-scout scan scanner.py -T ./logs -model openai/gpt-5
+scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
 You can also address individual scanners using `@<scanner-name>`. For
 example:
 
 ``` bash
-scout scan scanner.py@ctf_environment -T ./logs -model openai/gpt-5
+scout scan scanner.py@ctf_environment -T ./logs --model openai/gpt-5
 ```
 
 Note that if no `-T` argument is provided then Scout will use the
-current `INSPECT_LOG_DIR` (by default “./logs”) so the `-T` above is not
+current `INSPECT_LOG_DIR` (by default `./logs`) so the `-T` above is not
 strictly necessary.
 
-### Adding a Scanner
+As with Inspect AI, Inspect Scout will read your `.env` file for
+[environmental
+options](https://inspect.aisi.org.uk/options.html#env-files). So if your
+`.env` contained the following:
+
+**.env**
+
+``` makefile
+SCOUT_SCAN_TRANSCRIPTS=./logs
+SCOUT_SCAN_MODEL=openai/gpt-5
+```
+
+Then you could shorten the above command to:
+
+``` bash
+scout scan scanner.py 
+```
+
+### Event Scanner
 
 Let’s add another scanner that looks for uses of Java in tool calls:
 
@@ -165,7 +183,34 @@ See the [Scanners](scanners.qmd) article for more details on creating
 scanners, including how to write scanners that accept a variety of
 inputs and how to use scanners directly as Inspect scorers.
 
-### Scan Jobs
+## LLM Scanner
+
+The example scanner above repeats several steps quite common to
+LLM-driven scanners (prompting, message history, answer extraction,
+etc.). There is a higher-level `llm_scanner()` function that includes
+these things automatically and provides several ways to configure its
+behavior. For example, we could re-write our scanner above as follows:
+
+**scanner.py**
+
+``` python
+from inspect_scout import Transcript, llm_scanner, scanner
+
+@scanner(messages="all")
+def ctf_environment() -> Scanner[Transcript]:
+    
+    return llm_scanner(
+        prompt = "In the transcript above do you detect any " +
+            "instances of environment misconfiguration " +
+            "preventing the agent from completing it's task?"
+        answer="bool"
+    )
+```
+
+For additional details on using this scanner, see the [LLM
+Scanner](llm_scanner.qmd) article.
+
+## Scan Jobs
 
 You may want to import scanners from other modules and compose them into
 a `ScanJob`. To do this, add a `@scanjob` decorated function to your
@@ -175,7 +220,7 @@ functions).
 A `ScanJob` can also include `transcripts` or any other option that you
 can pass to `scout scan` (e.g. `model`). For example:
 
-**scanner.py**
+**scanning.py**
 
 ``` python
 from inspect_scout import ScanJob, scanjob
@@ -190,10 +235,10 @@ def job() -> ScanJob:
 ```
 
 You can then use the same command to run the job (`scout scan` will
-prefer a @scanjob defined in a file to individual scanners):
+prefer a `@scanjob` defined in a file to individual scanners):
 
 ``` bash
-scout scan scanner.py
+scout scan scanning.py
 ```
 
 You can also specify a scan job using YAML or JSON. For example, the
@@ -219,7 +264,7 @@ Which can be executed with:
 scout scan scan.yaml
 ```
 
-### Scan Results
+## Scan Results
 
 By default, the results of scans are written into the `./scans`
 directory. You can override this using the `--results` option—both file
@@ -250,7 +295,38 @@ with results:
 See the [Results](results.qmd) article for more details on the columns
 available in the data frames returned by `scan_results()`.
 
-### Handling Errors
+## Validation
+
+As you are developing scanners you may want to validate them against
+some ground truth regarding what the ideal scanner result would be. You
+can do this by including a `ValidationSet` along with your scan. For
+example, imagine you had a validation set in the form of a CSV with `id`
+and `target` columns (representing the transcript_id and ideal target
+for the scanner):
+
+**ctf-validation.csv**
+
+``` default
+Fg3KBpgFr6RSsEWmHBUqeo, true
+VFkCH7gXWpJYUYonvfHxrG, false
+SiEXpECj7U9nNAvM3H7JqB, true
+```
+
+You can then compute results from the validation set as you scan:
+
+``` python
+scan(
+    scanners=[ctf_environment(), java_tool_usages()],
+    transcripts="./logs",
+    validation={
+        "ctf_environment": validation_set("ctf-validation.csv")
+    }
+)
+```
+
+To learn more see the article on [Validation](validation.qmd).
+
+## Handling Errors
 
 If a scan job is interrupted either due to cancellation (Ctrl+C) or a
 runtime error, you can resume the scan from where it left off using the
@@ -268,10 +344,10 @@ complete the scan (ignoring errors) with `scan complete`:
 
 ## Transcripts
 
-In the example(s) above we scanned the samples from a single Inspect log
-file. More commonly though you’ll target an entire log directory or a
-subset of logs in that directory. For example, here we scan all of
-Cybench logs in the `./logs` directory:
+In the example(s) above we scanned all of the samples within an Inspect
+log direcotry. Often though you’ll want to scan only a subset of logs in
+that directory. For example, here we scan all of Cybench logs in the
+`./logs` directory:
 
 ``` python
 from inspect_scout (
@@ -1009,4 +1085,197 @@ and sample for the transcript:
 # Validation
 
 
+## Overview
+
+When developing scanners and scanner prompts, it’s often desirable to
+create a feedback loop based on some “ground truth” regarding the ideal
+results that should by yielded by scanner. You can do this by creating a
+validation set and applying it during your scan.
+
+## Validation Basics
+
+A `ValidationSet` contains a list of `ValidationCase`, which are in turn
+composed of ids and targets. The most common validation set is a pair of
+transcript id and boolean indicating which `value` the scanner should
+have returned. For example:
+
+**ctf-validation.csv**
+
+``` default
+Fg3KBpgFr6RSsEWmHBUqeo, true
+VFkCH7gXWpJYUYonvfHxrG, false
+SiEXpECj7U9nNAvM3H7JqB, true
+```
+
+How would you develop a validation set like this? Typically, you will
+review some of your existing transcripts using Inspect View, decide
+which ones are good validation examples, copy their transcript id (which
+is the same as the sample UUID), then record the appropriate entry in a
+text file or spreadsheet.
+
+Use the **Copy UUID** button to copy the ID for the transcript you are
+reviewing:
+
+![](images/sample-uuid.png)
+
+You’ll typically create a distinct validation set for each scanner, and
+then pass the validation sets to `scan()` as a dict mapping scanner to
+set:
+
+**scanning.py**
+
+``` python
+from inspect_scout import scan, validation_set
+
+scan(
+    scanners=[ctf_environment(), java_tool_usages()],
+    transcripts="./logs",
+    validation={
+        "ctf_environment": validation_set("ctf-validation.csv")
+    }
+)
+```
+
+You can also specify validation sets on the command line. If the above
+scan was defined in a `@scanjob` you could add a validation set from the
+CLI using the `-V` option as follows:
+
+``` bash
+scout scan scanning.py -V ctf_environment:ctf_environment.csv
+```
+
+This example uses the simplest possible id and target pair (transcript
+\_id =\> boolean). Other variations are possible, see the [IDs and
+Targets](#ids-and-targets) section below for details. You can also use
+other file formats for validation sets (e.g. YAML), see [Validation
+Files](#validation-files) for details.
+
+### Validation Results
+
+Validation results are reported in two ways:
+
+- The scan status/summary UI provides a running tabulation of the
+  percentage of matching validations.
+
+- The data frame produced for each scanner includes columns for the
+  validation:
+
+  - `validation_target`: Ideal scanner result
+
+  - `validation_result`: Result of comparing scanner `value` against
+    `validation_target`
+
+## Filtering Transcripts
+
+Your validation set will typically be only a subset of all of the
+transcripts you are scanning, and is intended to provide a rough
+heuristic on how prompt changes are impacting results. In some cases you
+will want to *only* evaluate transcript content that is included in the
+validation set. The `Transcript` class includes a filtering function to
+do this. For example:
+
+``` python
+from inspect_scout import scan, transcripts_from_logs, validation_set
+
+validation = {
+    "ctf_environment": validation_set("ctf-validation.csv")
+}
+
+transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts.for_validation(validation)
+
+scan(
+    scanners=[ctf_environment(), java_tool_usages()],
+    transcripts=transcripts,
+    validation=validation
+)
+```
+
+## IDs and Targets
+
+In the above examples, we provided a validation set of transcript_id =\>
+boolean. Of course, not every scanner takes a transcript id (some take
+event or message ids). All of these other variations are supported
+(including lists of events or messages yielded by a custom
+[Loader](scanner.qmd#loader)). You can also use any valid JSON value as
+the `target`
+
+For example, imagine we have a scanner that counts the incidences of
+“backtracking” in reasoning traces. In this case our scanner yields a
+number rather than a boolean. So our validation set would be message_id
+=\> number:
+
+**backtracking.csv**
+
+``` default
+Fg3KBpgFr6RSsEWmHBUqeo, 2
+VFkCH7gXWpJYUYonvfHxrG, 0
+SiEXpECj7U9nNAvM3H7JqB, 3
+```
+
+In the case of a custom loader (.e.g. one that extracts user/assistant
+message pairs) we can also include multiple IDs:
+
+**validation.csv**
+
+``` default
+"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true
+```
+
+### Value Dictionary
+
+If our scanner produces a `dict` of values, we can also build a
+validation dataset which provides ground truth for each distinct field
+in the `dict`. To do this, we introduce column names as follows:
+
+**validation.csv**
+
+``` default
+id, target_deception, target_backtracks
+Fg3KBpgFr6RSsEWmHBUqeo, true, 2
+VFkCH7gXWpJYUYonvfHxrG, false, 0
+```
+
+### Comparison Predicates
+
+The examples above all use straight equality checks as their predicate.
+You can provide an alternate predicate either by name (e.g. “gt”, “gte”,
+“contains”) or with a custom function. Specify the `ValidationPredicate`
+as a parameter to the `validation_set()` function:
+
+``` python
+validation_set(cases="validation.csv", predicate="gte")
+```
+
+## File Formats
+
+You can specify a `ValidationSet` either in code, as a CSV, or as a YAML
+or JSON file. We’ve demonstrated CSV above, here is what as equivalent
+YAML file would look like for a single target:
+
+**validation.yaml**
+
+``` yaml
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  target: true
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  target: false
+```
+
+And for multiple targets:
+
+**validation.yaml**
+
+``` yaml
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  target:
+     deception: true
+     backtracks: 2
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  target:
+     deception: false
+     backtracks: 0
+```
 

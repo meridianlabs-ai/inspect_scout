@@ -8,7 +8,7 @@ import styles from "./Navbar.module.css";
 import { useStore } from "../../state/store";
 import { getRelativePathFromParams, scansRoute } from "../../router/url";
 import { useBreadcrumbTruncation } from "./useBreadcrumbTruncation";
-import { Icons } from "../theme/icons";
+import { ApplicationIcons } from "../appearance/icons";
 
 interface NavbarProps {
   children?: ReactNode;
@@ -64,7 +64,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
     >
       <div className={clsx(styles.left)}>
         <Link to={backUrl} className={clsx(styles.toolbarButton)}>
-          <i className={clsx(Icons.back)} />
+          <i className={clsx(ApplicationIcons.navbar.back)} />
         </Link>
         <Link
           to={scansRoute()}
@@ -73,7 +73,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
             //setPage(0);
           }}
         >
-          <i className={clsx(Icons.home)} />
+          <i className={clsx(ApplicationIcons.navbar.home)} />
         </Link>
         <div className={clsx(styles.pathContainer)} ref={pathContainerRef}>
           {resultsDir ? (

@@ -20,6 +20,7 @@ interface StoreState {
   singleFileMode?: boolean;
   hasInitializedEmbeddedData?: boolean;
   loading: number;
+  selectedResultsTab?: string;
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
@@ -55,6 +56,8 @@ interface StoreState {
   setHasInitializedEmbeddedData: (initialized: boolean) => void;
 
   setLoading: (loading: boolean) => void;
+
+  setSelectedResultsTab: (tab: string) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -228,6 +231,11 @@ export const useStore = create<StoreState>()(
             } else {
               state.loading = Math.max(0, state.loading - 1);
             }
+          });
+        },
+        setSelectedResultsTab: (tab: string) => {
+          set((state) => {
+            state.selectedResultsTab = tab;
           });
         },
       })),

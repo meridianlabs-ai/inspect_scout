@@ -1,0 +1,40 @@
+.scanTitleView {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    justify-content: space-between;
+    column-gap: 1em;
+    border-top: solid 1px var(--bs-border-color);
+    padding: 0.5em;
+}
+
+.leftColumn {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    align-items: baseline;
+    row-gap: 0.1em;
+    column-gap: 0.5em;
+}
+
+.scanTitleView h1 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.3em;
+}
+
+.scanTitleView h2 {
+    margin: 0;
+    font-weight: 500;
+    font-size: 1em;
+    color: var(--bs-secondary-text-color);
+}
+
+.scanTitleView h3 {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--bs-secondary-text-color);
+}
+
+.subtitle {
+    grid-column: 1 / -1;
+}
+

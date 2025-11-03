@@ -4,6 +4,11 @@ import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Navbar } from "../navbar/Navbar";
 import { ActivityBar } from "../../components/ActivityBar";
+import { ScanTitleView } from "./ScanTitleView";
+import { ScanDetailTabs } from "./ScanDetailTabs";
+import clsx from "clsx";
+
+import styles from "./ScanDetail.module.css";
 
 export const ScanDetail: React.FC = () => {
   const params = useParams<{ "*": string }>();
@@ -13,7 +18,6 @@ export const ScanDetail: React.FC = () => {
   const resultsDir = useStore((state) => state.resultsDir);
   const setResultsDir = useStore((state) => state.setResultsDir);
 
-  const selectedResults = useStore((state) => state.selectedResults);
   const setSelectedScan = useStore((state) => state.setSelectedResults);
 
   const setScans = useStore((state) => state.setScans);
@@ -39,16 +43,22 @@ export const ScanDetail: React.FC = () => {
   }, [resultsDir, relativePath, api, setSelectedScan, setResultsDir, setScans]);
 
   return (
-    <>
+    <div className={clsx(styles.root)}>
       {singleFileMode || <Navbar />}
       <ActivityBar animating={!!loading} />
-      <div style={{ height: "100%", overflowY: "auto", padding: "16px" }}>
-        {selectedResults ? (
-          <pre>{JSON.stringify(selectedResults, null, 2)}</pre>
-        ) : (
-          <p>Loading scan details...</p>
-        )}
-      </div>
-    </>
+      <ScanTitleView/>
+      <ScanDetailTabs/>
+    </div>
   );
 };
+
+
+
+
+// name
+// job
+// scan_file
+// scan_args
+// timestamp
+// model
+// transcripts

@@ -1,15 +1,15 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { Scan } from "../types";
 import { ScanApi } from "../api/api";
 import { StateSnapshot } from "react-virtuoso";
 import { GridState } from "ag-grid-community";
+import { Results, Status } from "../types";
 
 interface StoreState {
   api?: ScanApi;
-  scans: Scan[];
-  selectedScan?: Scan;
+  scans: Status[];
+  selectedScan?: Results;
   selectedScanLocation?: string;
   resultsDir?: string;
   properties: Record<string, Record<string, unknown>>;
@@ -22,8 +22,8 @@ interface StoreState {
   loading: number;
 
   setApi(api: ScanApi): void;
-  setScans: (scans: Scan[]) => void;
-  setSelectedScan: (scan: Scan) => void;
+  setScans: (scans: Status[]) => void;
+  setSelectedScan: (scan: Results) => void;
   setSelectedScanLocation: (location: string) => void;
   setResultsDir: (dir: string) => void;
 
@@ -76,11 +76,11 @@ export const useStore = create<StoreState>()(
           set((state) => {
             state.api = api;
           }),
-        setScans: (scans: Scan[]) =>
+        setScans: (scans: Status[]) =>
           set((state) => {
             state.scans = scans;
           }),
-        setSelectedScan: (scan: Scan) =>
+        setSelectedScan: (scan: Results) =>
           set((state) => {
             state.selectedScan = scan;
           }),

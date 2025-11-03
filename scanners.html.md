@@ -61,9 +61,6 @@ def confusion() -> Scanner[Transcript]:
     return scan
 ```
 
-If a scanner doesn’t find anything, it still returns a `Result` with
-`value=None` so that the explanation is preserved for later review.
-
 ### Input Types
 
 `Transcript` is the most common `ScannerInput` however several other
@@ -207,6 +204,9 @@ result = await get_model().generate(
     "or 'No', followed by an explanation."
 )
 ```
+
+The `messages_as_str()` function will by default remove system messages
+from the list. See `ContentFilter` for other available options.
 
 ## Event Scanners
 

@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-290d29a218d448eebf7ee577e7fb57c9.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-58f3f7d8222792c3c3a2edf9e2d9a6e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -359,7 +359,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>, explanation<span class="op">=</span>output.completion)</span>
 <span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If a scanner doesn’t find anything, it still returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> with <code>value=None</code> so that the explanation is preserved for later review.</p>
 <section id="input-types" class="level3">
 <h3 class="anchored" data-anchor-id="input-types">Input Types</h3>
 <p><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> is the most common <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scannerinput">ScannerInput</a></span> however several other types are possible:</p>
@@ -496,6 +495,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"becoming confused? Repond beginning with 'Yes' "</span> <span class="op">+</span></span>
 <span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"or 'No', followed by an explanation."</span></span>
 <span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messages_as_str">messages_as_str()</a></span> function will by default remove system messages from the list. See <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#contentfilter">ContentFilter</a></span> for other available options.</p>
 </section>
 </section>
 <section id="events" class="level2">

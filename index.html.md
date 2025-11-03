@@ -102,6 +102,8 @@ specified in the top level call to scan).
 
 Lines 16-18  
 Convert the message history into a string for presentation to the model.
+The `messages_as_str()` function will by default remove system messages
+from the list. See `ContentFilter` for other available options.
 
 Lines 33-37  
 As with scorers, results also include additional context (here the
@@ -203,7 +205,7 @@ def ctf_environment() -> Scanner[Transcript]:
         prompt = "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
             "preventing the agent from completing it's task?"
-        answer="bool"
+        answer="boolean"
     )
 ```
 

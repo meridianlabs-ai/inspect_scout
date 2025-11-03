@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import Awaitable, Callable, NamedTuple
 
 from inspect_ai.model import (
     ChatMessage,
@@ -11,6 +11,9 @@ from inspect_ai.model import (
 class ContentFilter(NamedTuple):
     """Message content options for LLM scanner."""
 
+    messages: Callable[[list[ChatMessage]], Awaitable[list[ChatMessage]]] | None = None
+    """Transform the list of messages."""
+
     exclude_system: bool = True
     """Exclude system messages (defaults to `True`)"""
 
@@ -21,7 +24,7 @@ class ContentFilter(NamedTuple):
     """Exclude tool usage (defaults to `False`)"""
 
 
-def messages_as_str(
+async def messages_as_str(
     messages: list[ChatMessage], filter: ContentFilter | None = None
 ) -> str:
     """Concatenate list of chat messages into a string.
@@ -33,6 +36,9 @@ def messages_as_str(
     Returns:
        str: Messages as a string.
     """
+    if filter is not None and filter.messages is not None:
+        messages = await filter.messages(messages)
+
     return "\n".join([message_as_str(m, filter) or "" for m in messages])
 
 
@@ -50,7 +56,7 @@ def message_as_str(
         should be excluded based on the provided flags.
     """
     filter = filter or ContentFilter()
-    exclude_system, exclude_reasoning, exclude_tool_usage = filter
+    _, exclude_system, exclude_reasoning, exclude_tool_usage = filter
 
     if exclude_system and message.role == "system":
         return None

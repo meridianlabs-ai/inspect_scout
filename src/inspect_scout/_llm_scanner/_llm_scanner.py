@@ -60,7 +60,9 @@ def llm_scanner(
             question=prompt.question, explanation_text=prompt.explanation, **variables
         )
 
-        messages_str, message_id_map = _messages_with_ids(transcript.messages, messages)
+        messages_str, message_id_map = await _messages_with_ids(
+            transcript.messages, messages
+        )
 
         resolved_prompt = prompt.template.format(
             messages=messages_str,
@@ -96,7 +98,7 @@ def _variables_for_transcript(transcript: Transcript) -> dict[str, JsonValue]:
     return variables
 
 
-def _messages_with_ids(
+async def _messages_with_ids(
     messages: list[ChatMessage], preprocessor: ContentFilter
 ) -> tuple[str, list[str]]:
     """Format messages with 1-based local message IDs prepended.
@@ -108,6 +110,8 @@ def _messages_with_ids(
     Returns:
         Tuple of (formatted string with [MN] prefixes, list of message IDs for non-excluded messages)
     """
+    if preprocessor.messages is not None:
+        messages = await preprocessor.messages(messages)
 
     def reduce_message(
         acc: tuple[list[str], list[str]], message: ChatMessage

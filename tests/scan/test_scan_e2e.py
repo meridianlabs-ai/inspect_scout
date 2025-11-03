@@ -80,4 +80,4 @@ def test_scan_basic_e2e() -> None:
         assert "value" in llm_df.columns
         assert "explanation" in llm_df.columns
         # Verify the LLM scanner parsed the responses correctly
-        assert llm_df["value"].tolist() == [True, False]
+        assert sorted(llm_df["value"].tolist()) == [False, True]

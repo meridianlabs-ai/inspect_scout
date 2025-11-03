@@ -104,8 +104,8 @@ website:
           href: reference/scanner.qmd#loader
         - text: llm_scanner
           href: reference/scanner.qmd#llm_scanner
-        - text: LLMScannerLabels
-          href: reference/scanner.qmd#llmscannerlabels
+        - text: MultiLabels
+          href: reference/scanner.qmd#multilabels
         - text: messages_as_str
           href: reference/scanner.qmd#messages_as_str
         - text: ContentFilter

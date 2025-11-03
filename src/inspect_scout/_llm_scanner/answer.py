@@ -40,15 +40,15 @@ class Answer(Protocol):
 
 
 def answer_from_argument(
-    answer: Literal["bool", "number", "str"] | list[str] | LLMScannerLabels,
+    answer: Literal["boolean", "numeric", "string"] | list[str] | LLMScannerLabels,
 ) -> Answer:
     if isinstance(answer, str):
         match answer:
-            case "bool":
+            case "boolean":
                 return _BoolAnswer()
-            case "number":
+            case "numeric":
                 return _NumberAnswer()
-            case "str":
+            case "string":
                 return _StrAnswer()
             case _:
                 raise ValueError(f"Invalid answer type: {answer}")

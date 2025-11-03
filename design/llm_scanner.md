@@ -303,7 +303,7 @@ For open-ended analysis where predefined categories don't fit, use `answer="str"
 def communication_style() -> Scanner[Transcript]:
     return llm_scanner(
         prompt="Describe the assistant's communication style and tone in this conversation.",
-        answer="str",
+        answer="string",
     )
 ```
 

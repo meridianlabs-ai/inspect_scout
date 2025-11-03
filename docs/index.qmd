@@ -160,7 +160,7 @@ def ctf_environment() -> Scanner[Transcript]:
         prompt = "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
             "preventing the agent from completing it's task?"
-        answer="bool"
+        answer="boolean"
     )
 ```
 

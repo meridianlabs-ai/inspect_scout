@@ -23,7 +23,7 @@ from .types import LLMScannerLabels
 def llm_scanner(
     *,
     prompt: str | LLMScannerPrompt,
-    answer: Literal["bool", "number", "str"] | list[str] | LLMScannerLabels,
+    answer: Literal["boolean", "numeric", "string"] | list[str] | LLMScannerLabels,
     messages: ContentFilter | None = None,
     model: str | Model | None = None,
     name: str | None = None,
@@ -36,7 +36,7 @@ def llm_scanner(
         prompt: The prompt to provide to the scanner LLM about
             what to analyze in the conversation (e.g., "Did the assistant refuse the request?"). Pass a `str` to just provide top level instructions; Pass `ScannerPrompt` for further customization.
         answer: Specification of the answer format.
-            Pass `bool`, `number`, or `str` for simple answer; pass `list[str]`
+            Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]`
             for a set of labels; or pass `LLMScannerLabels` for multi-classification.
         messages: Filter conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to filtering system messages.

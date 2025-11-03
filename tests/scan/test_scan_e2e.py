@@ -31,7 +31,7 @@ def llm_scanner_factory() -> Scanner[Transcript]:
     """LLM scanner that uses mockllm for testing."""
     return llm_scanner(
         prompt="Is this conversation helpful?",
-        answer="bool",
+        answer="boolean",
     )
 
 

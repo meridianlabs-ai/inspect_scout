@@ -283,12 +283,12 @@ ANSWER: C
 
 ### What You Get Back
 
-- `value`: `["C"]` (list of selected letters)
-- `answer`: `["Privacy violations"]` (list of label texts)
+- `value`: `["Privacy violations"]` (list of selected label texts)
+- `answer`: `"C"` (the raw answer text from the model)
 - `explanation`: The model's explanation
 - `references`: `[Reference(type="message", id="msg_user_001"), Reference(type="message", id="msg_assistant_001")]` (message IDs extracted from `[M1]` and `[M2]` references)
 
-Note: If multiple concerns were identified, the model response might be `ANSWER: B,C` resulting in `value: ["B", "C"]` and `answer: ["Illegal activity", "Privacy violations"]`.
+Note: If multiple concerns were identified, the model response might be `ANSWER: B,C` resulting in `value: ["Illegal activity", "Privacy violations"]` and `answer: "B,C"`.
 
 ---
 

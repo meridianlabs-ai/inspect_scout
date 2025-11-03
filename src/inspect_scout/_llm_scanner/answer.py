@@ -1,7 +1,7 @@
 import re
 from typing import Literal, Protocol, Sequence
 
-from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
+from inspect_ai._util.pattern import ANSWER_PATTERN_LINE, ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
     str_to_float,
     strip_numeric_punctuation,
@@ -10,11 +10,17 @@ from inspect_ai.model import (
     ModelOutput,
 )
 from inspect_ai.scorer._common import normalize_number
+from pydantic import JsonValue
 
 from inspect_scout._llm_scanner.types import LLMScannerLabels
 
 from .._scanner.result import Result
-from .prompt import BOOL_ANSWER_TEMPLATE, LABELS_ANSWER_TEMPLATE, NUMBER_ANSWER_TEMPLATE
+from .prompt import (
+    BOOL_ANSWER_TEMPLATE,
+    LABELS_ANSWER_TEMPLATE,
+    LABELS_ANSWER_TEMPLATE_MULTI,
+    NUMBER_ANSWER_TEMPLATE,
+)
 from .util import extract_references
 
 
@@ -128,34 +134,70 @@ class LabelsAnswer(Answer):
         if not self.labels:
             raise ValueError("Must have labels")
         formatted_choices, letters = _answer_options(self.labels)
-        return LABELS_ANSWER_TEMPLATE.format(
-            formatted_choices=formatted_choices, letters=letters
+        template = (
+            LABELS_ANSWER_TEMPLATE_MULTI
+            if self.multi_classification
+            else LABELS_ANSWER_TEMPLATE
         )
+        return template.format(formatted_choices=formatted_choices, letters=letters)
 
     def result_for_answer(
         self, output: ModelOutput, message_id_map: list[str]
     ) -> Result:
         if not self.labels:
             raise ValueError("Must have labels")
-        match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
+
+        # For multi-classification, allow comma-separated values on the line
+        pattern = (
+            ANSWER_PATTERN_LINE if self.multi_classification else ANSWER_PATTERN_WORD
+        )
+        match = re.search(pattern, output.completion, re.IGNORECASE)
 
         if match:
-            answer_letter = match.group(1).upper()
+            answer_text = match.group(1).strip()
             explanation = output.completion[: match.start()].strip()
             references = extract_references(explanation, message_id_map)
 
             # Generate valid characters for all labels
             valid_characters = [_answer_character(i) for i in range(len(self.labels))]
 
-            # Find if the answer matches any valid character
-            if answer_letter in valid_characters:
-                index = valid_characters.index(answer_letter)
-                return Result(
-                    value=answer_letter,
-                    answer=self.labels[index],
-                    explanation=explanation,
-                    references=references,
-                )
+            if self.multi_classification:
+                # Parse comma-separated letters
+                answer_letters = [
+                    letter.strip().upper() for letter in answer_text.split(",")
+                ]
+
+                # Filter to valid letters and deduplicate while preserving order
+                seen = set()
+                valid_letters = []
+                for letter in answer_letters:
+                    if letter in valid_characters and letter not in seen:
+                        valid_letters.append(letter)
+                        seen.add(letter)
+
+                # Return result if at least one valid letter found
+                if valid_letters:
+                    answer_labels: JsonValue = [
+                        self.labels[valid_characters.index(letter)]
+                        for letter in valid_letters
+                    ]
+                    return Result(
+                        value=answer_labels,
+                        answer=answer_text,
+                        explanation=explanation,
+                        references=references,
+                    )
+            else:
+                # Single classification - existing behavior
+                answer_letter = answer_text.upper()
+                if answer_letter in valid_characters:
+                    index = valid_characters.index(answer_letter)
+                    return Result(
+                        value=answer_letter,
+                        answer=self.labels[index],
+                        explanation=explanation,
+                        references=references,
+                    )
 
         return Result(value=None, explanation=output.completion)
 

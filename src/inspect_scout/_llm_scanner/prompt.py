@@ -57,3 +57,11 @@ LABELS_ANSWER_TEMPLATE = (
     "The last line of your response should be of the following format:\n"
     "'ANSWER: $LETTER' (without quotes) where LETTER is one of {letters}."
 )
+
+LABELS_ANSWER_TEMPLATE_MULTI = (
+    "Answer the following multiple choice question: {{question}}\n\n"
+    "{formatted_choices}\n\n"
+    "{{explanation_text}}\n\n"
+    "The last line of your response should be of the following format:\n"
+    "'ANSWER: $LETTERS' (without quotes) where LETTERS is a comma-separated list of letters from {letters}."
+)

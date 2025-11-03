@@ -39,6 +39,17 @@ from inspect_scout._llm_scanner.answer import (
                 "'ANSWER: $LETTER' (without quotes) where LETTER is one of A,B,C",
             ],
         ),
+        (
+            LabelsAnswer(
+                labels=["Choice A", "Choice B", "Choice C"], multi_classification=True
+            ),
+            [
+                "Answer the following multiple choice question: {question}",
+                "A) Choice A\nB) Choice B\nC) Choice C",
+                "{explanation_text}",
+                "'ANSWER: $LETTERS' (without quotes) where LETTERS is a comma-separated list of letters from A,B,C",
+            ],
+        ),
     ],
 )
 def test_answer_templates(answer_type: Answer, expected_fragments: list[str]) -> None:
@@ -142,6 +153,117 @@ def test_labels_results(
 ) -> None:
     """Labels results parse various completion patterns."""
     answer = LabelsAnswer(labels=labels)
+    output = ModelOutput(model="test", completion=completion)
+
+    result = answer.result_for_answer(output, [])
+
+    assert result.value == expected_value
+    assert result.answer == expected_answer
+    assert result.explanation == expected_explanation
+
+
+@pytest.mark.parametrize(
+    "labels,completion,expected_value,expected_answer,expected_explanation",
+    [
+        # Single answer
+        (
+            ["Violence or harm", "Illegal activity", "Privacy violations"],
+            "Analysis.\n\nANSWER: C",
+            ["Privacy violations"],
+            "C",
+            "Analysis.",
+        ),
+        # Multiple answers
+        (
+            ["Violence or harm", "Illegal activity", "Privacy violations"],
+            "Analysis.\n\nANSWER: B,C",
+            ["Illegal activity", "Privacy violations"],
+            "B,C",
+            "Analysis.",
+        ),
+        # Multiple answers with spaces
+        (
+            ["First", "Second", "Third", "Fourth"],
+            "Clear.\n\nANSWER: A, C, D",
+            ["First", "Third", "Fourth"],
+            "A, C, D",
+            "Clear.",
+        ),
+        # Case insensitive
+        (
+            ["First", "Second", "Third"],
+            "Think.\n\nANSWER: b,c",
+            ["Second", "Third"],
+            "b,c",
+            "Think.",
+        ),
+        # Mixed case and spacing
+        (
+            ["First", "Second", "Third"],
+            "Mixed.\n\nANSWER: a, B,c",
+            ["First", "Second", "Third"],
+            "a, B,c",
+            "Mixed.",
+        ),
+        # Invalid letters filtered out
+        (
+            ["First", "Second"],
+            "Some invalid.\n\nANSWER: A,Z,B",
+            ["First", "Second"],
+            "A,Z,B",
+            "Some invalid.",
+        ),
+        # All invalid letters
+        (
+            ["First", "Second"],
+            "All invalid.\n\nANSWER: X,Y,Z",
+            None,
+            None,
+            "All invalid.\n\nANSWER: X,Y,Z",
+        ),
+        # No pattern
+        (
+            ["First", "Second"],
+            "No answer pattern here",
+            None,
+            None,
+            "No answer pattern here",
+        ),
+        # Empty answer
+        (
+            ["First", "Second"],
+            "Empty.\n\nANSWER: ",
+            None,
+            None,
+            "Empty.\n\nANSWER: ",
+        ),
+        # Duplicate letters (should deduplicate)
+        (
+            ["First", "Second", "Third"],
+            "Duplicates.\n\nANSWER: A,A,B",
+            ["First", "Second"],
+            "A,A,B",
+            "Duplicates.",
+        ),
+        # Large number of choices
+        (
+            [f"Choice {i + 1}" for i in range(27)],
+            "Many.\n\nANSWER: A,Z,1",
+            ["Choice 1", "Choice 26", "Choice 27"],
+            "A,Z,1",
+            "Many.",
+        ),
+    ],
+)
+def test_multi_classification_results(
+    labels: list[str],
+    completion: str,
+    expected_value: list[str] | None,
+    expected_answer: str | None,
+    expected_explanation: str,
+) -> None:
+    """Multi-classification results parse comma-separated letters."""
+    answer = LabelsAnswer(labels=labels, multi_classification=True)
     output = ModelOutput(model="test", completion=completion)
 
     result = answer.result_for_answer(output, [])

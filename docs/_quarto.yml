@@ -96,4 +96,7 @@ format:
      code-annotations: select
      fig-width: 8
      fig-height: 4
+     syntax-definitions: 
+        - jinja2.xml
+  
 

@@ -150,3 +150,8 @@ img.navbar-logo {
 table>caption {
     display: none;
 }
+
+.jinja2 .ot {
+    font-weight: 700;
+    color: var(--quarto-hl-fu-color);
+}

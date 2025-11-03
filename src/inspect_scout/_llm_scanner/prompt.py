@@ -65,3 +65,10 @@ LABELS_ANSWER_TEMPLATE_MULTI = (
     "The last line of your response should be of the following format:\n"
     "'ANSWER: $LETTERS' (without quotes) where LETTERS is a comma-separated list of letters from {letters}."
 )
+
+STR_ANSWER_TEMPLATE = (
+    "Answer the following question: {question}\n\n"
+    "{explanation_text}\n\n"
+    "The last line of your response should be of the following format:\n"
+    "'ANSWER: $TEXT' (without quotes) where TEXT is your answer."
+)

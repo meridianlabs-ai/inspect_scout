@@ -50,6 +50,14 @@ from inspect_scout._llm_scanner.answer import (
                 "'ANSWER: $LETTERS' (without quotes) where LETTERS is a comma-separated list of letters from A,B,C",
             ],
         ),
+        (
+            _StrAnswer(),
+            [
+                "Answer the following question: {question}",
+                "{explanation_text}",
+                "'ANSWER: $TEXT' (without quotes) where TEXT is your answer",
+            ],
+        ),
     ],
 )
 def test_answer_templates(answer_type: Answer, expected_fragments: list[str]) -> None:
@@ -57,14 +65,6 @@ def test_answer_templates(answer_type: Answer, expected_fragments: list[str]) ->
     result = answer_type.answer_portion_template()
     for fragment in expected_fragments:
         assert fragment in result
-
-
-def test_unsupported_answer_type() -> None:
-    """Unsupported answer types raise NotImplementedError."""
-    with pytest.raises(
-        NotImplementedError, match="Support for 'str' not yet implemented"
-    ):
-        _StrAnswer().answer_portion_template()
 
 
 @pytest.mark.parametrize(
@@ -264,6 +264,98 @@ def test_multi_classification_results(
 ) -> None:
     """Multi-classification results parse comma-separated letters."""
     answer = LabelsAnswer(labels=labels, multi_classification=True)
+    output = ModelOutput(model="test", completion=completion)
+
+    result = answer.result_for_answer(output, [])
+
+    assert result.value == expected_value
+    assert result.answer == expected_answer
+    assert result.explanation == expected_explanation
+
+
+@pytest.mark.parametrize(
+    "completion,expected_value,expected_answer,expected_explanation",
+    [
+        # Basic text extraction
+        (
+            "Explanation here.\n\nANSWER: Simple response",
+            "Simple response",
+            "Simple response",
+            "Explanation here.",
+        ),
+        # Multi-word answer
+        (
+            "Analysis.\n\nANSWER: Empathetic, patient, and solution-focused with professional warmth",
+            "Empathetic, patient, and solution-focused with professional warmth",
+            "Empathetic, patient, and solution-focused with professional warmth",
+            "Analysis.",
+        ),
+        # Answer with punctuation
+        (
+            "Context.\n\nANSWER: The user's question is unclear.",
+            "The user's question is unclear.",
+            "The user's question is unclear.",
+            "Context.",
+        ),
+        # Answer with special characters
+        (
+            "Reasoning.\n\nANSWER: 50% improvement (approximately)",
+            "50% improvement (approximately)",
+            "50% improvement (approximately)",
+            "Reasoning.",
+        ),
+        # Longer explanation
+        (
+            "First paragraph.\n\nSecond paragraph with details.\n\nANSWER: Short answer",
+            "Short answer",
+            "Short answer",
+            "First paragraph.\n\nSecond paragraph with details.",
+        ),
+        # Answer with trailing whitespace
+        (
+            "Explain.\n\nANSWER: Response text   ",
+            "Response text",
+            "Response text",
+            "Explain.",
+        ),
+        # No pattern
+        (
+            "No answer pattern here",
+            None,
+            None,
+            "No answer pattern here",
+        ),
+        # Empty answer
+        (
+            "Empty.\n\nANSWER: ",
+            None,
+            None,
+            "Empty.\n\nANSWER: ",
+        ),
+        # Answer with only whitespace
+        (
+            "Whitespace.\n\nANSWER:    ",
+            None,
+            None,
+            "Whitespace.\n\nANSWER:    ",
+        ),
+        # Single word answer
+        (
+            "Think.\n\nANSWER: Yes",
+            "Yes",
+            "Yes",
+            "Think.",
+        ),
+    ],
+)
+def test_str_results(
+    completion: str,
+    expected_value: str | None,
+    expected_answer: str | None,
+    expected_explanation: str,
+) -> None:
+    """Str results parse free-text answers."""
+    answer = _StrAnswer()
     output = ModelOutput(model="test", completion=completion)
 
     result = answer.result_for_answer(output, [])

@@ -20,6 +20,7 @@ from .prompt import (
     LABELS_ANSWER_TEMPLATE,
     LABELS_ANSWER_TEMPLATE_MULTI,
     NUMBER_ANSWER_TEMPLATE,
+    STR_ANSWER_TEMPLATE,
 )
 from .util import extract_references
 
@@ -203,15 +204,33 @@ class LabelsAnswer(Answer):
 
 
 class _StrAnswer(Answer):
-    """Answer implementation for free-text questions (not yet implemented)."""
+    """Answer implementation for free-text questions."""
 
     def answer_portion_template(self) -> str:
-        raise NotImplementedError("Support for 'str' not yet implemented")
+        return STR_ANSWER_TEMPLATE
 
     def result_for_answer(
-        self, _output: ModelOutput, _message_id_map: list[str]
+        self, output: ModelOutput, message_id_map: list[str]
     ) -> Result:
-        raise NotImplementedError("Support for 'str' not yet implemented")
+        match = re.search(ANSWER_PATTERN_LINE, output.completion, re.IGNORECASE)
+
+        if match:
+            answer_text = match.group(1).strip()
+            # Empty or whitespace-only answers are treated as None
+            if not answer_text:
+                return Result(value=None, explanation=output.completion)
+
+            explanation = output.completion[: match.start()].strip()
+            references = extract_references(explanation, message_id_map)
+
+            return Result(
+                value=answer_text,
+                answer=answer_text,
+                explanation=explanation,
+                references=references,
+            )
+
+        return Result(value=None, explanation=output.completion)
 
 
 def _safe_str_to_float(maybe_numeric: str) -> float | None:

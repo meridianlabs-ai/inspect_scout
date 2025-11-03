@@ -221,6 +221,7 @@ def scan_panel(
     scanners.add_column(justify="right")  # results
     scanners.add_column(justify="right")  # erorrs
     scanners.add_column(justify="right")  # tokens/scan
+    scanners.add_column()  # spacer
     scanners.add_column(justify="right")  # total tokens
     scanners.add_row(
         "[bold]scanner[/bold]",
@@ -228,6 +229,7 @@ def scan_panel(
         "[bold]results[/bold]",
         "[bold]errors[/bold]",
         "[bold]tokens/scan[/bold]",
+        "",
         "[bold]tokens[/bold]",
         style=theme.meta,
     )
@@ -243,6 +245,7 @@ def scan_panel(
             f"{results.tokens // results.scans:,}"
             if results.tokens and results.scans
             else NONE,
+            "",
             f"{results.tokens:,}" if results.tokens else NONE,
         )
 

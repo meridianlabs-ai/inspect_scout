@@ -996,36 +996,32 @@ def response_quality() -> Scanner[Transcript]:
     )
 ```
 
-See the section below for more details on how prompts are constructed
-for `llm_scanner()`. See the following sections below for the specific
-prompts generated for various answer types: [boolean](#answer-boolean),
-[numeric](#answer-numeric), [string](#answer-string),
-[labels](#answer-labels).
+The section below provides more details on how prompts are constructed
+for `llm_scanner()`.
 
 ## Prompt Template
 
-Here is the structure of the prompt template for `llm_scanner()` (note
-that prompt templates are processed using
+Here is the structure of the default `template` for `llm_scanner()`
+(note that prompt templates are processed using
 [jinja2](https://pypi.org/project/Jinja2/)):
 
 ``` jinja2
 Here is an LLM conversation between a user and an assistant:
 
 ===================================
-{messages}
+{{ messages }}
 ===================================
 
-{answer_prompt}: {question}
+{{ answer_prompt }}: {{ question }}
 
-Your response should include an explanation of your assessment. It should include
-the message id's (e.g. '[M2]') to clarify which message(s) you are referring
-to.
+Your response should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
 
 The last line of your response should be of the following format:
 
-{answer_format}
+{{ answer_format }}
 ```
 
+You can provide your own `template` as an argument to `llm_scanner()`.
 The following substitutable values are available for prompt templates:
 
 | Variable | Description |
@@ -1033,15 +1029,15 @@ The following substitutable values are available for prompt templates:
 | `{{ messages }}` | The message list formatted via `messages_to_str()` |
 | `{{ answer_prompt }}` | The prompt used by the current answer type (e.g. “Answer the following yes or no question:”) |
 | `{{ question }}` | Question about the transcript posed to the LLM (e.g. “Did the assistant refuse the user’s request?”) |
-| `{{ answer_format }}` | Formatting guidelines used by the current answer type (e.g. “‘ANSWER: xxx’ (without quotes) where xxx is yes or no.”) |
+| `{{ answer_format }}` | Formatting guidelines used by the current answer type (e.g. ““‘ANSWER: \$VALUE’ (without quotes) where \$VALUE is yes or no.”) |
 | `{{ score }}` | Score of sample (if available, `None` if not) |
 | `{{ score_* }}` | Additional scores (if available) |
 | `{{ variables }}` | Dictionary of variables associated with transcript (e.g. sample metadata) |
 
 ## Scanner Results
 
-The following provides an end to end example of a scanner, the generated
-prompt, and the results yielded back from the scanner.
+The following provides an end to end example of a scanner, generated
+prompt, model response, results yielded back from the scanner.
 
 #### Scanner
 
@@ -1103,13 +1099,13 @@ and format for answers of type [boolean](#answer-boolean),
 
 ## Content Filtering
 
-Messages are included within the prompt template by calling the
-`messages_to_str()` function, passing any `ContentFilter` passed to
-`llm_scanner()`. The content filter includes the following fields:
+Transcript messages are included within the prompt template subject to a
+`ContentFilter` passed to `llm_scanner()`. The content filter includes
+the following fields:
 
 |  |  |
 |----|----|
-| `messages` | Function which takes the list of messages and returns a filtered list. |
+| `messages` | Optional function which takes the list of messages and returns a filtered list. |
 | `exclude_system` | Exclude system messages (defaults to `True`) |
 | `exclude_reasoning` | Exclude reasoning content (defaults to `False`) |
 | `exclude_tool_usage` | Excluding tool calls and output (defaults to `False`) |

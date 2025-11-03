@@ -340,27 +340,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Harmful - contains unsafe content"</span>,</span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        ]</span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See the section below for more details on how prompts are constructed for <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>. See the following sections below for the specific prompts generated for various answer types: <a href="#answer-boolean">boolean</a>, <a href="#answer-numeric">numeric</a>, <a href="#answer-string">string</a>, <a href="#answer-labels">labels</a>.</p>
+<p>The section below provides more details on how prompts are constructed for <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>.</p>
 </section>
 <section id="prompt-template" class="level2">
 <h2 class="anchored" data-anchor-id="prompt-template">Prompt Template</h2>
-<p>Here is the structure of the prompt template for <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> (note that prompt templates are processed using <a href="https://pypi.org/project/Jinja2/">jinja2</a>):</p>
+<p>Here is the structure of the default <code>template</code> for <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> (note that prompt templates are processed using <a href="https://pypi.org/project/Jinja2/">jinja2</a>):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode jinja2 code-with-copy"><code class="sourceCode jinja2"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Here is an LLM conversation between a user and an assistant:</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>===================================</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>{messages}</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="ot">{{</span> messages <span class="ot">}}</span></span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>===================================</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>{answer_prompt}: {question}</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="ot">{{</span> answer_prompt <span class="ot">}}</span>: <span class="ot">{{</span> question <span class="ot">}}</span></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>Your response should include an explanation of your assessment. It should include</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>the message id's (e.g. '[M2]') to clarify which message(s) you are referring</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>to.</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>Your response should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>The last line of your response should be of the following format:</span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>The last line of your response should be of the following format:</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>{answer_format}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The following substitutable values are available for prompt templates:</p>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="ot">{{</span> answer_format <span class="ot">}}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can provide your own <code>template</code> as an argument to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>. The following substitutable values are available for prompt templates:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 40%">
@@ -387,7 +385,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>{{ answer_format }}</code></td>
-<td>Formatting guidelines used by the current answer type (e.g.&nbsp;“‘ANSWER: xxx’ (without quotes) where xxx is yes or no.”)</td>
+<td>Formatting guidelines used by the current answer type (e.g.&nbsp;““‘ANSWER: $VALUE’ (without quotes) where $VALUE is yes or no.”)</td>
 </tr>
 <tr class="odd">
 <td><code>{{ score }}</code></td>
@@ -406,7 +404,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="scanner-results" class="level2">
 <h2 class="anchored" data-anchor-id="scanner-results">Scanner Results</h2>
-<p>The following provides an end to end example of a scanner, the generated prompt, and the results yielded back from the scanner.</p>
+<p>The following provides an end to end example of a scanner, generated prompt, model response, results yielded back from the scanner.</p>
 <section id="scanner" class="level4">
 <h4 class="anchored" data-anchor-id="scanner">Scanner</h4>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
@@ -475,16 +473,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="content-filtering" class="level2">
 <h2 class="anchored" data-anchor-id="content-filtering">Content Filtering</h2>
-<p>Messages are included within the prompt template by calling the <code>messages_to_str()</code> function, passing any <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#contentfilter">ContentFilter</a></span> passed to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>. The content filter includes the following fields:</p>
+<p>Transcript messages are included within the prompt template subject to a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#contentfilter">ContentFilter</a></span> passed to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>. The content filter includes the following fields:</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 50%">
-<col style="width: 50%">
+<col style="width: 35%">
+<col style="width: 65%">
 </colgroup>
 <tbody>
 <tr class="odd">
 <td><code>messages</code></td>
-<td>Function which takes the list of messages and returns a filtered list.</td>
+<td>Optional function which takes the list of messages and returns a filtered list.</td>
 </tr>
 <tr class="even">
 <td><code>exclude_system</code></td>

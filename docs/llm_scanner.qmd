@@ -137,8 +137,6 @@ The `Result` object returned from the scanner will consist of:
 
 : {tbl-colwidths=\[25,75\]}
 
-The answer-specific sections below provide documentation on the prompt and format for answers of type [boolean](#answer-boolean), [numeric](#answer-numeric), [string](#answer-string), and [labels](#answer-labels).
-
 ## Content Filtering
 
 Transcript messages are included within the prompt template subject to a `ContentFilter` passed to `llm_scanner()`. The content filter includes the following fields:

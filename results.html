@@ -476,8 +476,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>scan_tags</code></td>
-<td>list[str]<br><br>
-<small>JSON</small></td>
+<td>list[str]<br><small>JSON</small></td>
 <td>Tags associated with the scan.</td>
 </tr>
 <tr class="odd">
@@ -579,6 +578,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
 <td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
+</tr>
+<tr class="odd">
+<td><code>validation_target</code></td>
+<td>JsonValue<br><small>JSON</small></td>
+<td>Target value from validation set.</td>
+</tr>
+<tr class="even">
+<td><code>validation_result</code></td>
+<td>JsonValue<br><small>JSON</small></td>
+<td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
 </tr>
 </tbody>
 </table>

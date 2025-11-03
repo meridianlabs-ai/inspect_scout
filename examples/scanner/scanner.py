@@ -3,7 +3,7 @@ from pathlib import Path
 
 from inspect_ai.model import ChatMessageAssistant
 from inspect_scout import (
-    LLMScannerLabels,
+    MultiLabels,
     Result,
     Scanner,
     llm_scanner,
@@ -37,7 +37,7 @@ def efficiency() -> Scanner[Transcript]:
 def efficiency_labels() -> Scanner[Transcript]:
     return llm_scanner(
         question="How efficiently did the assistant perform?",
-        answer=LLMScannerLabels(
+        answer=MultiLabels(
             labels=[
                 "Very efficiently",
                 "Somewhat efficiently",

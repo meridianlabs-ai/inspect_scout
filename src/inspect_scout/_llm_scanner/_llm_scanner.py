@@ -17,14 +17,14 @@ from .._scanner.util import _message_id
 from .._transcript.types import Transcript
 from .answer import answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
-from .types import LLMScannerLabels
+from .types import MultiLabels
 
 
 @scanner(messages="all")
 def llm_scanner(
     *,
     question: str,
-    answer: Literal["boolean", "numeric", "string"] | list[str] | LLMScannerLabels,
+    answer: Literal["boolean", "numeric", "string"] | list[str] | MultiLabels,
     template: str | None = None,
     messages: ContentFilter | None = None,
     model: str | Model | None = None,
@@ -38,7 +38,7 @@ def llm_scanner(
         question: Question for the scanner to answer. (e.g., "Did the assistant refuse the request?")
         answer: Specification of the answer format.
             Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]`
-            for a set of labels; or pass `LLMScannerLabels` for multi-classification.
+            for a set of labels; or pass `MultiLabels` for multi-classification.
         template: Overall template for scanner prompt.
             The scanner template should include the following variables:
               - {{ question }} (question for the model to answer)

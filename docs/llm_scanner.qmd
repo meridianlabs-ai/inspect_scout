@@ -141,13 +141,15 @@ The answer-specific sections below provide documentation on the prompt and forma
 
 ## Content Filtering
 
-Messages are included within the prompt template by calling the `messages_to_str()` function, passing any `ContentFilter` passed to `llm_scanner()`. The content filter includes the following fields:
+Transcript messages are included within the prompt template subject to a `ContentFilter` passed to `llm_scanner()`. The content filter includes the following fields:
 
 |  |  |
 |------------------------------------|------------------------------------|
-| `messages` | Function which takes the list of messages and returns a filtered list. |
+| `messages` | Optional function which takes the list of messages and returns a filtered list. |
 | `exclude_system` | Exclude system messages (defaults to `True`) |
 | `exclude_reasoning` | Exclude reasoning content (defaults to `False`) |
 | `exclude_tool_usage` | Excluding tool calls and output (defaults to `False`) |
+
+: {tbl-colwidths=\[35,65\]}
 
 The default `ContentFilter` removes system messages and does no other transformation.

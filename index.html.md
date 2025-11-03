@@ -326,7 +326,9 @@ scan(
 )
 ```
 
-To learn more see the article on [Validation](validation.qmd).
+Validation results are reported both in the scan status/summary UI as
+well as within columns in the data frame produced for each scanner. To
+learn more see the article on [Validation](validation.qmd).
 
 ## Handling Errors
 

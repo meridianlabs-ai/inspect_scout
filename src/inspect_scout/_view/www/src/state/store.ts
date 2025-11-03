@@ -12,7 +12,7 @@ interface StoreState {
   selectedScan?: Results;
   selectedScanLocation?: string;
   resultsDir?: string;
-  properties: Record<string, Record<string, unknown>>;
+  properties: Record<string, Record<string, unknown> | undefined>;
   scrollPositions: Record<string, number>;
   listPositions: Record<string, StateSnapshot>;
   visibleRanges: Record<string, { startIndex: number; endIndex: number }>;
@@ -114,16 +114,27 @@ export const useStore = create<StoreState>()(
 
         removePropertyValue(id: string, propertyName: string) {
           set((state) => {
-            if (state.properties[id]) {
-              // TODO: Revisit
-              // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-              delete state.properties[id][propertyName];
-              if (Object.keys(state.properties[id]).length === 0) {
-                // TODO: Revisit
-                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-                delete state.properties[id];
-              }
+            const propertyGroup = state.properties[id];
+
+            // No property, go ahead and return
+            if (!propertyGroup || !propertyGroup[propertyName]) {
+              return;
             }
+
+            // Destructure to remove the property
+            const { [propertyName]: _removed, ...remainingProperties } =
+              propertyGroup;
+
+            // If no remaining properties, remove the entire group
+            if (Object.keys(remainingProperties).length === 0) {
+              const { [id]: _removedGroup, ...remainingGroups } =
+                state.properties;
+              state.properties = remainingGroups;
+              return;
+            }
+
+            // Update to the delete properties
+            state.properties[id] = remainingProperties;
           });
         },
         getScrollPosition(path) {

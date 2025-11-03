@@ -19848,12 +19848,17 @@ const useStore = create()(
         },
         removePropertyValue(id, propertyName) {
           set2((state) => {
-            if (state.properties[id]) {
-              delete state.properties[id][propertyName];
-              if (Object.keys(state.properties[id]).length === 0) {
-                delete state.properties[id];
-              }
+            const propertyGroup = state.properties[id];
+            if (!propertyGroup || !propertyGroup[propertyName]) {
+              return;
             }
+            const { [propertyName]: _removed, ...remainingProperties } = propertyGroup;
+            if (Object.keys(remainingProperties).length === 0) {
+              const { [id]: _removedGroup, ...remainingGroups } = state.properties;
+              state.properties = remainingGroups;
+              return;
+            }
+            state.properties[id] = remainingProperties;
           });
         },
         getScrollPosition(path) {

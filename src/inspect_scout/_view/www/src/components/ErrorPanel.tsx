@@ -1,6 +1,6 @@
 import { FC } from "react";
 import "./ErrorPanel.css";
-import { ApplicationIcons } from "../app/theme/icons";
+import { ApplicationIcons } from "../app/appearance/icons";
 
 export interface DisplayError {
   message: string;

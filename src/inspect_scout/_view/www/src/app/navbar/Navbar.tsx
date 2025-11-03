@@ -8,7 +8,7 @@ import styles from "./Navbar.module.css";
 import { useStore } from "../../state/store";
 import { getRelativePathFromParams, scansRoute } from "../../router/url";
 import { useBreadcrumbTruncation } from "./useBreadcrumbTruncation";
-import { ApplicationIcons } from "../theme/icons";
+import { ApplicationIcons } from "../appearance/icons";
 
 interface NavbarProps {
   children?: ReactNode;

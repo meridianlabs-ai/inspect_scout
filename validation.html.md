@@ -113,7 +113,7 @@ In the above examples, we provided a validation set of transcript_id =\>
 boolean. Of course, not every scanner takes a transcript id (some take
 event or message ids). All of these other variations are supported
 (including lists of events or messages yielded by a custom
-[Loader](scanner.qmd#loader)). You can also use any valid JSON value as
+[Loader](scanners.qmd#loader)). You can also use any valid JSON value as
 the `target`
 
 For example, imagine we have a scanner that counts the incidences of

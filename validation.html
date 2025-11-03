@@ -388,7 +388,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ids-and-targets" class="level2">
 <h2 class="anchored" data-anchor-id="ids-and-targets">IDs and Targets</h2>
-<p>In the above examples, we provided a validation set of transcript_id =&gt; boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom <a href="scanner.qmd#loader">Loader</a>). You can also use any valid JSON value as the <code>target</code></p>
+<p>In the above examples, we provided a validation set of transcript_id =&gt; boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom <a href="./scanners.html#loader">Loader</a>). You can also use any valid JSON value as the <code>target</code></p>
 <p>For example, imagine we have a scanner that counts the incidences of “backtracking” in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =&gt; number:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">

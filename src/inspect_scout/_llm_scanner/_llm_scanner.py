@@ -9,14 +9,14 @@ from inspect_ai.model import (
 )
 from pydantic import JsonValue
 
+from .._scanner.extract import ContentFilter, message_as_str
 from .._scanner.result import Result
 from .._scanner.scanner import Scanner, scanner
 from .._scanner.util import _message_id
 from .._transcript.types import Transcript
 from .answer import answer_from_argument
-from .extract import message_as_str
 from .prompt import LLMScannerPrompt
-from .types import LLMScannerLabels, LLMScannerMessages
+from .types import LLMScannerLabels
 
 
 @scanner(messages="all")
@@ -24,7 +24,7 @@ def llm_scanner(
     *,
     prompt: str | LLMScannerPrompt,
     answer: Literal["bool", "number", "str"] | list[str] | LLMScannerLabels,
-    messages: LLMScannerMessages | None = None,
+    messages: ContentFilter | None = None,
     model: str | Model | None = None,
     name: str | None = None,
 ) -> Scanner[Transcript]:
@@ -48,7 +48,7 @@ def llm_scanner(
         A Scanner function that analyzes Transcript instances and returns Results based on the LLM's assessment according to the specified prompt and answer format
     """
     if messages is None:
-        messages = LLMScannerMessages()
+        messages = ContentFilter()
     if isinstance(prompt, str):
         prompt = LLMScannerPrompt(question=prompt)
     resolved_answer = answer_from_argument(answer)
@@ -97,7 +97,7 @@ def _variables_for_transcript(transcript: Transcript) -> dict[str, JsonValue]:
 
 
 def _messages_with_ids(
-    messages: list[ChatMessage], preprocessor: LLMScannerMessages
+    messages: list[ChatMessage], preprocessor: ContentFilter
 ) -> tuple[str, list[str]]:
     """Format messages with 1-based local message IDs prepended.
 
@@ -113,14 +113,7 @@ def _messages_with_ids(
         acc: tuple[list[str], list[str]], message: ChatMessage
     ) -> tuple[list[str], list[str]]:
         formatted_messages, message_id_map = acc
-        if (
-            msg_str := message_as_str(
-                message,
-                exclude_tool_usage=preprocessor.exclude_tool_usage,
-                exclude_reasoning=preprocessor.exclude_reasoning,
-                exclude_system=preprocessor.exclude_system,
-            )
-        ) is not None:
+        if (msg_str := message_as_str(message, preprocessor)) is not None:
             message_id_map.append(_message_id(message))
             formatted_messages.append(f"[M{len(message_id_map)}] {msg_str}")
         return formatted_messages, message_id_map

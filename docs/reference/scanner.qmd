@@ -16,12 +16,12 @@ reference: "inspect_scout"
 
 ### llm_scanner
 ### LLMScannerPrompt
-### LLMScannerMessages
 ### LLMScannerLabels
 
 ## Utils
 
 ### messages_as_str
+### ContentFilter
 
 ## Types
 

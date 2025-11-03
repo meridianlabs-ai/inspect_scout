@@ -1,7 +1,8 @@
 import re
 
 from inspect_ai.model import get_model
-from inspect_scout import Result, Scanner, Transcript, messages_as_str, scanner
+from inspect_scout import Result, Scanner, Transcript, scanner
+from inspect_scout._scanner.extract import messages_as_str
 
 
 @scanner(messages="all")

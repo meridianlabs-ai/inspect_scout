@@ -15,7 +15,7 @@ from inspect_ai.model import (
     ChatMessageUser,
 )
 from inspect_ai.tool import ToolCall, ToolCallError
-from inspect_scout._llm_scanner.extract import message_as_str
+from inspect_scout._scanner.extract import ContentFilter, message_as_str
 
 
 @pytest.mark.parametrize(
@@ -508,7 +508,8 @@ def test_exclude_parameters(
     """Test exclude_tool_usage and exclude_reasoning parameters control output."""
     result = message_as_str(
         message,
-        exclude_tool_usage=exclude_tool_usage,
-        exclude_reasoning=exclude_reasoning,
+        ContentFilter(
+            exclude_tool_usage=exclude_tool_usage, exclude_reasoning=exclude_reasoning
+        ),
     )
     assert result == expected

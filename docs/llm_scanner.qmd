@@ -2,3 +2,19 @@
 title: "LLM Scanner"
 ---
 
+## Overview
+
+The `llm_scanner()` provides a core implementation of an LLM-based `Transcript` scanner with the following features:
+
+-   Prompt templates with the ability to customize the core instructions, explanation, and answer provided by the scanner.
+-   Filtering of message history to include or exclude system messages, tool calls, and reasoning traces.
+-   Textual presentation of message history including a numbering scheme that enables models to point out specific messages where they see a behavior.
+-   Answer extraction supporting a variety of types (boolean, number, string, or labels)
+
+## Basic Usage
+
+## Answer Types
+
+## Prompt Template
+
+## Message Filtering

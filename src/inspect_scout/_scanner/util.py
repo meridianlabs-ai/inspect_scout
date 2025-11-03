@@ -1,27 +1,12 @@
 from typing import Sequence, cast
 
 from inspect_ai.analysis._dataframe.extract import auto_id
-from inspect_ai.analysis._dataframe.extract import (
-    messages_as_str as messages_as_str_impl,
-)
 from inspect_ai.event import Event
 from inspect_ai.event._base import BaseEvent
 from inspect_ai.model import ChatMessage, ChatMessageBase
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
-
-
-def messages_as_str(messages: list[ChatMessage]) -> str:
-    """Concatenate list of chat messages into a string.
-
-    Args:
-       messages: List of chat messages
-
-    Returns:
-       str: Messages as a string.
-    """
-    return messages_as_str_impl(messages)
 
 
 def get_input_type_and_ids(

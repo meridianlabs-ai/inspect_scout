@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
@@ -6,25 +8,50 @@ from inspect_ai.model import (
 )
 
 
+class ContentFilter(NamedTuple):
+    """Message content options for LLM scanner."""
+
+    exclude_system: bool = True
+    """Exclude system messages (defaults to `True`)"""
+
+    exclude_reasoning: bool = False
+    """Exclude reasoning content (defaults to `False`)."""
+
+    exclude_tool_usage: bool = False
+    """Exclude tool usage (defaults to `False`)"""
+
+
+def messages_as_str(
+    messages: list[ChatMessage], filter: ContentFilter | None = None
+) -> str:
+    """Concatenate list of chat messages into a string.
+
+    Args:
+       messages: List of chat messages
+       filter: Content filter for messages.
+
+    Returns:
+       str: Messages as a string.
+    """
+    return "\n".join([message_as_str(m, filter) or "" for m in messages])
+
+
 def message_as_str(
-    message: ChatMessage,
-    *,
-    exclude_system: bool = True,
-    exclude_tool_usage: bool = False,
-    exclude_reasoning: bool = False,
+    message: ChatMessage, filter: ContentFilter | None = None
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
     Args:
         message: The `ChatMessage` to convert.
-        exclude_system: If `True`, return None for system messages. Defaults to `True`.
-        exclude_tool_usage: If `True`, exclude tool calls and tool messages. Defaults to `False`.
-        exclude_reasoning: If `True`, exclude reasoning content blocks. Defaults to `False`.
+        filter: Content filter for messages.
 
     Returns:
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
     """
+    filter = filter or ContentFilter()
+    exclude_system, exclude_reasoning, exclude_tool_usage = filter
+
     if exclude_system and message.role == "system":
         return None
 

@@ -1,6 +1,5 @@
 from ._llm_scanner import (
     LLMScannerLabels,
-    LLMScannerMessages,
     LLMScannerPrompt,
     llm_scanner,
 )
@@ -17,12 +16,12 @@ from ._scan import (
 )
 from ._scanjob import ScanJob, ScanJobConfig, scanjob
 from ._scanlist import scan_list
+from ._scanner.extract import ContentFilter, messages_as_str
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Reference, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanner.scorer import as_scorer
 from ._scanner.types import ScannerInput
-from ._scanner.util import messages_as_str
 from ._scanresults import (
     scan_results,
     scan_results_db,
@@ -99,7 +98,6 @@ __all__ = [
     "Error",
     "Scanner",
     "ScannerInput",
-    "messages_as_str",
     "Result",
     "Reference",
     "scanner",
@@ -108,10 +106,11 @@ __all__ = [
     "EventType",
     "MessageType",
     "as_scorer",
+    "messages_as_str",
+    "ContentFilter",
     # llm_scanner
     "llm_scanner",
     "LLMScannerPrompt",
-    "LLMScannerMessages",
     "LLMScannerLabels",
     # validation
     "ValidationSet",

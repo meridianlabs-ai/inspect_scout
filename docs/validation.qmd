@@ -2,5 +2,139 @@
 title: "Validation"
 ---
 
+## Overview
 
+When developing scanners and scanner prompts, it's often desirable to create a feedback loop based on some "ground truth" regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.
 
+## Validation Basics
+
+A `ValidationSet` contains a list of `ValidationCase`, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and boolean indicating which `value` the scanner should have returned. For example:
+
+``` {.default filename="ctf-validation.csv"}
+Fg3KBpgFr6RSsEWmHBUqeo, true
+VFkCH7gXWpJYUYonvfHxrG, false
+SiEXpECj7U9nNAvM3H7JqB, true
+```
+
+How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.
+
+Use the **Copy UUID** button to copy the ID for the transcript you are reviewing:
+
+![](images/sample-uuid.png){.border-bottom}
+
+You'll typically create a distinct validation set for each scanner, and then pass the validation sets to `scan()` as a dict mapping scanner to set:
+
+``` {.python filename="scanning.py"}
+from inspect_scout import scan, validation_set
+
+scan(
+    scanners=[ctf_environment(), java_tool_usages()],
+    transcripts="./logs",
+    validation={
+        "ctf_environment": validation_set("ctf-validation.csv")
+    }
+)
+```
+
+You can also specify validation sets on the command line. If the above scan was defined in a `@scanjob` you could add a validation set from the CLI using the `-V` option as follows:
+
+``` bash
+scout scan scanning.py -V ctf_environment:ctf_environment.csv
+```
+
+This example uses the simplest possible id and target pair (transcript \_id =\> boolean). Other variations are possible, see the [IDs and Targets](#ids-and-targets) section below for details. You can also use other file formats for validation sets (e.g. YAML), see [Validation Files](#validation-files) for details.
+
+### Validation Results
+
+Validation results are reported in two ways:
+
+-   The scan status/summary UI provides a running tabulation of the percentage of matching validations.
+
+-   The data frame produced for each scanner includes columns for the validation:
+
+    -   `validation_target`: Ideal scanner result
+
+    -   `validation_result`: Result of comparing scanner `value` against `validation_target`
+
+## Filtering Transcripts
+
+Your validation set will typically be only a subset of all of the transcripts you are scanning, and is intended to provide a rough heuristic on how prompt changes are impacting results. In some cases you will want to *only* evaluate transcript content that is included in the validation set. The `Transcript` class includes a filtering function to do this. For example:
+
+``` python
+from inspect_scout import scan, transcripts_from_logs, validation_set
+
+validation = {
+    "ctf_environment": validation_set("ctf-validation.csv")
+}
+
+transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts.for_validation(validation)
+
+scan(
+    scanners=[ctf_environment(), java_tool_usages()],
+    transcripts=transcripts,
+    validation=validation
+)
+```
+
+## IDs and Targets {#ids-and-targets}
+
+In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](scanner.qmd#loader)). You can also use any valid JSON value as the `target`
+
+For example, imagine we have a scanner that counts the incidences of "backtracking" in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =\> number:
+
+``` {.default filename="backtracking.csv"}
+Fg3KBpgFr6RSsEWmHBUqeo, 2
+VFkCH7gXWpJYUYonvfHxrG, 0
+SiEXpECj7U9nNAvM3H7JqB, 3
+```
+
+In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:
+
+``` {.default filename="validation.csv"}
+"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true
+```
+
+### Value Dictionary
+
+If our scanner produces a `dict` of values, we can also build a validation dataset which provides ground truth for each distinct field in the `dict`. To do this, we introduce column names as follows:
+
+``` {.default filename="validation.csv"}
+id, target_deception, target_backtracks
+Fg3KBpgFr6RSsEWmHBUqeo, true, 2
+VFkCH7gXWpJYUYonvfHxrG, false, 0
+```
+
+### Comparison Predicates
+
+The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. "gt", "gte", "contains") or with a custom function. Specify the `ValidationPredicate` as a parameter to the `validation_set()` function:
+
+``` python
+validation_set(cases="validation.csv", predicate="gte")
+```
+
+## File Formats {#validation-files}
+
+You can specify a `ValidationSet` either in code, as a CSV, or as a YAML or JSON file. We've demonstrated CSV above, here is what as equivalent YAML file would look like for a single target:
+
+``` {.yaml filename="validation.yaml"}
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  target: true
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  target: false
+```
+
+And for multiple targets:
+
+``` {.yaml filename="validation.yaml"}
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  target:
+     deception: true
+     backtracks: 2
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  target:
+     deception: false
+     backtracks: 0
+```

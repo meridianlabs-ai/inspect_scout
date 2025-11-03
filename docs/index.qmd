@@ -237,21 +237,23 @@ See the [Results](results.qmd) article for more details on the columns available
 
 ## Validation
 
-As you are developing scanners you may want to validate them against some ground truth regarding what the ideal scanner result would be. You can do this by including a `ValidationSet` along with your scan. For example, imagine you had a validation set in the form of a CSV with `id` and `target` columns:
+As you are developing scanners you may want to validate them against some ground truth regarding what the ideal scanner result would be. You can do this by including a `ValidationSet` along with your scan. For example, imagine you had a validation set in the form of a CSV with `id` and `target` columns (representing the transcript_id and ideal target for the scanner):
 
-```{.default filename="validation.csv"}
+```{.default filename="ctf-validation.csv"}
 Fg3KBpgFr6RSsEWmHBUqeo, true
 VFkCH7gXWpJYUYonvfHxrG, false
 SiEXpECj7U9nNAvM3H7JqB, true
 ```
 
-You can then compute the results from the validation set as you scan:
+You can then compute results from the validation set as you scan:
 
 ```python
 scan(
-    scanners=[ctf_environment()],
+    scanners=[ctf_environment(), java_tool_usages()],
     transcripts="./logs",
-    validation=validation_set("validation.csv")
+    validation={
+        "ctf_environment": validation_set("ctf-validation.csv")
+    }
 )
 ```
 

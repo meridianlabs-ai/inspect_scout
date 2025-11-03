@@ -17,29 +17,29 @@ from inspect_scout._llm_scanner.answer import (
         (
             _BoolAnswer(),
             "Answer the following yes or no question",
-            "'ANSWER: Yes' or 'ANSWER: No' (without quotes).",
+            "'ANSWER: $VALUE' (without quotes) where $VALUE is yes or no.",
         ),
         (
             _NumberAnswer(),
             "Answer the following numeric question",
-            "'ANSWER: xxx' (without quotes) where xxx is the numeric value.",
+            "'ANSWER: $NUMBER' (without quotes) where $NUMBER is the numeric value.",
         ),
         (
             LabelsAnswer(labels=["Choice A", "Choice B", "Choice C"]),
             "Answer the following multiple choice question",
-            "'ANSWER: $LETTER' (without quotes) where LETTER is one of A,B,C.",
+            "'ANSWER: $LETTER' (without quotes) where $LETTER is one of A,B,C.",
         ),
         (
             LabelsAnswer(
                 labels=["Choice A", "Choice B", "Choice C"], multi_classification=True
             ),
             "Answer the following multiple choice question",
-            "'ANSWER: $LETTERS' (without quotes) where LETTERS is a comma-separated list of letters from A,B,C.",
+            "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from A,B,C.",
         ),
         (
             _StrAnswer(),
             "Answer the following question",
-            "'ANSWER: $TEXT' (without quotes) where TEXT is your answer.",
+            "'ANSWER: $TEXT' (without quotes) where $TEXT is your answer.",
         ),
     ],
 )

@@ -13,8 +13,8 @@ export const ScanDetail: React.FC = () => {
   const resultsDir = useStore((state) => state.resultsDir);
   const setResultsDir = useStore((state) => state.setResultsDir);
 
-  const selectedScan = useStore((state) => state.selectedScan);
-  const setSelectedScan = useStore((state) => state.setSelectedScan);
+  const selectedResults = useStore((state) => state.selectedResults);
+  const setSelectedScan = useStore((state) => state.setSelectedResults);
 
   const setScans = useStore((state) => state.setScans);
   const api = useStore((state) => state.api);
@@ -43,8 +43,8 @@ export const ScanDetail: React.FC = () => {
       {singleFileMode || <Navbar />}
       <ActivityBar animating={!!loading} />
       <div style={{ height: "100%", overflowY: "auto", padding: "16px" }}>
-        {selectedScan ? (
-          <pre>{JSON.stringify(selectedScan, null, 2)}</pre>
+        {selectedResults ? (
+          <pre>{JSON.stringify(selectedResults, null, 2)}</pre>
         ) : (
           <p>Loading scan details...</p>
         )}

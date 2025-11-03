@@ -37,6 +37,10 @@ export default tseslint.config(
       // We may want to remove the disables below as we see fit
       "@typescript-eslint/restrict-template-expressions": "off",
       "@typescript-eslint/no-unnecessary-type-parameters": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { varsIgnorePattern: "^_" },
+      ],
     },
     settings: {
       react: {

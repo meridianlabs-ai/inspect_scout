@@ -1,7 +1,13 @@
+import base64
+import io
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 import anyio
+import pandas as pd
+import pyarrow as pa
+import pyarrow.ipc as pa_ipc
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
@@ -19,8 +25,13 @@ from typing_extensions import override
 from upath import UPath
 
 from inspect_scout._display._display import display
+from inspect_scout._recorder.recorder import Status
+from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanlist import scan_list_async
 from inspect_scout._scanresults import remove_scan_results, scan_results
+from inspect_scout._scanspec import ScanSpec
+
+from .._scanner.result import Error
 
 
 class InspectPydanticJSONResponse(JSONResponse):
@@ -29,6 +40,66 @@ class InspectPydanticJSONResponse(JSONResponse):
     @override
     def render(self, content: Any) -> bytes:
         return to_json_safe(content)
+
+
+@dataclass
+class IPCDataFrame:
+    """Data frame serialized as Arrow IPC format."""
+
+    format: Literal["arrow.feather"] = "arrow.feather"
+    """Type of serialized data frame."""
+
+    version: int = 2
+    """Version of serialization format."""
+
+    encoding: Literal["base64"] = "base64"
+    """Encoding of serialized data frame."""
+
+    data: str | None = None
+    """Data frame serialized as Arrow IPC format."""
+
+    row_count: int | None = None
+    """Number of rows in data frame."""
+
+    column_names: list[str] | None = None
+    """List of column names in data frame."""
+
+
+@dataclass
+class IPCSerializableResults(Status):
+    """Scan results as serialized data frames."""
+
+    scanners: dict[str, IPCDataFrame]
+    """Dict of scanner name to serialized data frame."""
+
+    def __init__(
+        self,
+        complete: bool,
+        spec: ScanSpec,
+        location: str,
+        summary: Summary,
+        errors: list[Error],
+        scanners: dict[str, IPCDataFrame],
+    ) -> None:
+        super().__init__(complete, spec, location, summary, errors)
+        self.scanners = scanners
+
+
+def df_to_ipc(df: pd.DataFrame) -> IPCDataFrame:
+    table = pa.Table.from_pandas(df, preserve_index=False)
+
+    buf = io.BytesIO()
+    with pa_ipc.new_stream(
+        buf, table.schema, options=pa_ipc.IpcWriteOptions(compression="zstd")
+    ) as writer:
+        writer.write_table(table)
+
+    payload = base64.b64encode(buf.getvalue()).decode("ascii")
+    return IPCDataFrame(
+        data=payload,
+        row_count=int(len(df)),
+        column_names=[str(c) for c in df.columns],
+    )
 
 
 def view_server(
@@ -157,8 +228,25 @@ def view_server_app(
 
         # read the results and return
         result = scan_results(str(scan_path))
+
+        # convert the dataframes to their serializable form
+        serializable_scanners: dict[str, IPCDataFrame] = {}
+        for scanner in result.scanners:
+            df = result.scanners[scanner]
+            serializable_scanners[scanner] = df_to_ipc(df)
+
+        # create the serializable result
+        serializable_result = IPCSerializableResults(
+            complete=result.complete,
+            spec=result.spec,
+            location=result.location,
+            summary=result.summary,
+            errors=result.errors,
+            scanners=serializable_scanners,
+        )
+
         return InspectPydanticJSONResponse(
-            content=result, media_type="application/json"
+            content=serializable_result, media_type="application/json"
         )
 
     @app.get("/scan-delete/{scan:path}")

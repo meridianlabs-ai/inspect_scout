@@ -1,11 +1,41 @@
-export interface Scan {
-  complete: boolean;
-  location: string;
-  scanners: Record<string, Scanner>;
-  summary: Record<string, ScannerResultSummary>;
-  errors: Array<unknown>;
-  spec: ScanSpec;
+// Internal Types
+export interface Scans {
+  results_dir: string;
+  scans: Status[];
 }
+
+// Scout types dervice from Python types
+// TODO: generate with schema
+export interface Status {
+  complete: boolean;
+  spec: ScanSpec;
+  location: string;
+  summary: Summary;
+  errors: Error[];
+}
+
+export interface Results extends Status {
+  scanners: Record<string, IPCDataframe>;
+}
+
+export interface IPCDataframe {
+  format: "arrow.feather",
+  version: number,
+  encoding: "base64",
+  data: string,
+  column_names: string[];
+  row_count: number;
+}
+
+export type Summary = Record<string, ScannerSummary>;
+
+export interface Error {
+  transcript_id: string;
+  scanner: string;
+  error: string;
+  trqaceback: string;
+}
+
 export interface Model {
   model: string;
   config: Record<string, unknown>;
@@ -43,9 +73,19 @@ export interface Scanner {
   params: Record<string, unknown>;
 }
 
-export interface ScannerResultSummary {
+export interface ScannerSummary {
   scans: number;
   results: number;
   errors: number;
   tokens: number;
+  model_usage: Record<string, ModelUsage>;
+}
+
+export interface ModelUsage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  input_tokens_cache_write?: number;
+  input_tokens_cache_read?: number;
+  reasoning_tokens?: number;
 }

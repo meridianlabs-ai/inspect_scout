@@ -1,11 +1,6 @@
-import { Scan } from "../types";
-
-export interface ScansInfo {
-  results_dir: string;
-  scans: Scan[];
-}
+import { Results, Scans } from "../types";
 
 export interface ScanApi {
-  getScans(): Promise<ScansInfo>;
-  getScan(scanLocation: string): Promise<Scan>;
+  getScans(): Promise<Scans>;
+  getScan(scanLocation: string): Promise<Results>;
 }

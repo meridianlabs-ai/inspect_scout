@@ -1,18 +1,18 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { Scan } from "../types";
 import { ScanApi } from "../api/api";
 import { StateSnapshot } from "react-virtuoso";
 import { GridState } from "ag-grid-community";
+import { Results, Status } from "../types";
 
 interface StoreState {
   api?: ScanApi;
-  scans: Scan[];
-  selectedScan?: Scan;
+  scans: Status[];
+  selectedResults?: Results;
   selectedScanLocation?: string;
   resultsDir?: string;
-  properties: Record<string, Record<string, unknown>>;
+  properties: Record<string, Record<string, unknown> | undefined>;
   scrollPositions: Record<string, number>;
   listPositions: Record<string, StateSnapshot>;
   visibleRanges: Record<string, { startIndex: number; endIndex: number }>;
@@ -22,8 +22,8 @@ interface StoreState {
   loading: number;
 
   setApi(api: ScanApi): void;
-  setScans: (scans: Scan[]) => void;
-  setSelectedScan: (scan: Scan) => void;
+  setScans: (scans: Status[]) => void;
+  setSelectedResults: (results: Results) => void;
   setSelectedScanLocation: (location: string) => void;
   setResultsDir: (dir: string) => void;
 
@@ -76,13 +76,13 @@ export const useStore = create<StoreState>()(
           set((state) => {
             state.api = api;
           }),
-        setScans: (scans: Scan[]) =>
+        setScans: (scans: Status[]) =>
           set((state) => {
             state.scans = scans;
           }),
-        setSelectedScan: (scan: Scan) =>
+        setSelectedResults: (results: Results) =>
           set((state) => {
-            state.selectedScan = scan;
+            state.selectedResults = results;
           }),
         setSelectedScanLocation: (location: string) =>
           set((state) => {
@@ -114,16 +114,27 @@ export const useStore = create<StoreState>()(
 
         removePropertyValue(id: string, propertyName: string) {
           set((state) => {
-            if (state.properties[id]) {
-              // TODO: Revisit
-              // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-              delete state.properties[id][propertyName];
-              if (Object.keys(state.properties[id]).length === 0) {
-                // TODO: Revisit
-                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-                delete state.properties[id];
-              }
+            const propertyGroup = state.properties[id];
+
+            // No property, go ahead and return
+            if (!propertyGroup || !propertyGroup[propertyName]) {
+              return;
             }
+
+            // Destructure to remove the property
+            const { [propertyName]: _removed, ...remainingProperties } =
+              propertyGroup;
+
+            // If no remaining properties, remove the entire group
+            if (Object.keys(remainingProperties).length === 0) {
+              const { [id]: _removedGroup, ...remainingGroups } =
+                state.properties;
+              state.properties = remainingGroups;
+              return;
+            }
+
+            // Update to the delete properties
+            state.properties[id] = remainingProperties;
           });
         },
         getScrollPosition(path) {

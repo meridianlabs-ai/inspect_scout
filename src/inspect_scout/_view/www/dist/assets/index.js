@@ -19825,8 +19825,8 @@ const useStore = create()(
         setScans: (scans) => set2((state) => {
           state.scans = scans;
         }),
-        setSelectedScan: (scan) => set2((state) => {
-          state.selectedScan = scan;
+        setSelectedResults: (results) => set2((state) => {
+          state.selectedResults = results;
         }),
         setSelectedScanLocation: (location) => set2((state) => {
           state.selectedScanLocation = location;
@@ -19848,12 +19848,17 @@ const useStore = create()(
         },
         removePropertyValue(id, propertyName) {
           set2((state) => {
-            if (state.properties[id]) {
-              delete state.properties[id][propertyName];
-              if (Object.keys(state.properties[id]).length === 0) {
-                delete state.properties[id];
-              }
+            const propertyGroup = state.properties[id];
+            if (!propertyGroup || !propertyGroup[propertyName]) {
+              return;
             }
+            const { [propertyName]: _removed, ...remainingProperties } = propertyGroup;
+            if (Object.keys(remainingProperties).length === 0) {
+              const { [id]: _removedGroup, ...remainingGroups } = state.properties;
+              state.properties = remainingGroups;
+              return;
+            }
+            state.properties[id] = remainingProperties;
           });
         },
         getScrollPosition(path) {
@@ -20215,8 +20220,8 @@ const ScanDetail = () => {
   const singleFileMode = useStore((state) => state.singleFileMode);
   const resultsDir = useStore((state) => state.resultsDir);
   const setResultsDir = useStore((state) => state.setResultsDir);
-  const selectedScan = useStore((state) => state.selectedScan);
-  const setSelectedScan = useStore((state) => state.setSelectedScan);
+  const selectedResults = useStore((state) => state.selectedResults);
+  const setSelectedScan = useStore((state) => state.setSelectedResults);
   const setScans = useStore((state) => state.setScans);
   const api = useStore((state) => state.api);
   const loading = useStore((state) => state.loading);
@@ -20239,7 +20244,7 @@ const ScanDetail = () => {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     singleFileMode || /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", overflowY: "auto", padding: "16px" }, children: selectedScan ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedScan, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." }) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", overflowY: "auto", padding: "16px" }, children: selectedResults ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: JSON.stringify(selectedResults, null, 2) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading scan details..." }) })
   ] });
 };
 const ExtendedFindContext = reactExports.createContext(null);

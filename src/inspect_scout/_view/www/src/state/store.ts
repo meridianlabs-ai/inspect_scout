@@ -9,7 +9,7 @@ import { Results, Status } from "../types";
 interface StoreState {
   api?: ScanApi;
   scans: Status[];
-  selectedScan?: Results;
+  selectedResults?: Results;
   selectedScanLocation?: string;
   resultsDir?: string;
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -23,7 +23,7 @@ interface StoreState {
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
-  setSelectedScan: (scan: Results) => void;
+  setSelectedResults: (results: Results) => void;
   setSelectedScanLocation: (location: string) => void;
   setResultsDir: (dir: string) => void;
 
@@ -80,9 +80,9 @@ export const useStore = create<StoreState>()(
           set((state) => {
             state.scans = scans;
           }),
-        setSelectedScan: (scan: Results) =>
+        setSelectedResults: (results: Results) =>
           set((state) => {
-            state.selectedScan = scan;
+            state.selectedResults = results;
           }),
         setSelectedScanLocation: (location: string) =>
           set((state) => {

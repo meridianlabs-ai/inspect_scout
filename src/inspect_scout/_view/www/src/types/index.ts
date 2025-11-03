@@ -15,8 +15,16 @@ export interface Status {
 }
 
 export interface Results extends Status {
-  // TODO: this should be Record<string, dataframe>
-  scanners: Record<string, unknown>;
+  scanners: Record<string, IPCDataframe>;
+}
+
+export interface IPCDataframe {
+  format: "arrow.feather",
+  version: number,
+  encoding: "base64",
+  data: string,
+  column_names: string[];
+  row_count: number;
 }
 
 export type Summary = Record<string, ScannerSummary>;

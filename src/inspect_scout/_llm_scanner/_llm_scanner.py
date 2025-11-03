@@ -43,7 +43,7 @@ def llm_scanner(
             The scanner template should include the following variables:
               - {{ question }} (question for the model to answer)
               - {{ messages }} (transcript message history as string)
-              - {{ answer_prompt }} (prompt the model for a specific type of answer and explanation ).
+              - {{ answer_prompt }} (prompt the model for a specific type of answer and explanation).
               - {{ answer_format }} (instructions on formatting for value extraction)
         messages: Filter conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to filtering system messages.

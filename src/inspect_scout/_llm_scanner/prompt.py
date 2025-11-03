@@ -29,10 +29,11 @@ class LLMScannerPrompt(NamedTuple):
     template: str = DEFAULT_SCANNER_TEMPLATE
     """Overall template for scanner prompt.
 
-    The scanner template may use the following variables:
+    The scanner template should include the following variables:
 
     - {messages} (transcript message history as string)
     - {answer_prompt} (prompt the model for a specific type of answer and explanation ).
+    - {anwser_format} (instructions on formatting for value extraction)
     """
 
 

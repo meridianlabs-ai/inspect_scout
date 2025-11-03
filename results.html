@@ -65,7 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./scanners.html" rel="prev">
+<link href="./validation.html" rel="next">
+<link href="./llm_scanner.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -157,8 +158,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Scanners</span></a>
   </li>  
         <li>
+    <a class="dropdown-item" href="./llm_scanner.html">
+ <span class="dropdown-text">LLM Scanner</span></a>
+  </li>  
+        <li>
     <a class="dropdown-item" href="./results.html">
  <span class="dropdown-text">Results</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./validation.html">
+ <span class="dropdown-text">Validation</span></a>
   </li>  
     </ul>
   </li>
@@ -246,8 +255,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LLM Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./results.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Results</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./validation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Validation</span></a>
   </div>
 </li>
       </ul>
@@ -510,46 +531,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Type of value returned by scanner.</td>
 </tr>
 <tr class="odd">
+<td><code>answer</code></td>
+<td>str</td>
+<td>Answer extracted from scanner generation.</td>
+</tr>
+<tr class="even">
 <td><code>explanation</code></td>
 <td>str</td>
 <td>Explanation for scan result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Metadata for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>message_references</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Messages referenced by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>event_references</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Events referenced by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error</code></td>
 <td>str</td>
 <td>Error which occurred during scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_error_traceback</code></td>
 <td>str</td>
 <td>Traceback for error (if any)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_total_tokens</code></td>
 <td>number</td>
 <td>Total tokens used by scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_model_usage</code></td>
 <td>dict [str, ModelUsage]<br><small>JSON</small></td>
 <td>Token usage by model for scan.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
 <td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
@@ -1011,11 +1037,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./scanners.html" class="pagination-link" aria-label="Scanners">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Scanners</span>
+      <a href="./llm_scanner.html" class="pagination-link" aria-label="LLM Scanner">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">LLM Scanner</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
+      <a href="./validation.html" class="pagination-link" aria-label="Validation">
+        <span class="nav-page-text">Validation</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
   </div>
 </nav>
 </div> <!-- /content -->

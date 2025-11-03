@@ -4,9 +4,14 @@
 > [!NOTE]
 >
 > The Async API is available for async programs that want to use
-> `inspect_scout` as an embedded library. Normal usage of Scout (e.g. in
-> a script or notebook) should prefer the corresponding sync functions
-> (e.g. `scan()`, `scan_resume().`, etc.)
+> `inspect_scout` as an embedded library.
+>
+> Normal usage of Scout (e.g. in a script or notebook) should prefer the
+> corresponding sync functions (e.g. `scan()`, `scan_resume().`, etc.).
+> This will provide optimal parallelism (sharing transcript parses
+> across scanners, using multiple processes, etc.) compared to multiple
+> concurrent calls to `scan_async()` (as in that case you would lose the
+> pooled transcript parsing and create unwanted resource contention).
 
 ### scan_async
 
@@ -18,16 +23,18 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/cc7aa74c406bd139ac3f444f3ca37008dfe71bb5/src/inspect_scout/_scan.py#L142)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/49cdc1efcf2be844811592905c9160fa66db1c42/src/inspect_scout/_scan.py#L154)
 
 ``` python
 async def scan_async(
-    scanners: Sequence[Scanner[ScannerInput] | tuple[str, Scanner[ScannerInput]]]
-    | dict[str, Scanner[ScannerInput]]
+    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+    | dict[str, Scanner[Any]]
     | ScanJob
     | ScanJobConfig,
     transcripts: Transcripts | None = None,
     results: str | None = None,
+    worklist: Sequence[ScannerWork] | str | Path | None = None,
+    validation: ValidationSet | dict[str, ValidationSet] | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -43,7 +50,7 @@ async def scan_async(
 ) -> Status
 ```
 
-`scanners` Sequence\[[Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\] \| tuple\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\]\] \| dict\[str, [Scanner](scanner.qmd#scanner)\[[ScannerInput](scanner.qmd#scannerinput)\]\] \| [ScanJob](scanning.qmd#scanjob) \| [ScanJobConfig](scanning.qmd#scanjobconfig)  
+`scanners` Sequence\[[Scanner](scanner.qmd#scanner)\[Any\] \| tuple\[str, [Scanner](scanner.qmd#scanner)\[Any\]\]\] \| dict\[str, [Scanner](scanner.qmd#scanner)\[Any\]\] \| [ScanJob](scanning.qmd#scanjob) \| [ScanJobConfig](scanning.qmd#scanjobconfig)  
 Scanners to execute (list, dict with explicit names, or ScanJob). If a
 `ScanJob` or `ScanJobConfig` is specified, then its options are used as
 the default options for the scan.
@@ -54,6 +61,14 @@ Transcripts to scan.
 `results` str \| None  
 Location to write results (filesystem or S3 bucket). Defaults to
 “./scans”.
+
+`worklist` Sequence\[[ScannerWork](scanning.qmd#scannerwork)\] \| str \| Path \| None  
+Transcript ids to process for each scanner (defaults to processing all
+transcripts). Either a list of `ScannerWork` or a YAML or JSON file
+contianing the same.
+
+`validation` [ValidationSet](results.qmd#validationset) \| dict\[str, [ValidationSet](results.qmd#validationset)\] \| None  
+Validation cases to apply for scanners.
 
 `model` str \| Model \| None  
 Model to use for scanning by default (individual scanners can always
@@ -102,7 +117,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/cc7aa74c406bd139ac3f444f3ca37008dfe71bb5/src/inspect_scout/_scan.py#L270)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/49cdc1efcf2be844811592905c9160fa66db1c42/src/inspect_scout/_scan.py#L298)
 
 ``` python
 async def scan_resume_async(scan_location: str, log_level: str | None = None) -> Status
@@ -122,7 +137,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/cc7aa74c406bd139ac3f444f3ca37008dfe71bb5/src/inspect_scout/_scan.py#L334)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/49cdc1efcf2be844811592905c9160fa66db1c42/src/inspect_scout/_scan.py#L362)
 
 ``` python
 async def scan_complete_async(
@@ -141,7 +156,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/cc7aa74c406bd139ac3f444f3ca37008dfe71bb5/src/inspect_scout/_scanlist.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/49cdc1efcf2be844811592905c9160fa66db1c42/src/inspect_scout/_scanlist.py#L19)
 
 ``` python
 async def scan_list_async(scans_location: str) -> list[Status]
@@ -154,7 +169,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/cc7aa74c406bd139ac3f444f3ca37008dfe71bb5/src/inspect_scout/_scanresults.py#L24)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/49cdc1efcf2be844811592905c9160fa66db1c42/src/inspect_scout/_scanresults.py#L24)
 
 ``` python
 async def scan_status_async(scan_location: str) -> Status
@@ -167,7 +182,7 @@ Location to get status for (e.g. directory or s3 bucket)
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/cc7aa74c406bd139ac3f444f3ca37008dfe71bb5/src/inspect_scout/_scanresults.py#L50)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/49cdc1efcf2be844811592905c9160fa66db1c42/src/inspect_scout/_scanresults.py#L50)
 
 ``` python
 async def scan_results_async(
@@ -185,7 +200,7 @@ Scanner name (defaults to all scanners).
 
 Scan results as DuckDB database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/cc7aa74c406bd139ac3f444f3ca37008dfe71bb5/src/inspect_scout/_scanresults.py#L78)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/49cdc1efcf2be844811592905c9160fa66db1c42/src/inspect_scout/_scanresults.py#L78)
 
 ``` python
 async def scan_results_db_async(scan_location: str) -> ResultsDB

@@ -350,7 +350,13 @@ See the following articles to learn more about using Scout:
 
 - [Scanners](scanners.qmd): Implementing custom scanners and loaders.
 
+- [LLM Scanner](llm_scanner.qmd): Customizable LLM scanner for model
+  evaluation of transcripts.
+
 - [Results](results.qmd): Collecting and analyzing scanner results.
+
+- [Validation](validation.qmd): Validation of scanner results against
+  ground truth target values.
 
 - [Reference](reference/index.qmd): Detailed documentation on the Scout
   Python API and CLI commands.

@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/scanner.html</loc>
-    <lastmod>2025-10-28T16:39:34.458Z</lastmod>
+    <lastmod>2025-11-02T19:56:51.561Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/index.html</loc>
@@ -21,20 +21,28 @@
     <lastmod>2025-10-30T17:48:26.372Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
-    <lastmod>2025-10-30T17:52:10.966Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/results.html</loc>
-    <lastmod>2025-10-30T15:10:42.101Z</lastmod>
-  </url>
-  <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>
     <lastmod>2025-10-30T17:47:17.961Z</lastmod>
   </url>
   <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/results.html</loc>
+    <lastmod>2025-10-31T16:29:28.449Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html</loc>
+    <lastmod>2025-11-02T20:28:09.381Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
+    <lastmod>2025-11-02T20:42:24.465Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/validation.html</loc>
+    <lastmod>2025-11-02T20:28:18.669Z</lastmod>
+  </url>
+  <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/async.html</loc>
-    <lastmod>2025-10-22T23:19:46.791Z</lastmod>
+    <lastmod>2025-10-31T12:48:04.160Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/transcript.html</loc>
@@ -42,10 +50,10 @@
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/results.html</loc>
-    <lastmod>2025-10-22T23:19:46.792Z</lastmod>
+    <lastmod>2025-11-02T20:03:16.574Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/scanning.html</loc>
-    <lastmod>2025-10-25T11:53:33.980Z</lastmod>
+    <lastmod>2025-10-31T16:29:30.156Z</lastmod>
   </url>
 </urlset>

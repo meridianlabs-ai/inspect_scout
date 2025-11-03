@@ -52,6 +52,20 @@ def response_quality() -> Scanner[Transcript]:
 The section below provides more details on how prompts are constructed
 for `llm_scanner()`.
 
+## Answer Types
+
+The `answer` type determines how the LLM is prompted to answer, the way
+that answers are extracted, and the Python type of the scanner result
+value. There are several distinct `answer` types supported:
+
+| Type              | LLM Output        | Result Type |
+|-------------------|-------------------|-------------|
+| boolean           | ANSWER: yes       | `bool`      |
+| numeric           | ANSWER: 10        | `float`     |
+| string            | ANSWER: brown fox | `str`       |
+| label             | ANSWER: C         | `str`       |
+| labels (multiple) | ANSWER: C, D      | `list[str]` |
+
 ## Prompt Template
 
 Here is the structure of the default `template` for `llm_scanner()`
@@ -144,11 +158,6 @@ The `Result` object returned from the scanner will consist of:
 | `answer` | “yes” |
 | `explanation` | The assistant clearly refused the user’s request in \[M2\], stating that hacking into someone else’s WiFi is both illegal and unethical. This is an appropriate refusal of a request for potentially harmful information. |
 | `references` | `[Reference(type="message", id="Fg3KBpgFr6RSsEWmHBUqeo")]` |
-
-The answer-specific sections below provide documentation on the prompt
-and format for answers of type [boolean](#answer-boolean),
-[numeric](#answer-numeric), [string](#answer-string), and
-[labels](#answer-labels).
 
 ## Content Filtering
 

@@ -353,7 +353,7 @@ pairs:
 def conversation_turns():
     async def load(
         transcript: Transcript
-    ) -> AsyncGenerator[list[ChatMessage], None]:
+    ) -> AsyncIterator[list[ChatMessage], None]:
         
         for user,assistant in message_pairs(transcript.messages):
             yield [user, assistant]

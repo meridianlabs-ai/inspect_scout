@@ -590,7 +590,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> conversation_turns():</span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> load(</span>
 <span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>        transcript: Transcript</span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    ) <span class="op">-&gt;</span> AsyncGenerator[<span class="bu">list</span>[ChatMessage], <span class="va">None</span>]:</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    ) <span class="op">-&gt;</span> AsyncIterator[<span class="bu">list</span>[ChatMessage], <span class="va">None</span>]:</span>
 <span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        </span>
 <span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> user,assistant <span class="kw">in</span> message_pairs(transcript.messages):</span>
 <span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">yield</span> [user, assistant]</span>

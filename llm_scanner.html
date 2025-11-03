@@ -279,6 +279,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
   <li><a href="#basic-usage" id="toc-basic-usage" class="nav-link" data-scroll-target="#basic-usage">Basic Usage</a></li>
+  <li><a href="#answer-types" id="toc-answer-types" class="nav-link" data-scroll-target="#answer-types">Answer Types</a></li>
   <li><a href="#prompt-template" id="toc-prompt-template" class="nav-link" data-scroll-target="#prompt-template">Prompt Template</a></li>
   <li><a href="#scanner-results" id="toc-scanner-results" class="nav-link" data-scroll-target="#scanner-results">Scanner Results</a></li>
   <li><a href="#content-filtering" id="toc-content-filtering" class="nav-link" data-scroll-target="#content-filtering">Content Filtering</a></li>
@@ -341,6 +342,46 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        ]</span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The section below provides more details on how prompts are constructed for <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>.</p>
+</section>
+<section id="answer-types" class="level2">
+<h2 class="anchored" data-anchor-id="answer-types">Answer Types</h2>
+<p>The <code>answer</code> type determines how the LLM is prompted to answer, the way that answers are extracted, and the Python type of the scanner result value. There are several distinct <code>answer</code> types supported:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>LLM Output</th>
+<th>Result Type</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>boolean</td>
+<td>ANSWER: yes</td>
+<td><code>bool</code></td>
+</tr>
+<tr class="even">
+<td>numeric</td>
+<td>ANSWER: 10</td>
+<td><code>float</code></td>
+</tr>
+<tr class="odd">
+<td>string</td>
+<td>ANSWER: brown fox</td>
+<td><code>str</code></td>
+</tr>
+<tr class="even">
+<td>label</td>
+<td>ANSWER: C</td>
+<td><code>str</code></td>
+</tr>
+<tr class="odd">
+<td>labels (multiple)</td>
+<td>ANSWER: C, D</td>
+<td><code>list[str]</code></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="prompt-template" class="level2">
 <h2 class="anchored" data-anchor-id="prompt-template">Prompt Template</h2>
@@ -468,7 +509,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<p>The answer-specific sections below provide documentation on the prompt and format for answers of type <a href="#answer-boolean">boolean</a>, <a href="#answer-numeric">numeric</a>, <a href="#answer-string">string</a>, and <a href="#answer-labels">labels</a>.</p>
 </section>
 </section>
 <section id="content-filtering" class="level2">

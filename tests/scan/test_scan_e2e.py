@@ -46,7 +46,7 @@ def test_scan_basic_e2e() -> None:
         ),
         ModelOutput.from_content(
             model="mockllm",
-            content="The response in [M2] addresses the user's question.\n\nANSWER: yes",
+            content="The response in [M2] failed to address the user's question.\n\nANSWER: NO",
         ),
     ]
 
@@ -57,6 +57,7 @@ def test_scan_basic_e2e() -> None:
             transcripts=transcripts_from_logs(LOGS_DIR),
             results=tmpdir,
             limit=2,
+            max_processes=1,
             model="mockllm/model",
             model_args={"custom_outputs": mock_responses},
         )
@@ -79,4 +80,4 @@ def test_scan_basic_e2e() -> None:
         assert "value" in llm_df.columns
         assert "explanation" in llm_df.columns
         # Verify the LLM scanner parsed the responses correctly
-        assert llm_df["value"].tolist() == [True, True]
+        assert llm_df["value"].tolist() == [True, False]

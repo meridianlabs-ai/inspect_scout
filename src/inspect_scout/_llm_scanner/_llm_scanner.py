@@ -15,15 +15,16 @@ from .._scanner.scanner import Scanner, scanner
 from .._scanner.util import _message_id
 from .._transcript.types import Transcript
 from .answer import answer_from_argument
-from .prompt import LLMScannerPrompt
+from .prompt import DEFAULT_SCANNER_TEMPLATE
 from .types import LLMScannerLabels
 
 
 @scanner(messages="all")
 def llm_scanner(
     *,
-    prompt: str | LLMScannerPrompt,
+    question: str,
     answer: Literal["boolean", "numeric", "string"] | list[str] | LLMScannerLabels,
+    template: str | None = None,
     messages: ContentFilter | None = None,
     model: str | Model | None = None,
     name: str | None = None,
@@ -33,11 +34,16 @@ def llm_scanner(
     This scanner presents a conversation transcript to an LLM along with a custom prompt and answer specification, enabling automated analysis of conversations for specific patterns, behaviors, or outcomes.
 
     Args:
-        prompt: The prompt to provide to the scanner LLM about
-            what to analyze in the conversation (e.g., "Did the assistant refuse the request?"). Pass a `str` to just provide top level instructions; Pass `ScannerPrompt` for further customization.
+        question: Question for the scanner to answer. (e.g., "Did the assistant refuse the request?")
         answer: Specification of the answer format.
             Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]`
             for a set of labels; or pass `LLMScannerLabels` for multi-classification.
+        template: Overall template for scanner prompt.
+            The scanner template should include the following variables:
+              - {question} (question for the model to answer)
+              - {messages} (transcript message history as string)
+              - {answer_prompt} (prompt the model for a specific type of answer and explanation ).
+              - {answer_format} (instructions on formatting for value extraction)
         messages: Filter conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to filtering system messages.
         model: Optional model specification. Can be a model
@@ -49,24 +55,22 @@ def llm_scanner(
     """
     if messages is None:
         messages = ContentFilter()
-    if isinstance(prompt, str):
-        prompt = LLMScannerPrompt(question=prompt)
+    if template is None:
+        template = DEFAULT_SCANNER_TEMPLATE
     resolved_answer = answer_from_argument(answer)
 
     async def scan(transcript: Transcript) -> Result:
         variables = _variables_for_transcript(transcript)
 
-        answer_prompt = resolved_answer.answer_portion_template().format(
-            question=prompt.question, explanation_text=prompt.explanation, **variables
-        )
-
         messages_str, message_id_map = await _messages_with_ids(
             transcript.messages, messages
         )
 
-        resolved_prompt = prompt.template.format(
+        resolved_prompt = template.format(
             messages=messages_str,
-            answer_prompt=answer_prompt,
+            question=question,
+            answer_prompt=resolved_answer.prompt,
+            answer_format=resolved_answer.format,
             **variables,
         )
 

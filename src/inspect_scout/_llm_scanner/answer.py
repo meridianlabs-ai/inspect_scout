@@ -16,11 +16,15 @@ from inspect_scout._llm_scanner.types import LLMScannerLabels
 
 from .._scanner.result import Result
 from .prompt import (
-    BOOL_ANSWER_TEMPLATE,
-    LABELS_ANSWER_TEMPLATE,
-    LABELS_ANSWER_TEMPLATE_MULTI,
-    NUMBER_ANSWER_TEMPLATE,
-    STR_ANSWER_TEMPLATE,
+    BOOL_ANSWER_FORMAT,
+    BOOL_ANSWER_PROMPT,
+    LABELS_ANSWER_FORMAT_MULTI,
+    LABELS_ANSWER_FORMAT_SINGLE,
+    LABELS_ANSWER_PROMPT,
+    NUMBER_ANSWER_FORMAT,
+    NUMBER_ANSWER_PROMPT,
+    STR_ANSWER_FORMAT,
+    STR_ANSWER_PROMPT,
 )
 from .util import extract_references
 
@@ -28,8 +32,14 @@ from .util import extract_references
 class Answer(Protocol):
     """Protocol for LLM scanner answer types."""
 
-    def answer_portion_template(self) -> str:
-        """Return the answer template string."""
+    @property
+    def prompt(self) -> str:
+        """Return the answer prompt string."""
+        ...
+
+    @property
+    def format(self) -> str:
+        """Return the answer format string."""
         ...
 
     def result_for_answer(
@@ -61,8 +71,13 @@ def answer_from_argument(
 class _BoolAnswer(Answer):
     """Answer implementation for yes/no questions."""
 
-    def answer_portion_template(self) -> str:
-        return BOOL_ANSWER_TEMPLATE
+    @property
+    def prompt(self) -> str:
+        return BOOL_ANSWER_PROMPT
+
+    @property
+    def format(self) -> str:
+        return BOOL_ANSWER_FORMAT
 
     def result_for_answer(
         self, output: ModelOutput, message_id_map: list[str]
@@ -98,8 +113,13 @@ class _BoolAnswer(Answer):
 class _NumberAnswer(Answer):
     """Answer implementation for numeric questions."""
 
-    def answer_portion_template(self) -> str:
-        return NUMBER_ANSWER_TEMPLATE
+    @property
+    def prompt(self) -> str:
+        return NUMBER_ANSWER_PROMPT
+
+    @property
+    def format(self) -> str:
+        return NUMBER_ANSWER_FORMAT
 
     def result_for_answer(
         self, output: ModelOutput, message_id_map: list[str]
@@ -131,16 +151,21 @@ class LabelsAnswer(Answer):
         self.labels = labels
         self.multi_classification = multi_classification
 
-    def answer_portion_template(self) -> str:
+    @property
+    def prompt(self) -> str:
+        return LABELS_ANSWER_PROMPT
+
+    @property
+    def format(self) -> str:
         if not self.labels:
             raise ValueError("Must have labels")
-        formatted_choices, letters = _answer_options(self.labels)
-        template = (
-            LABELS_ANSWER_TEMPLATE_MULTI
+        _, letters = _answer_options(self.labels)
+        format_template = (
+            LABELS_ANSWER_FORMAT_MULTI
             if self.multi_classification
-            else LABELS_ANSWER_TEMPLATE
+            else LABELS_ANSWER_FORMAT_SINGLE
         )
-        return template.format(formatted_choices=formatted_choices, letters=letters)
+        return format_template.format(letters=letters)
 
     def result_for_answer(
         self, output: ModelOutput, message_id_map: list[str]
@@ -206,8 +231,13 @@ class LabelsAnswer(Answer):
 class _StrAnswer(Answer):
     """Answer implementation for free-text questions."""
 
-    def answer_portion_template(self) -> str:
-        return STR_ANSWER_TEMPLATE
+    @property
+    def prompt(self) -> str:
+        return STR_ANSWER_PROMPT
+
+    @property
+    def format(self) -> str:
+        return STR_ANSWER_FORMAT
 
     def result_for_answer(
         self, output: ModelOutput, message_id_map: list[str]

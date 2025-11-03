@@ -29,10 +29,7 @@ def simple_scanner_factory() -> Scanner[Transcript]:
 @scanner(name="llm_test_scanner", messages="all")
 def llm_scanner_factory() -> Scanner[Transcript]:
     """LLM scanner that uses mockllm for testing."""
-    return llm_scanner(
-        prompt="Is this conversation helpful?",
-        answer="boolean",
-    )
+    return llm_scanner(question="Is this conversation helpful?", answer="boolean")
 
 
 def test_scan_basic_e2e() -> None:

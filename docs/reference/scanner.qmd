@@ -15,7 +15,6 @@ reference: "inspect_scout"
 ## LLM Scanner
 
 ### llm_scanner
-### LLMScannerPrompt
 ### LLMScannerLabels
 
 ## Utils

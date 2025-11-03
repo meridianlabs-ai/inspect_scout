@@ -104,8 +104,6 @@ website:
           href: reference/scanner.qmd#loader
         - text: llm_scanner
           href: reference/scanner.qmd#llm_scanner
-        - text: LLMScannerPrompt
-          href: reference/scanner.qmd#llmscannerprompt
         - text: LLMScannerLabels
           href: reference/scanner.qmd#llmscannerlabels
         - text: messages_as_str

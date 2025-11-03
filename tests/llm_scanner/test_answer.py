@@ -12,59 +12,43 @@ from inspect_scout._llm_scanner.answer import (
 
 
 @pytest.mark.parametrize(
-    "answer_type,expected_fragments",
+    "answer_type,expected_prompt,expected_format",
     [
         (
             _BoolAnswer(),
-            [
-                "Answer the following yes or no question: {question}",
-                "{explanation_text}",
-                "'ANSWER: xxx' (without quotes) where xxx is the numeric value",
-            ],
+            "Answer the following yes or no question",
+            "'ANSWER: Yes' or 'ANSWER: No' (without quotes).",
         ),
         (
             _NumberAnswer(),
-            [
-                "Answer the following numeric question: {question}",
-                "{explanation_text}",
-                "'ANSWER: xxx' (without quotes) where xxx is the numeric value",
-            ],
+            "Answer the following numeric question",
+            "'ANSWER: xxx' (without quotes) where xxx is the numeric value.",
         ),
         (
             LabelsAnswer(labels=["Choice A", "Choice B", "Choice C"]),
-            [
-                "Answer the following multiple choice question: {question}",
-                "A) Choice A\nB) Choice B\nC) Choice C",
-                "{explanation_text}",
-                "'ANSWER: $LETTER' (without quotes) where LETTER is one of A,B,C",
-            ],
+            "Answer the following multiple choice question",
+            "'ANSWER: $LETTER' (without quotes) where LETTER is one of A,B,C.",
         ),
         (
             LabelsAnswer(
                 labels=["Choice A", "Choice B", "Choice C"], multi_classification=True
             ),
-            [
-                "Answer the following multiple choice question: {question}",
-                "A) Choice A\nB) Choice B\nC) Choice C",
-                "{explanation_text}",
-                "'ANSWER: $LETTERS' (without quotes) where LETTERS is a comma-separated list of letters from A,B,C",
-            ],
+            "Answer the following multiple choice question",
+            "'ANSWER: $LETTERS' (without quotes) where LETTERS is a comma-separated list of letters from A,B,C.",
         ),
         (
             _StrAnswer(),
-            [
-                "Answer the following question: {question}",
-                "{explanation_text}",
-                "'ANSWER: $TEXT' (without quotes) where TEXT is your answer",
-            ],
+            "Answer the following question",
+            "'ANSWER: $TEXT' (without quotes) where TEXT is your answer.",
         ),
     ],
 )
-def test_answer_templates(answer_type: Answer, expected_fragments: list[str]) -> None:
-    """Answer templates contain expected fragments."""
-    result = answer_type.answer_portion_template()
-    for fragment in expected_fragments:
-        assert fragment in result
+def test_answer_templates(
+    answer_type: Answer, expected_prompt: str, expected_format: str
+) -> None:
+    """Answer prompt and format properties return expected values."""
+    assert answer_type.prompt == expected_prompt
+    assert answer_type.format == expected_format
 
 
 @pytest.mark.parametrize(

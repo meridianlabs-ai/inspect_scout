@@ -1,6 +1,5 @@
 from ._llm_scanner import (
     LLMScannerLabels,
-    LLMScannerPrompt,
     llm_scanner,
 )
 from ._recorder.recorder import (
@@ -110,7 +109,6 @@ __all__ = [
     "ContentFilter",
     # llm_scanner
     "llm_scanner",
-    "LLMScannerPrompt",
     "LLMScannerLabels",
     # validation
     "ValidationSet",

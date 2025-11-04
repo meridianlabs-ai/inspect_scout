@@ -84,7 +84,6 @@ allow-direct-references = true
 
 [tool.uv]
 managed = true
-add-bounds = "lower"
 default-groups = ["dev"]
 
 [tool.ruff]

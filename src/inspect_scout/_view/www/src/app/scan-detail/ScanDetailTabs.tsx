@@ -7,6 +7,8 @@ import { useStore } from "../../state/store";
 
 import styles from "./ScanDetailTabs.module.css";
 import { ScanResults } from "./scan-results/ScanResults";
+import { MetaDataGrid } from "../../content/MetaDataGrid";
+import { ScanInfo } from "./scan-results/ScanInfo";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -48,8 +50,40 @@ export const ScanDetailTabs: React.FC = () => {
       className={clsx(styles.tabs)}
     >
       <TabPanel
+        id={kTabIdScans}
+        selected={selectedTab === kTabIdScans || selectedTab === undefined}
+        title="Results"
+        onSelected={() => {
+          handleTabChange(kTabIdScans);
+        }}
+      >
+        <ScanResults />
+      </TabPanel>
+
+      <TabPanel
+        id={kTabIdInfo}
+        selected={selectedTab === kTabIdInfo}
+        title="Info"
+        onSelected={() => {
+          handleTabChange(kTabIdInfo);
+        }}
+      >
+        <ScanInfo />
+      </TabPanel>
+      <TabPanel
+        id={kTabIdScanners}
+        selected={selectedTab === kTabIdScanners}
+        title="Scanners"
+        onSelected={() => {
+          handleTabChange(kTabIdScanners);
+        }}
+      >
+        Scanners
+      </TabPanel>
+
+      <TabPanel
         id={kTabIdJson}
-        selected={selectedTab === kTabIdJson || selectedTab === undefined}
+        selected={selectedTab === kTabIdJson}
         title="JSON"
         onSelected={() => {
           handleTabChange(kTabIdJson);
@@ -61,37 +95,6 @@ export const ScanDetailTabs: React.FC = () => {
           data={selectedResults}
           simple={true}
         />
-      </TabPanel>
-
-      <TabPanel
-        id={kTabIdScans}
-        selected={selectedTab === kTabIdScans}
-        title="Results"
-        onSelected={() => {
-          handleTabChange(kTabIdScans);
-        }}
-      >
-        <ScanResults />
-      </TabPanel>
-      <TabPanel
-        id={kTabIdInfo}
-        selected={selectedTab === kTabIdInfo}
-        title="Info"
-        onSelected={() => {
-          handleTabChange(kTabIdInfo);
-        }}
-      >
-        Info
-      </TabPanel>
-      <TabPanel
-        id={kTabIdScanners}
-        selected={selectedTab === kTabIdScanners}
-        title="Scanners"
-        onSelected={() => {
-          handleTabChange(kTabIdScanners);
-        }}
-      >
-        Scanners
       </TabPanel>
     </TabSet>
   );

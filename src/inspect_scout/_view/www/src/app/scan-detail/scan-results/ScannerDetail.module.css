@@ -1,0 +1,6 @@
+.scannerHeaderRow {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.5em;
+  margin-bottom: 1em;
+}

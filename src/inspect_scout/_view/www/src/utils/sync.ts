@@ -66,7 +66,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
  * Creates a debounced version of a function that delays invoking the function
  * until after `wait` milliseconds have passed since the last time it was invoked.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export function debounce<T extends (...args: any[]) => unknown>(
   func: T,
   wait: number,

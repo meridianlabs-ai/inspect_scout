@@ -1,0 +1,49 @@
+.message {
+  font-weight: 300;
+  margin-left: 0;
+  margin-right: 0;
+  white-space: normal;
+}
+
+.systemRole {
+  opacity: 0.7;
+}
+
+.messageGrid {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  column-gap: 0.3em;
+  font-weight: 500;
+  margin-bottom: 0.3em;
+}
+
+.toolMessageGrid {
+  border-bottom: solid 1px var(--bs-border-color);
+}
+
+.messageContents {
+  margin-left: 0;
+  padding-bottom: 0;
+}
+
+.messageContents.indented {
+  margin-left: 0rem;
+}
+
+.copyLink {
+  opacity: 0;
+  padding-left: 0;
+  padding-right: 2em;
+}
+
+.copyLink:hover {
+  opacity: 0.75;
+}
+
+.metadataLabel {
+  padding-top: 1em;
+}
+
+.hover .copyLink {
+  opacity: 0.75;
+}

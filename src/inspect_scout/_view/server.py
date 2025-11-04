@@ -233,6 +233,11 @@ def view_server_app(
             df = result.scanners[scanner]
             serializable_scanners[scanner] = df_to_ipc(df)
 
+        # delete the transcript data
+        result.spec.transcripts = result.spec.transcripts.model_copy(
+            update={"data": None}
+        )
+
         # create the serializable result
         serializable_result = IPCSerializableResults(
             complete=result.complete,

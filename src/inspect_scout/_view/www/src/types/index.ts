@@ -3,6 +3,8 @@ import {
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
+  ContentImage,
+  ContentText,
   Events,
 } from "./log";
 
@@ -111,4 +113,9 @@ export type ChatMessage =
 export interface Transcript {
   messages: ChatMessages;
   events: Events;
+}
+
+export interface ContentTool {
+  type: "tool";
+  content: (ContentImage | ContentText)[];
 }

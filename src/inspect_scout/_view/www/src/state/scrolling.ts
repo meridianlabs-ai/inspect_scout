@@ -129,7 +129,7 @@ export function useStatefulScrollPosition<
 }
 
 // Define a type for the debounced function that includes the cancel method
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type DebouncedFunction<T extends (...args: any[]) => unknown> = T & {
   cancel: () => void;
   flush: () => void;

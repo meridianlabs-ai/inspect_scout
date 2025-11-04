@@ -1,9 +1,11 @@
 DEFAULT_SCANNER_TEMPLATE = """
 Here is an LLM conversation between a user and an assistant:
 
+[BEGIN CONVERSATION]
 ===================================
 {{ messages }}
 ===================================
+[END CONVERSATION]
 
 {{ answer_prompt }}: {{ question }}
 
@@ -16,19 +18,25 @@ The last line of your response should be of the following format:
 {answer_format}
 """
 
-BOOL_ANSWER_PROMPT = "Answer the following yes or no question"
+BOOL_ANSWER_PROMPT = (
+    "Answer the following yes or no question about the conversation above"
+)
 BOOL_ANSWER_FORMAT = "'ANSWER: $VALUE' (without quotes) where $VALUE is yes or no."
 
-NUMBER_ANSWER_PROMPT = "Answer the following numeric question"
+NUMBER_ANSWER_PROMPT = (
+    "Answer the following numeric question about the conversation above"
+)
 NUMBER_ANSWER_FORMAT = (
     "'ANSWER: $NUMBER' (without quotes) where $NUMBER is the numeric value."
 )
 
-LABELS_ANSWER_PROMPT = "Answer the following multiple choice question"
+LABELS_ANSWER_PROMPT = (
+    "Answer the following multiple choice question about the conversation above"
+)
 LABELS_ANSWER_FORMAT_SINGLE = (
     "'ANSWER: $LETTER' (without quotes) where $LETTER is one of {{ letters }}."
 )
 LABELS_ANSWER_FORMAT_MULTI = "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from {{ letters }}."
 
-STR_ANSWER_PROMPT = "Answer the following question"
+STR_ANSWER_PROMPT = "Answer the following question about the conversation above"
 STR_ANSWER_FORMAT = "'ANSWER: $TEXT' (without quotes) where $TEXT is your answer."

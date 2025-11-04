@@ -1,3 +1,11 @@
+import {
+  ChatMessageAssistant,
+  ChatMessageSystem,
+  ChatMessageTool,
+  ChatMessageUser,
+  Events,
+} from "./log";
+
 // Internal Types
 export interface Scans {
   results_dir: string;
@@ -90,4 +98,17 @@ export interface ModelUsage {
   input_tokens_cache_write?: number;
   input_tokens_cache_read?: number;
   reasoning_tokens?: number;
+}
+
+export type ChatMessages = ChatMessage[];
+
+export type ChatMessage =
+  | ChatMessageSystem
+  | ChatMessageUser
+  | ChatMessageAssistant
+  | ChatMessageTool;
+
+export interface Transcript {
+  messages: ChatMessages;
+  events: Events;
 }

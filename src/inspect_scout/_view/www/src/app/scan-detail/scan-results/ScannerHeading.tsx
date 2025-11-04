@@ -19,7 +19,7 @@ export const ScannerHeading: FC<ScannerHeadingProps> = ({ scanner }) => {
 const toArgs = (params: Record<string, unknown>): string[] => {
   const args: string[] = [];
   for (const [key, value] of Object.entries(params)) {
-    args.push(`${key}:${value}`);
+    args.push(`${key}:${String(value)}`);
   }
   return args;
 };

@@ -22227,7 +22227,7 @@ const ScannerHeading = ({ scanner }) => {
 const toArgs = (params) => {
   const args = [];
   for (const [key2, value] of Object.entries(params)) {
-    args.push(`${key2}:${value}`);
+    args.push(`${key2}:${String(value)}`);
   }
   return args;
 };
@@ -94499,10 +94499,6 @@ const ScannerDetail = ({ scanner }) => {
           columnDefs,
           rowData,
           animateRows: false,
-          defaultColDef: {
-            flex: 1,
-            minWidth: 100
-          },
           autoSizeStrategy: { type: "fitGridWidth" },
           headerHeight: 25,
           rowSelection: { mode: "singleRow", checkboxes: false },

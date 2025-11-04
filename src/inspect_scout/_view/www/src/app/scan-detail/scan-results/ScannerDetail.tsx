@@ -59,10 +59,6 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
           columnDefs={columnDefs}
           rowData={rowData}
           animateRows={false}
-          defaultColDef={{
-            flex: 1,
-            minWidth: 100,
-          }}
           autoSizeStrategy={{ type: "fitGridWidth" }}
           headerHeight={25}
           rowSelection={{ mode: "singleRow", checkboxes: false }}

@@ -9,6 +9,9 @@ interface ScannerDetailProps {
   scanner: IPCDataframe;
 }
 
+const kFilterPrefix = ["scan_", "transcript_", "scanner_"];
+const kMultilineColumns = ["input", "explanation"];
+
 export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
   const { columnDefs, rowData } = useMemo(() => {
     // Decode base64 string to Uint8Array
@@ -22,13 +25,23 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
     const table = fromArrow(bytes.buffer);
 
     // Create column definitions for ag-grid
-    const columnDefs: ColDef[] = scanner.column_names.map((name) => ({
-      field: name,
-      headerName: name,
-      sortable: true,
-      filter: true,
-      resizable: true,
-    }));
+    const columnDefs: ColDef[] = scanner.column_names
+      .filter((name) => {
+        return !kFilterPrefix.some((prefix) => name.startsWith(prefix));
+      })
+      .map((name) => {
+        const isMultiline = kMultilineColumns.includes(name);
+        return {
+          field: name,
+          headerName: name,
+          sortable: true,
+          filter: true,
+          resizable: true,
+          wrapText: isMultiline,
+          autoHeight: isMultiline,
+          minWidth: isMultiline ? 400 : 100,
+        };
+      });
 
     // Convert table to array of objects for ag-grid
     const rowData = table.objects();

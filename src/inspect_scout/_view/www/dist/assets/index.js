@@ -94460,6 +94460,8 @@ var AgGridReact = class extends reactExports.Component {
     return /* @__PURE__ */ React20.createElement(AgGridReactUi, { ...this.props, passGridApi: this.setGridApi });
   }
 };
+const kFilterPrefix = ["scan_", "transcript_", "scanner_"];
+const kMultilineColumns = ["input", "explanation"];
 const ScannerDetail = ({ scanner }) => {
   const { columnDefs, rowData } = reactExports.useMemo(() => {
     const binaryString = atob(scanner.data);
@@ -94468,13 +94470,21 @@ const ScannerDetail = ({ scanner }) => {
       bytes[i] = binaryString.charCodeAt(i);
     }
     const table = fromArrow(bytes.buffer);
-    const columnDefs2 = scanner.column_names.map((name2) => ({
-      field: name2,
-      headerName: name2,
-      sortable: true,
-      filter: true,
-      resizable: true
-    }));
+    const columnDefs2 = scanner.column_names.filter((name2) => {
+      return !kFilterPrefix.some((prefix) => name2.startsWith(prefix));
+    }).map((name2) => {
+      const isMultiline = kMultilineColumns.includes(name2);
+      return {
+        field: name2,
+        headerName: name2,
+        sortable: true,
+        filter: true,
+        resizable: true,
+        wrapText: isMultiline,
+        autoHeight: isMultiline,
+        minWidth: isMultiline ? 400 : 100
+      };
+    });
     const rowData2 = table.objects();
     return { columnDefs: columnDefs2, rowData: rowData2 };
   }, [scanner]);

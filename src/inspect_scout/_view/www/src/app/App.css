@@ -59,6 +59,15 @@ body {
   --ag-selected-row-background-color: var(--bs-secondary-bg-subtle);
 }
 
+.ag-cell-auto-height {
+  --reduceLineHeightBy: 16px;
+  line-height: calc(
+    var(--ag-internal-calculated-line-height) - var(--reduceLineHeightBy)
+  );
+  padding-top: calc(var(--reduceLineHeightBy) / 2);
+  padding-bottom: calc(var(--reduceLineHeightBy) / 2);
+}
+
 #app {
   height: 100vh;
   overflow-y: hidden;

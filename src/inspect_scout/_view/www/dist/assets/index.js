@@ -17776,6 +17776,29 @@ function shouldProcessLinkClick(event, target) {
   (!target || target === "_self") && // Let browser handle "target=_blank" etc.
   !isModifiedEvent(event);
 }
+function createSearchParams(init = "") {
+  return new URLSearchParams(
+    typeof init === "string" || Array.isArray(init) || init instanceof URLSearchParams ? init : Object.keys(init).reduce((memo2, key2) => {
+      let value = init[key2];
+      return memo2.concat(
+        Array.isArray(value) ? value.map((v) => [key2, v]) : [[key2, value]]
+      );
+    }, [])
+  );
+}
+function getSearchParamsForLocation(locationSearch, defaultSearchParams) {
+  let searchParams = createSearchParams(locationSearch);
+  if (defaultSearchParams) {
+    defaultSearchParams.forEach((_, key2) => {
+      if (!searchParams.has(key2)) {
+        defaultSearchParams.getAll(key2).forEach((value) => {
+          searchParams.append(key2, value);
+        });
+      }
+    });
+  }
+  return searchParams;
+}
 var _formDataSupportsSubmitter = null;
 function isFormDataSubmitterSupported() {
   if (_formDataSupportsSubmitter === null) {
@@ -18546,6 +18569,39 @@ function useLinkClickHandler(to, {
       viewTransition
     ]
   );
+}
+function useSearchParams(defaultInit) {
+  warning(
+    typeof URLSearchParams !== "undefined",
+    `You cannot use the \`useSearchParams\` hook in a browser that does not support the URLSearchParams API. If you need to support Internet Explorer 11, we recommend you load a polyfill such as https://github.com/ungap/url-search-params.`
+  );
+  let defaultSearchParamsRef = reactExports.useRef(createSearchParams(defaultInit));
+  let hasSetSearchParamsRef = reactExports.useRef(false);
+  let location = useLocation();
+  let searchParams = reactExports.useMemo(
+    () => (
+      // Only merge in the defaults if we haven't yet called setSearchParams.
+      // Once we call that we want those to take precedence, otherwise you can't
+      // remove a param with setSearchParams({}) if it has an initial value
+      getSearchParamsForLocation(
+        location.search,
+        hasSetSearchParamsRef.current ? null : defaultSearchParamsRef.current
+      )
+    ),
+    [location.search]
+  );
+  let navigate = useNavigate();
+  let setSearchParams = reactExports.useCallback(
+    (nextInit, navigateOptions) => {
+      const newSearchParams = createSearchParams(
+        typeof nextInit === "function" ? nextInit(new URLSearchParams(searchParams)) : nextInit
+      );
+      hasSetSearchParamsRef.current = true;
+      navigate("?" + newSearchParams, navigateOptions);
+    },
+    [navigate, searchParams]
+  );
+  return [searchParams, setSearchParams];
 }
 var fetcherId = 0;
 var getUniqueFetcherId = () => `__${String(++fetcherId)}__`;
@@ -22113,11 +22169,25 @@ const kTabIdInfo = "scan-detail-tabs-info";
 const kTabIdScanners = "scan-detail-tabs-scanners";
 const kTabIdJson = "scan-detail-tabs-json";
 const ScanDetailTabs = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
   const setSelectedResultsTab = useStore(
     (state) => state.setSelectedResultsTab
   );
   const selectedResults = useStore((state) => state.selectedResults);
+  reactExports.useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      const validTabs = [kTabIdScans, kTabIdInfo, kTabIdScanners, kTabIdJson];
+      if (validTabs.includes(tabParam)) {
+        setSelectedResultsTab(tabParam);
+      }
+    }
+  }, [searchParams, setSelectedResultsTab]);
+  const handleTabChange = (tabId) => {
+    setSelectedResultsTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     TabSet,
     {
@@ -22134,7 +22204,7 @@ const ScanDetailTabs = () => {
             selected: selectedTab === kTabIdJson || selectedTab === void 0,
             title: "JSON",
             onSelected: () => {
-              setSelectedResultsTab(kTabIdJson);
+              handleTabChange(kTabIdJson);
             },
             scrollable: true,
             children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -22154,7 +22224,7 @@ const ScanDetailTabs = () => {
             selected: selectedTab === kTabIdScans,
             title: "Results",
             onSelected: () => {
-              setSelectedResultsTab(kTabIdScans);
+              handleTabChange(kTabIdScans);
             },
             children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResults, {})
           }
@@ -22166,7 +22236,7 @@ const ScanDetailTabs = () => {
             selected: selectedTab === kTabIdInfo,
             title: "Info",
             onSelected: () => {
-              setSelectedResultsTab(kTabIdInfo);
+              handleTabChange(kTabIdInfo);
             },
             children: "Info"
           }
@@ -22178,7 +22248,7 @@ const ScanDetailTabs = () => {
             selected: selectedTab === kTabIdScanners,
             title: "Scanners",
             onSelected: () => {
-              setSelectedResultsTab(kTabIdScanners);
+              handleTabChange(kTabIdScanners);
             },
             children: "Scanners"
           }

@@ -19819,7 +19819,7 @@ const useStore = create()(
         visibleRanges: {},
         gridStates: {},
         loading: 0,
-        collapsed: {},
+        collapsedBuckets: {},
         // Actions
         setApi: (api) => set2((state) => {
           state.api = api;
@@ -19946,13 +19946,15 @@ const useStore = create()(
             state.selectedResultsTab = tab2;
           });
         },
-        getCollapsed: (name, defaultValue) => {
-          const state = get();
-          return state.collapsed[name] ?? defaultValue ?? false;
-        },
-        setCollapsed: (name, value) => {
+        setCollapsed: (bucket, key2, value) => {
           set2((state) => {
-            state.collapsed[name] = value;
+            state.collapsedBuckets[bucket] = state.collapsedBuckets[bucket] || {};
+            state.collapsedBuckets[bucket][key2] = value;
+          });
+        },
+        clearCollapsed: (bucket) => {
+          set2((state) => {
+            state.collapsedBuckets[bucket] = {};
           });
         }
       })),

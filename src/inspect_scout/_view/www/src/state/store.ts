@@ -21,8 +21,7 @@ interface StoreState {
   hasInitializedEmbeddedData?: boolean;
   loading: number;
   selectedResultsTab?: string;
-  collapsed: Record<string, boolean>;
-
+  collapsedBuckets: Record<string, Record<string, boolean>>;
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
@@ -38,8 +37,8 @@ interface StoreState {
   ) => T | undefined;
   removePropertyValue: (id: string, propertyName: string) => void;
 
-  getCollapsed: (name: string, defaultValue?: boolean) => boolean;
-  setCollapsed: (name: string, value: boolean) => void;
+  setCollapsed: (bucket: string, key: string, value: boolean)  => void;
+  clearCollapsed: (bucket: string) => void;
 
   getScrollPosition: (path: string) => number | undefined;
   setScrollPosition: (path: string, position: number) => void;
@@ -78,7 +77,7 @@ export const useStore = create<StoreState>()(
         visibleRanges: {},
         gridStates: {},
         loading: 0,
-        collapsed:{},
+        collapsedBuckets:{},
 
         // Actions
         setApi: (api: ScanApi) =>
@@ -244,15 +243,16 @@ export const useStore = create<StoreState>()(
             state.selectedResultsTab = tab;
           });
         },
-        getCollapsed: (name: string, defaultValue?: boolean)  => {
-          const state = get();
-          return state.collapsed[name] ?? defaultValue ?? false;  
-        },
-        setCollapsed: (name: string, value: boolean)  => {
+        setCollapsed: (bucket: string, key: string, value: boolean)  => {
           set((state) => {
-            state.collapsed[name] = value;
+            state.collapsedBuckets[bucket] = state.collapsedBuckets[bucket] || {};
+            state.collapsedBuckets[bucket][key] = value;
           });
-
+        },
+        clearCollapsed: (bucket: string) => {
+          set((state) => {
+            state.collapsedBuckets[bucket] = {};
+          });
         }
       })),
       {

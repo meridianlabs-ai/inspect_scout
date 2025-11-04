@@ -2,6 +2,7 @@
   display: grid;
   grid-template-columns: max-content max-content max-content;
   column-gap: 0.5em;
+  align-content: start;
 }
 
 .entry {

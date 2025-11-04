@@ -44,6 +44,7 @@
     "ag-grid-community": "^34.3.0",
     "ag-grid-react": "^34.3.0",
     "ansi-output": "^0.0.9",
+    "arquero": "^8.0.3",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.12.1",
     "clsx": "^2.1.1",

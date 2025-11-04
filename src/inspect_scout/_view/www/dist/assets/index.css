@@ -214,32 +214,33 @@
 ._tabControl_10t9t_10 {
   padding: 0.3em 1em !important;
 }
-._container_fygbq_1 {
+._container_o19hd_1 {
   padding: 0.5em;
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 0.5em;
+  height: 100%;
 }
-._container_1yxcf_1 {
+._container_1vgos_1 {
   display: grid;
   grid-template-columns: max-content max-content max-content;
   column-gap: 0.5em;
+  align-content: start;
 }
 
-._entry_1yxcf_7 {
+._entry_1vgos_8 {
   display: contents;
 }
 
-._selected_1yxcf_11 {
+._selected_1vgos_12 {
   font-weight: 600;
 }
 
-._entry_1yxcf_7:hover {
+._entry_1vgos_8:hover {
   color: var(--bs-link-hover-color);
   cursor: pointer;
 }
-._body_1wqtm_1 {
-  border: solid red 1px;
+._body_1vbnk_1 {
 }
 ._container_1fkl0_1 {
   font-family: var(--bs-font-monospace);

@@ -1,4 +1,5 @@
-from typing import Awaitable, Callable, NamedTuple
+from functools import reduce
+from typing import Awaitable, Callable, Literal, NamedTuple, overload
 
 from inspect_ai.model import (
     ChatMessage,
@@ -6,6 +7,8 @@ from inspect_ai.model import (
     ChatMessageTool,
     Content,
 )
+
+from .util import _message_id
 
 
 class ContentFilter(NamedTuple):
@@ -24,22 +27,61 @@ class ContentFilter(NamedTuple):
     """Exclude tool usage (defaults to `False`)"""
 
 
+@overload
 async def messages_as_str(
-    messages: list[ChatMessage], filter: ContentFilter | None = None
-) -> str:
+    messages: list[ChatMessage],
+    content_filter: ContentFilter | None = None,
+) -> str: ...
+
+
+@overload
+async def messages_as_str(
+    messages: list[ChatMessage],
+    content_filter: ContentFilter | None,
+    include_ids: Literal[True],
+) -> tuple[str, list[str]]: ...
+
+
+async def messages_as_str(
+    messages: list[ChatMessage],
+    content_filter: ContentFilter | None = None,
+    include_ids: Literal[True] | None = None,
+) -> str | tuple[str, list[str]]:
     """Concatenate list of chat messages into a string.
 
     Args:
-       messages: List of chat messages
-       filter: Content filter for messages.
+       messages: List of chat messages.
+       content_filter: Content filter for messages.
+       include_ids: If True, prepend 1-based ordinal references (e.g., [M1], [M2])
+          to each message and return a mapping of ordinals to original message IDs.
+          If None (default), return plain formatted string.
 
     Returns:
-       str: Messages as a string.
+       If include_ids is False: Messages concatenated as a formatted string.
+       If include_ids is True: Tuple of (formatted string with [M1], [M2], etc.
+          prefixes, list of original message IDs corresponding to each ordinal for
+          non-excluded messages).
     """
-    if filter is not None and filter.messages is not None:
-        messages = await filter.messages(messages)
+    if content_filter is not None and content_filter.messages is not None:
+        messages = await content_filter.messages(messages)
 
-    return "\n".join([message_as_str(m, filter) or "" for m in messages])
+    if not include_ids:
+        return "\n".join([message_as_str(m, content_filter) or "" for m in messages])
+
+    def reduce_message(
+        acc: tuple[list[str], list[str]], message: ChatMessage
+    ) -> tuple[list[str], list[str]]:
+        formatted_messages, message_id_map = acc
+        if (msg_str := message_as_str(message, content_filter)) is not None:
+            message_id_map.append(_message_id(message))
+            formatted_messages.append(f"[M{len(message_id_map)}] {msg_str}")
+        return formatted_messages, message_id_map
+
+    formatted_messages, message_id_map = reduce(
+        reduce_message, messages, (list[str](), list[str]())
+    )
+
+    return "\n".join(formatted_messages), message_id_map
 
 
 def message_as_str(

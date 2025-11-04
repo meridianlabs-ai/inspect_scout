@@ -20,6 +20,9 @@ importers:
       ag-grid-react:
         specifier: ^34.3.0
         version: 34.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      ansi-output:
+        specifier: ^0.0.9
+        version: 0.0.9
       bootstrap:
         specifier: ^5.3.8
         version: 5.3.8(@popperjs/core@2.11.8)
@@ -786,6 +789,9 @@ packages:
 
   ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
+
+  ansi-output@0.0.9:
+    resolution: {integrity: sha512-6kLL1/P4hukih+MU2U0faECoH4F2gGDQy00gjCAaW9ojj6voOdlHtFtmZxYC0HFAtPxzUFt/etZAZLV2GaXWoA==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -2853,6 +2859,8 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
+
+  ansi-output@0.0.9: {}
 
   ansi-regex@5.0.1: {}
 

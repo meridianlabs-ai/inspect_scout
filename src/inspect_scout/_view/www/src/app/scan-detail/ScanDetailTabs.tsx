@@ -71,7 +71,7 @@ export const ScanDetailTabs: React.FC = () => {
           handleTabChange(kTabIdScans);
         }}
       >
-        <ScanResults/>
+        <ScanResults />
       </TabPanel>
       <TabPanel
         id={kTabIdInfo}
@@ -93,7 +93,6 @@ export const ScanDetailTabs: React.FC = () => {
       >
         Scanners
       </TabPanel>
-      
     </TabSet>
   );
 };

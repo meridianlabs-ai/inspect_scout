@@ -7,7 +7,12 @@ import clsx from "clsx";
 export const ScanTitleView: FC = () => {
   const selectedResults = useStore((state) => state.selectedResults);
   const errorCount = selectedResults?.errors.length || 0;
-  const status = selectedResults === undefined ? "" : selectedResults.complete ? "Complete" : "Incomplete";
+  const status =
+    selectedResults === undefined
+      ? ""
+      : selectedResults.complete
+        ? "Complete"
+        : "Incomplete";
 
   return (
     <div className={clsx(styles.scanTitleView)}>
@@ -21,9 +26,7 @@ export const ScanTitleView: FC = () => {
       </div>
 
       <div className={clsx(styles.rightColumn)}>
-        <div className={"text-size-smaller"}>
-          {status}
-        </div>
+        <div className={"text-size-smaller"}>{status}</div>
         <div className={"text-size-smaller"}>
           {errorCount === 1
             ? `${errorCount} Error`

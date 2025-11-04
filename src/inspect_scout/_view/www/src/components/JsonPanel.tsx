@@ -13,7 +13,6 @@ interface JSONPanelProps {
   className?: string | string[];
 }
 
-
 export const JSONPanel: FC<JSONPanelProps> = ({
   id,
   json,
@@ -23,7 +22,9 @@ export const JSONPanel: FC<JSONPanelProps> = ({
   className,
 }) => {
   const sourceCode = useMemo(() => {
-    return json || data ? JSON.stringify(resolveBase64(data), undefined, 2) : "";
+    return json || data
+      ? JSON.stringify(resolveBase64(data), undefined, 2)
+      : "";
   }, [json, data]);
 
   const sourceCodeRef = useRef<HTMLDivElement | null>(null);
@@ -76,6 +77,4 @@ const resolveBase64 = (value: unknown): unknown => {
   return value;
 };
 
-
 export default JSONPanel;
-

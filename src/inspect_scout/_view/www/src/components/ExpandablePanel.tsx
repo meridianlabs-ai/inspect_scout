@@ -52,7 +52,7 @@ export const ExpandablePanel: FC<ExpandablePanelProps> = memo(
 
         setShowToggle(contentHeight > maxCollapsedHeight);
       },
-      [lines],
+      [lines]
     );
     const contentRef = useResizeObserver(checkOverflow);
 
@@ -73,7 +73,7 @@ export const ExpandablePanel: FC<ExpandablePanelProps> = memo(
             collapsed ? styles.expandableCollapsed : undefined,
             border ? styles.expandableBordered : undefined,
             showToggle ? styles.padBottom : undefined,
-            className,
+            className
           )}
         >
           {children}
@@ -104,7 +104,7 @@ export const ExpandablePanel: FC<ExpandablePanelProps> = memo(
         )}
       </div>
     );
-  },
+  }
 );
 
 interface MoreToggleProps {
@@ -132,7 +132,7 @@ const MoreToggle: FC<MoreToggleProps> = ({
       className={clsx(
         styles.moreToggle,
         border ? styles.bordered : undefined,
-        position === "inline-right" ? styles.inlineRight : styles.blockLeft,
+        position === "inline-right" ? styles.inlineRight : styles.blockLeft
       )}
       style={style}
     >
@@ -146,6 +146,6 @@ const MoreToggle: FC<MoreToggleProps> = ({
   );
 };
 
-ExpandablePanel.displayName = 'ExpandablePanel';
+ExpandablePanel.displayName = "ExpandablePanel";
 
 export default ExpandablePanel;

@@ -20297,9 +20297,9 @@ const ActivityBar = ({ animating }) => {
     }
   ) });
 };
-const scanTitleView = "_scanTitleView_1bbu1_1";
-const leftColumn = "_leftColumn_1bbu1_10";
-const subtitle = "_subtitle_1bbu1_38";
+const scanTitleView = "_scanTitleView_l0opl_1";
+const leftColumn = "_leftColumn_l0opl_10";
+const subtitle = "_subtitle_l0opl_38";
 const styles$6 = {
   scanTitleView,
   leftColumn,
@@ -21988,14 +21988,14 @@ function useStatefulScrollPosition(elementRef, elementKey, delay = 1e3, scrollab
   }, [elementKey, elementRef, getScrollPosition, handleScroll, scrollable2]);
   return { restoreScrollPosition };
 }
-const tabs$1 = "_tabs_1pcaw_1";
-const tabContents = "_tabContents_1pcaw_5";
-const scrollable = "_scrollable_1pcaw_10";
-const tab = "_tab_1pcaw_1";
-const tabItem = "_tabItem_1pcaw_25";
-const tabIcon = "_tabIcon_1pcaw_29";
-const tabTools = "_tabTools_1pcaw_33";
-const tabStyle = "_tabStyle_1pcaw_43";
+const tabs$1 = "_tabs_1sz0h_1";
+const tabContents = "_tabContents_1sz0h_5";
+const scrollable = "_scrollable_1sz0h_10";
+const tab = "_tab_1sz0h_1";
+const tabItem = "_tabItem_1sz0h_25";
+const tabIcon = "_tabIcon_1sz0h_29";
+const tabTools = "_tabTools_1sz0h_33";
+const tabStyle = "_tabStyle_1sz0h_43";
 const moduleStyles = {
   tabs: tabs$1,
   tabContents,
@@ -22125,21 +22125,21 @@ const flattenChildren = (children) => {
     return [];
   });
 };
-const tabSet = "_tabSet_1i2um_1";
-const tabs = "_tabs_1i2um_5";
-const tabControl = "_tabControl_1i2um_10";
+const tabSet = "_tabSet_10t9t_1";
+const tabs = "_tabs_10t9t_5";
+const tabControl = "_tabControl_10t9t_10";
 const styles$5 = {
   tabSet,
   tabs,
   tabControl
 };
-const container$2 = "_container_1q2hs_1";
+const container$2 = "_container_fygbq_1";
 const styles$4 = {
   container: container$2
 };
-const container$1 = "_container_lcu0q_1";
-const entry = "_entry_lcu0q_7";
-const selected = "_selected_lcu0q_11";
+const container$1 = "_container_1yxcf_1";
+const entry = "_entry_1yxcf_7";
+const selected = "_selected_1yxcf_11";
 const styles$3 = {
   container: container$1,
   entry,
@@ -22208,7 +22208,7 @@ const ScanResultsTOC = () => {
     );
   }) });
 };
-const body = "_body_6e22p_1";
+const body = "_body_1wqtm_1";
 const styles$2 = {
   body
 };
@@ -22315,7 +22315,7 @@ const ScanDetailTabs = () => {
     }
   );
 };
-const root$2 = "_root_txmk7_1";
+const root$2 = "_root_ke0e7_1";
 const styles$1 = {
   root: root$2
 };

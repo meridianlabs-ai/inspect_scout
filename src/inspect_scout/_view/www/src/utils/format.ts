@@ -12,7 +12,7 @@ export const arrayToString = (val: string | string[]): string => {
 export const formatDataset = (
   samples: number,
   epochs: number,
-  name: string | null,
+  name: string | null
 ): string => {
   const perEpochSamples = epochs > 0 ? samples / epochs : samples;
   const namePrefix = name ? `${name} — ` : "";
@@ -54,7 +54,7 @@ export const formatTime = (seconds: number): string => {
  */
 export function formatPrettyDecimal(
   num: number,
-  maxDecimals: number = 3,
+  maxDecimals: number = 3
 ): string {
   const numDecimalPlaces = num.toString().includes(".")
     ? num.toString().split(".")[1]?.length || 0
@@ -99,7 +99,7 @@ export function toTitleCase(str: string): string {
   return str
     .split(" ")
     .map((w) =>
-      w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w,
+      w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w
     )
     .join(" ");
 }

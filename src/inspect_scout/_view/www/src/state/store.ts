@@ -38,7 +38,7 @@ interface StoreState {
   ) => T | undefined;
   removePropertyValue: (id: string, propertyName: string) => void;
 
-  setCollapsed: (bucket: string, key: string, value: boolean)  => void;
+  setCollapsed: (bucket: string, key: string, value: boolean) => void;
   clearCollapsed: (bucket: string) => void;
 
   getScrollPosition: (path: string) => number | undefined;
@@ -64,7 +64,7 @@ interface StoreState {
 
   setSelectedResultsTab: (tab: string) => void;
 
-  setSelectedScanner: (scanner: string) => void;  
+  setSelectedScanner: (scanner: string) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -80,7 +80,7 @@ export const useStore = create<StoreState>()(
         visibleRanges: {},
         gridStates: {},
         loading: 0,
-        collapsedBuckets:{},
+        collapsedBuckets: {},
 
         // Actions
         setApi: (api: ScanApi) =>
@@ -246,9 +246,10 @@ export const useStore = create<StoreState>()(
             state.selectedResultsTab = tab;
           });
         },
-        setCollapsed: (bucket: string, key: string, value: boolean)  => {
+        setCollapsed: (bucket: string, key: string, value: boolean) => {
           set((state) => {
-            state.collapsedBuckets[bucket] = state.collapsedBuckets[bucket] || {};
+            state.collapsedBuckets[bucket] =
+              state.collapsedBuckets[bucket] || {};
             state.collapsedBuckets[bucket][key] = value;
           });
         },
@@ -261,7 +262,7 @@ export const useStore = create<StoreState>()(
           set((state) => {
             state.selectedScanner = scanner;
           });
-        }
+        },
       })),
       {
         name: "inspect-scout-storage",

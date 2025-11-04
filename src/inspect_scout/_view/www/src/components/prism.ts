@@ -6,7 +6,7 @@ const kPrismRenderMaxSize = 250000;
 
 export const usePrismHighlight = (
   containerRef: RefObject<HTMLDivElement | null>,
-  contentLength: number,
+  contentLength: number
 ) => {
   useEffect(() => {
     requestAnimationFrame(() => {

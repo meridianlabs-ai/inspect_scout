@@ -46,14 +46,11 @@ export const ScanDetail: React.FC = () => {
     <div className={clsx(styles.root)}>
       {singleFileMode || <Navbar />}
       <ActivityBar animating={!!loading} />
-      <ScanTitleView/>
-      <ScanDetailTabs/>
+      <ScanTitleView />
+      <ScanDetailTabs />
     </div>
   );
 };
-
-
-
 
 // name
 // job

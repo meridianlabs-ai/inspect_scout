@@ -9,9 +9,9 @@
 
 .leftColumn {
     display: grid;
-    grid-template-columns: max-content max-content;
+    grid-template-columns: max-content max-content 1fr;
     align-items: baseline;
-    row-gap: 0.1em;
+    row-gap: 0.2em;
     column-gap: 0.5em;
 }
 
@@ -30,7 +30,8 @@
 
 .scanTitleView h3 {
     margin: 0;
-    font-size: 0.9em;
+    font-size: 0.8em;
+    font-weight: 400;
     color: var(--bs-secondary-text-color);
 }
 

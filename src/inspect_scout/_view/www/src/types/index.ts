@@ -27,7 +27,9 @@ export interface IPCDataframe {
   row_count: number;
 }
 
-export type Summary = Record<string, ScannerSummary>;
+export interface Summary {
+  scanners: Record<string, ScannerSummary>;
+} 
 
 export interface Error {
   transcript_id: string;

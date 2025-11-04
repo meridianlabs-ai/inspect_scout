@@ -4,6 +4,7 @@ import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 
 import styles from "./ScanDetailTabs.module.css";
+import { ScanResults } from "./scan-results/ScanResults";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -49,7 +50,7 @@ export const ScanDetailTabs: React.FC = () => {
           setSelectedResultsTab(kTabIdScans);
         }}
       >
-        Results
+        <ScanResults/>
       </TabPanel>
       <TabPanel
         id={kTabIdInfo}

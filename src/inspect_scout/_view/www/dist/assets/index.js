@@ -20031,7 +20031,7 @@ const left = "_left_ctaca_31";
 const right = "_right_ctaca_41";
 const toolbarButton = "_toolbarButton_ctaca_50";
 const pathContainer = "_pathContainer_ctaca_58";
-const styles$5 = {
+const styles$7 = {
   header,
   bordered,
   breadcrumbs,
@@ -20171,87 +20171,93 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
       className: clsx(
         "text-size-smaller",
         "header-nav",
-        styles$5.header,
-        bordered2 ? styles$5.bordered : void 0
+        styles$7.header,
+        bordered2 ? styles$7.bordered : void 0
       ),
       "aria-label": "breadcrumb",
       "data-unsearchable": true,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.left), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$5.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.left), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$7.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Link,
             {
               to: scansRoute(),
-              className: clsx(styles$5.toolbarButton),
+              className: clsx(styles$7.toolbarButton),
               onClick: () => {
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.home) })
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$5.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$5.breadcrumbs), children: visibleSegments.map((segment, index) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$7.breadcrumbs), children: visibleSegments.map((segment, index) => {
             const isLast = index === visibleSegments.length - 1;
             const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$5.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
+              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$7.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "li",
                 {
                   className: clsx(
-                    styles$5.pathLink,
+                    styles$7.pathLink,
                     "breadcrumb-item",
                     isLast ? "active" : void 0
                   ),
-                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$5.pathSegment), children: segment.text })
+                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$7.pathSegment), children: segment.text })
                 }
               )
             ] }, index);
           }) }) : "" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$5.right), children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.right), children })
       ]
     }
   );
 };
 const wrapper = "_wrapper_1tajk_1";
-const container$1 = "_container_1tajk_12";
+const container$2 = "_container_1tajk_12";
 const animate = "_animate_1tajk_21";
-const styles$4 = {
+const styles$6 = {
   wrapper,
-  container: container$1,
+  container: container$2,
   animate
 };
 const ActivityBar = ({ animating }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$4.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
-      className: clsx(styles$4.container),
+      className: clsx(styles$6.container),
       role: "progressbar",
       "aria-label": "Progress bar",
       "aria-valuenow": 25,
       "aria-valuemin": 0,
       "aria-valuemax": 100,
-      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$4.animate })
+      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$6.animate })
     }
   ) });
 };
-const scanTitleView = "_scanTitleView_1p4n5_1";
-const leftColumn = "_leftColumn_1p4n5_10";
-const subtitle = "_subtitle_1p4n5_37";
-const styles$3 = {
+const scanTitleView = "_scanTitleView_1bbu1_1";
+const leftColumn = "_leftColumn_1bbu1_10";
+const subtitle = "_subtitle_1bbu1_38";
+const styles$5 = {
   scanTitleView,
   leftColumn,
   subtitle
 };
 const ScanTitleView = () => {
   const selectedResults = useStore((state) => state.selectedResults);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.scanTitleView), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.leftColumn), children: [
+  const errorCount = selectedResults?.errors.length || 0;
+  const status = selectedResults === void 0 ? "" : selectedResults.complete ? "Complete" : "Incomplete";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.scanTitleView), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.leftColumn), children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: selectedResults?.spec.scan_name }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: selectedResults?.spec.scan_id }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: clsx(styles$3.subtitle, "text-style-secondary"), children: selectedResults?.spec.scan_file })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", {}),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: clsx(styles$5.subtitle, "text-style-secondary"), children: selectedResults?.spec.scan_file })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$3.rightColumn), children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-size-smaller", children: selectedResults?.complete ? "Complete" : "Incomplete" }) })
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.rightColumn), children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-size-smaller", children: status }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-size-smaller", children: errorCount === 1 ? `${errorCount} Error` : errorCount > 1 ? `${errorCount} Errors` : "" })
+    ] })
   ] });
 };
 var prism = { exports: {} };
@@ -22060,10 +22066,47 @@ const flattenChildren = (children) => {
 const tabSet = "_tabSet_1i2um_1";
 const tabs = "_tabs_1i2um_5";
 const tabControl = "_tabControl_1i2um_10";
-const styles$2 = {
+const styles$4 = {
   tabSet,
   tabs,
   tabControl
+};
+const container$1 = "_container_1q2hs_1";
+const styles$3 = {
+  container: container$1
+};
+const styles$2 = {};
+const toEntries = (results) => {
+  if (!results) {
+    return [];
+  }
+  const entries = [];
+  console.log(results);
+  for (const scanner of Object.keys(results.summary.scanners)) {
+    const summary = results.summary.scanners[scanner];
+    entries.push({
+      title: scanner,
+      count: summary?.results || 0
+    });
+  }
+  return entries;
+};
+const ScanResultsTOC = () => {
+  const results = useStore((state) => state.selectedResults);
+  const entries = toEntries(results);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.container), children: entries.map((entry) => {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$2.entry), children: [
+      entry.icon && /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: entry.icon, className: clsx(styles$2.icon) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$2.title), children: entry.title }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$2.count), children: entry.count })
+    ] }, entry.title);
+  }) });
+};
+const ScanResults = () => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.container), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsTOC, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Body" })
+  ] });
 };
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -22080,9 +22123,9 @@ const ScanDetailTabs = () => {
     {
       id: "scan-detail-tabs",
       type: "pills",
-      tabPanelsClassName: clsx(styles$2.tabSet),
-      tabControlsClassName: clsx(styles$2.tabControl),
-      className: clsx(styles$2.tabs),
+      tabPanelsClassName: clsx(styles$4.tabSet),
+      tabControlsClassName: clsx(styles$4.tabControl),
+      className: clsx(styles$4.tabs),
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           TabPanel,
@@ -22113,7 +22156,7 @@ const ScanDetailTabs = () => {
             onSelected: () => {
               setSelectedResultsTab(kTabIdScans);
             },
-            children: "Results"
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResults, {})
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(

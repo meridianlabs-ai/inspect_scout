@@ -122,8 +122,8 @@ The data frame includes the following fields (note that some fields included emb
 | `answer` | str | Answer extracted from scanner generation. |
 | `explanation` | str | Explanation for scan result. |
 | `metadata` | dict<br/><small>JSON</small> | Metadata for scan result. |
-| `message_references` | list\[str\]<br/><small>JSON</small> | Messages referenced by scanner. |
-| `event_references` | list\[str\]<br/><small>JSON</small> | Events referenced by scanner. |
+| `message_references` | list\[Reference\]<br/><small>JSON</small> | Messages referenced by scanner. |
+| `event_references` | list\[Reference\]<br/><small>JSON</small> | Events referenced by scanner. |
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
 | `scan_total_tokens` | number | Total tokens used by scan. |

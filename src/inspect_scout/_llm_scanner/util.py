@@ -21,6 +21,7 @@ def extract_references(explanation: str, message_id_map: list[str]) -> list[Refe
     seen_ids = set()
 
     for match in matches:
+        cite = match.group(0)
         local_id = int(match.group(1))
         # Convert 1-based local ID to 0-based index
         idx = local_id - 1
@@ -30,7 +31,7 @@ def extract_references(explanation: str, message_id_map: list[str]) -> list[Refe
             actual_id = message_id_map[idx]
             # Avoid duplicate references
             if actual_id not in seen_ids:
-                references.append(Reference(type="message", id=actual_id))
+                references.append(Reference(type="message", cite=cite, id=actual_id))
                 seen_ids.add(actual_id)
 
     return references

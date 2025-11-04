@@ -15,6 +15,12 @@ class Reference(BaseModel):
     type: Literal["message", "event"]
     """Reference type."""
 
+    cite: str | None = Field(default=None)
+    """Cite text used when the entity was referenced (optional).
+
+    For example, a model may have pointed to a message using something like [M22], which is the cite.
+    """
+
     id: str
     """Reference id (message or event id)"""
 
@@ -112,7 +118,7 @@ class ResultReport(BaseModel):
             def references_json(type: str) -> str:
                 assert self.result
                 return to_json_str_safe(
-                    [ref.id for ref in self.result.references if ref.type == type]
+                    [ref for ref in self.result.references if ref.type == type]
                 )
 
             columns["message_references"] = references_json("message")

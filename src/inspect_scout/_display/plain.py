@@ -42,10 +42,10 @@ class DisplayPlain(Display):
         scan: ScanContext,
         scan_location: str,
         summary: Summary,
-        transcripts: int,
+        total: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
-        yield ScanDisplayPlain(scan, summary, transcripts, skipped, self.print)
+        yield ScanDisplayPlain(scan, summary, total, skipped, self.print)
 
     @override
     def scan_interrupted(self, message: RenderableType, status: Status) -> None:
@@ -74,7 +74,7 @@ class ScanDisplayPlain(ScanDisplay):
         self,
         scan: ScanContext,
         summary: Summary,
-        transcripts: int,
+        total: int,
         skipped: int,
         print: Callable[..., None],
     ) -> None:
@@ -83,7 +83,7 @@ class ScanDisplayPlain(ScanDisplay):
             f"{scan_title(scan.spec)}",
         )
         self._print(scan_config(scan.spec), "\n")
-        self._total_scans = sum(len(work.transcripts) for work in scan.worklist)
+        self._total_scans = total
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
         self._parsing = self._scanning = self._idle = self._buffered = 0

@@ -167,7 +167,7 @@ export const useStore = create<StoreState>()(
             // Remove the key
             const newListPositions = { ...state.listPositions };
             // TODO: Revisit
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+
             delete newListPositions[name];
 
             return {
@@ -194,7 +194,7 @@ export const useStore = create<StoreState>()(
             // Remove the key
             const newVisibleRanges = { ...state.visibleRanges };
             // TODO: Revisit
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+
             delete newVisibleRanges[name];
 
             return {
@@ -212,7 +212,7 @@ export const useStore = create<StoreState>()(
           set((state) => {
             const newGridStates = { ...state.gridStates };
             // TODO: Revisit
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+
             delete newGridStates[name];
 
             return {

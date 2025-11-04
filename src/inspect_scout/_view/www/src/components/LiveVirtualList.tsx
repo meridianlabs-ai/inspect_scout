@@ -297,7 +297,6 @@ export const LiveVirtualList = <T,>({
   return (
     <Virtuoso
       ref={listHandle}
-      // eslint-disable-next-line react-hooks/refs
       customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
       style={{ height: "100%", width: "100%" }}
       data={data}

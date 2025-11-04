@@ -27,7 +27,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
     // TODO: eslint thinks that the conditional is unnecessary, but it seems that
     // the call to func could have a side effect of mutating timeout if it makes
     // a call to throttled below
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     if (!timeout) {
       args = null;
     }
@@ -89,9 +89,8 @@ export function debounce<T extends (...args: any[]) => unknown>(
         // TODO: eslint thinks that the conditional is unnecessary, but it seems
         // that the call to func could have a side effect of mutating timeout if
         // it makes a call to debounced below
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
         if (!timeout) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           args = null!;
         }
       }
@@ -110,7 +109,7 @@ export function debounce<T extends (...args: any[]) => unknown>(
 
     if (callNow) {
       result = func(...args) as ReturnType<T>;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
       args = null!;
     }
 

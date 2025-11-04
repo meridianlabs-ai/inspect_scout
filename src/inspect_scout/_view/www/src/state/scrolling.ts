@@ -106,7 +106,7 @@ export function useStatefulScrollPosition<
 
     // Set up scroll listener
     // TODO: This isn't supposed to be needed. review
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     if (element.addEventListener) {
       element.addEventListener("scroll", handleScroll);
     } else {
@@ -116,7 +116,7 @@ export function useStatefulScrollPosition<
     // Clean up
     return () => {
       // TODO: This isn't supposed to be needed. review
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
       if (element.removeEventListener) {
         element.removeEventListener("scroll", handleScroll);
       } else {

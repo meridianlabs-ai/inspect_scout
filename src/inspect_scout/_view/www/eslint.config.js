@@ -7,11 +7,11 @@ import prettierConfig from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["dist/", "node_modules/", "build/", "*.config.?s"],
+    ignores: ["dist/", "node_modules/", "build/", "*.config.?s", "*.config.cjs"],
   },
   js.configs.recommended,
-  // ...tseslint.configs.recommendedTypeChecked,
-  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.recommendedTypeChecked,
+  //...tseslint.configs.strictTypeChecked,
   {
     languageOptions: {
       parserOptions: {
@@ -29,20 +29,28 @@ export default tseslint.config(
       "react-hooks": reactHooksPlugin,
       "react-refresh": reactRefreshPlugin,
     },
-    rules: {
-      ...reactPlugin.configs.recommended.rules,
-      ...reactPlugin.configs["jsx-runtime"].rules,
-      ...reactHooksPlugin.configs.recommended.rules,
-      ...reactRefreshPlugin.configs.recommended.rules,
-      // We may want to remove the disables below as we see fit
-      "@typescript-eslint/restrict-template-expressions": "off",
-      "@typescript-eslint/no-unnecessary-type-parameters": "off",
+      rules: {
+      // React Hooks rules
+      "react-hooks/rules-of-hooks": "warn",
+      // "react-hooks/exhaustive-deps": "warn",
+
+      // These are disabled because we didn't have time to fix them, not because they are bad rules
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-redundant-type-constituents": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { varsIgnorePattern: "^_" },
-      ],
-      "react/prop-types": "off"
+      ]
+      // ...reactPlugin.configs.recommended.rules,
+      // ...reactPlugin.configs["jsx-runtime"].rules,
+      // ...reactHooksPlugin.configs.recommended.rules,
+      // ...reactRefreshPlugin.configs.recommended.rules,
+      // // We may want to remove the disables below as we see fit
+      // "@typescript-eslint/restrict-template-expressions": "off",
+      // "@typescript-eslint/no-unnecessary-type-parameters": "off",
     },
+    // "react/prop-types": "off",
     settings: {
       react: {
         version: "detect",

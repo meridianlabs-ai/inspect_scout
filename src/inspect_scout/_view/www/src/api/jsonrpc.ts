@@ -192,7 +192,6 @@ function isJsonRpcMessage(message: unknown): message is JsonRpcMessage {
 }
 
 function isJsonRpcRequest(message: JsonRpcMessage): message is JsonRpcRequest {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return (message as JsonRpcRequest).method !== undefined;
 }
 

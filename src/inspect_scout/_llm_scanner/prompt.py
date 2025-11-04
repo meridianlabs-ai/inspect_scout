@@ -15,7 +15,7 @@ to.
 
 The last line of your response should be of the following format:
 
-{answer_format}
+{{answer_format}}
 """
 
 BOOL_ANSWER_PROMPT = (

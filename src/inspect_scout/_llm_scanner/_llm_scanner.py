@@ -11,7 +11,7 @@ from .._scanner.extract import ContentFilter, messages_as_str
 from .._scanner.result import Result
 from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
-from .answer import answer_from_argument
+from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
 from .types import MultiLabels
 
@@ -64,18 +64,16 @@ def llm_scanner(
     resolved_answer = answer_from_argument(answer)
 
     async def scan(transcript: Transcript) -> Result:
-        variables = _variables_for_transcript(transcript)
-
         messages_str, message_id_map = await messages_as_str(
             transcript.messages, messages, include_ids=True
         )
 
-        resolved_prompt = Template(template).render(
+        resolved_prompt = render_scanner_prompt(
+            template=template,
+            transcript=transcript,
             messages=messages_str,
             question=question,
-            answer_prompt=resolved_answer.prompt,
-            answer_format=resolved_answer.format,
-            **variables,
+            answer=resolved_answer,
         )
 
         model_output = await get_model(model).generate(resolved_prompt)
@@ -86,6 +84,36 @@ def llm_scanner(
         setattr(scan, SCANNER_NAME_ATTR, name)
 
     return scan
+
+
+def render_scanner_prompt(
+    *,
+    template: str,
+    transcript: Transcript,
+    messages: str,
+    question: str,
+    answer: Answer,
+) -> str:
+    """Render a scanner prompt template with the provided variables.
+
+    Args:
+        template: Jinja2 template string for the scanner prompt.
+        transcript: Transcript to extract variables from.
+        messages: Formatted conversation messages string.
+        question: Question for the scanner to answer.
+        answer: Answer object containing prompt and format strings.
+
+    Returns:
+        Rendered prompt string with all variables substituted.
+    """
+    variables = _variables_for_transcript(transcript)
+    return Template(template).render(
+        messages=messages,
+        question=question,
+        answer_prompt=answer.prompt,
+        answer_format=answer.format,
+        **variables,
+    )
 
 
 def _variables_for_transcript(transcript: Transcript) -> dict[str, JsonValue]:

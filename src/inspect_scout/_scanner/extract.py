@@ -85,20 +85,20 @@ async def messages_as_str(
 
 
 def message_as_str(
-    message: ChatMessage, filter: ContentFilter | None = None
+    message: ChatMessage, content_filter: ContentFilter | None = None
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
     Args:
         message: The `ChatMessage` to convert.
-        filter: Content filter for messages.
+        content_filter: Content filter for messages.
 
     Returns:
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
     """
-    filter = filter or ContentFilter()
-    _, exclude_system, exclude_reasoning, exclude_tool_usage = filter
+    content_filter = content_filter or ContentFilter()
+    _, exclude_system, exclude_reasoning, exclude_tool_usage = content_filter
 
     if exclude_system and message.role == "system":
         return None

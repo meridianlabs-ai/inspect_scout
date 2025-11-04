@@ -1,7 +1,6 @@
 from functools import reduce
 from typing import Literal
 
-from inspect_ai._util.registry import RegistryInfo, set_registry_info
 from inspect_ai.model import (
     ChatMessage,
     Model,
@@ -12,7 +11,7 @@ from pydantic import JsonValue
 
 from .._scanner.extract import ContentFilter, message_as_str
 from .._scanner.result import Result
-from .._scanner.scanner import Scanner, scanner
+from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._scanner.util import _message_id
 from .._transcript.types import Transcript
 from .answer import answer_from_argument
@@ -78,12 +77,9 @@ def llm_scanner(
         model_output = await get_model(model).generate(resolved_prompt)
         return resolved_answer.result_for_answer(model_output, message_id_map)
 
-    # set registry info if a name was provided
+    # set name for collection by @scanner if specified
     if name is not None:
-        set_registry_info(
-            scan,
-            RegistryInfo(type="scanner", name=name),
-        )
+        setattr(scan, SCANNER_NAME_ATTR, name)
 
     return scan
 

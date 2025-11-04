@@ -23,7 +23,6 @@ from inspect_ai._util.package import get_installed_package_name
 from inspect_ai._util.path import chdir_python, pretty_path
 from inspect_ai._util.registry import (
     RegistryInfo,
-    is_registry_object,
     registry_add,
     registry_info,
     registry_kwargs,
@@ -57,6 +56,7 @@ SCANNER_CONFIG = "scanner_config"
 SCANNER_METRICS = "scanner_metrics"
 
 SCANNER_FILE_ATTR = "___scanner_file___"
+SCANNER_NAME_ATTR = "___scanner_name___"
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -260,8 +260,8 @@ def scanner(
             # determine scanner name
             if name is not None:
                 scanner_name = name
-            elif is_registry_object(scanner_fn):
-                scanner_name = registry_info(scanner_fn).name
+            elif hasattr(scanner_fn, SCANNER_NAME_ATTR):
+                scanner_name = getattr(scanner_fn, SCANNER_NAME_ATTR)
             else:
                 scanner_name = str(getattr(factory_fn, "__name__", "scanner"))
 

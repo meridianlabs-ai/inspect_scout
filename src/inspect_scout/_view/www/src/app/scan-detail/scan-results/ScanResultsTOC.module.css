@@ -1,0 +1,19 @@
+.container {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  column-gap: 0.5em;
+  align-content: start;
+}
+
+.entry {
+  display: contents;
+}
+
+.selected {
+  font-weight: 600;
+}
+
+.entry:hover {
+  color: var(--bs-link-hover-color);
+  cursor: pointer;
+}

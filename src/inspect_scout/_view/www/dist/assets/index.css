@@ -96,46 +96,46 @@
     transform: translateX(2000%);
   }
 }
-._scanTitleView_1p4n5_1 {
-    display: grid;
-    grid-template-columns: max-content max-content;
-    justify-content: space-between;
-    column-gap: 1em;
-    border-top: solid 1px var(--bs-border-color);
-    padding: 0.5em;
+._scanTitleView_l0opl_1 {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: space-between;
+  column-gap: 1em;
+  border-top: solid 1px var(--bs-border-color);
+  padding: 0.5em;
 }
 
-._leftColumn_1p4n5_10 {
-    display: grid;
-    grid-template-columns: max-content max-content;
-    align-items: baseline;
-    row-gap: 0.1em;
-    column-gap: 0.5em;
+._leftColumn_l0opl_10 {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  align-items: baseline;
+  row-gap: 0.2em;
+  column-gap: 0.5em;
 }
 
-._scanTitleView_1p4n5_1 h1 {
-    margin: 0;
-    font-weight: 600;
-    font-size: 1.3em;
+._scanTitleView_l0opl_1 h1 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.3em;
 }
 
-._scanTitleView_1p4n5_1 h2 {
-    margin: 0;
-    font-weight: 500;
-    font-size: 1em;
-    color: var(--bs-secondary-text-color);
+._scanTitleView_l0opl_1 h2 {
+  margin: 0;
+  font-weight: 500;
+  font-size: 1em;
+  color: var(--bs-secondary-text-color);
 }
 
-._scanTitleView_1p4n5_1 h3 {
-    margin: 0;
-    font-size: 0.9em;
-    color: var(--bs-secondary-text-color);
+._scanTitleView_l0opl_1 h3 {
+  margin: 0;
+  font-size: 0.8em;
+  font-weight: 400;
+  color: var(--bs-secondary-text-color);
 }
 
-._subtitle_1p4n5_37 {
-    grid-column: 1 / -1;
+._subtitle_l0opl_38 {
+  grid-column: 1 / -1;
 }
-
 .json-panel {
   width: 100%;
   padding: 0.5em;
@@ -156,21 +156,21 @@
 .language-javascript {
   background: transparent !important;
 }
-._tabs_1pcaw_1 {
+._tabs_1sz0h_1 {
   align-items: center;
 }
 
-._tabContents_1pcaw_5 {
+._tabContents_1sz0h_5 {
   flex: 1;
   overflow-y: hidden;
 }
 
-._tabContents_1pcaw_5._scrollable_1pcaw_10 {
-  height: 100% ;
+._tabContents_1sz0h_5._scrollable_1sz0h_10 {
+  height: 100%;
   overflow-y: auto;
 }
 
-._tab_1pcaw_1 {
+._tab_1sz0h_1 {
   color: "var(--bs-body-color)";
   padding: 0.25rem 0.5rem;
   border-top-left-radius: var(--bs-border-radius);
@@ -180,15 +180,15 @@
   margin-bottom: -1px;
 }
 
-._tabItem_1pcaw_25 {
+._tabItem_1sz0h_25 {
   align-self: end;
 }
 
-._tabIcon_1pcaw_29 {
+._tabIcon_1sz0h_29 {
   margin-right: 0.5em;
 }
 
-._tabTools_1pcaw_33 {
+._tabTools_1sz0h_33 {
   flex-basis: auto;
   margin-left: auto;
   display: flex;
@@ -198,26 +198,59 @@
   row-gap: 0.3rem;
 }
 
-._tabStyle_1pcaw_43 {
+._tabStyle_1sz0h_43 {
   padding-left: 0.7em;
   padding-right: 0.7em;
 }
-._tabSet_1i2um_1 { 
-    overflow-y: hidden;
+._tabSet_10t9t_1 {
+  overflow-y: hidden;
 }
 
-._tabs_1i2um_5 {
-    padding: 0.5em !important;
-    border-bottom: solid 1px var(--bs-border-color);
+._tabs_10t9t_5 {
+  padding: 0.5em !important;
+  border-bottom: solid 1px var(--bs-border-color);
 }
 
-._tabControl_1i2um_10 {
-    padding: 0.3em 1em !important;
-}._root_txmk7_1 {
-    height: 100vh;
-    display: grid;
-    grid-template-rows: max-content max-content max-content max-content 1fr;
-}._gridWrapper_fguk0_1 {
+._tabControl_10t9t_10 {
+  padding: 0.3em 1em !important;
+}
+._container_o19hd_1 {
+  padding: 0.5em;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.5em;
+  height: 100%;
+}
+._container_1vgos_1 {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  column-gap: 0.5em;
+  align-content: start;
+}
+
+._entry_1vgos_8 {
+  display: contents;
+}
+
+._selected_1vgos_12 {
+  font-weight: 600;
+}
+
+._entry_1vgos_8:hover {
+  color: var(--bs-link-hover-color);
+  cursor: pointer;
+}
+._body_1vbnk_1 {
+}
+._container_1fkl0_1 {
+  font-family: var(--bs-font-monospace);
+}
+._root_ke0e7_1 {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: max-content max-content max-content max-content 1fr;
+}
+._gridWrapper_fguk0_1 {
   height: 100%;
   border-top: solid 1px var(--bs-border-color);
 }
@@ -457,6 +490,15 @@ body {
   --ag-wrapper-border: none;
   --ag-row-hover-color: var(--bs-secondary-bg-subtle);
   --ag-selected-row-background-color: var(--bs-secondary-bg-subtle);
+}
+
+.ag-cell-auto-height {
+  --reduceLineHeightBy: 16px;
+  line-height: calc(
+    var(--ag-internal-calculated-line-height) - var(--reduceLineHeightBy)
+  );
+  padding-top: calc(var(--reduceLineHeightBy) / 2);
+  padding-bottom: calc(var(--reduceLineHeightBy) / 2);
 }
 
 #app {

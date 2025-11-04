@@ -89,9 +89,7 @@ def df_to_ipc(df: pd.DataFrame) -> IPCDataFrame:
     table = pa.Table.from_pandas(df, preserve_index=False)
 
     buf = io.BytesIO()
-    with pa_ipc.new_stream(
-        buf, table.schema, options=pa_ipc.IpcWriteOptions(compression="zstd")
-    ) as writer:
+    with pa_ipc.new_stream(buf, table.schema) as writer:
         writer.write_table(table)
 
     payload = base64.b64encode(buf.getvalue()).decode("ascii")

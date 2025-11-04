@@ -19,15 +19,17 @@ export interface Results extends Status {
 }
 
 export interface IPCDataframe {
-  format: "arrow.feather",
-  version: number,
-  encoding: "base64",
-  data: string,
+  format: "arrow.feather";
+  version: number;
+  encoding: "base64";
+  data: string;
   column_names: string[];
   row_count: number;
 }
 
-export type Summary = Record<string, ScannerSummary>;
+export interface Summary {
+  scanners: Record<string, ScannerSummary>;
+}
 
 export interface Error {
   transcript_id: string;

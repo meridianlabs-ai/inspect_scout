@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStore } from "./store";
 
 export function useProperty<T>(
@@ -54,4 +54,52 @@ export const usePrevious = <T>(value: T): T | undefined => {
   }
 
   return previous;
+};
+
+export const useCollapsibleIds = (
+  key: string
+): [
+  Record<string, boolean>,
+  (id: string, value: boolean) => void,
+  () => void,
+] => {
+  const collapsedIds = useStore((state) => state.collapsedBuckets[key]);
+
+  const setCollapsed = useStore((state) => state.setCollapsed);
+  const collapseId = useCallback(
+    (id: string, value: boolean) => {
+      setCollapsed(key, id, value);
+    },
+    [key, setCollapsed]
+  );
+
+  const clearCollapsedIds = useStore((state) => state.clearCollapsed);
+  const clearIds = useCallback(() => {
+    clearCollapsedIds(key);
+  }, [clearCollapsedIds, key]);
+
+  return useMemo(() => {
+    return [collapsedIds || {}, collapseId, clearIds];
+  }, [collapsedIds, collapseId, clearIds]);
+};
+
+export const useCollapsedState = (
+  id: string,
+  defaultValue?: boolean,
+  scope?: string
+): [boolean, (value: boolean) => void] => {
+  const stateId = scope ? `${scope}-${id}` : id;
+  const resolvedScope = scope || "collapse-state-scope";
+
+  const collapsed = useStore(
+    (state) => state.collapsedBuckets[resolvedScope]?.[id]
+  );
+  const setCollapsed = useStore((state) => state.setCollapsed);
+
+  return useMemo(() => {
+    const set = (value: boolean) => {
+      setCollapsed(resolvedScope, stateId, value);
+    };
+    return [collapsed || defaultValue || false, set];
+  }, [collapsed, resolvedScope, defaultValue, setCollapsed, stateId]);
 };

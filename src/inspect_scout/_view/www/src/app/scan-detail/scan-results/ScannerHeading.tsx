@@ -1,0 +1,25 @@
+import { FC } from "react";
+import { Scanner } from "../../../types";
+
+import styles from "./ScannerHeading.module.css";
+import clsx from "clsx";
+
+interface ScannerHeadingProps {
+  scanner: Scanner;
+}
+
+export const ScannerHeading: FC<ScannerHeadingProps> = ({ scanner }) => {
+  return (
+    <div className={clsx(styles.container)}>
+      {scanner.name}({toArgs(scanner.params).join(", ")})
+    </div>
+  );
+};
+
+const toArgs = (params: Record<string, unknown>): string[] => {
+  const args: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    args.push(`${key}:${value}`);
+  }
+  return args;
+};

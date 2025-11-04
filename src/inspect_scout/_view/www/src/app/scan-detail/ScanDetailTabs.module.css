@@ -1,12 +1,12 @@
-.tabSet { 
-    overflow-y: hidden;
+.tabSet {
+  overflow-y: hidden;
 }
 
 .tabs {
-    padding: 0.5em !important;
-    border-bottom: solid 1px var(--bs-border-color);
+  padding: 0.5em !important;
+  border-bottom: solid 1px var(--bs-border-color);
 }
 
 .tabControl {
-    padding: 0.3em 1em !important;
+  padding: 0.3em 1em !important;
 }

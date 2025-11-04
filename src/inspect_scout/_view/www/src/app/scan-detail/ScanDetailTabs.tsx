@@ -1,9 +1,12 @@
 import clsx from "clsx";
+import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
 import JSONPanel from "../../components/JsonPanel";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 
 import styles from "./ScanDetailTabs.module.css";
+import { ScanResults } from "./scan-results/ScanResults";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -11,11 +14,30 @@ const kTabIdScanners = "scan-detail-tabs-scanners";
 const kTabIdJson = "scan-detail-tabs-json";
 
 export const ScanDetailTabs: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
   const setSelectedResultsTab = useStore(
     (state) => state.setSelectedResultsTab
   );
   const selectedResults = useStore((state) => state.selectedResults);
+
+  // Sync URL tab parameter with store on mount and URL changes
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      // Valid tab IDs
+      const validTabs = [kTabIdScans, kTabIdInfo, kTabIdScanners, kTabIdJson];
+      if (validTabs.includes(tabParam)) {
+        setSelectedResultsTab(tabParam);
+      }
+    }
+  }, [searchParams, setSelectedResultsTab]);
+
+  // Helper function to update both store and URL
+  const handleTabChange = (tabId: string) => {
+    setSelectedResultsTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
 
   return (
     <TabSet
@@ -30,7 +52,7 @@ export const ScanDetailTabs: React.FC = () => {
         selected={selectedTab === kTabIdJson || selectedTab === undefined}
         title="JSON"
         onSelected={() => {
-          setSelectedResultsTab(kTabIdJson);
+          handleTabChange(kTabIdJson);
         }}
         scrollable={true}
       >
@@ -40,23 +62,23 @@ export const ScanDetailTabs: React.FC = () => {
           simple={true}
         />
       </TabPanel>
-      
+
       <TabPanel
         id={kTabIdScans}
         selected={selectedTab === kTabIdScans}
         title="Results"
         onSelected={() => {
-          setSelectedResultsTab(kTabIdScans);
+          handleTabChange(kTabIdScans);
         }}
       >
-        Results
+        <ScanResults />
       </TabPanel>
       <TabPanel
         id={kTabIdInfo}
         selected={selectedTab === kTabIdInfo}
         title="Info"
         onSelected={() => {
-          setSelectedResultsTab(kTabIdInfo);
+          handleTabChange(kTabIdInfo);
         }}
       >
         Info
@@ -66,14 +88,11 @@ export const ScanDetailTabs: React.FC = () => {
         selected={selectedTab === kTabIdScanners}
         title="Scanners"
         onSelected={() => {
-          setSelectedResultsTab(kTabIdScanners);
+          handleTabChange(kTabIdScanners);
         }}
       >
         Scanners
       </TabPanel>
-      
     </TabSet>
   );
-
-  return <div>Scan Detail Tabs</div>;
 };

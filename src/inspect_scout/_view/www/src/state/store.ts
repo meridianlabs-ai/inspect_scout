@@ -22,6 +22,7 @@ interface StoreState {
   loading: number;
   selectedResultsTab?: string;
   collapsedBuckets: Record<string, Record<string, boolean>>;
+  selectedScanner?: string;
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
@@ -62,6 +63,8 @@ interface StoreState {
   setLoading: (loading: boolean) => void;
 
   setSelectedResultsTab: (tab: string) => void;
+
+  setSelectedScanner: (scanner: string) => void;  
 }
 
 export const useStore = create<StoreState>()(
@@ -252,6 +255,11 @@ export const useStore = create<StoreState>()(
         clearCollapsed: (bucket: string) => {
           set((state) => {
             state.collapsedBuckets[bucket] = {};
+          });
+        },
+        setSelectedScanner: (scanner: string) => {
+          set((state) => {
+            state.selectedScanner = scanner;
           });
         }
       })),

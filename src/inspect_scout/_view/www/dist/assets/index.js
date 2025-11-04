@@ -10998,10 +10998,10 @@ function requireReactDomClient_production() {
   function estimateBandwidth() {
     if ("function" === typeof performance.getEntriesByType) {
       for (var count = 0, bits = 0, resourceEntries = performance.getEntriesByType("resource"), i = 0; i < resourceEntries.length; i++) {
-        var entry = resourceEntries[i], transferSize = entry.transferSize, initiatorType = entry.initiatorType, duration = entry.duration;
+        var entry2 = resourceEntries[i], transferSize = entry2.transferSize, initiatorType = entry2.initiatorType, duration = entry2.duration;
         if (transferSize && duration && isLikelyStaticResource(initiatorType)) {
           initiatorType = 0;
-          duration = entry.responseEnd;
+          duration = entry2.responseEnd;
           for (i += 1; i < resourceEntries.length; i++) {
             var overlapEntry = resourceEntries[i], overlapStartTime = overlapEntry.startTime;
             if (overlapStartTime > duration) break;
@@ -11009,7 +11009,7 @@ function requireReactDomClient_production() {
             overlapTransferSize && isLikelyStaticResource(overlapInitiatorType) && (overlapEntry = overlapEntry.responseEnd, initiatorType += overlapTransferSize * (overlapEntry < duration ? 1 : (duration - overlapStartTime) / (overlapEntry - overlapStartTime)));
           }
           --i;
-          bits += 8 * (transferSize + initiatorType) / (entry.duration / 1e3);
+          bits += 8 * (transferSize + initiatorType) / (entry2.duration / 1e3);
           count++;
           if (10 < count) break;
         }
@@ -17835,7 +17835,7 @@ function getFormSubmissionInfo(target, basename2) {
   let action;
   let encType;
   let formData;
-  let body;
+  let body2;
   if (isFormElement(target)) {
     let attr = target.getAttribute("action");
     action = attr ? stripBasename(attr, basename2) : null;
@@ -17872,13 +17872,13 @@ function getFormSubmissionInfo(target, basename2) {
     method = defaultMethod;
     action = null;
     encType = defaultEncType;
-    body = target;
+    body2 = target;
   }
   if (formData && encType === "text/plain") {
-    body = formData;
+    body2 = formData;
     formData = void 0;
   }
-  return { action, method: method.toLowerCase(), encType, formData, body };
+  return { action, method: method.toLowerCase(), encType, formData, body: body2 };
 }
 Object.getOwnPropertyNames(Object.prototype).sort().join("\0");
 function invariant2(value, message) {
@@ -18082,8 +18082,8 @@ function usePrefetchBehavior(prefetch, theirElementProps) {
     }
     if (prefetch === "viewport") {
       let callback = (entries) => {
-        entries.forEach((entry) => {
-          setShouldPrefetch(entry.isIntersecting);
+        entries.forEach((entry2) => {
+          setShouldPrefetch(entry2.isIntersecting);
         });
       };
       let observer = new IntersectionObserver(callback, { threshold: 0.5 });
@@ -18614,7 +18614,7 @@ function useSubmit() {
   let currentRouteId = useRouteId();
   return reactExports.useCallback(
     async (target, options = {}) => {
-      let { action, method, encType, formData, body } = getFormSubmissionInfo(
+      let { action, method, encType, formData, body: body2 } = getFormSubmissionInfo(
         target,
         basename2
       );
@@ -18623,7 +18623,7 @@ function useSubmit() {
         await router.fetch(key2, currentRouteId, options.action || action, {
           preventScrollReset: options.preventScrollReset,
           formData,
-          body,
+          body: body2,
           formMethod: options.method || method,
           formEncType: options.encType || encType,
           flushSync: options.flushSync
@@ -18632,7 +18632,7 @@ function useSubmit() {
         await router.navigate(options.action || action, {
           preventScrollReset: options.preventScrollReset,
           formData,
-          body,
+          body: body2,
           formMethod: options.method || method,
           formEncType: options.encType || encType,
           replace: options.replace,
@@ -19218,7 +19218,7 @@ function each(obj, iter, strict = true) {
       iter(key2, obj[key2], obj);
     });
   } else {
-    obj.forEach((entry, index) => iter(index, entry, obj));
+    obj.forEach((entry2, index) => iter(index, entry2, obj));
   }
 }
 function getArchtype(thing) {
@@ -20012,6 +20012,11 @@ const useStore = create()(
           set2((state) => {
             state.collapsedBuckets[bucket] = {};
           });
+        },
+        setSelectedScanner: (scanner) => {
+          set2((state) => {
+            state.selectedScanner = scanner;
+          });
         }
       })),
       {
@@ -20087,7 +20092,7 @@ const left = "_left_ctaca_31";
 const right = "_right_ctaca_41";
 const toolbarButton = "_toolbarButton_ctaca_50";
 const pathContainer = "_pathContainer_ctaca_58";
-const styles$7 = {
+const styles$8 = {
   header,
   bordered,
   breadcrumbs,
@@ -20189,7 +20194,8 @@ const ApplicationIcons = {
   navbar: {
     home: "ii inspect-icon-home",
     back: "ii inspect-icon-back"
-  }
+  },
+  scorer: "bi bi-calculator"
 };
 const Navbar = ({ bordered: bordered2 = true, children }) => {
   const resultsDir = useStore((state) => state.resultsDir);
@@ -20227,74 +20233,74 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
       className: clsx(
         "text-size-smaller",
         "header-nav",
-        styles$7.header,
-        bordered2 ? styles$7.bordered : void 0
+        styles$8.header,
+        bordered2 ? styles$8.bordered : void 0
       ),
       "aria-label": "breadcrumb",
       "data-unsearchable": true,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.left), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$7.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$8.left), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$8.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Link,
             {
               to: scansRoute(),
-              className: clsx(styles$7.toolbarButton),
+              className: clsx(styles$8.toolbarButton),
               onClick: () => {
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.home) })
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$7.breadcrumbs), children: visibleSegments.map((segment, index) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$8.breadcrumbs), children: visibleSegments.map((segment, index) => {
             const isLast = index === visibleSegments.length - 1;
             const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$7.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
+              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$8.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "li",
                 {
                   className: clsx(
-                    styles$7.pathLink,
+                    styles$8.pathLink,
                     "breadcrumb-item",
                     isLast ? "active" : void 0
                   ),
-                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$7.pathSegment), children: segment.text })
+                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$8.pathSegment), children: segment.text })
                 }
               )
             ] }, index);
           }) }) : "" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.right), children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.right), children })
       ]
     }
   );
 };
 const wrapper = "_wrapper_1tajk_1";
-const container$2 = "_container_1tajk_12";
+const container$3 = "_container_1tajk_12";
 const animate = "_animate_1tajk_21";
-const styles$6 = {
+const styles$7 = {
   wrapper,
-  container: container$2,
+  container: container$3,
   animate
 };
 const ActivityBar = ({ animating }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
-      className: clsx(styles$6.container),
+      className: clsx(styles$7.container),
       role: "progressbar",
       "aria-label": "Progress bar",
       "aria-valuenow": 25,
       "aria-valuemin": 0,
       "aria-valuemax": 100,
-      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$6.animate })
+      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$7.animate })
     }
   ) });
 };
 const scanTitleView = "_scanTitleView_1bbu1_1";
 const leftColumn = "_leftColumn_1bbu1_10";
 const subtitle = "_subtitle_1bbu1_38";
-const styles$5 = {
+const styles$6 = {
   scanTitleView,
   leftColumn,
   subtitle
@@ -20303,14 +20309,14 @@ const ScanTitleView = () => {
   const selectedResults = useStore((state) => state.selectedResults);
   const errorCount = selectedResults?.errors.length || 0;
   const status = selectedResults === void 0 ? "" : selectedResults.complete ? "Complete" : "Incomplete";
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.scanTitleView), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.leftColumn), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.scanTitleView), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.leftColumn), children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: selectedResults?.spec.scan_name }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: selectedResults?.spec.scan_id }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", {}),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: clsx(styles$5.subtitle, "text-style-secondary"), children: selectedResults?.spec.scan_file })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: clsx(styles$6.subtitle, "text-style-secondary"), children: selectedResults?.spec.scan_file })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.rightColumn), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.rightColumn), children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-size-smaller", children: status }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-size-smaller", children: errorCount === 1 ? `${errorCount} Error` : errorCount > 1 ? `${errorCount} Errors` : "" })
     ] })
@@ -22076,7 +22082,7 @@ const Tab = ({ type = "tabs", tab: tab2, index, className }) => {
 const TabPanels = ({ id, tabs: tabs2, className }) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("tab-content", className), id: `${id}-content`, children: tabs2.map((tab2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(TabPanel, { ...tab2.props, index }, tab2.props.id)) });
 const TabPanel = ({
   id,
-  selected,
+  selected: selected2,
   style,
   scrollable: scrollable2 = true,
   scrollRef,
@@ -22094,13 +22100,13 @@ const TabPanel = ({
       ref: tabContentsRef,
       className: clsx(
         "tab-pane",
-        selected && "show active",
+        selected2 && "show active",
         className,
         moduleStyles.tabContents,
         scrollable2 && moduleStyles.scrollable
       ),
       style,
-      children: selected ? children : null
+      children: selected2 ? children : null
     }
   );
 };
@@ -22122,25 +22128,43 @@ const flattenChildren = (children) => {
 const tabSet = "_tabSet_1i2um_1";
 const tabs = "_tabs_1i2um_5";
 const tabControl = "_tabControl_1i2um_10";
-const styles$4 = {
+const styles$5 = {
   tabSet,
   tabs,
   tabControl
 };
-const container$1 = "_container_1q2hs_1";
-const styles$3 = {
-  container: container$1
+const container$2 = "_container_1q2hs_1";
+const styles$4 = {
+  container: container$2
 };
-const styles$2 = {};
+const container$1 = "_container_lcu0q_1";
+const entry = "_entry_lcu0q_7";
+const selected = "_selected_lcu0q_11";
+const styles$3 = {
+  container: container$1,
+  entry,
+  selected
+};
+const useSelectedScanner = () => {
+  const selectedScanner = useStore((state) => state.selectedScanner);
+  const selectedResults = useStore((state) => state.selectedResults);
+  const defaultScanner = reactExports.useMemo(() => {
+    if (selectedResults) {
+      const scanners = Object.keys(selectedResults.summary.scanners);
+      return scanners.length > 0 ? scanners[0] : void 0;
+    }
+  }, [selectedResults]);
+  return selectedScanner || defaultScanner;
+};
 const toEntries = (results) => {
   if (!results) {
     return [];
   }
   const entries = [];
-  console.log(results);
   for (const scanner of Object.keys(results.summary.scanners)) {
     const summary = results.summary.scanners[scanner];
     entries.push({
+      icon: ApplicationIcons.scorer,
       title: scanner,
       count: summary?.results || 0
     });
@@ -22150,18 +22174,52 @@ const toEntries = (results) => {
 const ScanResultsTOC = () => {
   const results = useStore((state) => state.selectedResults);
   const entries = toEntries(results);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.container), children: entries.map((entry) => {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$2.entry), children: [
-      entry.icon && /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: entry.icon, className: clsx(styles$2.icon) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$2.title), children: entry.title }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$2.count), children: entry.count })
-    ] }, entry.title);
+  const selectedScanner = useSelectedScanner();
+  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
+  const handleClick = reactExports.useCallback(
+    (title) => {
+      setSelectedScanner(title);
+    },
+    [setSelectedScanner]
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$3.container), children: entries.map((entry2) => {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: clsx(
+          styles$3.entry,
+          "text-size-smaller",
+          selectedScanner === entry2.title ? styles$3.selected : null
+        ),
+        onClick: () => {
+          handleClick(entry2.title);
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: entry2.icon && /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(styles$3.icon, entry2.icon) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$3.title), children: entry2.title }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.count), children: [
+            "(",
+            entry2.count,
+            " results)"
+          ] })
+        ]
+      },
+      entry2.title
+    );
   }) });
 };
+const body = "_body_6e22p_1";
+const styles$2 = {
+  body
+};
+const ScanResultsBody = () => {
+  const selectedScanner = useSelectedScanner();
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.body), children: selectedScanner });
+};
 const ScanResults = () => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.container), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$4.container), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsTOC, {}),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Body" })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsBody, {})
   ] });
 };
 const kTabIdScans = "scan-detail-tabs-results";
@@ -22193,9 +22251,9 @@ const ScanDetailTabs = () => {
     {
       id: "scan-detail-tabs",
       type: "pills",
-      tabPanelsClassName: clsx(styles$4.tabSet),
-      tabControlsClassName: clsx(styles$4.tabControl),
-      className: clsx(styles$4.tabs),
+      tabPanelsClassName: clsx(styles$5.tabSet),
+      tabControlsClassName: clsx(styles$5.tabControl),
+      className: clsx(styles$5.tabs),
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           TabPanel,
@@ -22566,9 +22624,9 @@ function _getPageBody(beans) {
     if (!rootNode) {
       rootNode = _getRootNode(beans);
     }
-    const body = rootNode.querySelector("body");
-    if (body) {
-      targetEl = body;
+    const body2 = rootNode.querySelector("body");
+    if (body2) {
+      targetEl = body2;
     } else if (rootNode instanceof ShadowRoot) {
       targetEl = rootNode;
     } else if (rootNode instanceof Document) {
@@ -22580,12 +22638,12 @@ function _getPageBody(beans) {
   return targetEl;
 }
 function _getBodyWidth(beans) {
-  const body = _getPageBody(beans);
-  return body?.clientWidth ?? (window.innerWidth || -1);
+  const body2 = _getPageBody(beans);
+  return body2?.clientWidth ?? (window.innerWidth || -1);
 }
 function _getBodyHeight(beans) {
-  const body = _getPageBody(beans);
-  return body?.clientHeight ?? (window.innerHeight || -1);
+  const body2 = _getPageBody(beans);
+  return body2?.clientHeight ?? (window.innerHeight || -1);
 }
 function _toggleAriaAttribute(element, attribute, value) {
   if (value == null || typeof value === "string" && value == "") {
@@ -22683,8 +22741,8 @@ function _setAriaSort(element, sort) {
 function _removeAriaSort(element) {
   _removeAriaAttribute(element, "sort");
 }
-function _setAriaSelected(element, selected) {
-  _toggleAriaAttribute(element, "selected", selected);
+function _setAriaSelected(element, selected2) {
+  _toggleAriaAttribute(element, "selected", selected2);
 }
 function _setAriaControls(controllerElement, controlledId) {
   _toggleAriaAttribute(controllerElement, "controls", controlledId);
@@ -27184,14 +27242,14 @@ function _getScrollbarWidth() {
   return browserScrollbarWidth;
 }
 function initScrollbarWidthAndVisibility() {
-  const body = document.body;
+  const body2 = document.body;
   const div = document.createElement("div");
   div.style.width = div.style.height = "100px";
   div.style.opacity = "0";
   div.style.overflow = "scroll";
   div.style.msOverflowStyle = "scrollbar";
   div.style.position = "absolute";
-  body.appendChild(div);
+  body2.appendChild(div);
   let width = div.offsetWidth - div.clientWidth;
   if (width === 0 && div.clientWidth === 0) {
     width = null;
@@ -27873,27 +27931,27 @@ var AgCheckbox = class extends AgAbstractInputField {
   isSelected() {
     return this.selected;
   }
-  setSelected(selected, silent) {
-    if (this.isSelected() === selected) {
+  setSelected(selected2, silent) {
+    if (this.isSelected() === selected2) {
       return;
     }
     this.previousValue = this.isSelected();
-    selected = this.selected = typeof selected === "boolean" ? selected : void 0;
+    selected2 = this.selected = typeof selected2 === "boolean" ? selected2 : void 0;
     const eInput = this.eInput;
-    eInput.checked = selected;
-    eInput.indeterminate = selected === void 0;
+    eInput.checked = selected2;
+    eInput.indeterminate = selected2 === void 0;
     if (!silent) {
       this.dispatchChange(this.selected, this.previousValue);
     }
   }
-  dispatchChange(selected, previousValue, event) {
-    this.dispatchLocalEvent({ type: "fieldValueChanged", selected, previousValue, event });
+  dispatchChange(selected2, previousValue, event) {
+    this.dispatchLocalEvent({ type: "fieldValueChanged", selected: selected2, previousValue, event });
     const input = this.getInputElement();
     this.eventSvc.dispatchEvent({
       type: "checkboxChanged",
       id: input.id,
       name: input.name,
-      selected,
+      selected: selected2,
       previousValue
     });
   }
@@ -27902,9 +27960,9 @@ var AgCheckbox = class extends AgAbstractInputField {
       return;
     }
     const previousValue = this.isSelected();
-    const selected = this.selected = e.target.checked;
-    this.refreshSelectedClass(selected);
-    this.dispatchChange(selected, previousValue, e);
+    const selected2 = this.selected = e.target.checked;
+    this.refreshSelectedClass(selected2);
+    this.dispatchChange(selected2, previousValue, e);
   }
   refreshSelectedClass(value) {
     const classList = this.eWrapper.classList;
@@ -30950,8 +31008,8 @@ var BaseDragService = class extends AgBeanStub {
       this.cancelDrag();
     }
     const dragSources = this.dragSources;
-    for (const entry of dragSources) {
-      destroyDragSourceEntry(entry);
+    for (const entry2 of dragSources) {
+      destroyDragSourceEntry(entry2);
     }
     dragSources.length = 0;
     super.destroy();
@@ -30959,10 +31017,10 @@ var BaseDragService = class extends AgBeanStub {
   removeDragSource(params) {
     const dragSources = this.dragSources;
     for (let i = 0, len = dragSources.length; i < len; ++i) {
-      const entry = dragSources[i];
-      if (entry.params === params) {
+      const entry2 = dragSources[i];
+      if (entry2.params === params) {
         dragSources.splice(i, 1);
-        destroyDragSourceEntry(entry);
+        destroyDragSourceEntry(entry2);
         break;
       }
     }
@@ -31312,7 +31370,7 @@ var BaseDragAndDropService = class extends AgBeanStub {
     this.lastDropTarget = null;
   }
   addDragSource(dragSource, allowTouch = false) {
-    const entry = {
+    const entry2 = {
       capturePointer: true,
       dragSource,
       eElement: dragSource.eElement,
@@ -31323,8 +31381,8 @@ var BaseDragAndDropService = class extends AgBeanStub {
       onDragCancel: this.onDragCancel.bind(this),
       includeTouch: allowTouch
     };
-    this.dragSourceAndParamsList.push(entry);
-    this.beans.dragSvc.addDragSource(entry);
+    this.dragSourceAndParamsList.push(entry2);
+    this.beans.dragSvc.addDragSource(entry2);
   }
   setDragImageCompIcon(iconName, shake = false) {
     const component = this.dragImageComp;
@@ -39437,11 +39495,11 @@ var BaseSelectionService = class extends BeanStub {
     return _isMultiRowSelection(this.gos);
   }
   onRowCtrlSelected(rowCtrl, hasFocusFunc, gui) {
-    const selected = !!rowCtrl.rowNode.isSelected();
+    const selected2 = !!rowCtrl.rowNode.isSelected();
     rowCtrl.forEachGui(gui, (gui2) => {
-      gui2.rowComp.toggleCss("ag-row-selected", selected);
+      gui2.rowComp.toggleCss("ag-row-selected", selected2);
       const element = gui2.element;
-      _setAriaSelected(element, selected);
+      _setAriaSelected(element, selected2);
       const hasFocus = element.contains(_getActiveDomElement(this.beans));
       if (hasFocus) {
         hasFocusFunc(gui2);
@@ -39452,15 +39510,15 @@ var BaseSelectionService = class extends BeanStub {
     if (this.isRowSelectionBlocked(rowNode)) {
       return;
     }
-    const selected = rowNode.isSelected();
+    const selected2 = rowNode.isSelected();
     const isEditing2 = this.beans.editSvc?.isEditing({ rowNode });
     if (!rowNode.selectable || isEditing2) {
       return;
     }
     const translate = this.getLocaleTextFunc();
     const label = translate(
-      selected ? "ariaRowDeselect" : "ariaRowSelect",
-      `Press SPACE to ${selected ? "deselect" : "select"} this row`
+      selected2 ? "ariaRowDeselect" : "ariaRowSelect",
+      `Press SPACE to ${selected2 ? "deselect" : "select"} this row`
     );
     this.beans.ariaAnnounce?.announceValue(label, "rowSelection");
   }
@@ -39487,8 +39545,8 @@ var BaseSelectionService = class extends BeanStub {
       }
       const isGroupSelectsChildren = _getGroupSelectsDescendants(this.gos);
       if (isGroupSelectsChildren) {
-        const selected = this.calculateSelectedFromChildren(rowNode);
-        this.setNodesSelected({ nodes: [rowNode], newValue: selected ?? false, source: "selectableChanged" });
+        const selected2 = this.calculateSelectedFromChildren(rowNode);
+        this.setNodesSelected({ nodes: [rowNode], newValue: selected2 ?? false, source: "selectableChanged" });
         return;
       }
       if (rowNode.isSelected() && !rowNode.selectable) {
@@ -69109,8 +69167,8 @@ var SelectionService = class extends BaseSelectionService {
     let selectionChanged = false;
     changedPath.forEachChangedNodeDepthFirst((rowNode) => {
       if (rowNode !== rootNode) {
-        const selected = this.calculateSelectedFromChildren(rowNode);
-        selectionChanged = this.selectRowNode(rowNode, selected === null ? false : selected, void 0, source2) || selectionChanged;
+        const selected2 = this.calculateSelectedFromChildren(rowNode);
+        selectionChanged = this.selectRowNode(rowNode, selected2 === null ? false : selected2, void 0, source2) || selectionChanged;
       }
     });
     return selectionChanged;
@@ -69136,8 +69194,8 @@ var SelectionService = class extends BaseSelectionService {
       }
     });
     groupsToRefresh.forEach((group) => {
-      const selected = this.calculateSelectedFromChildren(group);
-      this.selectRowNode(group, selected === null ? false : selected, void 0, source2);
+      const selected2 = this.calculateSelectedFromChildren(group);
+      this.selectRowNode(group, selected2 === null ? false : selected2, void 0, source2);
     });
     return updatedCount;
   }
@@ -69535,14 +69593,14 @@ function _isAllSelected(api) {
   });
   return _calculateSelectAllState(selectedCount, notSelectedCount);
 }
-function _calculateSelectAllState(selected, notSelected) {
-  if (selected === 0 && notSelected === 0) {
+function _calculateSelectAllState(selected2, notSelected) {
+  if (selected2 === 0 && notSelected === 0) {
     return false;
   }
-  if (selected > 0 && notSelected > 0) {
+  if (selected2 > 0 && notSelected > 0) {
     return;
   }
-  return selected > 0;
+  return selected2 > 0;
 }
 function isDescendantOf(root2, child) {
   let parent = child.parent;

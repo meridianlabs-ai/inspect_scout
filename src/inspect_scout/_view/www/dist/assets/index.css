@@ -219,6 +219,25 @@
     display: grid;
     grid-template-columns: max-content 1fr;
     column-gap: 0.5em;
+}._container_lcu0q_1 {
+    display: grid;
+    grid-template-columns: max-content max-content max-content;
+    column-gap: 0.5em;
+}
+
+._entry_lcu0q_7 {
+    display: contents;
+}
+
+._selected_lcu0q_11 {
+    font-weight: 600;
+}
+
+._entry_lcu0q_7:hover {
+    color: var(--bs-link-hover-color);
+    cursor: pointer;
+}._body_6e22p_1 {
+    border: solid red 1px;
 }._root_txmk7_1 {
     height: 100vh;
     display: grid;

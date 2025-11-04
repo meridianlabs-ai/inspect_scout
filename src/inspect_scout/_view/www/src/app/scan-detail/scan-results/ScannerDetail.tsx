@@ -1,7 +1,7 @@
 import { FC, useMemo } from "react";
 import { fromArrow } from "arquero";
 import { AgGridReact } from "ag-grid-react";
-import type { ColDef } from "ag-grid-community";
+import { themeBalham, type ColDef } from "ag-grid-community";
 
 import { IPCDataframe } from "../../../types";
 
@@ -39,7 +39,7 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
           resizable: true,
           wrapText: isMultiline,
           autoHeight: isMultiline,
-          minWidth: isMultiline ? 400 : 100,
+          minWidth: isMultiline ? 300 : 75,
         };
       });
 
@@ -58,10 +58,17 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
         <AgGridReact
           columnDefs={columnDefs}
           rowData={rowData}
+          animateRows={false}
           defaultColDef={{
             flex: 1,
             minWidth: 100,
           }}
+          autoSizeStrategy={{ type: "fitGridWidth" }}
+          headerHeight={25}
+          rowSelection={{ mode: "singleRow", checkboxes: false }}
+          theme={themeBalham}
+          enableCellTextSelection={true}
+          suppressCellFocus={true}
         />
       </div>
     </div>

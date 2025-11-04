@@ -94482,7 +94482,7 @@ const ScannerDetail = ({ scanner }) => {
         resizable: true,
         wrapText: isMultiline,
         autoHeight: isMultiline,
-        minWidth: isMultiline ? 400 : 100
+        minWidth: isMultiline ? 300 : 75
       };
     });
     const rowData2 = table.objects();
@@ -94498,10 +94498,17 @@ const ScannerDetail = ({ scanner }) => {
         {
           columnDefs,
           rowData,
+          animateRows: false,
           defaultColDef: {
             flex: 1,
             minWidth: 100
-          }
+          },
+          autoSizeStrategy: { type: "fitGridWidth" },
+          headerHeight: 25,
+          rowSelection: { mode: "singleRow", checkboxes: false },
+          theme: themeBalham,
+          enableCellTextSelection: true,
+          suppressCellFocus: true
         }
       )
     }

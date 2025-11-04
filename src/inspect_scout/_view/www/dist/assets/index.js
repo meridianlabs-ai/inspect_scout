@@ -20092,7 +20092,7 @@ const left = "_left_ctaca_31";
 const right = "_right_ctaca_41";
 const toolbarButton = "_toolbarButton_ctaca_50";
 const pathContainer = "_pathContainer_ctaca_58";
-const styles$8 = {
+const styles$9 = {
   header,
   bordered,
   breadcrumbs,
@@ -20233,74 +20233,74 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
       className: clsx(
         "text-size-smaller",
         "header-nav",
-        styles$8.header,
-        bordered2 ? styles$8.bordered : void 0
+        styles$9.header,
+        bordered2 ? styles$9.bordered : void 0
       ),
       "aria-label": "breadcrumb",
       "data-unsearchable": true,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$8.left), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$8.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$9.left), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$9.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Link,
             {
               to: scansRoute(),
-              className: clsx(styles$8.toolbarButton),
+              className: clsx(styles$9.toolbarButton),
               onClick: () => {
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.home) })
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$8.breadcrumbs), children: visibleSegments.map((segment, index) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$9.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$9.breadcrumbs), children: visibleSegments.map((segment, index) => {
             const isLast = index === visibleSegments.length - 1;
             const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$8.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
+              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$9.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "li",
                 {
                   className: clsx(
-                    styles$8.pathLink,
+                    styles$9.pathLink,
                     "breadcrumb-item",
                     isLast ? "active" : void 0
                   ),
-                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$8.pathSegment), children: segment.text })
+                  children: segment.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment.url, children: segment.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$9.pathSegment), children: segment.text })
                 }
               )
             ] }, index);
           }) }) : "" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.right), children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$9.right), children })
       ]
     }
   );
 };
 const wrapper = "_wrapper_1tajk_1";
-const container$3 = "_container_1tajk_12";
+const container$4 = "_container_1tajk_12";
 const animate = "_animate_1tajk_21";
-const styles$7 = {
+const styles$8 = {
   wrapper,
-  container: container$3,
+  container: container$4,
   animate
 };
 const ActivityBar = ({ animating }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
-      className: clsx(styles$7.container),
+      className: clsx(styles$8.container),
       role: "progressbar",
       "aria-label": "Progress bar",
       "aria-valuenow": 25,
       "aria-valuemin": 0,
       "aria-valuemax": 100,
-      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$7.animate })
+      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$8.animate })
     }
   ) });
 };
 const scanTitleView = "_scanTitleView_l0opl_1";
 const leftColumn = "_leftColumn_l0opl_10";
 const subtitle = "_subtitle_l0opl_38";
-const styles$6 = {
+const styles$7 = {
   scanTitleView,
   leftColumn,
   subtitle
@@ -20309,14 +20309,14 @@ const ScanTitleView = () => {
   const selectedResults = useStore((state) => state.selectedResults);
   const errorCount = selectedResults?.errors.length || 0;
   const status = selectedResults === void 0 ? "" : selectedResults.complete ? "Complete" : "Incomplete";
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.scanTitleView), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.leftColumn), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.scanTitleView), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.leftColumn), children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: selectedResults?.spec.scan_name }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: selectedResults?.spec.scan_id }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", {}),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: clsx(styles$6.subtitle, "text-style-secondary"), children: selectedResults?.spec.scan_file })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: clsx(styles$7.subtitle, "text-style-secondary"), children: selectedResults?.spec.scan_file })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.rightColumn), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.rightColumn), children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-size-smaller", children: status }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-size-smaller", children: errorCount === 1 ? `${errorCount} Error` : errorCount > 1 ? `${errorCount} Errors` : "" })
     ] })
@@ -22128,20 +22128,20 @@ const flattenChildren = (children) => {
 const tabSet = "_tabSet_10t9t_1";
 const tabs = "_tabs_10t9t_5";
 const tabControl = "_tabControl_10t9t_10";
-const styles$5 = {
+const styles$6 = {
   tabSet,
   tabs,
   tabControl
 };
-const container$2 = "_container_fygbq_1";
-const styles$4 = {
-  container: container$2
+const container$3 = "_container_fygbq_1";
+const styles$5 = {
+  container: container$3
 };
-const container$1 = "_container_1yxcf_1";
+const container$2 = "_container_1yxcf_1";
 const entry = "_entry_1yxcf_7";
 const selected = "_selected_1yxcf_11";
-const styles$3 = {
-  container: container$1,
+const styles$4 = {
+  container: container$2,
   entry,
   selected
 };
@@ -22182,22 +22182,22 @@ const ScanResultsTOC = () => {
     },
     [setSelectedScanner]
   );
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$3.container), children: entries.map((entry2) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$4.container), children: entries.map((entry2) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         className: clsx(
-          styles$3.entry,
+          styles$4.entry,
           "text-size-smaller",
-          selectedScanner === entry2.title ? styles$3.selected : null
+          selectedScanner === entry2.title ? styles$4.selected : null
         ),
         onClick: () => {
           handleClick(entry2.title);
         },
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: entry2.icon && /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(styles$3.icon, entry2.icon) }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$3.title), children: entry2.title }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.count), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: entry2.icon && /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(styles$4.icon, entry2.icon) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$4.title), children: entry2.title }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$4.count), children: [
             "(",
             entry2.count,
             " results)"
@@ -22209,15 +22209,43 @@ const ScanResultsTOC = () => {
   }) });
 };
 const body = "_body_1wqtm_1";
-const styles$2 = {
+const styles$3 = {
   body
+};
+const container$1 = "_container_1fkl0_1";
+const styles$2 = {
+  container: container$1
+};
+const ScannerHeading = ({ scanner }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$2.container), children: [
+    scanner.name,
+    "(",
+    toArgs(scanner.params).join(", "),
+    ")"
+  ] });
+};
+const toArgs = (params) => {
+  const args = [];
+  for (const [key2, value] of Object.entries(params)) {
+    args.push(`${key2}:${value}`);
+  }
+  return args;
+};
+const ScannerDetail = ({ scanner }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: scanner.format });
 };
 const ScanResultsBody = () => {
   const selectedScanner = useSelectedScanner();
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$2.body), children: selectedScanner });
+  const selectedResults = useStore((state) => state.selectedResults);
+  const scanner = selectedResults?.spec.scanners[selectedScanner || ""];
+  const scannerDetail = selectedResults?.scanners[selectedScanner || ""];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.body), children: [
+    scanner && /* @__PURE__ */ jsxRuntimeExports.jsx(ScannerHeading, { scanner }),
+    scannerDetail && /* @__PURE__ */ jsxRuntimeExports.jsx(ScannerDetail, { scanner: scannerDetail })
+  ] });
 };
 const ScanResults = () => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$4.container), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.container), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsTOC, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsBody, {})
   ] });
@@ -22251,9 +22279,9 @@ const ScanDetailTabs = () => {
     {
       id: "scan-detail-tabs",
       type: "pills",
-      tabPanelsClassName: clsx(styles$5.tabSet),
-      tabControlsClassName: clsx(styles$5.tabControl),
-      className: clsx(styles$5.tabs),
+      tabPanelsClassName: clsx(styles$6.tabSet),
+      tabControlsClassName: clsx(styles$6.tabControl),
+      className: clsx(styles$6.tabs),
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           TabPanel,

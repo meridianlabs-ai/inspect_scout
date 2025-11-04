@@ -241,6 +241,9 @@
 ._body_1wqtm_1 {
   border: solid red 1px;
 }
+._container_1fkl0_1 {
+  font-family: var(--bs-font-monospace);
+}
 ._root_ke0e7_1 {
   height: 100vh;
   display: grid;

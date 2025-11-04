@@ -14,6 +14,7 @@ import { LabeledValue } from "../../../components/LabeledValue";
 import clsx from "clsx";
 
 import styles from "./ScannerDetail.module.css";
+import { MarkdownDiv } from "../../../components/MarkdownDiv";
 
 interface ScannerDetailProps {
   scanner: IPCDataframe;
@@ -101,7 +102,7 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
                 />
               </LabeledValue>
               <LabeledValue label="Explanation">
-                {summary.explanation}
+                <MarkdownDiv markdown={summary.explanation} />
               </LabeledValue>
             </CardBody>
           </Card>

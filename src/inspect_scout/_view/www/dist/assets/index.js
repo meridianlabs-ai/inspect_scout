@@ -51982,7 +51982,7 @@ const ScannerDetail = ({ scanner }) => {
           id: `scanner-input-${index}`
         }
       ) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Explanation", children: summary2.explanation })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Explanation", children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: summary2.explanation }) })
     ] })
   ] }, `scanner-summary-card-${index}`)) }) });
 };
@@ -52050,7 +52050,6 @@ const ScanInfo = () => {
 };
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
-const kTabIdScanners = "scan-detail-tabs-scanners";
 const kTabIdJson = "scan-detail-tabs-json";
 const ScanDetailTabs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52062,7 +52061,7 @@ const ScanDetailTabs = () => {
   reactExports.useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam) {
-      const validTabs = [kTabIdScans, kTabIdInfo, kTabIdScanners, kTabIdJson];
+      const validTabs = [kTabIdScans, kTabIdInfo, kTabIdJson];
       if (validTabs.includes(tabParam)) {
         setSelectedResultsTab(tabParam);
       }
@@ -52103,18 +52102,6 @@ const ScanDetailTabs = () => {
               handleTabChange(kTabIdInfo);
             },
             children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanInfo, {})
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          TabPanel,
-          {
-            id: kTabIdScanners,
-            selected: selectedTab === kTabIdScanners,
-            title: "Scanners",
-            onSelected: () => {
-              handleTabChange(kTabIdScanners);
-            },
-            children: "Scanners"
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(

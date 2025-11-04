@@ -7,12 +7,10 @@ import { useStore } from "../../state/store";
 
 import styles from "./ScanDetailTabs.module.css";
 import { ScanResults } from "./scan-results/ScanResults";
-import { MetaDataGrid } from "../../content/MetaDataGrid";
 import { ScanInfo } from "./scan-results/ScanInfo";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
-const kTabIdScanners = "scan-detail-tabs-scanners";
 const kTabIdJson = "scan-detail-tabs-json";
 
 export const ScanDetailTabs: React.FC = () => {
@@ -28,7 +26,7 @@ export const ScanDetailTabs: React.FC = () => {
     const tabParam = searchParams.get("tab");
     if (tabParam) {
       // Valid tab IDs
-      const validTabs = [kTabIdScans, kTabIdInfo, kTabIdScanners, kTabIdJson];
+      const validTabs = [kTabIdScans, kTabIdInfo, kTabIdJson];
       if (validTabs.includes(tabParam)) {
         setSelectedResultsTab(tabParam);
       }
@@ -70,17 +68,6 @@ export const ScanDetailTabs: React.FC = () => {
       >
         <ScanInfo />
       </TabPanel>
-      <TabPanel
-        id={kTabIdScanners}
-        selected={selectedTab === kTabIdScanners}
-        title="Scanners"
-        onSelected={() => {
-          handleTabChange(kTabIdScanners);
-        }}
-      >
-        Scanners
-      </TabPanel>
-
       <TabPanel
         id={kTabIdJson}
         selected={selectedTab === kTabIdJson}

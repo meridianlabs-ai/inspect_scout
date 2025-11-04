@@ -1,4 +1,5 @@
 import inspect
+import re
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Counter, Literal, Sequence, TypeVar, cast, overload
@@ -173,6 +174,7 @@ class ScanJob:
         name_counts = Counter(t[0] for t in named_scanners)
         current_counts: dict[str, int] = {k: 0 for k in name_counts.keys()}
         for name, scanner in named_scanners:
+            name = safe_scanner_name(name)
             if name_counts[name] > 1:
                 current_counts[name] = current_counts[name] + 1
                 name = f"{name}_{current_counts[name]}"
@@ -445,3 +447,48 @@ def scanjob_from_config_file(config: Path) -> ScanJob:
         raise PrerequisiteError(message)
 
     return ScanJob.from_config(ScanJobConfig.model_validate(scanjob_config))
+
+
+def safe_scanner_name(scanner: str, max_length: int = 55) -> str:
+    """
+    Convert scanner name to a safe identifier for filesystems and SQL table names.
+
+    Args:
+        scanner: The scanner name to sanitize
+        max_length: Maximum length for the result (default: 55 as there could be a
+            disambiguating suffix and PostgreSQL limits table names to 63)
+
+    Returns:
+        A lowercase string with only alphanumeric characters and underscores
+
+    Raises:
+        ValueError: If the result would be empty or invalid
+    """
+    if not scanner or not scanner.strip():
+        raise ValueError("Scanner name cannot be empty")
+
+    # Replace any non-alphanumeric character with underscore
+    safe = re.sub(r"[^a-zA-Z0-9]+", "_", scanner)
+
+    # Convert to lowercase
+    safe = safe.lower()
+
+    # Remove leading/trailing underscores
+    safe = safe.strip("_")
+
+    # Ensure it doesn't start with a number
+    if safe and safe[0].isdigit():
+        safe = "scanner_" + safe
+
+    # Truncate to max_length
+    safe = safe[:max_length]
+
+    # Check for SQL reserved words (simplified example)
+    sql_reserved = {"select", "table", "from", "where", "insert", "delete"}
+    if safe in sql_reserved:
+        safe = f"scanner_{safe}"
+
+    if not safe:
+        raise ValueError(f"Cannot create safe name from: {scanner}")
+
+    return safe

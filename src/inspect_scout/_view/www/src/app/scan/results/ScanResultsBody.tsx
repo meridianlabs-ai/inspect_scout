@@ -9,23 +9,28 @@ import { DataframeView } from "../../../components/DataframeView";
 import { LabeledValue } from "../../../components/LabeledValue";
 import { MarkdownDiv } from "../../../components/MarkdownDiv";
 import { useStore } from "../../../state/store";
-import { IPCDataframe, Transcript } from "../../../types";
+import { Transcript } from "../../../types";
 import { firstUserMessage } from "../../../utils/chatMessage";
 
-import styles from "./ScannerDetail.module.css";
-
-interface ScannerDetailProps {
-  scanner: IPCDataframe;
-}
+import { useSelectedScanner } from "./hooks";
+import styles from "./ScanResultsBody.module.css";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
+export const ScanResultsBody: FC = () => {
+  const selectedScanner = useSelectedScanner();
+  const selectedResults = useStore((state) => state.selectedResults);
+  const scanner = selectedResults?.scanners[selectedScanner || ""];
+
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || "cards";
 
   const columnTable = useMemo(() => {
+    if (!scanner || !scanner.data) {
+      return fromArrow(new ArrayBuffer(0));
+    }
+
     // Decode base64 string to Uint8Array
     const binaryString = atob(scanner.data);
     const bytes = new Uint8Array(binaryString.length);
@@ -60,37 +65,41 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
   }, [columnTable]);
 
   return (
-    <div style={{ height: "100%", width: "100%" }}>
-      {selectedResultsView === "cards" && (
-        <div className={clsx("text-size-small")}>
-          {scannerSummaries.map((summary, index) => (
-            <Card key={`scanner-summary-card-${index}`}>
-              <CardHeader label={`Scanner Summary ${index + 1}`} />
-              <CardBody>
-                <div className={clsx(styles.scannerHeaderRow)}>
-                  <LabeledValue label="Value">
-                    {summary.value || "(none)"}
-                  </LabeledValue>
-                  <LabeledValue label="Answer">
-                    {summary.answer || "(none)"}
-                  </LabeledValue>
-                </div>
-                <LabeledValue label="Input">
-                  <RenderedScannerInput
-                    row={summary}
-                    id={`scanner-input-${index}`}
-                  />
-                </LabeledValue>
-                <LabeledValue label="Explanation">
-                  <MarkdownDiv markdown={summary.explanation} />
-                </LabeledValue>
-              </CardBody>
-            </Card>
-          ))}
+    <div className={clsx(styles.scrollContainer)}>
+      {scanner && (
+        <div style={{ height: "100%", width: "100%" }}>
+          {selectedResultsView === "cards" && (
+            <div className={clsx("text-size-small")}>
+              {scannerSummaries.map((summary, index) => (
+                <Card key={`scanner-summary-card-${index}`}>
+                  <CardHeader label={`Scanner Summary ${index + 1}`} />
+                  <CardBody>
+                    <div className={clsx(styles.scannerHeaderRow)}>
+                      <LabeledValue label="Value">
+                        {summary.value || "(none)"}
+                      </LabeledValue>
+                      <LabeledValue label="Answer">
+                        {summary.answer || "(none)"}
+                      </LabeledValue>
+                    </div>
+                    <LabeledValue label="Input">
+                      <RenderedScannerInput
+                        row={summary}
+                        id={`scanner-input-${index}`}
+                      />
+                    </LabeledValue>
+                    <LabeledValue label="Explanation">
+                      <MarkdownDiv markdown={summary.explanation} />
+                    </LabeledValue>
+                  </CardBody>
+                </Card>
+              ))}
+            </div>
+          )}
+          {selectedResultsView === "grid" && (
+            <DataframeView columnTable={columnTable} />
+          )}
         </div>
-      )}
-      {selectedResultsView === "grid" && (
-        <DataframeView columnTable={columnTable} />
       )}
     </div>
   );

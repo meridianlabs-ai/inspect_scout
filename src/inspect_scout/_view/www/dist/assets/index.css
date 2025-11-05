@@ -773,20 +773,21 @@ a._citationLink_1ggvf_9:hover {
 ._gridWrapper_yeano_1 .ag-cell {
   line-height: 1.1em;
 }
-._scannerHeaderRow_1b6xr_1 {
+._scannerHeaderRow_94id2_1 {
   display: grid;
   grid-template-columns: auto auto;
   column-gap: 0.5em;
   margin-bottom: 1em;
 }
 
-._controls_1b6xr_8 {
+._controls_94id2_8 {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
   margin-bottom: 0.5em;
 }
-._body_sc0cq_1 {
+
+._scrollContainer_94id2_15 {
   overflow-y: auto;
 }
 ._progressContainer_1cjjr_1 {

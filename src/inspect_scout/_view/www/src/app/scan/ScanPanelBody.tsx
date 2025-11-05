@@ -8,8 +8,8 @@ import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 import { ApplicationIcons } from "../appearance/icons";
 
-import { ScanInfo } from "./scan-results/ScanInfo";
-import { ScanResults } from "./scan-results/ScanResults";
+import { ScanInfo } from "./info/ScanInfo";
+import { ScanResults } from "./results/ScanResults";
 import styles from "./ScanPanelBody.module.css";
 
 const kTabIdScans = "scan-detail-tabs-results";

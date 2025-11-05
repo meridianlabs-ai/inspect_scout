@@ -1,3 +1,4 @@
+# mypy: disable-error-code="unused-ignore"
 from pathlib import Path
 
 import yaml
@@ -12,14 +13,13 @@ from inspect_scout import (
 from .._scanner.extract import messages_as_str
 from .._transcript.types import Transcript
 from .._util.jinja import StrictOnUseUndefined
+from .template import template  # type: ignore
 
 
 @scanner(messages="all")
 def complex_scanner() -> Scanner[Transcript]:
     async def execute(transcript: Transcript) -> Result:
-        from .template import template
-
-        prompt = _render_prompt(template, transcript)
+        prompt = _render_prompt(transcript)
 
         messages_str, message_id_map = await messages_as_str(
             transcript.messages, include_ids=True
@@ -31,7 +31,7 @@ def complex_scanner() -> Scanner[Transcript]:
     return execute
 
 
-def _render_prompt(template: str, transcript: Transcript) -> str:
+def _render_prompt(transcript: Transcript) -> str:
     path = Path(__file__).parent / "cheating.yml"
     with path.open("r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}

@@ -222,26 +222,6 @@
   grid-template-columns: 200px 1fr;
   height: 100%;
 }
-._container_zptle_1 {
-  border-right: solid 1px var(--bs-border-color);
-}
-
-._entry_zptle_5 {
-  padding: 0.5em;
-}
-
-._entry_zptle_5._selected_zptle_9 {
-  background-color: var(--bs-secondary-bg);
-}
-
-._selected_zptle_9 > ._title_zptle_13 {
-  font-weight: 600;
-}
-
-._entry_zptle_5:hover {
-  color: var(--bs-link-hover-color);
-  cursor: pointer;
-}
 /* PulsingDots.module.css */
 ._container_4p85e_2 {
   display: inline-flex;
@@ -349,6 +329,26 @@
 
 ._labeledValue_ev33w_1 ._column_ev33w_14 {
   flex-direction: column;
+}
+._container_zptle_1 {
+  border-right: solid 1px var(--bs-border-color);
+}
+
+._entry_zptle_5 {
+  padding: 0.5em;
+}
+
+._entry_zptle_5._selected_zptle_9 {
+  background-color: var(--bs-secondary-bg);
+}
+
+._selected_zptle_9 > ._title_zptle_13 {
+  font-weight: 600;
+}
+
+._entry_zptle_5:hover {
+  color: var(--bs-link-hover-color);
+  cursor: pointer;
 }
 ._body_sc0cq_1 {
   overflow-y: auto;

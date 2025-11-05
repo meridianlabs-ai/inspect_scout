@@ -2,7 +2,6 @@ import clsx from "clsx";
 import { useStore } from "../../../state/store";
 import { FC, useCallback, useRef } from "react";
 
-import styles from "./ScanResultsTOC.module.css";
 import { Results } from "../../../types";
 import { ApplicationIcons } from "../../appearance/icons";
 import { useSelectedScanner } from "./hooks";
@@ -10,47 +9,23 @@ import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { VirtuosoHandle } from "react-virtuoso";
 import { LabeledValue } from "../../../components/LabeledValue";
 
-interface TOCEntry {
-  icon?: string;
-  title: string;
-  tokens?: number;
-  results: number;
-  scans: number;
-  validations?: number;
-  errors?: number;
-}
+import styles from "./ScanResultsOutline.module.css";
 
-const toEntries = (results?: Results): TOCEntry[] => {
-  if (!results) {
-    return [];
-  }
-  const entries: TOCEntry[] = [];
-  for (const scanner of Object.keys(results.summary.scanners)) {
-    const summary = results.summary.scanners[scanner];
-    entries.push({
-      icon: ApplicationIcons.scorer,
-      title: scanner,
-      results: summary?.results || 0,
-      scans: summary?.scans || 0,
-      tokens: summary?.tokens,
-      errors: summary?.errors,
-    });
-  }
-  return entries;
-};
-
-export const ScanResultsTOC: FC = () => {
+export const ScanResultsOutline: FC = () => {
   const results = useStore((state) => state.selectedResults);
   const entries = toEntries(results);
 
   const scanListHandle = useRef<VirtuosoHandle | null>(null);
-  const renderRow = useCallback((index: number, entry: TOCEntry) => {
-    return <ScanResultsRow index={index} entry={entry} />;
-  }, []);
+  const renderRow = useCallback(
+    (index: number, entry: ScanResultsOutlineEntry) => {
+      return <ScanResultsRow index={index} entry={entry} />;
+    },
+    []
+  );
 
   return (
     <div className={clsx(styles.container)}>
-      <LiveVirtualList<TOCEntry>
+      <LiveVirtualList<ScanResultsOutlineEntry>
         id={"scans-toc-list"}
         listHandle={scanListHandle}
         data={entries}
@@ -60,7 +35,7 @@ export const ScanResultsTOC: FC = () => {
   );
 };
 
-const ScanResultsRow: FC<{ index: number; entry: TOCEntry }> = ({
+const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
   index,
   entry,
 }) => {
@@ -122,4 +97,33 @@ const ScanResultsRow: FC<{ index: number; entry: TOCEntry }> = ({
       )}
     </div>
   );
+};
+
+interface ScanResultsOutlineEntry {
+  icon?: string;
+  title: string;
+  tokens?: number;
+  results: number;
+  scans: number;
+  validations?: number;
+  errors?: number;
+}
+
+const toEntries = (results?: Results): ScanResultsOutlineEntry[] => {
+  if (!results) {
+    return [];
+  }
+  const entries: ScanResultsOutlineEntry[] = [];
+  for (const scanner of Object.keys(results.summary.scanners)) {
+    const summary = results.summary.scanners[scanner];
+    entries.push({
+      icon: ApplicationIcons.scorer,
+      title: scanner,
+      results: summary?.results || 0,
+      scans: summary?.scans || 0,
+      tokens: summary?.tokens,
+      errors: summary?.errors,
+    });
+  }
+  return entries;
 };

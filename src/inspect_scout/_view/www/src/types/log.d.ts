@@ -373,7 +373,7 @@ export type StopReason =
   | "max_tokens"
   | "model_length"
   | "tool_calls"
-  | "content_filter"
+  | "content_preprocessor"
   | "unknown";
 export type Token = string;
 export type Logprob1 = number;

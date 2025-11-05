@@ -17,7 +17,7 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolCall, ToolCallError
 from inspect_scout._scanner.extract import (
-    ContentFilter,
+    ContentPreprocessor,
     message_as_str,
     messages_as_str,
 )
@@ -513,7 +513,7 @@ def test_exclude_parameters(
     """Test exclude_tool_usage and exclude_reasoning parameters control output."""
     result = message_as_str(
         message,
-        ContentFilter(
+        ContentPreprocessor(
             exclude_tool_usage=exclude_tool_usage, exclude_reasoning=exclude_reasoning
         ),
     )
@@ -551,7 +551,7 @@ def test_exclude_parameters(
                 ChatMessageSystem(content="System", id="sys1"),
                 ChatMessageUser(content="Hello", id="msg1"),
             ],
-            ContentFilter(),
+            ContentPreprocessor(),
             True,
             "[M1] user:\nHello\n",
             {"M1": "msg1"},
@@ -563,7 +563,7 @@ def test_exclude_parameters(
                 ChatMessageTool(content="Tool result", function="test", id="tool1"),
                 ChatMessageAssistant(content="Done", id="msg2"),
             ],
-            ContentFilter(exclude_tool_usage=True),
+            ContentPreprocessor(exclude_tool_usage=True),
             True,
             "[M1] user:\nHello\n\n[M2] assistant:\nDone\n",
             {"M1": "msg1", "M2": "msg2"},
@@ -583,7 +583,7 @@ def test_exclude_parameters(
 @pytest.mark.asyncio
 async def test_messages_as_str(
     messages: list[ChatMessage],
-    filter: ContentFilter | None,
+    filter: ContentPreprocessor | None,
     include_ids: bool,
     expected_result: str,
     expected_ids: dict[str, str] | None,
@@ -591,12 +591,12 @@ async def test_messages_as_str(
     """Test messages_as_str with various configurations."""
     if include_ids:
         result, message_ids = await messages_as_str(
-            messages, content_filter=filter, include_ids=True
+            messages, content_preprocessor=filter, include_ids=True
         )
         assert result == expected_result
         assert message_ids == expected_ids
     else:
-        result = await messages_as_str(messages, content_filter=filter)
+        result = await messages_as_str(messages, content_preprocessor=filter)
         assert result == expected_result
 
 
@@ -617,7 +617,7 @@ async def test_messages_as_str_with_preprocessor() -> None:
 
     result, message_ids = await messages_as_str(
         messages,
-        content_filter=ContentFilter(messages=keep_only_user_messages),
+        content_preprocessor=ContentPreprocessor(messages=keep_only_user_messages),
         include_ids=True,
     )
 

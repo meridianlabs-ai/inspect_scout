@@ -8,7 +8,7 @@ from jinja2 import Environment
 
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
-from .._scanner.extract import ContentFilter, messages_as_str
+from .._scanner.extract import ContentPreprocessor, messages_as_str
 from .._scanner.result import Result
 from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
@@ -23,7 +23,7 @@ def llm_scanner(
     question: str | Callable[[Transcript], Awaitable[str]],
     answer: Literal["boolean", "numeric", "string"] | list[str] | MultiLabels,
     template: str | None = None,
-    messages: ContentFilter | None = None,
+    messages: ContentPreprocessor | None = None,
     model: str | Model | None = None,
     name: str | None = None,
 ) -> Scanner[Transcript]:
@@ -66,7 +66,7 @@ def llm_scanner(
 
     async def scan(transcript: Transcript) -> Result:
         messages_str, message_id_map = await messages_as_str(
-            transcript.messages, content_filter=messages, include_ids=True
+            transcript.messages, content_preprocessor=messages, include_ids=True
         )
 
         resolved_prompt = await render_scanner_prompt(

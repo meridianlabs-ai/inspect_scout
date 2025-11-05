@@ -180,7 +180,7 @@ The `Result` object returned from the scanner will consist of:
 
 ## Content Filtering
 
-Transcript messages are included within the prompt template subject to a `ContentFilter` passed to `llm_scanner()`. The content filter includes the following fields:
+Transcript messages are included within the prompt template subject to a `ContentPreprocessor` passed to `llm_scanner()`. The content filter includes the following fields:
 
 |  |  |
 |------------------------------------|------------------------------------|
@@ -191,4 +191,4 @@ Transcript messages are included within the prompt template subject to a `Conten
 
 : {tbl-colwidths=\[35,65\]}
 
-The default `ContentFilter` removes system messages and does no other transformation.
+The default `ContentPreprocessor` removes system messages and does no other transformation.

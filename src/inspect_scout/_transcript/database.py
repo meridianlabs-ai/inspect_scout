@@ -187,7 +187,7 @@ class EvalLogTranscriptsDB:
 
         # resolve logs or df to transcript_df (sample per row)
         if not isinstance(logs, pd.DataFrame):
-            self._transcripts_df = samples_df(logs, TranscriptColumns, parallel=True)
+            self._transcripts_df = samples_df(logs, TranscriptColumns, parallel=False)
         else:
             self._transcripts_df = logs
 

@@ -20,9 +20,13 @@ interface StoreState {
   singleFileMode?: boolean;
   hasInitializedEmbeddedData?: boolean;
   loading: number;
+
+  // Scan specific properties (clear when switching scans)
   selectedResultsTab?: string;
   collapsedBuckets: Record<string, Record<string, boolean>>;
   selectedScanner?: string;
+  transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
+  transcriptOutlineId?: string;
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
@@ -65,6 +69,22 @@ interface StoreState {
   setSelectedResultsTab: (tab: string) => void;
 
   setSelectedScanner: (scanner: string) => void;
+
+  setTranscriptOutlineId: (id: string) => void;
+  clearTranscriptOutlineId: () => void;
+
+  setTranscriptCollapsedEvent: (
+    scope: string,
+    event: string,
+    collapsed: boolean
+  ) => void;
+  setTranscriptCollapsedEvents: (
+    scope: string,
+    events: Record<string, boolean>
+  ) => void;
+  clearTranscriptCollapsedEvents: (scope: string) => void;
+
+  clearScanState: () => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -81,6 +101,7 @@ export const useStore = create<StoreState>()(
         gridStates: {},
         loading: 0,
         collapsedBuckets: {},
+        transcriptCollapsedEvents: {},
 
         // Actions
         setApi: (api: ScanApi) =>
@@ -261,6 +282,51 @@ export const useStore = create<StoreState>()(
         setSelectedScanner: (scanner: string) => {
           set((state) => {
             state.selectedScanner = scanner;
+          });
+        },
+        setTranscriptOutlineId: (id: string) => {
+          set((state) => {
+            state.transcriptOutlineId = id;
+          });
+        },
+        clearTranscriptOutlineId: () => {
+          set((state) => {
+            state.transcriptOutlineId = undefined;
+          });
+        },
+        setTranscriptCollapsedEvent: (
+          scope: string,
+          event: string,
+          collapsed: boolean
+        ) => {
+          set((state) => {
+            if (!state.transcriptCollapsedEvents[scope]) {
+              state.transcriptCollapsedEvents[scope] = {};
+            }
+            state.transcriptCollapsedEvents[scope][event] = collapsed;
+          });
+        },
+        setTranscriptCollapsedEvents: (
+          scope: string,
+          events: Record<string, boolean>
+        ) => {
+          set((state) => {
+            state.transcriptCollapsedEvents[scope] = events;
+          });
+        },
+        clearTranscriptCollapsedEvents: (scope: string) => {
+          set((state) => {
+            state.transcriptCollapsedEvents[scope] = {};
+          });
+        },
+        clearScanState: () => {
+          set((state) => {
+            state.selectedResults = undefined;
+            state.selectedResultsTab = undefined;
+            state.collapsedBuckets = {};
+            state.selectedScanner = undefined;
+            state.transcriptCollapsedEvents = {};
+            state.transcriptOutlineId = undefined;
           });
         },
       })),

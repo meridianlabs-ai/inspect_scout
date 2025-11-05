@@ -19875,6 +19875,7 @@ const useStore = create()(
         gridStates: {},
         loading: 0,
         collapsedBuckets: {},
+        transcriptCollapsedEvents: {},
         // Actions
         setApi: (api) => set3((state) => {
           state.api = api;
@@ -20015,6 +20016,44 @@ const useStore = create()(
         setSelectedScanner: (scanner) => {
           set3((state) => {
             state.selectedScanner = scanner;
+          });
+        },
+        setTranscriptOutlineId: (id) => {
+          set3((state) => {
+            state.transcriptOutlineId = id;
+          });
+        },
+        clearTranscriptOutlineId: () => {
+          set3((state) => {
+            state.transcriptOutlineId = void 0;
+          });
+        },
+        setTranscriptCollapsedEvent: (scope, event, collapsed) => {
+          set3((state) => {
+            if (!state.transcriptCollapsedEvents[scope]) {
+              state.transcriptCollapsedEvents[scope] = {};
+            }
+            state.transcriptCollapsedEvents[scope][event] = collapsed;
+          });
+        },
+        setTranscriptCollapsedEvents: (scope, events) => {
+          set3((state) => {
+            state.transcriptCollapsedEvents[scope] = events;
+          });
+        },
+        clearTranscriptCollapsedEvents: (scope) => {
+          set3((state) => {
+            state.transcriptCollapsedEvents[scope] = {};
+          });
+        },
+        clearScanState: () => {
+          set3((state) => {
+            state.selectedResults = void 0;
+            state.selectedResultsTab = void 0;
+            state.collapsedBuckets = {};
+            state.selectedScanner = void 0;
+            state.transcriptCollapsedEvents = {};
+            state.transcriptOutlineId = void 0;
           });
         }
       })),
@@ -52139,6 +52178,7 @@ const ScanDetail = () => {
   const resultsDir = useStore((state) => state.resultsDir);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const setSelectedScan = useStore((state) => state.setSelectedResults);
+  const clearScanState = useStore((state) => state.clearScanState);
   const setScans = useStore((state) => state.setScans);
   const api = useStore((state) => state.api);
   const loading = useStore((state) => state.loading);
@@ -52153,6 +52193,7 @@ const ScanDetail = () => {
       }
       const scansInfo = await api?.getScan(relativePath);
       if (scansInfo) {
+        clearScanState();
         setSelectedScan(scansInfo);
       }
     };
@@ -109053,7 +109094,18 @@ const ScansGrid = () => {
   const setGridState = useStore((state) => state.setGridState);
   const resultsDir = useStore((state) => state.resultsDir);
   const gridState = reactExports.useMemo(() => {
-    return gridStates[GRID_STATE_NAME];
+    const savedState = gridStates[GRID_STATE_NAME];
+    if (!savedState) {
+      return {
+        sort: {
+          sortModel: [
+            { colId: "icon", sort: "asc" },
+            { colId: "timestamp", sort: "desc" }
+          ]
+        }
+      };
+    }
+    return savedState;
   }, [gridStates]);
   const data2 = reactExports.useMemo(() => {
     const dirs = /* @__PURE__ */ new Set();

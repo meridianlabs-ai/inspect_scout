@@ -47,7 +47,19 @@ export const ScansGrid: FC = () => {
   const resultsDir = useStore((state) => state.resultsDir);
 
   const gridState = useMemo(() => {
-    return gridStates[GRID_STATE_NAME];
+    const savedState = gridStates[GRID_STATE_NAME];
+    // If no saved state, apply default sorting
+    if (!savedState) {
+      return {
+        sort: {
+          sortModel: [
+            { colId: "icon", sort: "asc" as const },
+            { colId: "timestamp", sort: "desc" as const },
+          ],
+        },
+      };
+    }
+    return savedState;
   }, [gridStates]);
 
   // Transform logDetails into flat rows

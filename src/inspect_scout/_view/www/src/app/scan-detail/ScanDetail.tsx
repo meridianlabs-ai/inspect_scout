@@ -19,6 +19,7 @@ export const ScanDetail: React.FC = () => {
   const setResultsDir = useStore((state) => state.setResultsDir);
 
   const setSelectedScan = useStore((state) => state.setSelectedResults);
+  const clearScanState = useStore((state) => state.clearScanState);
 
   const setScans = useStore((state) => state.setScans);
   const api = useStore((state) => state.api);
@@ -36,6 +37,7 @@ export const ScanDetail: React.FC = () => {
 
       const scansInfo = await api?.getScan(relativePath);
       if (scansInfo) {
+        clearScanState();
         setSelectedScan(scansInfo);
       }
     };

@@ -9,7 +9,7 @@ import { useStore } from "../../state/store";
 import { ApplicationIcons } from "../appearance/icons";
 
 import { ScanInfo } from "./info/ScanInfo";
-import { ScanResults } from "./results/ScanResults";
+import { ScanResultsPanel } from "./results/ScanResultsPanel";
 import styles from "./ScanPanelBody.module.css";
 
 const kTabIdScans = "scan-detail-tabs-results";
@@ -85,7 +85,7 @@ export const ScanPanelBody: React.FC = () => {
           handleTabChange(kTabIdScans);
         }}
       >
-        <ScanResults />
+        <ScanResultsPanel />
       </TabPanel>
 
       <TabPanel

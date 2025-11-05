@@ -109232,7 +109232,7 @@ const ScansGrid = () => {
     }
   ) });
 };
-const ScanList = () => {
+const ScansList = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);
@@ -109373,11 +109373,11 @@ const AppRouter = createHashRouter(
         },
         {
           path: kScansRouteUrlPattern,
-          element: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanList, {})
+          element: /* @__PURE__ */ jsxRuntimeExports.jsx(ScansList, {})
         },
         {
           path: kScansWithPathRouteUrlPattern,
-          element: /* @__PURE__ */ jsxRuntimeExports.jsx(ScanList, {})
+          element: /* @__PURE__ */ jsxRuntimeExports.jsx(ScansList, {})
         },
         {
           path: kScanRouteUrlPattern,

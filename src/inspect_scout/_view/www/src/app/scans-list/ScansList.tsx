@@ -5,7 +5,7 @@ import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { ScansGrid } from "./ScansGrid";
 import { ActivityBar } from "../../components/ActivityBar";
 
-export const ScanList: FC = () => {
+export const ScansList: FC = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);

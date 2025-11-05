@@ -14,7 +14,7 @@ import {
   isValidScanPath,
   getRelativePathFromParams,
 } from "./router/url";
-import { ScanList } from "./app/scan-list/ScanList";
+import { ScansList } from "./app/scans-list/ScansList";
 import { getEmbeddedScanState } from "./utils/embeddedState";
 import { useStore } from "./state/store";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -91,11 +91,11 @@ export const AppRouter = createHashRouter(
         },
         {
           path: kScansRouteUrlPattern,
-          element: <ScanList />,
+          element: <ScansList />,
         },
         {
           path: kScansWithPathRouteUrlPattern,
-          element: <ScanList />,
+          element: <ScansList />,
         },
         {
           path: kScanRouteUrlPattern,

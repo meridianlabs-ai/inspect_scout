@@ -1,3 +1,4 @@
+# mypy: disable-error-code="unused-ignore"
 from pathlib import Path
 
 import yaml
@@ -8,10 +9,11 @@ from inspect_scout import (
     Scanner,
     scanner,
 )
-from inspect_scout._complex_scanner.template import template  # type: ignore
-from inspect_scout._scanner.extract import messages_as_str
-from inspect_scout._transcript.types import Transcript
-from inspect_scout._util.jinja import StrictOnUseUndefined
+
+from .._scanner.extract import messages_as_str
+from .._transcript.types import Transcript
+from .._util.jinja import StrictOnUseUndefined
+from .template import template  # type: ignore
 
 
 @scanner(messages="all")

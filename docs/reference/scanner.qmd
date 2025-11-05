@@ -20,7 +20,7 @@ reference: "inspect_scout"
 ## Utils
 
 ### messages_as_str
-### ContentFilter
+### ContentPreprocessor
 
 ## Types
 

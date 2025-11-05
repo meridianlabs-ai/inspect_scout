@@ -11,7 +11,7 @@ from inspect_ai.model import (
 from .util import _message_id
 
 
-class ContentFilter(NamedTuple):
+class ContentPreprocessor(NamedTuple):
     """Message content options for LLM scanner."""
 
     messages: Callable[[list[ChatMessage]], Awaitable[list[ChatMessage]]] | None = None
@@ -31,7 +31,7 @@ class ContentFilter(NamedTuple):
 async def messages_as_str(
     messages: list[ChatMessage],
     *,
-    content_filter: ContentFilter | None = None,
+    content_preprocessor: ContentPreprocessor | None = None,
 ) -> str: ...
 
 
@@ -39,7 +39,7 @@ async def messages_as_str(
 async def messages_as_str(
     messages: list[ChatMessage],
     *,
-    content_filter: ContentFilter | None = None,
+    content_preprocessor: ContentPreprocessor | None = None,
     include_ids: Literal[True],
 ) -> tuple[str, dict[str, str]]: ...
 
@@ -47,14 +47,14 @@ async def messages_as_str(
 async def messages_as_str(
     messages: list[ChatMessage],
     *,
-    content_filter: ContentFilter | None = None,
+    content_preprocessor: ContentPreprocessor | None = None,
     include_ids: Literal[True] | None = None,
 ) -> str | tuple[str, dict[str, str]]:
     """Concatenate list of chat messages into a string.
 
     Args:
        messages: List of chat messages.
-       content_filter: Content filter for messages.
+       content_preprocessor: Content filter for messages.
        include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
           to each message and return a mapping of ordinal IDs to original message
           IDs. If None (default), return plain formatted string.
@@ -65,17 +65,19 @@ async def messages_as_str(
           prefixes, dict mapping ordinal IDs like "M1", "M2" to original message
           IDs for non-excluded messages).
     """
-    if content_filter is not None and content_filter.messages is not None:
-        messages = await content_filter.messages(messages)
+    if content_preprocessor is not None and content_preprocessor.messages is not None:
+        messages = await content_preprocessor.messages(messages)
 
     if not include_ids:
-        return "\n".join([message_as_str(m, content_filter) or "" for m in messages])
+        return "\n".join(
+            [message_as_str(m, content_preprocessor) or "" for m in messages]
+        )
 
     def reduce_message(
         acc: tuple[list[str], dict[str, str]], message: ChatMessage
     ) -> tuple[list[str], dict[str, str]]:
         formatted_messages, message_id_map = acc
-        if (msg_str := message_as_str(message, content_filter)) is not None:
+        if (msg_str := message_as_str(message, content_preprocessor)) is not None:
             ordinal = f"M{len(message_id_map) + 1}"
             message_id_map[ordinal] = _message_id(message)
             formatted_messages.append(f"[{ordinal}] {msg_str}")
@@ -89,20 +91,20 @@ async def messages_as_str(
 
 
 def message_as_str(
-    message: ChatMessage, content_filter: ContentFilter | None = None
+    message: ChatMessage, content_preprocessor: ContentPreprocessor | None = None
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
     Args:
         message: The `ChatMessage` to convert.
-        content_filter: Content filter for messages.
+        content_preprocessor: Content filter for messages.
 
     Returns:
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
     """
-    content_filter = content_filter or ContentFilter()
-    _, exclude_system, exclude_reasoning, exclude_tool_usage = content_filter
+    content_preprocessor = content_preprocessor or ContentPreprocessor()
+    _, exclude_system, exclude_reasoning, exclude_tool_usage = content_preprocessor
 
     if exclude_system and message.role == "system":
         return None

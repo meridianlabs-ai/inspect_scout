@@ -1,13 +1,15 @@
 import { FC, useMemo } from "react";
 import { fromArrow } from "arquero";
-import { type ColDef } from "ag-grid-community";
-
 import {
-  ChatMessage,
-  ChatMessages,
-  IPCDataframe,
-  Transcript,
-} from "../../../types";
+  AllCommunityModule,
+  ModuleRegistry,
+  themeBalham,
+  type ColDef,
+  type StateUpdatedEvent,
+} from "ag-grid-community";
+import { AgGridReact } from "ag-grid-react";
+
+import { IPCDataframe, Transcript } from "../../../types";
 import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { ChatView } from "../../../chat/ChatView";
 import { LabeledValue } from "../../../components/LabeledValue";
@@ -15,15 +17,32 @@ import clsx from "clsx";
 
 import styles from "./ScannerDetail.module.css";
 import { MarkdownDiv } from "../../../components/MarkdownDiv";
+import { firstUserMessage } from "../../../utils/chatMessage";
+import { SegmentedControl } from "../../../components/SegmentedControl";
+import { useStore } from "../../../state/store";
+import { ApplicationIcons } from "../../appearance/icons";
 
 interface ScannerDetailProps {
   scanner: IPCDataframe;
 }
 
-const kFilterPrefix = ["scan_", "transcript_", "scanner_"];
-const kMultilineColumns = ["input", "explanation"];
+// Register AG Grid modules
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+const kFilterPrefix: string[] = [];
+const kMultilineColumns: string[] = [];
+const GRID_STATE_NAME = "ScannerDetailGrid";
 
 export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
+  const selectedResultsView =
+    useStore((state) => state.selectedResultsView) || "cards";
+  const setSelectedResultsView = useStore(
+    (state) => state.setSelectedResultsView
+  );
+
+  const gridStates = useStore((state) => state.gridStates);
+  const setGridState = useStore((state) => state.setGridState);
+
   const { columnDefs, rowData } = useMemo(() => {
     // Decode base64 string to Uint8Array
     const binaryString = atob(scanner.data);
@@ -60,6 +79,12 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
     return { columnDefs, rowData };
   }, [scanner]);
 
+  const gridState = useMemo(() => {
+    const savedState = gridStates[GRID_STATE_NAME];
+    // If no saved state, return undefined to use default grid state
+    return savedState;
+  }, [gridStates]);
+
   const scannerSummaries = useMemo(() => {
     const summaries: ScannerRow[] = rowData.map((row) => {
       const r = row as Record<string, unknown>;
@@ -82,32 +107,73 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
 
   return (
     <div style={{ height: "100%", width: "100%" }}>
-      <div className={clsx("text-size-small")}>
-        {scannerSummaries.map((summary, index) => (
-          <Card key={`scanner-summary-card-${index}`}>
-            <CardHeader label={`Scanner Summary ${index + 1}`} />
-            <CardBody>
-              <div className={clsx(styles.scannerHeaderRow)}>
-                <LabeledValue label="Value">
-                  {summary.value || "(none)"}
-                </LabeledValue>
-                <LabeledValue label="Answer">
-                  {summary.answer || "(none)"}
-                </LabeledValue>
-              </div>
-              <LabeledValue label="Input">
-                <RenderedScannerInput
-                  row={summary}
-                  id={`scanner-input-${index}`}
-                />
-              </LabeledValue>
-              <LabeledValue label="Explanation">
-                <MarkdownDiv markdown={summary.explanation} />
-              </LabeledValue>
-            </CardBody>
-          </Card>
-        ))}
+      <div className={clsx(styles.controls)}>
+        <SegmentedControl
+          selectedId={selectedResultsView}
+          segments={[
+            {
+              id: "cards",
+              label: "cards",
+              icon: ApplicationIcons.file,
+            },
+            { icon: ApplicationIcons.samples, id: "grid", label: "dataframe" },
+          ]}
+          onSegmentChange={(segmentId: string, _index: number) => {
+            setSelectedResultsView(segmentId);
+          }}
+        />
       </div>
+      {selectedResultsView === "cards" && (
+        <div className={clsx("text-size-small")}>
+          {scannerSummaries.map((summary, index) => (
+            <Card key={`scanner-summary-card-${index}`}>
+              <CardHeader label={`Scanner Summary ${index + 1}`} />
+              <CardBody>
+                <div className={clsx(styles.scannerHeaderRow)}>
+                  <LabeledValue label="Value">
+                    {summary.value || "(none)"}
+                  </LabeledValue>
+                  <LabeledValue label="Answer">
+                    {summary.answer || "(none)"}
+                  </LabeledValue>
+                </div>
+                <LabeledValue label="Input">
+                  <RenderedScannerInput
+                    row={summary}
+                    id={`scanner-input-${index}`}
+                  />
+                </LabeledValue>
+                <LabeledValue label="Explanation">
+                  <MarkdownDiv markdown={summary.explanation} />
+                </LabeledValue>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      )}
+      {selectedResultsView === "grid" && (
+        <div className={styles.gridWrapper}>
+          <AgGridReact
+            rowData={rowData}
+            columnDefs={columnDefs}
+            defaultColDef={{
+              sortable: true,
+              filter: true,
+              resizable: true,
+            }}
+            animateRows={false}
+            suppressColumnMoveAnimation={true}
+            suppressCellFocus={true}
+            theme={themeBalham}
+            enableCellTextSelection={true}
+            autoSizeStrategy={{ type: "fitGridWidth" }}
+            initialState={gridState}
+            onStateUpdated={(e: StateUpdatedEvent) => {
+              setGridState(GRID_STATE_NAME, e.state);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -129,11 +195,11 @@ const RenderedScannerInput: FC<{ row: ScannerRow; id: string }> = ({
     case "transcript": {
       const transcript = row.input as Transcript;
       const messages = transcript.messages;
-      const lastMessage = lastAssistantMessage(messages);
-      if (!lastMessage) {
+      const previewMessage = firstUserMessage(messages);
+      if (!previewMessage) {
         return <div>No messages in transcript.</div>;
       }
-      return <ChatView id={id} messages={[lastMessage]} />;
+      return <ChatView id={id} messages={[previewMessage]} />;
     }
     case "message":
       return <ChatView id={id} messages={[row.input] as any[]} />;
@@ -143,15 +209,4 @@ const RenderedScannerInput: FC<{ row: ScannerRow; id: string }> = ({
     case "event":
       return <div>Events</div>;
   }
-};
-
-const lastAssistantMessage = (
-  messages: ChatMessages
-): ChatMessage | undefined => {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]?.role === "assistant") {
-      return messages[i];
-    }
-  }
-  return undefined;
 };

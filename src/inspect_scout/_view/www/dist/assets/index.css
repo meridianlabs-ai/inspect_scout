@@ -783,11 +783,54 @@ a._citationLink_1ggvf_9:hover {
 ._container_rmdrx_16 {
   padding: 0.4em 0.4em 0.4em 0.4em;
 }
-._scannerHeaderRow_15si3_1 {
+._scannerHeaderRow_1apsa_1 {
   display: grid;
   grid-template-columns: auto auto;
   column-gap: 0.5em;
   margin-bottom: 1em;
+}
+
+._controls_1apsa_8 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  margin-bottom: 0.5em;
+}
+
+._gridWrapper_1apsa_15 {
+  height: calc(100% - 3rem);
+  width: 100%;
+}
+
+/* Hide sort index numbers in multi-column sort */
+._gridWrapper_1apsa_15 .ag-header-cell .ag-sort-order {
+  display: none;
+}
+._rootControl_mhb7y_1 {
+  background-color: var(--bs-secondary-bg);
+  border-radius: var(--bs-border-radius);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+._segment_mhb7y_9._selected_mhb7y_9 {
+  background-color: var(--bs-body-bg);
+  border-radius: var(--bs-border-radius);
+}
+
+button._segment_mhb7y_9 {
+  margin: 1px;
+  background-color: var(--bs-secondary-bg);
+  border: none;
+  padding-block-end: 0;
+  padding-block-start: 0;
+  padding-inline-start: 5px;
+  padding-inline-end: 5px;
+}
+
+._segment_mhb7y_9 i {
+  margin-right: 0.2em;
 }
 ._container_1q66p_1 {
   margin: 0.5em;

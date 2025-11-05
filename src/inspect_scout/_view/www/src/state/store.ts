@@ -27,6 +27,7 @@ interface StoreState {
   selectedScanner?: string;
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
+  selectedResultsView?: string;
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
@@ -83,6 +84,8 @@ interface StoreState {
     events: Record<string, boolean>
   ) => void;
   clearTranscriptCollapsedEvents: (scope: string) => void;
+
+  setSelectedResultsView: (view: string) => void;
 
   clearScanState: () => void;
 }
@@ -319,6 +322,11 @@ export const useStore = create<StoreState>()(
             state.transcriptCollapsedEvents[scope] = {};
           });
         },
+        setSelectedResultsView: (view: string) => {
+          set((state) => {
+            state.selectedResultsView = view;
+          });
+        },
         clearScanState: () => {
           set((state) => {
             state.selectedResults = undefined;
@@ -328,6 +336,7 @@ export const useStore = create<StoreState>()(
             state.transcriptCollapsedEvents = {};
             state.transcriptOutlineId = undefined;
             state.selectedResults = undefined;
+            state.selectedResultsView = undefined;
           });
         },
       })),

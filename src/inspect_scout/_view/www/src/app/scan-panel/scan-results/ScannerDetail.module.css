@@ -4,3 +4,20 @@
   column-gap: 0.5em;
   margin-bottom: 1em;
 }
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  margin-bottom: 0.5em;
+}
+
+.gridWrapper {
+  height: calc(100% - 3rem);
+  width: 100%;
+}
+
+/* Hide sort index numbers in multi-column sort */
+.gridWrapper :global(.ag-header-cell .ag-sort-order) {
+  display: none;
+}

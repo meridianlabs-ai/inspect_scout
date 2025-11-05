@@ -44,7 +44,7 @@ class Answer(Protocol):
         ...
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: list[str]
+        self, output: ModelOutput, message_id_map: dict[str, str]
     ) -> Result:
         """Extract and return the result from model output."""
         ...
@@ -81,7 +81,7 @@ class _BoolAnswer(Answer):
         return BOOL_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: list[str]
+        self, output: ModelOutput, message_id_map: dict[str, str]
     ) -> Result:
         match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
 
@@ -123,7 +123,7 @@ class _NumberAnswer(Answer):
         return NUMBER_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: list[str]
+        self, output: ModelOutput, message_id_map: dict[str, str]
     ) -> Result:
         match = re.search(ANSWER_PATTERN_WORD, output.completion)
 
@@ -169,7 +169,7 @@ class LabelsAnswer(Answer):
         return Template(format_template).render(letters=letters)
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: list[str]
+        self, output: ModelOutput, message_id_map: dict[str, str]
     ) -> Result:
         if not self.labels:
             raise ValueError("Must have labels")
@@ -241,7 +241,7 @@ class _StrAnswer(Answer):
         return STR_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: list[str]
+        self, output: ModelOutput, message_id_map: dict[str, str]
     ) -> Result:
         match = re.search(ANSWER_PATTERN_LINE, output.completion, re.IGNORECASE)
 

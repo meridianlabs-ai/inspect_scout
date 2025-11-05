@@ -13,7 +13,7 @@ The `llm_scanner()` provides a core implementation of an LLM-based `Transcript` 
 
 ## Basic Usage
 
-Prompting and parsing several common answer types are supported. Here is simple example of using `llm_scanner()` for a boolean answer:
+Prompting and parsing several common answer types are supported. Here is a simple example of using `llm_scanner()` for a boolean answer:
 
 ``` python
 from inspect_scout import Scanner, Transcript, llm_scanner, scanner

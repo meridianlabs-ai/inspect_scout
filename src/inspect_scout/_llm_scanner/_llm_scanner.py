@@ -60,15 +60,13 @@ def llm_scanner(
             based on the LLM's assessment according to the specified prompt and answer
             format
     """
-    if messages is None:
-        messages = ContentFilter()
     if template is None:
         template = DEFAULT_SCANNER_TEMPLATE
     resolved_answer = answer_from_argument(answer)
 
     async def scan(transcript: Transcript) -> Result:
         messages_str, message_id_map = await messages_as_str(
-            transcript.messages, messages, include_ids=True
+            transcript.messages, content_filter=messages, include_ids=True
         )
 
         resolved_prompt = await render_scanner_prompt(

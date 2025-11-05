@@ -9,6 +9,7 @@ from inspect_scout import (
     scanner,
 )
 from inspect_scout._complex_scanner.template import template  # type: ignore
+from inspect_scout._scanner.extract import messages_as_str
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
@@ -17,7 +18,12 @@ from inspect_scout._util.jinja import StrictOnUseUndefined
 def complex_scanner() -> Scanner[Transcript]:
     async def execute(transcript: Transcript) -> Result:
         prompt = _render_prompt(transcript)
-        print(prompt)
+
+        messages_str, message_id_map = await messages_as_str(
+            transcript.messages, include_ids=True
+        )
+
+        print(prompt, messages_str, message_id_map)
         return Result(value=0)
 
     return execute

@@ -30,6 +30,7 @@ class ContentFilter(NamedTuple):
 @overload
 async def messages_as_str(
     messages: list[ChatMessage],
+    *,
     content_filter: ContentFilter | None = None,
 ) -> str: ...
 
@@ -37,30 +38,32 @@ async def messages_as_str(
 @overload
 async def messages_as_str(
     messages: list[ChatMessage],
-    content_filter: ContentFilter | None,
+    *,
+    content_filter: ContentFilter | None = None,
     include_ids: Literal[True],
-) -> tuple[str, list[str]]: ...
+) -> tuple[str, dict[str, str]]: ...
 
 
 async def messages_as_str(
     messages: list[ChatMessage],
+    *,
     content_filter: ContentFilter | None = None,
     include_ids: Literal[True] | None = None,
-) -> str | tuple[str, list[str]]:
+) -> str | tuple[str, dict[str, str]]:
     """Concatenate list of chat messages into a string.
 
     Args:
        messages: List of chat messages.
        content_filter: Content filter for messages.
-       include_ids: If True, prepend 1-based ordinal references (e.g., [M1], [M2])
-          to each message and return a mapping of ordinals to original message IDs.
-          If None (default), return plain formatted string.
+       include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
+          to each message and return a mapping of ordinal IDs to original message
+          IDs. If None (default), return plain formatted string.
 
     Returns:
        If include_ids is False: Messages concatenated as a formatted string.
        If include_ids is True: Tuple of (formatted string with [M1], [M2], etc.
-          prefixes, list of original message IDs corresponding to each ordinal for
-          non-excluded messages).
+          prefixes, dict mapping ordinal IDs like "M1", "M2" to original message
+          IDs for non-excluded messages).
     """
     if content_filter is not None and content_filter.messages is not None:
         messages = await content_filter.messages(messages)
@@ -69,16 +72,17 @@ async def messages_as_str(
         return "\n".join([message_as_str(m, content_filter) or "" for m in messages])
 
     def reduce_message(
-        acc: tuple[list[str], list[str]], message: ChatMessage
-    ) -> tuple[list[str], list[str]]:
+        acc: tuple[list[str], dict[str, str]], message: ChatMessage
+    ) -> tuple[list[str], dict[str, str]]:
         formatted_messages, message_id_map = acc
         if (msg_str := message_as_str(message, content_filter)) is not None:
-            message_id_map.append(_message_id(message))
-            formatted_messages.append(f"[M{len(message_id_map)}] {msg_str}")
+            ordinal = f"M{len(message_id_map) + 1}"
+            message_id_map[ordinal] = _message_id(message)
+            formatted_messages.append(f"[{ordinal}] {msg_str}")
         return formatted_messages, message_id_map
 
     formatted_messages, message_id_map = reduce(
-        reduce_message, messages, (list[str](), list[str]())
+        reduce_message, messages, (list[str](), dict[str, str]())
     )
 
     return "\n".join(formatted_messages), message_id_map

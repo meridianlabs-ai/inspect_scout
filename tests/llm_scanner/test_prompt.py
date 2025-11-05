@@ -21,7 +21,7 @@ class _TestAnswer:
     format: str
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: list[str]
+        self, output: ModelOutput, message_id_map: dict[str, str]
     ) -> Result:
         """Stub implementation for testing."""
         return Result(value=None)

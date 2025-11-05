@@ -543,7 +543,7 @@ def test_exclude_parameters(
             None,
             True,
             "[M1] user:\nHello\n\n[M2] assistant:\nHi\n",
-            ["msg1", "msg2"],
+            {"M1": "msg1", "M2": "msg2"},
         ),
         # System messages excluded by default
         (
@@ -554,7 +554,7 @@ def test_exclude_parameters(
             ContentFilter(),
             True,
             "[M1] user:\nHello\n",
-            ["msg1"],
+            {"M1": "msg1"},
         ),
         # Tool messages excluded when filter set
         (
@@ -566,17 +566,17 @@ def test_exclude_parameters(
             ContentFilter(exclude_tool_usage=True),
             True,
             "[M1] user:\nHello\n\n[M2] assistant:\nDone\n",
-            ["msg1", "msg2"],
+            {"M1": "msg1", "M2": "msg2"},
         ),
         # Empty list
-        ([], None, True, "", []),
+        ([], None, True, "", {}),
         # Single message
         (
             [ChatMessageUser(content="Single", id="msg1")],
             None,
             True,
             "[M1] user:\nSingle\n",
-            ["msg1"],
+            {"M1": "msg1"},
         ),
     ],
 )
@@ -586,15 +586,17 @@ async def test_messages_as_str(
     filter: ContentFilter | None,
     include_ids: bool,
     expected_result: str,
-    expected_ids: list[str] | None,
+    expected_ids: dict[str, str] | None,
 ) -> None:
     """Test messages_as_str with various configurations."""
     if include_ids:
-        result, message_ids = await messages_as_str(messages, filter, include_ids=True)
+        result, message_ids = await messages_as_str(
+            messages, content_filter=filter, include_ids=True
+        )
         assert result == expected_result
         assert message_ids == expected_ids
     else:
-        result = await messages_as_str(messages, filter)
+        result = await messages_as_str(messages, content_filter=filter)
         assert result == expected_result
 
 
@@ -615,11 +617,11 @@ async def test_messages_as_str_with_preprocessor() -> None:
 
     result, message_ids = await messages_as_str(
         messages,
-        ContentFilter(messages=keep_only_user_messages),
+        content_filter=ContentFilter(messages=keep_only_user_messages),
         include_ids=True,
     )
 
-    assert message_ids == ["msg1", "msg3"]
+    assert message_ids == {"M1": "msg1", "M2": "msg3"}
     assert "[M1] user:\nUser 1\n" in result
     assert "[M2] user:\nUser 2\n" in result
     assert "Assistant" not in result

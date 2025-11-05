@@ -8,7 +8,7 @@ from inspect_scout import (
     Scanner,
     scanner,
 )
-from inspect_scout._complex_scanner.template import template
+from inspect_scout._complex_scanner.template import template  # type: ignore
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._util.jinja import StrictOnUseUndefined
 

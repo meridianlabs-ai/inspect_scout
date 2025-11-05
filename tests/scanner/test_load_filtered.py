@@ -24,6 +24,15 @@ async def test_basic_loading() -> None:
     """Test basic transcript loading."""
     data = {
         "id": "test-001",
+        "metadata": {
+            "eval_name": "diffecient",
+            "eval_file_path": "some_path",
+            "variant_name": "hard",
+            "first_solve_time": 454,
+            "category": "cryptography",
+            "competition": "Sekai-2022",
+            "some_object": {"hi": "there"},
+        },
         "messages": [
             {"id": "m1", "role": "user", "content": "Hello"},
             {"id": "m2", "role": "assistant", "content": "Hi"},
@@ -52,7 +61,18 @@ async def test_basic_loading() -> None:
     assert isinstance(result, Transcript)
     assert result.id == "test-001"
     assert result.source_uri == "/test.json"
-    assert result.metadata == {"test": True}
+    assert result.metadata == {
+        "test": True,
+        "sample_metadata": {
+            "eval_name": "diffecient",
+            "eval_file_path": "some_path",
+            "variant_name": "hard",
+            "first_solve_time": 454,
+            "category": "cryptography",
+            "competition": "Sekai-2022",
+            "some_object": {"hi": "there"},
+        },
+    }
     assert len(result.messages) == 2
     assert len(result.events) == 1
 

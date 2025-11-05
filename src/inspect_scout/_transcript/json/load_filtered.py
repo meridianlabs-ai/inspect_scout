@@ -17,11 +17,13 @@ from .reducer import (
     ATTACHMENTS_PREFIX,
     EVENTS_ITEM_PREFIX,
     MESSAGES_ITEM_PREFIX,
+    METADATA_PREFIX,
     ListProcessingConfig,
     ParseState,
     attachments_coroutine,
     event_item_coroutine,
     message_item_coroutine,
+    metadata_coroutine,
 )
 
 # Pre-compiled regex patterns for performance
@@ -32,12 +34,17 @@ _SECTION_OTHER = 0
 _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
 _SECTION_ATTACHMENTS = 3
+_SECTION_METADATA = 4
 
 _MESSAGES_ITEM_PREFIX_LEN = len(MESSAGES_ITEM_PREFIX)
 _EVENTS_ITEM_PREFIX_LEN = len(EVENTS_ITEM_PREFIX)
 _ATTACHMENTS_PREFIX_LEN = len(ATTACHMENTS_PREFIX)
+_METADATA_PREFIX_LEN = len(METADATA_PREFIX)
 _MIN_SECTION_PREFIX_LEN = min(
-    _MESSAGES_ITEM_PREFIX_LEN, _EVENTS_ITEM_PREFIX_LEN, _ATTACHMENTS_PREFIX_LEN
+    _MESSAGES_ITEM_PREFIX_LEN,
+    _EVENTS_ITEM_PREFIX_LEN,
+    _ATTACHMENTS_PREFIX_LEN,
+    _METADATA_PREFIX_LEN,
 )
 
 
@@ -127,6 +134,7 @@ async def _parse_and_filter(
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
     attachments_coro = attachments_coroutine(state)
+    metadata_coro = metadata_coroutine(state)
 
     last_prefix = ""
     current_section = _SECTION_OTHER
@@ -139,13 +147,26 @@ async def _parse_and_filter(
             if p_len == 0 or prefix[0] not in ("m", "e", "a"):
                 current_section = _SECTION_OTHER
             elif p_len < _MIN_SECTION_PREFIX_LEN:
-                current_section = _SECTION_OTHER
-            elif (
-                prefix[0] == "m"
-                and p_len >= _MESSAGES_ITEM_PREFIX_LEN
-                and prefix[:_MESSAGES_ITEM_PREFIX_LEN] == MESSAGES_ITEM_PREFIX
-            ):
-                current_section = _SECTION_MESSAGES
+                # Special case: "metadata" is 8 chars, less than min (9), but valid
+                if prefix == "metadata":
+                    current_section = _SECTION_METADATA
+                else:
+                    current_section = _SECTION_OTHER
+            elif prefix[0] == "m":
+                # Both "messages" and "metadata" start with "me", check 3rd char
+                # (safe because we already checked p_len >= _MIN_SECTION_PREFIX_LEN)
+                if (
+                    p_len >= _MESSAGES_ITEM_PREFIX_LEN
+                    and prefix[2] == "s"
+                    and prefix[:_MESSAGES_ITEM_PREFIX_LEN] == MESSAGES_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_MESSAGES
+                elif prefix[2] == "t" and (
+                    prefix == "metadata" or prefix.startswith(METADATA_PREFIX)
+                ):
+                    current_section = _SECTION_METADATA
+                else:
+                    current_section = _SECTION_OTHER
             elif (
                 prefix[0] == "e"
                 and p_len >= _EVENTS_ITEM_PREFIX_LEN
@@ -168,13 +189,20 @@ async def _parse_and_filter(
             events_coro.send((prefix, event, value))
         elif current_section == _SECTION_ATTACHMENTS:
             attachments_coro.send((prefix, event, value))
+        elif current_section == _SECTION_METADATA:
+            metadata_coro.send((prefix, event, value))
 
     return (
         RawTranscript(
             id=t.id,
             source_id=t.source_id,
             source_uri=t.source_uri,
-            metadata=t.metadata,
+            # t.metadata's sample_metadata is potentially thinned, so swap in the full one
+            metadata=(
+                t.metadata.copy() | {"sample_metadata": state.metadata}
+                if state.metadata
+                else t.metadata
+            ),
             messages=state.messages,
             events=state.events,
         ),

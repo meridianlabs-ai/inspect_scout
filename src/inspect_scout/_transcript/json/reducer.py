@@ -12,6 +12,7 @@ ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
+METADATA_PREFIX = "metadata."
 
 
 def _should_skip(
@@ -43,6 +44,7 @@ class ParseState:
     events: list[dict[str, Any]] = field(default_factory=list)
     attachment_refs: set[str] = field(default_factory=set)
     attachments: dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -140,15 +142,47 @@ def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cove
             state.attachments[attachment_id] = value
 
 
+@_ijson_coroutine  # type: ignore[misc]
+def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Coroutine to build the metadata object from streaming JSON events."""
+    builder: ObjectBuilder | None = None
+    while True:
+        prefix, event, value = yield
+        # Handle both "metadata" (root) and "metadata." (nested keys)
+        if not (prefix == "metadata" or prefix.startswith(METADATA_PREFIX)):
+            continue
+        if prefix == "metadata" and event == "start_map":
+            builder = ObjectBuilder()
+            builder.event(event, value)
+            continue
+        if builder is None:
+            continue
+        if prefix == "metadata" and event == "end_map":
+            try:
+                builder.event(event, value)
+                state.metadata = builder.value
+            except Exception:
+                pass
+            builder = None
+            continue
+        try:
+            builder.event(event, value)
+        except Exception:
+            builder = None
+            continue
+
+
 __all__ = [
     "ListProcessingConfig",
     "ParseState",
     "message_item_coroutine",
     "event_item_coroutine",
     "attachments_coroutine",
+    "metadata_coroutine",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",
+    "METADATA_PREFIX",
 ]

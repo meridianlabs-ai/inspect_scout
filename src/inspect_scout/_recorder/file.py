@@ -112,6 +112,17 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
+    async def sync_status(scan_location: str) -> None:
+        # get state
+        scan_dir = UPath(scan_location)
+        scan_spec = _read_scan_spec(scan_dir)
+        scan_buffer_dir = RecorderBuffer.buffer_dir(scan_location)
+
+        # sync summary and errors
+        _sync_status_files(scan_dir, scan_buffer_dir, scan_spec)
+
+    @override
+    @staticmethod
     async def complete(scan_location: str) -> Status:
         # get state
         scan_dir = UPath(scan_location)
@@ -127,14 +138,8 @@ class FileRecorder(ScanRecorder):
                         _scanner_parquet_file(scan_dir, scanner), parquet_bytes
                     )
 
-        # copy scan summary
-        with file((scan_dir / SCAN_SUMMARY).as_posix(), "w") as f:
-            f.write(read_scan_summary(scan_buffer_dir, scan_spec).model_dump_json())
-
-        # copy errors
-        with file((scan_dir / SCAN_ERRORS).as_posix(), "w") as f:
-            for error in _read_scan_errors(scan_buffer_dir):
-                f.write(error.model_dump_json(warnings=False) + "\n")
+        # sync summary and errors
+        _sync_status_files(scan_dir, scan_buffer_dir, scan_spec)
 
         # cleanup scan buffer
         cleanup_buffer_dir(scan_buffer_dir)
@@ -413,3 +418,17 @@ def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:
         pass
 
     return df
+
+
+def _sync_status_files(
+    scan_dir: UPath, scan_buffer_dir: UPath, scan_spec: ScanSpec
+) -> None:
+    """Copy summary and errors from buffer to scan directory."""
+    # copy scan summary
+    with file((scan_dir / SCAN_SUMMARY).as_posix(), "w") as f:
+        f.write(read_scan_summary(scan_buffer_dir, scan_spec).model_dump_json())
+
+    # copy errors
+    with file((scan_dir / SCAN_ERRORS).as_posix(), "w") as f:
+        for error in _read_scan_errors(scan_buffer_dir):
+            f.write(error.model_dump_json(warnings=False) + "\n")

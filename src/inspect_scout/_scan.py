@@ -638,6 +638,7 @@ async def _scan_async_inner(
                 # report status
                 errors = await recorder.errors()
                 if len(errors) > 0:
+                    await recorder.sync_status(await recorder.location())
                     scan_status = Status(
                         complete=False,
                         spec=scan.spec,

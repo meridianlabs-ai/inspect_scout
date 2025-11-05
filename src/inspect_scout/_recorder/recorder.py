@@ -174,6 +174,10 @@ class ScanRecorder(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
+    async def sync_status(scan_location: str) -> None: ...
+
+    @staticmethod
+    @abc.abstractmethod
     async def complete(scan_location: str) -> Status: ...
 
     @staticmethod

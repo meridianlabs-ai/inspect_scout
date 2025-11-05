@@ -31,6 +31,7 @@ from inspect_ai.analysis._dataframe.extract import (
 )
 from inspect_ai.analysis._dataframe.samples.columns import SampleColumn
 from inspect_ai.analysis._dataframe.samples.extract import (
+    sample_input_as_str,
     sample_total_tokens,
 )
 from inspect_ai.analysis._dataframe.samples.table import samples_df
@@ -429,6 +430,8 @@ TranscriptColumns: list[Column] = (
         EvalColumn("model_roles", path="eval.model_roles", default={}),
         SampleColumn("id", path="id", required=True, type=str),
         SampleColumn("epoch", path="epoch", required=True),
+        SampleColumn("input", path=sample_input_as_str, required=True),
+        SampleColumn("target", path="target", required=True, value=list_as_str),
         SampleColumn("sample_metadata", path="metadata", default={}),
         SampleColumn("score", path="scores", value=score_value),
         SampleColumn("score_*", path="scores", value=score_values),

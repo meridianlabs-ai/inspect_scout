@@ -111,6 +111,16 @@ class LogMetadata(Metadata):
         return Column("epoch")
 
     @property
+    def input(self) -> Column:
+        """Sample input."""
+        return Column("input")
+
+    @property
+    def target(self) -> Column:
+        """Sample target."""
+        return Column("target")
+
+    @property
     def sample_metadata(self) -> Column:
         """Sample metadata."""
         return Column("sample_metadata")

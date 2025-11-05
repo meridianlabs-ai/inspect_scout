@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import {
   FC,
   memo,
@@ -8,17 +9,15 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { ContextProp, ItemProps, VirtuosoHandle } from "react-virtuoso";
+
+import { LiveVirtualList } from "../components/LiveVirtualList";
 import { Messages } from "../types/log";
 
 import { ChatMessageRow } from "./ChatMessageRow";
-import { ResolvedMessage, resolveMessages } from "./messages";
-
-import clsx from "clsx";
-import { LiveVirtualList } from "../components/LiveVirtualList";
-import { ChatViewToolCallStyle } from "./types";
-
-import { ContextProp, ItemProps, VirtuosoHandle } from "react-virtuoso";
 import styles from "./ChatViewVirtualList.module.css";
+import { ResolvedMessage, resolveMessages } from "./messages";
+import { ChatViewToolCallStyle } from "./types";
 
 interface ChatViewVirtualListProps {
   id: string;

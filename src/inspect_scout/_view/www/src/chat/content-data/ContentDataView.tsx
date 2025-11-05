@@ -1,10 +1,11 @@
-import { FC, ReactNode } from "react";
-import { WebSearch } from "./WebSearch";
-
 import clsx from "clsx";
-import { ContentData } from "../../types/log";
+import { FC, ReactNode } from "react";
+
 import { RecordTree } from "../../content/RecordTree";
+import { ContentData } from "../../types/log";
+
 import styles from "./ContentDataView.module.css";
+import { WebSearch } from "./WebSearch";
 import { WebSearchContentData, WebSearchResults } from "./WebSearchResults";
 
 export interface ContentDataProps {

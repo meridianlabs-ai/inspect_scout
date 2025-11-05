@@ -1,14 +1,15 @@
-import { ApprovalEvent, ModelEvent, ToolEvent } from "../types/log";
-import { ApplicationIcons } from "../app/appearance/icons";
-import { resolveToolInput } from "../chat/tools/tool";
-import { ToolCallView } from "../chat/tools/ToolCallView";
-import { ApprovalEventView } from "./ApprovalEventView";
-import { EventPanel } from "./event/EventPanel";
-
 import clsx from "clsx";
 import { FC, useMemo } from "react";
-import { PulsingDots } from "../components/PulsingDots";
+
+import { ApplicationIcons } from "../app/appearance/icons";
 import { ChatView } from "../chat/ChatView";
+import { resolveToolInput } from "../chat/tools/tool";
+import { ToolCallView } from "../chat/tools/ToolCallView";
+import { PulsingDots } from "../components/PulsingDots";
+import { ApprovalEvent, ModelEvent, ToolEvent } from "../types/log";
+
+import { ApprovalEventView } from "./ApprovalEventView";
+import { EventPanel } from "./event/EventPanel";
 import { formatTiming, formatTitle } from "./event/utils";
 import styles from "./ToolEventView.module.css";
 import { EventNode, EventType } from "./types";

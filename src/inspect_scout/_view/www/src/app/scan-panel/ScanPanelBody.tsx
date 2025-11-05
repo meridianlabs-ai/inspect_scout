@@ -1,15 +1,16 @@
 import clsx from "clsx";
-import { useSearchParams } from "react-router-dom";
 import { ReactNode, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+
 import JSONPanel from "../../components/JsonPanel";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
-
-import styles from "./ScanPanelBody.module.css";
-import { ScanResults } from "./scan-results/ScanResults";
-import { ScanInfo } from "./scan-results/ScanInfo";
-import { SegmentedControl } from "../../components/SegmentedControl";
 import { ApplicationIcons } from "../appearance/icons";
+
+import { ScanInfo } from "./scan-results/ScanInfo";
+import { ScanResults } from "./scan-results/ScanResults";
+import styles from "./ScanPanelBody.module.css";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";

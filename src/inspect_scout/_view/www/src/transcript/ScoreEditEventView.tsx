@@ -1,16 +1,16 @@
-import { FC, Fragment } from "react";
-import { ScoreEditEvent } from "../types/log";
-import { EventPanel } from "./event/EventPanel";
-
 import clsx from "clsx";
-import { EventNode } from "./types";
+import { FC, Fragment } from "react";
 
-import { formatDateTime } from "../utils/format";
 import { ApplicationIcons } from "../app/appearance/icons";
 import { RecordTree } from "../content/RecordTree";
 import { RenderedText } from "../content/RenderedText";
+import { ScoreEditEvent } from "../types/log";
+import { formatDateTime } from "../utils/format";
+
+import { EventPanel } from "./event/EventPanel";
 import styles from "./ScoreEditEventView.module.css";
 import { renderScore } from "./ScoreEventView";
+import { EventNode } from "./types";
 
 interface ScoreEditEventViewProps {
   eventNode: EventNode<ScoreEditEvent>;

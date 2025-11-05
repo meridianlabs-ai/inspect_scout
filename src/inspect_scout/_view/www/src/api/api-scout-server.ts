@@ -1,4 +1,5 @@
 import { Results, Scans } from "../types";
+
 import { ScanApi } from "./api";
 
 export const apiScoutServer = (): ScanApi => {

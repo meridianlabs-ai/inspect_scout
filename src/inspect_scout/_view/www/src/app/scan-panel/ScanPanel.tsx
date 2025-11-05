@@ -1,15 +1,16 @@
+import clsx from "clsx";
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
+
+import { ActivityBar } from "../../components/ActivityBar";
+import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Navbar } from "../navbar/Navbar";
-import { ActivityBar } from "../../components/ActivityBar";
-import { ScanPanelTitle } from "./ScanPanelTitle";
-import { ScanPanelBody } from "./ScanPanelBody";
-import clsx from "clsx";
 
 import styles from "./ScanPanel.module.css";
-import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { ScanPanelBody } from "./ScanPanelBody";
+import { ScanPanelTitle } from "./ScanPanelTitle";
 
 export const ScanPanel: React.FC = () => {
   const params = useParams<{ "*": string }>();

@@ -1,4 +1,5 @@
 import JSON5 from "json5";
+
 import { basename, dirname } from "./path";
 
 export interface EmbeddedScanState {

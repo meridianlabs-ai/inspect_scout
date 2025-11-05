@@ -1,7 +1,7 @@
 import clsx from "clsx";
-import { ChatMessage } from "./ChatMessage";
-
 import { FC } from "react";
+
+import { ChatMessage } from "./ChatMessage";
 import styles from "./ChatMessageRow.module.css";
 import { ResolvedMessage } from "./messages";
 import { ChatViewToolCallStyle } from "./types";

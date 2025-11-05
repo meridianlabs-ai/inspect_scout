@@ -1,7 +1,7 @@
 import clsx from "clsx";
-import { EventNav } from "./EventNav";
-
 import { FC } from "react";
+
+import { EventNav } from "./EventNav";
 import styles from "./EventNavs.module.css";
 
 interface EventNavsProps {

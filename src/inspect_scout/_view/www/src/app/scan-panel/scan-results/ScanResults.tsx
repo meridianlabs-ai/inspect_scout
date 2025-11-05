@@ -1,9 +1,9 @@
+import clsx from "clsx";
 import { FC } from "react";
 
 import styles from "./ScanResults.module.css";
-import clsx from "clsx";
-import { ScanResultsOutline } from "./ScanResultsOutline";
 import { ScanResultsBody } from "./ScanResultsBody";
+import { ScanResultsOutline } from "./ScanResultsOutline";
 
 export const ScanResults: FC = () => {
   return (

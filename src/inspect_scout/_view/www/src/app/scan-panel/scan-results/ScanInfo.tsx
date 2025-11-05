@@ -1,10 +1,11 @@
+import clsx from "clsx";
 import { FC } from "react";
+
+import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { useStore } from "../../../state/store";
-import clsx from "clsx";
 
 import styles from "./ScanInfo.module.css";
-import { Card, CardBody, CardHeader } from "../../../components/Card";
 
 export const ScanInfo: FC = () => {
   const selectedResults = useStore((state) => state.selectedResults);

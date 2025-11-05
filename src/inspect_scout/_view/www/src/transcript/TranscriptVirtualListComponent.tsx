@@ -1,11 +1,12 @@
 import clsx from "clsx";
 import { FC, RefObject, useCallback, useMemo } from "react";
-import { RenderedEventNode } from "./TranscriptVirtualList";
-import { EventNode } from "./types";
-
 import { VirtuosoHandle } from "react-virtuoso";
+
 import { LiveVirtualList } from "../components/LiveVirtualList";
+
+import { RenderedEventNode } from "./TranscriptVirtualList";
 import styles from "./TranscriptVirtualListComponent.module.css";
+import { EventNode } from "./types";
 
 interface TranscriptVirtualListComponentProps {
   id: string;

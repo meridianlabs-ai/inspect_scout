@@ -6,6 +6,7 @@ import {
   SpanEndEvent,
   StepEvent,
 } from "../../types/log";
+
 import { hasSpans } from "./utils";
 
 // It will be caught elsewhere and rendered with a pretty name

@@ -1,7 +1,8 @@
 import { FC, useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
-import { AppRouter } from "./AppRouter";
+
 import { ScanApi } from "./api/api";
+import { AppRouter } from "./AppRouter";
 import { useStore } from "./state/store";
 import "prismjs";
 import "prismjs/components/prism-bash";

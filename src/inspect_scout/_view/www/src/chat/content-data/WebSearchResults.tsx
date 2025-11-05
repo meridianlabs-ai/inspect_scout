@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { FC } from "react";
+
 import styles from "./WebSearchResults.module.css";
 
 export interface WebSearchContentData {

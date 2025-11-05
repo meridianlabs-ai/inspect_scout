@@ -1,12 +1,13 @@
-import { FC, ReactNode } from "react";
-import { ContentToolUse } from "../../types/log";
-
 import clsx from "clsx";
-import ExpandablePanel from "../../components/ExpandablePanel";
-import { asJsonObjArray, isJson } from "../../utils/json";
+import { FC, ReactNode } from "react";
+
 import { ApplicationIcons } from "../../app/appearance/icons";
+import ExpandablePanel from "../../components/ExpandablePanel";
 import { RecordTree } from "../../content/RecordTree";
 import { RenderedContent } from "../../content/RenderedContent";
+import { ContentToolUse } from "../../types/log";
+import { asJsonObjArray, isJson } from "../../utils/json";
+
 import styles from "./ServerToolCall.module.css";
 
 interface ServerToolCallProps {

@@ -1,10 +1,12 @@
 import clsx from "clsx";
 import { FC } from "react";
-import { InfoEvent } from "../types/log";
-import { JSONPanel } from "../components/JsonPanel";
-import { formatDateTime } from "../utils/format";
+
 import { ApplicationIcons } from "../app/appearance/icons";
+import { JSONPanel } from "../components/JsonPanel";
 import { RenderedText } from "../content/RenderedText";
+import { InfoEvent } from "../types/log";
+import { formatDateTime } from "../utils/format";
+
 import { EventPanel } from "./event/EventPanel";
 import styles from "./InfoEventView.module.css";
 import { EventNode } from "./types";

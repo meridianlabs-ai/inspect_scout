@@ -1,5 +1,3 @@
-import { FC, useMemo } from "react";
-import { fromArrow } from "arquero";
 import {
   AllCommunityModule,
   ModuleRegistry,
@@ -8,17 +6,19 @@ import {
   type StateUpdatedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-
-import { IPCDataframe, Transcript } from "../../../types";
-import { Card, CardBody, CardHeader } from "../../../components/Card";
-import { ChatView } from "../../../chat/ChatView";
-import { LabeledValue } from "../../../components/LabeledValue";
+import { fromArrow } from "arquero";
 import clsx from "clsx";
+import { FC, useMemo } from "react";
+
+import { ChatView } from "../../../chat/ChatView";
+import { Card, CardBody, CardHeader } from "../../../components/Card";
+import { LabeledValue } from "../../../components/LabeledValue";
+import { MarkdownDiv } from "../../../components/MarkdownDiv";
+import { useStore } from "../../../state/store";
+import { IPCDataframe, Transcript } from "../../../types";
+import { firstUserMessage } from "../../../utils/chatMessage";
 
 import styles from "./ScannerDetail.module.css";
-import { MarkdownDiv } from "../../../components/MarkdownDiv";
-import { firstUserMessage } from "../../../utils/chatMessage";
-import { useStore } from "../../../state/store";
 
 interface ScannerDetailProps {
   scanner: IPCDataframe;

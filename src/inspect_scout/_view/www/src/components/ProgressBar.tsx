@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { FC } from "react";
+
 import styles from "./ProgressBar.module.css";
 
 interface ProgressBarProps {

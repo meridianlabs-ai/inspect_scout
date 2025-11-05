@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { FC } from "react";
+
 import styles from "./WebSearch.module.css";
 
 export const WebSearch: FC<{ query: string }> = ({ query }) => {

@@ -2,13 +2,14 @@ import clsx from "clsx";
 import { FC, Fragment, ReactNode, useMemo, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { getRelativePathFromParams, scansRoute } from "../../router/url";
+import { useStore } from "../../state/store";
 import { basename, dirname, ensureTrailingSlash } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";
-import styles from "./Navbar.module.css";
-import { useStore } from "../../state/store";
-import { getRelativePathFromParams, scansRoute } from "../../router/url";
-import { useBreadcrumbTruncation } from "./useBreadcrumbTruncation";
 import { ApplicationIcons } from "../appearance/icons";
+
+import styles from "./Navbar.module.css";
+import { useBreadcrumbTruncation } from "./useBreadcrumbTruncation";
 
 interface NavbarProps {
   children?: ReactNode;

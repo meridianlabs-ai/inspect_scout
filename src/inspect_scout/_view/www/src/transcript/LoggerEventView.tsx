@@ -1,11 +1,12 @@
 import clsx from "clsx";
-import { LoggerEvent } from "../types/log";
-import { ApplicationIcons } from "../app/appearance/icons";
-import { EventRow } from "./event/EventRow";
-
 import { FC } from "react";
-import { parsedJson as maybeParseJson } from "../utils/json";
+
+import { ApplicationIcons } from "../app/appearance/icons";
 import { MetaDataGrid } from "../content/MetaDataGrid";
+import { LoggerEvent } from "../types/log";
+import { parsedJson as maybeParseJson } from "../utils/json";
+
+import { EventRow } from "./event/EventRow";
 import styles from "./LoggerEventView.module.css";
 import { EventNode } from "./types";
 

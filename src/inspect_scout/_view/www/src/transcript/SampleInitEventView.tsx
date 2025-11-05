@@ -1,15 +1,16 @@
 // @ts-check
+import clsx from "clsx";
+import { FC } from "react";
+
+import { ApplicationIcons } from "../app/appearance/icons";
+import { ChatView } from "../chat/ChatView";
+import { MetaDataGrid } from "../content/MetaDataGrid";
 import { Messages, SampleInitEvent } from "../types/log";
 import { formatDateTime } from "../utils/format";
 import { toArray } from "../utils/type";
-import { ApplicationIcons } from "../app/appearance/icons";
-import { MetaDataGrid } from "../content/MetaDataGrid";
-import { ChatView } from "../chat/ChatView";
+
 import { EventPanel } from "./event/EventPanel";
 import { EventSection } from "./event/EventSection";
-
-import clsx from "clsx";
-import { FC } from "react";
 import styles from "./SampleInitEventView.module.css";
 import { EventNode } from "./types";
 

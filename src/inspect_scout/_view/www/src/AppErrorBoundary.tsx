@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from "react";
+
 import { ErrorPanel } from "./components/ErrorPanel";
 
 interface Props {

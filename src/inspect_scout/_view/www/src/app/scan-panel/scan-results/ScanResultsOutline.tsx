@@ -1,14 +1,14 @@
 import clsx from "clsx";
-import { useStore } from "../../../state/store";
 import { FC, useCallback, useRef } from "react";
+import { VirtuosoHandle } from "react-virtuoso";
 
+import { LabeledValue } from "../../../components/LabeledValue";
+import { LiveVirtualList } from "../../../components/LiveVirtualList";
+import { useStore } from "../../../state/store";
 import { Results } from "../../../types";
 import { ApplicationIcons } from "../../appearance/icons";
-import { useSelectedScanner } from "./hooks";
-import { LiveVirtualList } from "../../../components/LiveVirtualList";
-import { VirtuosoHandle } from "react-virtuoso";
-import { LabeledValue } from "../../../components/LabeledValue";
 
+import { useSelectedScanner } from "./hooks";
 import styles from "./ScanResultsOutline.module.css";
 
 export const ScanResultsOutline: FC = () => {

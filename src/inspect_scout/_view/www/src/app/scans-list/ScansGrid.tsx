@@ -10,13 +10,14 @@ import {
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { FC, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
+import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
+import { dirname, toRelativePath } from "../../utils/path";
+import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScansGrid.module.css";
-import { useNavigate, useParams } from "react-router-dom";
-import { dirname, toRelativePath } from "../../utils/path";
-import { getRelativePathFromParams } from "../../router/url";
-import { ApplicationIcons } from "../appearance/icons";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);

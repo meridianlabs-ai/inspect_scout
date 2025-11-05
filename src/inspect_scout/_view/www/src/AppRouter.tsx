@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   createHashRouter,
   Navigate,
@@ -5,8 +6,10 @@ import {
   useParams,
   useNavigate,
 } from "react-router-dom";
-import { useEffect } from "react";
+
 import { ScanPanel } from "./app/scan-panel/ScanPanel";
+import { ScansList } from "./app/scans-list/ScansList";
+import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
   kScansRouteUrlPattern,
   kScansWithPathRouteUrlPattern,
@@ -14,10 +17,8 @@ import {
   isValidScanPath,
   getRelativePathFromParams,
 } from "./router/url";
-import { ScansList } from "./app/scans-list/ScansList";
-import { getEmbeddedScanState } from "./utils/embeddedState";
 import { useStore } from "./state/store";
-import { AppErrorBoundary } from "./AppErrorBoundary";
+import { getEmbeddedScanState } from "./utils/embeddedState";
 
 // Create a layout component that handles embedded state and tracks route changes
 const AppLayout = () => {

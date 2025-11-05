@@ -8,12 +8,13 @@ import {
   useState,
 } from "react";
 import { Components, Virtuoso, VirtuosoHandle } from "react-virtuoso";
+
 import { usePrevious, useProperty } from "../state/hooks";
 import { useRafThrottle, useVirtuosoState } from "../state/scrolling";
-import { ExtendedFindFn, useExtendedFind } from "./ExtendedFindContext";
-import { PulsingDots } from "./PulsingDots";
 
+import { ExtendedFindFn, useExtendedFind } from "./ExtendedFindContext";
 import styles from "./LiveVirtualList.module.css";
+import { PulsingDots } from "./PulsingDots";
 
 interface LiveVirtualListProps<T> {
   id: string;

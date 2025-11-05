@@ -3,9 +3,10 @@ import { FC, Ref, useRef } from "react";
 
 import { usePrismHighlight } from "../../components/prism";
 import { RenderedText } from "../../content/RenderedText";
-import styles from "./ToolInput.module.css";
+
 import { kToolTodoContentType } from "./tool";
 import { TodoWriteInput } from "./tool-input/TodoWriteInput";
+import styles from "./ToolInput.module.css";
 
 interface ToolInputProps {
   contentType?: string;

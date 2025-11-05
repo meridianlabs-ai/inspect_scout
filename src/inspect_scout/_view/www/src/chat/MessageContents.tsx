@@ -1,17 +1,18 @@
+import clsx from "clsx";
+import { FC, Fragment } from "react";
+
+import { ContentTool } from "../types";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
 } from "../types/log";
+
 import { MessageContent } from "./MessageContent";
+import styles from "./MessageContents.module.css";
 import { resolveToolInput } from "./tools/tool";
 import { ToolCallView } from "./tools/ToolCallView";
-
-import clsx from "clsx";
-import { FC, Fragment } from "react";
-import { ContentTool } from "../types";
-import styles from "./MessageContents.module.css";
 import { ChatViewToolCallStyle, Citation } from "./types";
 
 interface MessageContentsProps {

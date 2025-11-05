@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import {
   CSSProperties,
   FC,
@@ -7,16 +8,14 @@ import {
   useMemo,
   useRef,
 } from "react";
-
-import { EventNode, kTranscriptOutlineCollapseScope } from "../types";
-
-import clsx from "clsx";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
+
 import { useScrollTrack, useVirtuosoState } from "../../state/scrolling";
 import { useStore } from "../../state/store";
-
 import { kSandboxSignalName } from "../transform/fixups";
 import { flatTree } from "../transform/flatten";
+import { EventNode, kTranscriptOutlineCollapseScope } from "../types";
+
 import { OutlineRow } from "./OutlineRow";
 import styles from "./TranscriptOutline.module.css";
 import {

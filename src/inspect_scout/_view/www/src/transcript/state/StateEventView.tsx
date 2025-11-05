@@ -1,4 +1,7 @@
 import clsx from "clsx";
+import { FC, useEffect, useMemo } from "react";
+
+import { useStore } from "../../state/store";
 import {
   Changes,
   JsonChange,
@@ -8,16 +11,14 @@ import {
 } from "../../types/log";
 import { formatDateTime } from "../../utils/format";
 import { EventPanel } from "../event/EventPanel";
+import { EventNode, kTranscriptCollapseScope } from "../types";
+
 import { StateDiffView } from "./StateDiffView";
 import {
   RenderableChangeTypes,
   StoreSpecificRenderableTypes,
 } from "./StateEventRenderers";
-
-import { FC, useEffect, useMemo } from "react";
-import { EventNode, kTranscriptCollapseScope } from "../types";
 import styles from "./StateEventView.module.css";
-import { useStore } from "../../state/store";
 
 interface StateEventViewProps {
   eventNode: EventNode<StateEvent | StoreEvent>;

@@ -1,7 +1,9 @@
 import clsx from "clsx";
 import { FC } from "react";
-import { SampleLimitEvent, Type17 } from "../types/log";
+
 import { ApplicationIcons } from "../app/appearance/icons";
+import { SampleLimitEvent, Type17 } from "../types/log";
+
 import { EventPanel } from "./event/EventPanel";
 import { EventNode } from "./types";
 

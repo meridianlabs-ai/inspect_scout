@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+
 import {
   Events,
   SpanBeginEvent,
@@ -7,6 +8,7 @@ import {
   ToolEvent,
 } from "../../types/log";
 import { EventNode, EventType, kCollapsibleEventTypes } from "../types";
+
 import { fixupEventStream, kSandboxSignalName } from "./fixups";
 import { treeifyEvents } from "./treeify";
 

@@ -8,8 +8,10 @@ import {
   useRef,
   useState,
 } from "react";
+
 import { useCollapsedState } from "../state/hooks";
 import { useResizeObserver } from "../utils/dom";
+
 import styles from "./ExpandablePanel.module.css";
 
 interface ExpandablePanelProps {

@@ -1,15 +1,16 @@
-import { SandboxEvent } from "../types/log";
-import ExpandablePanel from "../components/ExpandablePanel";
-import { ApplicationIcons } from "../app/appearance/icons";
-import { MetaDataGrid } from "../content/MetaDataGrid";
-import { EventPanel } from "./event/EventPanel";
-import { EventSection } from "./event/EventSection";
-
 import clsx from "clsx";
 import { FC } from "react";
+
+import { ApplicationIcons } from "../app/appearance/icons";
+import ExpandablePanel from "../components/ExpandablePanel";
+import { MetaDataGrid } from "../content/MetaDataGrid";
 import { RenderedContent } from "../content/RenderedContent";
-import styles from "./SandboxEventView.module.css";
+import { SandboxEvent } from "../types/log";
+
+import { EventPanel } from "./event/EventPanel";
+import { EventSection } from "./event/EventSection";
 import { formatTiming } from "./event/utils";
+import styles from "./SandboxEventView.module.css";
 import { EventNode } from "./types";
 
 interface SandboxEventViewProps {

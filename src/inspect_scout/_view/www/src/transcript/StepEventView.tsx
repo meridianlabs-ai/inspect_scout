@@ -1,7 +1,9 @@
 import clsx from "clsx";
 import { FC } from "react";
+
 import { StepEvent } from "../types/log";
 import { formatDateTime } from "../utils/format";
+
 import { EventPanel } from "./event/EventPanel";
 import { kSandboxSignalName } from "./transform/fixups";
 import { EventNode, EventType } from "./types";

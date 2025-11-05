@@ -1,10 +1,11 @@
+import clsx from "clsx";
 import { FC } from "react";
 
-import styles from "./ScanResultsBody.module.css";
-import clsx from "clsx";
-import { useSelectedScanner } from "./hooks";
 import { useStore } from "../../../state/store";
+
+import { useSelectedScanner } from "./hooks";
 import { ScannerDetail } from "./ScannerDetail";
+import styles from "./ScanResultsBody.module.css";
 
 export const ScanResultsBody: FC = () => {
   const selectedScanner = useSelectedScanner();

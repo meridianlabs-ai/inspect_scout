@@ -1,3 +1,4 @@
+import { ApplicationIcons } from "../app/appearance/icons";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,
@@ -14,7 +15,6 @@ import {
   Events,
   Messages,
 } from "../types/log";
-import { ApplicationIcons } from "../app/appearance/icons";
 
 export interface ResolvedMessage {
   message:

@@ -1,7 +1,3 @@
-import { FC, useMemo } from "react";
-
-import { AgGridReact } from "ag-grid-react";
-
 import {
   AllCommunityModule,
   ModuleRegistry,
@@ -9,8 +5,11 @@ import {
   type ColDef,
   type StateUpdatedEvent,
 } from "ag-grid-community";
-import { useStore } from "../../../state/store";
+import { AgGridReact } from "ag-grid-react";
 import { ColumnTable } from "arquero";
+import { FC, useMemo } from "react";
+
+import { useStore } from "../../../state/store";
 
 import styles from "./DataframeView.module.css";
 

@@ -1,8 +1,9 @@
+import clsx from "clsx";
 import { FC } from "react";
+
 import { useStore } from "../../state/store";
 
 import styles from "./ScanPanelTitle.module.css";
-import clsx from "clsx";
 
 export const ScanPanelTitle: FC = () => {
   const selectedResults = useStore((state) => state.selectedResults);

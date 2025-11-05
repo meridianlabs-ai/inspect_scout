@@ -1,16 +1,17 @@
 import clsx from "clsx";
 import { FC, ReactNode, useRef } from "react";
 import { Link } from "react-router-dom";
+
+import { ApplicationIcons } from "../../app/appearance/icons";
 import { PulsingDots } from "../../components/PulsingDots";
+import { MetaDataGrid } from "../../content/MetaDataGrid";
 import { formatDateTime, formatTime } from "../../utils/format";
 import { parsePackageName } from "../../utils/python";
-import { ApplicationIcons } from "../../app/appearance/icons";
-import { MetaDataGrid } from "../../content/MetaDataGrid";
-
+import { useCollapseTranscriptEvent } from "../hooks";
 import { kSandboxSignalName } from "../transform/fixups";
 import { EventNode } from "../types";
+
 import styles from "./OutlineRow.module.css";
-import { useCollapseTranscriptEvent } from "../hooks";
 
 export interface OutlineRowProps {
   node: EventNode;

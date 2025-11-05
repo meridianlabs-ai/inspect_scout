@@ -1,7 +1,9 @@
 import { RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import { StateCallback, StateSnapshot, VirtuosoHandle } from "react-virtuoso";
+
 import { createLogger } from "../utils/logger";
 import { debounce } from "../utils/sync";
+
 import { useStore } from "./store";
 
 const log = createLogger("scrolling");

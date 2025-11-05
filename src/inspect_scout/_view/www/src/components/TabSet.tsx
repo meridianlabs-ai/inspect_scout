@@ -11,7 +11,9 @@ import {
   RefObject,
   useRef,
 } from "react";
+
 import { useStatefulScrollPosition } from "../state/scrolling";
+
 import moduleStyles from "./TabSet.module.css";
 
 interface TabSetProps {

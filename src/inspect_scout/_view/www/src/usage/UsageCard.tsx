@@ -1,8 +1,9 @@
-import { EvalStats } from "../types/log";
-import { Card, CardBody, CardHeader } from "../components/Card";
-import { ModelTokenTable } from "./ModelTokenTable";
-
 import { FC } from "react";
+
+import { Card, CardBody, CardHeader } from "../components/Card";
+import { EvalStats } from "../types/log";
+
+import { ModelTokenTable } from "./ModelTokenTable";
 import styles from "./UsageCard.module.css";
 
 const kUsageCardBodyId = "usage-card-body";

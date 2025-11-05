@@ -1,9 +1,11 @@
 import { FC, useEffect } from "react";
+
+import { ActivityBar } from "../../components/ActivityBar";
+import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { useStore } from "../../state/store";
 import { Navbar } from "../navbar/Navbar";
-import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+
 import { ScansGrid } from "./ScansGrid";
-import { ActivityBar } from "../../components/ActivityBar";
 
 export const ScansList: FC = () => {
   const setScans = useStore((state) => state.setScans);

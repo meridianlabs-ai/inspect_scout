@@ -1,12 +1,13 @@
 import { createRoot } from "react-dom/client";
+
+import { ScanApi } from "./api/api";
+import { apiScoutServer } from "./api/api-scout-server";
+import { apiVscode } from "./api/api-vscode";
+import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { apiScoutServer } from "./api/api-scout-server";
 import { getVscodeApi } from "./utils/vscode";
-import { webViewJsonRpcClient } from "./api/jsonrpc";
-import { apiVscode } from "./api/api-vscode";
-import { ScanApi } from "./api/api";
 
 // Find the root element and render into it
 const containerId = "app";

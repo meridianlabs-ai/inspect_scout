@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
+
 import { CopyButton } from "../../components/CopyButton";
+
 import styles from "./EventSection.module.css";
 
 interface EventSectionProps {

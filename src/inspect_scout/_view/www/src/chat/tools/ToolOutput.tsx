@@ -1,8 +1,10 @@
 import clsx from "clsx";
 import { FC } from "react";
+
 import { ContentImage, ContentText } from "../../types/log";
 import { isJson } from "../../utils/json";
 import { JsonMessageContent } from "../JsonMessageContent";
+
 import styles from "./ToolOutput.module.css";
 
 interface ToolOutputProps {

@@ -1,8 +1,9 @@
+import clsx from "clsx";
 import { FC } from "react";
+
 import { Scanner } from "../../../types";
 
 import styles from "./ScannerHeading.module.css";
-import clsx from "clsx";
 
 interface ScannerHeadingProps {
   scanner: Scanner;

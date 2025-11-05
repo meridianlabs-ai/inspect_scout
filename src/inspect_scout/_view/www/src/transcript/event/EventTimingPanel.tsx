@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { FC, Fragment } from "react";
+
 import { formatDateTime, formatTime } from "../../utils/format";
+
 import styles from "./EventTimingPanel.module.css";
 
 interface EventTimingPanelProps {

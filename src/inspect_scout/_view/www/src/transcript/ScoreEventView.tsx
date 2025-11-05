@@ -1,13 +1,14 @@
+import clsx from "clsx";
 import { FC, Fragment } from "react";
-import { ScoreEvent, Value1 } from "../types/log";
-import { formatDateTime } from "../utils/format";
+
 import { ApplicationIcons } from "../app/appearance/icons";
 import { MetaDataGrid } from "../content/MetaDataGrid";
-import { EventPanel } from "./event/EventPanel";
-
-import clsx from "clsx";
 import { RecordTree } from "../content/RecordTree";
 import { RenderedText } from "../content/RenderedText";
+import { ScoreEvent, Value1 } from "../types/log";
+import { formatDateTime } from "../utils/format";
+
+import { EventPanel } from "./event/EventPanel";
 import styles from "./ScoreEventView.module.css";
 import { EventNode } from "./types";
 

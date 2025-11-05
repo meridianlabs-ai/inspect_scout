@@ -1,5 +1,7 @@
 import { FC, useEffect } from "react";
+
 import { formatDateTime, formatTime } from "../utils/format";
+
 import { AsciinemaPlayer } from "./AsciinemaPlayer";
 import "./HumanBaselineView.css";
 import { LightboxCarousel } from "./LightboxCarousel";

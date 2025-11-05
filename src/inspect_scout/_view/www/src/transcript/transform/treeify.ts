@@ -1,5 +1,6 @@
 import { Events, SpanBeginEvent, SpanEndEvent } from "../../types/log";
 import { EventNode, EventType } from "../types";
+
 import { transformTree } from "./transform";
 import {
   ACTION_BEGIN,

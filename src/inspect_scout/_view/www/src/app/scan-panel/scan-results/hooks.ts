@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+
 import { useStore } from "../../../state/store";
 
 export const useSelectedScanner = () => {

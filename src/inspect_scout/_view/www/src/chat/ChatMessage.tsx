@@ -1,16 +1,17 @@
 import clsx from "clsx";
 import { FC, memo, useCallback, useState } from "react";
+
+import { ApplicationIcons } from "../app/appearance/icons";
+import { CopyButton } from "../components/CopyButton";
+import ExpandablePanel from "../components/ExpandablePanel";
+import { LabeledValue } from "../components/LabeledValue";
+import { RecordTree } from "../content/RecordTree";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
 } from "../types/log";
-import { CopyButton } from "../components/CopyButton";
-import ExpandablePanel from "../components/ExpandablePanel";
-import { LabeledValue } from "../components/LabeledValue";
-import { ApplicationIcons } from "../app/appearance/icons";
-import { RecordTree } from "../content/RecordTree";
 
 import styles from "./ChatMessage.module.css";
 import { MessageContents } from "./MessageContents";

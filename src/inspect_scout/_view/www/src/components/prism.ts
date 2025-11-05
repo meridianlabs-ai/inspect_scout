@@ -1,5 +1,5 @@
-import { RefObject, useEffect } from "react";
 import { highlightElement } from "prismjs";
+import { RefObject, useEffect } from "react";
 
 // Syntax highlighting strings larger than this is too slow
 const kPrismRenderMaxSize = 250000;

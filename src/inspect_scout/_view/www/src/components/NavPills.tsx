@@ -1,6 +1,8 @@
 import { clsx } from "clsx";
 import { FC, MouseEvent, ReactElement, ReactNode, useCallback } from "react";
+
 import { useProperty } from "../state/hooks";
+
 import styles from "./NavPills.module.css";
 
 interface NavPillChildProps {

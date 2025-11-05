@@ -1,9 +1,10 @@
+import { GridState } from "ag-grid-community";
+import { StateSnapshot } from "react-virtuoso";
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
+
 import { ScanApi } from "../api/api";
-import { StateSnapshot } from "react-virtuoso";
-import { GridState } from "ag-grid-community";
 import { Results, Status } from "../types";
 
 interface StoreState {

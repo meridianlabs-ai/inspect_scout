@@ -7,14 +7,15 @@ import {
   useCallback,
   useState,
 } from "react";
-import { ApplicationIcons } from "../../app/appearance/icons";
-import { EventNavs } from "./EventNavs";
 
+import { ApplicationIcons } from "../../app/appearance/icons";
 import { CopyButton } from "../../components/CopyButton";
 import { useProperty } from "../../state/hooks";
-import { kTranscriptCollapseScope } from "../types";
-import styles from "./EventPanel.module.css";
 import { useCollapseTranscriptEvent } from "../hooks";
+import { kTranscriptCollapseScope } from "../types";
+
+import { EventNavs } from "./EventNavs";
+import styles from "./EventPanel.module.css";
 
 interface EventPanelProps {
   eventNodeId: string;

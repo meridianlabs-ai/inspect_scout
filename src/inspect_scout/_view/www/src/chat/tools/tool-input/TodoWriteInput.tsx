@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { FC, Ref } from "react";
+
 import { ApplicationIcons } from "../../../app/appearance/icons";
 
 import styles from "./TodoWriteInput.module.css";

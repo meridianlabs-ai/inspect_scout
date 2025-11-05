@@ -1,9 +1,9 @@
+import clsx from "clsx";
 import { FC, ReactNode } from "react";
+
+import { iconForMimeType } from "../../app/appearance/icons";
 import { ContentDocument } from "../../types/log";
 import { isImage } from "../../utils/mime";
-
-import clsx from "clsx";
-import { iconForMimeType } from "../../app/appearance/icons";
 
 import styles from "./ContentDocumentView.module.css";
 

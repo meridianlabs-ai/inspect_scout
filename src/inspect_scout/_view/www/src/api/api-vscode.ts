@@ -1,6 +1,7 @@
 import JSON5 from "json5";
 
 import { Results, Scans } from "../types";
+
 import { ScanApi } from "./api";
 import { kMethodGetScan, kMethodGetScans } from "./jsonrpc";
 

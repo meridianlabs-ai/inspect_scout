@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
+
 import { ApplicationIcons } from "../../app/appearance/icons";
+
 import styles from "./EventRow.module.css";
 
 interface EventRowProps {

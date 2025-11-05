@@ -139,8 +139,8 @@ included embedded JSON data, these are all noted below):
 | `answer` | str | Answer extracted from scanner generation. |
 | `explanation` | str | Explanation for scan result. |
 | `metadata` | dictJSON | Metadata for scan result. |
-| `message_references` | list\[str\]JSON | Messages referenced by scanner. |
-| `event_references` | list\[str\]JSON | Events referenced by scanner. |
+| `message_references` | list\[Reference\]JSON | Messages referenced by scanner. |
+| `event_references` | list\[Reference\]JSON | Events referenced by scanner. |
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
 | `scan_total_tokens` | number | Total tokens used by scan. |

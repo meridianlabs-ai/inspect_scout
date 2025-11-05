@@ -7,7 +7,7 @@
 
 Scan transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/scanner.py#L76)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/scanner.py#L76)
 
 ``` python
 class Scanner(Protocol[T]):
@@ -21,7 +21,7 @@ Input to scan.
 
 Union of all valid scanner input types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/types.py#L11)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/types.py#L11)
 
 ``` python
 ScannerInput = Union[
@@ -37,7 +37,7 @@ ScannerInput = Union[
 
 Scan result.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/result.py#L22)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/result.py#L28)
 
 ``` python
 class Result(BaseModel)
@@ -64,7 +64,7 @@ References to relevant messages or events.
 
 Reference to scanned content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/result.py#L12)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/result.py#L12)
 
 ``` python
 class Reference(BaseModel)
@@ -75,6 +75,12 @@ class Reference(BaseModel)
 `type` Literal\['message', 'event'\]  
 Reference type.
 
+`cite` str \| None  
+Cite text used when the entity was referenced (optional).
+
+For example, a model may have pointed to a message using something like
+\[M22\], which is the cite.
+
 `id` str  
 Reference id (message or event id)
 
@@ -82,7 +88,7 @@ Reference id (message or event id)
 
 Scan error (runtime error which occurred during scan).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/result.py#L41)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/result.py#L47)
 
 ``` python
 class Error(BaseModel)
@@ -106,7 +112,7 @@ Error traceback.
 
 Load transcript data.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/loader.py#L47)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/loader.py#L47)
 
 ``` python
 class Loader(Protocol[TLoaderResult]):
@@ -129,13 +135,13 @@ This scanner presents a conversation transcript to an LLM along with a
 custom prompt and answer specification, enabling automated analysis of
 conversations for specific patterns, behaviors, or outcomes.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_llm_scanner/_llm_scanner.py#L23)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_llm_scanner/_llm_scanner.py#L20)
 
 ``` python
 @scanner(messages="all")
 def llm_scanner(
     *,
-    question: str,
+    question: str | Callable[[Transcript], Awaitable[str]],
     answer: Literal["boolean", "numeric", "string"] | list[str] | MultiLabels,
     template: str | None = None,
     messages: ContentFilter | None = None,
@@ -144,9 +150,11 @@ def llm_scanner(
 ) -> Scanner[Transcript]
 ```
 
-`question` str  
-Question for the scanner to answer. (e.g., “Did the assistant refuse the
-request?”)
+`question` str \| Callable\[\[[Transcript](transcript.qmd#transcript)\], Awaitable\[str\]\]  
+Question for the scanner to answer. Can be a static string (e.g., “Did
+the assistant refuse the request?”) or a function that takes a
+Transcript and returns an string for dynamic questions based on
+transcript content.
 
 `answer` Literal\['boolean', 'numeric', 'string'\] \| list\[str\] \| [MultiLabels](scanner.qmd#multilabels)  
 Specification of the answer format. Pass “boolean”, “numeric”, or
@@ -178,7 +186,7 @@ directly to `scan()` rather than delegating to it from another scanner).
 
 Label descriptions for LLM scanner multi-classification.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_llm_scanner/types.py#L17)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_llm_scanner/types.py#L17)
 
 ``` python
 class MultiLabels(NamedTuple)
@@ -197,25 +205,32 @@ Label values (e.g. A, B, C) will be provided automatically.
 
 Concatenate list of chat messages into a string.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/extract.py#L27)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/extract.py#L45)
 
 ``` python
 async def messages_as_str(
-    messages: list[ChatMessage], filter: ContentFilter | None = None
-) -> str
+    messages: list[ChatMessage],
+    content_filter: ContentFilter | None = None,
+    include_ids: Literal[True] | None = None,
+) -> str | tuple[str, list[str]]
 ```
 
 `messages` list\[ChatMessage\]  
-List of chat messages
+List of chat messages.
 
-`filter` [ContentFilter](scanner.qmd#contentfilter) \| None  
+`content_filter` [ContentFilter](scanner.qmd#contentfilter) \| None  
 Content filter for messages.
+
+`include_ids` Literal\[True\] \| None  
+If True, prepend 1-based ordinal references (e.g., \[M1\], \[M2\]) to
+each message and return a mapping of ordinals to original message IDs.
+If None (default), return plain formatted string.
 
 ### ContentFilter
 
 Message content options for LLM scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/extract.py#L11)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/extract.py#L14)
 
 ``` python
 class ContentFilter(NamedTuple)
@@ -241,7 +256,7 @@ Exclude tool usage (defaults to `False`)
 
 Message types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_transcript/types.py#L10)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_transcript/types.py#L10)
 
 ``` python
 MessageType = Literal["system", "user", "assistant", "tool"]
@@ -251,7 +266,7 @@ MessageType = Literal["system", "user", "assistant", "tool"]
 
 Event types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_transcript/types.py#L13)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_transcript/types.py#L13)
 
 ``` python
 EventType = Literal[
@@ -273,7 +288,7 @@ EventType = Literal[
 
 Decorator for registering scanners.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/scanner.py#L215)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/scanner.py#L215)
 
 ``` python
 def scanner(
@@ -318,7 +333,7 @@ is converted to a scorer via `as_scorer()`).
 
 Decorator for registering loaders.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/loader.py#L150)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/loader.py#L150)
 
 ``` python
 def loader(
@@ -346,7 +361,7 @@ Transcript content filter.
 
 Convert a `Scanner` to an Inspect `Scorer`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/76ff48951f1de19d835701d09ebcd3109092ac53/src/inspect_scout/_scanner/scorer.py#L23)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/4ae598e5ff5093f64738ac6957745be2af28ef39/src/inspect_scout/_scanner/scorer.py#L23)
 
 ``` python
 def as_scorer(

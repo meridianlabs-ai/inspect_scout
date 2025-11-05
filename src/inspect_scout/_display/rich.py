@@ -55,11 +55,11 @@ class DisplayRich(Display):
         scan: ScanContext,
         scan_location: str,
         summary: Summary,
-        transcripts: int,
+        total: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
         with ScanDisplayRich(
-            scan, scan_location, summary, transcripts, skipped
+            scan, scan_location, summary, total, skipped
         ) as scan_display:
             yield scan_display
 
@@ -103,13 +103,12 @@ class ScanDisplayRich(
         scan: ScanContext,
         scan_location: str,
         summary: Summary,
-        transcripts: int,
+        total: int,
         skipped: int,
     ) -> None:
         self._scan = scan
         self._scan_location = scan_location
-        self._transcripts = transcripts
-        self._total_scans = sum(len(work.transcripts) for work in scan.worklist)
+        self._total_scans = total
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
         self._metrics: ScanMetrics | None = None

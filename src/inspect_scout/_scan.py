@@ -464,18 +464,24 @@ async def _scan_async_inner(
         async with transcripts:
             # Count already-completed scans to initialize progress
             scanner_names_list = list(scan.scanners.keys())
+            total_scans = 0
             skipped_scans = 0
             for transcript_info in await transcripts.index():
                 for name in scanner_names_list:
                     if await recorder.is_recorded(transcript_info, name):
                         skipped_scans += 1
+                    total_scans += 1
+
+            # override total scans if there is a worklist
+            if scan.worklist is not None:
+                total_scans = sum(len(work.transcripts) for work in scan.worklist)
 
             # start scan
             with display().scan_display(
                 scan=scan,
                 scan_location=await recorder.location(),
                 summary=await recorder.summary(),
-                transcripts=await transcripts.count(),
+                total=total_scans,
                 skipped=skipped_scans,
             ) as scan_display:
                 # Build scanner list and union content for index resolution
@@ -745,15 +751,21 @@ async def _parse_jobs(
     name_to_index = {name: idx for idx, name in enumerate(scanner_names)}
 
     # build scanner->transcript_ids map from worklist
-    scanner_to_transcript_ids = {
-        work.scanner: work.transcripts for work in context.worklist
-    }
+    if context.worklist:
+        scanner_to_transcript_ids: dict[str, list[str]] | None = {
+            work.scanner: work.transcripts for work in context.worklist
+        }
+    else:
+        scanner_to_transcript_ids = None
 
     for transcript_info in await transcripts.index():
         scanner_indices_for_transcript: list[int] = []
         for name in scanner_names:
             # if its not in the worklist then move on
-            if transcript_info.id not in scanner_to_transcript_ids.get(name, []):
+            if (
+                scanner_to_transcript_ids is not None
+                and transcript_info.id not in scanner_to_transcript_ids.get(name, [])
+            ):
                 continue
             # if its already recorded then move on
             if await recorder.is_recorded(transcript_info, name):

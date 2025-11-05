@@ -49,7 +49,7 @@ class ScanContext:
     scanners: dict[str, Scanner[Any]]
     """Scanners to apply to transcripts."""
 
-    worklist: Sequence[ScannerWork]
+    worklist: Sequence[ScannerWork] | None
     """Transcript ids to process for each scanner."""
 
     validation: dict[str, ValidationSet] | None
@@ -59,6 +59,9 @@ class ScanContext:
 async def create_scan(scanjob: ScanJob) -> ScanContext:
     if scanjob.transcripts is None:
         raise PrerequisiteError("No transcripts specified for scan.")
+
+    if scanjob.worklist and scanjob.limit is not None:
+        raise PrerequisiteError("You cannot specify both a worklist and a limit")
 
     # get revision and package version
     git = git_context()
@@ -111,11 +114,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         spec=spec,
         transcripts=scanjob.transcripts,
         scanners=scanjob.scanners,
-        worklist=scanjob.worklist
-        if scanjob.worklist is not None
-        else await _default_worklist(
-            scanjob.transcripts, list(scanjob.scanners.keys())
-        ),
+        worklist=scanjob.worklist,
         validation=scanjob.validation,
     )
 

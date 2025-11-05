@@ -30,7 +30,7 @@ class Display(abc.ABC):
         scan: ScanContext,
         scan_location: str,
         summary: Summary,
-        transcripts: int,
+        total: int,
         skipped: int,
     ) -> Iterator["ScanDisplay"]:
         yield ScanDisplayNone()

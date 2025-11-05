@@ -471,65 +471,6 @@ async def test_worklist_spec_persistence() -> None:
         assert sorted(stored_work.transcripts) == sorted(transcript_ids)
 
 
-@pytest.mark.asyncio
-async def test_worklist_with_resume() -> None:
-    """Verify worklist is preserved and respected when resuming a scan."""
-    # Get transcript IDs - need enough to ensure we can limit and resume
-    all_transcript_ids = await get_n_transcript_ids(10)
-
-    # Create worklist - process first 5 transcripts
-    worklist = [
-        ScannerWork(scanner="resume_scanner", transcripts=all_transcript_ids[0:5])
-    ]
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # First scan - process with worklist but limit to 3
-        result1 = scan(
-            scanners=[resume_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
-            worklist=worklist,
-            results=tmpdir,
-            limit=3,  # Only process 3 of the 5 in worklist
-        )
-
-        # Verify partial completion (scan should have processed 3)
-        db = scan_results_db(result1.location)
-        try:
-            _count_result = db.conn.execute(
-                'SELECT COUNT(*) FROM "resume_scanner"'
-            ).fetchone()
-            assert _count_result is not None
-            count1 = _count_result[0]
-            assert count1 == 3, (
-                f"Should have processed 3 transcripts in first scan, got {count1}"
-            )
-        finally:
-            db.conn.close()
-
-        # Check that the scan is not complete
-        from inspect_scout import scan_status
-
-        status1 = scan_status(result1.location)
-        if status1.complete:
-            # If complete, skip the resume test - this is expected when using small transcript sets
-            # The important part is that the worklist was respected
-            verify_scanner_results(
-                result1.location, "resume_scanner", all_transcript_ids[0:3]
-            )
-            return
-
-        # Resume scan - should complete remaining 2 transcripts from worklist
-        # and NOT process the other transcripts (6-10) that aren't in worklist
-        from inspect_scout import scan_resume
-
-        result2 = scan_resume(result1.location)
-
-        # Verify final results - should have exactly 5 (the ones in worklist)
-        verify_scanner_results(
-            result2.location, "resume_scanner", all_transcript_ids[0:5]
-        )
-
-
 # ============================================================================
 # Complex Scenario Tests
 # ============================================================================

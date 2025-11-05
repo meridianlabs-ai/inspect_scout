@@ -354,20 +354,20 @@ button._segment_88dfy_9 {
   margin-top: 0.2em;
   margin-bottom: 0.5em;
 }
-._labeledValueLabel_ev33w_1 {
+._labeledValueLabel_1poe7_1 {
   margin-bottom: -0.2rem;
 }
 
-._labeledValue_ev33w_1 {
+._labeledValue_1poe7_1 {
   display: flex;
   justify-content: space-between;
 }
 
-._labeledValue_ev33w_1 ._row_ev33w_10 {
+._labeledValue_1poe7_1._row_1poe7_10 {
   flex-direction: row;
 }
 
-._labeledValue_ev33w_1 ._column_ev33w_14 {
+._labeledValue_1poe7_1._column_1poe7_14 {
   flex-direction: column;
 }
 ._keyPairContainer_qjlxf_1 {
@@ -759,32 +759,31 @@ a._citationLink_1ggvf_9:hover {
   grid-template-columns: 200px 1fr;
   height: 100%;
 }
-._scannerHeaderRow_1jevi_1 {
+._scannerHeaderRow_1b6xr_1 {
   display: grid;
   grid-template-columns: auto auto;
   column-gap: 0.5em;
   margin-bottom: 1em;
 }
 
-._controls_1jevi_8 {
+._controls_1b6xr_8 {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
   margin-bottom: 0.5em;
 }
-
-._gridWrapper_1jevi_15 {
+._gridWrapper_yeano_1 {
   height: 100%;
   width: 100%;
 }
 
 /* Hide sort index numbers in multi-column sort */
-._gridWrapper_1jevi_15 .ag-header-cell .ag-sort-order {
+._gridWrapper_yeano_1 .ag-header-cell .ag-sort-order {
   display: none;
 }
 
 /* Set line height for grid cells */
-._gridWrapper_1jevi_15 .ag-cell {
+._gridWrapper_yeano_1 .ag-cell {
   line-height: 1.1em;
 }
 ._body_sc0cq_1 {

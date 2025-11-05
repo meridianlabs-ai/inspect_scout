@@ -1,11 +1,4 @@
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  themeBalham,
-  type ColDef,
-  type StateUpdatedEvent,
-} from "ag-grid-community";
-import { AgGridReact } from "ag-grid-react";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { fromArrow } from "arquero";
 import clsx from "clsx";
 import { FC, useMemo } from "react";
@@ -19,6 +12,7 @@ import { IPCDataframe, Transcript } from "../../../types";
 import { firstUserMessage } from "../../../utils/chatMessage";
 
 import styles from "./ScannerDetail.module.css";
+import { DataframeView } from "../../../components/DataframeView";
 
 interface ScannerDetailProps {
   scanner: IPCDataframe;
@@ -27,18 +21,11 @@ interface ScannerDetailProps {
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const kFilterPrefix: string[] = [];
-const kMultilineColumns: string[] = [];
-const GRID_STATE_NAME = "ScannerDetailGrid";
-
 export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || "cards";
 
-  const gridStates = useStore((state) => state.gridStates);
-  const setGridState = useStore((state) => state.setGridState);
-
-  const { columnDefs, rowData } = useMemo(() => {
+  const columnTable = useMemo(() => {
     // Decode base64 string to Uint8Array
     const binaryString = atob(scanner.data);
     const bytes = new Uint8Array(binaryString.length);
@@ -48,40 +35,11 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
 
     // Load Arrow data using Arquero
     const table = fromArrow(bytes.buffer);
-
-    // Create column definitions for ag-grid
-    const columnDefs: ColDef[] = scanner.column_names
-      .filter((name) => {
-        return !kFilterPrefix.some((prefix) => name.startsWith(prefix));
-      })
-      .map((name) => {
-        const isMultiline = kMultilineColumns.includes(name);
-        return {
-          field: name,
-          headerName: name,
-          sortable: true,
-          filter: true,
-          resizable: true,
-          wrapText: true,
-          autoHeight: isMultiline,
-          minWidth: isMultiline ? 300 : 75,
-          tooltipField: name,
-        };
-      });
-
-    // Convert table to array of objects for ag-grid
-    const rowData = table.objects();
-
-    return { columnDefs, rowData };
+    return table;
   }, [scanner]);
 
-  const gridState = useMemo(() => {
-    const savedState = gridStates[GRID_STATE_NAME];
-    // If no saved state, return undefined to use default grid state
-    return savedState;
-  }, [gridStates]);
-
   const scannerSummaries = useMemo(() => {
+    const rowData = columnTable.objects();
     const summaries: ScannerRow[] = rowData.map((row) => {
       const r = row as Record<string, unknown>;
       return {
@@ -99,7 +57,7 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
       };
     });
     return summaries;
-  }, [rowData]);
+  }, [columnTable]);
 
   return (
     <div style={{ height: "100%", width: "100%" }}>
@@ -132,28 +90,7 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
         </div>
       )}
       {selectedResultsView === "grid" && (
-        <div className={styles.gridWrapper}>
-          <AgGridReact
-            rowData={rowData}
-            columnDefs={columnDefs}
-            defaultColDef={{
-              sortable: true,
-              filter: true,
-              resizable: true,
-            }}
-            rowHeight={100}
-            animateRows={false}
-            suppressColumnMoveAnimation={true}
-            suppressCellFocus={true}
-            theme={themeBalham}
-            enableCellTextSelection={true}
-            autoSizeStrategy={{ type: "fitGridWidth" }}
-            initialState={gridState}
-            onStateUpdated={(e: StateUpdatedEvent) => {
-              setGridState(GRID_STATE_NAME, e.state);
-            }}
-          />
-        </div>
+        <DataframeView columnTable={columnTable} />
       )}
     </div>
   );

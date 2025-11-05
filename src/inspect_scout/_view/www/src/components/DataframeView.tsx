@@ -9,7 +9,7 @@ import { AgGridReact } from "ag-grid-react";
 import { ColumnTable } from "arquero";
 import { FC, useMemo } from "react";
 
-import { useStore } from "../../../state/store";
+import { useStore } from "../state/store";
 
 import styles from "./DataframeView.module.css";
 

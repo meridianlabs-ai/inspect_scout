@@ -19908,22 +19908,22 @@ function clsx() {
 const wrapper = "_wrapper_1tajk_1";
 const container$6 = "_container_1tajk_12";
 const animate = "_animate_1tajk_21";
-const styles$C = {
+const styles$D = {
   wrapper,
   container: container$6,
   animate
 };
 const ActivityBar = ({ animating }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$C.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$D.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
-      className: clsx(styles$C.container),
+      className: clsx(styles$D.container),
       role: "progressbar",
       "aria-label": "Progress bar",
       "aria-valuenow": 25,
       "aria-valuemin": 0,
       "aria-valuemax": 100,
-      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$C.animate })
+      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$D.animate })
     }
   ) });
 };
@@ -21452,7 +21452,7 @@ const left = "_left_ctaca_31";
 const right = "_right_ctaca_41";
 const toolbarButton = "_toolbarButton_ctaca_50";
 const pathContainer = "_pathContainer_ctaca_58";
-const styles$B = {
+const styles$C = {
   header,
   bordered: bordered$1,
   breadcrumbs,
@@ -21585,50 +21585,50 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
       className: clsx(
         "text-size-smaller",
         "header-nav",
-        styles$B.header,
-        bordered2 ? styles$B.bordered : void 0
+        styles$C.header,
+        bordered2 ? styles$C.bordered : void 0
       ),
       "aria-label": "breadcrumb",
       "data-unsearchable": true,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$B.left), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$B.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$C.left), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$C.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Link,
             {
               to: scansRoute(),
-              className: clsx(styles$B.toolbarButton),
+              className: clsx(styles$C.toolbarButton),
               onClick: () => {
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.home) })
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$B.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$B.breadcrumbs), children: visibleSegments.map((segment2, index) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$C.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$C.breadcrumbs), children: visibleSegments.map((segment2, index) => {
             const isLast = index === visibleSegments.length - 1;
             const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$B.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
+              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$C.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "li",
                 {
                   className: clsx(
-                    styles$B.pathLink,
+                    styles$C.pathLink,
                     "breadcrumb-item",
                     isLast ? "active" : void 0
                   ),
-                  children: segment2.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$B.pathSegment), children: segment2.text })
+                  children: segment2.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$C.pathSegment), children: segment2.text })
                 }
               )
             ] }, index);
           }) }) : "" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$B.right), children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$C.right), children })
       ]
     }
   );
 };
 const root$1 = "_root_ke0e7_1";
-const styles$A = {
+const styles$B = {
   root: root$1
 };
 const isBase64 = (str) => {
@@ -23161,7 +23161,7 @@ const resolveBase64 = (value) => {
 const rootControl = "_rootControl_88dfy_1";
 const segment = "_segment_88dfy_9";
 const selected$1 = "_selected_88dfy_9";
-const styles$z = {
+const styles$A = {
   rootControl,
   segment,
   selected: selected$1
@@ -23180,13 +23180,13 @@ const SegmentedControl = ({
   if (selectedId === void 0) {
     selectedId = segments[0]?.id || "";
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$z.rootControl), children: segments.map((segment2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$A.rootControl), children: segments.map((segment2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       className: clsx(
-        styles$z.segment,
+        styles$A.segment,
         {
-          [styles$z.selected]: selectedId === segment2.id
+          [styles$A.selected]: selectedId === segment2.id
         },
         "text-size-smallest",
         "text-style-secondary"
@@ -23607,7 +23607,7 @@ const Card = ({ id, children, className }) => {
 };
 const grid$1 = "_grid_14885_1";
 const cell = "_cell_14885_8";
-const styles$y = {
+const styles$z = {
   grid: grid$1,
   cell
 };
@@ -23684,7 +23684,7 @@ const visible = "_visible_tm52u_1";
 const hidden = "_hidden_tm52u_5";
 const pills = "_pills_tm52u_9";
 const pill = "_pill_tm52u_9";
-const styles$x = {
+const styles$y = {
   visible,
   hidden,
   pills,
@@ -23714,7 +23714,7 @@ const NavPills = ({ id, children }) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
-        className: child["props"]?.title === activeItem ? styles$x.visible : styles$x.hidden,
+        className: child["props"]?.title === activeItem ? styles$y.visible : styles$y.hidden,
         children: child
       },
       `nav-pill-container-${idx}`
@@ -23724,7 +23724,7 @@ const NavPills = ({ id, children }) => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "ul",
       {
-        className: clsx("nav", "nav-pills", styles$x.pills),
+        className: clsx("nav", "nav-pills", styles$y.pills),
         role: "tablist",
         "aria-orientation": "horizontal",
         children: navPills
@@ -23760,7 +23760,7 @@ const NavPill = ({
           "nav-link",
           "text-style-label",
           active ? "active " : "",
-          styles$x.pill
+          styles$y.pill
         ),
         "data-target": title2,
         onClick: handleClick,
@@ -23776,7 +23776,7 @@ const Buckets = {
   final: 1e3
 };
 const copyButton = "_copyButton_1goi8_1";
-const styles$w = {
+const styles$x = {
   copyButton
 };
 const CopyButton = ({
@@ -23806,7 +23806,7 @@ const CopyButton = ({
     "button",
     {
       type: "button",
-      className: clsx("copy-button", styles$w.copyButton, className),
+      className: clsx("copy-button", styles$x.copyButton, className),
       onClick: () => {
         void handleClick();
       },
@@ -23851,7 +23851,7 @@ const moreToggleButton = "_moreToggleButton_1cl3h_36";
 const separator = "_separator_1cl3h_42";
 const inlineRight = "_inlineRight_1cl3h_48";
 const blockLeft = "_blockLeft_1cl3h_54";
-const styles$v = {
+const styles$w = {
   expandablePanel,
   expandableBordered,
   expandableCollapsed,
@@ -23903,10 +23903,10 @@ const ExpandablePanel = reactExports.memo(
           style: baseStyles,
           ref: contentRef,
           className: clsx(
-            styles$v.expandablePanel,
-            collapsed ? styles$v.expandableCollapsed : void 0,
-            border ? styles$v.expandableBordered : void 0,
-            showToggle ? styles$v.padBottom : void 0,
+            styles$w.expandablePanel,
+            collapsed ? styles$w.expandableCollapsed : void 0,
+            border ? styles$w.expandableBordered : void 0,
+            showToggle ? styles$w.padBottom : void 0,
             className
           ),
           children: [
@@ -23932,7 +23932,7 @@ const ExpandablePanel = reactExports.memo(
           position: "block-left"
         }
       ) }),
-      showToggle && layout === "inline-right" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$v.separator) })
+      showToggle && layout === "inline-right" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$w.separator) })
     ] });
   }
 );
@@ -23951,15 +23951,15 @@ const MoreToggle = ({
     "div",
     {
       className: clsx(
-        styles$v.moreToggle,
-        border ? styles$v.bordered : void 0,
-        position === "inline-right" ? styles$v.inlineRight : styles$v.blockLeft
+        styles$w.moreToggle,
+        border ? styles$w.bordered : void 0,
+        position === "inline-right" ? styles$w.inlineRight : styles$w.blockLeft
       ),
       style,
       children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "button",
         {
-          className: clsx("btn", styles$v.moreToggleButton, "text-size-smallest"),
+          className: clsx("btn", styles$w.moreToggleButton, "text-size-smallest"),
           onClick: handleClick,
           children: [
             text2,
@@ -23971,11 +23971,11 @@ const MoreToggle = ({
   );
 };
 ExpandablePanel.displayName = "ExpandablePanel";
-const labeledValueLabel = "_labeledValueLabel_ev33w_1";
-const labeledValue = "_labeledValue_ev33w_1";
-const row = "_row_ev33w_10";
-const column = "_column_ev33w_14";
-const styles$u = {
+const labeledValueLabel = "_labeledValueLabel_1poe7_1";
+const labeledValue = "_labeledValue_1poe7_1";
+const row = "_row_1poe7_10";
+const column = "_column_1poe7_14";
+const styles$v = {
   labeledValueLabel,
   labeledValue,
   row,
@@ -23993,8 +23993,8 @@ const LabeledValue = ({
     "div",
     {
       className: clsx(
-        styles$u.labeledValue,
-        layout === "column" ? styles$u.column : styles$u.row,
+        styles$v.labeledValue,
+        layout === "column" ? styles$v.column : styles$v.row,
         className
       ),
       style: {
@@ -24005,14 +24005,14 @@ const LabeledValue = ({
           "div",
           {
             className: clsx(
-              styles$u.labeledValueLabel,
+              styles$v.labeledValueLabel,
               "text-style-label",
               "text-style-secondary"
             ),
             children: label
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$u.labeledValueValue), style: { ...valueStyle }, children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$v.labeledValueValue), style: { ...valueStyle }, children })
       ]
     }
   );
@@ -27227,7 +27227,7 @@ const keyPairBordered = "_keyPairBordered_qjlxf_9";
 const key$1 = "_key_qjlxf_1";
 const pre = "_pre_qjlxf_19";
 const treeIcon = "_treeIcon_qjlxf_23";
-const styles$t = {
+const styles$u = {
   keyPairContainer,
   keyPairBordered,
   key: key$1,
@@ -27349,8 +27349,8 @@ const RecordTree = ({
       "div",
       {
         className: clsx(
-          styles$t.keyPairContainer,
-          index < items.length - 1 && useBorders ? styles$t.keyPairBordered : void 0,
+          styles$u.keyPairContainer,
+          index < items.length - 1 && useBorders ? styles$u.keyPairBordered : void 0,
           "text-size-small"
         ),
         style: {
@@ -27363,7 +27363,7 @@ const RecordTree = ({
               "data-index": index,
               className: clsx(
                 kRecordTreeKey,
-                styles$t.key,
+                styles$u.key,
                 "font-monospace",
                 "text-style-secondary"
               ),
@@ -27373,16 +27373,16 @@ const RecordTree = ({
                 setCollapsed(item.id, !collapsedIds?.[item.id]);
               },
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: item.hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$t.pre), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: item.hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$u.pre), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                   "i",
                   {
                     className: clsx(
                       collapsedIds && collapsedIds[item.id] ? ApplicationIcons.tree.closed : ApplicationIcons.tree.open,
-                      styles$t.treeIcon
+                      styles$u.treeIcon
                     )
                   }
                 ) }) : void 0 }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("pre", { className: clsx(styles$t.pre), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("pre", { className: clsx(styles$u.pre), children: [
                   item.key,
                   ":"
                 ] })
@@ -27555,7 +27555,7 @@ const indented = "_indented_b8oe1_29";
 const copyLink = "_copyLink_b8oe1_33";
 const metadataLabel = "_metadataLabel_b8oe1_43";
 const hover = "_hover_b8oe1_47";
-const styles$s = {
+const styles$t = {
   message,
   systemRole,
   messageGrid,
@@ -33097,7 +33097,7 @@ function unescapeCodeHtmlEntities(str) {
   );
 }
 const content$1 = "_content_13ihw_1";
-const styles$r = {
+const styles$s = {
   content: content$1
 };
 reactExports.forwardRef(
@@ -33106,7 +33106,7 @@ reactExports.forwardRef(
       "pre",
       {
         ref: ref2,
-        className: clsx(styles$r.content, "text-size-smaller", className),
+        className: clsx(styles$s.content, "text-size-smaller", className),
         style,
         children: text2
       }
@@ -33156,23 +33156,23 @@ const asJsonObjArray = (text2) => {
   return void 0;
 };
 const contentData = "_contentData_1sd1z_1";
-const styles$q = {
+const styles$r = {
   contentData
 };
 const webSearch = "_webSearch_1376z_1";
 const query$1 = "_query_1376z_8";
-const styles$p = {
+const styles$q = {
   webSearch,
   query: query$1
 };
 const WebSearch = ({ query: query2 }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$p.webSearch, "text-size-smaller"), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$q.webSearch, "text-size-smaller"), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx("text-style-label", "text-style-secondary"), children: "Web Search:" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$p.query, "text-size-smallest"), children: query2 })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$q.query, "text-size-smallest"), children: query2 })
   ] });
 };
 const result = "_result_1mixg_12";
-const styles$o = {
+const styles$p = {
   result
 };
 const WebSearchResults = ({
@@ -33183,7 +33183,7 @@ const WebSearchResults = ({
       "div",
       {
         className: clsx(
-          styles$o.label,
+          styles$p.label,
           "text-style-label",
           "text-style-secondary",
           "text-size-smaller"
@@ -33191,10 +33191,10 @@ const WebSearchResults = ({
         children: "Results"
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx(styles$o.results, "text-size-smaller"), children: results.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx(styles$p.results, "text-size-smaller"), children: results.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
       "li",
       {
-        className: clsx(styles$o.result, "text-style-secondary"),
+        className: clsx(styles$p.result, "text-style-secondary"),
         children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "a",
           {
@@ -33218,17 +33218,17 @@ const ContentDataView = ({ id, contentData: contentData2 }) => {
   );
   if (!renderer) {
     const { encrypted_content, ...record } = renderableData;
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$q.contentData), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$r.contentData), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       RecordTree,
       {
         id: `${id}-tree`,
         record,
-        className: clsx(styles$q.data),
+        className: clsx(styles$r.data),
         defaultExpandLevel: 0
       }
     ) });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$q.contentData), children: renderer.render(renderableData) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$r.contentData), children: renderer.render(renderableData) });
 };
 const webSearchServerToolRenderer = {
   name: "WebSearch",
@@ -33270,7 +33270,7 @@ const serverToolRenderer = {
         {
           id: data2.name || "server-tool",
           record: data2,
-          className: clsx(styles$q.data)
+          className: clsx(styles$r.data)
         }
       )
     ] });
@@ -33288,7 +33288,7 @@ const documentFrame = "_documentFrame_1576h_1";
 const documentFrameTitle = "_documentFrameTitle_1576h_9";
 const downloadLink = "_downloadLink_1576h_16";
 const imageDocument = "_imageDocument_1576h_21";
-const styles$n = {
+const styles$o = {
   documentFrame,
   documentFrameTitle,
   downloadLink,
@@ -33303,7 +33303,7 @@ const ContentDocumentView = ({
     return /* @__PURE__ */ jsxRuntimeExports.jsx(ContentDocumentFrame, { document: document2, downloadable: canDownloadFiles, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       "img",
       {
-        className: clsx(styles$n.imageDocument),
+        className: clsx(styles$o.imageDocument),
         src: document2.document,
         alt: document2.filename,
         id
@@ -33328,17 +33328,17 @@ const ContentDocumentFrame = ({
     "div",
     {
       className: clsx(
-        styles$n.documentFrame,
+        styles$o.documentFrame,
         "text-size-small",
         "text-style-secondary"
       ),
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$n.documentFrameTitle), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$o.documentFrameTitle), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(iconForMimeType(document2.mime_type)) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: downloadable ? /* @__PURE__ */ jsxRuntimeExports.jsx(
             "a",
             {
-              className: clsx(styles$n.downloadLink),
+              className: clsx(styles$o.downloadLink),
               onClick: () => {
               },
               children: document2.filename
@@ -33351,7 +33351,7 @@ const ContentDocumentFrame = ({
   );
 };
 const jsonMessage = "_jsonMessage_oxf8d_1";
-const styles$m = {
+const styles$n = {
   jsonMessage
 };
 const JsonMessageContent = ({
@@ -33364,7 +33364,7 @@ const JsonMessageContent = ({
     {
       id,
       record: json2,
-      className: clsx(styles$m.jsonMessage, className),
+      className: clsx(styles$n.jsonMessage, className),
       useBorders: false
     }
   );
@@ -33376,7 +33376,7 @@ const decodeHtmlEntities = (text2) => {
 };
 const citations = "_citations_1ggvf_1";
 const citationLink = "_citationLink_1ggvf_9";
-const styles$l = {
+const styles$m = {
   citations,
   citationLink
 };
@@ -33384,7 +33384,7 @@ const MessageCitations = ({ citations: citations2 }) => {
   if (citations2.length === 0) {
     return void 0;
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$l.citations, "text-size-smallest"), children: citations2.map((citation, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$m.citations, "text-size-smallest"), children: citations2.map((citation, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: index + 1 }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(MessageCitation, { citation })
   ] }, index)) });
@@ -33404,7 +33404,7 @@ const UrlCitation = ({
     href: citation.url,
     target: "_blank",
     rel: "noopener noreferrer",
-    className: clsx(styles$l.citationLink),
+    className: clsx(styles$m.citationLink),
     title: citation.cited_text && typeof citation.cited_text === "string" ? `${citation.cited_text}
 ${citation.url}` : citation.url,
     children
@@ -33413,7 +33413,7 @@ ${citation.url}` : citation.url,
 const OtherCitation = ({ children }) => /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children });
 const contentImage = "_contentImage_8rgix_1";
 const reasoning = "_reasoning_8rgix_6";
-const styles$k = {
+const styles$l = {
   contentImage,
   reasoning
 };
@@ -33424,7 +33424,7 @@ const args = "_args_1792k_22";
 const argLabel = "_argLabel_1792k_31";
 const error$1 = "_error_1792k_35";
 const toolPanel = "_toolPanel_1792k_40";
-const styles$j = {
+const styles$k = {
   mcpToolUse,
   title: title$1,
   titleText,
@@ -33445,23 +33445,23 @@ const McpToolUse = ({ id, content: content2, className }) => {
   const titleStr = content2.context ? `${content2.context} — ${content2.name}()` : `${content2.name}()`;
   const listToolsResult = maybeListTools(content2);
   const webSearchResult = maybeWebSearchResult(content2);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id, className: clsx(styles$j.mcpToolUse, className), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id, className: clsx(styles$k.mcpToolUse, className), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         className: clsx(
-          styles$j.title,
+          styles$k.title,
           "text-size-small",
           "text-style-secondary"
         ),
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.role.tool }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$j.titleText, children: titleStr }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$j.type, children: content2.type })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$k.titleText, children: titleStr }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$k.type, children: content2.type })
         ]
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$j.args, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$k.args, children: [
       Object.keys(args2).map((key2, index) => {
         const value = args2[key2];
         let valueRecord = void 0;
@@ -33480,7 +33480,7 @@ const McpToolUse = ({ id, content: content2, className }) => {
       }),
       webSearchResult ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(LabelDiv, { label: "results" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: webSearchResult.result.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$j.result, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: webSearchResult.result.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$k.result, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "a",
           {
             href: result2.url,
@@ -33495,7 +33495,7 @@ const McpToolUse = ({ id, content: content2, className }) => {
         {
           id: `${id}-output`,
           collapse: true,
-          className: clsx(styles$j.toolPanel),
+          className: clsx(styles$k.toolPanel),
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(LabelDiv, { label: tool.name }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(ValueDiv, { children: [
@@ -33513,7 +33513,7 @@ const McpToolUse = ({ id, content: content2, className }) => {
         }
       ) })) : void 0
     ] }),
-    content2.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$j.error, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+    content2.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$k.error, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
       "Error: ",
       content2.error
     ] }) }) : !listToolsResult && !webSearchResult ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-small"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ExpandablePanel, { id: `${id}-output`, collapse: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -33570,7 +33570,7 @@ const LabelDiv = ({ label }) => {
     "div",
     {
       className: clsx(
-        styles$j.argLabel,
+        styles$k.argLabel,
         "text-style-secondary",
         "text-size-smaller"
       ),
@@ -33585,7 +33585,7 @@ const toolImage = "_toolImage_1wvgr_1";
 const output$3 = "_output_1wvgr_6";
 const textOutput = "_textOutput_1wvgr_10";
 const textCode = "_textCode_1wvgr_18";
-const styles$i = {
+const styles$j = {
   toolImage,
   output: output$3,
   textOutput,
@@ -33604,7 +33604,7 @@ const ToolOutput = ({ output: output2, className }) => {
       } else {
         if (out.image.startsWith("data:")) {
           outputs.push(
-            /* @__PURE__ */ jsxRuntimeExports.jsx("img", { className: clsx(styles$i.toolImage), src: out.image }, key2)
+            /* @__PURE__ */ jsxRuntimeExports.jsx("img", { className: clsx(styles$j.toolImage), src: out.image }, key2)
           );
         } else {
           outputs.push(/* @__PURE__ */ jsxRuntimeExports.jsx(ToolTextOutput, { text: String(out.image) }, key2));
@@ -33616,14 +33616,14 @@ const ToolOutput = ({ output: output2, className }) => {
       /* @__PURE__ */ jsxRuntimeExports.jsx(ToolTextOutput, { text: String(output2) }, "tool-output-single")
     );
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$i.output, className), children: outputs });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$j.output, className), children: outputs });
 };
 const ToolTextOutput = ({ text: text2 }) => {
   if (isJson(text2)) {
     const obj = JSON.parse(text2);
     return /* @__PURE__ */ jsxRuntimeExports.jsx(JsonMessageContent, { id: `1-json`, json: obj });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$i.textOutput, "tool-output"), children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("sourceCode", styles$i.textCode), children: text2.trim() }) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$j.textOutput, "tool-output"), children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("sourceCode", styles$j.textCode), children: text2.trim() }) });
 };
 const isMessageContent = (content2) => {
   return typeof content2 === "object" && content2 !== null && "type" in content2 && typeof content2.type === "string";
@@ -33723,7 +33723,7 @@ const messageRenderers = {
       } else if (!text2) {
         text2 = r2.summary || "Reasoning text not provided.";
       }
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$k.reasoning, "text-size-small"), children: [
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$l.reasoning, "text-size-small"), children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
@@ -33746,7 +33746,7 @@ const messageRenderers = {
     render: (key2, content2, _isLast, _context) => {
       const c2 = content2;
       if (c2.image.startsWith("data:")) {
-        return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: c2.image, className: styles$k.contentImage }, key2);
+        return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: c2.image, className: styles$l.contentImage }, key2);
       } else {
         return /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: c2.image }, key2);
       }
@@ -33872,7 +33872,7 @@ const normalizeContent$2 = (contents) => {
 const isCitationWithRange = (citation) => Array.isArray(citation.cited_text);
 const content = "_content_1b2jp_1";
 const codeCompact = "_codeCompact_1b2jp_5";
-const styles$h = {
+const styles$i = {
   content,
   codeCompact
 };
@@ -34301,12 +34301,12 @@ const extractInput = (args2, inputDescriptor) => {
   }
 };
 const toolCallView = "_toolCallView_l6wae_1";
-const styles$g = {
+const styles$h = {
   toolCallView
 };
 const todoList = "_todoList_1t8rx_1";
 const inProgress = "_inProgress_1t8rx_9";
-const styles$f = {
+const styles$g = {
   todoList,
   inProgress
 };
@@ -34326,7 +34326,7 @@ const toToolTodos = (obj) => {
 };
 const TodoWriteInput = ({ contents, parentRef }) => {
   const todoItems = toToolTodos(contents);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: parentRef, className: clsx(styles$f.todoList), children: todoItems.map((todo) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: parentRef, className: clsx(styles$g.todoList), children: todoItems.map((todo) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "i",
@@ -34341,9 +34341,9 @@ const TodoWriteInput = ({ contents, parentRef }) => {
         "span",
         {
           className: clsx(
-            styles$f.todoItem,
+            styles$g.todoItem,
             "text-size-smallest",
-            todo.status === "in_progress" ? styles$f.inProgress : void 0
+            todo.status === "in_progress" ? styles$g.inProgress : void 0
           ),
           children: todo.content
         }
@@ -34354,7 +34354,7 @@ const TodoWriteInput = ({ contents, parentRef }) => {
 const outputPre = "_outputPre_1jznn_1";
 const toolView = "_toolView_1jznn_7";
 const outputCode = "_outputCode_1jznn_15";
-const styles$e = {
+const styles$f = {
   outputPre,
   toolView,
   outputCode
@@ -34371,7 +34371,7 @@ const ToolInput = (props) => {
       {
         markdown: toolCallView2.content,
         ref: sourceCodeRef,
-        className: clsx("tool-output", styles$e.toolView, className)
+        className: clsx("tool-output", styles$f.toolView, className)
       }
     );
   } else {
@@ -34401,8 +34401,8 @@ const RenderTool = ({
     {
       className: clsx(
         "tool-output",
-        styles$e.outputPre,
-        styles$e.bottomMargin,
+        styles$f.outputPre,
+        styles$f.bottomMargin,
         className
       ),
       children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -34412,7 +34412,7 @@ const RenderTool = ({
             "source-code",
             "sourceCode",
             contentType ? `language-${contentType}` : void 0,
-            styles$e.outputCode
+            styles$f.outputCode
           ),
           children: formattedContent
         }
@@ -34423,16 +34423,16 @@ const RenderTool = ({
 const image = "_image_1vcac_1";
 const toolTitle = "_toolTitle_1vcac_6";
 const description = "_description_1vcac_10";
-const styles$d = {
+const styles$e = {
   image,
   toolTitle,
   description
 };
 const ToolTitle = ({ title: title2, description: description2 }) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx("bi", "bi-tools", styles$d.image) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("text-size-small", styles$d.toolTitle), children: title2 }),
-    description2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: clsx(styles$d.description, "text-size-smallest"), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx("bi", "bi-tools", styles$e.image) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("text-size-small", styles$e.toolTitle), children: title2 }),
+    description2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: clsx(styles$e.description, "text-size-smallest"), children: [
       "- ",
       description2
     ] }) : void 0
@@ -34481,7 +34481,7 @@ const ToolCallView = ({
   });
   const contents = mode !== "compact" ? input : input || functionCall;
   const context = defaultContext();
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$g.toolCallView), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$h.toolCallView), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
       mode !== "compact" && (!view || view.title) ? /* @__PURE__ */ jsxRuntimeExports.jsx(
         ToolTitle,
@@ -34558,7 +34558,7 @@ const MessageContents = ({
       }
       const resolvedToolOutput = resolveToolMessage(toolMessage);
       if (toolCallStyle === "compact") {
-        return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("code", { className: clsx(styles$h.codeCompact), children: [
+        return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("code", { className: clsx(styles$i.codeCompact), children: [
           "tool: ",
           functionCall
         ] }) }, `tool-call-${idx}`);
@@ -34581,7 +34581,7 @@ const MessageContents = ({
       }
     });
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-      message2.content && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$h.content, children: /* @__PURE__ */ jsxRuntimeExports.jsx(MessageContent, { contents: message2.content, context }) }),
+      message2.content && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$i.content, children: /* @__PURE__ */ jsxRuntimeExports.jsx(MessageContent, { contents: message2.content, context }) }),
       toolCalls
     ] });
   } else {
@@ -34662,10 +34662,10 @@ const ChatMessage = reactExports.memo(
         className: clsx(
           message2.role,
           "text-size-base",
-          styles$s.message,
-          message2.role === "system" ? styles$s.systemRole : void 0,
-          message2.role === "user" ? styles$s.userRole : void 0,
-          mouseOver ? styles$s.hover : void 0
+          styles$t.message,
+          message2.role === "system" ? styles$t.systemRole : void 0,
+          message2.role === "user" ? styles$t.userRole : void 0,
+          mouseOver ? styles$t.hover : void 0
         ),
         onMouseEnter: () => setMouseOver(true),
         onMouseLeave: () => setMouseOver(false),
@@ -34674,8 +34674,8 @@ const ChatMessage = reactExports.memo(
             "div",
             {
               className: clsx(
-                styles$s.messageGrid,
-                message2.role === "tool" ? styles$s.toolMessageGrid : void 0,
+                styles$t.messageGrid,
+                message2.role === "tool" ? styles$t.toolMessageGrid : void 0,
                 "text-style-label"
               ),
               children: [
@@ -34686,7 +34686,7 @@ const ChatMessage = reactExports.memo(
                   {
                     icon: ApplicationIcons.link,
                     value: toFullUrl(messageUrl),
-                    className: clsx(styles$s.copyLink)
+                    className: clsx(styles$t.copyLink)
                   }
                 ) : ""
               ]
@@ -34696,8 +34696,8 @@ const ChatMessage = reactExports.memo(
             "div",
             {
               className: clsx(
-                styles$s.messageContents,
-                indented2 ? styles$s.indented : void 0
+                styles$t.messageContents,
+                indented2 ? styles$t.indented : void 0
               ),
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -34722,7 +34722,7 @@ const ChatMessage = reactExports.memo(
                   LabeledValue,
                   {
                     label: "Metadata",
-                    className: clsx(styles$s.metadataLabel, "text-size-smaller"),
+                    className: clsx(styles$t.metadataLabel, "text-size-smaller"),
                     children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                       RecordTree,
                       {
@@ -34745,7 +34745,7 @@ const grid = "_grid_rmdrx_1";
 const number = "_number_rmdrx_7";
 const user = "_user_rmdrx_11";
 const container$5 = "_container_rmdrx_16";
-const styles$c = {
+const styles$d = {
   grid,
   number,
   user,
@@ -34766,9 +34766,9 @@ const ChatMessageRow = ({
         "div",
         {
           className: clsx(
-            styles$c.grid,
-            styles$c.container,
-            highlightUserMessage && resolvedMessage.message.role === "user" ? styles$c.user : void 0
+            styles$d.grid,
+            styles$d.container,
+            highlightUserMessage && resolvedMessage.message.role === "user" ? styles$d.user : void 0
           ),
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -34777,7 +34777,7 @@ const ChatMessageRow = ({
                 className: clsx(
                   "text-size-smaller",
                   "text-style-secondary",
-                  styles$c.number
+                  styles$d.number
                 ),
                 children: number2
               }
@@ -34803,9 +34803,9 @@ const ChatMessageRow = ({
       "div",
       {
         className: clsx(
-          styles$c.container,
-          styles$c.simple,
-          highlightUserMessage && resolvedMessage.message.role === "user" ? styles$c.user : void 0
+          styles$d.container,
+          styles$d.simple,
+          highlightUserMessage && resolvedMessage.message.role === "user" ? styles$d.user : void 0
         ),
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -36369,7 +36369,7 @@ const query = "_query_seqs2_1";
 const summary = "_summary_seqs2_6";
 const preWrap = "_preWrap_seqs2_10";
 const preCompact = "_preCompact_seqs2_15";
-const styles$b = {
+const styles$c = {
   query,
   summary,
   preWrap,
@@ -36494,7 +36494,7 @@ const contentRenderers = (renderObject) => {
           };
         } else {
           return {
-            rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$b.preWrap, styles$b.preCompact), children: rendered })
+            rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$c.preWrap, styles$c.preCompact), children: rendered })
           };
         }
       }
@@ -36543,7 +36543,7 @@ const contentRenderers = (renderObject) => {
       render: (_id, entry2, _options) => {
         const results = [];
         results.push(
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$b.query, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$c.query, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.search }),
             " ",
             entry2.value.query
@@ -36555,7 +36555,7 @@ const contentRenderers = (renderObject) => {
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: result2.url, children: result2.url }) })
             );
             results.push(
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-smaller", styles$b.summary), children: result2.summary })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-smaller", styles$c.summary), children: result2.summary })
             );
           }
         );
@@ -36571,7 +36571,7 @@ const contentRenderers = (renderObject) => {
       },
       render: (_id, entry2, _options) => {
         return {
-          rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$b.preWrap, children: entry2.value })
+          rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$c.preWrap, children: entry2.value })
         };
       }
     },
@@ -36663,7 +36663,7 @@ const MetaDataGrid = ({
         {
           className: clsx(
             `${baseId}-key`,
-            styles$y.cell,
+            styles$z.cell,
             "text-style-label",
             "text-style-secondary",
             fontStyle
@@ -36671,7 +36671,7 @@ const MetaDataGrid = ({
           children: entry2?.name
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$y.value, `${baseId}-value`, fontStyle), children: entry2 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$z.value, `${baseId}-value`, fontStyle), children: entry2 && /* @__PURE__ */ jsxRuntimeExports.jsx(
         RenderedContent,
         {
           id: id2,
@@ -36681,7 +36681,7 @@ const MetaDataGrid = ({
               MetaDataGrid,
               {
                 id: id2,
-                className: clsx(styles$y.nested),
+                className: clsx(styles$z.nested),
                 entries: obj,
                 size,
                 plain
@@ -36692,7 +36692,7 @@ const MetaDataGrid = ({
       ) })
     ] }, `${baseId}-record-${index}`);
   });
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id, className: clsx(className, styles$y.grid), style, children: entryEls });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id, className: clsx(className, styles$z.grid), style, children: entryEls });
 };
 const entryRecords = (entries2) => {
   if (!entries2) {
@@ -36707,7 +36707,7 @@ const entryRecords = (entries2) => {
   }
 };
 const container$4 = "_container_1q66p_1";
-const styles$a = {
+const styles$b = {
   container: container$4
 };
 const ScanInfo = () => {
@@ -36715,7 +36715,7 @@ const ScanInfo = () => {
   if (!selectedResults) {
     return null;
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { className: clsx(styles$a.container), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { className: clsx(styles$b.container), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(CardHeader, { label: "Scan Information" }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(CardBody, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       MetaDataGrid,
@@ -36726,7 +36726,7 @@ const ScanInfo = () => {
   ] });
 };
 const container$3 = "_container_3iyps_1";
-const styles$9 = {
+const styles$a = {
   container: container$3
 };
 const useSelectedScanner = () => {
@@ -90532,3036 +90532,6 @@ var AllCommunityModule = {
     CellSpanModule
   ]
 };
-var BeansContext = React20.createContext({});
-var RenderModeContext = React20.createContext("default");
-var showJsComp = (compDetails, context, eParent, ref2) => {
-  const doNothing = !compDetails || compDetails.componentFromFramework || context.isDestroyed();
-  if (doNothing) {
-    return;
-  }
-  const promise = compDetails.newAgStackInstance();
-  let comp;
-  let compGui;
-  let destroyed = false;
-  promise.then((c2) => {
-    if (destroyed) {
-      context.destroyBean(c2);
-      return;
-    }
-    comp = c2;
-    compGui = comp.getGui();
-    eParent.appendChild(compGui);
-    setRef(ref2, comp);
-  });
-  return () => {
-    destroyed = true;
-    if (!comp) {
-      return;
-    }
-    compGui?.remove();
-    context.destroyBean(comp);
-    if (ref2) {
-      setRef(ref2, void 0);
-    }
-  };
-};
-var setRef = (ref2, value) => {
-  if (!ref2) {
-    return;
-  }
-  if (ref2 instanceof Function) {
-    const refCallback = ref2;
-    refCallback(value);
-  } else {
-    const refObj = ref2;
-    refObj.current = value;
-  }
-};
-var classesList = (...list2) => {
-  const filtered = list2.filter((s) => s != null && s !== "");
-  return filtered.join(" ");
-};
-var CssClasses = class _CssClasses {
-  constructor(...initialClasses) {
-    this.classesMap = {};
-    for (const className of initialClasses) {
-      this.classesMap[className] = true;
-    }
-  }
-  setClass(className, on) {
-    const nothingHasChanged = !!this.classesMap[className] == on;
-    if (nothingHasChanged) {
-      return this;
-    }
-    const res = new _CssClasses();
-    res.classesMap = { ...this.classesMap };
-    res.classesMap[className] = on;
-    return res;
-  }
-  toString() {
-    const res = Object.keys(this.classesMap).filter((key2) => this.classesMap[key2]).join(" ");
-    return res;
-  }
-};
-var isComponentStateless = (Component2) => {
-  const hasSymbol = () => typeof Symbol === "function" && Symbol.for;
-  const getMemoType = () => hasSymbol() ? Symbol.for("react.memo") : 60115;
-  return typeof Component2 === "function" && !(Component2.prototype && Component2.prototype.isReactComponent) || typeof Component2 === "object" && Component2.$$typeof === getMemoType();
-};
-var reactVersion = React20.version?.split(".")[0];
-var isReactVersion17Minus = reactVersion === "16" || reactVersion === "17";
-function isReact19() {
-  return reactVersion === "19";
-}
-var disableFlushSync = false;
-function runWithoutFlushSync(func2) {
-  if (!disableFlushSync) {
-    setTimeout(() => disableFlushSync = false, 0);
-  }
-  disableFlushSync = true;
-  return func2();
-}
-var agFlushSync = (useFlushSync, fn2) => {
-  if (!isReactVersion17Minus && useFlushSync && !disableFlushSync) {
-    ReactDOM.flushSync(fn2);
-  } else {
-    fn2();
-  }
-};
-var agStartTransition = (fn2) => {
-  if (!isReactVersion17Minus) {
-    React20.startTransition(fn2);
-  } else {
-    fn2();
-  }
-};
-function agUseSyncExternalStore(subscribe, getSnapshot, defaultSnapshot) {
-  if (React20.useSyncExternalStore) {
-    return React20.useSyncExternalStore(subscribe, getSnapshot);
-  } else {
-    return defaultSnapshot;
-  }
-}
-function getNextValueIfDifferent(prev, next, maintainOrder) {
-  if (next == null || prev == null) {
-    return next;
-  }
-  if (prev === next || next.length === 0 && prev.length === 0) {
-    return prev;
-  }
-  if (maintainOrder || prev.length === 0 && next.length > 0 || prev.length > 0 && next.length === 0) {
-    return next;
-  }
-  const oldValues = [];
-  const newValues = [];
-  const prevMap = /* @__PURE__ */ new Map();
-  const nextMap = /* @__PURE__ */ new Map();
-  for (let i = 0; i < next.length; i++) {
-    const c2 = next[i];
-    nextMap.set(c2.instanceId, c2);
-  }
-  for (let i = 0; i < prev.length; i++) {
-    const c2 = prev[i];
-    prevMap.set(c2.instanceId, c2);
-    if (nextMap.has(c2.instanceId)) {
-      oldValues.push(c2);
-    }
-  }
-  for (let i = 0; i < next.length; i++) {
-    const c2 = next[i];
-    const instanceId = c2.instanceId;
-    if (!prevMap.has(instanceId)) {
-      newValues.push(c2);
-    }
-  }
-  if (oldValues.length === prev.length && newValues.length === 0) {
-    return prev;
-  }
-  if (oldValues.length === 0 && newValues.length === next.length) {
-    return next;
-  }
-  if (oldValues.length === 0) {
-    return newValues;
-  }
-  if (newValues.length === 0) {
-    return oldValues;
-  }
-  return [...oldValues, ...newValues];
-}
-var GroupCellRenderer = reactExports.forwardRef((props, ref2) => {
-  const { registry, context } = reactExports.useContext(BeansContext);
-  const eGui = reactExports.useRef(null);
-  const eValueRef = reactExports.useRef(null);
-  const eCheckboxRef = reactExports.useRef(null);
-  const eExpandedRef = reactExports.useRef(null);
-  const eContractedRef = reactExports.useRef(null);
-  const ctrlRef = reactExports.useRef();
-  const [innerCompDetails, setInnerCompDetails] = reactExports.useState();
-  const [childCount, setChildCount] = reactExports.useState();
-  const [value, setValue] = reactExports.useState();
-  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
-  const [expandedCssClasses, setExpandedCssClasses] = reactExports.useState(() => new CssClasses("ag-hidden"));
-  const [contractedCssClasses, setContractedCssClasses] = reactExports.useState(() => new CssClasses("ag-hidden"));
-  const [checkboxCssClasses, setCheckboxCssClasses] = reactExports.useState(() => new CssClasses("ag-invisible"));
-  reactExports.useImperativeHandle(ref2, () => {
-    return {
-      // force new instance when grid tries to refresh
-      refresh() {
-        return false;
-      }
-    };
-  });
-  reactExports.useLayoutEffect(() => {
-    return showJsComp(innerCompDetails, context, eValueRef.current);
-  }, [innerCompDetails]);
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef || context.isDestroyed()) {
-      ctrlRef.current = context.destroyBean(ctrlRef.current);
-      return;
-    }
-    const compProxy = {
-      setInnerRenderer: (details, valueToDisplay) => {
-        setInnerCompDetails(details);
-        setValue(valueToDisplay);
-      },
-      setChildCount: (count2) => setChildCount(count2),
-      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
-      setContractedDisplayed: (displayed) => setContractedCssClasses((prev) => prev.setClass("ag-hidden", !displayed)),
-      setExpandedDisplayed: (displayed) => setExpandedCssClasses((prev) => prev.setClass("ag-hidden", !displayed)),
-      setCheckboxVisible: (visible2) => setCheckboxCssClasses((prev) => prev.setClass("ag-invisible", !visible2)),
-      setCheckboxSpacing: (add2) => setCheckboxCssClasses((prev) => prev.setClass("ag-group-checkbox-spacing", add2))
-    };
-    const groupCellRendererCtrl = registry.createDynamicBean("groupCellRendererCtrl", true);
-    if (groupCellRendererCtrl) {
-      ctrlRef.current = context.createBean(groupCellRendererCtrl);
-      ctrlRef.current.init(
-        compProxy,
-        eRef,
-        eCheckboxRef.current,
-        eExpandedRef.current,
-        eContractedRef.current,
-        GroupCellRenderer,
-        props
-      );
-    }
-  }, []);
-  const className = reactExports.useMemo(() => `ag-cell-wrapper ${cssClasses.toString()}`, [cssClasses]);
-  const expandedClassName = reactExports.useMemo(() => `ag-group-expanded ${expandedCssClasses.toString()}`, [expandedCssClasses]);
-  const contractedClassName = reactExports.useMemo(
-    () => `ag-group-contracted ${contractedCssClasses.toString()}`,
-    [contractedCssClasses]
-  );
-  const checkboxClassName = reactExports.useMemo(() => `ag-group-checkbox ${checkboxCssClasses.toString()}`, [checkboxCssClasses]);
-  const useFwRenderer = innerCompDetails?.componentFromFramework;
-  const FwRenderer = useFwRenderer ? innerCompDetails.componentClass : void 0;
-  const useValue = innerCompDetails == null && value != null;
-  const escapedValue = _toString(value);
-  return /* @__PURE__ */ React20.createElement(
-    "span",
-    {
-      className,
-      ref: setRef2,
-      ...!props.colDef ? { role: ctrlRef.current?.getCellAriaRole() } : {}
-    },
-    /* @__PURE__ */ React20.createElement("span", { className: expandedClassName, ref: eExpandedRef }),
-    /* @__PURE__ */ React20.createElement("span", { className: contractedClassName, ref: eContractedRef }),
-    /* @__PURE__ */ React20.createElement("span", { className: checkboxClassName, ref: eCheckboxRef }),
-    /* @__PURE__ */ React20.createElement("span", { className: "ag-group-value", ref: eValueRef }, useValue ? escapedValue : useFwRenderer ? /* @__PURE__ */ React20.createElement(FwRenderer, { ...innerCompDetails.params }) : null),
-    /* @__PURE__ */ React20.createElement("span", { className: "ag-group-child-count" }, childCount)
-  );
-});
-var groupCellRenderer_default = GroupCellRenderer;
-var CustomContext = reactExports.createContext({
-  setMethods: () => {
-  }
-});
-var CustomWrapperComp = (params) => {
-  const { initialProps, addUpdateCallback, CustomComponentClass, setMethods } = params;
-  const [{ key: key2, ...props }, setProps] = reactExports.useState(initialProps);
-  reactExports.useEffect(() => {
-    addUpdateCallback((newProps) => setProps(newProps));
-  }, []);
-  return /* @__PURE__ */ React20.createElement(CustomContext.Provider, { value: { setMethods } }, /* @__PURE__ */ React20.createElement(CustomComponentClass, { key: key2, ...props }));
-};
-var customWrapperComp_default = reactExports.memo(CustomWrapperComp);
-var counter = 0;
-function generateNewKey() {
-  return `agPortalKey_${++counter}`;
-}
-var ReactComponent = class {
-  constructor(reactComponent, portalManager, componentType, suppressFallbackMethods) {
-    this.portal = null;
-    this.oldPortal = null;
-    this.reactComponent = reactComponent;
-    this.portalManager = portalManager;
-    this.componentType = componentType;
-    this.suppressFallbackMethods = !!suppressFallbackMethods;
-    this.statelessComponent = this.isStateless(this.reactComponent);
-    this.key = generateNewKey();
-    this.portalKey = generateNewKey();
-    this.instanceCreated = this.isStatelessComponent() ? AgPromise.resolve(false) : new AgPromise((resolve2) => {
-      this.resolveInstanceCreated = resolve2;
-    });
-  }
-  getGui() {
-    return this.eParentElement;
-  }
-  /** `getGui()` returns the parent element. This returns the actual root element. */
-  getRootElement() {
-    const firstChild = this.eParentElement.firstChild;
-    return firstChild;
-  }
-  destroy() {
-    if (this.componentInstance && typeof this.componentInstance.destroy == "function") {
-      this.componentInstance.destroy();
-    }
-    const portal = this.portal;
-    if (portal) {
-      this.portalManager.destroyPortal(portal);
-    }
-  }
-  createParentElement(params) {
-    const componentWrappingElement = this.portalManager.getComponentWrappingElement();
-    const eParentElement = document.createElement(componentWrappingElement || "div");
-    eParentElement.classList.add("ag-react-container");
-    params.reactContainer = eParentElement;
-    return eParentElement;
-  }
-  statelessComponentRendered() {
-    return this.eParentElement.childElementCount > 0 || this.eParentElement.childNodes.length > 0;
-  }
-  getFrameworkComponentInstance() {
-    return this.componentInstance;
-  }
-  isStatelessComponent() {
-    return this.statelessComponent;
-  }
-  getReactComponentName() {
-    return this.reactComponent.name;
-  }
-  getMemoType() {
-    return this.hasSymbol() ? Symbol.for("react.memo") : 60115;
-  }
-  hasSymbol() {
-    return typeof Symbol === "function" && Symbol.for;
-  }
-  isStateless(Component2) {
-    return typeof Component2 === "function" && !(Component2.prototype && Component2.prototype.isReactComponent) || typeof Component2 === "object" && Component2.$$typeof === this.getMemoType();
-  }
-  hasMethod(name2) {
-    const frameworkComponentInstance = this.getFrameworkComponentInstance();
-    return !!frameworkComponentInstance && frameworkComponentInstance[name2] != null || this.fallbackMethodAvailable(name2);
-  }
-  callMethod(name2, args2) {
-    const frameworkComponentInstance = this.getFrameworkComponentInstance();
-    if (this.isStatelessComponent()) {
-      return this.fallbackMethod(name2, !!args2 && args2[0] ? args2[0] : {});
-    } else if (!frameworkComponentInstance) {
-      setTimeout(() => this.callMethod(name2, args2));
-      return;
-    }
-    const method = frameworkComponentInstance[name2];
-    if (method) {
-      return method.apply(frameworkComponentInstance, args2);
-    }
-    if (this.fallbackMethodAvailable(name2)) {
-      return this.fallbackMethod(name2, !!args2 && args2[0] ? args2[0] : {});
-    }
-  }
-  addMethod(name2, callback) {
-    this[name2] = callback;
-  }
-  init(params) {
-    this.eParentElement = this.createParentElement(params);
-    this.createOrUpdatePortal(params);
-    return new AgPromise((resolve2) => this.createReactComponent(resolve2));
-  }
-  createOrUpdatePortal(params) {
-    if (!this.isStatelessComponent()) {
-      this.ref = (element) => {
-        this.componentInstance = element;
-        this.resolveInstanceCreated?.(true);
-        this.resolveInstanceCreated = void 0;
-      };
-      params.ref = this.ref;
-    }
-    this.reactElement = this.createElement(this.reactComponent, { ...params, key: this.key });
-    this.portal = reactDomExports.createPortal(
-      this.reactElement,
-      this.eParentElement,
-      this.portalKey
-      // fixed deltaRowModeRefreshCompRenderer
-    );
-  }
-  createElement(reactComponent, props) {
-    return reactExports.createElement(reactComponent, props);
-  }
-  createReactComponent(resolve2) {
-    this.portalManager.mountReactPortal(this.portal, this, resolve2);
-  }
-  rendered() {
-    return this.isStatelessComponent() && this.statelessComponentRendered() || !!(!this.isStatelessComponent() && this.getFrameworkComponentInstance());
-  }
-  /*
-   * fallback methods - these will be invoked if a corresponding instance method is not present
-   * for example if refresh is called and is not available on the component instance, then refreshComponent on this
-   * class will be invoked instead
-   *
-   * Currently only refresh is supported
-   */
-  refreshComponent(args2) {
-    this.oldPortal = this.portal;
-    this.createOrUpdatePortal(args2);
-    this.portalManager.updateReactPortal(this.oldPortal, this.portal);
-  }
-  fallbackMethod(name2, params) {
-    const method = this[`${name2}Component`];
-    if (!this.suppressFallbackMethods && !!method) {
-      return method.bind(this)(params);
-    }
-  }
-  fallbackMethodAvailable(name2) {
-    if (this.suppressFallbackMethods) {
-      return false;
-    }
-    const method = this[`${name2}Component`];
-    return !!method;
-  }
-};
-function addOptionalMethods(optionalMethodNames, providedMethods, component) {
-  for (const methodName of optionalMethodNames) {
-    const providedMethod = providedMethods[methodName];
-    if (providedMethod) {
-      component[methodName] = providedMethod;
-    }
-  }
-}
-var CustomComponentWrapper = class extends ReactComponent {
-  constructor() {
-    super(...arguments);
-    this.awaitUpdateCallback = new AgPromise((resolve2) => {
-      this.resolveUpdateCallback = resolve2;
-    });
-    this.wrapperComponent = customWrapperComp_default;
-  }
-  init(params) {
-    this.sourceParams = params;
-    return super.init(this.getProps());
-  }
-  addMethod() {
-  }
-  getInstance() {
-    return this.instanceCreated.then(() => this.componentInstance);
-  }
-  getFrameworkComponentInstance() {
-    return this;
-  }
-  createElement(reactComponent, props) {
-    return super.createElement(this.wrapperComponent, {
-      initialProps: props,
-      CustomComponentClass: reactComponent,
-      setMethods: (methods) => this.setMethods(methods),
-      addUpdateCallback: (callback) => {
-        this.updateCallback = () => {
-          callback(this.getProps());
-          return new AgPromise((resolve2) => {
-            setTimeout(() => {
-              resolve2();
-            });
-          });
-        };
-        this.resolveUpdateCallback();
-      }
-    });
-  }
-  setMethods(methods) {
-    this.providedMethods = methods;
-    addOptionalMethods(this.getOptionalMethods(), this.providedMethods, this);
-  }
-  getOptionalMethods() {
-    return [];
-  }
-  getProps() {
-    return {
-      ...this.sourceParams,
-      key: this.key,
-      ref: this.ref
-    };
-  }
-  refreshProps() {
-    if (this.updateCallback) {
-      return this.updateCallback();
-    }
-    return new AgPromise(
-      (resolve2) => this.awaitUpdateCallback.then(() => {
-        this.updateCallback().then(() => resolve2());
-      })
-    );
-  }
-};
-var CellRendererComponentWrapper = class extends CustomComponentWrapper {
-  refresh(params) {
-    this.sourceParams = params;
-    this.refreshProps();
-    return true;
-  }
-};
-var DateComponentWrapper = class extends CustomComponentWrapper {
-  constructor() {
-    super(...arguments);
-    this.date = null;
-    this.onDateChange = (date2) => this.updateDate(date2);
-  }
-  getDate() {
-    return this.date;
-  }
-  setDate(date2) {
-    this.date = date2;
-    this.refreshProps();
-  }
-  refresh(params) {
-    this.sourceParams = params;
-    this.refreshProps();
-  }
-  getOptionalMethods() {
-    return ["afterGuiAttached", "setInputPlaceholder", "setInputAriaLabel", "setDisabled"];
-  }
-  updateDate(date2) {
-    this.setDate(date2);
-    this.sourceParams.onDateChanged();
-  }
-  getProps() {
-    const props = super.getProps();
-    props.date = this.date;
-    props.onDateChange = this.onDateChange;
-    delete props.onDateChanged;
-    return props;
-  }
-};
-var DragAndDropImageComponentWrapper = class extends CustomComponentWrapper {
-  constructor() {
-    super(...arguments);
-    this.label = "";
-    this.icon = null;
-    this.shake = false;
-  }
-  setIcon(iconName, shake) {
-    this.icon = iconName;
-    this.shake = shake;
-    this.refreshProps();
-  }
-  setLabel(label) {
-    this.label = label;
-    this.refreshProps();
-  }
-  getProps() {
-    const props = super.getProps();
-    const { label, icon, shake } = this;
-    props.label = label;
-    props.icon = icon;
-    props.shake = shake;
-    return props;
-  }
-};
-var FilterComponentWrapper = class extends CustomComponentWrapper {
-  constructor() {
-    super(...arguments);
-    this.model = null;
-    this.onModelChange = (model) => this.updateModel(model);
-    this.onUiChange = () => this.sourceParams.filterModifiedCallback();
-    this.expectingNewMethods = true;
-    this.hasBeenActive = false;
-    this.awaitSetMethodsCallback = new AgPromise((resolve2) => {
-      this.resolveSetMethodsCallback = resolve2;
-    });
-  }
-  isFilterActive() {
-    return this.model != null;
-  }
-  doesFilterPass(params) {
-    return this.providedMethods.doesFilterPass(params);
-  }
-  getModel() {
-    return this.model;
-  }
-  setModel(model) {
-    this.expectingNewMethods = true;
-    this.model = model;
-    this.hasBeenActive || (this.hasBeenActive = this.isFilterActive());
-    return this.refreshProps();
-  }
-  refresh(newParams) {
-    this.sourceParams = newParams;
-    this.refreshProps();
-    return true;
-  }
-  afterGuiAttached(params) {
-    const providedMethods = this.providedMethods;
-    if (!providedMethods) {
-      this.awaitSetMethodsCallback.then(() => this.providedMethods?.afterGuiAttached?.(params));
-    } else {
-      providedMethods.afterGuiAttached?.(params);
-    }
-  }
-  getOptionalMethods() {
-    return ["afterGuiDetached", "onNewRowsLoaded", "getModelAsString", "onAnyFilterChanged"];
-  }
-  setMethods(methods) {
-    if (this.expectingNewMethods === false && this.hasBeenActive && this.providedMethods?.doesFilterPass !== methods?.doesFilterPass) {
-      setTimeout(() => {
-        this.sourceParams.filterChangedCallback();
-      });
-    }
-    this.expectingNewMethods = false;
-    super.setMethods(methods);
-    this.resolveSetMethodsCallback();
-    this.resolveFilterPassCallback?.();
-    this.resolveFilterPassCallback = void 0;
-  }
-  updateModel(model) {
-    this.resolveFilterPassCallback?.();
-    const awaitFilterPassCallback = new AgPromise((resolve2) => {
-      this.resolveFilterPassCallback = resolve2;
-    });
-    this.setModel(model).then(() => {
-      awaitFilterPassCallback.then(() => {
-        this.sourceParams.filterChangedCallback();
-      });
-    });
-  }
-  getProps() {
-    const props = super.getProps();
-    props.model = this.model;
-    props.onModelChange = this.onModelChange;
-    props.onUiChange = this.onUiChange;
-    delete props.filterChangedCallback;
-    return props;
-  }
-};
-var FilterDisplayComponentWrapper = class extends CustomComponentWrapper {
-  constructor() {
-    super(...arguments);
-    this.awaitSetMethodsCallback = new AgPromise((resolve2) => {
-      this.resolveSetMethodsCallback = resolve2;
-    });
-  }
-  refresh(newParams) {
-    this.sourceParams = newParams;
-    this.refreshProps();
-    return true;
-  }
-  afterGuiAttached(params) {
-    const providedMethods = this.providedMethods;
-    if (!providedMethods) {
-      this.awaitSetMethodsCallback.then(() => this.providedMethods?.afterGuiAttached?.(params));
-    } else {
-      providedMethods.afterGuiAttached?.(params);
-    }
-  }
-  getOptionalMethods() {
-    return ["afterGuiDetached", "onNewRowsLoaded", "onAnyFilterChanged"];
-  }
-  setMethods(methods) {
-    super.setMethods(methods);
-    this.resolveSetMethodsCallback();
-  }
-};
-function updateFloatingFilterParent(params, model) {
-  params.parentFilterInstance((instance) => {
-    (instance.setModel(model) || AgPromise.resolve()).then(() => {
-      params.filterParams.filterChangedCallback();
-    });
-  });
-}
-var FloatingFilterComponentProxy = class {
-  constructor(floatingFilterParams, refreshProps) {
-    this.floatingFilterParams = floatingFilterParams;
-    this.refreshProps = refreshProps;
-    this.model = null;
-    this.onModelChange = (model) => this.updateModel(model);
-  }
-  getProps() {
-    return {
-      ...this.floatingFilterParams,
-      model: this.model,
-      onModelChange: this.onModelChange
-    };
-  }
-  onParentModelChanged(parentModel) {
-    this.model = parentModel;
-    this.refreshProps();
-  }
-  refresh(params) {
-    this.floatingFilterParams = params;
-    this.refreshProps();
-  }
-  setMethods(methods) {
-    addOptionalMethods(this.getOptionalMethods(), methods, this);
-  }
-  getOptionalMethods() {
-    return ["afterGuiAttached"];
-  }
-  updateModel(model) {
-    this.model = model;
-    this.refreshProps();
-    updateFloatingFilterParent(this.floatingFilterParams, model);
-  }
-};
-var FloatingFilterComponentWrapper = class extends CustomComponentWrapper {
-  constructor() {
-    super(...arguments);
-    this.model = null;
-    this.onModelChange = (model) => this.updateModel(model);
-  }
-  onParentModelChanged(parentModel) {
-    this.model = parentModel;
-    this.refreshProps();
-  }
-  refresh(newParams) {
-    this.sourceParams = newParams;
-    this.refreshProps();
-  }
-  getOptionalMethods() {
-    return ["afterGuiAttached"];
-  }
-  updateModel(model) {
-    this.model = model;
-    this.refreshProps();
-    updateFloatingFilterParent(this.sourceParams, model);
-  }
-  getProps() {
-    const props = super.getProps();
-    props.model = this.model;
-    props.onModelChange = this.onModelChange;
-    return props;
-  }
-};
-var FloatingFilterDisplayComponentWrapper = class extends CustomComponentWrapper {
-  refresh(newParams) {
-    this.sourceParams = newParams;
-    this.refreshProps();
-  }
-  getOptionalMethods() {
-    return ["afterGuiAttached"];
-  }
-};
-var InnerHeaderComponentWrapper = class extends CustomComponentWrapper {
-  refresh(params) {
-    this.sourceParams = params;
-    this.refreshProps();
-    return true;
-  }
-};
-var LoadingOverlayComponentWrapper = class extends CustomComponentWrapper {
-  refresh(params) {
-    this.sourceParams = params;
-    this.refreshProps();
-  }
-};
-var MenuItemComponentWrapper = class extends CustomComponentWrapper {
-  constructor() {
-    super(...arguments);
-    this.active = false;
-    this.expanded = false;
-    this.onActiveChange = (active) => this.updateActive(active);
-  }
-  setActive(active) {
-    this.awaitSetActive(active);
-  }
-  setExpanded(expanded) {
-    this.expanded = expanded;
-    this.refreshProps();
-  }
-  getOptionalMethods() {
-    return ["select", "configureDefaults"];
-  }
-  awaitSetActive(active) {
-    this.active = active;
-    return this.refreshProps();
-  }
-  updateActive(active) {
-    const result2 = this.awaitSetActive(active);
-    if (active) {
-      result2.then(() => this.sourceParams.onItemActivated());
-    }
-  }
-  getProps() {
-    const props = super.getProps();
-    props.active = this.active;
-    props.expanded = this.expanded;
-    props.onActiveChange = this.onActiveChange;
-    delete props.onItemActivated;
-    return props;
-  }
-};
-var NoRowsOverlayComponentWrapper = class extends CustomComponentWrapper {
-  refresh(params) {
-    this.sourceParams = params;
-    this.refreshProps();
-  }
-};
-var StatusPanelComponentWrapper = class extends CustomComponentWrapper {
-  refresh(params) {
-    this.sourceParams = params;
-    this.refreshProps();
-    return true;
-  }
-};
-var ToolPanelComponentWrapper = class extends CustomComponentWrapper {
-  constructor() {
-    super(...arguments);
-    this.onStateChange = (state) => this.updateState(state);
-  }
-  refresh(params) {
-    this.sourceParams = params;
-    this.refreshProps();
-    return true;
-  }
-  getState() {
-    return this.state;
-  }
-  updateState(state) {
-    this.state = state;
-    this.refreshProps();
-    this.sourceParams.onStateUpdated();
-  }
-  getProps() {
-    const props = super.getProps();
-    props.state = this.state;
-    props.onStateChange = this.onStateChange;
-    return props;
-  }
-};
-function warnReactiveCustomComponents() {
-  _warn(231);
-}
-var MAX_COMPONENT_CREATION_TIME_IN_MS = 1e3;
-var PortalManager = class {
-  constructor(refresher, wrappingElement, maxComponentCreationTimeMs) {
-    this.destroyed = false;
-    this.portals = [];
-    this.hasPendingPortalUpdate = false;
-    this.wrappingElement = wrappingElement ? wrappingElement : "div";
-    this.refresher = refresher;
-    this.maxComponentCreationTimeMs = maxComponentCreationTimeMs ? maxComponentCreationTimeMs : MAX_COMPONENT_CREATION_TIME_IN_MS;
-  }
-  getPortals() {
-    return this.portals;
-  }
-  destroy() {
-    this.destroyed = true;
-  }
-  destroyPortal(portal) {
-    this.portals = this.portals.filter((curPortal) => curPortal !== portal);
-    this.batchUpdate();
-  }
-  getComponentWrappingElement() {
-    return this.wrappingElement;
-  }
-  mountReactPortal(portal, reactComponent, resolve2) {
-    this.portals = [...this.portals, portal];
-    this.waitForInstance(reactComponent, resolve2);
-    this.batchUpdate();
-  }
-  updateReactPortal(oldPortal, newPortal) {
-    this.portals[this.portals.indexOf(oldPortal)] = newPortal;
-    this.batchUpdate();
-  }
-  batchUpdate() {
-    if (this.hasPendingPortalUpdate) {
-      return;
-    }
-    setTimeout(() => {
-      if (!this.destroyed) {
-        this.refresher();
-        this.hasPendingPortalUpdate = false;
-      }
-    });
-    this.hasPendingPortalUpdate = true;
-  }
-  waitForInstance(reactComponent, resolve2, startTime = Date.now()) {
-    if (this.destroyed) {
-      resolve2(null);
-      return;
-    }
-    if (reactComponent.rendered()) {
-      resolve2(reactComponent);
-    } else {
-      if (Date.now() - startTime >= this.maxComponentCreationTimeMs && !this.hasPendingPortalUpdate) {
-        agFlushSync(true, () => this.refresher());
-        if (reactComponent.rendered()) {
-          resolve2(reactComponent);
-        }
-        return;
-      }
-      window.setTimeout(() => {
-        this.waitForInstance(reactComponent, resolve2, startTime);
-      });
-    }
-  }
-};
-var HeaderCellComp = ({ ctrl }) => {
-  const isAlive = ctrl.isAlive();
-  const { context } = reactExports.useContext(BeansContext);
-  const [userCompDetails, setUserCompDetails] = reactExports.useState();
-  const [userStyles, setUserStyles] = reactExports.useState();
-  const compBean = reactExports.useRef();
-  const eGui = reactExports.useRef(null);
-  const eResize = reactExports.useRef(null);
-  const eHeaderCompWrapper = reactExports.useRef(null);
-  const userCompRef = reactExports.useRef();
-  const cssManager = reactExports.useRef();
-  if (isAlive && !cssManager.current) {
-    cssManager.current = new CssClassManager(() => eGui.current);
-  }
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
-      compBean.current = context.destroyBean(compBean.current);
-      return;
-    }
-    compBean.current = context.createBean(new EmptyBean());
-    const refreshSelectAllGui = () => {
-      const selectAllGui = ctrl.getSelectAllGui();
-      if (selectAllGui) {
-        eResize.current?.insertAdjacentElement("afterend", selectAllGui);
-        compBean.current.addDestroyFunc(() => selectAllGui.remove());
-      }
-    };
-    const compProxy = {
-      setWidth: (width) => {
-        if (eGui.current) {
-          eGui.current.style.width = width;
-        }
-      },
-      toggleCss: (name2, on) => cssManager.current.toggleCss(name2, on),
-      setUserStyles: (styles2) => setUserStyles(styles2),
-      setAriaSort: (sort) => {
-        if (eGui.current) {
-          sort ? _setAriaSort(eGui.current, sort) : _removeAriaSort(eGui.current);
-        }
-      },
-      setUserCompDetails: (compDetails) => setUserCompDetails(compDetails),
-      getUserCompInstance: () => userCompRef.current || void 0,
-      refreshSelectAllGui,
-      removeSelectAllGui: () => ctrl.getSelectAllGui()?.remove()
-    };
-    ctrl.setComp(compProxy, eRef, eResize.current, eHeaderCompWrapper.current, compBean.current);
-    refreshSelectAllGui();
-  }, []);
-  reactExports.useLayoutEffect(
-    () => showJsComp(userCompDetails, context, eHeaderCompWrapper.current, userCompRef),
-    [userCompDetails]
-  );
-  reactExports.useEffect(() => {
-    ctrl.setDragSource(eGui.current);
-  }, [userCompDetails]);
-  const userCompStateless = reactExports.useMemo(() => {
-    const res = userCompDetails?.componentFromFramework && isComponentStateless(userCompDetails.componentClass);
-    return !!res;
-  }, [userCompDetails]);
-  const reactUserComp = userCompDetails?.componentFromFramework;
-  const UserCompClass = userCompDetails?.componentClass;
-  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, style: userStyles, className: "ag-header-cell", role: "columnheader" }, /* @__PURE__ */ React20.createElement("div", { ref: eResize, className: "ag-header-cell-resize", role: "presentation" }), /* @__PURE__ */ React20.createElement("div", { ref: eHeaderCompWrapper, className: "ag-header-cell-comp-wrapper", role: "presentation" }, reactUserComp ? userCompStateless ? /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params }) : /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params, ref: userCompRef }) : null));
-};
-var headerCellComp_default = reactExports.memo(HeaderCellComp);
-var FloatingFilterDisplayComponentProxy = class {
-  constructor(floatingFilterParams, refreshProps) {
-    this.floatingFilterParams = floatingFilterParams;
-    this.refreshProps = refreshProps;
-  }
-  getProps() {
-    return this.floatingFilterParams;
-  }
-  refresh(params) {
-    this.floatingFilterParams = params;
-    this.refreshProps();
-  }
-  setMethods(methods) {
-    addOptionalMethods(this.getOptionalMethods(), methods, this);
-  }
-  getOptionalMethods() {
-    return ["afterGuiAttached"];
-  }
-};
-var HeaderFilterCellComp = ({ ctrl }) => {
-  const { context, gos } = reactExports.useContext(BeansContext);
-  const [userStyles, setUserStyles] = reactExports.useState();
-  const [cssClasses, setCssClasses] = reactExports.useState(
-    () => new CssClasses("ag-header-cell", "ag-floating-filter")
-  );
-  const [cssBodyClasses, setBodyCssClasses] = reactExports.useState(() => new CssClasses());
-  const [cssButtonWrapperClasses, setButtonWrapperCssClasses] = reactExports.useState(
-    () => new CssClasses("ag-floating-filter-button", "ag-hidden")
-  );
-  const [buttonWrapperAriaHidden, setButtonWrapperAriaHidden] = reactExports.useState("false");
-  const [userCompDetails, setUserCompDetails] = reactExports.useState();
-  const [, setRenderKey] = reactExports.useState(1);
-  const compBean = reactExports.useRef();
-  const eGui = reactExports.useRef(null);
-  const eFloatingFilterBody = reactExports.useRef(null);
-  const eButtonWrapper = reactExports.useRef(null);
-  const eButtonShowMainFilter = reactExports.useRef(null);
-  const userCompResolve = reactExports.useRef();
-  const userCompPromise = reactExports.useRef();
-  const userCompRef = (value) => {
-    if (value == null) {
-      return;
-    }
-    userCompResolve.current && userCompResolve.current(value);
-  };
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
-      compBean.current = context.destroyBean(compBean.current);
-      return;
-    }
-    compBean.current = context.createBean(new EmptyBean());
-    userCompPromise.current = new AgPromise((resolve2) => {
-      userCompResolve.current = resolve2;
-    });
-    const compProxy = {
-      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
-      setUserStyles: (styles2) => setUserStyles(styles2),
-      addOrRemoveBodyCssClass: (name2, on) => setBodyCssClasses((prev) => prev.setClass(name2, on)),
-      setButtonWrapperDisplayed: (displayed) => {
-        setButtonWrapperCssClasses((prev) => prev.setClass("ag-hidden", !displayed));
-        setButtonWrapperAriaHidden(!displayed ? "true" : "false");
-      },
-      setWidth: (width) => {
-        if (eGui.current) {
-          eGui.current.style.width = width;
-        }
-      },
-      setCompDetails: (compDetails) => setUserCompDetails(compDetails),
-      getFloatingFilterComp: () => userCompPromise.current ? userCompPromise.current : null,
-      setMenuIcon: (eIcon) => eButtonShowMainFilter.current?.appendChild(eIcon)
-    };
-    ctrl.setComp(compProxy, eRef, eButtonShowMainFilter.current, eFloatingFilterBody.current, compBean.current);
-  }, []);
-  reactExports.useLayoutEffect(
-    () => showJsComp(userCompDetails, context, eFloatingFilterBody.current, userCompRef),
-    [userCompDetails]
-  );
-  const className = reactExports.useMemo(() => cssClasses.toString(), [cssClasses]);
-  const bodyClassName = reactExports.useMemo(() => cssBodyClasses.toString(), [cssBodyClasses]);
-  const buttonWrapperClassName = reactExports.useMemo(() => cssButtonWrapperClasses.toString(), [cssButtonWrapperClasses]);
-  const userCompStateless = reactExports.useMemo(() => {
-    const res = userCompDetails && userCompDetails.componentFromFramework && isComponentStateless(userCompDetails.componentClass);
-    return !!res;
-  }, [userCompDetails]);
-  const reactiveCustomComponents = reactExports.useMemo(() => gos.get("reactiveCustomComponents"), []);
-  const enableFilterHandlers = reactExports.useMemo(() => gos.get("enableFilterHandlers"), []);
-  const [floatingFilterCompProxy, setFloatingFilterCompProxy] = reactExports.useState();
-  reactExports.useEffect(() => {
-    if (userCompDetails?.componentFromFramework) {
-      if (reactiveCustomComponents) {
-        const ProxyClass = enableFilterHandlers ? FloatingFilterDisplayComponentProxy : FloatingFilterComponentProxy;
-        const compProxy = new ProxyClass(userCompDetails.params, () => setRenderKey((prev) => prev + 1));
-        userCompRef(compProxy);
-        setFloatingFilterCompProxy(compProxy);
-      } else {
-        warnReactiveCustomComponents();
-      }
-    }
-  }, [userCompDetails]);
-  const floatingFilterProps = floatingFilterCompProxy?.getProps();
-  const reactUserComp = userCompDetails?.componentFromFramework;
-  const UserCompClass = userCompDetails?.componentClass;
-  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, style: userStyles, className, role: "gridcell" }, /* @__PURE__ */ React20.createElement("div", { ref: eFloatingFilterBody, className: bodyClassName, role: "presentation" }, reactUserComp ? reactiveCustomComponents ? floatingFilterProps && /* @__PURE__ */ React20.createElement(
-    CustomContext.Provider,
-    {
-      value: {
-        setMethods: (methods) => floatingFilterCompProxy.setMethods(methods)
-      }
-    },
-    /* @__PURE__ */ React20.createElement(UserCompClass, { ...floatingFilterProps })
-  ) : /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params, ref: userCompStateless ? () => {
-  } : userCompRef }) : null), /* @__PURE__ */ React20.createElement(
-    "div",
-    {
-      ref: eButtonWrapper,
-      "aria-hidden": buttonWrapperAriaHidden,
-      className: buttonWrapperClassName,
-      role: "presentation"
-    },
-    /* @__PURE__ */ React20.createElement(
-      "button",
-      {
-        ref: eButtonShowMainFilter,
-        type: "button",
-        className: "ag-button ag-floating-filter-button-button",
-        tabIndex: -1
-      }
-    )
-  ));
-};
-var headerFilterCellComp_default = reactExports.memo(HeaderFilterCellComp);
-var HeaderGroupCellComp = ({ ctrl }) => {
-  const { context } = reactExports.useContext(BeansContext);
-  const [userStyles, setUserStyles] = reactExports.useState();
-  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
-  const [cssResizableClasses, setResizableCssClasses] = reactExports.useState(() => new CssClasses());
-  const [resizableAriaHidden, setResizableAriaHidden] = reactExports.useState("false");
-  const [ariaExpanded, setAriaExpanded] = reactExports.useState();
-  const [userCompDetails, setUserCompDetails] = reactExports.useState();
-  const compBean = reactExports.useRef();
-  const eGui = reactExports.useRef(null);
-  const eResize = reactExports.useRef(null);
-  const eHeaderCompWrapper = reactExports.useRef(null);
-  const userCompRef = reactExports.useRef();
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
-      compBean.current = context.destroyBean(compBean.current);
-      return;
-    }
-    compBean.current = context.createBean(new EmptyBean());
-    const compProxy = {
-      setWidth: (width) => {
-        if (eGui.current) {
-          eGui.current.style.width = width;
-        }
-      },
-      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
-      setUserStyles: (styles2) => setUserStyles(styles2),
-      setHeaderWrapperHidden: (hidden2) => {
-        const headerCompWrapper = eHeaderCompWrapper.current;
-        if (!headerCompWrapper) {
-          return;
-        }
-        if (hidden2) {
-          headerCompWrapper.style.setProperty("display", "none");
-        } else {
-          headerCompWrapper.style.removeProperty("display");
-        }
-      },
-      setHeaderWrapperMaxHeight: (value) => {
-        const headerCompWrapper = eHeaderCompWrapper.current;
-        if (!headerCompWrapper) {
-          return;
-        }
-        if (value != null) {
-          headerCompWrapper.style.setProperty("max-height", `${value}px`);
-        } else {
-          headerCompWrapper.style.removeProperty("max-height");
-        }
-        headerCompWrapper.classList.toggle("ag-header-cell-comp-wrapper-limited-height", value != null);
-      },
-      setUserCompDetails: (compDetails) => setUserCompDetails(compDetails),
-      setResizableDisplayed: (displayed) => {
-        setResizableCssClasses((prev) => prev.setClass("ag-hidden", !displayed));
-        setResizableAriaHidden(!displayed ? "true" : "false");
-      },
-      setAriaExpanded: (expanded) => setAriaExpanded(expanded),
-      getUserCompInstance: () => userCompRef.current || void 0
-    };
-    ctrl.setComp(compProxy, eRef, eResize.current, eHeaderCompWrapper.current, compBean.current);
-  }, []);
-  reactExports.useLayoutEffect(() => showJsComp(userCompDetails, context, eHeaderCompWrapper.current), [userCompDetails]);
-  reactExports.useEffect(() => {
-    if (eGui.current) {
-      ctrl.setDragSource(eGui.current);
-    }
-  }, [userCompDetails]);
-  const userCompStateless = reactExports.useMemo(() => {
-    const res = userCompDetails?.componentFromFramework && isComponentStateless(userCompDetails.componentClass);
-    return !!res;
-  }, [userCompDetails]);
-  const className = reactExports.useMemo(() => "ag-header-group-cell " + cssClasses.toString(), [cssClasses]);
-  const resizableClassName = reactExports.useMemo(
-    () => "ag-header-cell-resize " + cssResizableClasses.toString(),
-    [cssResizableClasses]
-  );
-  const reactUserComp = userCompDetails?.componentFromFramework;
-  const UserCompClass = userCompDetails?.componentClass;
-  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, style: userStyles, className, role: "columnheader", "aria-expanded": ariaExpanded }, /* @__PURE__ */ React20.createElement("div", { ref: eHeaderCompWrapper, className: "ag-header-cell-comp-wrapper", role: "presentation" }, reactUserComp ? userCompStateless ? /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params }) : /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params, ref: userCompRef }) : null), /* @__PURE__ */ React20.createElement("div", { ref: eResize, "aria-hidden": resizableAriaHidden, className: resizableClassName }));
-};
-var headerGroupCellComp_default = reactExports.memo(HeaderGroupCellComp);
-var HeaderRowComp = ({ ctrl }) => {
-  const { gos, context } = reactExports.useContext(BeansContext);
-  const { topOffset, rowHeight } = reactExports.useMemo(() => ctrl.getTopAndHeight(), []);
-  const tabIndex = reactExports.useMemo(() => gos.get("tabIndex"), []);
-  const [ariaRowIndex, setAriaRowIndex] = reactExports.useState(() => ctrl.getAriaRowIndex());
-  const className = ctrl.headerRowClass;
-  const [height, setHeight] = reactExports.useState(() => rowHeight + "px");
-  const [top, setTop] = reactExports.useState(() => topOffset + "px");
-  const cellCtrlsRef = reactExports.useRef(null);
-  const [cellCtrls, setCellCtrls] = reactExports.useState(() => ctrl.getUpdatedHeaderCtrls());
-  const compBean = reactExports.useRef();
-  const eGui = reactExports.useRef(null);
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
-      compBean.current = context.destroyBean(compBean.current);
-      return;
-    }
-    compBean.current = context.createBean(new EmptyBean());
-    const compProxy = {
-      setHeight: (height2) => setHeight(height2),
-      setTop: (top2) => setTop(top2),
-      setHeaderCtrls: (ctrls, forceOrder, afterScroll) => {
-        const prevCellCtrls = cellCtrlsRef.current;
-        const nextCells = getNextValueIfDifferent(prevCellCtrls, ctrls, forceOrder);
-        if (nextCells !== prevCellCtrls) {
-          cellCtrlsRef.current = nextCells;
-          agFlushSync(afterScroll, () => setCellCtrls(nextCells));
-        }
-      },
-      setWidth: (width) => {
-        if (eGui.current) {
-          eGui.current.style.width = width;
-        }
-      },
-      setRowIndex: (rowIndex) => {
-        setAriaRowIndex(rowIndex);
-      }
-    };
-    ctrl.setComp(compProxy, compBean.current, false);
-  }, []);
-  const style = reactExports.useMemo(
-    () => ({
-      height,
-      top
-    }),
-    [height, top]
-  );
-  const createCellJsx = reactExports.useCallback((cellCtrl) => {
-    switch (ctrl.type) {
-      case "group":
-        return /* @__PURE__ */ React20.createElement(headerGroupCellComp_default, { ctrl: cellCtrl, key: cellCtrl.instanceId });
-      case "filter":
-        return /* @__PURE__ */ React20.createElement(headerFilterCellComp_default, { ctrl: cellCtrl, key: cellCtrl.instanceId });
-      default:
-        return /* @__PURE__ */ React20.createElement(headerCellComp_default, { ctrl: cellCtrl, key: cellCtrl.instanceId });
-    }
-  }, []);
-  return /* @__PURE__ */ React20.createElement(
-    "div",
-    {
-      ref: setRef2,
-      className,
-      role: "row",
-      style,
-      tabIndex,
-      "aria-rowindex": ariaRowIndex
-    },
-    cellCtrls.map(createCellJsx)
-  );
-};
-var headerRowComp_default = reactExports.memo(HeaderRowComp);
-var HeaderRowContainerComp = ({ pinned }) => {
-  const [displayed, setDisplayed] = reactExports.useState(true);
-  const [headerRowCtrls, setHeaderRowCtrls] = reactExports.useState([]);
-  const { context } = reactExports.useContext(BeansContext);
-  const eGui = reactExports.useRef(null);
-  const eCenterContainer = reactExports.useRef(null);
-  const headerRowCtrlRef = reactExports.useRef();
-  const pinnedLeft = pinned === "left";
-  const pinnedRight = pinned === "right";
-  const centre = !pinnedLeft && !pinnedRight;
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef || context.isDestroyed()) {
-      headerRowCtrlRef.current = context.destroyBean(headerRowCtrlRef.current);
-      return;
-    }
-    headerRowCtrlRef.current = context.createBean(new HeaderRowContainerCtrl(pinned));
-    const compProxy = {
-      setDisplayed,
-      setCtrls: (ctrls) => setHeaderRowCtrls(ctrls),
-      // centre only
-      setCenterWidth: (width) => {
-        if (eCenterContainer.current) {
-          eCenterContainer.current.style.width = width;
-        }
-      },
-      setViewportScrollLeft: (left2) => {
-        if (eGui.current) {
-          eGui.current.scrollLeft = left2;
-        }
-      },
-      // pinned only
-      setPinnedContainerWidth: (width) => {
-        if (eGui.current) {
-          eGui.current.style.width = width;
-          eGui.current.style.minWidth = width;
-          eGui.current.style.maxWidth = width;
-        }
-      }
-    };
-    headerRowCtrlRef.current.setComp(compProxy, eGui.current);
-  }, []);
-  const className = !displayed ? "ag-hidden" : "";
-  const insertRowsJsx = () => headerRowCtrls.map((ctrl) => /* @__PURE__ */ React20.createElement(headerRowComp_default, { ctrl, key: ctrl.instanceId }));
-  return pinnedLeft ? /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: "ag-pinned-left-header " + className, "aria-hidden": !displayed, role: "rowgroup" }, insertRowsJsx()) : pinnedRight ? /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: "ag-pinned-right-header " + className, "aria-hidden": !displayed, role: "rowgroup" }, insertRowsJsx()) : centre ? /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: "ag-header-viewport " + className, role: "rowgroup", tabIndex: -1 }, /* @__PURE__ */ React20.createElement("div", { ref: eCenterContainer, className: "ag-header-container", role: "presentation" }, insertRowsJsx())) : null;
-};
-var headerRowContainerComp_default = reactExports.memo(HeaderRowContainerComp);
-var GridHeaderComp = () => {
-  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
-  const [height, setHeight] = reactExports.useState();
-  const { context } = reactExports.useContext(BeansContext);
-  const eGui = reactExports.useRef(null);
-  const gridCtrlRef = reactExports.useRef();
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef || context.isDestroyed()) {
-      gridCtrlRef.current = context.destroyBean(gridCtrlRef.current);
-      return;
-    }
-    gridCtrlRef.current = context.createBean(new GridHeaderCtrl());
-    const compProxy = {
-      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
-      setHeightAndMinHeight: (height2) => setHeight(height2)
-    };
-    gridCtrlRef.current.setComp(compProxy, eRef, eRef);
-  }, []);
-  const className = reactExports.useMemo(() => {
-    const res = cssClasses.toString();
-    return "ag-header " + res;
-  }, [cssClasses]);
-  const style = reactExports.useMemo(
-    () => ({
-      height,
-      minHeight: height
-    }),
-    [height]
-  );
-  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className, style, role: "presentation" }, /* @__PURE__ */ React20.createElement(headerRowContainerComp_default, { pinned: "left" }), /* @__PURE__ */ React20.createElement(headerRowContainerComp_default, { pinned: null }), /* @__PURE__ */ React20.createElement(headerRowContainerComp_default, { pinned: "right" }));
-};
-var gridHeaderComp_default = reactExports.memo(GridHeaderComp);
-var useReactCommentEffect = (comment2, eForCommentRef) => {
-  reactExports.useEffect(() => {
-    const eForComment = eForCommentRef.current;
-    if (eForComment) {
-      const eParent = eForComment.parentElement;
-      if (eParent) {
-        const eComment = document.createComment(comment2);
-        eParent.insertBefore(eComment, eForComment);
-        return () => {
-          eComment.remove();
-        };
-      }
-    }
-  }, [comment2]);
-};
-var reactComment_default = useReactCommentEffect;
-var CellEditorComponentProxy = class {
-  constructor(cellEditorParams, refreshProps) {
-    this.cellEditorParams = cellEditorParams;
-    this.refreshProps = refreshProps;
-    this.instanceCreated = new AgPromise((resolve2) => {
-      this.resolveInstanceCreated = resolve2;
-    });
-    this.onValueChange = (value) => this.updateValue(value);
-    this.value = cellEditorParams.value;
-  }
-  getProps() {
-    return {
-      ...this.cellEditorParams,
-      initialValue: this.cellEditorParams.value,
-      value: this.value,
-      onValueChange: this.onValueChange
-    };
-  }
-  getValue() {
-    return this.value;
-  }
-  refresh(params) {
-    this.cellEditorParams = params;
-    this.refreshProps();
-  }
-  setMethods(methods) {
-    addOptionalMethods(this.getOptionalMethods(), methods, this);
-  }
-  getInstance() {
-    return this.instanceCreated.then(() => this.componentInstance);
-  }
-  setRef(componentInstance) {
-    this.componentInstance = componentInstance;
-    this.resolveInstanceCreated?.();
-    this.resolveInstanceCreated = void 0;
-  }
-  getOptionalMethods() {
-    return [
-      "isCancelBeforeStart",
-      "isCancelAfterEnd",
-      "focusIn",
-      "focusOut",
-      "afterGuiAttached",
-      "getValidationErrors",
-      "getValidationElement"
-    ];
-  }
-  updateValue(value) {
-    this.value = value;
-    this.refreshProps();
-  }
-};
-var useEffectOnce = (effect) => {
-  const effectFn = reactExports.useRef(effect);
-  const destroyFn = reactExports.useRef();
-  const effectCalled = reactExports.useRef(false);
-  const rendered = reactExports.useRef(false);
-  const [, setVal] = reactExports.useState(0);
-  if (effectCalled.current) {
-    rendered.current = true;
-  }
-  reactExports.useEffect(() => {
-    if (!effectCalled.current) {
-      destroyFn.current = effectFn.current();
-      effectCalled.current = true;
-    }
-    setVal((val) => val + 1);
-    return () => {
-      if (!rendered.current) {
-        return;
-      }
-      destroyFn.current?.();
-    };
-  }, []);
-};
-var PopupEditorComp = (props) => {
-  const [popupEditorWrapper, setPopupEditorWrapper] = reactExports.useState();
-  const beans = reactExports.useContext(BeansContext);
-  const { context, popupSvc, gos, editSvc } = beans;
-  const { editDetails, cellCtrl, eParentCell } = props;
-  useEffectOnce(() => {
-    const { compDetails } = editDetails;
-    const useModelPopup = gos.get("stopEditingWhenCellsLoseFocus");
-    let hideEditorPopup = void 0;
-    let wrapper2;
-    if (!context.isDestroyed()) {
-      wrapper2 = context.createBean(editSvc.createPopupEditorWrapper(compDetails.params));
-      const ePopupGui = wrapper2.getGui();
-      if (props.jsChildComp) {
-        const eChildGui = props.jsChildComp.getGui();
-        if (eChildGui) {
-          ePopupGui.appendChild(eChildGui);
-        }
-      }
-      const { column: column2, rowNode } = cellCtrl;
-      const positionParams = {
-        column: column2,
-        rowNode,
-        type: "popupCellEditor",
-        eventSource: eParentCell,
-        ePopup: ePopupGui,
-        position: editDetails.popupPosition,
-        keepWithinBounds: true
-      };
-      const positionCallback = popupSvc?.positionPopupByComponent.bind(popupSvc, positionParams);
-      const addPopupRes = popupSvc?.addPopup({
-        modal: useModelPopup,
-        eChild: ePopupGui,
-        closeOnEsc: true,
-        closedCallback: () => {
-          cellCtrl.onPopupEditorClosed();
-        },
-        anchorToElement: eParentCell,
-        positionCallback,
-        ariaOwns: eParentCell
-      });
-      hideEditorPopup = addPopupRes ? addPopupRes.hideFunc : void 0;
-      setPopupEditorWrapper(wrapper2);
-      props.jsChildComp?.afterGuiAttached?.();
-    }
-    return () => {
-      hideEditorPopup?.();
-      context.destroyBean(wrapper2);
-    };
-  });
-  reactExports.useLayoutEffect(() => {
-    return () => {
-      if (cellCtrl.isCellFocused() && popupEditorWrapper?.getGui().contains(_getActiveDomElement(beans))) {
-        eParentCell.focus({ preventScroll: true });
-      }
-    };
-  }, [popupEditorWrapper]);
-  return popupEditorWrapper && props.wrappedContent ? reactDomExports.createPortal(props.wrappedContent, popupEditorWrapper.getGui()) : null;
-};
-var popupEditorComp_default = reactExports.memo(PopupEditorComp);
-var jsxEditorProxy = (editDetails, CellEditorClass, setRef2) => {
-  const { compProxy } = editDetails;
-  setRef2(compProxy);
-  const props = compProxy.getProps();
-  const isStateless = isComponentStateless(CellEditorClass);
-  return /* @__PURE__ */ React20.createElement(
-    CustomContext.Provider,
-    {
-      value: {
-        setMethods: (methods) => compProxy.setMethods(methods)
-      }
-    },
-    isStateless ? /* @__PURE__ */ React20.createElement(CellEditorClass, { ...props }) : /* @__PURE__ */ React20.createElement(CellEditorClass, { ...props, ref: (ref2) => compProxy.setRef(ref2) })
-  );
-};
-var jsxEditor = (editDetails, CellEditorClass, setRef2) => {
-  const newFormat = editDetails.compProxy;
-  return newFormat ? jsxEditorProxy(editDetails, CellEditorClass, setRef2) : /* @__PURE__ */ React20.createElement(CellEditorClass, { ...editDetails.compDetails.params, ref: setRef2 });
-};
-var jsxEditValue = (editDetails, setCellEditorRef, eGui, cellCtrl, jsEditorComp) => {
-  const compDetails = editDetails.compDetails;
-  const CellEditorClass = compDetails.componentClass;
-  const reactInlineEditor = compDetails.componentFromFramework && !editDetails.popup;
-  const reactPopupEditor = compDetails.componentFromFramework && editDetails.popup;
-  const jsPopupEditor = !compDetails.componentFromFramework && editDetails.popup;
-  return reactInlineEditor ? jsxEditor(editDetails, CellEditorClass, setCellEditorRef) : reactPopupEditor ? /* @__PURE__ */ React20.createElement(
-    popupEditorComp_default,
-    {
-      editDetails,
-      cellCtrl,
-      eParentCell: eGui,
-      wrappedContent: jsxEditor(editDetails, CellEditorClass, setCellEditorRef)
-    }
-  ) : jsPopupEditor && jsEditorComp ? /* @__PURE__ */ React20.createElement(popupEditorComp_default, { editDetails, cellCtrl, eParentCell: eGui, jsChildComp: jsEditorComp }) : null;
-};
-var useJsCellRenderer = (showDetails, showTools, eCellValue, cellValueVersion, jsCellRendererRef, eGui) => {
-  const { context } = reactExports.useContext(BeansContext);
-  const destroyCellRenderer = reactExports.useCallback(() => {
-    const comp = jsCellRendererRef.current;
-    if (!comp) {
-      return;
-    }
-    const compGui = comp.getGui();
-    if (compGui && compGui.parentElement) {
-      compGui.remove();
-    }
-    context.destroyBean(comp);
-    jsCellRendererRef.current = void 0;
-  }, []);
-  reactExports.useEffect(() => {
-    const showValue = showDetails != null;
-    const jsCompDetails = showDetails?.compDetails && !showDetails.compDetails.componentFromFramework;
-    const waitingForToolsSetup = showTools && eCellValue == null;
-    const showComp = showValue && jsCompDetails && !waitingForToolsSetup;
-    if (!showComp) {
-      destroyCellRenderer();
-      return;
-    }
-    const compDetails = showDetails.compDetails;
-    if (jsCellRendererRef.current) {
-      const comp = jsCellRendererRef.current;
-      const attemptRefresh = comp.refresh != null && showDetails.force == false;
-      const refreshResult = attemptRefresh ? comp.refresh(compDetails.params) : false;
-      const refreshWorked = refreshResult === true || refreshResult === void 0;
-      if (refreshWorked) {
-        return;
-      }
-      destroyCellRenderer();
-    }
-    const promise = compDetails.newAgStackInstance();
-    promise.then((comp) => {
-      if (!comp) {
-        return;
-      }
-      const compGui = comp.getGui();
-      if (!compGui) {
-        return;
-      }
-      const parent = showTools ? eCellValue : eGui.current;
-      parent.appendChild(compGui);
-      jsCellRendererRef.current = comp;
-    });
-  }, [showDetails, showTools, cellValueVersion]);
-  reactExports.useEffect(() => {
-    return destroyCellRenderer;
-  }, []);
-};
-var showJsRenderer_default = useJsCellRenderer;
-var SkeletonCellRenderer2 = ({
-  cellCtrl,
-  parent
-}) => {
-  const jsCellRendererRef = reactExports.useRef();
-  const renderDetails = reactExports.useMemo(() => {
-    const { loadingComp } = cellCtrl.getDeferLoadingCellRenderer();
-    return loadingComp ? {
-      value: void 0,
-      compDetails: loadingComp,
-      force: false
-    } : void 0;
-  }, [cellCtrl]);
-  showJsRenderer_default(renderDetails, false, void 0, 1, jsCellRendererRef, parent);
-  if (renderDetails?.compDetails?.componentFromFramework) {
-    const CellRendererClass = renderDetails.compDetails.componentClass;
-    return /* @__PURE__ */ React20.createElement(CellRendererClass, { ...renderDetails.compDetails.params });
-  }
-  return /* @__PURE__ */ React20.createElement(React20.Fragment, null);
-};
-var CellComp = ({
-  cellCtrl,
-  printLayout,
-  editingCell
-}) => {
-  const beans = reactExports.useContext(BeansContext);
-  const { context } = beans;
-  const {
-    column: { colIdSanitised },
-    instanceId
-  } = cellCtrl;
-  const compBean = reactExports.useRef();
-  const [renderDetails, setRenderDetails] = reactExports.useState(
-    () => cellCtrl.isCellRenderer() ? void 0 : { compDetails: void 0, value: cellCtrl.getValueToDisplay(), force: false }
-  );
-  const [editDetails, setEditDetails] = reactExports.useState();
-  const [renderKey, setRenderKey] = reactExports.useState(1);
-  const [userStyles, setUserStyles] = reactExports.useState();
-  const [includeSelection, setIncludeSelection] = reactExports.useState(false);
-  const [includeRowDrag, setIncludeRowDrag] = reactExports.useState(false);
-  const [includeDndSource, setIncludeDndSource] = reactExports.useState(false);
-  const [jsEditorComp, setJsEditorComp] = reactExports.useState();
-  const forceWrapper = reactExports.useMemo(() => cellCtrl.isForceWrapper(), [cellCtrl]);
-  const cellAriaRole = reactExports.useMemo(() => cellCtrl.getCellAriaRole(), [cellCtrl]);
-  const eGui = reactExports.useRef(null);
-  const eWrapper = reactExports.useRef(null);
-  const cellRendererRef = reactExports.useRef(null);
-  const jsCellRendererRef = reactExports.useRef();
-  const cellEditorRef = reactExports.useRef();
-  const eCellWrapper = reactExports.useRef();
-  const cellWrapperDestroyFuncs = reactExports.useRef([]);
-  const rowDragCompRef = reactExports.useRef();
-  const eCellValue = reactExports.useRef();
-  const [cellValueVersion, setCellValueVersion] = reactExports.useState(0);
-  const setCellValueRef = reactExports.useCallback((ref2) => {
-    eCellValue.current = ref2;
-    setCellValueVersion((v) => v + 1);
-  }, []);
-  const showTools = renderDetails != null && (includeSelection || includeDndSource || includeRowDrag) && (editDetails == null || !!editDetails.popup);
-  const showCellWrapper = forceWrapper || showTools;
-  const cellValueClass = reactExports.useMemo(() => {
-    return cellCtrl.getCellValueClass();
-  }, [cellCtrl]);
-  const setCellEditorRef = reactExports.useCallback(
-    (cellEditor) => {
-      cellEditorRef.current = cellEditor;
-      if (cellEditor) {
-        const editingCancelledByUserComp = cellEditor.isCancelBeforeStart && cellEditor.isCancelBeforeStart();
-        setTimeout(() => {
-          if (editingCancelledByUserComp) {
-            cellCtrl.stopEditing(true);
-            cellCtrl.focusCell(true);
-          } else {
-            cellCtrl.cellEditorAttached();
-            cellCtrl.enableEditorTooltipFeature(cellEditor);
-          }
-        });
-      }
-    },
-    [cellCtrl]
-  );
-  const cssManager = reactExports.useRef();
-  if (!cssManager.current) {
-    cssManager.current = new CssClassManager(() => eGui.current);
-  }
-  showJsRenderer_default(renderDetails, showCellWrapper, eCellValue.current, cellValueVersion, jsCellRendererRef, eGui);
-  const lastRenderDetails = reactExports.useRef();
-  reactExports.useLayoutEffect(() => {
-    const oldDetails = lastRenderDetails.current;
-    const newDetails = renderDetails;
-    lastRenderDetails.current = renderDetails;
-    if (oldDetails == null || oldDetails.compDetails == null || newDetails == null || newDetails.compDetails == null) {
-      return;
-    }
-    rowDragCompRef.current?.refreshVisibility();
-    const oldCompDetails = oldDetails.compDetails;
-    const newCompDetails = newDetails.compDetails;
-    if (oldCompDetails.componentClass != newCompDetails.componentClass) {
-      return;
-    }
-    if (cellRendererRef.current?.refresh == null) {
-      return;
-    }
-    const result2 = cellRendererRef.current.refresh(newCompDetails.params);
-    if (result2 != true) {
-      setRenderKey((prev) => prev + 1);
-    }
-  }, [renderDetails]);
-  reactExports.useLayoutEffect(() => {
-    const doingJsEditor = editDetails && !editDetails.compDetails.componentFromFramework;
-    if (!doingJsEditor || context.isDestroyed()) {
-      return;
-    }
-    const compDetails = editDetails.compDetails;
-    const isPopup = editDetails.popup === true;
-    const cellEditorPromise = compDetails.newAgStackInstance();
-    cellEditorPromise.then((cellEditor) => {
-      if (!cellEditor) {
-        return;
-      }
-      const compGui = cellEditor.getGui();
-      setCellEditorRef(cellEditor);
-      if (!isPopup) {
-        const parentEl = (forceWrapper ? eCellWrapper : eGui).current;
-        parentEl?.appendChild(compGui);
-        cellEditor.afterGuiAttached?.();
-      }
-      setJsEditorComp(cellEditor);
-    });
-    return () => {
-      cellEditorPromise.then((cellEditor) => {
-        const compGui = cellEditor.getGui();
-        cellCtrl.disableEditorTooltipFeature();
-        context.destroyBean(cellEditor);
-        setCellEditorRef(void 0);
-        setJsEditorComp(void 0);
-        compGui?.remove();
-      });
-    };
-  }, [editDetails]);
-  const setCellWrapperRef = reactExports.useCallback(
-    (eRef) => {
-      eCellWrapper.current = eRef;
-      if (!eRef || context.isDestroyed() || !cellCtrl.isAlive()) {
-        const callbacks = cellWrapperDestroyFuncs.current;
-        cellWrapperDestroyFuncs.current = [];
-        for (const cb of callbacks) {
-          cb();
-        }
-        return;
-      }
-      let rowDragComp;
-      const addComp = (comp) => {
-        if (comp) {
-          eRef.insertAdjacentElement("afterbegin", comp.getGui());
-          cellWrapperDestroyFuncs.current.push(() => {
-            _removeFromParent(comp.getGui());
-            context.destroyBean(comp);
-            if (rowDragCompRef.current === rowDragComp) {
-              rowDragCompRef.current = void 0;
-            }
-          });
-        }
-      };
-      if (includeSelection) {
-        addComp(cellCtrl.createSelectionCheckbox());
-      }
-      if (includeDndSource) {
-        addComp(cellCtrl.createDndSource());
-      }
-      if (includeRowDrag) {
-        rowDragComp = cellCtrl.createRowDragComp();
-        rowDragCompRef.current = rowDragComp;
-        if (rowDragComp) {
-          addComp(rowDragComp);
-          rowDragComp.refreshVisibility();
-        }
-      }
-    },
-    [cellCtrl, context, includeDndSource, includeRowDrag, includeSelection]
-  );
-  const init = reactExports.useCallback(() => {
-    const spanReady = !cellCtrl.isCellSpanning() || eWrapper.current;
-    const eRef = eGui.current;
-    if (!eRef || !spanReady || !cellCtrl || !cellCtrl.isAlive() || context.isDestroyed()) {
-      compBean.current = context.destroyBean(compBean.current);
-      return;
-    }
-    compBean.current = context.createBean(new EmptyBean());
-    const compProxy = {
-      toggleCss: (name2, on) => cssManager.current.toggleCss(name2, on),
-      setUserStyles: (styles2) => setUserStyles(styles2),
-      getFocusableElement: () => eGui.current,
-      setIncludeSelection: (include) => setIncludeSelection(include),
-      setIncludeRowDrag: (include) => setIncludeRowDrag(include),
-      setIncludeDndSource: (include) => setIncludeDndSource(include),
-      getCellEditor: () => cellEditorRef.current ?? null,
-      getCellRenderer: () => cellRendererRef.current ?? jsCellRendererRef.current,
-      getParentOfValue: () => eCellValue.current ?? eCellWrapper.current ?? eGui.current,
-      setRenderDetails: (compDetails, value, force) => {
-        const setDetails = () => {
-          setRenderDetails((prev) => {
-            if (prev?.compDetails !== compDetails || prev?.value !== value || prev?.force !== force) {
-              return {
-                value,
-                compDetails,
-                force
-              };
-            } else {
-              return prev;
-            }
-          });
-        };
-        if (compDetails?.params?.deferRender && !cellCtrl.rowNode.group) {
-          const { loadingComp, onReady } = cellCtrl.getDeferLoadingCellRenderer();
-          if (loadingComp) {
-            setRenderDetails({
-              value: void 0,
-              compDetails: loadingComp,
-              force: false
-            });
-            onReady.then(() => agStartTransition(setDetails));
-            return;
-          }
-        }
-        setDetails();
-      },
-      setEditDetails: (compDetails, popup, popupPosition, reactiveCustomComponents) => {
-        if (compDetails) {
-          let compProxy2 = void 0;
-          if (compDetails.componentFromFramework) {
-            if (reactiveCustomComponents) {
-              compProxy2 = new CellEditorComponentProxy(
-                compDetails.params,
-                () => setRenderKey((prev) => prev + 1)
-              );
-            } else {
-              warnReactiveCustomComponents();
-            }
-          }
-          setEditDetails({
-            compDetails,
-            popup,
-            popupPosition,
-            compProxy: compProxy2
-          });
-          if (!popup) {
-            setRenderDetails(void 0);
-          }
-        } else {
-          const recoverFocus = cellCtrl.hasBrowserFocus();
-          if (recoverFocus) {
-            compProxy.getFocusableElement().focus({ preventScroll: true });
-          }
-          cellEditorRef.current = void 0;
-          setEditDetails(void 0);
-        }
-      },
-      refreshEditStyles: (editing, isPopup) => {
-        if (!eGui.current) {
-          return;
-        }
-        const { current: current3 } = cssManager;
-        current3.toggleCss("ag-cell-value", !showCellWrapper);
-        current3.toggleCss("ag-cell-inline-editing", !!editing && !isPopup);
-        current3.toggleCss("ag-cell-popup-editing", !!editing && !!isPopup);
-        current3.toggleCss("ag-cell-not-inline-editing", !editing || !!isPopup);
-      }
-    };
-    const cellWrapperOrUndefined = eCellWrapper.current || void 0;
-    cellCtrl.setComp(
-      compProxy,
-      eRef,
-      eWrapper.current ?? void 0,
-      cellWrapperOrUndefined,
-      printLayout,
-      editingCell,
-      compBean.current
-    );
-  }, []);
-  const setGuiRef = reactExports.useCallback((ref2) => {
-    eGui.current = ref2;
-    init();
-  }, []);
-  const setWrapperRef = reactExports.useCallback((ref2) => {
-    eWrapper.current = ref2;
-    init();
-  }, []);
-  const reactCellRendererStateless = reactExports.useMemo(() => {
-    const res = renderDetails?.compDetails?.componentFromFramework && isComponentStateless(renderDetails.compDetails.componentClass);
-    return !!res;
-  }, [renderDetails]);
-  reactExports.useLayoutEffect(() => {
-    if (!eGui.current) {
-      return;
-    }
-    const { current: current3 } = cssManager;
-    current3.toggleCss("ag-cell-value", !showCellWrapper);
-    current3.toggleCss("ag-cell-inline-editing", !!editDetails && !editDetails.popup);
-    current3.toggleCss("ag-cell-popup-editing", !!editDetails && !!editDetails.popup);
-    current3.toggleCss("ag-cell-not-inline-editing", !editDetails || !!editDetails.popup);
-  });
-  const valueOrCellComp = () => {
-    const { compDetails, value } = renderDetails;
-    if (!compDetails) {
-      return value?.toString?.() ?? value;
-    }
-    if (compDetails.componentFromFramework) {
-      const CellRendererClass = compDetails.componentClass;
-      return /* @__PURE__ */ React20.createElement(reactExports.Suspense, { fallback: /* @__PURE__ */ React20.createElement(SkeletonCellRenderer2, { cellCtrl, parent: eGui }) }, reactCellRendererStateless ? /* @__PURE__ */ React20.createElement(CellRendererClass, { ...compDetails.params, key: renderKey }) : /* @__PURE__ */ React20.createElement(CellRendererClass, { ...compDetails.params, key: renderKey, ref: cellRendererRef }));
-    }
-  };
-  const showCellOrEditor = () => {
-    const showCellValue = () => {
-      if (renderDetails == null) {
-        return null;
-      }
-      return showCellWrapper ? /* @__PURE__ */ React20.createElement("span", { role: "presentation", id: `cell-${instanceId}`, className: cellValueClass, ref: setCellValueRef }, valueOrCellComp()) : valueOrCellComp();
-    };
-    const showEditValue = (details) => jsxEditValue(details, setCellEditorRef, eGui.current, cellCtrl, jsEditorComp);
-    if (editDetails != null) {
-      if (editDetails.popup) {
-        return /* @__PURE__ */ React20.createElement(React20.Fragment, null, showCellValue(), showEditValue(editDetails));
-      }
-      return showEditValue(editDetails);
-    }
-    return showCellValue();
-  };
-  const renderCell = () => /* @__PURE__ */ React20.createElement("div", { ref: setGuiRef, style: userStyles, role: cellAriaRole, "col-id": colIdSanitised }, showCellWrapper ? /* @__PURE__ */ React20.createElement("div", { className: "ag-cell-wrapper", role: "presentation", ref: setCellWrapperRef }, showCellOrEditor()) : showCellOrEditor());
-  if (cellCtrl.isCellSpanning()) {
-    return /* @__PURE__ */ React20.createElement("div", { ref: setWrapperRef, className: "ag-spanned-cell-wrapper", role: "presentation" }, renderCell());
-  }
-  return renderCell();
-};
-var cellComp_default = reactExports.memo(CellComp);
-var RowComp = ({ rowCtrl, containerType }) => {
-  const { context, gos, editSvc } = reactExports.useContext(BeansContext);
-  const enableUses = reactExports.useContext(RenderModeContext) === "default";
-  const compBean = reactExports.useRef();
-  const domOrderRef = reactExports.useRef(rowCtrl.getDomOrder());
-  const isFullWidth = rowCtrl.isFullWidth();
-  const isDisplayed = rowCtrl.rowNode.displayed;
-  const [rowIndex, setRowIndex] = reactExports.useState(
-    () => isDisplayed ? rowCtrl.rowNode.getRowIndexString() : null
-  );
-  const [rowId, setRowId] = reactExports.useState(() => rowCtrl.rowId);
-  const [rowBusinessKey, setRowBusinessKey] = reactExports.useState(() => rowCtrl.businessKey);
-  const [userStyles, setUserStyles] = reactExports.useState(() => rowCtrl.rowStyles);
-  const cellCtrlsRef = reactExports.useRef(null);
-  const [cellCtrlsFlushSync, setCellCtrlsFlushSync] = reactExports.useState(() => null);
-  const [fullWidthCompDetails, setFullWidthCompDetails] = reactExports.useState();
-  const [top, setTop] = reactExports.useState(
-    () => isDisplayed ? rowCtrl.getInitialRowTop(containerType) : void 0
-  );
-  const [transform, setTransform] = reactExports.useState(
-    () => isDisplayed ? rowCtrl.getInitialTransform(containerType) : void 0
-  );
-  const eGui = reactExports.useRef(null);
-  const fullWidthCompRef = reactExports.useRef();
-  const fullWidthParamsRef = reactExports.useRef();
-  const autoHeightSetup = reactExports.useRef(false);
-  const [autoHeightSetupAttempt, setAutoHeightSetupAttempt] = reactExports.useState(0);
-  reactExports.useEffect(() => {
-    if (autoHeightSetup.current || !fullWidthCompDetails || autoHeightSetupAttempt > 10) {
-      return;
-    }
-    const eChild = eGui.current?.firstChild;
-    if (eChild) {
-      rowCtrl.setupDetailRowAutoHeight(eChild);
-      autoHeightSetup.current = true;
-    } else {
-      setAutoHeightSetupAttempt((prev) => prev + 1);
-    }
-  }, [fullWidthCompDetails, autoHeightSetupAttempt]);
-  const cssManager = reactExports.useRef();
-  if (!cssManager.current) {
-    cssManager.current = new CssClassManager(() => eGui.current);
-  }
-  const cellsChanged = reactExports.useRef(() => {
-  });
-  const sub = reactExports.useCallback((onStoreChange) => {
-    cellsChanged.current = onStoreChange;
-    return () => {
-      cellsChanged.current = () => {
-      };
-    };
-  }, []);
-  const cellCtrlsUses = agUseSyncExternalStore(
-    sub,
-    () => {
-      return cellCtrlsRef.current;
-    },
-    []
-  );
-  const cellCtrlsMerged = enableUses ? cellCtrlsUses : cellCtrlsFlushSync;
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    compBean.current = eRef ? context.createBean(new EmptyBean()) : context.destroyBean(compBean.current);
-    if (!eRef) {
-      rowCtrl.unsetComp(containerType);
-      return;
-    }
-    if (!rowCtrl.isAlive() || context.isDestroyed()) {
-      return;
-    }
-    const compProxy = {
-      // the rowTop is managed by state, instead of direct style manipulation by rowCtrl (like all the other styles)
-      // as we need to have an initial value when it's placed into he DOM for the first time, for animation to work.
-      setTop,
-      setTransform,
-      // i found using React for managing classes at the row level was to slow, as modifying classes caused a lot of
-      // React code to execute, so avoiding React for managing CSS Classes made the grid go much faster.
-      toggleCss: (name2, on) => cssManager.current.toggleCss(name2, on),
-      setDomOrder: (domOrder) => domOrderRef.current = domOrder,
-      setRowIndex,
-      setRowId,
-      setRowBusinessKey,
-      setUserStyles,
-      // if we don't maintain the order, then cols will be ripped out and into the dom
-      // when cols reordered, which would stop the CSS transitions from working
-      setCellCtrls: (next, useFlushSync) => {
-        const prevCellCtrls = cellCtrlsRef.current;
-        const nextCells = getNextValueIfDifferent(prevCellCtrls, next, domOrderRef.current);
-        if (nextCells !== prevCellCtrls) {
-          cellCtrlsRef.current = nextCells;
-          if (enableUses) {
-            cellsChanged.current();
-          } else {
-            agFlushSync(useFlushSync, () => setCellCtrlsFlushSync(nextCells));
-          }
-        }
-      },
-      showFullWidth: (compDetails) => {
-        fullWidthParamsRef.current = compDetails.params;
-        setFullWidthCompDetails(compDetails);
-      },
-      getFullWidthCellRenderer: () => fullWidthCompRef.current,
-      getFullWidthCellRendererParams: () => fullWidthParamsRef.current,
-      refreshFullWidth: (getUpdatedParams) => {
-        const fullWidthParams = getUpdatedParams();
-        fullWidthParamsRef.current = fullWidthParams;
-        if (canRefreshFullWidthRef.current) {
-          setFullWidthCompDetails((prevFullWidthCompDetails) => ({
-            ...prevFullWidthCompDetails,
-            params: fullWidthParams
-          }));
-          return true;
-        } else {
-          if (!fullWidthCompRef.current || !fullWidthCompRef.current.refresh) {
-            return false;
-          }
-          return fullWidthCompRef.current.refresh(fullWidthParams);
-        }
-      }
-    };
-    rowCtrl.setComp(compProxy, eRef, containerType, compBean.current);
-  }, []);
-  reactExports.useLayoutEffect(
-    () => showJsComp(fullWidthCompDetails, context, eGui.current, fullWidthCompRef),
-    [fullWidthCompDetails]
-  );
-  const rowStyles = reactExports.useMemo(() => {
-    const res = { top, transform };
-    Object.assign(res, userStyles);
-    return res;
-  }, [top, transform, userStyles]);
-  const showFullWidthFramework = isFullWidth && fullWidthCompDetails?.componentFromFramework;
-  const showCells = !isFullWidth && cellCtrlsMerged != null;
-  const reactFullWidthCellRendererStateless = reactExports.useMemo(() => {
-    const res = fullWidthCompDetails?.componentFromFramework && isComponentStateless(fullWidthCompDetails.componentClass);
-    return !!res;
-  }, [fullWidthCompDetails]);
-  const canRefreshFullWidthRef = reactExports.useRef(false);
-  reactExports.useEffect(() => {
-    canRefreshFullWidthRef.current = reactFullWidthCellRendererStateless && !!fullWidthCompDetails && !!gos.get("reactiveCustomComponents");
-  }, [reactFullWidthCellRendererStateless, fullWidthCompDetails]);
-  const showCellsJsx = () => cellCtrlsMerged?.map((cellCtrl) => /* @__PURE__ */ React20.createElement(
-    cellComp_default,
-    {
-      cellCtrl,
-      editingCell: editSvc?.isEditing(cellCtrl, { withOpenEditor: true }) ?? false,
-      printLayout: rowCtrl.printLayout,
-      key: cellCtrl.instanceId
-    }
-  ));
-  const showFullWidthFrameworkJsx = () => {
-    const FullWidthComp = fullWidthCompDetails.componentClass;
-    return reactFullWidthCellRendererStateless ? /* @__PURE__ */ React20.createElement(FullWidthComp, { ...fullWidthCompDetails.params }) : /* @__PURE__ */ React20.createElement(FullWidthComp, { ...fullWidthCompDetails.params, ref: fullWidthCompRef });
-  };
-  return /* @__PURE__ */ React20.createElement(
-    "div",
-    {
-      ref: setRef2,
-      role: "row",
-      style: rowStyles,
-      "row-index": rowIndex,
-      "row-id": rowId,
-      "row-business-key": rowBusinessKey
-    },
-    showCells ? showCellsJsx() : showFullWidthFramework ? showFullWidthFrameworkJsx() : null
-  );
-};
-var rowComp_default = reactExports.memo(RowComp);
-var RowContainerComp = ({ name: name2 }) => {
-  const { context, gos } = reactExports.useContext(BeansContext);
-  const containerOptions = reactExports.useMemo(() => _getRowContainerOptions(name2), [name2]);
-  const eViewport = reactExports.useRef(null);
-  const eContainer = reactExports.useRef(null);
-  const eSpanContainer = reactExports.useRef(null);
-  const rowCtrlsRef = reactExports.useRef([]);
-  const prevRowCtrlsRef = reactExports.useRef([]);
-  const [rowCtrlsOrdered, setRowCtrlsOrdered] = reactExports.useState(() => []);
-  const isSpanning = !!gos.get("enableCellSpan") && !!containerOptions.getSpannedRowCtrls;
-  const spannedRowCtrlsRef = reactExports.useRef([]);
-  const prevSpannedRowCtrlsRef = reactExports.useRef([]);
-  const [spannedRowCtrlsOrdered, setSpannedRowCtrlsOrdered] = reactExports.useState(() => []);
-  const domOrderRef = reactExports.useRef(false);
-  const rowContainerCtrlRef = reactExports.useRef();
-  const viewportClasses = reactExports.useMemo(() => classesList("ag-viewport", _getRowViewportClass(name2)), [name2]);
-  const containerClasses = reactExports.useMemo(() => classesList(_getRowContainerClass(name2)), [name2]);
-  const spanClasses = reactExports.useMemo(() => classesList("ag-spanning-container", _getRowSpanContainerClass(name2)), [name2]);
-  const shouldRenderViewport = containerOptions.type === "center" || isSpanning;
-  const topLevelRef = shouldRenderViewport ? eViewport : eContainer;
-  reactComment_default(" AG Row Container " + name2 + " ", topLevelRef);
-  const areElementsReady = reactExports.useCallback(() => {
-    const viewportReady = !shouldRenderViewport || eViewport.current != null;
-    const containerReady = eContainer.current != null;
-    const spanContainerReady = !isSpanning || eSpanContainer.current != null;
-    return viewportReady && containerReady && spanContainerReady;
-  }, []);
-  const areElementsRemoved = reactExports.useCallback(() => {
-    return eViewport.current == null && eContainer.current == null && eSpanContainer.current == null;
-  }, []);
-  const setRef2 = reactExports.useCallback(() => {
-    if (areElementsRemoved()) {
-      rowContainerCtrlRef.current = context.destroyBean(rowContainerCtrlRef.current);
-    }
-    if (context.isDestroyed()) {
-      return;
-    }
-    if (areElementsReady()) {
-      const updateRowCtrlsOrdered = (useFlushSync) => {
-        const next = getNextValueIfDifferent(
-          prevRowCtrlsRef.current,
-          rowCtrlsRef.current,
-          domOrderRef.current
-        );
-        if (next !== prevRowCtrlsRef.current) {
-          prevRowCtrlsRef.current = next;
-          agFlushSync(useFlushSync, () => setRowCtrlsOrdered(next));
-        }
-      };
-      const updateSpannedRowCtrlsOrdered = (useFlushSync) => {
-        const next = getNextValueIfDifferent(
-          prevSpannedRowCtrlsRef.current,
-          spannedRowCtrlsRef.current,
-          domOrderRef.current
-        );
-        if (next !== prevSpannedRowCtrlsRef.current) {
-          prevSpannedRowCtrlsRef.current = next;
-          agFlushSync(useFlushSync, () => setSpannedRowCtrlsOrdered(next));
-        }
-      };
-      const compProxy = {
-        setHorizontalScroll: (offset2) => {
-          if (eViewport.current) {
-            eViewport.current.scrollLeft = offset2;
-          }
-        },
-        setViewportHeight: (height) => {
-          if (eViewport.current) {
-            eViewport.current.style.height = height;
-          }
-        },
-        setRowCtrls: ({ rowCtrls, useFlushSync }) => {
-          const useFlush = !!useFlushSync && rowCtrlsRef.current.length > 0 && rowCtrls.length > 0;
-          rowCtrlsRef.current = rowCtrls;
-          updateRowCtrlsOrdered(useFlush);
-        },
-        setSpannedRowCtrls: (rowCtrls, useFlushSync) => {
-          const useFlush = !!useFlushSync && spannedRowCtrlsRef.current.length > 0 && rowCtrls.length > 0;
-          spannedRowCtrlsRef.current = rowCtrls;
-          updateSpannedRowCtrlsOrdered(useFlush);
-        },
-        setDomOrder: (domOrder) => {
-          if (domOrderRef.current != domOrder) {
-            domOrderRef.current = domOrder;
-            updateRowCtrlsOrdered(false);
-          }
-        },
-        setContainerWidth: (width) => {
-          if (eContainer.current) {
-            eContainer.current.style.width = width;
-          }
-        },
-        setOffsetTop: (offset2) => {
-          if (eContainer.current) {
-            eContainer.current.style.transform = `translateY(${offset2})`;
-          }
-        }
-      };
-      rowContainerCtrlRef.current = context.createBean(new RowContainerCtrl(name2));
-      rowContainerCtrlRef.current.setComp(
-        compProxy,
-        eContainer.current,
-        eSpanContainer.current ?? void 0,
-        eViewport.current
-      );
-    }
-  }, [areElementsReady, areElementsRemoved]);
-  const setContainerRef = reactExports.useCallback(
-    (e) => {
-      eContainer.current = e;
-      setRef2();
-    },
-    [setRef2]
-  );
-  const setSpanContainerRef = reactExports.useCallback(
-    (e) => {
-      eSpanContainer.current = e;
-      setRef2();
-    },
-    [setRef2]
-  );
-  const setViewportRef = reactExports.useCallback(
-    (e) => {
-      eViewport.current = e;
-      setRef2();
-    },
-    [setRef2]
-  );
-  const buildContainer = () => /* @__PURE__ */ React20.createElement(
-    "div",
-    {
-      className: containerClasses,
-      ref: setContainerRef,
-      role: shouldRenderViewport ? "presentation" : "rowgroup"
-    },
-    rowCtrlsOrdered.map((rowCtrl) => /* @__PURE__ */ React20.createElement(rowComp_default, { rowCtrl, containerType: containerOptions.type, key: rowCtrl.instanceId }))
-  );
-  if (!shouldRenderViewport) {
-    return buildContainer();
-  }
-  const buildSpanContainer = () => /* @__PURE__ */ React20.createElement("div", { className: spanClasses, ref: setSpanContainerRef, role: "presentation" }, spannedRowCtrlsOrdered.map((rowCtrl) => /* @__PURE__ */ React20.createElement(rowComp_default, { rowCtrl, containerType: containerOptions.type, key: rowCtrl.instanceId })));
-  return /* @__PURE__ */ React20.createElement("div", { className: viewportClasses, ref: setViewportRef, role: "rowgroup" }, buildContainer(), isSpanning ? buildSpanContainer() : null);
-};
-var rowContainerComp_default = reactExports.memo(RowContainerComp);
-var GridBodyComp = () => {
-  const beans = reactExports.useContext(BeansContext);
-  const { context, overlays } = beans;
-  const [rowAnimationClass, setRowAnimationClass] = reactExports.useState("");
-  const [topHeight, setTopHeight] = reactExports.useState(0);
-  const [bottomHeight, setBottomHeight] = reactExports.useState(0);
-  const [stickyTopHeight, setStickyTopHeight] = reactExports.useState("0px");
-  const [stickyTopTop, setStickyTopTop] = reactExports.useState("0px");
-  const [stickyTopWidth, setStickyTopWidth] = reactExports.useState("100%");
-  const [stickyBottomHeight, setStickyBottomHeight] = reactExports.useState("0px");
-  const [stickyBottomBottom, setStickyBottomBottom] = reactExports.useState("0px");
-  const [stickyBottomWidth, setStickyBottomWidth] = reactExports.useState("100%");
-  const [topInvisible, setTopInvisible] = reactExports.useState(true);
-  const [bottomInvisible, setBottomInvisible] = reactExports.useState(true);
-  const [forceVerticalScrollClass, setForceVerticalScrollClass] = reactExports.useState(null);
-  const [topAndBottomOverflowY, setTopAndBottomOverflowY] = reactExports.useState("");
-  const [cellSelectableCss, setCellSelectableCss] = reactExports.useState(null);
-  const [layoutClass, setLayoutClass] = reactExports.useState("ag-layout-normal");
-  const cssManager = reactExports.useRef();
-  if (!cssManager.current) {
-    cssManager.current = new CssClassManager(() => eRoot.current);
-  }
-  const eRoot = reactExports.useRef(null);
-  const eTop = reactExports.useRef(null);
-  const eStickyTop = reactExports.useRef(null);
-  const eStickyBottom = reactExports.useRef(null);
-  const eBody = reactExports.useRef(null);
-  const eBodyViewport = reactExports.useRef(null);
-  const eBottom = reactExports.useRef(null);
-  const beansToDestroy = reactExports.useRef([]);
-  const destroyFuncs = reactExports.useRef([]);
-  reactComment_default(" AG Grid Body ", eRoot);
-  reactComment_default(" AG Pinned Top ", eTop);
-  reactComment_default(" AG Sticky Top ", eStickyTop);
-  reactComment_default(" AG Middle ", eBodyViewport);
-  reactComment_default(" AG Pinned Bottom ", eBottom);
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eRoot.current = eRef;
-    if (!eRef || context.isDestroyed()) {
-      beansToDestroy.current = context.destroyBeans(beansToDestroy.current);
-      for (const f of destroyFuncs.current) {
-        f();
-      }
-      destroyFuncs.current = [];
-      return;
-    }
-    const attachToDom = (eParent, eChild) => {
-      eParent.appendChild(eChild);
-      destroyFuncs.current.push(() => eChild.remove());
-    };
-    const newComp = (compClass) => {
-      const comp = context.createBean(new compClass());
-      beansToDestroy.current.push(comp);
-      return comp;
-    };
-    const addComp = (eParent, compClass, comment2) => {
-      attachToDom(eParent, document.createComment(comment2));
-      attachToDom(eParent, newComp(compClass).getGui());
-    };
-    addComp(eRef, FakeHScrollComp, " AG Fake Horizontal Scroll ");
-    const overlayComp = overlays?.getOverlayWrapperCompClass();
-    if (overlayComp) {
-      addComp(eRef, overlayComp, " AG Overlay Wrapper ");
-    }
-    if (eBody.current) {
-      addComp(eBody.current, FakeVScrollComp, " AG Fake Vertical Scroll ");
-    }
-    const compProxy = {
-      setRowAnimationCssOnBodyViewport: setRowAnimationClass,
-      setColumnCount: (count2) => {
-        if (eRoot.current) {
-          _setAriaColCount(eRoot.current, count2);
-        }
-      },
-      setRowCount: (count2) => {
-        if (eRoot.current) {
-          _setAriaRowCount(eRoot.current, count2);
-        }
-      },
-      setTopHeight,
-      setBottomHeight,
-      setStickyTopHeight,
-      setStickyTopTop,
-      setStickyTopWidth,
-      setTopInvisible,
-      setBottomInvisible,
-      setColumnMovingCss: (cssClass, flag) => cssManager.current.toggleCss(cssClass, flag),
-      updateLayoutClasses: setLayoutClass,
-      setAlwaysVerticalScrollClass: setForceVerticalScrollClass,
-      setPinnedTopBottomOverflowY: setTopAndBottomOverflowY,
-      setCellSelectableCss: (cssClass, flag) => setCellSelectableCss(flag ? cssClass : null),
-      setBodyViewportWidth: (width) => {
-        if (eBodyViewport.current) {
-          eBodyViewport.current.style.width = width;
-        }
-      },
-      registerBodyViewportResizeListener: (listener) => {
-        if (eBodyViewport.current) {
-          const unsubscribeFromResize = _observeResize(beans, eBodyViewport.current, listener);
-          destroyFuncs.current.push(() => unsubscribeFromResize());
-        }
-      },
-      setStickyBottomHeight,
-      setStickyBottomBottom,
-      setStickyBottomWidth,
-      setGridRootRole: (role) => eRef.setAttribute("role", role)
-    };
-    const ctrl = context.createBean(new GridBodyCtrl());
-    beansToDestroy.current.push(ctrl);
-    ctrl.setComp(
-      compProxy,
-      eRef,
-      eBodyViewport.current,
-      eTop.current,
-      eBottom.current,
-      eStickyTop.current,
-      eStickyBottom.current
-    );
-  }, []);
-  const rootClasses = reactExports.useMemo(() => classesList("ag-root", "ag-unselectable", layoutClass), [layoutClass]);
-  const bodyViewportClasses = reactExports.useMemo(
-    () => classesList(
-      "ag-body-viewport",
-      rowAnimationClass,
-      layoutClass,
-      forceVerticalScrollClass,
-      cellSelectableCss
-    ),
-    [rowAnimationClass, layoutClass, forceVerticalScrollClass, cellSelectableCss]
-  );
-  const bodyClasses = reactExports.useMemo(() => classesList("ag-body", layoutClass), [layoutClass]);
-  const topClasses = reactExports.useMemo(
-    () => classesList("ag-floating-top", topInvisible ? "ag-invisible" : null, cellSelectableCss),
-    [cellSelectableCss, topInvisible]
-  );
-  const stickyTopClasses = reactExports.useMemo(() => classesList("ag-sticky-top", cellSelectableCss), [cellSelectableCss]);
-  const stickyBottomClasses = reactExports.useMemo(
-    () => classesList("ag-sticky-bottom", stickyBottomHeight === "0px" ? "ag-invisible" : null, cellSelectableCss),
-    [cellSelectableCss, stickyBottomHeight]
-  );
-  const bottomClasses = reactExports.useMemo(
-    () => classesList("ag-floating-bottom", bottomInvisible ? "ag-invisible" : null, cellSelectableCss),
-    [cellSelectableCss, bottomInvisible]
-  );
-  const topStyle = reactExports.useMemo(
-    () => ({
-      height: topHeight,
-      minHeight: topHeight,
-      overflowY: topAndBottomOverflowY
-    }),
-    [topHeight, topAndBottomOverflowY]
-  );
-  const stickyTopStyle = reactExports.useMemo(
-    () => ({
-      height: stickyTopHeight,
-      top: stickyTopTop,
-      width: stickyTopWidth
-    }),
-    [stickyTopHeight, stickyTopTop, stickyTopWidth]
-  );
-  const stickyBottomStyle = reactExports.useMemo(
-    () => ({
-      height: stickyBottomHeight,
-      bottom: stickyBottomBottom,
-      width: stickyBottomWidth
-    }),
-    [stickyBottomHeight, stickyBottomBottom, stickyBottomWidth]
-  );
-  const bottomStyle = reactExports.useMemo(
-    () => ({
-      height: bottomHeight,
-      minHeight: bottomHeight,
-      overflowY: topAndBottomOverflowY
-    }),
-    [bottomHeight, topAndBottomOverflowY]
-  );
-  const createRowContainer = (container2) => /* @__PURE__ */ React20.createElement(rowContainerComp_default, { name: container2, key: `${container2}-container` });
-  const createSection = ({
-    section,
-    children,
-    className,
-    style
-  }) => /* @__PURE__ */ React20.createElement("div", { ref: section, className, role: "presentation", style }, children.map(createRowContainer));
-  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: rootClasses }, /* @__PURE__ */ React20.createElement(gridHeaderComp_default, null), createSection({
-    section: eTop,
-    className: topClasses,
-    style: topStyle,
-    children: ["topLeft", "topCenter", "topRight", "topFullWidth"]
-  }), /* @__PURE__ */ React20.createElement("div", { className: bodyClasses, ref: eBody, role: "presentation" }, createSection({
-    section: eBodyViewport,
-    className: bodyViewportClasses,
-    children: ["left", "center", "right", "fullWidth"]
-  })), createSection({
-    section: eStickyTop,
-    className: stickyTopClasses,
-    style: stickyTopStyle,
-    children: ["stickyTopLeft", "stickyTopCenter", "stickyTopRight", "stickyTopFullWidth"]
-  }), createSection({
-    section: eStickyBottom,
-    className: stickyBottomClasses,
-    style: stickyBottomStyle,
-    children: ["stickyBottomLeft", "stickyBottomCenter", "stickyBottomRight", "stickyBottomFullWidth"]
-  }), createSection({
-    section: eBottom,
-    className: bottomClasses,
-    style: bottomStyle,
-    children: ["bottomLeft", "bottomCenter", "bottomRight", "bottomFullWidth"]
-  }));
-};
-var gridBodyComp_default = reactExports.memo(GridBodyComp);
-var TabGuardCompRef = (props, forwardRef4) => {
-  const { children, eFocusableElement, onTabKeyDown, gridCtrl, forceFocusOutWhenTabGuardsAreEmpty, isEmpty: isEmpty2 } = props;
-  const { context } = reactExports.useContext(BeansContext);
-  const topTabGuardRef = reactExports.useRef(null);
-  const bottomTabGuardRef = reactExports.useRef(null);
-  const tabGuardCtrlRef = reactExports.useRef();
-  const setTabIndex = (value) => {
-    const processedValue = value == null ? void 0 : parseInt(value, 10).toString();
-    for (const tabGuard of [topTabGuardRef, bottomTabGuardRef]) {
-      if (processedValue === void 0) {
-        tabGuard.current?.removeAttribute("tabindex");
-      } else {
-        tabGuard.current?.setAttribute("tabindex", processedValue);
-      }
-    }
-  };
-  reactExports.useImperativeHandle(forwardRef4, () => ({
-    forceFocusOutOfContainer(up) {
-      tabGuardCtrlRef.current?.forceFocusOutOfContainer(up);
-    }
-  }));
-  const setupCtrl = reactExports.useCallback(() => {
-    const topTabGuard = topTabGuardRef.current;
-    const bottomTabGuard = bottomTabGuardRef.current;
-    if (!topTabGuard && !bottomTabGuard || context.isDestroyed()) {
-      tabGuardCtrlRef.current = context.destroyBean(tabGuardCtrlRef.current);
-      return;
-    }
-    if (topTabGuard && bottomTabGuard) {
-      const compProxy = {
-        setTabIndex
-      };
-      tabGuardCtrlRef.current = context.createBean(
-        new TabGuardCtrl({
-          comp: compProxy,
-          eTopGuard: topTabGuard,
-          eBottomGuard: bottomTabGuard,
-          eFocusableElement,
-          onTabKeyDown,
-          forceFocusOutWhenTabGuardsAreEmpty,
-          focusInnerElement: (fromBottom) => gridCtrl.focusInnerElement(fromBottom),
-          isEmpty: isEmpty2
-        })
-      );
-    }
-  }, []);
-  const setTopRef = reactExports.useCallback(
-    (e) => {
-      topTabGuardRef.current = e;
-      setupCtrl();
-    },
-    [setupCtrl]
-  );
-  const setBottomRef = reactExports.useCallback(
-    (e) => {
-      bottomTabGuardRef.current = e;
-      setupCtrl();
-    },
-    [setupCtrl]
-  );
-  const createTabGuard = (side) => {
-    const className = side === "top" ? TabGuardClassNames.TAB_GUARD_TOP : TabGuardClassNames.TAB_GUARD_BOTTOM;
-    return /* @__PURE__ */ React20.createElement(
-      "div",
-      {
-        className: `${TabGuardClassNames.TAB_GUARD} ${className}`,
-        role: "presentation",
-        ref: side === "top" ? setTopRef : setBottomRef
-      }
-    );
-  };
-  return /* @__PURE__ */ React20.createElement(React20.Fragment, null, createTabGuard("top"), children, createTabGuard("bottom"));
-};
-var TabGuardComp2 = reactExports.forwardRef(TabGuardCompRef);
-var tabGuardComp_default = reactExports.memo(TabGuardComp2);
-var GridComp = ({ context }) => {
-  const [rtlClass, setRtlClass] = reactExports.useState("");
-  const [layoutClass, setLayoutClass] = reactExports.useState("");
-  const [cursor, setCursor] = reactExports.useState(null);
-  const [userSelect, setUserSelect] = reactExports.useState(null);
-  const [initialised, setInitialised] = reactExports.useState(false);
-  const [tabGuardReady, setTabGuardReady] = reactExports.useState();
-  const gridCtrlRef = reactExports.useRef();
-  const eRootWrapperRef = reactExports.useRef(null);
-  const tabGuardRef = reactExports.useRef();
-  const [eGridBodyParent, setGridBodyParent] = reactExports.useState(null);
-  const focusInnerElementRef = reactExports.useRef(() => void 0);
-  const paginationCompRef = reactExports.useRef();
-  const focusableContainersRef = reactExports.useRef([]);
-  const onTabKeyDown = reactExports.useCallback(() => void 0, []);
-  reactComment_default(" AG Grid ", eRootWrapperRef);
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eRootWrapperRef.current = eRef;
-    gridCtrlRef.current = eRef ? context.createBean(new GridCtrl()) : context.destroyBean(gridCtrlRef.current);
-    if (!eRef || context.isDestroyed()) {
-      return;
-    }
-    const gridCtrl = gridCtrlRef.current;
-    focusInnerElementRef.current = gridCtrl.focusInnerElement.bind(gridCtrl);
-    const compProxy = {
-      destroyGridUi: () => {
-      },
-      // do nothing, as framework users destroy grid by removing the comp
-      setRtlClass,
-      forceFocusOutOfContainer: (up) => {
-        if (!up && paginationCompRef.current?.isDisplayed()) {
-          paginationCompRef.current.forceFocusOutOfContainer(up);
-          return;
-        }
-        tabGuardRef.current?.forceFocusOutOfContainer(up);
-      },
-      updateLayoutClasses: setLayoutClass,
-      getFocusableContainers: () => {
-        const comps = [];
-        const gridBodyCompEl = eRootWrapperRef.current?.querySelector(".ag-root");
-        if (gridBodyCompEl) {
-          comps.push({ getGui: () => gridBodyCompEl });
-        }
-        for (const comp of focusableContainersRef.current) {
-          if (comp.isDisplayed()) {
-            comps.push(comp);
-          }
-        }
-        return comps;
-      },
-      setCursor,
-      setUserSelect
-    };
-    gridCtrl.setComp(compProxy, eRef, eRef);
-    setInitialised(true);
-  }, []);
-  reactExports.useEffect(() => {
-    const gridCtrl = gridCtrlRef.current;
-    const eRootWrapper = eRootWrapperRef.current;
-    if (!tabGuardReady || !gridCtrl || !eGridBodyParent || !eRootWrapper || context.isDestroyed()) {
-      return;
-    }
-    const beansToDestroy = [];
-    const {
-      watermarkSelector,
-      paginationSelector,
-      sideBarSelector,
-      statusBarSelector,
-      gridHeaderDropZonesSelector
-    } = gridCtrl.getOptionalSelectors();
-    const additionalEls = [];
-    if (gridHeaderDropZonesSelector) {
-      const headerDropZonesComp = context.createBean(new gridHeaderDropZonesSelector.component());
-      const eGui = headerDropZonesComp.getGui();
-      eRootWrapper.insertAdjacentElement("afterbegin", eGui);
-      additionalEls.push(eGui);
-      beansToDestroy.push(headerDropZonesComp);
-    }
-    if (sideBarSelector) {
-      const sideBarComp = context.createBean(new sideBarSelector.component());
-      const eGui = sideBarComp.getGui();
-      const bottomTabGuard = eGridBodyParent.querySelector(".ag-tab-guard-bottom");
-      if (bottomTabGuard) {
-        bottomTabGuard.insertAdjacentElement("beforebegin", eGui);
-        additionalEls.push(eGui);
-      }
-      beansToDestroy.push(sideBarComp);
-      focusableContainersRef.current.push(sideBarComp);
-    }
-    const addComponentToDom = (component) => {
-      const comp = context.createBean(new component());
-      const eGui = comp.getGui();
-      eRootWrapper.insertAdjacentElement("beforeend", eGui);
-      additionalEls.push(eGui);
-      beansToDestroy.push(comp);
-      return comp;
-    };
-    if (statusBarSelector) {
-      addComponentToDom(statusBarSelector.component);
-    }
-    if (paginationSelector) {
-      const paginationComp = addComponentToDom(paginationSelector.component);
-      paginationCompRef.current = paginationComp;
-      focusableContainersRef.current.push(paginationComp);
-    }
-    if (watermarkSelector) {
-      addComponentToDom(watermarkSelector.component);
-    }
-    return () => {
-      context.destroyBeans(beansToDestroy);
-      for (const el of additionalEls) {
-        el.remove();
-      }
-    };
-  }, [tabGuardReady, eGridBodyParent, context]);
-  const rootWrapperClasses = reactExports.useMemo(
-    () => classesList("ag-root-wrapper", rtlClass, layoutClass),
-    [rtlClass, layoutClass]
-  );
-  const rootWrapperBodyClasses = reactExports.useMemo(
-    () => classesList("ag-root-wrapper-body", "ag-focus-managed", layoutClass),
-    [layoutClass]
-  );
-  const topStyle = reactExports.useMemo(
-    () => ({
-      userSelect: userSelect != null ? userSelect : "",
-      WebkitUserSelect: userSelect != null ? userSelect : "",
-      cursor: cursor != null ? cursor : ""
-    }),
-    [userSelect, cursor]
-  );
-  const setTabGuardCompRef = reactExports.useCallback((ref2) => {
-    tabGuardRef.current = ref2;
-    setTabGuardReady(ref2 !== null);
-  }, []);
-  const isFocusable = reactExports.useCallback(() => !gridCtrlRef.current?.isFocusable(), []);
-  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: rootWrapperClasses, style: topStyle, role: "presentation" }, /* @__PURE__ */ React20.createElement("div", { className: rootWrapperBodyClasses, ref: setGridBodyParent, role: "presentation" }, initialised && eGridBodyParent && !context.isDestroyed() && /* @__PURE__ */ React20.createElement(BeansContext.Provider, { value: context.getBeans() }, /* @__PURE__ */ React20.createElement(
-    tabGuardComp_default,
-    {
-      ref: setTabGuardCompRef,
-      eFocusableElement: eGridBodyParent,
-      onTabKeyDown,
-      gridCtrl: gridCtrlRef.current,
-      forceFocusOutWhenTabGuardsAreEmpty: true,
-      isEmpty: isFocusable
-    },
-    // we wait for initialised before rending the children, so GridComp has created and registered with it's
-    // GridCtrl before we create the child GridBodyComp. Otherwise the GridBodyComp would initialise first,
-    // before we have set the the Layout CSS classes, causing the GridBodyComp to render rows to a grid that
-    // doesn't have it's height specified, which would result if all the rows getting rendered (and if many rows,
-    // hangs the UI)
-    /* @__PURE__ */ React20.createElement(gridBodyComp_default, null)
-  ))));
-};
-var gridComp_default = reactExports.memo(GridComp);
-var RenderStatusService = class extends BeanStub {
-  postConstruct() {
-    if (this.beans.colAutosize) {
-      const queueResizeOperationsForTick = this.queueResizeOperationsForTick.bind(this);
-      this.addManagedEventListeners({
-        rowExpansionStateChanged: queueResizeOperationsForTick,
-        expandOrCollapseAll: queueResizeOperationsForTick,
-        // Enable devs to resize after they updated via the API
-        cellValueChanged: queueResizeOperationsForTick,
-        rowNodeDataChanged: queueResizeOperationsForTick,
-        rowDataUpdated: queueResizeOperationsForTick
-      });
-    }
-  }
-  queueResizeOperationsForTick() {
-    const colAutosize = this.beans.colAutosize;
-    colAutosize.shouldQueueResizeOperations = true;
-    setTimeout(() => {
-      colAutosize.processResizeOperations();
-    }, 0);
-  }
-  areHeaderCellsRendered() {
-    return this.beans.ctrlsSvc.getHeaderRowContainerCtrls().every((container2) => container2.getAllCtrls().every((ctrl) => ctrl.areCellsRendered()));
-  }
-  areCellsRendered() {
-    return this.beans.rowRenderer.getAllRowCtrls().every((row2) => row2.isRowRendered() && row2.getAllCellCtrls().every((cellCtrl) => !!cellCtrl.eGui));
-  }
-};
-var deprecatedProps = {
-  setGridApi: void 0,
-  maxComponentCreationTimeMs: void 0,
-  children: void 0
-};
-var reactPropsNotGridOptions = {
-  gridOptions: void 0,
-  modules: void 0,
-  containerStyle: void 0,
-  className: void 0,
-  passGridApi: void 0,
-  componentWrappingElement: void 0,
-  ...deprecatedProps
-};
-var excludeReactCompProps = new Set(Object.keys(reactPropsNotGridOptions));
-var deprecatedReactCompProps = new Set(Object.keys(deprecatedProps));
-var AgGridReactUi = (props) => {
-  const apiRef = reactExports.useRef();
-  const eGui = reactExports.useRef(null);
-  const portalManager = reactExports.useRef(null);
-  const destroyFuncs = reactExports.useRef([]);
-  const whenReadyFuncs = reactExports.useRef([]);
-  const prevProps = reactExports.useRef(props);
-  const frameworkOverridesRef = reactExports.useRef();
-  const gridIdRef = reactExports.useRef();
-  const ready = reactExports.useRef(false);
-  const [context, setContext] = reactExports.useState(void 0);
-  const [, setPortalRefresher] = reactExports.useState(0);
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGui.current = eRef;
-    if (!eRef) {
-      for (const f of destroyFuncs.current) {
-        f();
-      }
-      destroyFuncs.current.length = 0;
-      return;
-    }
-    const modules = props.modules || [];
-    if (!portalManager.current) {
-      portalManager.current = new PortalManager(
-        () => setPortalRefresher((prev) => prev + 1),
-        props.componentWrappingElement,
-        props.maxComponentCreationTimeMs
-      );
-      destroyFuncs.current.push(() => {
-        portalManager.current?.destroy();
-        portalManager.current = null;
-      });
-    }
-    const mergedGridOps = _combineAttributesAndGridOptions(
-      props.gridOptions,
-      props,
-      Object.keys(props).filter((key2) => !excludeReactCompProps.has(key2))
-    );
-    const processQueuedUpdates = () => {
-      if (ready.current) {
-        const getFn = () => frameworkOverridesRef.current?.shouldQueueUpdates() ? void 0 : whenReadyFuncs.current.shift();
-        let fn2 = getFn();
-        while (fn2) {
-          fn2();
-          fn2 = getFn();
-        }
-      }
-    };
-    const frameworkOverrides = new ReactFrameworkOverrides(processQueuedUpdates);
-    frameworkOverridesRef.current = frameworkOverrides;
-    const renderStatus = new RenderStatusService();
-    const gridParams = {
-      providedBeanInstances: {
-        frameworkCompWrapper: new ReactFrameworkComponentWrapper(portalManager.current, mergedGridOps),
-        renderStatus
-      },
-      modules,
-      frameworkOverrides,
-      setThemeOnGridDiv: true
-    };
-    const createUiCallback = (ctx) => {
-      setContext(ctx);
-      ctx.createBean(renderStatus);
-      destroyFuncs.current.push(() => {
-        ctx.destroy();
-      });
-      ctx.getBean("ctrlsSvc").whenReady(
-        {
-          addDestroyFunc: (func2) => {
-            destroyFuncs.current.push(func2);
-          }
-        },
-        () => {
-          if (ctx.isDestroyed()) {
-            return;
-          }
-          const api = apiRef.current;
-          if (api) {
-            props.passGridApi?.(api);
-          }
-        }
-      );
-    };
-    const acceptChangesCallback = (context2) => {
-      context2.getBean("ctrlsSvc").whenReady(
-        {
-          addDestroyFunc: (func2) => {
-            destroyFuncs.current.push(func2);
-          }
-        },
-        () => {
-          for (const f of whenReadyFuncs.current) {
-            f();
-          }
-          whenReadyFuncs.current.length = 0;
-          ready.current = true;
-        }
-      );
-    };
-    const gridCoreCreator = new GridCoreCreator();
-    mergedGridOps.gridId ?? (mergedGridOps.gridId = gridIdRef.current);
-    apiRef.current = gridCoreCreator.create(
-      eRef,
-      mergedGridOps,
-      createUiCallback,
-      acceptChangesCallback,
-      gridParams
-    );
-    destroyFuncs.current.push(() => {
-      apiRef.current = void 0;
-    });
-    if (apiRef.current) {
-      gridIdRef.current = apiRef.current.getGridId();
-    }
-  }, []);
-  const style = reactExports.useMemo(() => {
-    return {
-      height: "100%",
-      ...props.containerStyle || {}
-    };
-  }, [props.containerStyle]);
-  const processWhenReady = reactExports.useCallback((func2) => {
-    if (ready.current && !frameworkOverridesRef.current?.shouldQueueUpdates()) {
-      func2();
-    } else {
-      whenReadyFuncs.current.push(func2);
-    }
-  }, []);
-  reactExports.useEffect(() => {
-    const changes = extractGridPropertyChanges(prevProps.current, props);
-    prevProps.current = props;
-    processWhenReady(() => {
-      if (apiRef.current) {
-        _processOnChange(changes, apiRef.current);
-      }
-    });
-  }, [props]);
-  const renderMode = !React20.useSyncExternalStore || _getGridOption(props, "renderingMode") === "legacy" ? "legacy" : "default";
-  return /* @__PURE__ */ React20.createElement("div", { style, className: props.className, ref: setRef2 }, /* @__PURE__ */ React20.createElement(RenderModeContext.Provider, { value: renderMode }, context && !context.isDestroyed() ? /* @__PURE__ */ React20.createElement(gridComp_default, { key: context.instanceId, context }) : null, portalManager.current?.getPortals() ?? null));
-};
-function extractGridPropertyChanges(prevProps, nextProps) {
-  const changes = {};
-  for (const propKey of Object.keys(nextProps)) {
-    if (excludeReactCompProps.has(propKey)) {
-      if (deprecatedReactCompProps.has(propKey)) {
-        _warn(274, { prop: propKey });
-      }
-      continue;
-    }
-    const propValue = nextProps[propKey];
-    if (prevProps[propKey] !== propValue) {
-      changes[propKey] = propValue;
-    }
-  }
-  return changes;
-}
-var ReactFrameworkComponentWrapper = class extends BaseComponentWrapper {
-  constructor(parent, gridOptions) {
-    super();
-    this.parent = parent;
-    this.gridOptions = gridOptions;
-  }
-  createWrapper(UserReactComponent, componentType) {
-    const gridOptions = this.gridOptions;
-    const reactiveCustomComponents = _getGridOption(gridOptions, "reactiveCustomComponents");
-    if (reactiveCustomComponents) {
-      const getComponentClass = (propertyName) => {
-        switch (propertyName) {
-          case "filter":
-            return _getGridOption(gridOptions, "enableFilterHandlers") ? FilterDisplayComponentWrapper : FilterComponentWrapper;
-          case "floatingFilterComponent":
-            return _getGridOption(gridOptions, "enableFilterHandlers") ? FloatingFilterDisplayComponentWrapper : FloatingFilterComponentWrapper;
-          case "dateComponent":
-            return DateComponentWrapper;
-          case "dragAndDropImageComponent":
-            return DragAndDropImageComponentWrapper;
-          case "loadingOverlayComponent":
-            return LoadingOverlayComponentWrapper;
-          case "noRowsOverlayComponent":
-            return NoRowsOverlayComponentWrapper;
-          case "statusPanel":
-            return StatusPanelComponentWrapper;
-          case "toolPanel":
-            return ToolPanelComponentWrapper;
-          case "menuItem":
-            return MenuItemComponentWrapper;
-          case "cellRenderer":
-            return CellRendererComponentWrapper;
-          case "innerHeaderComponent":
-            return InnerHeaderComponentWrapper;
-        }
-      };
-      const ComponentClass = getComponentClass(componentType.name);
-      if (ComponentClass) {
-        return new ComponentClass(UserReactComponent, this.parent, componentType);
-      }
-    } else {
-      switch (componentType.name) {
-        case "filter":
-        case "floatingFilterComponent":
-        case "dateComponent":
-        case "dragAndDropImageComponent":
-        case "loadingOverlayComponent":
-        case "noRowsOverlayComponent":
-        case "statusPanel":
-        case "toolPanel":
-        case "menuItem":
-        case "cellRenderer":
-          warnReactiveCustomComponents();
-          break;
-      }
-    }
-    const suppressFallbackMethods = !componentType.cellRenderer && componentType.name !== "toolPanel";
-    return new ReactComponent(UserReactComponent, this.parent, componentType, suppressFallbackMethods);
-  }
-};
-var DetailCellRenderer = reactExports.forwardRef((props, ref2) => {
-  const beans = reactExports.useContext(BeansContext);
-  const { registry, context, gos, rowModel } = beans;
-  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
-  const [gridCssClasses, setGridCssClasses] = reactExports.useState(() => new CssClasses());
-  const [detailGridOptions, setDetailGridOptions] = reactExports.useState();
-  const [detailRowData, setDetailRowData] = reactExports.useState();
-  const ctrlRef = reactExports.useRef();
-  const eGuiRef = reactExports.useRef(null);
-  const resizeObserverDestroyFunc = reactExports.useRef();
-  const parentModules = reactExports.useMemo(
-    () => _getGridRegisteredModules(props.api.getGridId(), detailGridOptions?.rowModelType ?? "clientSide"),
-    [props]
-  );
-  const topClassName = reactExports.useMemo(() => cssClasses.toString() + " ag-details-row", [cssClasses]);
-  const gridClassName = reactExports.useMemo(() => gridCssClasses.toString() + " ag-details-grid", [gridCssClasses]);
-  if (ref2) {
-    reactExports.useImperativeHandle(ref2, () => ({
-      refresh() {
-        return ctrlRef.current?.refresh() ?? false;
-      }
-    }));
-  }
-  if (props.template) {
-    _warn(230);
-  }
-  const setRef2 = reactExports.useCallback((eRef) => {
-    eGuiRef.current = eRef;
-    if (!eRef || context.isDestroyed()) {
-      ctrlRef.current = context.destroyBean(ctrlRef.current);
-      resizeObserverDestroyFunc.current?.();
-      return;
-    }
-    const compProxy = {
-      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
-      toggleDetailGridCss: (name2, on) => setGridCssClasses((prev) => prev.setClass(name2, on)),
-      setDetailGrid: (gridOptions) => setDetailGridOptions(gridOptions),
-      setRowData: (rowData) => setDetailRowData(rowData),
-      getGui: () => eGuiRef.current
-    };
-    const ctrl = registry.createDynamicBean("detailCellRendererCtrl", true);
-    if (!ctrl) {
-      return;
-    }
-    context.createBean(ctrl);
-    ctrl.init(compProxy, props);
-    ctrlRef.current = ctrl;
-    if (gos.get("detailRowAutoHeight")) {
-      const checkRowSizeFunc = () => {
-        if (eGuiRef.current == null) {
-          return;
-        }
-        const clientHeight = eGuiRef.current.clientHeight;
-        if (clientHeight != null && clientHeight > 0) {
-          const updateRowHeightFunc = () => {
-            props.node.setRowHeight(clientHeight);
-            if (_isClientSideRowModel(gos) || _isServerSideRowModel(gos)) {
-              rowModel.onRowHeightChanged();
-            }
-          };
-          setTimeout(updateRowHeightFunc, 0);
-        }
-      };
-      resizeObserverDestroyFunc.current = _observeResize(beans, eRef, checkRowSizeFunc);
-      checkRowSizeFunc();
-    }
-  }, []);
-  const registerGridApi = reactExports.useCallback((api) => {
-    ctrlRef.current?.registerDetailWithMaster(api);
-  }, []);
-  return /* @__PURE__ */ React20.createElement("div", { className: topClassName, ref: setRef2 }, detailGridOptions && /* @__PURE__ */ React20.createElement(
-    AgGridReactUi,
-    {
-      className: gridClassName,
-      ...detailGridOptions,
-      modules: parentModules,
-      rowData: detailRowData,
-      passGridApi: registerGridApi
-    }
-  ));
-});
-var ReactFrameworkOverrides = class extends VanillaFrameworkOverrides {
-  constructor(processQueuedUpdates) {
-    super("react");
-    this.processQueuedUpdates = processQueuedUpdates;
-    this.queueUpdates = false;
-    this.renderingEngine = "react";
-    this.frameworkComponents = {
-      agGroupCellRenderer: groupCellRenderer_default,
-      agGroupRowRenderer: groupCellRenderer_default,
-      agDetailCellRenderer: DetailCellRenderer
-    };
-    this.wrapIncoming = (callback, source2) => {
-      if (source2 === "ensureVisible") {
-        return runWithoutFlushSync(callback);
-      }
-      return callback();
-    };
-  }
-  frameworkComponent(name2) {
-    return this.frameworkComponents[name2];
-  }
-  isFrameworkComponent(comp) {
-    if (!comp) {
-      return false;
-    }
-    const prototype = comp.prototype;
-    const isJsComp = prototype && "getGui" in prototype;
-    return !isJsComp;
-  }
-  getLockOnRefresh() {
-    this.queueUpdates = true;
-  }
-  releaseLockOnRefresh() {
-    this.queueUpdates = false;
-    this.processQueuedUpdates();
-  }
-  shouldQueueUpdates() {
-    return this.queueUpdates;
-  }
-  runWhenReadyAsync() {
-    return isReact19();
-  }
-};
-var AgGridReact = class extends reactExports.Component {
-  constructor() {
-    super(...arguments);
-    this.apiListeners = [];
-    this.setGridApi = (api) => {
-      this.api = api;
-      for (const listener of this.apiListeners) {
-        listener(api);
-      }
-    };
-  }
-  registerApiListener(listener) {
-    this.apiListeners.push(listener);
-  }
-  componentWillUnmount() {
-    this.apiListeners.length = 0;
-  }
-  render() {
-    return /* @__PURE__ */ React20.createElement(AgGridReactUi, { ...this.props, passGridApi: this.setGridApi });
-  }
-};
 const ONE = 2147483648;
 const ALL = 4294967295;
 class BitSet {
@@ -108011,7 +104981,7 @@ function formatValue(v, options = {}) {
 function toHTML(table2, options = {}) {
   const names = columns(table2, options.columns);
   const { align: align2, format: format2 } = formats(table2, names, options);
-  const style = styles$8(options);
+  const style = styles$9(options);
   const nullish = options.null;
   const alignValue = (a2) => a2 === "c" ? "center" : a2 === "r" ? "right" : "left";
   const escape2 = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -108041,7 +105011,7 @@ function toHTML(table2, options = {}) {
   });
   return text2 + "</tbody></table>";
 }
-function styles$8(options) {
+function styles$9(options) {
   return mapObject(
     options.style,
     (value) => isFunction(value) ? value : () => value
@@ -108977,31 +105947,3055 @@ const firstUserMessage = (messages) => {
   }
   return void 0;
 };
-const scannerHeaderRow = "_scannerHeaderRow_1jevi_1";
-const gridWrapper$1 = "_gridWrapper_1jevi_15";
+const scannerHeaderRow = "_scannerHeaderRow_1b6xr_1";
+const styles$8 = {
+  scannerHeaderRow
+};
+var BeansContext = React20.createContext({});
+var RenderModeContext = React20.createContext("default");
+var showJsComp = (compDetails, context, eParent, ref2) => {
+  const doNothing = !compDetails || compDetails.componentFromFramework || context.isDestroyed();
+  if (doNothing) {
+    return;
+  }
+  const promise = compDetails.newAgStackInstance();
+  let comp;
+  let compGui;
+  let destroyed = false;
+  promise.then((c2) => {
+    if (destroyed) {
+      context.destroyBean(c2);
+      return;
+    }
+    comp = c2;
+    compGui = comp.getGui();
+    eParent.appendChild(compGui);
+    setRef(ref2, comp);
+  });
+  return () => {
+    destroyed = true;
+    if (!comp) {
+      return;
+    }
+    compGui?.remove();
+    context.destroyBean(comp);
+    if (ref2) {
+      setRef(ref2, void 0);
+    }
+  };
+};
+var setRef = (ref2, value) => {
+  if (!ref2) {
+    return;
+  }
+  if (ref2 instanceof Function) {
+    const refCallback = ref2;
+    refCallback(value);
+  } else {
+    const refObj = ref2;
+    refObj.current = value;
+  }
+};
+var classesList = (...list2) => {
+  const filtered = list2.filter((s) => s != null && s !== "");
+  return filtered.join(" ");
+};
+var CssClasses = class _CssClasses {
+  constructor(...initialClasses) {
+    this.classesMap = {};
+    for (const className of initialClasses) {
+      this.classesMap[className] = true;
+    }
+  }
+  setClass(className, on) {
+    const nothingHasChanged = !!this.classesMap[className] == on;
+    if (nothingHasChanged) {
+      return this;
+    }
+    const res = new _CssClasses();
+    res.classesMap = { ...this.classesMap };
+    res.classesMap[className] = on;
+    return res;
+  }
+  toString() {
+    const res = Object.keys(this.classesMap).filter((key2) => this.classesMap[key2]).join(" ");
+    return res;
+  }
+};
+var isComponentStateless = (Component2) => {
+  const hasSymbol = () => typeof Symbol === "function" && Symbol.for;
+  const getMemoType = () => hasSymbol() ? Symbol.for("react.memo") : 60115;
+  return typeof Component2 === "function" && !(Component2.prototype && Component2.prototype.isReactComponent) || typeof Component2 === "object" && Component2.$$typeof === getMemoType();
+};
+var reactVersion = React20.version?.split(".")[0];
+var isReactVersion17Minus = reactVersion === "16" || reactVersion === "17";
+function isReact19() {
+  return reactVersion === "19";
+}
+var disableFlushSync = false;
+function runWithoutFlushSync(func2) {
+  if (!disableFlushSync) {
+    setTimeout(() => disableFlushSync = false, 0);
+  }
+  disableFlushSync = true;
+  return func2();
+}
+var agFlushSync = (useFlushSync, fn2) => {
+  if (!isReactVersion17Minus && useFlushSync && !disableFlushSync) {
+    ReactDOM.flushSync(fn2);
+  } else {
+    fn2();
+  }
+};
+var agStartTransition = (fn2) => {
+  if (!isReactVersion17Minus) {
+    React20.startTransition(fn2);
+  } else {
+    fn2();
+  }
+};
+function agUseSyncExternalStore(subscribe, getSnapshot, defaultSnapshot) {
+  if (React20.useSyncExternalStore) {
+    return React20.useSyncExternalStore(subscribe, getSnapshot);
+  } else {
+    return defaultSnapshot;
+  }
+}
+function getNextValueIfDifferent(prev, next, maintainOrder) {
+  if (next == null || prev == null) {
+    return next;
+  }
+  if (prev === next || next.length === 0 && prev.length === 0) {
+    return prev;
+  }
+  if (maintainOrder || prev.length === 0 && next.length > 0 || prev.length > 0 && next.length === 0) {
+    return next;
+  }
+  const oldValues = [];
+  const newValues = [];
+  const prevMap = /* @__PURE__ */ new Map();
+  const nextMap = /* @__PURE__ */ new Map();
+  for (let i = 0; i < next.length; i++) {
+    const c2 = next[i];
+    nextMap.set(c2.instanceId, c2);
+  }
+  for (let i = 0; i < prev.length; i++) {
+    const c2 = prev[i];
+    prevMap.set(c2.instanceId, c2);
+    if (nextMap.has(c2.instanceId)) {
+      oldValues.push(c2);
+    }
+  }
+  for (let i = 0; i < next.length; i++) {
+    const c2 = next[i];
+    const instanceId = c2.instanceId;
+    if (!prevMap.has(instanceId)) {
+      newValues.push(c2);
+    }
+  }
+  if (oldValues.length === prev.length && newValues.length === 0) {
+    return prev;
+  }
+  if (oldValues.length === 0 && newValues.length === next.length) {
+    return next;
+  }
+  if (oldValues.length === 0) {
+    return newValues;
+  }
+  if (newValues.length === 0) {
+    return oldValues;
+  }
+  return [...oldValues, ...newValues];
+}
+var GroupCellRenderer = reactExports.forwardRef((props, ref2) => {
+  const { registry, context } = reactExports.useContext(BeansContext);
+  const eGui = reactExports.useRef(null);
+  const eValueRef = reactExports.useRef(null);
+  const eCheckboxRef = reactExports.useRef(null);
+  const eExpandedRef = reactExports.useRef(null);
+  const eContractedRef = reactExports.useRef(null);
+  const ctrlRef = reactExports.useRef();
+  const [innerCompDetails, setInnerCompDetails] = reactExports.useState();
+  const [childCount, setChildCount] = reactExports.useState();
+  const [value, setValue] = reactExports.useState();
+  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
+  const [expandedCssClasses, setExpandedCssClasses] = reactExports.useState(() => new CssClasses("ag-hidden"));
+  const [contractedCssClasses, setContractedCssClasses] = reactExports.useState(() => new CssClasses("ag-hidden"));
+  const [checkboxCssClasses, setCheckboxCssClasses] = reactExports.useState(() => new CssClasses("ag-invisible"));
+  reactExports.useImperativeHandle(ref2, () => {
+    return {
+      // force new instance when grid tries to refresh
+      refresh() {
+        return false;
+      }
+    };
+  });
+  reactExports.useLayoutEffect(() => {
+    return showJsComp(innerCompDetails, context, eValueRef.current);
+  }, [innerCompDetails]);
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef || context.isDestroyed()) {
+      ctrlRef.current = context.destroyBean(ctrlRef.current);
+      return;
+    }
+    const compProxy = {
+      setInnerRenderer: (details, valueToDisplay) => {
+        setInnerCompDetails(details);
+        setValue(valueToDisplay);
+      },
+      setChildCount: (count2) => setChildCount(count2),
+      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
+      setContractedDisplayed: (displayed) => setContractedCssClasses((prev) => prev.setClass("ag-hidden", !displayed)),
+      setExpandedDisplayed: (displayed) => setExpandedCssClasses((prev) => prev.setClass("ag-hidden", !displayed)),
+      setCheckboxVisible: (visible2) => setCheckboxCssClasses((prev) => prev.setClass("ag-invisible", !visible2)),
+      setCheckboxSpacing: (add2) => setCheckboxCssClasses((prev) => prev.setClass("ag-group-checkbox-spacing", add2))
+    };
+    const groupCellRendererCtrl = registry.createDynamicBean("groupCellRendererCtrl", true);
+    if (groupCellRendererCtrl) {
+      ctrlRef.current = context.createBean(groupCellRendererCtrl);
+      ctrlRef.current.init(
+        compProxy,
+        eRef,
+        eCheckboxRef.current,
+        eExpandedRef.current,
+        eContractedRef.current,
+        GroupCellRenderer,
+        props
+      );
+    }
+  }, []);
+  const className = reactExports.useMemo(() => `ag-cell-wrapper ${cssClasses.toString()}`, [cssClasses]);
+  const expandedClassName = reactExports.useMemo(() => `ag-group-expanded ${expandedCssClasses.toString()}`, [expandedCssClasses]);
+  const contractedClassName = reactExports.useMemo(
+    () => `ag-group-contracted ${contractedCssClasses.toString()}`,
+    [contractedCssClasses]
+  );
+  const checkboxClassName = reactExports.useMemo(() => `ag-group-checkbox ${checkboxCssClasses.toString()}`, [checkboxCssClasses]);
+  const useFwRenderer = innerCompDetails?.componentFromFramework;
+  const FwRenderer = useFwRenderer ? innerCompDetails.componentClass : void 0;
+  const useValue = innerCompDetails == null && value != null;
+  const escapedValue = _toString(value);
+  return /* @__PURE__ */ React20.createElement(
+    "span",
+    {
+      className,
+      ref: setRef2,
+      ...!props.colDef ? { role: ctrlRef.current?.getCellAriaRole() } : {}
+    },
+    /* @__PURE__ */ React20.createElement("span", { className: expandedClassName, ref: eExpandedRef }),
+    /* @__PURE__ */ React20.createElement("span", { className: contractedClassName, ref: eContractedRef }),
+    /* @__PURE__ */ React20.createElement("span", { className: checkboxClassName, ref: eCheckboxRef }),
+    /* @__PURE__ */ React20.createElement("span", { className: "ag-group-value", ref: eValueRef }, useValue ? escapedValue : useFwRenderer ? /* @__PURE__ */ React20.createElement(FwRenderer, { ...innerCompDetails.params }) : null),
+    /* @__PURE__ */ React20.createElement("span", { className: "ag-group-child-count" }, childCount)
+  );
+});
+var groupCellRenderer_default = GroupCellRenderer;
+var CustomContext = reactExports.createContext({
+  setMethods: () => {
+  }
+});
+var CustomWrapperComp = (params) => {
+  const { initialProps, addUpdateCallback, CustomComponentClass, setMethods } = params;
+  const [{ key: key2, ...props }, setProps] = reactExports.useState(initialProps);
+  reactExports.useEffect(() => {
+    addUpdateCallback((newProps) => setProps(newProps));
+  }, []);
+  return /* @__PURE__ */ React20.createElement(CustomContext.Provider, { value: { setMethods } }, /* @__PURE__ */ React20.createElement(CustomComponentClass, { key: key2, ...props }));
+};
+var customWrapperComp_default = reactExports.memo(CustomWrapperComp);
+var counter = 0;
+function generateNewKey() {
+  return `agPortalKey_${++counter}`;
+}
+var ReactComponent = class {
+  constructor(reactComponent, portalManager, componentType, suppressFallbackMethods) {
+    this.portal = null;
+    this.oldPortal = null;
+    this.reactComponent = reactComponent;
+    this.portalManager = portalManager;
+    this.componentType = componentType;
+    this.suppressFallbackMethods = !!suppressFallbackMethods;
+    this.statelessComponent = this.isStateless(this.reactComponent);
+    this.key = generateNewKey();
+    this.portalKey = generateNewKey();
+    this.instanceCreated = this.isStatelessComponent() ? AgPromise.resolve(false) : new AgPromise((resolve2) => {
+      this.resolveInstanceCreated = resolve2;
+    });
+  }
+  getGui() {
+    return this.eParentElement;
+  }
+  /** `getGui()` returns the parent element. This returns the actual root element. */
+  getRootElement() {
+    const firstChild = this.eParentElement.firstChild;
+    return firstChild;
+  }
+  destroy() {
+    if (this.componentInstance && typeof this.componentInstance.destroy == "function") {
+      this.componentInstance.destroy();
+    }
+    const portal = this.portal;
+    if (portal) {
+      this.portalManager.destroyPortal(portal);
+    }
+  }
+  createParentElement(params) {
+    const componentWrappingElement = this.portalManager.getComponentWrappingElement();
+    const eParentElement = document.createElement(componentWrappingElement || "div");
+    eParentElement.classList.add("ag-react-container");
+    params.reactContainer = eParentElement;
+    return eParentElement;
+  }
+  statelessComponentRendered() {
+    return this.eParentElement.childElementCount > 0 || this.eParentElement.childNodes.length > 0;
+  }
+  getFrameworkComponentInstance() {
+    return this.componentInstance;
+  }
+  isStatelessComponent() {
+    return this.statelessComponent;
+  }
+  getReactComponentName() {
+    return this.reactComponent.name;
+  }
+  getMemoType() {
+    return this.hasSymbol() ? Symbol.for("react.memo") : 60115;
+  }
+  hasSymbol() {
+    return typeof Symbol === "function" && Symbol.for;
+  }
+  isStateless(Component2) {
+    return typeof Component2 === "function" && !(Component2.prototype && Component2.prototype.isReactComponent) || typeof Component2 === "object" && Component2.$$typeof === this.getMemoType();
+  }
+  hasMethod(name2) {
+    const frameworkComponentInstance = this.getFrameworkComponentInstance();
+    return !!frameworkComponentInstance && frameworkComponentInstance[name2] != null || this.fallbackMethodAvailable(name2);
+  }
+  callMethod(name2, args2) {
+    const frameworkComponentInstance = this.getFrameworkComponentInstance();
+    if (this.isStatelessComponent()) {
+      return this.fallbackMethod(name2, !!args2 && args2[0] ? args2[0] : {});
+    } else if (!frameworkComponentInstance) {
+      setTimeout(() => this.callMethod(name2, args2));
+      return;
+    }
+    const method = frameworkComponentInstance[name2];
+    if (method) {
+      return method.apply(frameworkComponentInstance, args2);
+    }
+    if (this.fallbackMethodAvailable(name2)) {
+      return this.fallbackMethod(name2, !!args2 && args2[0] ? args2[0] : {});
+    }
+  }
+  addMethod(name2, callback) {
+    this[name2] = callback;
+  }
+  init(params) {
+    this.eParentElement = this.createParentElement(params);
+    this.createOrUpdatePortal(params);
+    return new AgPromise((resolve2) => this.createReactComponent(resolve2));
+  }
+  createOrUpdatePortal(params) {
+    if (!this.isStatelessComponent()) {
+      this.ref = (element) => {
+        this.componentInstance = element;
+        this.resolveInstanceCreated?.(true);
+        this.resolveInstanceCreated = void 0;
+      };
+      params.ref = this.ref;
+    }
+    this.reactElement = this.createElement(this.reactComponent, { ...params, key: this.key });
+    this.portal = reactDomExports.createPortal(
+      this.reactElement,
+      this.eParentElement,
+      this.portalKey
+      // fixed deltaRowModeRefreshCompRenderer
+    );
+  }
+  createElement(reactComponent, props) {
+    return reactExports.createElement(reactComponent, props);
+  }
+  createReactComponent(resolve2) {
+    this.portalManager.mountReactPortal(this.portal, this, resolve2);
+  }
+  rendered() {
+    return this.isStatelessComponent() && this.statelessComponentRendered() || !!(!this.isStatelessComponent() && this.getFrameworkComponentInstance());
+  }
+  /*
+   * fallback methods - these will be invoked if a corresponding instance method is not present
+   * for example if refresh is called and is not available on the component instance, then refreshComponent on this
+   * class will be invoked instead
+   *
+   * Currently only refresh is supported
+   */
+  refreshComponent(args2) {
+    this.oldPortal = this.portal;
+    this.createOrUpdatePortal(args2);
+    this.portalManager.updateReactPortal(this.oldPortal, this.portal);
+  }
+  fallbackMethod(name2, params) {
+    const method = this[`${name2}Component`];
+    if (!this.suppressFallbackMethods && !!method) {
+      return method.bind(this)(params);
+    }
+  }
+  fallbackMethodAvailable(name2) {
+    if (this.suppressFallbackMethods) {
+      return false;
+    }
+    const method = this[`${name2}Component`];
+    return !!method;
+  }
+};
+function addOptionalMethods(optionalMethodNames, providedMethods, component) {
+  for (const methodName of optionalMethodNames) {
+    const providedMethod = providedMethods[methodName];
+    if (providedMethod) {
+      component[methodName] = providedMethod;
+    }
+  }
+}
+var CustomComponentWrapper = class extends ReactComponent {
+  constructor() {
+    super(...arguments);
+    this.awaitUpdateCallback = new AgPromise((resolve2) => {
+      this.resolveUpdateCallback = resolve2;
+    });
+    this.wrapperComponent = customWrapperComp_default;
+  }
+  init(params) {
+    this.sourceParams = params;
+    return super.init(this.getProps());
+  }
+  addMethod() {
+  }
+  getInstance() {
+    return this.instanceCreated.then(() => this.componentInstance);
+  }
+  getFrameworkComponentInstance() {
+    return this;
+  }
+  createElement(reactComponent, props) {
+    return super.createElement(this.wrapperComponent, {
+      initialProps: props,
+      CustomComponentClass: reactComponent,
+      setMethods: (methods) => this.setMethods(methods),
+      addUpdateCallback: (callback) => {
+        this.updateCallback = () => {
+          callback(this.getProps());
+          return new AgPromise((resolve2) => {
+            setTimeout(() => {
+              resolve2();
+            });
+          });
+        };
+        this.resolveUpdateCallback();
+      }
+    });
+  }
+  setMethods(methods) {
+    this.providedMethods = methods;
+    addOptionalMethods(this.getOptionalMethods(), this.providedMethods, this);
+  }
+  getOptionalMethods() {
+    return [];
+  }
+  getProps() {
+    return {
+      ...this.sourceParams,
+      key: this.key,
+      ref: this.ref
+    };
+  }
+  refreshProps() {
+    if (this.updateCallback) {
+      return this.updateCallback();
+    }
+    return new AgPromise(
+      (resolve2) => this.awaitUpdateCallback.then(() => {
+        this.updateCallback().then(() => resolve2());
+      })
+    );
+  }
+};
+var CellRendererComponentWrapper = class extends CustomComponentWrapper {
+  refresh(params) {
+    this.sourceParams = params;
+    this.refreshProps();
+    return true;
+  }
+};
+var DateComponentWrapper = class extends CustomComponentWrapper {
+  constructor() {
+    super(...arguments);
+    this.date = null;
+    this.onDateChange = (date2) => this.updateDate(date2);
+  }
+  getDate() {
+    return this.date;
+  }
+  setDate(date2) {
+    this.date = date2;
+    this.refreshProps();
+  }
+  refresh(params) {
+    this.sourceParams = params;
+    this.refreshProps();
+  }
+  getOptionalMethods() {
+    return ["afterGuiAttached", "setInputPlaceholder", "setInputAriaLabel", "setDisabled"];
+  }
+  updateDate(date2) {
+    this.setDate(date2);
+    this.sourceParams.onDateChanged();
+  }
+  getProps() {
+    const props = super.getProps();
+    props.date = this.date;
+    props.onDateChange = this.onDateChange;
+    delete props.onDateChanged;
+    return props;
+  }
+};
+var DragAndDropImageComponentWrapper = class extends CustomComponentWrapper {
+  constructor() {
+    super(...arguments);
+    this.label = "";
+    this.icon = null;
+    this.shake = false;
+  }
+  setIcon(iconName, shake) {
+    this.icon = iconName;
+    this.shake = shake;
+    this.refreshProps();
+  }
+  setLabel(label) {
+    this.label = label;
+    this.refreshProps();
+  }
+  getProps() {
+    const props = super.getProps();
+    const { label, icon, shake } = this;
+    props.label = label;
+    props.icon = icon;
+    props.shake = shake;
+    return props;
+  }
+};
+var FilterComponentWrapper = class extends CustomComponentWrapper {
+  constructor() {
+    super(...arguments);
+    this.model = null;
+    this.onModelChange = (model) => this.updateModel(model);
+    this.onUiChange = () => this.sourceParams.filterModifiedCallback();
+    this.expectingNewMethods = true;
+    this.hasBeenActive = false;
+    this.awaitSetMethodsCallback = new AgPromise((resolve2) => {
+      this.resolveSetMethodsCallback = resolve2;
+    });
+  }
+  isFilterActive() {
+    return this.model != null;
+  }
+  doesFilterPass(params) {
+    return this.providedMethods.doesFilterPass(params);
+  }
+  getModel() {
+    return this.model;
+  }
+  setModel(model) {
+    this.expectingNewMethods = true;
+    this.model = model;
+    this.hasBeenActive || (this.hasBeenActive = this.isFilterActive());
+    return this.refreshProps();
+  }
+  refresh(newParams) {
+    this.sourceParams = newParams;
+    this.refreshProps();
+    return true;
+  }
+  afterGuiAttached(params) {
+    const providedMethods = this.providedMethods;
+    if (!providedMethods) {
+      this.awaitSetMethodsCallback.then(() => this.providedMethods?.afterGuiAttached?.(params));
+    } else {
+      providedMethods.afterGuiAttached?.(params);
+    }
+  }
+  getOptionalMethods() {
+    return ["afterGuiDetached", "onNewRowsLoaded", "getModelAsString", "onAnyFilterChanged"];
+  }
+  setMethods(methods) {
+    if (this.expectingNewMethods === false && this.hasBeenActive && this.providedMethods?.doesFilterPass !== methods?.doesFilterPass) {
+      setTimeout(() => {
+        this.sourceParams.filterChangedCallback();
+      });
+    }
+    this.expectingNewMethods = false;
+    super.setMethods(methods);
+    this.resolveSetMethodsCallback();
+    this.resolveFilterPassCallback?.();
+    this.resolveFilterPassCallback = void 0;
+  }
+  updateModel(model) {
+    this.resolveFilterPassCallback?.();
+    const awaitFilterPassCallback = new AgPromise((resolve2) => {
+      this.resolveFilterPassCallback = resolve2;
+    });
+    this.setModel(model).then(() => {
+      awaitFilterPassCallback.then(() => {
+        this.sourceParams.filterChangedCallback();
+      });
+    });
+  }
+  getProps() {
+    const props = super.getProps();
+    props.model = this.model;
+    props.onModelChange = this.onModelChange;
+    props.onUiChange = this.onUiChange;
+    delete props.filterChangedCallback;
+    return props;
+  }
+};
+var FilterDisplayComponentWrapper = class extends CustomComponentWrapper {
+  constructor() {
+    super(...arguments);
+    this.awaitSetMethodsCallback = new AgPromise((resolve2) => {
+      this.resolveSetMethodsCallback = resolve2;
+    });
+  }
+  refresh(newParams) {
+    this.sourceParams = newParams;
+    this.refreshProps();
+    return true;
+  }
+  afterGuiAttached(params) {
+    const providedMethods = this.providedMethods;
+    if (!providedMethods) {
+      this.awaitSetMethodsCallback.then(() => this.providedMethods?.afterGuiAttached?.(params));
+    } else {
+      providedMethods.afterGuiAttached?.(params);
+    }
+  }
+  getOptionalMethods() {
+    return ["afterGuiDetached", "onNewRowsLoaded", "onAnyFilterChanged"];
+  }
+  setMethods(methods) {
+    super.setMethods(methods);
+    this.resolveSetMethodsCallback();
+  }
+};
+function updateFloatingFilterParent(params, model) {
+  params.parentFilterInstance((instance) => {
+    (instance.setModel(model) || AgPromise.resolve()).then(() => {
+      params.filterParams.filterChangedCallback();
+    });
+  });
+}
+var FloatingFilterComponentProxy = class {
+  constructor(floatingFilterParams, refreshProps) {
+    this.floatingFilterParams = floatingFilterParams;
+    this.refreshProps = refreshProps;
+    this.model = null;
+    this.onModelChange = (model) => this.updateModel(model);
+  }
+  getProps() {
+    return {
+      ...this.floatingFilterParams,
+      model: this.model,
+      onModelChange: this.onModelChange
+    };
+  }
+  onParentModelChanged(parentModel) {
+    this.model = parentModel;
+    this.refreshProps();
+  }
+  refresh(params) {
+    this.floatingFilterParams = params;
+    this.refreshProps();
+  }
+  setMethods(methods) {
+    addOptionalMethods(this.getOptionalMethods(), methods, this);
+  }
+  getOptionalMethods() {
+    return ["afterGuiAttached"];
+  }
+  updateModel(model) {
+    this.model = model;
+    this.refreshProps();
+    updateFloatingFilterParent(this.floatingFilterParams, model);
+  }
+};
+var FloatingFilterComponentWrapper = class extends CustomComponentWrapper {
+  constructor() {
+    super(...arguments);
+    this.model = null;
+    this.onModelChange = (model) => this.updateModel(model);
+  }
+  onParentModelChanged(parentModel) {
+    this.model = parentModel;
+    this.refreshProps();
+  }
+  refresh(newParams) {
+    this.sourceParams = newParams;
+    this.refreshProps();
+  }
+  getOptionalMethods() {
+    return ["afterGuiAttached"];
+  }
+  updateModel(model) {
+    this.model = model;
+    this.refreshProps();
+    updateFloatingFilterParent(this.sourceParams, model);
+  }
+  getProps() {
+    const props = super.getProps();
+    props.model = this.model;
+    props.onModelChange = this.onModelChange;
+    return props;
+  }
+};
+var FloatingFilterDisplayComponentWrapper = class extends CustomComponentWrapper {
+  refresh(newParams) {
+    this.sourceParams = newParams;
+    this.refreshProps();
+  }
+  getOptionalMethods() {
+    return ["afterGuiAttached"];
+  }
+};
+var InnerHeaderComponentWrapper = class extends CustomComponentWrapper {
+  refresh(params) {
+    this.sourceParams = params;
+    this.refreshProps();
+    return true;
+  }
+};
+var LoadingOverlayComponentWrapper = class extends CustomComponentWrapper {
+  refresh(params) {
+    this.sourceParams = params;
+    this.refreshProps();
+  }
+};
+var MenuItemComponentWrapper = class extends CustomComponentWrapper {
+  constructor() {
+    super(...arguments);
+    this.active = false;
+    this.expanded = false;
+    this.onActiveChange = (active) => this.updateActive(active);
+  }
+  setActive(active) {
+    this.awaitSetActive(active);
+  }
+  setExpanded(expanded) {
+    this.expanded = expanded;
+    this.refreshProps();
+  }
+  getOptionalMethods() {
+    return ["select", "configureDefaults"];
+  }
+  awaitSetActive(active) {
+    this.active = active;
+    return this.refreshProps();
+  }
+  updateActive(active) {
+    const result2 = this.awaitSetActive(active);
+    if (active) {
+      result2.then(() => this.sourceParams.onItemActivated());
+    }
+  }
+  getProps() {
+    const props = super.getProps();
+    props.active = this.active;
+    props.expanded = this.expanded;
+    props.onActiveChange = this.onActiveChange;
+    delete props.onItemActivated;
+    return props;
+  }
+};
+var NoRowsOverlayComponentWrapper = class extends CustomComponentWrapper {
+  refresh(params) {
+    this.sourceParams = params;
+    this.refreshProps();
+  }
+};
+var StatusPanelComponentWrapper = class extends CustomComponentWrapper {
+  refresh(params) {
+    this.sourceParams = params;
+    this.refreshProps();
+    return true;
+  }
+};
+var ToolPanelComponentWrapper = class extends CustomComponentWrapper {
+  constructor() {
+    super(...arguments);
+    this.onStateChange = (state) => this.updateState(state);
+  }
+  refresh(params) {
+    this.sourceParams = params;
+    this.refreshProps();
+    return true;
+  }
+  getState() {
+    return this.state;
+  }
+  updateState(state) {
+    this.state = state;
+    this.refreshProps();
+    this.sourceParams.onStateUpdated();
+  }
+  getProps() {
+    const props = super.getProps();
+    props.state = this.state;
+    props.onStateChange = this.onStateChange;
+    return props;
+  }
+};
+function warnReactiveCustomComponents() {
+  _warn(231);
+}
+var MAX_COMPONENT_CREATION_TIME_IN_MS = 1e3;
+var PortalManager = class {
+  constructor(refresher, wrappingElement, maxComponentCreationTimeMs) {
+    this.destroyed = false;
+    this.portals = [];
+    this.hasPendingPortalUpdate = false;
+    this.wrappingElement = wrappingElement ? wrappingElement : "div";
+    this.refresher = refresher;
+    this.maxComponentCreationTimeMs = maxComponentCreationTimeMs ? maxComponentCreationTimeMs : MAX_COMPONENT_CREATION_TIME_IN_MS;
+  }
+  getPortals() {
+    return this.portals;
+  }
+  destroy() {
+    this.destroyed = true;
+  }
+  destroyPortal(portal) {
+    this.portals = this.portals.filter((curPortal) => curPortal !== portal);
+    this.batchUpdate();
+  }
+  getComponentWrappingElement() {
+    return this.wrappingElement;
+  }
+  mountReactPortal(portal, reactComponent, resolve2) {
+    this.portals = [...this.portals, portal];
+    this.waitForInstance(reactComponent, resolve2);
+    this.batchUpdate();
+  }
+  updateReactPortal(oldPortal, newPortal) {
+    this.portals[this.portals.indexOf(oldPortal)] = newPortal;
+    this.batchUpdate();
+  }
+  batchUpdate() {
+    if (this.hasPendingPortalUpdate) {
+      return;
+    }
+    setTimeout(() => {
+      if (!this.destroyed) {
+        this.refresher();
+        this.hasPendingPortalUpdate = false;
+      }
+    });
+    this.hasPendingPortalUpdate = true;
+  }
+  waitForInstance(reactComponent, resolve2, startTime = Date.now()) {
+    if (this.destroyed) {
+      resolve2(null);
+      return;
+    }
+    if (reactComponent.rendered()) {
+      resolve2(reactComponent);
+    } else {
+      if (Date.now() - startTime >= this.maxComponentCreationTimeMs && !this.hasPendingPortalUpdate) {
+        agFlushSync(true, () => this.refresher());
+        if (reactComponent.rendered()) {
+          resolve2(reactComponent);
+        }
+        return;
+      }
+      window.setTimeout(() => {
+        this.waitForInstance(reactComponent, resolve2, startTime);
+      });
+    }
+  }
+};
+var HeaderCellComp = ({ ctrl }) => {
+  const isAlive = ctrl.isAlive();
+  const { context } = reactExports.useContext(BeansContext);
+  const [userCompDetails, setUserCompDetails] = reactExports.useState();
+  const [userStyles, setUserStyles] = reactExports.useState();
+  const compBean = reactExports.useRef();
+  const eGui = reactExports.useRef(null);
+  const eResize = reactExports.useRef(null);
+  const eHeaderCompWrapper = reactExports.useRef(null);
+  const userCompRef = reactExports.useRef();
+  const cssManager = reactExports.useRef();
+  if (isAlive && !cssManager.current) {
+    cssManager.current = new CssClassManager(() => eGui.current);
+  }
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
+      compBean.current = context.destroyBean(compBean.current);
+      return;
+    }
+    compBean.current = context.createBean(new EmptyBean());
+    const refreshSelectAllGui = () => {
+      const selectAllGui = ctrl.getSelectAllGui();
+      if (selectAllGui) {
+        eResize.current?.insertAdjacentElement("afterend", selectAllGui);
+        compBean.current.addDestroyFunc(() => selectAllGui.remove());
+      }
+    };
+    const compProxy = {
+      setWidth: (width) => {
+        if (eGui.current) {
+          eGui.current.style.width = width;
+        }
+      },
+      toggleCss: (name2, on) => cssManager.current.toggleCss(name2, on),
+      setUserStyles: (styles2) => setUserStyles(styles2),
+      setAriaSort: (sort) => {
+        if (eGui.current) {
+          sort ? _setAriaSort(eGui.current, sort) : _removeAriaSort(eGui.current);
+        }
+      },
+      setUserCompDetails: (compDetails) => setUserCompDetails(compDetails),
+      getUserCompInstance: () => userCompRef.current || void 0,
+      refreshSelectAllGui,
+      removeSelectAllGui: () => ctrl.getSelectAllGui()?.remove()
+    };
+    ctrl.setComp(compProxy, eRef, eResize.current, eHeaderCompWrapper.current, compBean.current);
+    refreshSelectAllGui();
+  }, []);
+  reactExports.useLayoutEffect(
+    () => showJsComp(userCompDetails, context, eHeaderCompWrapper.current, userCompRef),
+    [userCompDetails]
+  );
+  reactExports.useEffect(() => {
+    ctrl.setDragSource(eGui.current);
+  }, [userCompDetails]);
+  const userCompStateless = reactExports.useMemo(() => {
+    const res = userCompDetails?.componentFromFramework && isComponentStateless(userCompDetails.componentClass);
+    return !!res;
+  }, [userCompDetails]);
+  const reactUserComp = userCompDetails?.componentFromFramework;
+  const UserCompClass = userCompDetails?.componentClass;
+  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, style: userStyles, className: "ag-header-cell", role: "columnheader" }, /* @__PURE__ */ React20.createElement("div", { ref: eResize, className: "ag-header-cell-resize", role: "presentation" }), /* @__PURE__ */ React20.createElement("div", { ref: eHeaderCompWrapper, className: "ag-header-cell-comp-wrapper", role: "presentation" }, reactUserComp ? userCompStateless ? /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params }) : /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params, ref: userCompRef }) : null));
+};
+var headerCellComp_default = reactExports.memo(HeaderCellComp);
+var FloatingFilterDisplayComponentProxy = class {
+  constructor(floatingFilterParams, refreshProps) {
+    this.floatingFilterParams = floatingFilterParams;
+    this.refreshProps = refreshProps;
+  }
+  getProps() {
+    return this.floatingFilterParams;
+  }
+  refresh(params) {
+    this.floatingFilterParams = params;
+    this.refreshProps();
+  }
+  setMethods(methods) {
+    addOptionalMethods(this.getOptionalMethods(), methods, this);
+  }
+  getOptionalMethods() {
+    return ["afterGuiAttached"];
+  }
+};
+var HeaderFilterCellComp = ({ ctrl }) => {
+  const { context, gos } = reactExports.useContext(BeansContext);
+  const [userStyles, setUserStyles] = reactExports.useState();
+  const [cssClasses, setCssClasses] = reactExports.useState(
+    () => new CssClasses("ag-header-cell", "ag-floating-filter")
+  );
+  const [cssBodyClasses, setBodyCssClasses] = reactExports.useState(() => new CssClasses());
+  const [cssButtonWrapperClasses, setButtonWrapperCssClasses] = reactExports.useState(
+    () => new CssClasses("ag-floating-filter-button", "ag-hidden")
+  );
+  const [buttonWrapperAriaHidden, setButtonWrapperAriaHidden] = reactExports.useState("false");
+  const [userCompDetails, setUserCompDetails] = reactExports.useState();
+  const [, setRenderKey] = reactExports.useState(1);
+  const compBean = reactExports.useRef();
+  const eGui = reactExports.useRef(null);
+  const eFloatingFilterBody = reactExports.useRef(null);
+  const eButtonWrapper = reactExports.useRef(null);
+  const eButtonShowMainFilter = reactExports.useRef(null);
+  const userCompResolve = reactExports.useRef();
+  const userCompPromise = reactExports.useRef();
+  const userCompRef = (value) => {
+    if (value == null) {
+      return;
+    }
+    userCompResolve.current && userCompResolve.current(value);
+  };
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
+      compBean.current = context.destroyBean(compBean.current);
+      return;
+    }
+    compBean.current = context.createBean(new EmptyBean());
+    userCompPromise.current = new AgPromise((resolve2) => {
+      userCompResolve.current = resolve2;
+    });
+    const compProxy = {
+      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
+      setUserStyles: (styles2) => setUserStyles(styles2),
+      addOrRemoveBodyCssClass: (name2, on) => setBodyCssClasses((prev) => prev.setClass(name2, on)),
+      setButtonWrapperDisplayed: (displayed) => {
+        setButtonWrapperCssClasses((prev) => prev.setClass("ag-hidden", !displayed));
+        setButtonWrapperAriaHidden(!displayed ? "true" : "false");
+      },
+      setWidth: (width) => {
+        if (eGui.current) {
+          eGui.current.style.width = width;
+        }
+      },
+      setCompDetails: (compDetails) => setUserCompDetails(compDetails),
+      getFloatingFilterComp: () => userCompPromise.current ? userCompPromise.current : null,
+      setMenuIcon: (eIcon) => eButtonShowMainFilter.current?.appendChild(eIcon)
+    };
+    ctrl.setComp(compProxy, eRef, eButtonShowMainFilter.current, eFloatingFilterBody.current, compBean.current);
+  }, []);
+  reactExports.useLayoutEffect(
+    () => showJsComp(userCompDetails, context, eFloatingFilterBody.current, userCompRef),
+    [userCompDetails]
+  );
+  const className = reactExports.useMemo(() => cssClasses.toString(), [cssClasses]);
+  const bodyClassName = reactExports.useMemo(() => cssBodyClasses.toString(), [cssBodyClasses]);
+  const buttonWrapperClassName = reactExports.useMemo(() => cssButtonWrapperClasses.toString(), [cssButtonWrapperClasses]);
+  const userCompStateless = reactExports.useMemo(() => {
+    const res = userCompDetails && userCompDetails.componentFromFramework && isComponentStateless(userCompDetails.componentClass);
+    return !!res;
+  }, [userCompDetails]);
+  const reactiveCustomComponents = reactExports.useMemo(() => gos.get("reactiveCustomComponents"), []);
+  const enableFilterHandlers = reactExports.useMemo(() => gos.get("enableFilterHandlers"), []);
+  const [floatingFilterCompProxy, setFloatingFilterCompProxy] = reactExports.useState();
+  reactExports.useEffect(() => {
+    if (userCompDetails?.componentFromFramework) {
+      if (reactiveCustomComponents) {
+        const ProxyClass = enableFilterHandlers ? FloatingFilterDisplayComponentProxy : FloatingFilterComponentProxy;
+        const compProxy = new ProxyClass(userCompDetails.params, () => setRenderKey((prev) => prev + 1));
+        userCompRef(compProxy);
+        setFloatingFilterCompProxy(compProxy);
+      } else {
+        warnReactiveCustomComponents();
+      }
+    }
+  }, [userCompDetails]);
+  const floatingFilterProps = floatingFilterCompProxy?.getProps();
+  const reactUserComp = userCompDetails?.componentFromFramework;
+  const UserCompClass = userCompDetails?.componentClass;
+  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, style: userStyles, className, role: "gridcell" }, /* @__PURE__ */ React20.createElement("div", { ref: eFloatingFilterBody, className: bodyClassName, role: "presentation" }, reactUserComp ? reactiveCustomComponents ? floatingFilterProps && /* @__PURE__ */ React20.createElement(
+    CustomContext.Provider,
+    {
+      value: {
+        setMethods: (methods) => floatingFilterCompProxy.setMethods(methods)
+      }
+    },
+    /* @__PURE__ */ React20.createElement(UserCompClass, { ...floatingFilterProps })
+  ) : /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params, ref: userCompStateless ? () => {
+  } : userCompRef }) : null), /* @__PURE__ */ React20.createElement(
+    "div",
+    {
+      ref: eButtonWrapper,
+      "aria-hidden": buttonWrapperAriaHidden,
+      className: buttonWrapperClassName,
+      role: "presentation"
+    },
+    /* @__PURE__ */ React20.createElement(
+      "button",
+      {
+        ref: eButtonShowMainFilter,
+        type: "button",
+        className: "ag-button ag-floating-filter-button-button",
+        tabIndex: -1
+      }
+    )
+  ));
+};
+var headerFilterCellComp_default = reactExports.memo(HeaderFilterCellComp);
+var HeaderGroupCellComp = ({ ctrl }) => {
+  const { context } = reactExports.useContext(BeansContext);
+  const [userStyles, setUserStyles] = reactExports.useState();
+  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
+  const [cssResizableClasses, setResizableCssClasses] = reactExports.useState(() => new CssClasses());
+  const [resizableAriaHidden, setResizableAriaHidden] = reactExports.useState("false");
+  const [ariaExpanded, setAriaExpanded] = reactExports.useState();
+  const [userCompDetails, setUserCompDetails] = reactExports.useState();
+  const compBean = reactExports.useRef();
+  const eGui = reactExports.useRef(null);
+  const eResize = reactExports.useRef(null);
+  const eHeaderCompWrapper = reactExports.useRef(null);
+  const userCompRef = reactExports.useRef();
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
+      compBean.current = context.destroyBean(compBean.current);
+      return;
+    }
+    compBean.current = context.createBean(new EmptyBean());
+    const compProxy = {
+      setWidth: (width) => {
+        if (eGui.current) {
+          eGui.current.style.width = width;
+        }
+      },
+      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
+      setUserStyles: (styles2) => setUserStyles(styles2),
+      setHeaderWrapperHidden: (hidden2) => {
+        const headerCompWrapper = eHeaderCompWrapper.current;
+        if (!headerCompWrapper) {
+          return;
+        }
+        if (hidden2) {
+          headerCompWrapper.style.setProperty("display", "none");
+        } else {
+          headerCompWrapper.style.removeProperty("display");
+        }
+      },
+      setHeaderWrapperMaxHeight: (value) => {
+        const headerCompWrapper = eHeaderCompWrapper.current;
+        if (!headerCompWrapper) {
+          return;
+        }
+        if (value != null) {
+          headerCompWrapper.style.setProperty("max-height", `${value}px`);
+        } else {
+          headerCompWrapper.style.removeProperty("max-height");
+        }
+        headerCompWrapper.classList.toggle("ag-header-cell-comp-wrapper-limited-height", value != null);
+      },
+      setUserCompDetails: (compDetails) => setUserCompDetails(compDetails),
+      setResizableDisplayed: (displayed) => {
+        setResizableCssClasses((prev) => prev.setClass("ag-hidden", !displayed));
+        setResizableAriaHidden(!displayed ? "true" : "false");
+      },
+      setAriaExpanded: (expanded) => setAriaExpanded(expanded),
+      getUserCompInstance: () => userCompRef.current || void 0
+    };
+    ctrl.setComp(compProxy, eRef, eResize.current, eHeaderCompWrapper.current, compBean.current);
+  }, []);
+  reactExports.useLayoutEffect(() => showJsComp(userCompDetails, context, eHeaderCompWrapper.current), [userCompDetails]);
+  reactExports.useEffect(() => {
+    if (eGui.current) {
+      ctrl.setDragSource(eGui.current);
+    }
+  }, [userCompDetails]);
+  const userCompStateless = reactExports.useMemo(() => {
+    const res = userCompDetails?.componentFromFramework && isComponentStateless(userCompDetails.componentClass);
+    return !!res;
+  }, [userCompDetails]);
+  const className = reactExports.useMemo(() => "ag-header-group-cell " + cssClasses.toString(), [cssClasses]);
+  const resizableClassName = reactExports.useMemo(
+    () => "ag-header-cell-resize " + cssResizableClasses.toString(),
+    [cssResizableClasses]
+  );
+  const reactUserComp = userCompDetails?.componentFromFramework;
+  const UserCompClass = userCompDetails?.componentClass;
+  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, style: userStyles, className, role: "columnheader", "aria-expanded": ariaExpanded }, /* @__PURE__ */ React20.createElement("div", { ref: eHeaderCompWrapper, className: "ag-header-cell-comp-wrapper", role: "presentation" }, reactUserComp ? userCompStateless ? /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params }) : /* @__PURE__ */ React20.createElement(UserCompClass, { ...userCompDetails.params, ref: userCompRef }) : null), /* @__PURE__ */ React20.createElement("div", { ref: eResize, "aria-hidden": resizableAriaHidden, className: resizableClassName }));
+};
+var headerGroupCellComp_default = reactExports.memo(HeaderGroupCellComp);
+var HeaderRowComp = ({ ctrl }) => {
+  const { gos, context } = reactExports.useContext(BeansContext);
+  const { topOffset, rowHeight } = reactExports.useMemo(() => ctrl.getTopAndHeight(), []);
+  const tabIndex = reactExports.useMemo(() => gos.get("tabIndex"), []);
+  const [ariaRowIndex, setAriaRowIndex] = reactExports.useState(() => ctrl.getAriaRowIndex());
+  const className = ctrl.headerRowClass;
+  const [height, setHeight] = reactExports.useState(() => rowHeight + "px");
+  const [top, setTop] = reactExports.useState(() => topOffset + "px");
+  const cellCtrlsRef = reactExports.useRef(null);
+  const [cellCtrls, setCellCtrls] = reactExports.useState(() => ctrl.getUpdatedHeaderCtrls());
+  const compBean = reactExports.useRef();
+  const eGui = reactExports.useRef(null);
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef || !ctrl.isAlive() || context.isDestroyed()) {
+      compBean.current = context.destroyBean(compBean.current);
+      return;
+    }
+    compBean.current = context.createBean(new EmptyBean());
+    const compProxy = {
+      setHeight: (height2) => setHeight(height2),
+      setTop: (top2) => setTop(top2),
+      setHeaderCtrls: (ctrls, forceOrder, afterScroll) => {
+        const prevCellCtrls = cellCtrlsRef.current;
+        const nextCells = getNextValueIfDifferent(prevCellCtrls, ctrls, forceOrder);
+        if (nextCells !== prevCellCtrls) {
+          cellCtrlsRef.current = nextCells;
+          agFlushSync(afterScroll, () => setCellCtrls(nextCells));
+        }
+      },
+      setWidth: (width) => {
+        if (eGui.current) {
+          eGui.current.style.width = width;
+        }
+      },
+      setRowIndex: (rowIndex) => {
+        setAriaRowIndex(rowIndex);
+      }
+    };
+    ctrl.setComp(compProxy, compBean.current, false);
+  }, []);
+  const style = reactExports.useMemo(
+    () => ({
+      height,
+      top
+    }),
+    [height, top]
+  );
+  const createCellJsx = reactExports.useCallback((cellCtrl) => {
+    switch (ctrl.type) {
+      case "group":
+        return /* @__PURE__ */ React20.createElement(headerGroupCellComp_default, { ctrl: cellCtrl, key: cellCtrl.instanceId });
+      case "filter":
+        return /* @__PURE__ */ React20.createElement(headerFilterCellComp_default, { ctrl: cellCtrl, key: cellCtrl.instanceId });
+      default:
+        return /* @__PURE__ */ React20.createElement(headerCellComp_default, { ctrl: cellCtrl, key: cellCtrl.instanceId });
+    }
+  }, []);
+  return /* @__PURE__ */ React20.createElement(
+    "div",
+    {
+      ref: setRef2,
+      className,
+      role: "row",
+      style,
+      tabIndex,
+      "aria-rowindex": ariaRowIndex
+    },
+    cellCtrls.map(createCellJsx)
+  );
+};
+var headerRowComp_default = reactExports.memo(HeaderRowComp);
+var HeaderRowContainerComp = ({ pinned }) => {
+  const [displayed, setDisplayed] = reactExports.useState(true);
+  const [headerRowCtrls, setHeaderRowCtrls] = reactExports.useState([]);
+  const { context } = reactExports.useContext(BeansContext);
+  const eGui = reactExports.useRef(null);
+  const eCenterContainer = reactExports.useRef(null);
+  const headerRowCtrlRef = reactExports.useRef();
+  const pinnedLeft = pinned === "left";
+  const pinnedRight = pinned === "right";
+  const centre = !pinnedLeft && !pinnedRight;
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef || context.isDestroyed()) {
+      headerRowCtrlRef.current = context.destroyBean(headerRowCtrlRef.current);
+      return;
+    }
+    headerRowCtrlRef.current = context.createBean(new HeaderRowContainerCtrl(pinned));
+    const compProxy = {
+      setDisplayed,
+      setCtrls: (ctrls) => setHeaderRowCtrls(ctrls),
+      // centre only
+      setCenterWidth: (width) => {
+        if (eCenterContainer.current) {
+          eCenterContainer.current.style.width = width;
+        }
+      },
+      setViewportScrollLeft: (left2) => {
+        if (eGui.current) {
+          eGui.current.scrollLeft = left2;
+        }
+      },
+      // pinned only
+      setPinnedContainerWidth: (width) => {
+        if (eGui.current) {
+          eGui.current.style.width = width;
+          eGui.current.style.minWidth = width;
+          eGui.current.style.maxWidth = width;
+        }
+      }
+    };
+    headerRowCtrlRef.current.setComp(compProxy, eGui.current);
+  }, []);
+  const className = !displayed ? "ag-hidden" : "";
+  const insertRowsJsx = () => headerRowCtrls.map((ctrl) => /* @__PURE__ */ React20.createElement(headerRowComp_default, { ctrl, key: ctrl.instanceId }));
+  return pinnedLeft ? /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: "ag-pinned-left-header " + className, "aria-hidden": !displayed, role: "rowgroup" }, insertRowsJsx()) : pinnedRight ? /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: "ag-pinned-right-header " + className, "aria-hidden": !displayed, role: "rowgroup" }, insertRowsJsx()) : centre ? /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: "ag-header-viewport " + className, role: "rowgroup", tabIndex: -1 }, /* @__PURE__ */ React20.createElement("div", { ref: eCenterContainer, className: "ag-header-container", role: "presentation" }, insertRowsJsx())) : null;
+};
+var headerRowContainerComp_default = reactExports.memo(HeaderRowContainerComp);
+var GridHeaderComp = () => {
+  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
+  const [height, setHeight] = reactExports.useState();
+  const { context } = reactExports.useContext(BeansContext);
+  const eGui = reactExports.useRef(null);
+  const gridCtrlRef = reactExports.useRef();
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef || context.isDestroyed()) {
+      gridCtrlRef.current = context.destroyBean(gridCtrlRef.current);
+      return;
+    }
+    gridCtrlRef.current = context.createBean(new GridHeaderCtrl());
+    const compProxy = {
+      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
+      setHeightAndMinHeight: (height2) => setHeight(height2)
+    };
+    gridCtrlRef.current.setComp(compProxy, eRef, eRef);
+  }, []);
+  const className = reactExports.useMemo(() => {
+    const res = cssClasses.toString();
+    return "ag-header " + res;
+  }, [cssClasses]);
+  const style = reactExports.useMemo(
+    () => ({
+      height,
+      minHeight: height
+    }),
+    [height]
+  );
+  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className, style, role: "presentation" }, /* @__PURE__ */ React20.createElement(headerRowContainerComp_default, { pinned: "left" }), /* @__PURE__ */ React20.createElement(headerRowContainerComp_default, { pinned: null }), /* @__PURE__ */ React20.createElement(headerRowContainerComp_default, { pinned: "right" }));
+};
+var gridHeaderComp_default = reactExports.memo(GridHeaderComp);
+var useReactCommentEffect = (comment2, eForCommentRef) => {
+  reactExports.useEffect(() => {
+    const eForComment = eForCommentRef.current;
+    if (eForComment) {
+      const eParent = eForComment.parentElement;
+      if (eParent) {
+        const eComment = document.createComment(comment2);
+        eParent.insertBefore(eComment, eForComment);
+        return () => {
+          eComment.remove();
+        };
+      }
+    }
+  }, [comment2]);
+};
+var reactComment_default = useReactCommentEffect;
+var CellEditorComponentProxy = class {
+  constructor(cellEditorParams, refreshProps) {
+    this.cellEditorParams = cellEditorParams;
+    this.refreshProps = refreshProps;
+    this.instanceCreated = new AgPromise((resolve2) => {
+      this.resolveInstanceCreated = resolve2;
+    });
+    this.onValueChange = (value) => this.updateValue(value);
+    this.value = cellEditorParams.value;
+  }
+  getProps() {
+    return {
+      ...this.cellEditorParams,
+      initialValue: this.cellEditorParams.value,
+      value: this.value,
+      onValueChange: this.onValueChange
+    };
+  }
+  getValue() {
+    return this.value;
+  }
+  refresh(params) {
+    this.cellEditorParams = params;
+    this.refreshProps();
+  }
+  setMethods(methods) {
+    addOptionalMethods(this.getOptionalMethods(), methods, this);
+  }
+  getInstance() {
+    return this.instanceCreated.then(() => this.componentInstance);
+  }
+  setRef(componentInstance) {
+    this.componentInstance = componentInstance;
+    this.resolveInstanceCreated?.();
+    this.resolveInstanceCreated = void 0;
+  }
+  getOptionalMethods() {
+    return [
+      "isCancelBeforeStart",
+      "isCancelAfterEnd",
+      "focusIn",
+      "focusOut",
+      "afterGuiAttached",
+      "getValidationErrors",
+      "getValidationElement"
+    ];
+  }
+  updateValue(value) {
+    this.value = value;
+    this.refreshProps();
+  }
+};
+var useEffectOnce = (effect) => {
+  const effectFn = reactExports.useRef(effect);
+  const destroyFn = reactExports.useRef();
+  const effectCalled = reactExports.useRef(false);
+  const rendered = reactExports.useRef(false);
+  const [, setVal] = reactExports.useState(0);
+  if (effectCalled.current) {
+    rendered.current = true;
+  }
+  reactExports.useEffect(() => {
+    if (!effectCalled.current) {
+      destroyFn.current = effectFn.current();
+      effectCalled.current = true;
+    }
+    setVal((val) => val + 1);
+    return () => {
+      if (!rendered.current) {
+        return;
+      }
+      destroyFn.current?.();
+    };
+  }, []);
+};
+var PopupEditorComp = (props) => {
+  const [popupEditorWrapper, setPopupEditorWrapper] = reactExports.useState();
+  const beans = reactExports.useContext(BeansContext);
+  const { context, popupSvc, gos, editSvc } = beans;
+  const { editDetails, cellCtrl, eParentCell } = props;
+  useEffectOnce(() => {
+    const { compDetails } = editDetails;
+    const useModelPopup = gos.get("stopEditingWhenCellsLoseFocus");
+    let hideEditorPopup = void 0;
+    let wrapper2;
+    if (!context.isDestroyed()) {
+      wrapper2 = context.createBean(editSvc.createPopupEditorWrapper(compDetails.params));
+      const ePopupGui = wrapper2.getGui();
+      if (props.jsChildComp) {
+        const eChildGui = props.jsChildComp.getGui();
+        if (eChildGui) {
+          ePopupGui.appendChild(eChildGui);
+        }
+      }
+      const { column: column2, rowNode } = cellCtrl;
+      const positionParams = {
+        column: column2,
+        rowNode,
+        type: "popupCellEditor",
+        eventSource: eParentCell,
+        ePopup: ePopupGui,
+        position: editDetails.popupPosition,
+        keepWithinBounds: true
+      };
+      const positionCallback = popupSvc?.positionPopupByComponent.bind(popupSvc, positionParams);
+      const addPopupRes = popupSvc?.addPopup({
+        modal: useModelPopup,
+        eChild: ePopupGui,
+        closeOnEsc: true,
+        closedCallback: () => {
+          cellCtrl.onPopupEditorClosed();
+        },
+        anchorToElement: eParentCell,
+        positionCallback,
+        ariaOwns: eParentCell
+      });
+      hideEditorPopup = addPopupRes ? addPopupRes.hideFunc : void 0;
+      setPopupEditorWrapper(wrapper2);
+      props.jsChildComp?.afterGuiAttached?.();
+    }
+    return () => {
+      hideEditorPopup?.();
+      context.destroyBean(wrapper2);
+    };
+  });
+  reactExports.useLayoutEffect(() => {
+    return () => {
+      if (cellCtrl.isCellFocused() && popupEditorWrapper?.getGui().contains(_getActiveDomElement(beans))) {
+        eParentCell.focus({ preventScroll: true });
+      }
+    };
+  }, [popupEditorWrapper]);
+  return popupEditorWrapper && props.wrappedContent ? reactDomExports.createPortal(props.wrappedContent, popupEditorWrapper.getGui()) : null;
+};
+var popupEditorComp_default = reactExports.memo(PopupEditorComp);
+var jsxEditorProxy = (editDetails, CellEditorClass, setRef2) => {
+  const { compProxy } = editDetails;
+  setRef2(compProxy);
+  const props = compProxy.getProps();
+  const isStateless = isComponentStateless(CellEditorClass);
+  return /* @__PURE__ */ React20.createElement(
+    CustomContext.Provider,
+    {
+      value: {
+        setMethods: (methods) => compProxy.setMethods(methods)
+      }
+    },
+    isStateless ? /* @__PURE__ */ React20.createElement(CellEditorClass, { ...props }) : /* @__PURE__ */ React20.createElement(CellEditorClass, { ...props, ref: (ref2) => compProxy.setRef(ref2) })
+  );
+};
+var jsxEditor = (editDetails, CellEditorClass, setRef2) => {
+  const newFormat = editDetails.compProxy;
+  return newFormat ? jsxEditorProxy(editDetails, CellEditorClass, setRef2) : /* @__PURE__ */ React20.createElement(CellEditorClass, { ...editDetails.compDetails.params, ref: setRef2 });
+};
+var jsxEditValue = (editDetails, setCellEditorRef, eGui, cellCtrl, jsEditorComp) => {
+  const compDetails = editDetails.compDetails;
+  const CellEditorClass = compDetails.componentClass;
+  const reactInlineEditor = compDetails.componentFromFramework && !editDetails.popup;
+  const reactPopupEditor = compDetails.componentFromFramework && editDetails.popup;
+  const jsPopupEditor = !compDetails.componentFromFramework && editDetails.popup;
+  return reactInlineEditor ? jsxEditor(editDetails, CellEditorClass, setCellEditorRef) : reactPopupEditor ? /* @__PURE__ */ React20.createElement(
+    popupEditorComp_default,
+    {
+      editDetails,
+      cellCtrl,
+      eParentCell: eGui,
+      wrappedContent: jsxEditor(editDetails, CellEditorClass, setCellEditorRef)
+    }
+  ) : jsPopupEditor && jsEditorComp ? /* @__PURE__ */ React20.createElement(popupEditorComp_default, { editDetails, cellCtrl, eParentCell: eGui, jsChildComp: jsEditorComp }) : null;
+};
+var useJsCellRenderer = (showDetails, showTools, eCellValue, cellValueVersion, jsCellRendererRef, eGui) => {
+  const { context } = reactExports.useContext(BeansContext);
+  const destroyCellRenderer = reactExports.useCallback(() => {
+    const comp = jsCellRendererRef.current;
+    if (!comp) {
+      return;
+    }
+    const compGui = comp.getGui();
+    if (compGui && compGui.parentElement) {
+      compGui.remove();
+    }
+    context.destroyBean(comp);
+    jsCellRendererRef.current = void 0;
+  }, []);
+  reactExports.useEffect(() => {
+    const showValue = showDetails != null;
+    const jsCompDetails = showDetails?.compDetails && !showDetails.compDetails.componentFromFramework;
+    const waitingForToolsSetup = showTools && eCellValue == null;
+    const showComp = showValue && jsCompDetails && !waitingForToolsSetup;
+    if (!showComp) {
+      destroyCellRenderer();
+      return;
+    }
+    const compDetails = showDetails.compDetails;
+    if (jsCellRendererRef.current) {
+      const comp = jsCellRendererRef.current;
+      const attemptRefresh = comp.refresh != null && showDetails.force == false;
+      const refreshResult = attemptRefresh ? comp.refresh(compDetails.params) : false;
+      const refreshWorked = refreshResult === true || refreshResult === void 0;
+      if (refreshWorked) {
+        return;
+      }
+      destroyCellRenderer();
+    }
+    const promise = compDetails.newAgStackInstance();
+    promise.then((comp) => {
+      if (!comp) {
+        return;
+      }
+      const compGui = comp.getGui();
+      if (!compGui) {
+        return;
+      }
+      const parent = showTools ? eCellValue : eGui.current;
+      parent.appendChild(compGui);
+      jsCellRendererRef.current = comp;
+    });
+  }, [showDetails, showTools, cellValueVersion]);
+  reactExports.useEffect(() => {
+    return destroyCellRenderer;
+  }, []);
+};
+var showJsRenderer_default = useJsCellRenderer;
+var SkeletonCellRenderer2 = ({
+  cellCtrl,
+  parent
+}) => {
+  const jsCellRendererRef = reactExports.useRef();
+  const renderDetails = reactExports.useMemo(() => {
+    const { loadingComp } = cellCtrl.getDeferLoadingCellRenderer();
+    return loadingComp ? {
+      value: void 0,
+      compDetails: loadingComp,
+      force: false
+    } : void 0;
+  }, [cellCtrl]);
+  showJsRenderer_default(renderDetails, false, void 0, 1, jsCellRendererRef, parent);
+  if (renderDetails?.compDetails?.componentFromFramework) {
+    const CellRendererClass = renderDetails.compDetails.componentClass;
+    return /* @__PURE__ */ React20.createElement(CellRendererClass, { ...renderDetails.compDetails.params });
+  }
+  return /* @__PURE__ */ React20.createElement(React20.Fragment, null);
+};
+var CellComp = ({
+  cellCtrl,
+  printLayout,
+  editingCell
+}) => {
+  const beans = reactExports.useContext(BeansContext);
+  const { context } = beans;
+  const {
+    column: { colIdSanitised },
+    instanceId
+  } = cellCtrl;
+  const compBean = reactExports.useRef();
+  const [renderDetails, setRenderDetails] = reactExports.useState(
+    () => cellCtrl.isCellRenderer() ? void 0 : { compDetails: void 0, value: cellCtrl.getValueToDisplay(), force: false }
+  );
+  const [editDetails, setEditDetails] = reactExports.useState();
+  const [renderKey, setRenderKey] = reactExports.useState(1);
+  const [userStyles, setUserStyles] = reactExports.useState();
+  const [includeSelection, setIncludeSelection] = reactExports.useState(false);
+  const [includeRowDrag, setIncludeRowDrag] = reactExports.useState(false);
+  const [includeDndSource, setIncludeDndSource] = reactExports.useState(false);
+  const [jsEditorComp, setJsEditorComp] = reactExports.useState();
+  const forceWrapper = reactExports.useMemo(() => cellCtrl.isForceWrapper(), [cellCtrl]);
+  const cellAriaRole = reactExports.useMemo(() => cellCtrl.getCellAriaRole(), [cellCtrl]);
+  const eGui = reactExports.useRef(null);
+  const eWrapper = reactExports.useRef(null);
+  const cellRendererRef = reactExports.useRef(null);
+  const jsCellRendererRef = reactExports.useRef();
+  const cellEditorRef = reactExports.useRef();
+  const eCellWrapper = reactExports.useRef();
+  const cellWrapperDestroyFuncs = reactExports.useRef([]);
+  const rowDragCompRef = reactExports.useRef();
+  const eCellValue = reactExports.useRef();
+  const [cellValueVersion, setCellValueVersion] = reactExports.useState(0);
+  const setCellValueRef = reactExports.useCallback((ref2) => {
+    eCellValue.current = ref2;
+    setCellValueVersion((v) => v + 1);
+  }, []);
+  const showTools = renderDetails != null && (includeSelection || includeDndSource || includeRowDrag) && (editDetails == null || !!editDetails.popup);
+  const showCellWrapper = forceWrapper || showTools;
+  const cellValueClass = reactExports.useMemo(() => {
+    return cellCtrl.getCellValueClass();
+  }, [cellCtrl]);
+  const setCellEditorRef = reactExports.useCallback(
+    (cellEditor) => {
+      cellEditorRef.current = cellEditor;
+      if (cellEditor) {
+        const editingCancelledByUserComp = cellEditor.isCancelBeforeStart && cellEditor.isCancelBeforeStart();
+        setTimeout(() => {
+          if (editingCancelledByUserComp) {
+            cellCtrl.stopEditing(true);
+            cellCtrl.focusCell(true);
+          } else {
+            cellCtrl.cellEditorAttached();
+            cellCtrl.enableEditorTooltipFeature(cellEditor);
+          }
+        });
+      }
+    },
+    [cellCtrl]
+  );
+  const cssManager = reactExports.useRef();
+  if (!cssManager.current) {
+    cssManager.current = new CssClassManager(() => eGui.current);
+  }
+  showJsRenderer_default(renderDetails, showCellWrapper, eCellValue.current, cellValueVersion, jsCellRendererRef, eGui);
+  const lastRenderDetails = reactExports.useRef();
+  reactExports.useLayoutEffect(() => {
+    const oldDetails = lastRenderDetails.current;
+    const newDetails = renderDetails;
+    lastRenderDetails.current = renderDetails;
+    if (oldDetails == null || oldDetails.compDetails == null || newDetails == null || newDetails.compDetails == null) {
+      return;
+    }
+    rowDragCompRef.current?.refreshVisibility();
+    const oldCompDetails = oldDetails.compDetails;
+    const newCompDetails = newDetails.compDetails;
+    if (oldCompDetails.componentClass != newCompDetails.componentClass) {
+      return;
+    }
+    if (cellRendererRef.current?.refresh == null) {
+      return;
+    }
+    const result2 = cellRendererRef.current.refresh(newCompDetails.params);
+    if (result2 != true) {
+      setRenderKey((prev) => prev + 1);
+    }
+  }, [renderDetails]);
+  reactExports.useLayoutEffect(() => {
+    const doingJsEditor = editDetails && !editDetails.compDetails.componentFromFramework;
+    if (!doingJsEditor || context.isDestroyed()) {
+      return;
+    }
+    const compDetails = editDetails.compDetails;
+    const isPopup = editDetails.popup === true;
+    const cellEditorPromise = compDetails.newAgStackInstance();
+    cellEditorPromise.then((cellEditor) => {
+      if (!cellEditor) {
+        return;
+      }
+      const compGui = cellEditor.getGui();
+      setCellEditorRef(cellEditor);
+      if (!isPopup) {
+        const parentEl = (forceWrapper ? eCellWrapper : eGui).current;
+        parentEl?.appendChild(compGui);
+        cellEditor.afterGuiAttached?.();
+      }
+      setJsEditorComp(cellEditor);
+    });
+    return () => {
+      cellEditorPromise.then((cellEditor) => {
+        const compGui = cellEditor.getGui();
+        cellCtrl.disableEditorTooltipFeature();
+        context.destroyBean(cellEditor);
+        setCellEditorRef(void 0);
+        setJsEditorComp(void 0);
+        compGui?.remove();
+      });
+    };
+  }, [editDetails]);
+  const setCellWrapperRef = reactExports.useCallback(
+    (eRef) => {
+      eCellWrapper.current = eRef;
+      if (!eRef || context.isDestroyed() || !cellCtrl.isAlive()) {
+        const callbacks = cellWrapperDestroyFuncs.current;
+        cellWrapperDestroyFuncs.current = [];
+        for (const cb of callbacks) {
+          cb();
+        }
+        return;
+      }
+      let rowDragComp;
+      const addComp = (comp) => {
+        if (comp) {
+          eRef.insertAdjacentElement("afterbegin", comp.getGui());
+          cellWrapperDestroyFuncs.current.push(() => {
+            _removeFromParent(comp.getGui());
+            context.destroyBean(comp);
+            if (rowDragCompRef.current === rowDragComp) {
+              rowDragCompRef.current = void 0;
+            }
+          });
+        }
+      };
+      if (includeSelection) {
+        addComp(cellCtrl.createSelectionCheckbox());
+      }
+      if (includeDndSource) {
+        addComp(cellCtrl.createDndSource());
+      }
+      if (includeRowDrag) {
+        rowDragComp = cellCtrl.createRowDragComp();
+        rowDragCompRef.current = rowDragComp;
+        if (rowDragComp) {
+          addComp(rowDragComp);
+          rowDragComp.refreshVisibility();
+        }
+      }
+    },
+    [cellCtrl, context, includeDndSource, includeRowDrag, includeSelection]
+  );
+  const init = reactExports.useCallback(() => {
+    const spanReady = !cellCtrl.isCellSpanning() || eWrapper.current;
+    const eRef = eGui.current;
+    if (!eRef || !spanReady || !cellCtrl || !cellCtrl.isAlive() || context.isDestroyed()) {
+      compBean.current = context.destroyBean(compBean.current);
+      return;
+    }
+    compBean.current = context.createBean(new EmptyBean());
+    const compProxy = {
+      toggleCss: (name2, on) => cssManager.current.toggleCss(name2, on),
+      setUserStyles: (styles2) => setUserStyles(styles2),
+      getFocusableElement: () => eGui.current,
+      setIncludeSelection: (include) => setIncludeSelection(include),
+      setIncludeRowDrag: (include) => setIncludeRowDrag(include),
+      setIncludeDndSource: (include) => setIncludeDndSource(include),
+      getCellEditor: () => cellEditorRef.current ?? null,
+      getCellRenderer: () => cellRendererRef.current ?? jsCellRendererRef.current,
+      getParentOfValue: () => eCellValue.current ?? eCellWrapper.current ?? eGui.current,
+      setRenderDetails: (compDetails, value, force) => {
+        const setDetails = () => {
+          setRenderDetails((prev) => {
+            if (prev?.compDetails !== compDetails || prev?.value !== value || prev?.force !== force) {
+              return {
+                value,
+                compDetails,
+                force
+              };
+            } else {
+              return prev;
+            }
+          });
+        };
+        if (compDetails?.params?.deferRender && !cellCtrl.rowNode.group) {
+          const { loadingComp, onReady } = cellCtrl.getDeferLoadingCellRenderer();
+          if (loadingComp) {
+            setRenderDetails({
+              value: void 0,
+              compDetails: loadingComp,
+              force: false
+            });
+            onReady.then(() => agStartTransition(setDetails));
+            return;
+          }
+        }
+        setDetails();
+      },
+      setEditDetails: (compDetails, popup, popupPosition, reactiveCustomComponents) => {
+        if (compDetails) {
+          let compProxy2 = void 0;
+          if (compDetails.componentFromFramework) {
+            if (reactiveCustomComponents) {
+              compProxy2 = new CellEditorComponentProxy(
+                compDetails.params,
+                () => setRenderKey((prev) => prev + 1)
+              );
+            } else {
+              warnReactiveCustomComponents();
+            }
+          }
+          setEditDetails({
+            compDetails,
+            popup,
+            popupPosition,
+            compProxy: compProxy2
+          });
+          if (!popup) {
+            setRenderDetails(void 0);
+          }
+        } else {
+          const recoverFocus = cellCtrl.hasBrowserFocus();
+          if (recoverFocus) {
+            compProxy.getFocusableElement().focus({ preventScroll: true });
+          }
+          cellEditorRef.current = void 0;
+          setEditDetails(void 0);
+        }
+      },
+      refreshEditStyles: (editing, isPopup) => {
+        if (!eGui.current) {
+          return;
+        }
+        const { current: current3 } = cssManager;
+        current3.toggleCss("ag-cell-value", !showCellWrapper);
+        current3.toggleCss("ag-cell-inline-editing", !!editing && !isPopup);
+        current3.toggleCss("ag-cell-popup-editing", !!editing && !!isPopup);
+        current3.toggleCss("ag-cell-not-inline-editing", !editing || !!isPopup);
+      }
+    };
+    const cellWrapperOrUndefined = eCellWrapper.current || void 0;
+    cellCtrl.setComp(
+      compProxy,
+      eRef,
+      eWrapper.current ?? void 0,
+      cellWrapperOrUndefined,
+      printLayout,
+      editingCell,
+      compBean.current
+    );
+  }, []);
+  const setGuiRef = reactExports.useCallback((ref2) => {
+    eGui.current = ref2;
+    init();
+  }, []);
+  const setWrapperRef = reactExports.useCallback((ref2) => {
+    eWrapper.current = ref2;
+    init();
+  }, []);
+  const reactCellRendererStateless = reactExports.useMemo(() => {
+    const res = renderDetails?.compDetails?.componentFromFramework && isComponentStateless(renderDetails.compDetails.componentClass);
+    return !!res;
+  }, [renderDetails]);
+  reactExports.useLayoutEffect(() => {
+    if (!eGui.current) {
+      return;
+    }
+    const { current: current3 } = cssManager;
+    current3.toggleCss("ag-cell-value", !showCellWrapper);
+    current3.toggleCss("ag-cell-inline-editing", !!editDetails && !editDetails.popup);
+    current3.toggleCss("ag-cell-popup-editing", !!editDetails && !!editDetails.popup);
+    current3.toggleCss("ag-cell-not-inline-editing", !editDetails || !!editDetails.popup);
+  });
+  const valueOrCellComp = () => {
+    const { compDetails, value } = renderDetails;
+    if (!compDetails) {
+      return value?.toString?.() ?? value;
+    }
+    if (compDetails.componentFromFramework) {
+      const CellRendererClass = compDetails.componentClass;
+      return /* @__PURE__ */ React20.createElement(reactExports.Suspense, { fallback: /* @__PURE__ */ React20.createElement(SkeletonCellRenderer2, { cellCtrl, parent: eGui }) }, reactCellRendererStateless ? /* @__PURE__ */ React20.createElement(CellRendererClass, { ...compDetails.params, key: renderKey }) : /* @__PURE__ */ React20.createElement(CellRendererClass, { ...compDetails.params, key: renderKey, ref: cellRendererRef }));
+    }
+  };
+  const showCellOrEditor = () => {
+    const showCellValue = () => {
+      if (renderDetails == null) {
+        return null;
+      }
+      return showCellWrapper ? /* @__PURE__ */ React20.createElement("span", { role: "presentation", id: `cell-${instanceId}`, className: cellValueClass, ref: setCellValueRef }, valueOrCellComp()) : valueOrCellComp();
+    };
+    const showEditValue = (details) => jsxEditValue(details, setCellEditorRef, eGui.current, cellCtrl, jsEditorComp);
+    if (editDetails != null) {
+      if (editDetails.popup) {
+        return /* @__PURE__ */ React20.createElement(React20.Fragment, null, showCellValue(), showEditValue(editDetails));
+      }
+      return showEditValue(editDetails);
+    }
+    return showCellValue();
+  };
+  const renderCell = () => /* @__PURE__ */ React20.createElement("div", { ref: setGuiRef, style: userStyles, role: cellAriaRole, "col-id": colIdSanitised }, showCellWrapper ? /* @__PURE__ */ React20.createElement("div", { className: "ag-cell-wrapper", role: "presentation", ref: setCellWrapperRef }, showCellOrEditor()) : showCellOrEditor());
+  if (cellCtrl.isCellSpanning()) {
+    return /* @__PURE__ */ React20.createElement("div", { ref: setWrapperRef, className: "ag-spanned-cell-wrapper", role: "presentation" }, renderCell());
+  }
+  return renderCell();
+};
+var cellComp_default = reactExports.memo(CellComp);
+var RowComp = ({ rowCtrl, containerType }) => {
+  const { context, gos, editSvc } = reactExports.useContext(BeansContext);
+  const enableUses = reactExports.useContext(RenderModeContext) === "default";
+  const compBean = reactExports.useRef();
+  const domOrderRef = reactExports.useRef(rowCtrl.getDomOrder());
+  const isFullWidth = rowCtrl.isFullWidth();
+  const isDisplayed = rowCtrl.rowNode.displayed;
+  const [rowIndex, setRowIndex] = reactExports.useState(
+    () => isDisplayed ? rowCtrl.rowNode.getRowIndexString() : null
+  );
+  const [rowId, setRowId] = reactExports.useState(() => rowCtrl.rowId);
+  const [rowBusinessKey, setRowBusinessKey] = reactExports.useState(() => rowCtrl.businessKey);
+  const [userStyles, setUserStyles] = reactExports.useState(() => rowCtrl.rowStyles);
+  const cellCtrlsRef = reactExports.useRef(null);
+  const [cellCtrlsFlushSync, setCellCtrlsFlushSync] = reactExports.useState(() => null);
+  const [fullWidthCompDetails, setFullWidthCompDetails] = reactExports.useState();
+  const [top, setTop] = reactExports.useState(
+    () => isDisplayed ? rowCtrl.getInitialRowTop(containerType) : void 0
+  );
+  const [transform, setTransform] = reactExports.useState(
+    () => isDisplayed ? rowCtrl.getInitialTransform(containerType) : void 0
+  );
+  const eGui = reactExports.useRef(null);
+  const fullWidthCompRef = reactExports.useRef();
+  const fullWidthParamsRef = reactExports.useRef();
+  const autoHeightSetup = reactExports.useRef(false);
+  const [autoHeightSetupAttempt, setAutoHeightSetupAttempt] = reactExports.useState(0);
+  reactExports.useEffect(() => {
+    if (autoHeightSetup.current || !fullWidthCompDetails || autoHeightSetupAttempt > 10) {
+      return;
+    }
+    const eChild = eGui.current?.firstChild;
+    if (eChild) {
+      rowCtrl.setupDetailRowAutoHeight(eChild);
+      autoHeightSetup.current = true;
+    } else {
+      setAutoHeightSetupAttempt((prev) => prev + 1);
+    }
+  }, [fullWidthCompDetails, autoHeightSetupAttempt]);
+  const cssManager = reactExports.useRef();
+  if (!cssManager.current) {
+    cssManager.current = new CssClassManager(() => eGui.current);
+  }
+  const cellsChanged = reactExports.useRef(() => {
+  });
+  const sub = reactExports.useCallback((onStoreChange) => {
+    cellsChanged.current = onStoreChange;
+    return () => {
+      cellsChanged.current = () => {
+      };
+    };
+  }, []);
+  const cellCtrlsUses = agUseSyncExternalStore(
+    sub,
+    () => {
+      return cellCtrlsRef.current;
+    },
+    []
+  );
+  const cellCtrlsMerged = enableUses ? cellCtrlsUses : cellCtrlsFlushSync;
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    compBean.current = eRef ? context.createBean(new EmptyBean()) : context.destroyBean(compBean.current);
+    if (!eRef) {
+      rowCtrl.unsetComp(containerType);
+      return;
+    }
+    if (!rowCtrl.isAlive() || context.isDestroyed()) {
+      return;
+    }
+    const compProxy = {
+      // the rowTop is managed by state, instead of direct style manipulation by rowCtrl (like all the other styles)
+      // as we need to have an initial value when it's placed into he DOM for the first time, for animation to work.
+      setTop,
+      setTransform,
+      // i found using React for managing classes at the row level was to slow, as modifying classes caused a lot of
+      // React code to execute, so avoiding React for managing CSS Classes made the grid go much faster.
+      toggleCss: (name2, on) => cssManager.current.toggleCss(name2, on),
+      setDomOrder: (domOrder) => domOrderRef.current = domOrder,
+      setRowIndex,
+      setRowId,
+      setRowBusinessKey,
+      setUserStyles,
+      // if we don't maintain the order, then cols will be ripped out and into the dom
+      // when cols reordered, which would stop the CSS transitions from working
+      setCellCtrls: (next, useFlushSync) => {
+        const prevCellCtrls = cellCtrlsRef.current;
+        const nextCells = getNextValueIfDifferent(prevCellCtrls, next, domOrderRef.current);
+        if (nextCells !== prevCellCtrls) {
+          cellCtrlsRef.current = nextCells;
+          if (enableUses) {
+            cellsChanged.current();
+          } else {
+            agFlushSync(useFlushSync, () => setCellCtrlsFlushSync(nextCells));
+          }
+        }
+      },
+      showFullWidth: (compDetails) => {
+        fullWidthParamsRef.current = compDetails.params;
+        setFullWidthCompDetails(compDetails);
+      },
+      getFullWidthCellRenderer: () => fullWidthCompRef.current,
+      getFullWidthCellRendererParams: () => fullWidthParamsRef.current,
+      refreshFullWidth: (getUpdatedParams) => {
+        const fullWidthParams = getUpdatedParams();
+        fullWidthParamsRef.current = fullWidthParams;
+        if (canRefreshFullWidthRef.current) {
+          setFullWidthCompDetails((prevFullWidthCompDetails) => ({
+            ...prevFullWidthCompDetails,
+            params: fullWidthParams
+          }));
+          return true;
+        } else {
+          if (!fullWidthCompRef.current || !fullWidthCompRef.current.refresh) {
+            return false;
+          }
+          return fullWidthCompRef.current.refresh(fullWidthParams);
+        }
+      }
+    };
+    rowCtrl.setComp(compProxy, eRef, containerType, compBean.current);
+  }, []);
+  reactExports.useLayoutEffect(
+    () => showJsComp(fullWidthCompDetails, context, eGui.current, fullWidthCompRef),
+    [fullWidthCompDetails]
+  );
+  const rowStyles = reactExports.useMemo(() => {
+    const res = { top, transform };
+    Object.assign(res, userStyles);
+    return res;
+  }, [top, transform, userStyles]);
+  const showFullWidthFramework = isFullWidth && fullWidthCompDetails?.componentFromFramework;
+  const showCells = !isFullWidth && cellCtrlsMerged != null;
+  const reactFullWidthCellRendererStateless = reactExports.useMemo(() => {
+    const res = fullWidthCompDetails?.componentFromFramework && isComponentStateless(fullWidthCompDetails.componentClass);
+    return !!res;
+  }, [fullWidthCompDetails]);
+  const canRefreshFullWidthRef = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    canRefreshFullWidthRef.current = reactFullWidthCellRendererStateless && !!fullWidthCompDetails && !!gos.get("reactiveCustomComponents");
+  }, [reactFullWidthCellRendererStateless, fullWidthCompDetails]);
+  const showCellsJsx = () => cellCtrlsMerged?.map((cellCtrl) => /* @__PURE__ */ React20.createElement(
+    cellComp_default,
+    {
+      cellCtrl,
+      editingCell: editSvc?.isEditing(cellCtrl, { withOpenEditor: true }) ?? false,
+      printLayout: rowCtrl.printLayout,
+      key: cellCtrl.instanceId
+    }
+  ));
+  const showFullWidthFrameworkJsx = () => {
+    const FullWidthComp = fullWidthCompDetails.componentClass;
+    return reactFullWidthCellRendererStateless ? /* @__PURE__ */ React20.createElement(FullWidthComp, { ...fullWidthCompDetails.params }) : /* @__PURE__ */ React20.createElement(FullWidthComp, { ...fullWidthCompDetails.params, ref: fullWidthCompRef });
+  };
+  return /* @__PURE__ */ React20.createElement(
+    "div",
+    {
+      ref: setRef2,
+      role: "row",
+      style: rowStyles,
+      "row-index": rowIndex,
+      "row-id": rowId,
+      "row-business-key": rowBusinessKey
+    },
+    showCells ? showCellsJsx() : showFullWidthFramework ? showFullWidthFrameworkJsx() : null
+  );
+};
+var rowComp_default = reactExports.memo(RowComp);
+var RowContainerComp = ({ name: name2 }) => {
+  const { context, gos } = reactExports.useContext(BeansContext);
+  const containerOptions = reactExports.useMemo(() => _getRowContainerOptions(name2), [name2]);
+  const eViewport = reactExports.useRef(null);
+  const eContainer = reactExports.useRef(null);
+  const eSpanContainer = reactExports.useRef(null);
+  const rowCtrlsRef = reactExports.useRef([]);
+  const prevRowCtrlsRef = reactExports.useRef([]);
+  const [rowCtrlsOrdered, setRowCtrlsOrdered] = reactExports.useState(() => []);
+  const isSpanning = !!gos.get("enableCellSpan") && !!containerOptions.getSpannedRowCtrls;
+  const spannedRowCtrlsRef = reactExports.useRef([]);
+  const prevSpannedRowCtrlsRef = reactExports.useRef([]);
+  const [spannedRowCtrlsOrdered, setSpannedRowCtrlsOrdered] = reactExports.useState(() => []);
+  const domOrderRef = reactExports.useRef(false);
+  const rowContainerCtrlRef = reactExports.useRef();
+  const viewportClasses = reactExports.useMemo(() => classesList("ag-viewport", _getRowViewportClass(name2)), [name2]);
+  const containerClasses = reactExports.useMemo(() => classesList(_getRowContainerClass(name2)), [name2]);
+  const spanClasses = reactExports.useMemo(() => classesList("ag-spanning-container", _getRowSpanContainerClass(name2)), [name2]);
+  const shouldRenderViewport = containerOptions.type === "center" || isSpanning;
+  const topLevelRef = shouldRenderViewport ? eViewport : eContainer;
+  reactComment_default(" AG Row Container " + name2 + " ", topLevelRef);
+  const areElementsReady = reactExports.useCallback(() => {
+    const viewportReady = !shouldRenderViewport || eViewport.current != null;
+    const containerReady = eContainer.current != null;
+    const spanContainerReady = !isSpanning || eSpanContainer.current != null;
+    return viewportReady && containerReady && spanContainerReady;
+  }, []);
+  const areElementsRemoved = reactExports.useCallback(() => {
+    return eViewport.current == null && eContainer.current == null && eSpanContainer.current == null;
+  }, []);
+  const setRef2 = reactExports.useCallback(() => {
+    if (areElementsRemoved()) {
+      rowContainerCtrlRef.current = context.destroyBean(rowContainerCtrlRef.current);
+    }
+    if (context.isDestroyed()) {
+      return;
+    }
+    if (areElementsReady()) {
+      const updateRowCtrlsOrdered = (useFlushSync) => {
+        const next = getNextValueIfDifferent(
+          prevRowCtrlsRef.current,
+          rowCtrlsRef.current,
+          domOrderRef.current
+        );
+        if (next !== prevRowCtrlsRef.current) {
+          prevRowCtrlsRef.current = next;
+          agFlushSync(useFlushSync, () => setRowCtrlsOrdered(next));
+        }
+      };
+      const updateSpannedRowCtrlsOrdered = (useFlushSync) => {
+        const next = getNextValueIfDifferent(
+          prevSpannedRowCtrlsRef.current,
+          spannedRowCtrlsRef.current,
+          domOrderRef.current
+        );
+        if (next !== prevSpannedRowCtrlsRef.current) {
+          prevSpannedRowCtrlsRef.current = next;
+          agFlushSync(useFlushSync, () => setSpannedRowCtrlsOrdered(next));
+        }
+      };
+      const compProxy = {
+        setHorizontalScroll: (offset2) => {
+          if (eViewport.current) {
+            eViewport.current.scrollLeft = offset2;
+          }
+        },
+        setViewportHeight: (height) => {
+          if (eViewport.current) {
+            eViewport.current.style.height = height;
+          }
+        },
+        setRowCtrls: ({ rowCtrls, useFlushSync }) => {
+          const useFlush = !!useFlushSync && rowCtrlsRef.current.length > 0 && rowCtrls.length > 0;
+          rowCtrlsRef.current = rowCtrls;
+          updateRowCtrlsOrdered(useFlush);
+        },
+        setSpannedRowCtrls: (rowCtrls, useFlushSync) => {
+          const useFlush = !!useFlushSync && spannedRowCtrlsRef.current.length > 0 && rowCtrls.length > 0;
+          spannedRowCtrlsRef.current = rowCtrls;
+          updateSpannedRowCtrlsOrdered(useFlush);
+        },
+        setDomOrder: (domOrder) => {
+          if (domOrderRef.current != domOrder) {
+            domOrderRef.current = domOrder;
+            updateRowCtrlsOrdered(false);
+          }
+        },
+        setContainerWidth: (width) => {
+          if (eContainer.current) {
+            eContainer.current.style.width = width;
+          }
+        },
+        setOffsetTop: (offset2) => {
+          if (eContainer.current) {
+            eContainer.current.style.transform = `translateY(${offset2})`;
+          }
+        }
+      };
+      rowContainerCtrlRef.current = context.createBean(new RowContainerCtrl(name2));
+      rowContainerCtrlRef.current.setComp(
+        compProxy,
+        eContainer.current,
+        eSpanContainer.current ?? void 0,
+        eViewport.current
+      );
+    }
+  }, [areElementsReady, areElementsRemoved]);
+  const setContainerRef = reactExports.useCallback(
+    (e) => {
+      eContainer.current = e;
+      setRef2();
+    },
+    [setRef2]
+  );
+  const setSpanContainerRef = reactExports.useCallback(
+    (e) => {
+      eSpanContainer.current = e;
+      setRef2();
+    },
+    [setRef2]
+  );
+  const setViewportRef = reactExports.useCallback(
+    (e) => {
+      eViewport.current = e;
+      setRef2();
+    },
+    [setRef2]
+  );
+  const buildContainer = () => /* @__PURE__ */ React20.createElement(
+    "div",
+    {
+      className: containerClasses,
+      ref: setContainerRef,
+      role: shouldRenderViewport ? "presentation" : "rowgroup"
+    },
+    rowCtrlsOrdered.map((rowCtrl) => /* @__PURE__ */ React20.createElement(rowComp_default, { rowCtrl, containerType: containerOptions.type, key: rowCtrl.instanceId }))
+  );
+  if (!shouldRenderViewport) {
+    return buildContainer();
+  }
+  const buildSpanContainer = () => /* @__PURE__ */ React20.createElement("div", { className: spanClasses, ref: setSpanContainerRef, role: "presentation" }, spannedRowCtrlsOrdered.map((rowCtrl) => /* @__PURE__ */ React20.createElement(rowComp_default, { rowCtrl, containerType: containerOptions.type, key: rowCtrl.instanceId })));
+  return /* @__PURE__ */ React20.createElement("div", { className: viewportClasses, ref: setViewportRef, role: "rowgroup" }, buildContainer(), isSpanning ? buildSpanContainer() : null);
+};
+var rowContainerComp_default = reactExports.memo(RowContainerComp);
+var GridBodyComp = () => {
+  const beans = reactExports.useContext(BeansContext);
+  const { context, overlays } = beans;
+  const [rowAnimationClass, setRowAnimationClass] = reactExports.useState("");
+  const [topHeight, setTopHeight] = reactExports.useState(0);
+  const [bottomHeight, setBottomHeight] = reactExports.useState(0);
+  const [stickyTopHeight, setStickyTopHeight] = reactExports.useState("0px");
+  const [stickyTopTop, setStickyTopTop] = reactExports.useState("0px");
+  const [stickyTopWidth, setStickyTopWidth] = reactExports.useState("100%");
+  const [stickyBottomHeight, setStickyBottomHeight] = reactExports.useState("0px");
+  const [stickyBottomBottom, setStickyBottomBottom] = reactExports.useState("0px");
+  const [stickyBottomWidth, setStickyBottomWidth] = reactExports.useState("100%");
+  const [topInvisible, setTopInvisible] = reactExports.useState(true);
+  const [bottomInvisible, setBottomInvisible] = reactExports.useState(true);
+  const [forceVerticalScrollClass, setForceVerticalScrollClass] = reactExports.useState(null);
+  const [topAndBottomOverflowY, setTopAndBottomOverflowY] = reactExports.useState("");
+  const [cellSelectableCss, setCellSelectableCss] = reactExports.useState(null);
+  const [layoutClass, setLayoutClass] = reactExports.useState("ag-layout-normal");
+  const cssManager = reactExports.useRef();
+  if (!cssManager.current) {
+    cssManager.current = new CssClassManager(() => eRoot.current);
+  }
+  const eRoot = reactExports.useRef(null);
+  const eTop = reactExports.useRef(null);
+  const eStickyTop = reactExports.useRef(null);
+  const eStickyBottom = reactExports.useRef(null);
+  const eBody = reactExports.useRef(null);
+  const eBodyViewport = reactExports.useRef(null);
+  const eBottom = reactExports.useRef(null);
+  const beansToDestroy = reactExports.useRef([]);
+  const destroyFuncs = reactExports.useRef([]);
+  reactComment_default(" AG Grid Body ", eRoot);
+  reactComment_default(" AG Pinned Top ", eTop);
+  reactComment_default(" AG Sticky Top ", eStickyTop);
+  reactComment_default(" AG Middle ", eBodyViewport);
+  reactComment_default(" AG Pinned Bottom ", eBottom);
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eRoot.current = eRef;
+    if (!eRef || context.isDestroyed()) {
+      beansToDestroy.current = context.destroyBeans(beansToDestroy.current);
+      for (const f of destroyFuncs.current) {
+        f();
+      }
+      destroyFuncs.current = [];
+      return;
+    }
+    const attachToDom = (eParent, eChild) => {
+      eParent.appendChild(eChild);
+      destroyFuncs.current.push(() => eChild.remove());
+    };
+    const newComp = (compClass) => {
+      const comp = context.createBean(new compClass());
+      beansToDestroy.current.push(comp);
+      return comp;
+    };
+    const addComp = (eParent, compClass, comment2) => {
+      attachToDom(eParent, document.createComment(comment2));
+      attachToDom(eParent, newComp(compClass).getGui());
+    };
+    addComp(eRef, FakeHScrollComp, " AG Fake Horizontal Scroll ");
+    const overlayComp = overlays?.getOverlayWrapperCompClass();
+    if (overlayComp) {
+      addComp(eRef, overlayComp, " AG Overlay Wrapper ");
+    }
+    if (eBody.current) {
+      addComp(eBody.current, FakeVScrollComp, " AG Fake Vertical Scroll ");
+    }
+    const compProxy = {
+      setRowAnimationCssOnBodyViewport: setRowAnimationClass,
+      setColumnCount: (count2) => {
+        if (eRoot.current) {
+          _setAriaColCount(eRoot.current, count2);
+        }
+      },
+      setRowCount: (count2) => {
+        if (eRoot.current) {
+          _setAriaRowCount(eRoot.current, count2);
+        }
+      },
+      setTopHeight,
+      setBottomHeight,
+      setStickyTopHeight,
+      setStickyTopTop,
+      setStickyTopWidth,
+      setTopInvisible,
+      setBottomInvisible,
+      setColumnMovingCss: (cssClass, flag) => cssManager.current.toggleCss(cssClass, flag),
+      updateLayoutClasses: setLayoutClass,
+      setAlwaysVerticalScrollClass: setForceVerticalScrollClass,
+      setPinnedTopBottomOverflowY: setTopAndBottomOverflowY,
+      setCellSelectableCss: (cssClass, flag) => setCellSelectableCss(flag ? cssClass : null),
+      setBodyViewportWidth: (width) => {
+        if (eBodyViewport.current) {
+          eBodyViewport.current.style.width = width;
+        }
+      },
+      registerBodyViewportResizeListener: (listener) => {
+        if (eBodyViewport.current) {
+          const unsubscribeFromResize = _observeResize(beans, eBodyViewport.current, listener);
+          destroyFuncs.current.push(() => unsubscribeFromResize());
+        }
+      },
+      setStickyBottomHeight,
+      setStickyBottomBottom,
+      setStickyBottomWidth,
+      setGridRootRole: (role) => eRef.setAttribute("role", role)
+    };
+    const ctrl = context.createBean(new GridBodyCtrl());
+    beansToDestroy.current.push(ctrl);
+    ctrl.setComp(
+      compProxy,
+      eRef,
+      eBodyViewport.current,
+      eTop.current,
+      eBottom.current,
+      eStickyTop.current,
+      eStickyBottom.current
+    );
+  }, []);
+  const rootClasses = reactExports.useMemo(() => classesList("ag-root", "ag-unselectable", layoutClass), [layoutClass]);
+  const bodyViewportClasses = reactExports.useMemo(
+    () => classesList(
+      "ag-body-viewport",
+      rowAnimationClass,
+      layoutClass,
+      forceVerticalScrollClass,
+      cellSelectableCss
+    ),
+    [rowAnimationClass, layoutClass, forceVerticalScrollClass, cellSelectableCss]
+  );
+  const bodyClasses = reactExports.useMemo(() => classesList("ag-body", layoutClass), [layoutClass]);
+  const topClasses = reactExports.useMemo(
+    () => classesList("ag-floating-top", topInvisible ? "ag-invisible" : null, cellSelectableCss),
+    [cellSelectableCss, topInvisible]
+  );
+  const stickyTopClasses = reactExports.useMemo(() => classesList("ag-sticky-top", cellSelectableCss), [cellSelectableCss]);
+  const stickyBottomClasses = reactExports.useMemo(
+    () => classesList("ag-sticky-bottom", stickyBottomHeight === "0px" ? "ag-invisible" : null, cellSelectableCss),
+    [cellSelectableCss, stickyBottomHeight]
+  );
+  const bottomClasses = reactExports.useMemo(
+    () => classesList("ag-floating-bottom", bottomInvisible ? "ag-invisible" : null, cellSelectableCss),
+    [cellSelectableCss, bottomInvisible]
+  );
+  const topStyle = reactExports.useMemo(
+    () => ({
+      height: topHeight,
+      minHeight: topHeight,
+      overflowY: topAndBottomOverflowY
+    }),
+    [topHeight, topAndBottomOverflowY]
+  );
+  const stickyTopStyle = reactExports.useMemo(
+    () => ({
+      height: stickyTopHeight,
+      top: stickyTopTop,
+      width: stickyTopWidth
+    }),
+    [stickyTopHeight, stickyTopTop, stickyTopWidth]
+  );
+  const stickyBottomStyle = reactExports.useMemo(
+    () => ({
+      height: stickyBottomHeight,
+      bottom: stickyBottomBottom,
+      width: stickyBottomWidth
+    }),
+    [stickyBottomHeight, stickyBottomBottom, stickyBottomWidth]
+  );
+  const bottomStyle = reactExports.useMemo(
+    () => ({
+      height: bottomHeight,
+      minHeight: bottomHeight,
+      overflowY: topAndBottomOverflowY
+    }),
+    [bottomHeight, topAndBottomOverflowY]
+  );
+  const createRowContainer = (container2) => /* @__PURE__ */ React20.createElement(rowContainerComp_default, { name: container2, key: `${container2}-container` });
+  const createSection = ({
+    section,
+    children,
+    className,
+    style
+  }) => /* @__PURE__ */ React20.createElement("div", { ref: section, className, role: "presentation", style }, children.map(createRowContainer));
+  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: rootClasses }, /* @__PURE__ */ React20.createElement(gridHeaderComp_default, null), createSection({
+    section: eTop,
+    className: topClasses,
+    style: topStyle,
+    children: ["topLeft", "topCenter", "topRight", "topFullWidth"]
+  }), /* @__PURE__ */ React20.createElement("div", { className: bodyClasses, ref: eBody, role: "presentation" }, createSection({
+    section: eBodyViewport,
+    className: bodyViewportClasses,
+    children: ["left", "center", "right", "fullWidth"]
+  })), createSection({
+    section: eStickyTop,
+    className: stickyTopClasses,
+    style: stickyTopStyle,
+    children: ["stickyTopLeft", "stickyTopCenter", "stickyTopRight", "stickyTopFullWidth"]
+  }), createSection({
+    section: eStickyBottom,
+    className: stickyBottomClasses,
+    style: stickyBottomStyle,
+    children: ["stickyBottomLeft", "stickyBottomCenter", "stickyBottomRight", "stickyBottomFullWidth"]
+  }), createSection({
+    section: eBottom,
+    className: bottomClasses,
+    style: bottomStyle,
+    children: ["bottomLeft", "bottomCenter", "bottomRight", "bottomFullWidth"]
+  }));
+};
+var gridBodyComp_default = reactExports.memo(GridBodyComp);
+var TabGuardCompRef = (props, forwardRef4) => {
+  const { children, eFocusableElement, onTabKeyDown, gridCtrl, forceFocusOutWhenTabGuardsAreEmpty, isEmpty: isEmpty2 } = props;
+  const { context } = reactExports.useContext(BeansContext);
+  const topTabGuardRef = reactExports.useRef(null);
+  const bottomTabGuardRef = reactExports.useRef(null);
+  const tabGuardCtrlRef = reactExports.useRef();
+  const setTabIndex = (value) => {
+    const processedValue = value == null ? void 0 : parseInt(value, 10).toString();
+    for (const tabGuard of [topTabGuardRef, bottomTabGuardRef]) {
+      if (processedValue === void 0) {
+        tabGuard.current?.removeAttribute("tabindex");
+      } else {
+        tabGuard.current?.setAttribute("tabindex", processedValue);
+      }
+    }
+  };
+  reactExports.useImperativeHandle(forwardRef4, () => ({
+    forceFocusOutOfContainer(up) {
+      tabGuardCtrlRef.current?.forceFocusOutOfContainer(up);
+    }
+  }));
+  const setupCtrl = reactExports.useCallback(() => {
+    const topTabGuard = topTabGuardRef.current;
+    const bottomTabGuard = bottomTabGuardRef.current;
+    if (!topTabGuard && !bottomTabGuard || context.isDestroyed()) {
+      tabGuardCtrlRef.current = context.destroyBean(tabGuardCtrlRef.current);
+      return;
+    }
+    if (topTabGuard && bottomTabGuard) {
+      const compProxy = {
+        setTabIndex
+      };
+      tabGuardCtrlRef.current = context.createBean(
+        new TabGuardCtrl({
+          comp: compProxy,
+          eTopGuard: topTabGuard,
+          eBottomGuard: bottomTabGuard,
+          eFocusableElement,
+          onTabKeyDown,
+          forceFocusOutWhenTabGuardsAreEmpty,
+          focusInnerElement: (fromBottom) => gridCtrl.focusInnerElement(fromBottom),
+          isEmpty: isEmpty2
+        })
+      );
+    }
+  }, []);
+  const setTopRef = reactExports.useCallback(
+    (e) => {
+      topTabGuardRef.current = e;
+      setupCtrl();
+    },
+    [setupCtrl]
+  );
+  const setBottomRef = reactExports.useCallback(
+    (e) => {
+      bottomTabGuardRef.current = e;
+      setupCtrl();
+    },
+    [setupCtrl]
+  );
+  const createTabGuard = (side) => {
+    const className = side === "top" ? TabGuardClassNames.TAB_GUARD_TOP : TabGuardClassNames.TAB_GUARD_BOTTOM;
+    return /* @__PURE__ */ React20.createElement(
+      "div",
+      {
+        className: `${TabGuardClassNames.TAB_GUARD} ${className}`,
+        role: "presentation",
+        ref: side === "top" ? setTopRef : setBottomRef
+      }
+    );
+  };
+  return /* @__PURE__ */ React20.createElement(React20.Fragment, null, createTabGuard("top"), children, createTabGuard("bottom"));
+};
+var TabGuardComp2 = reactExports.forwardRef(TabGuardCompRef);
+var tabGuardComp_default = reactExports.memo(TabGuardComp2);
+var GridComp = ({ context }) => {
+  const [rtlClass, setRtlClass] = reactExports.useState("");
+  const [layoutClass, setLayoutClass] = reactExports.useState("");
+  const [cursor, setCursor] = reactExports.useState(null);
+  const [userSelect, setUserSelect] = reactExports.useState(null);
+  const [initialised, setInitialised] = reactExports.useState(false);
+  const [tabGuardReady, setTabGuardReady] = reactExports.useState();
+  const gridCtrlRef = reactExports.useRef();
+  const eRootWrapperRef = reactExports.useRef(null);
+  const tabGuardRef = reactExports.useRef();
+  const [eGridBodyParent, setGridBodyParent] = reactExports.useState(null);
+  const focusInnerElementRef = reactExports.useRef(() => void 0);
+  const paginationCompRef = reactExports.useRef();
+  const focusableContainersRef = reactExports.useRef([]);
+  const onTabKeyDown = reactExports.useCallback(() => void 0, []);
+  reactComment_default(" AG Grid ", eRootWrapperRef);
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eRootWrapperRef.current = eRef;
+    gridCtrlRef.current = eRef ? context.createBean(new GridCtrl()) : context.destroyBean(gridCtrlRef.current);
+    if (!eRef || context.isDestroyed()) {
+      return;
+    }
+    const gridCtrl = gridCtrlRef.current;
+    focusInnerElementRef.current = gridCtrl.focusInnerElement.bind(gridCtrl);
+    const compProxy = {
+      destroyGridUi: () => {
+      },
+      // do nothing, as framework users destroy grid by removing the comp
+      setRtlClass,
+      forceFocusOutOfContainer: (up) => {
+        if (!up && paginationCompRef.current?.isDisplayed()) {
+          paginationCompRef.current.forceFocusOutOfContainer(up);
+          return;
+        }
+        tabGuardRef.current?.forceFocusOutOfContainer(up);
+      },
+      updateLayoutClasses: setLayoutClass,
+      getFocusableContainers: () => {
+        const comps = [];
+        const gridBodyCompEl = eRootWrapperRef.current?.querySelector(".ag-root");
+        if (gridBodyCompEl) {
+          comps.push({ getGui: () => gridBodyCompEl });
+        }
+        for (const comp of focusableContainersRef.current) {
+          if (comp.isDisplayed()) {
+            comps.push(comp);
+          }
+        }
+        return comps;
+      },
+      setCursor,
+      setUserSelect
+    };
+    gridCtrl.setComp(compProxy, eRef, eRef);
+    setInitialised(true);
+  }, []);
+  reactExports.useEffect(() => {
+    const gridCtrl = gridCtrlRef.current;
+    const eRootWrapper = eRootWrapperRef.current;
+    if (!tabGuardReady || !gridCtrl || !eGridBodyParent || !eRootWrapper || context.isDestroyed()) {
+      return;
+    }
+    const beansToDestroy = [];
+    const {
+      watermarkSelector,
+      paginationSelector,
+      sideBarSelector,
+      statusBarSelector,
+      gridHeaderDropZonesSelector
+    } = gridCtrl.getOptionalSelectors();
+    const additionalEls = [];
+    if (gridHeaderDropZonesSelector) {
+      const headerDropZonesComp = context.createBean(new gridHeaderDropZonesSelector.component());
+      const eGui = headerDropZonesComp.getGui();
+      eRootWrapper.insertAdjacentElement("afterbegin", eGui);
+      additionalEls.push(eGui);
+      beansToDestroy.push(headerDropZonesComp);
+    }
+    if (sideBarSelector) {
+      const sideBarComp = context.createBean(new sideBarSelector.component());
+      const eGui = sideBarComp.getGui();
+      const bottomTabGuard = eGridBodyParent.querySelector(".ag-tab-guard-bottom");
+      if (bottomTabGuard) {
+        bottomTabGuard.insertAdjacentElement("beforebegin", eGui);
+        additionalEls.push(eGui);
+      }
+      beansToDestroy.push(sideBarComp);
+      focusableContainersRef.current.push(sideBarComp);
+    }
+    const addComponentToDom = (component) => {
+      const comp = context.createBean(new component());
+      const eGui = comp.getGui();
+      eRootWrapper.insertAdjacentElement("beforeend", eGui);
+      additionalEls.push(eGui);
+      beansToDestroy.push(comp);
+      return comp;
+    };
+    if (statusBarSelector) {
+      addComponentToDom(statusBarSelector.component);
+    }
+    if (paginationSelector) {
+      const paginationComp = addComponentToDom(paginationSelector.component);
+      paginationCompRef.current = paginationComp;
+      focusableContainersRef.current.push(paginationComp);
+    }
+    if (watermarkSelector) {
+      addComponentToDom(watermarkSelector.component);
+    }
+    return () => {
+      context.destroyBeans(beansToDestroy);
+      for (const el of additionalEls) {
+        el.remove();
+      }
+    };
+  }, [tabGuardReady, eGridBodyParent, context]);
+  const rootWrapperClasses = reactExports.useMemo(
+    () => classesList("ag-root-wrapper", rtlClass, layoutClass),
+    [rtlClass, layoutClass]
+  );
+  const rootWrapperBodyClasses = reactExports.useMemo(
+    () => classesList("ag-root-wrapper-body", "ag-focus-managed", layoutClass),
+    [layoutClass]
+  );
+  const topStyle = reactExports.useMemo(
+    () => ({
+      userSelect: userSelect != null ? userSelect : "",
+      WebkitUserSelect: userSelect != null ? userSelect : "",
+      cursor: cursor != null ? cursor : ""
+    }),
+    [userSelect, cursor]
+  );
+  const setTabGuardCompRef = reactExports.useCallback((ref2) => {
+    tabGuardRef.current = ref2;
+    setTabGuardReady(ref2 !== null);
+  }, []);
+  const isFocusable = reactExports.useCallback(() => !gridCtrlRef.current?.isFocusable(), []);
+  return /* @__PURE__ */ React20.createElement("div", { ref: setRef2, className: rootWrapperClasses, style: topStyle, role: "presentation" }, /* @__PURE__ */ React20.createElement("div", { className: rootWrapperBodyClasses, ref: setGridBodyParent, role: "presentation" }, initialised && eGridBodyParent && !context.isDestroyed() && /* @__PURE__ */ React20.createElement(BeansContext.Provider, { value: context.getBeans() }, /* @__PURE__ */ React20.createElement(
+    tabGuardComp_default,
+    {
+      ref: setTabGuardCompRef,
+      eFocusableElement: eGridBodyParent,
+      onTabKeyDown,
+      gridCtrl: gridCtrlRef.current,
+      forceFocusOutWhenTabGuardsAreEmpty: true,
+      isEmpty: isFocusable
+    },
+    // we wait for initialised before rending the children, so GridComp has created and registered with it's
+    // GridCtrl before we create the child GridBodyComp. Otherwise the GridBodyComp would initialise first,
+    // before we have set the the Layout CSS classes, causing the GridBodyComp to render rows to a grid that
+    // doesn't have it's height specified, which would result if all the rows getting rendered (and if many rows,
+    // hangs the UI)
+    /* @__PURE__ */ React20.createElement(gridBodyComp_default, null)
+  ))));
+};
+var gridComp_default = reactExports.memo(GridComp);
+var RenderStatusService = class extends BeanStub {
+  postConstruct() {
+    if (this.beans.colAutosize) {
+      const queueResizeOperationsForTick = this.queueResizeOperationsForTick.bind(this);
+      this.addManagedEventListeners({
+        rowExpansionStateChanged: queueResizeOperationsForTick,
+        expandOrCollapseAll: queueResizeOperationsForTick,
+        // Enable devs to resize after they updated via the API
+        cellValueChanged: queueResizeOperationsForTick,
+        rowNodeDataChanged: queueResizeOperationsForTick,
+        rowDataUpdated: queueResizeOperationsForTick
+      });
+    }
+  }
+  queueResizeOperationsForTick() {
+    const colAutosize = this.beans.colAutosize;
+    colAutosize.shouldQueueResizeOperations = true;
+    setTimeout(() => {
+      colAutosize.processResizeOperations();
+    }, 0);
+  }
+  areHeaderCellsRendered() {
+    return this.beans.ctrlsSvc.getHeaderRowContainerCtrls().every((container2) => container2.getAllCtrls().every((ctrl) => ctrl.areCellsRendered()));
+  }
+  areCellsRendered() {
+    return this.beans.rowRenderer.getAllRowCtrls().every((row2) => row2.isRowRendered() && row2.getAllCellCtrls().every((cellCtrl) => !!cellCtrl.eGui));
+  }
+};
+var deprecatedProps = {
+  setGridApi: void 0,
+  maxComponentCreationTimeMs: void 0,
+  children: void 0
+};
+var reactPropsNotGridOptions = {
+  gridOptions: void 0,
+  modules: void 0,
+  containerStyle: void 0,
+  className: void 0,
+  passGridApi: void 0,
+  componentWrappingElement: void 0,
+  ...deprecatedProps
+};
+var excludeReactCompProps = new Set(Object.keys(reactPropsNotGridOptions));
+var deprecatedReactCompProps = new Set(Object.keys(deprecatedProps));
+var AgGridReactUi = (props) => {
+  const apiRef = reactExports.useRef();
+  const eGui = reactExports.useRef(null);
+  const portalManager = reactExports.useRef(null);
+  const destroyFuncs = reactExports.useRef([]);
+  const whenReadyFuncs = reactExports.useRef([]);
+  const prevProps = reactExports.useRef(props);
+  const frameworkOverridesRef = reactExports.useRef();
+  const gridIdRef = reactExports.useRef();
+  const ready = reactExports.useRef(false);
+  const [context, setContext] = reactExports.useState(void 0);
+  const [, setPortalRefresher] = reactExports.useState(0);
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGui.current = eRef;
+    if (!eRef) {
+      for (const f of destroyFuncs.current) {
+        f();
+      }
+      destroyFuncs.current.length = 0;
+      return;
+    }
+    const modules = props.modules || [];
+    if (!portalManager.current) {
+      portalManager.current = new PortalManager(
+        () => setPortalRefresher((prev) => prev + 1),
+        props.componentWrappingElement,
+        props.maxComponentCreationTimeMs
+      );
+      destroyFuncs.current.push(() => {
+        portalManager.current?.destroy();
+        portalManager.current = null;
+      });
+    }
+    const mergedGridOps = _combineAttributesAndGridOptions(
+      props.gridOptions,
+      props,
+      Object.keys(props).filter((key2) => !excludeReactCompProps.has(key2))
+    );
+    const processQueuedUpdates = () => {
+      if (ready.current) {
+        const getFn = () => frameworkOverridesRef.current?.shouldQueueUpdates() ? void 0 : whenReadyFuncs.current.shift();
+        let fn2 = getFn();
+        while (fn2) {
+          fn2();
+          fn2 = getFn();
+        }
+      }
+    };
+    const frameworkOverrides = new ReactFrameworkOverrides(processQueuedUpdates);
+    frameworkOverridesRef.current = frameworkOverrides;
+    const renderStatus = new RenderStatusService();
+    const gridParams = {
+      providedBeanInstances: {
+        frameworkCompWrapper: new ReactFrameworkComponentWrapper(portalManager.current, mergedGridOps),
+        renderStatus
+      },
+      modules,
+      frameworkOverrides,
+      setThemeOnGridDiv: true
+    };
+    const createUiCallback = (ctx) => {
+      setContext(ctx);
+      ctx.createBean(renderStatus);
+      destroyFuncs.current.push(() => {
+        ctx.destroy();
+      });
+      ctx.getBean("ctrlsSvc").whenReady(
+        {
+          addDestroyFunc: (func2) => {
+            destroyFuncs.current.push(func2);
+          }
+        },
+        () => {
+          if (ctx.isDestroyed()) {
+            return;
+          }
+          const api = apiRef.current;
+          if (api) {
+            props.passGridApi?.(api);
+          }
+        }
+      );
+    };
+    const acceptChangesCallback = (context2) => {
+      context2.getBean("ctrlsSvc").whenReady(
+        {
+          addDestroyFunc: (func2) => {
+            destroyFuncs.current.push(func2);
+          }
+        },
+        () => {
+          for (const f of whenReadyFuncs.current) {
+            f();
+          }
+          whenReadyFuncs.current.length = 0;
+          ready.current = true;
+        }
+      );
+    };
+    const gridCoreCreator = new GridCoreCreator();
+    mergedGridOps.gridId ?? (mergedGridOps.gridId = gridIdRef.current);
+    apiRef.current = gridCoreCreator.create(
+      eRef,
+      mergedGridOps,
+      createUiCallback,
+      acceptChangesCallback,
+      gridParams
+    );
+    destroyFuncs.current.push(() => {
+      apiRef.current = void 0;
+    });
+    if (apiRef.current) {
+      gridIdRef.current = apiRef.current.getGridId();
+    }
+  }, []);
+  const style = reactExports.useMemo(() => {
+    return {
+      height: "100%",
+      ...props.containerStyle || {}
+    };
+  }, [props.containerStyle]);
+  const processWhenReady = reactExports.useCallback((func2) => {
+    if (ready.current && !frameworkOverridesRef.current?.shouldQueueUpdates()) {
+      func2();
+    } else {
+      whenReadyFuncs.current.push(func2);
+    }
+  }, []);
+  reactExports.useEffect(() => {
+    const changes = extractGridPropertyChanges(prevProps.current, props);
+    prevProps.current = props;
+    processWhenReady(() => {
+      if (apiRef.current) {
+        _processOnChange(changes, apiRef.current);
+      }
+    });
+  }, [props]);
+  const renderMode = !React20.useSyncExternalStore || _getGridOption(props, "renderingMode") === "legacy" ? "legacy" : "default";
+  return /* @__PURE__ */ React20.createElement("div", { style, className: props.className, ref: setRef2 }, /* @__PURE__ */ React20.createElement(RenderModeContext.Provider, { value: renderMode }, context && !context.isDestroyed() ? /* @__PURE__ */ React20.createElement(gridComp_default, { key: context.instanceId, context }) : null, portalManager.current?.getPortals() ?? null));
+};
+function extractGridPropertyChanges(prevProps, nextProps) {
+  const changes = {};
+  for (const propKey of Object.keys(nextProps)) {
+    if (excludeReactCompProps.has(propKey)) {
+      if (deprecatedReactCompProps.has(propKey)) {
+        _warn(274, { prop: propKey });
+      }
+      continue;
+    }
+    const propValue = nextProps[propKey];
+    if (prevProps[propKey] !== propValue) {
+      changes[propKey] = propValue;
+    }
+  }
+  return changes;
+}
+var ReactFrameworkComponentWrapper = class extends BaseComponentWrapper {
+  constructor(parent, gridOptions) {
+    super();
+    this.parent = parent;
+    this.gridOptions = gridOptions;
+  }
+  createWrapper(UserReactComponent, componentType) {
+    const gridOptions = this.gridOptions;
+    const reactiveCustomComponents = _getGridOption(gridOptions, "reactiveCustomComponents");
+    if (reactiveCustomComponents) {
+      const getComponentClass = (propertyName) => {
+        switch (propertyName) {
+          case "filter":
+            return _getGridOption(gridOptions, "enableFilterHandlers") ? FilterDisplayComponentWrapper : FilterComponentWrapper;
+          case "floatingFilterComponent":
+            return _getGridOption(gridOptions, "enableFilterHandlers") ? FloatingFilterDisplayComponentWrapper : FloatingFilterComponentWrapper;
+          case "dateComponent":
+            return DateComponentWrapper;
+          case "dragAndDropImageComponent":
+            return DragAndDropImageComponentWrapper;
+          case "loadingOverlayComponent":
+            return LoadingOverlayComponentWrapper;
+          case "noRowsOverlayComponent":
+            return NoRowsOverlayComponentWrapper;
+          case "statusPanel":
+            return StatusPanelComponentWrapper;
+          case "toolPanel":
+            return ToolPanelComponentWrapper;
+          case "menuItem":
+            return MenuItemComponentWrapper;
+          case "cellRenderer":
+            return CellRendererComponentWrapper;
+          case "innerHeaderComponent":
+            return InnerHeaderComponentWrapper;
+        }
+      };
+      const ComponentClass = getComponentClass(componentType.name);
+      if (ComponentClass) {
+        return new ComponentClass(UserReactComponent, this.parent, componentType);
+      }
+    } else {
+      switch (componentType.name) {
+        case "filter":
+        case "floatingFilterComponent":
+        case "dateComponent":
+        case "dragAndDropImageComponent":
+        case "loadingOverlayComponent":
+        case "noRowsOverlayComponent":
+        case "statusPanel":
+        case "toolPanel":
+        case "menuItem":
+        case "cellRenderer":
+          warnReactiveCustomComponents();
+          break;
+      }
+    }
+    const suppressFallbackMethods = !componentType.cellRenderer && componentType.name !== "toolPanel";
+    return new ReactComponent(UserReactComponent, this.parent, componentType, suppressFallbackMethods);
+  }
+};
+var DetailCellRenderer = reactExports.forwardRef((props, ref2) => {
+  const beans = reactExports.useContext(BeansContext);
+  const { registry, context, gos, rowModel } = beans;
+  const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
+  const [gridCssClasses, setGridCssClasses] = reactExports.useState(() => new CssClasses());
+  const [detailGridOptions, setDetailGridOptions] = reactExports.useState();
+  const [detailRowData, setDetailRowData] = reactExports.useState();
+  const ctrlRef = reactExports.useRef();
+  const eGuiRef = reactExports.useRef(null);
+  const resizeObserverDestroyFunc = reactExports.useRef();
+  const parentModules = reactExports.useMemo(
+    () => _getGridRegisteredModules(props.api.getGridId(), detailGridOptions?.rowModelType ?? "clientSide"),
+    [props]
+  );
+  const topClassName = reactExports.useMemo(() => cssClasses.toString() + " ag-details-row", [cssClasses]);
+  const gridClassName = reactExports.useMemo(() => gridCssClasses.toString() + " ag-details-grid", [gridCssClasses]);
+  if (ref2) {
+    reactExports.useImperativeHandle(ref2, () => ({
+      refresh() {
+        return ctrlRef.current?.refresh() ?? false;
+      }
+    }));
+  }
+  if (props.template) {
+    _warn(230);
+  }
+  const setRef2 = reactExports.useCallback((eRef) => {
+    eGuiRef.current = eRef;
+    if (!eRef || context.isDestroyed()) {
+      ctrlRef.current = context.destroyBean(ctrlRef.current);
+      resizeObserverDestroyFunc.current?.();
+      return;
+    }
+    const compProxy = {
+      toggleCss: (name2, on) => setCssClasses((prev) => prev.setClass(name2, on)),
+      toggleDetailGridCss: (name2, on) => setGridCssClasses((prev) => prev.setClass(name2, on)),
+      setDetailGrid: (gridOptions) => setDetailGridOptions(gridOptions),
+      setRowData: (rowData) => setDetailRowData(rowData),
+      getGui: () => eGuiRef.current
+    };
+    const ctrl = registry.createDynamicBean("detailCellRendererCtrl", true);
+    if (!ctrl) {
+      return;
+    }
+    context.createBean(ctrl);
+    ctrl.init(compProxy, props);
+    ctrlRef.current = ctrl;
+    if (gos.get("detailRowAutoHeight")) {
+      const checkRowSizeFunc = () => {
+        if (eGuiRef.current == null) {
+          return;
+        }
+        const clientHeight = eGuiRef.current.clientHeight;
+        if (clientHeight != null && clientHeight > 0) {
+          const updateRowHeightFunc = () => {
+            props.node.setRowHeight(clientHeight);
+            if (_isClientSideRowModel(gos) || _isServerSideRowModel(gos)) {
+              rowModel.onRowHeightChanged();
+            }
+          };
+          setTimeout(updateRowHeightFunc, 0);
+        }
+      };
+      resizeObserverDestroyFunc.current = _observeResize(beans, eRef, checkRowSizeFunc);
+      checkRowSizeFunc();
+    }
+  }, []);
+  const registerGridApi = reactExports.useCallback((api) => {
+    ctrlRef.current?.registerDetailWithMaster(api);
+  }, []);
+  return /* @__PURE__ */ React20.createElement("div", { className: topClassName, ref: setRef2 }, detailGridOptions && /* @__PURE__ */ React20.createElement(
+    AgGridReactUi,
+    {
+      className: gridClassName,
+      ...detailGridOptions,
+      modules: parentModules,
+      rowData: detailRowData,
+      passGridApi: registerGridApi
+    }
+  ));
+});
+var ReactFrameworkOverrides = class extends VanillaFrameworkOverrides {
+  constructor(processQueuedUpdates) {
+    super("react");
+    this.processQueuedUpdates = processQueuedUpdates;
+    this.queueUpdates = false;
+    this.renderingEngine = "react";
+    this.frameworkComponents = {
+      agGroupCellRenderer: groupCellRenderer_default,
+      agGroupRowRenderer: groupCellRenderer_default,
+      agDetailCellRenderer: DetailCellRenderer
+    };
+    this.wrapIncoming = (callback, source2) => {
+      if (source2 === "ensureVisible") {
+        return runWithoutFlushSync(callback);
+      }
+      return callback();
+    };
+  }
+  frameworkComponent(name2) {
+    return this.frameworkComponents[name2];
+  }
+  isFrameworkComponent(comp) {
+    if (!comp) {
+      return false;
+    }
+    const prototype = comp.prototype;
+    const isJsComp = prototype && "getGui" in prototype;
+    return !isJsComp;
+  }
+  getLockOnRefresh() {
+    this.queueUpdates = true;
+  }
+  releaseLockOnRefresh() {
+    this.queueUpdates = false;
+    this.processQueuedUpdates();
+  }
+  shouldQueueUpdates() {
+    return this.queueUpdates;
+  }
+  runWhenReadyAsync() {
+    return isReact19();
+  }
+};
+var AgGridReact = class extends reactExports.Component {
+  constructor() {
+    super(...arguments);
+    this.apiListeners = [];
+    this.setGridApi = (api) => {
+      this.api = api;
+      for (const listener of this.apiListeners) {
+        listener(api);
+      }
+    };
+  }
+  registerApiListener(listener) {
+    this.apiListeners.push(listener);
+  }
+  componentWillUnmount() {
+    this.apiListeners.length = 0;
+  }
+  render() {
+    return /* @__PURE__ */ React20.createElement(AgGridReactUi, { ...this.props, passGridApi: this.setGridApi });
+  }
+};
+const gridWrapper$1 = "_gridWrapper_yeano_1";
 const styles$7 = {
-  scannerHeaderRow,
   gridWrapper: gridWrapper$1
 };
 ModuleRegistry.registerModules([AllCommunityModule]);
-const kFilterPrefix = [];
-const kMultilineColumns = [];
-const GRID_STATE_NAME$1 = "ScannerDetailGrid";
-const ScannerDetail = ({ scanner }) => {
-  const selectedResultsView = useStore((state) => state.selectedResultsView) || "cards";
+const GRID_STATE_NAME$1 = "DataframeView";
+const DataframeView = ({ columnTable }) => {
   const gridStates = useStore((state) => state.gridStates);
   const setGridState = useStore((state) => state.setGridState);
+  const gridState = reactExports.useMemo(() => {
+    const savedState = gridStates[GRID_STATE_NAME$1];
+    return savedState;
+  }, [gridStates]);
   const { columnDefs, rowData } = reactExports.useMemo(() => {
-    const binaryString = atob(scanner.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    const table2 = fromArrow(bytes.buffer);
-    const columnDefs2 = scanner.column_names.filter((name2) => {
-      return !kFilterPrefix.some((prefix) => name2.startsWith(prefix));
-    }).map((name2) => {
-      const isMultiline = kMultilineColumns.includes(name2);
+    const columnDefs2 = columnTable.columnNames().map((name2) => {
       return {
         field: name2,
         headerName: name2,
@@ -109009,19 +109003,50 @@ const ScannerDetail = ({ scanner }) => {
         filter: true,
         resizable: true,
         wrapText: true,
-        autoHeight: isMultiline,
-        minWidth: isMultiline ? 300 : 75,
         tooltipField: name2
       };
     });
-    const rowData2 = table2.objects();
+    const rowData2 = columnTable.objects();
     return { columnDefs: columnDefs2, rowData: rowData2 };
+  }, [columnTable]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$7.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    AgGridReact,
+    {
+      rowData,
+      columnDefs,
+      defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true
+      },
+      rowHeight: 100,
+      animateRows: false,
+      suppressColumnMoveAnimation: true,
+      suppressCellFocus: true,
+      theme: themeBalham,
+      enableCellTextSelection: true,
+      autoSizeStrategy: { type: "fitGridWidth" },
+      initialState: gridState,
+      onStateUpdated: (e) => {
+        setGridState(GRID_STATE_NAME$1, e.state);
+      }
+    }
+  ) });
+};
+ModuleRegistry.registerModules([AllCommunityModule]);
+const ScannerDetail = ({ scanner }) => {
+  const selectedResultsView = useStore((state) => state.selectedResultsView) || "cards";
+  const columnTable = reactExports.useMemo(() => {
+    const binaryString = atob(scanner.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const table2 = fromArrow(bytes.buffer);
+    return table2;
   }, [scanner]);
-  const gridState = reactExports.useMemo(() => {
-    const savedState = gridStates[GRID_STATE_NAME$1];
-    return savedState;
-  }, [gridStates]);
   const scannerSummaries = reactExports.useMemo(() => {
+    const rowData = columnTable.objects();
     const summaries = rowData.map((row2) => {
       const r2 = row2;
       return {
@@ -109034,12 +109059,12 @@ const ScannerDetail = ({ scanner }) => {
       };
     });
     return summaries;
-  }, [rowData]);
+  }, [columnTable]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: "100%", width: "100%" }, children: [
     selectedResultsView === "cards" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-small"), children: scannerSummaries.map((summary2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(CardHeader, { label: `Scanner Summary ${index + 1}` }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(CardBody, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.scannerHeaderRow), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$8.scannerHeaderRow), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Value", children: summary2.value || "(none)" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Answer", children: summary2.answer || "(none)" })
         ] }),
@@ -109053,29 +109078,7 @@ const ScannerDetail = ({ scanner }) => {
         /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Explanation", children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: summary2.explanation }) })
       ] })
     ] }, `scanner-summary-card-${index}`)) }),
-    selectedResultsView === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$7.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-      AgGridReact,
-      {
-        rowData,
-        columnDefs,
-        defaultColDef: {
-          sortable: true,
-          filter: true,
-          resizable: true
-        },
-        rowHeight: 100,
-        animateRows: false,
-        suppressColumnMoveAnimation: true,
-        suppressCellFocus: true,
-        theme: themeBalham,
-        enableCellTextSelection: true,
-        autoSizeStrategy: { type: "fitGridWidth" },
-        initialState: gridState,
-        onStateUpdated: (e) => {
-          setGridState(GRID_STATE_NAME$1, e.state);
-        }
-      }
-    ) })
+    selectedResultsView === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsx(DataframeView, { columnTable })
   ] });
 };
 const RenderedScannerInput = ({
@@ -109479,7 +109482,7 @@ const toEntries = (results) => {
   return entries2;
 };
 const ScanResults = () => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$9.container), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$a.container), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsOutline, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsBody, {})
   ] });
@@ -109663,7 +109666,7 @@ const ScanPanel = () => {
       clearScanState();
     };
   }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$A.root), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$B.root), children: [
     singleFileMode || /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScanPanelTitle, {}),

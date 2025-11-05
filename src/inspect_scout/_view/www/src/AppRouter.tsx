@@ -6,7 +6,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useEffect } from "react";
-import { ScanDetail } from "./app/scan-detail/ScanDetail";
+import { ScanPanel } from "./app/scan-panel/ScanPanel";
 import {
   kScansRouteUrlPattern,
   kScansWithPathRouteUrlPattern,
@@ -76,7 +76,7 @@ const ValidatedScanDetail = () => {
     return <Navigate to={`/scans/${relativePath}`} replace />;
   }
 
-  return <ScanDetail />;
+  return <ScanPanel />;
 };
 
 export const AppRouter = createHashRouter(

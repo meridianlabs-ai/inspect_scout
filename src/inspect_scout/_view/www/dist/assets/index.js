@@ -20368,7 +20368,7 @@ const styles$w = {
   leftColumn,
   subtitle
 };
-const ScanTitleView = () => {
+const ScanPanelTitle = () => {
   const selectedResults = useStore((state) => state.selectedResults);
   const errorCount = selectedResults?.errors.length || 0;
   const status = selectedResults === void 0 ? "" : selectedResults.complete ? "Complete" : "Incomplete";
@@ -52090,7 +52090,7 @@ const ScanInfo = () => {
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
 const kTabIdJson = "scan-detail-tabs-json";
-const ScanDetailTabs = () => {
+const ScanPanelBody = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
   const setSelectedResultsTab = useStore(
@@ -52171,7 +52171,7 @@ const root$1 = "_root_ke0e7_1";
 const styles$1 = {
   root: root$1
 };
-const ScanDetail = () => {
+const ScanPanel = () => {
   const params = useParams();
   const relativePath = getRelativePathFromParams(params);
   const singleFileMode = useStore((state) => state.singleFileMode);
@@ -52202,8 +52202,8 @@ const ScanDetail = () => {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$1.root), children: [
     singleFileMode || /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanTitleView, {}),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanDetailTabs, {})
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanPanelTitle, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanPanelBody, {})
   ] });
 };
 const ExtendedFindContext = reactExports.createContext(null);
@@ -109359,7 +109359,7 @@ const ValidatedScanDetail = () => {
   if (!isValidScanPath(relativePath)) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(Navigate, { to: `/scans/${relativePath}`, replace: true });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(ScanDetail, {});
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(ScanPanel, {});
 };
 const AppRouter = createHashRouter(
   [

@@ -5,7 +5,7 @@ import JSONPanel from "../../components/JsonPanel";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 
-import styles from "./ScanDetailTabs.module.css";
+import styles from "./ScanPanelBody.module.css";
 import { ScanResults } from "./scan-results/ScanResults";
 import { ScanInfo } from "./scan-results/ScanInfo";
 
@@ -13,7 +13,7 @@ const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
 const kTabIdJson = "scan-detail-tabs-json";
 
-export const ScanDetailTabs: React.FC = () => {
+export const ScanPanelBody: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
   const setSelectedResultsTab = useStore(

@@ -4,13 +4,13 @@ import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Navbar } from "../navbar/Navbar";
 import { ActivityBar } from "../../components/ActivityBar";
-import { ScanTitleView } from "./ScanTitleView";
-import { ScanDetailTabs } from "./ScanDetailTabs";
+import { ScanPanelTitle } from "./ScanPanelTitle";
+import { ScanPanelBody } from "./ScanPanelBody";
 import clsx from "clsx";
 
-import styles from "./ScanDetail.module.css";
+import styles from "./ScanPanel.module.css";
 
-export const ScanDetail: React.FC = () => {
+export const ScanPanel: React.FC = () => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const singleFileMode = useStore((state) => state.singleFileMode);
@@ -48,16 +48,8 @@ export const ScanDetail: React.FC = () => {
     <div className={clsx(styles.root)}>
       {singleFileMode || <Navbar />}
       <ActivityBar animating={!!loading} />
-      <ScanTitleView />
-      <ScanDetailTabs />
+      <ScanPanelTitle />
+      <ScanPanelBody />
     </div>
   );
 };
-
-// name
-// job
-// scan_file
-// scan_args
-// timestamp
-// model
-// transcripts

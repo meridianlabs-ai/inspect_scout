@@ -9,6 +9,7 @@ import { ScanPanelBody } from "./ScanPanelBody";
 import clsx from "clsx";
 
 import styles from "./ScanPanel.module.css";
+import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 
 export const ScanPanel: React.FC = () => {
   const params = useParams<{ "*": string }>();
@@ -54,7 +55,9 @@ export const ScanPanel: React.FC = () => {
       {singleFileMode || <Navbar />}
       <ActivityBar animating={!!loading} />
       <ScanPanelTitle />
-      <ScanPanelBody />
+      <ExtendedFindProvider>
+        <ScanPanelBody />
+      </ExtendedFindProvider>
     </div>
   );
 };

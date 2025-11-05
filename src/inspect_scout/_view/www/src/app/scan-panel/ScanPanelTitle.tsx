@@ -14,12 +14,7 @@ export const ScanPanelTitle: FC = () => {
         ? "Complete"
         : "Incomplete";
 
-  // Total tokens
-  // # transcripts
-
   const transcriptCount = selectedResults?.spec.transcripts.count || 0;
-  console.log({ selectedResults });
-
   return (
     <div className={clsx(styles.scanTitleView)}>
       <div className={clsx(styles.leftColumn)}>

@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { CSSProperties, FC, ReactNode } from "react";
 
+import styles from "./LabeledValue.module.css";
+
 interface LabeledValueProps {
   label: string;
   style?: CSSProperties;
@@ -21,8 +23,8 @@ export const LabeledValue: FC<LabeledValueProps> = ({
   return (
     <div
       className={clsx(
-        "labeled-value",
-        layout === "column" ? "column" : "row",
+        styles.labeledValue,
+        layout === "column" ? styles.column : styles.row,
         className
       )}
       style={{
@@ -30,11 +32,15 @@ export const LabeledValue: FC<LabeledValueProps> = ({
       }}
     >
       <div
-        className={"labeled-value-label text-style-label text-style-secondary"}
+        className={clsx(
+          styles.labeledValueLabel,
+          "text-style-label",
+          "text-style-secondary"
+        )}
       >
         {label}
       </div>
-      <div className={"labeled-value-value"} style={{ ...valueStyle }}>
+      <div className={clsx(styles.labeledValueValue)} style={{ ...valueStyle }}>
         {children}
       </div>
     </div>

@@ -1,16 +1,23 @@
 import clsx from "clsx";
 import { useStore } from "../../../state/store";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useRef } from "react";
 
 import styles from "./ScanResultsTOC.module.css";
 import { Results } from "../../../types";
 import { ApplicationIcons } from "../../appearance/icons";
 import { useSelectedScanner } from "./hooks";
+import { LiveVirtualList } from "../../../components/LiveVirtualList";
+import { VirtuosoHandle } from "react-virtuoso";
+import { LabeledValue } from "../../../components/LabeledValue";
 
 interface TOCEntry {
   icon?: string;
   title: string;
-  count: number;
+  tokens?: number;
+  results: number;
+  scans: number;
+  validations?: number;
+  errors?: number;
 }
 
 const toEntries = (results?: Results): TOCEntry[] => {
@@ -23,7 +30,10 @@ const toEntries = (results?: Results): TOCEntry[] => {
     entries.push({
       icon: ApplicationIcons.scorer,
       title: scanner,
-      count: summary?.results || 0,
+      results: summary?.results || 0,
+      scans: summary?.scans || 0,
+      tokens: summary?.tokens,
+      errors: summary?.errors,
     });
   }
   return entries;
@@ -33,8 +43,28 @@ export const ScanResultsTOC: FC = () => {
   const results = useStore((state) => state.selectedResults);
   const entries = toEntries(results);
 
-  const selectedScanner = useSelectedScanner();
+  const scanListHandle = useRef<VirtuosoHandle | null>(null);
+  const renderRow = useCallback((index: number, entry: TOCEntry) => {
+    return <ScanResultsRow index={index} entry={entry} />;
+  }, []);
 
+  return (
+    <div className={clsx(styles.container)}>
+      <LiveVirtualList<TOCEntry>
+        id={"scans-toc-list"}
+        listHandle={scanListHandle}
+        data={entries}
+        renderRow={renderRow}
+      />
+    </div>
+  );
+};
+
+const ScanResultsRow: FC<{ index: number; entry: TOCEntry }> = ({
+  index,
+  entry,
+}) => {
+  const selectedScanner = useSelectedScanner();
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   const handleClick = useCallback(
     (title: string) => {
@@ -44,28 +74,52 @@ export const ScanResultsTOC: FC = () => {
   );
 
   return (
-    <div className={clsx(styles.container)}>
-      {entries.map((entry) => {
-        return (
-          <div
-            key={entry.title}
-            className={clsx(
-              styles.entry,
-              "text-size-smaller",
-              selectedScanner === entry.title ? styles.selected : null
-            )}
-            onClick={() => {
-              handleClick(entry.title);
-            }}
-          >
-            <div>
-              {entry.icon && <i className={clsx(styles.icon, entry.icon)} />}
-            </div>
-            <div className={clsx(styles.title)}>{entry.title}</div>
-            <div className={clsx(styles.count)}>({entry.count} results)</div>
-          </div>
-        );
-      })}
+    <div
+      className={clsx(
+        styles.entry,
+        selectedScanner === entry.title ? styles.selected : ""
+      )}
+      key={index}
+      onClick={() => {
+        handleClick(entry.title);
+      }}
+    >
+      <div className={clsx("text-size-large", styles.title)}>{entry.title}</div>
+      <LabeledValue
+        label="Scans"
+        layout="row"
+        className={clsx("text-size-smallest")}
+      >
+        {entry.scans}
+      </LabeledValue>
+
+      <LabeledValue
+        label="Results"
+        layout="row"
+        className={clsx("text-size-smallest")}
+      >
+        {entry.results}
+      </LabeledValue>
+
+      {!!entry.errors && (
+        <LabeledValue
+          label="Errors"
+          layout="row"
+          className={clsx("text-size-smallest")}
+        >
+          {entry.errors}
+        </LabeledValue>
+      )}
+
+      {!!entry.validations && (
+        <LabeledValue
+          label="Validations"
+          layout="row"
+          className={clsx("text-size-smallest")}
+        >
+          {entry.validations}
+        </LabeledValue>
+      )}
     </div>
   );
 };

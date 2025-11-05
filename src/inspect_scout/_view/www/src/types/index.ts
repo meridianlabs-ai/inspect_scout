@@ -91,6 +91,7 @@ export interface ScannerSummary {
   errors: number;
   tokens: number;
   model_usage: Record<string, ModelUsage>;
+  validations: Array<boolean | Record<string, boolean>>;
 }
 
 export interface ModelUsage {

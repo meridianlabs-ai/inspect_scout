@@ -1,0 +1,16 @@
+.labeledValueLabel {
+  margin-bottom: -0.2rem;
+}
+
+.labeledValue {
+  display: flex;
+  justify-content: space-between;
+}
+
+.labeledValue .row {
+  flex-direction: row;
+}
+
+.labeledValue .column {
+  flex-direction: column;
+}

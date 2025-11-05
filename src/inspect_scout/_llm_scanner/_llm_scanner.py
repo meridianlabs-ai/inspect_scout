@@ -4,7 +4,9 @@ from inspect_ai.model import (
     Model,
     get_model,
 )
-from jinja2 import Template
+from jinja2 import Environment
+
+from inspect_scout._util.jinja import StrictOnUseUndefined
 
 from .._scanner.extract import ContentFilter, messages_as_str
 from .._scanner.result import Result
@@ -108,10 +110,16 @@ async def render_scanner_prompt(
     Returns:
         Rendered prompt string with all variables substituted.
     """
-    return Template(template).render(
-        messages=messages,
-        question=question if isinstance(question, str) else await question(transcript),
-        answer_prompt=answer.prompt,
-        answer_format=answer.format,
-        transcript=transcript,
+    return (
+        Environment(undefined=StrictOnUseUndefined)
+        .from_string(template)
+        .render(
+            messages=messages,
+            question=question
+            if isinstance(question, str)
+            else await question(transcript),
+            answer_prompt=answer.prompt,
+            answer_format=answer.format,
+            transcript=transcript,
+        )
     )

@@ -759,19 +759,6 @@ a._citationLink_1ggvf_9:hover {
   grid-template-columns: 200px 1fr;
   height: 100%;
 }
-._scannerHeaderRow_1b6xr_1 {
-  display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 0.5em;
-  margin-bottom: 1em;
-}
-
-._controls_1b6xr_8 {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  margin-bottom: 0.5em;
-}
 ._gridWrapper_yeano_1 {
   height: 100%;
   width: 100%;
@@ -785,6 +772,19 @@ a._citationLink_1ggvf_9:hover {
 /* Set line height for grid cells */
 ._gridWrapper_yeano_1 .ag-cell {
   line-height: 1.1em;
+}
+._scannerHeaderRow_1b6xr_1 {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.5em;
+  margin-bottom: 1em;
+}
+
+._controls_1b6xr_8 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  margin-bottom: 0.5em;
 }
 ._body_sc0cq_1 {
   overflow-y: auto;

@@ -5,6 +5,7 @@ import { FC, useMemo } from "react";
 
 import { ChatView } from "../../../chat/ChatView";
 import { Card, CardBody, CardHeader } from "../../../components/Card";
+import { DataframeView } from "../../../components/DataframeView";
 import { LabeledValue } from "../../../components/LabeledValue";
 import { MarkdownDiv } from "../../../components/MarkdownDiv";
 import { useStore } from "../../../state/store";
@@ -12,7 +13,6 @@ import { IPCDataframe, Transcript } from "../../../types";
 import { firstUserMessage } from "../../../utils/chatMessage";
 
 import styles from "./ScannerDetail.module.css";
-import { DataframeView } from "../../../components/DataframeView";
 
 interface ScannerDetailProps {
   scanner: IPCDataframe;

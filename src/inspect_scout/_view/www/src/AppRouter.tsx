@@ -7,7 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import { ScanPanel } from "./app/scan-panel/ScanPanel";
+import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {

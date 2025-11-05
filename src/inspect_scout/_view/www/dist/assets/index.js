@@ -105939,18 +105939,6 @@ function nullKeys(data2, keys2, key2) {
   }
   return keys2;
 }
-const firstUserMessage = (messages) => {
-  for (let i = 0; i < messages.length; i++) {
-    if (messages[i]?.role === "user") {
-      return messages[i];
-    }
-  }
-  return void 0;
-};
-const scannerHeaderRow = "_scannerHeaderRow_1b6xr_1";
-const styles$8 = {
-  scannerHeaderRow
-};
 var BeansContext = React20.createContext({});
 var RenderModeContext = React20.createContext("default");
 var showJsComp = (compDetails, context, eParent, ref2) => {
@@ -108982,7 +108970,7 @@ var AgGridReact = class extends reactExports.Component {
   }
 };
 const gridWrapper$1 = "_gridWrapper_yeano_1";
-const styles$7 = {
+const styles$8 = {
   gridWrapper: gridWrapper$1
 };
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -109009,7 +108997,7 @@ const DataframeView = ({ columnTable }) => {
     const rowData2 = columnTable.objects();
     return { columnDefs: columnDefs2, rowData: rowData2 };
   }, [columnTable]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$7.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$8.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     AgGridReact,
     {
       rowData,
@@ -109032,6 +109020,18 @@ const DataframeView = ({ columnTable }) => {
       }
     }
   ) });
+};
+const firstUserMessage = (messages) => {
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i]?.role === "user") {
+      return messages[i];
+    }
+  }
+  return void 0;
+};
+const scannerHeaderRow = "_scannerHeaderRow_1b6xr_1";
+const styles$7 = {
+  scannerHeaderRow
 };
 ModuleRegistry.registerModules([AllCommunityModule]);
 const ScannerDetail = ({ scanner }) => {
@@ -109064,7 +109064,7 @@ const ScannerDetail = ({ scanner }) => {
     selectedResultsView === "cards" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-small"), children: scannerSummaries.map((summary2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(CardHeader, { label: `Scanner Summary ${index + 1}` }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(CardBody, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$8.scannerHeaderRow), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.scannerHeaderRow), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Value", children: summary2.value || "(none)" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Answer", children: summary2.answer || "(none)" })
         ] }),

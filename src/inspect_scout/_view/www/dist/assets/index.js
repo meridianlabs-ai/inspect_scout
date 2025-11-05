@@ -20244,17 +20244,20 @@ const ApplicationIcons = {
   confirm: "bi bi-check",
   copy: "bi bi-copy",
   error: "bi bi-exclamation-circle-fill",
+  folder: "bi bi-folder",
   link: "bi bi-link-45deg",
   model: "bi bi-grid-3x3-gap",
   navbar: {
     home: "ii inspect-icon-home",
     back: "ii inspect-icon-back"
   },
+  pendingTask: "bi bi-clock",
   role: {
     tool: "bi bi-tools"
   },
   scorer: "bi bi-calculator",
   search: "bi bi-search",
+  success: "bi bi-check-circle-fill",
   tree: {
     open: "bi bi-caret-down-fill",
     closed: "bi bi-caret-right-fill"
@@ -109079,7 +109082,7 @@ var AgGridReact = class extends reactExports.Component {
     return /* @__PURE__ */ React20.createElement(AgGridReactUi, { ...this.props, passGridApi: this.setGridApi });
   }
 };
-const gridWrapper = "_gridWrapper_fguk0_1";
+const gridWrapper = "_gridWrapper_1hzqe_1";
 const styles = {
   gridWrapper
 };
@@ -109115,7 +109118,7 @@ const ScansGrid = () => {
       const dir = dirname(relativeLocation);
       if (dir === paramsRelativePath) {
         const row = {
-          icon: scan2.errors.length > 1 ? "❌" : scan2.complete ? "✅" : "⏳",
+          icon: scan2.errors.length > 1 ? ApplicationIcons.error : scan2.complete ? ApplicationIcons.success : ApplicationIcons.pendingTask,
           timestamp: scan2.spec.timestamp,
           location: scan2.location,
           relativeLocation,
@@ -109132,7 +109135,7 @@ const ScansGrid = () => {
         const dirRow = {
           timestamp: "",
           location: "",
-          icon: "📁",
+          icon: ApplicationIcons.folder,
           relativeLocation: dir,
           scanId: "",
           scanName: dir,
@@ -109155,7 +109158,10 @@ const ScansGrid = () => {
         maxWidth: 60,
         sortable: true,
         filter: true,
-        resizable: true
+        resizable: true,
+        cellRenderer: (params2) => {
+          return /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: params2.value });
+        }
       },
       {
         field: "scanName",
@@ -109216,6 +109222,8 @@ const ScansGrid = () => {
         filter: true,
         resizable: true
       },
+      animateRows: false,
+      suppressColumnMoveAnimation: true,
       suppressCellFocus: true,
       theme: themeBalham,
       enableCellTextSelection: true,

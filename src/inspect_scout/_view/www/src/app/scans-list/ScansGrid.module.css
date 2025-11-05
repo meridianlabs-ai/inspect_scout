@@ -2,3 +2,8 @@
   height: 100%;
   border-top: solid 1px var(--bs-border-color);
 }
+
+/* Hide sort index numbers in multi-column sort */
+.gridWrapper :global(.ag-header-cell .ag-sort-order) {
+  display: none;
+}

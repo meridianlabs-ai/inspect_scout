@@ -797,9 +797,14 @@ a._citationLink_1ggvf_9:hover {
   display: grid;
   grid-template-rows: max-content max-content max-content max-content 1fr;
 }
-._gridWrapper_fguk0_1 {
+._gridWrapper_1hzqe_1 {
   height: 100%;
   border-top: solid 1px var(--bs-border-color);
+}
+
+/* Hide sort index numbers in multi-column sort */
+._gridWrapper_1hzqe_1 .ag-header-cell .ag-sort-order {
+  display: none;
 }
 .error-panel {
   flex-direction: column;

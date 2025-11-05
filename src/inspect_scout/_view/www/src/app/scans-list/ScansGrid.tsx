@@ -16,6 +16,7 @@ import styles from "./ScansGrid.module.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { dirname, toRelativePath } from "../../utils/path";
 import { getRelativePathFromParams } from "../../router/url";
+import { ApplicationIcons } from "../appearance/icons";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -73,7 +74,12 @@ export const ScansGrid: FC = () => {
       const dir = dirname(relativeLocation);
       if (dir === paramsRelativePath) {
         const row: ScanRow = {
-          icon: scan.errors.length > 1 ? "❌" : scan.complete ? "✅" : "⏳",
+          icon:
+            scan.errors.length > 1
+              ? ApplicationIcons.error
+              : scan.complete
+                ? ApplicationIcons.success
+                : ApplicationIcons.pendingTask,
           timestamp: scan.spec.timestamp,
           location: scan.location,
           relativeLocation: relativeLocation,
@@ -96,7 +102,7 @@ export const ScansGrid: FC = () => {
         const dirRow: ScanRow = {
           timestamp: "",
           location: "",
-          icon: "📁",
+          icon: ApplicationIcons.folder,
           relativeLocation: dir,
           scanId: "",
           scanName: dir,
@@ -123,6 +129,9 @@ export const ScansGrid: FC = () => {
         sortable: true,
         filter: true,
         resizable: true,
+        cellRenderer: (params: { value: string }) => {
+          return <i className={params.value}></i>;
+        },
       },
       {
         field: "scanName",
@@ -186,6 +195,8 @@ export const ScansGrid: FC = () => {
           filter: true,
           resizable: true,
         }}
+        animateRows={false}
+        suppressColumnMoveAnimation={true}
         suppressCellFocus={true}
         theme={themeBalham}
         enableCellTextSelection={true}

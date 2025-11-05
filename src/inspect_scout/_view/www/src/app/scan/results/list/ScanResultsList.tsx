@@ -1,15 +1,11 @@
 import { ColumnTable } from "arquero";
-import clsx from "clsx";
-import { FC, useMemo } from "react";
+import { FC, useCallback, useMemo, useRef } from "react";
+import { VirtuosoHandle } from "react-virtuoso";
 
-import { ChatView } from "../../../../chat/ChatView";
-import { Card, CardHeader, CardBody } from "../../../../components/Card";
-import { LabeledValue } from "../../../../components/LabeledValue";
-import { MarkdownDiv } from "../../../../components/MarkdownDiv";
-import { Transcript } from "../../../../types";
-import { firstUserMessage } from "../../../../utils/chatMessage";
+import { LiveVirtualList } from "../../../../components/LiveVirtualList";
 
-import styles from "./ScanResultsList.module.css";
+import { ScanResultsRow } from "./ScanResultsRow";
+import { ScannerRow } from "./types";
 
 interface ScanResultsListProps {
   columnTable: ColumnTable;
@@ -21,6 +17,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({ columnTable }) => {
     const summaries: ScannerRow[] = rowData.map((row) => {
       const r = row as Record<string, unknown>;
       return {
+        id: r.id as string,
         inputType: r.input_type as
           | "transcript"
           | "message"
@@ -37,67 +34,19 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({ columnTable }) => {
     return summaries;
   }, [columnTable]);
 
+  const listHandle = useRef<VirtuosoHandle | null>(null);
+  const renderRow = useCallback((index: number, entry: ScannerRow) => {
+    return <ScanResultsRow index={index} entry={entry} />;
+  }, []);
+
   return (
     <div style={{ height: "100%", width: "100%" }}>
-      <div className={clsx("text-size-small")}>
-        {scannerSummaries.map((summary, index) => (
-          <Card key={`scanner-summary-card-${index}`}>
-            <CardHeader label={`Scanner Summary ${index + 1}`} />
-            <CardBody>
-              <div className={clsx(styles.scannerHeaderRow)}>
-                <LabeledValue label="Value">
-                  {summary.value || "(none)"}
-                </LabeledValue>
-                <LabeledValue label="Answer">
-                  {summary.answer || "(none)"}
-                </LabeledValue>
-              </div>
-              <LabeledValue label="Input">
-                <RenderedScannerInput
-                  row={summary}
-                  id={`scanner-input-${index}`}
-                />
-              </LabeledValue>
-              <LabeledValue label="Explanation">
-                <MarkdownDiv markdown={summary.explanation} />
-              </LabeledValue>
-            </CardBody>
-          </Card>
-        ))}
-      </div>
+      <LiveVirtualList<ScannerRow>
+        id="scan-results-list"
+        listHandle={listHandle}
+        data={scannerSummaries}
+        renderRow={renderRow}
+      />
     </div>
   );
-};
-
-interface ScannerRow {
-  inputType: "transcript" | "message" | "messages" | "event" | "events";
-  input: unknown;
-  value: string;
-  valueType: string;
-  explanation: string;
-  answer: string;
-}
-
-const RenderedScannerInput: FC<{ row: ScannerRow; id: string }> = ({
-  row,
-  id,
-}) => {
-  switch (row.inputType) {
-    case "transcript": {
-      const transcript = row.input as Transcript;
-      const messages = transcript.messages;
-      const previewMessage = firstUserMessage(messages);
-      if (!previewMessage) {
-        return <div>No messages in transcript.</div>;
-      }
-      return <ChatView id={id} messages={[previewMessage]} />;
-    }
-    case "message":
-      return <ChatView id={id} messages={[row.input] as any[]} />;
-    case "messages":
-      return <ChatView id={id} messages={row.input as any[]} />;
-    case "events":
-    case "event":
-      return <div>Events</div>;
-  }
 };

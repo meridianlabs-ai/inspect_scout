@@ -768,25 +768,6 @@ a._citationLink_1ggvf_9:hover {
 ._gridWrapper_yeano_1 .ag-cell {
   line-height: 1.1em;
 }
-._container_1vktp_1 {
-}
-._scannerHeaderRow_94id2_1 {
-  display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 0.5em;
-  margin-bottom: 1em;
-}
-
-._controls_94id2_8 {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  margin-bottom: 0.5em;
-}
-
-._scrollContainer_94id2_15 {
-  overflow-y: auto;
-}
 ._progressContainer_1cjjr_1 {
   width: 100%;
   display: flex;
@@ -878,6 +859,30 @@ a._citationLink_1ggvf_9:hover {
     transform: scale(1);
     opacity: 0.8;
   }
+}
+._row_ei69a_1 {
+  display: grid;
+  grid-template-columns: 100px 1fr 100px;
+  column-gap: 0.5em;
+  border-bottom: solid 1px var(--bs-border-color);
+  padding: 0.5em;
+}
+._scannerHeaderRow_94id2_1 {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.5em;
+  margin-bottom: 1em;
+}
+
+._controls_94id2_8 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  margin-bottom: 0.5em;
+}
+
+._scrollContainer_94id2_15 {
+  overflow-y: auto;
 }
 ._container_zptle_1 {
   border-right: solid 1px var(--bs-border-color);

@@ -23973,12 +23973,12 @@ const MoreToggle = ({
 ExpandablePanel.displayName = "ExpandablePanel";
 const labeledValueLabel = "_labeledValueLabel_1poe7_1";
 const labeledValue = "_labeledValue_1poe7_1";
-const row = "_row_1poe7_10";
+const row$1 = "_row_1poe7_10";
 const column = "_column_1poe7_14";
 const styles$v = {
   labeledValueLabel,
   labeledValue,
-  row,
+  row: row$1,
   column
 };
 const LabeledValue = ({
@@ -109017,101 +109017,8 @@ const useSelectedScanner = () => {
   }, [selectedResults]);
   return selectedScanner || defaultScanner;
 };
-const firstUserMessage = (messages) => {
-  for (let i = 0; i < messages.length; i++) {
-    if (messages[i]?.role === "user") {
-      return messages[i];
-    }
-  }
-  return void 0;
-};
-const styles$8 = {};
-const ScanResultsList = ({ columnTable }) => {
-  const scannerSummaries = reactExports.useMemo(() => {
-    const rowData = columnTable.objects();
-    const summaries = rowData.map((row2) => {
-      const r2 = row2;
-      return {
-        inputType: r2.input_type,
-        input: JSON.parse(r2.input),
-        value: r2.value,
-        valueType: r2.value_type,
-        explanation: r2.explanation,
-        answer: r2.answer
-      };
-    });
-    return summaries;
-  }, [columnTable]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", width: "100%" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-small"), children: scannerSummaries.map((summary2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(CardHeader, { label: `Scanner Summary ${index + 1}` }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(CardBody, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$8.scannerHeaderRow), children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Value", children: summary2.value || "(none)" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Answer", children: summary2.answer || "(none)" })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Input", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-        RenderedScannerInput,
-        {
-          row: summary2,
-          id: `scanner-input-${index}`
-        }
-      ) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(LabeledValue, { label: "Explanation", children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: summary2.explanation }) })
-    ] })
-  ] }, `scanner-summary-card-${index}`)) }) });
-};
-const RenderedScannerInput = ({
-  row: row2,
-  id
-}) => {
-  switch (row2.inputType) {
-    case "transcript": {
-      const transcript = row2.input;
-      const messages = transcript.messages;
-      const previewMessage = firstUserMessage(messages);
-      if (!previewMessage) {
-        return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "No messages in transcript." });
-      }
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(ChatView, { id, messages: [previewMessage] });
-    }
-    case "message":
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(ChatView, { id, messages: [row2.input] });
-    case "messages":
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(ChatView, { id, messages: row2.input });
-    case "events":
-    case "event":
-      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Events" });
-  }
-};
-const scrollContainer = "_scrollContainer_94id2_15";
-const styles$7 = {
-  scrollContainer
-};
-ModuleRegistry.registerModules([AllCommunityModule]);
-const ScanResultsBody = () => {
-  const selectedScanner = useSelectedScanner();
-  const selectedResults = useStore((state) => state.selectedResults);
-  const scanner = selectedResults?.scanners[selectedScanner || ""];
-  const selectedResultsView = useStore((state) => state.selectedResultsView) || "cards";
-  const columnTable = reactExports.useMemo(() => {
-    if (!scanner || !scanner.data) {
-      return fromArrow(new ArrayBuffer(0));
-    }
-    const binaryString = atob(scanner.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    const table2 = fromArrow(bytes.buffer);
-    return table2;
-  }, [scanner]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.scrollContainer), children: scanner && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: "100%", width: "100%" }, children: [
-    selectedResultsView === "cards" && /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsList, { columnTable }),
-    selectedResultsView === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsx(DataframeView, { columnTable })
-  ] }) });
-};
 const progressContainer = "_progressContainer_1cjjr_1";
-const styles$6 = {
+const styles$8 = {
   progressContainer
 };
 const container$3 = "_container_4p85e_2";
@@ -109123,7 +109030,7 @@ const dot = "_dot_4p85e_8";
 const subtle = "_subtle_4p85e_36";
 const primary = "_primary_4p85e_40";
 const visuallyHidden = "_visuallyHidden_4p85e_59";
-const styles$5 = {
+const styles$7 = {
   container: container$3,
   dotsContainer,
   small,
@@ -109145,24 +109052,24 @@ const PulsingDots = ({
     "div",
     {
       className: clsx(
-        styles$5.container,
-        size === "small" ? styles$5.small : size === "medium" ? styles$5.medium : styles$5.large,
+        styles$7.container,
+        size === "small" ? styles$7.small : size === "medium" ? styles$7.medium : styles$7.large,
         className
       ),
       role: "status",
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$5.dotsContainer, children: Array.from({ length: dotsCount }, (_, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$7.dotsContainer, children: Array.from({ length: dotsCount }, (_, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
             className: clsx(
-              styles$5.dot,
-              subtle2 ? styles$5.subtle : styles$5.primary
+              styles$7.dot,
+              subtle2 ? styles$7.subtle : styles$7.primary
             ),
             style: { animationDelay: `${index * 0.2}s` }
           },
           `dot-${index}`
         )) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$5.visuallyHidden, children: text2 })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$7.visuallyHidden, children: text2 })
       ]
     }
   );
@@ -109295,7 +109202,7 @@ const LiveVirtualList = ({
     return unregister;
   }, [id, registerVirtualList, searchInData]);
   const Footer = () => {
-    return showProgress ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.progressContainer), children: /* @__PURE__ */ jsxRuntimeExports.jsx(PulsingDots, { subtle: false, size: "medium" }) }) : void 0;
+    return showProgress ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.progressContainer), children: /* @__PURE__ */ jsxRuntimeExports.jsx(PulsingDots, { subtle: false, size: "medium" }) }) : void 0;
   };
   reactExports.useEffect(() => {
     const parent = scrollRef?.current;
@@ -109363,6 +109270,75 @@ const LiveVirtualList = ({
       }
     }
   );
+};
+const row = "_row_ei69a_1";
+const styles$6 = {
+  row
+};
+const ScanResultsRow$1 = ({ index, entry: entry2 }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.row), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.id, "text-size-smaller"), children: entry2.id }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.explanation, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: entry2.explanation }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.value, "text-size-smaller"), children: entry2.value })
+  ] });
+};
+const ScanResultsList = ({ columnTable }) => {
+  const scannerSummaries = reactExports.useMemo(() => {
+    const rowData = columnTable.objects();
+    const summaries = rowData.map((row2) => {
+      const r2 = row2;
+      return {
+        id: r2.id,
+        inputType: r2.input_type,
+        input: JSON.parse(r2.input),
+        value: r2.value,
+        valueType: r2.value_type,
+        explanation: r2.explanation,
+        answer: r2.answer
+      };
+    });
+    return summaries;
+  }, [columnTable]);
+  const listHandle = reactExports.useRef(null);
+  const renderRow = reactExports.useCallback((index, entry2) => {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsRow$1, { index, entry: entry2 });
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", width: "100%" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    LiveVirtualList,
+    {
+      id: "scan-results-list",
+      listHandle,
+      data: scannerSummaries,
+      renderRow
+    }
+  ) });
+};
+const scrollContainer = "_scrollContainer_94id2_15";
+const styles$5 = {
+  scrollContainer
+};
+ModuleRegistry.registerModules([AllCommunityModule]);
+const ScanResultsBody = () => {
+  const selectedScanner = useSelectedScanner();
+  const selectedResults = useStore((state) => state.selectedResults);
+  const scanner = selectedResults?.scanners[selectedScanner || ""];
+  const selectedResultsView = useStore((state) => state.selectedResultsView) || "cards";
+  const columnTable = reactExports.useMemo(() => {
+    if (!scanner || !scanner.data) {
+      return fromArrow(new ArrayBuffer(0));
+    }
+    const binaryString = atob(scanner.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const table2 = fromArrow(bytes.buffer);
+    return table2;
+  }, [scanner]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$5.scrollContainer), children: scanner && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: "100%", width: "100%" }, children: [
+    selectedResultsView === "cards" && /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsList, { columnTable }),
+    selectedResultsView === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsx(DataframeView, { columnTable })
+  ] }) });
 };
 const container$2 = "_container_zptle_1";
 const entry = "_entry_zptle_5";

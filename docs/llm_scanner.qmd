@@ -109,13 +109,11 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 
 | Variable | Description |
 |-------------------------|-----------------------------------------------|
+| `{{{ transcript }}}` | Dictionary of the Transcript fields |
 | `{{{ messages }}}` | The message list formatted via `messages_to_str()` |
 | `{{{ answer_prompt }}}` | The prompt used by the current answer type (e.g. "Answer the following yes or no question:") |
 | `{{{ question }}}` | Question about the transcript posed to the LLM (e.g. "Did the assistant refuse the user's request?") |
 | `{{{ answer_format }}}` | Formatting guidelines used by the current answer type (e.g. ""'ANSWER: \$VALUE' (without quotes) where \$VALUE is yes or no.") |
-| `{{{ score }}}` | Score of sample (if available, `None` if not) |
-| `{{{ score_* }}}` | Additional scores (if available) |
-| `{{{ variables }}}` | Dictionary of variables associated with transcript (e.g. sample metadata) |
 
 : {tbl-colwidths=\[40,60\]}
 

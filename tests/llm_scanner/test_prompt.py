@@ -75,39 +75,39 @@ async def test_render_basic_prompt() -> None:
 @pytest.mark.parametrize(
     "template,transcript_kwargs,expected_parts",
     [
-        # Variables from transcript
+        # Variables from transcript (accessed via transcript object)
         (
-            "Name: {{ name }}, Age: {{ age }}",
+            "Name: {{ transcript.variables.name }}, Age: {{ transcript.variables.age }}",
             {"variables": {"name": "Alice", "age": 30}},
             ["Name: Alice", "Age: 30"],
         ),
         # Special characters
         (
-            "Text: {{ text }}",
+            "Text: {{ transcript.variables.text }}",
             {"variables": {"text": 'Hello "world" & <tag>'}},
             ['Text: Hello "world" & <tag>'],
         ),
         # Score (present)
         (
-            "Score: {{ score }}",
+            "Score: {{ transcript.score }}",
             {"score": 0.85},
             ["Score: 0.85"],
         ),
-        # Score (absent - empty string)
+        # Score (absent - None)
         (
-            "Score: '{{ score }}'",
+            "Score: {% if transcript.score %}{{ transcript.score }}{% else %}N/A{% endif %}",
             {},
-            ["Score: ''"],
+            ["Score: N/A"],
         ),
         # Named scores
         (
-            "Accuracy: {{ score_accuracy }}, Fluency: {{ score_fluency }}",
+            "Accuracy: {{ transcript.scores.accuracy }}, Fluency: {{ transcript.scores.fluency }}",
             {"scores": {"accuracy": 0.9, "fluency": 0.8}},
             ["Accuracy: 0.9", "Fluency: 0.8"],
         ),
         # Mixed: variables, score, and named scores
         (
-            "Model: {{ model }}, Score: {{ score }}, Help: {{ score_helpfulness }}",
+            "Model: {{ transcript.variables.model }}, Score: {{ transcript.score }}, Help: {{ transcript.scores.helpfulness }}",
             {
                 "variables": {"model": "gpt-4"},
                 "score": 0.88,
@@ -134,38 +134,6 @@ async def test_render_transcript_variable_substitution(
 
     for expected in expected_parts:
         assert expected in result
-
-
-@pytest.mark.asyncio
-async def test_render_builtin_variables_take_precedence() -> None:
-    """Function parameters take precedence over transcript variables with same names."""
-    transcript = _create_transcript(
-        variables={
-            "prompt": "should be removed",
-            "explanation_text": "should be removed",
-            "messages": "should be removed",
-            "answer_prompt": "should be removed",
-            "custom": "should remain",
-        }
-    )
-
-    template = (
-        "Messages: {{ messages }}, Answer: {{ answer_prompt }}, Custom: {{ custom }}"
-    )
-
-    result = await render_scanner_prompt(
-        template=template,
-        transcript=transcript,
-        messages="actual messages",
-        question="",
-        answer=_TestAnswer(prompt="actual answer prompt", format=""),
-    )
-
-    # Function parameters should override transcript variables
-    assert "Messages: actual messages" in result
-    assert "Answer: actual answer prompt" in result
-    # Non-builtin variables should remain
-    assert "Custom: should remain" in result
 
 
 @pytest.mark.parametrize(

@@ -5,7 +5,6 @@ from inspect_ai.model import (
     get_model,
 )
 from jinja2 import Template
-from pydantic import JsonValue
 
 from .._scanner.extract import ContentFilter, messages_as_str
 from .._scanner.result import Result
@@ -109,26 +108,10 @@ async def render_scanner_prompt(
     Returns:
         Rendered prompt string with all variables substituted.
     """
-    variables = _variables_for_transcript(transcript)
     return Template(template).render(
         messages=messages,
         question=question if isinstance(question, str) else await question(transcript),
         answer_prompt=answer.prompt,
         answer_format=answer.format,
-        **variables,
+        transcript=transcript,
     )
-
-
-def _variables_for_transcript(transcript: Transcript) -> dict[str, JsonValue]:
-    variables = dict(transcript.variables)
-    # remove builtins to avoid conflicts
-    variables.pop("prompt", None)
-    variables.pop("explanation_text", None)
-    variables.pop("messages", None)
-    variables.pop("answer_prompt", None)
-    # add scores
-    variables["score"] = transcript.score or ""
-    variables = variables | {
-        f"score_{name}": value for name, value in transcript.scores.items()
-    }
-    return variables

@@ -45,7 +45,8 @@ def _create_transcript(
     )
 
 
-def test_render_basic_prompt() -> None:
+@pytest.mark.asyncio
+async def test_render_basic_prompt() -> None:
     """Render basic prompt with all required parameters substituted.
 
     This test documents a BUG: the DEFAULT_SCANNER_TEMPLATE has {answer_format}
@@ -54,7 +55,7 @@ def test_render_basic_prompt() -> None:
     """
     transcript = _create_transcript(messages=[ChatMessageUser(content="Hello")])
 
-    result = render_scanner_prompt(
+    result = await render_scanner_prompt(
         template=DEFAULT_SCANNER_TEMPLATE,
         transcript=transcript,
         messages="[M1] User: Hello",
@@ -116,13 +117,14 @@ def test_render_basic_prompt() -> None:
         ),
     ],
 )
-def test_render_transcript_variable_substitution(
+@pytest.mark.asyncio
+async def test_render_transcript_variable_substitution(
     template: str, transcript_kwargs: dict[str, Any], expected_parts: list[str]
 ) -> None:
     """Transcript variables, scores, and named scores are substituted correctly."""
     transcript = _create_transcript(**transcript_kwargs)
 
-    result = render_scanner_prompt(
+    result = await render_scanner_prompt(
         template=template,
         transcript=transcript,
         messages="",
@@ -134,7 +136,8 @@ def test_render_transcript_variable_substitution(
         assert expected in result
 
 
-def test_render_builtin_variables_take_precedence() -> None:
+@pytest.mark.asyncio
+async def test_render_builtin_variables_take_precedence() -> None:
     """Function parameters take precedence over transcript variables with same names."""
     transcript = _create_transcript(
         variables={
@@ -150,7 +153,7 @@ def test_render_builtin_variables_take_precedence() -> None:
         "Messages: {{ messages }}, Answer: {{ answer_prompt }}, Custom: {{ custom }}"
     )
 
-    result = render_scanner_prompt(
+    result = await render_scanner_prompt(
         template=template,
         transcript=transcript,
         messages="actual messages",
@@ -177,13 +180,14 @@ def test_render_builtin_variables_take_precedence() -> None:
         ),
     ],
 )
-def test_render_with_various_message_formats(
+@pytest.mark.asyncio
+async def test_render_with_various_message_formats(
     messages: str, expected_in_result: str | list[str]
 ) -> None:
     """Messages parameter is rendered correctly regardless of format."""
     transcript = _create_transcript()
 
-    result = render_scanner_prompt(
+    result = await render_scanner_prompt(
         template=DEFAULT_SCANNER_TEMPLATE,
         transcript=transcript,
         messages=messages,

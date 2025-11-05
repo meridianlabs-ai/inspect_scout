@@ -32,6 +32,19 @@ def llm_scanner_factory() -> Scanner[Transcript]:
     return llm_scanner(question="Is this conversation helpful?", answer="boolean")
 
 
+@scanner(name="llm_dynamic_question_scanner", messages="all")
+def llm_dynamic_question_scanner_factory() -> Scanner[Transcript]:
+    """LLM scanner with dynamic question based on transcript."""
+
+    async def dynamic_question(transcript: Transcript) -> str:
+        num_messages = len(transcript.messages)
+        return (
+            f"In this {num_messages}-message conversation, was the assistant helpful?"
+        )
+
+    return llm_scanner(question=dynamic_question, answer="boolean")
+
+
 def test_scan_basic_e2e() -> None:
     """Test basic scan functionality end-to-end with mock LLM."""
     # Configure mockllm to return properly formatted responses for llm_scanner
@@ -78,3 +91,36 @@ def test_scan_basic_e2e() -> None:
         assert "explanation" in llm_df.columns
         # Verify the LLM scanner parsed the responses correctly
         assert sorted(llm_df["value"].tolist()) == [False, True]
+
+
+def test_scan_with_dynamic_question() -> None:
+    """Test LLM scanner with dynamic question callable."""
+    # Configure mockllm to return properly formatted responses
+    mock_responses = [
+        ModelOutput.from_content(
+            model="mockllm",
+            content="Yes, the assistant was helpful.\n\nANSWER: yes",
+        ),
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[llm_dynamic_question_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,
+            max_processes=1,
+            model="mockllm/model",
+            model_args={"custom_outputs": mock_responses},
+        )
+
+        # Verify status
+        assert status.complete
+        assert status.location is not None
+
+        # Verify dynamic question scanner results
+        results = scan_results(status.location, scanner="llm_dynamic_question_scanner")
+        scanner_df = results.scanners["llm_dynamic_question_scanner"]
+        assert len(scanner_df) == 1
+        assert "value" in scanner_df.columns
+        assert scanner_df["value"].tolist() == [True]

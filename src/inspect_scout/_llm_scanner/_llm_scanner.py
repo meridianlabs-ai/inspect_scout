@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Awaitable, Callable, Literal
 
 from inspect_ai.model import (
     Model,
@@ -19,7 +19,7 @@ from .types import MultiLabels
 @scanner(messages="all")
 def llm_scanner(
     *,
-    question: str,
+    question: str | Callable[[Transcript], Awaitable[str]],
     answer: Literal["boolean", "numeric", "string"] | list[str] | MultiLabels,
     template: str | None = None,
     messages: ContentFilter | None = None,
@@ -33,8 +33,10 @@ def llm_scanner(
     for specific patterns, behaviors, or outcomes.
 
     Args:
-        question: Question for the scanner to answer. (e.g., "Did the assistant
-            refuse the request?")
+        question: Question for the scanner to answer. Can be a static string (e.g.,
+            "Did the assistant refuse the request?") or a function that takes a
+            Transcript and returns an string for dynamic questions based on transcript
+            content.
         answer: Specification of the answer format.
             Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]`
             for a set of labels; or pass `MultiLabels` for multi-classification.
@@ -68,7 +70,7 @@ def llm_scanner(
             transcript.messages, messages, include_ids=True
         )
 
-        resolved_prompt = render_scanner_prompt(
+        resolved_prompt = await render_scanner_prompt(
             template=template,
             transcript=transcript,
             messages=messages_str,
@@ -86,12 +88,12 @@ def llm_scanner(
     return scan
 
 
-def render_scanner_prompt(
+async def render_scanner_prompt(
     *,
     template: str,
     transcript: Transcript,
     messages: str,
-    question: str,
+    question: str | Callable[[Transcript], Awaitable[str]],
     answer: Answer,
 ) -> str:
     """Render a scanner prompt template with the provided variables.
@@ -100,7 +102,8 @@ def render_scanner_prompt(
         template: Jinja2 template string for the scanner prompt.
         transcript: Transcript to extract variables from.
         messages: Formatted conversation messages string.
-        question: Question for the scanner to answer.
+        question: Question for the scanner to answer. Can be a static string
+            or a callable that takes a Transcript and returns an awaitable string.
         answer: Answer object containing prompt and format strings.
 
     Returns:
@@ -109,7 +112,7 @@ def render_scanner_prompt(
     variables = _variables_for_transcript(transcript)
     return Template(template).render(
         messages=messages,
-        question=question,
+        question=question if isinstance(question, str) else await question(transcript),
         answer_prompt=answer.prompt,
         answer_format=answer.format,
         **variables,

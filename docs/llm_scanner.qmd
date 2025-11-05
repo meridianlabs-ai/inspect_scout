@@ -44,6 +44,35 @@ def response_quality() -> Scanner[Transcript]:
 
 The section below provides more details on how prompts are constructed for `llm_scanner()`.
 
+## Dynamic Questions
+
+Instead of a static string, you can pass a function that takes a `Transcript` and returns a string. This enables you to dynamically generate questions based on the transcript content:
+
+``` python
+async def question_from_transcript(transcript: Transcript) -> str:
+    # Access transcript metadata
+    topic = transcript.variables.get("topic", "unknown")
+
+    # Access message count
+    num_messages = len(transcript.messages)
+
+    # Generate a dynamic question
+    return f"In this {num_messages}-message conversation about {topic}, did the assistant provide accurate information?"
+
+@scanner(messages="all")
+def contextual_accuracy() -> Scanner[Transcript]:
+    return llm_scanner(
+        question=question_from_transcript,
+        answer="boolean",
+    )
+```
+
+Dynamic questions are useful when:
+
+- The question depends on transcript metadata or variables
+- You need to reference specific aspects of the conversation in your question
+- The same scanner needs to adapt its question based on context
+
 ## Answer Types
 
 The `answer` type determines how the LLM is prompted to answer, the way that answers are extracted, and the Python type of the scanner result value. There are several distinct `answer` types supported:

@@ -18,9 +18,7 @@ import clsx from "clsx";
 import styles from "./ScannerDetail.module.css";
 import { MarkdownDiv } from "../../../components/MarkdownDiv";
 import { firstUserMessage } from "../../../utils/chatMessage";
-import { SegmentedControl } from "../../../components/SegmentedControl";
 import { useStore } from "../../../state/store";
-import { ApplicationIcons } from "../../appearance/icons";
 
 interface ScannerDetailProps {
   scanner: IPCDataframe;
@@ -36,9 +34,6 @@ const GRID_STATE_NAME = "ScannerDetailGrid";
 export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || "cards";
-  const setSelectedResultsView = useStore(
-    (state) => state.setSelectedResultsView
-  );
 
   const gridStates = useStore((state) => state.gridStates);
   const setGridState = useStore((state) => state.setGridState);
@@ -67,9 +62,10 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
           sortable: true,
           filter: true,
           resizable: true,
-          wrapText: isMultiline,
+          wrapText: true,
           autoHeight: isMultiline,
           minWidth: isMultiline ? 300 : 75,
+          tooltipField: name,
         };
       });
 
@@ -107,22 +103,6 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
 
   return (
     <div style={{ height: "100%", width: "100%" }}>
-      <div className={clsx(styles.controls)}>
-        <SegmentedControl
-          selectedId={selectedResultsView}
-          segments={[
-            {
-              id: "cards",
-              label: "cards",
-              icon: ApplicationIcons.file,
-            },
-            { icon: ApplicationIcons.samples, id: "grid", label: "dataframe" },
-          ]}
-          onSegmentChange={(segmentId: string, _index: number) => {
-            setSelectedResultsView(segmentId);
-          }}
-        />
-      </div>
       {selectedResultsView === "cards" && (
         <div className={clsx("text-size-small")}>
           {scannerSummaries.map((summary, index) => (
@@ -161,6 +141,7 @@ export const ScannerDetail: FC<ScannerDetailProps> = ({ scanner }) => {
               filter: true,
               resizable: true,
             }}
+            rowHeight={100}
             animateRows={false}
             suppressColumnMoveAnimation={true}
             suppressCellFocus={true}

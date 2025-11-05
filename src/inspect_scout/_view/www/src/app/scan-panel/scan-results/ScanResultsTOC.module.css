@@ -3,6 +3,8 @@
   grid-template-columns: max-content max-content max-content;
   column-gap: 0.5em;
   align-content: start;
+  border-right: solid 1px var(--bs-border-color);
+  padding: 0.5em;
 }
 
 .entry {

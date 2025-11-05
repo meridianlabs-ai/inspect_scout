@@ -13,11 +13,16 @@
 }
 
 .gridWrapper {
-  height: calc(100% - 3rem);
+  height: 100%;
   width: 100%;
 }
 
 /* Hide sort index numbers in multi-column sort */
 .gridWrapper :global(.ag-header-cell .ag-sort-order) {
   display: none;
+}
+
+/* Set line height for grid cells */
+.gridWrapper :global(.ag-cell) {
+  line-height: 1.1em;
 }

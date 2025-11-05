@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 import JSONPanel from "../../components/JsonPanel";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
@@ -8,6 +8,8 @@ import { useStore } from "../../state/store";
 import styles from "./ScanPanelBody.module.css";
 import { ScanResults } from "./scan-results/ScanResults";
 import { ScanInfo } from "./scan-results/ScanInfo";
+import { SegmentedControl } from "../../components/SegmentedControl";
+import { ApplicationIcons } from "../appearance/icons";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -39,6 +41,32 @@ export const ScanPanelBody: React.FC = () => {
     setSearchParams({ tab: tabId });
   };
 
+  const selectedResultsView =
+    useStore((state) => state.selectedResultsView) || "cards";
+  const setSelectedResultsView = useStore(
+    (state) => state.setSelectedResultsView
+  );
+
+  const tools: ReactNode[] = [];
+  if (selectedTab === kTabIdScans || selectedTab === undefined) {
+    tools.push(
+      <SegmentedControl
+        selectedId={selectedResultsView}
+        segments={[
+          {
+            id: "cards",
+            label: "cards",
+            icon: ApplicationIcons.file,
+          },
+          { icon: ApplicationIcons.samples, id: "grid", label: "dataframe" },
+        ]}
+        onSegmentChange={(segmentId: string, _index: number) => {
+          setSelectedResultsView(segmentId);
+        }}
+      />
+    );
+  }
+
   return (
     <TabSet
       id={"scan-detail-tabs"}
@@ -46,6 +74,7 @@ export const ScanPanelBody: React.FC = () => {
       tabPanelsClassName={clsx(styles.tabSet)}
       tabControlsClassName={clsx(styles.tabControl)}
       className={clsx(styles.tabs)}
+      tools={tools}
     >
       <TabPanel
         id={kTabIdScans}

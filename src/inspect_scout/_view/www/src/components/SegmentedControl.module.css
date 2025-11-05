@@ -19,6 +19,7 @@ button.segment {
   padding-block-start: 0;
   padding-inline-start: 5px;
   padding-inline-end: 5px;
+  height: calc(100% - 2px);
 }
 
 .segment i {

@@ -11,6 +11,15 @@ interface ScanResultsListProps {
   columnTable: ColumnTable;
 }
 
+// TODO: Need to resolve the dataframe into a better object for rendering
+// including resolving some values out of the metadata, etc...
+// TODO: mouse hover
+// TODO: selectiong?
+// TODO: click navigation to detail view
+// TODO: display value
+// TODO: display id
+// TODO: constrain height of explanation, etc...
+
 export const ScanResultsList: FC<ScanResultsListProps> = ({ columnTable }) => {
   const scannerSummaries = useMemo(() => {
     const rowData = columnTable.objects();

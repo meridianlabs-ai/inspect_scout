@@ -327,6 +327,7 @@ export const useStore = create<StoreState>()(
             state.selectedScanner = undefined;
             state.transcriptCollapsedEvents = {};
             state.transcriptOutlineId = undefined;
+            state.selectedResults = undefined;
           });
         },
       })),

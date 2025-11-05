@@ -37,12 +37,17 @@ export const ScanPanel: React.FC = () => {
 
       const scansInfo = await api?.getScan(relativePath);
       if (scansInfo) {
-        clearScanState();
         setSelectedScan(scansInfo);
       }
     };
     void fetchScans();
   }, [resultsDir, relativePath, api, setSelectedScan, setResultsDir, setScans]);
+
+  useEffect(() => {
+    return () => {
+      clearScanState();
+    };
+  }, []);
 
   return (
     <div className={clsx(styles.root)}>

@@ -7,7 +7,7 @@ import { Navbar } from "../navbar/Navbar";
 
 import { ScansGrid } from "./ScansGrid";
 
-export const ScansList: FC = () => {
+export const ScansPanel: FC = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);

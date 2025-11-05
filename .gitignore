@@ -209,8 +209,8 @@ __marimo__/
 src/inspect_scout/_version.py
 
 # Inspect logs and scans
-logs/
-scans/
+/logs/
+/scans/
 
 # MacOS
 .DS_Store

@@ -7,7 +7,13 @@ import prettierConfig from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["dist/", "node_modules/", "build/", "*.config.?s", "*.config.cjs"],
+    ignores: [
+      "dist/",
+      "node_modules/",
+      "build/",
+      "*.config.?s",
+      "*.config.cjs",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -29,7 +35,7 @@ export default tseslint.config(
       "react-hooks": reactHooksPlugin,
       "react-refresh": reactRefreshPlugin,
     },
-      rules: {
+    rules: {
       // React Hooks rules
       "react-hooks/rules-of-hooks": "warn",
       // "react-hooks/exhaustive-deps": "warn",
@@ -40,7 +46,7 @@ export default tseslint.config(
       "@typescript-eslint/no-redundant-type-constituents": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-return": "off", 
+      "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-base-to-string": "off",
       "@typescript-eslint/unbound-method": "off",
@@ -62,6 +68,10 @@ export default tseslint.config(
     settings: {
       react: {
         version: "detect",
+      },
+      "import/resolver": {
+        typescript: true,
+        node: true,
       },
     },
   },

@@ -1,8 +1,4 @@
-import {
-  formatDateTime,
-  formatNumber,
-  formatTime,
-} from "../../../../utils/format";
+import { formatDateTime, formatNumber, formatTime } from "../../utils/format";
 
 export const formatTiming = (timestamp: string, working_start?: number) => {
   if (working_start) {
@@ -15,7 +11,7 @@ export const formatTiming = (timestamp: string, working_start?: number) => {
 export const formatTitle = (
   title: string,
   total_tokens?: number,
-  working_start?: number | null,
+  working_start?: number | null
 ) => {
   const subItems = [];
   if (total_tokens) {

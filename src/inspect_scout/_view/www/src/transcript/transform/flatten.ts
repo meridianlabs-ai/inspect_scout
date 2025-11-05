@@ -18,7 +18,7 @@ export const flatTree = (
   eventNodes: EventNode[],
   collapsed: Record<string, boolean> | null,
   visitors?: TreeNodeVisitor[],
-  parentNode?: EventNode,
+  parentNode?: EventNode
 ): EventNode[] => {
   const result: EventNode[] = [];
   for (const node of eventNodes) {
@@ -42,7 +42,7 @@ export const flatTree = (
           pendingNode.children,
           collapsed,
           visitors,
-          pendingNode,
+          pendingNode
         );
         pendingNode.children = children;
         result.push(pendingNode);

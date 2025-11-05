@@ -149,7 +149,7 @@ export const HumanBaselineView: FC<HumanBaselineViewProps> = ({
 const extractSize = (
   value: string,
   label: string,
-  defaultValue: number,
+  defaultValue: number
 ): number => {
   const regex = new RegExp(`${label}="(\\d+)"`);
   const match = value.match(regex);

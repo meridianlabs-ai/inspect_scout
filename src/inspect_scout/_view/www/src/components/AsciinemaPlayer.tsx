@@ -54,7 +54,7 @@ export const AsciinemaPlayer: FC<AsciinemaPlayerProps> = ({
         speed,
         idleTimeLimit,
         fit,
-      },
+      }
     );
 
     player.play();

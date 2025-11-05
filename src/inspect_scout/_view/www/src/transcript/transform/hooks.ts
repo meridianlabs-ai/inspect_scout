@@ -5,7 +5,7 @@ import {
   StepEvent,
   SubtaskEvent,
   ToolEvent,
-} from "../../../../@types/log";
+} from "../../types/log";
 import { EventNode, EventType, kCollapsibleEventTypes } from "../types";
 import { fixupEventStream, kSandboxSignalName } from "./fixups";
 import { treeifyEvents } from "./treeify";
@@ -24,7 +24,7 @@ export const useEventNodes = (events: Events, running: boolean) => {
 
     // Now filter the tree to remove empty spans
     const filterEmpty = (
-      eventNodes: EventNode<EventType>[],
+      eventNodes: EventNode<EventType>[]
     ): EventNode<EventType>[] => {
       return eventNodes.filter((node) => {
         if (node.children && node.children.length > 0) {
@@ -50,8 +50,8 @@ export const useEventNodes = (events: Events, running: boolean) => {
                 | StepEvent
                 | SpanBeginEvent
                 | ToolEvent
-                | SubtaskEvent,
-            ),
+                | SubtaskEvent
+            )
           )
         ) {
           defaultCollapsedIds[node.id] = true;

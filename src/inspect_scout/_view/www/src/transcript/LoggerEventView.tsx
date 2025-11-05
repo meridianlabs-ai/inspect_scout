@@ -8,7 +8,6 @@ import { parsedJson as maybeParseJson } from "../utils/json";
 import { MetaDataGrid } from "../content/MetaDataGrid";
 import styles from "./LoggerEventView.module.css";
 import { EventNode } from "./types";
-import { App } from "../App";
 
 interface LoggerEventViewProps {
   eventNode: EventNode<LoggerEvent>;

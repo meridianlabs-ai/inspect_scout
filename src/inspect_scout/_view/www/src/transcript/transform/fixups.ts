@@ -5,7 +5,7 @@ import {
   SpanBeginEvent,
   SpanEndEvent,
   StepEvent,
-} from "../../../../@types/log";
+} from "../../types/log";
 import { hasSpans } from "./utils";
 
 // It will be caught elsewhere and rendered with a pretty name
@@ -16,7 +16,7 @@ export const kSandboxSignalName = "53787D8A-D3FC-426D-B383-9F880B70E4AA";
  */
 export const fixupEventStream = (
   events: Events,
-  filterPending: boolean = true,
+  filterPending: boolean = true
 ) => {
   // We ignore pending events sometimes (when an eval is complete) and
   // show them other times (when an eval is running)
@@ -166,7 +166,7 @@ const groupSandboxEvents = (events: Events): Events => {
 const createStepEvent = (
   name: string,
   timestamp: string,
-  action: "begin" | "end",
+  action: "begin" | "end"
 ): StepEvent => ({
   timestamp,
   event: "step",
@@ -183,7 +183,7 @@ const createStepEvent = (
 const createSpanBegin = (
   name: string,
   timestamp: string,
-  parent_id: string | null,
+  parent_id: string | null
 ): SpanBeginEvent => {
   return {
     name,

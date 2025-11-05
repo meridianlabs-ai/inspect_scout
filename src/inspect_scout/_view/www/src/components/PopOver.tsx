@@ -224,7 +224,7 @@ export const PopOver: React.FC<PopOverProps> = ({
     if (update && isOpen && shouldShowPopover) {
       // Need to delay the update slightly to ensure refs are properly set
       const timer = setTimeout(() => {
-        update();
+        void update();
       }, 10);
       return () => clearTimeout(timer);
     }

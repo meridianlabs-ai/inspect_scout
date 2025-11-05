@@ -97,7 +97,7 @@ interface RenderedProps {
  * Recursively renders content based on the type of `values`.
 value.
  */
-const Rendered: FC<RenderedProps> = ({ values }) => {
+const Rendered: FC<RenderedProps> = ({ values }): ReactNode => {
   if (Array.isArray(values)) {
     return values.map((val) => {
       return <Rendered values={val} />;
@@ -109,7 +109,7 @@ const Rendered: FC<RenderedProps> = ({ values }) => {
       return <MetaDataGrid entries={values as Record<string, unknown>} />;
     }
   } else {
-    return values;
+    return String(values);
   }
 };
 

@@ -163,16 +163,16 @@ type TreeNodeTransformer = {
  */
 const elevateChildNode = (
   node: EventNode,
-  childEventType: "tool" | "subtask",
+  childEventType: "tool" | "subtask"
 ): EventNode | null => {
   // Find the specific event child
   const targetIndex = node.children.findIndex(
-    (child) => child.event.event === childEventType,
+    (child) => child.event.event === childEventType
   );
 
   if (targetIndex === -1) {
     console.log(
-      `No ${childEventType} event found in a span, this is very unexpected.`,
+      `No ${childEventType} event found in a span, this is very unexpected.`
     );
     return null;
   }
@@ -188,20 +188,20 @@ const elevateChildNode = (
   // No need to update the event itself (events have been deprecated
   // and more importantly we drive children / transcripts using the tree structure itself
   // and notes rather than the event.events itself)
-  return targetNode;
+  return targetNode as EventNode;
 };
 
 const skipFirstChildNode = (node: EventNode): EventNode => {
   const agentSpan = node.children.splice(0, 1)[0];
-  node.children.unshift(...reduceDepth(agentSpan.children));
+  node.children.unshift(...reduceDepth(agentSpan?.children || []));
   return node;
 };
 
 const skipThisNode = (node: EventNode): EventNode => {
   const newNode = { ...node.children[0] };
   newNode.depth = node.depth;
-  newNode.children = reduceDepth(newNode.children, 2);
-  return newNode;
+  newNode.children = reduceDepth(newNode.children || [], 2);
+  return newNode as EventNode;
 };
 
 const discardNode = (node: EventNode): EventNode[] => {

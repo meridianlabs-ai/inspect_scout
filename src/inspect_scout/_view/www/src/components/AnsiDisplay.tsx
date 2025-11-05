@@ -157,44 +157,33 @@ const computeStyles = (styles: ANSIStyle[]) => {
   return cssProperties;
 };
 
+const isStandardANSIColor = (color: string): boolean => {
+  return Object.values(ANSIColor).includes(color as ANSIColor);
+};
+
 const computeForegroundBackgroundColor = (
   colorType: number,
   color?: string
 ) => {
-  switch (color) {
-    // Undefined.
-    case undefined:
-      return {};
+  // Undefined.
+  if (!color) {
+    return {};
+  }
 
-    // One of the standard colors.
-    case ANSIColor.Black:
-    case ANSIColor.Red:
-    case ANSIColor.Green:
-    case ANSIColor.Yellow:
-    case ANSIColor.Blue:
-    case ANSIColor.Magenta:
-    case ANSIColor.Cyan:
-    case ANSIColor.White:
-    case ANSIColor.BrightBlack:
-    case ANSIColor.BrightRed:
-    case ANSIColor.BrightGreen:
-    case ANSIColor.BrightYellow:
-    case ANSIColor.BrightBlue:
-    case ANSIColor.BrightMagenta:
-    case ANSIColor.BrightCyan:
-    case ANSIColor.BrightWhite:
-      if (colorType === kForeground) {
-        return { color: `var(--${color})` };
-      } else {
-        return { background: `var(--${color})` };
-      }
+  // One of the standard colors.
+  if (isStandardANSIColor(color)) {
+    if (colorType === kForeground) {
+      return { color: `var(--${color})` };
+    } else {
+      return { background: `var(--${color})` };
+    }
+  }
 
-    // TODO@softwarenerd - This isn't hooked up.
-    default:
-      if (colorType === kForeground) {
-        return { color: color };
-      } else {
-        return { background: color };
-      }
+  // TODO@softwarenerd - This isn't hooked up.
+  // Custom color (e.g., hex codes).
+  if (colorType === kForeground) {
+    return { color: color };
+  } else {
+    return { background: color };
   }
 };

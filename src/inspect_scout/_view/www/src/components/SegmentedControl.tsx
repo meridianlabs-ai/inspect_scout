@@ -40,7 +40,7 @@ export const SegmentedControl: FC<SegmentedControlProps> = ({
           className={clsx(
             styles.segment,
             {
-              [styles.selected as string]: selectedId === segment.id,
+              [styles.selected]: selectedId === segment.id,
             },
             "text-size-smallest",
             "text-style-secondary"

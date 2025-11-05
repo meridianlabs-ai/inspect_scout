@@ -1,4 +1,4 @@
-import { Events, SpanBeginEvent, SpanEndEvent } from "../../../../@types/log";
+import { Events, SpanBeginEvent, SpanEndEvent } from "../../types/log";
 import { EventNode, EventType } from "../types";
 import { transformTree } from "./transform";
 import {
@@ -30,7 +30,7 @@ const treeifyWithSpans = (events: Events, depth: number): EventNode[] => {
 
   const processEvent = (
     event: EventType,
-    parentOverride?: EventNode | null,
+    parentOverride?: EventNode | null
   ) => {
     if (event.event === SPAN_END) {
       return;
@@ -56,7 +56,7 @@ const treeifyWithSpans = (events: Events, depth: number): EventNode[] => {
     }
   };
 
-  events.forEach((event) => processEvent(event));
+  events.forEach((event: EventType) => processEvent(event));
 
   return rootNodes;
 };
@@ -81,14 +81,14 @@ const treeifyWithSteps = (events: Events, depth: number): EventNode[] => {
     switch (event.event) {
       case STEP:
         if (event.action === ACTION_BEGIN) {
-          const node = createNode(event, parent);
+          const node = createNode(event, parent || null);
           pushStack(node);
         } else {
           popStack();
         }
         break;
       case SPAN_BEGIN: {
-        const node = createNode(event, parent);
+        const node = createNode(event, parent || null);
         pushStack(node);
         break;
       }
@@ -96,7 +96,7 @@ const treeifyWithSteps = (events: Events, depth: number): EventNode[] => {
         popStack();
         break;
       default:
-        createNode(event, parent);
+        createNode(event, parent || null);
         break;
     }
   };
@@ -118,7 +118,7 @@ const createNodeFactory = (depth: number): NodeFactory => {
 
   const createNode = (
     event: EventType,
-    parent: EventNode | null,
+    parent: EventNode | null
   ): EventNode => {
     const parentKey = parent ?? null;
     const nextIndex = childCounts.get(parentKey) ?? 0;
@@ -148,7 +148,7 @@ const createNodeFactory = (depth: number): NodeFactory => {
 
 const resolveParentForEvent = (
   event: EventType,
-  spanNodes: Map<string, EventNode>,
+  spanNodes: Map<string, EventNode>
 ): EventNode | null => {
   if (event.event === SPAN_BEGIN) {
     const parentId = event.parent_id;
@@ -198,15 +198,17 @@ const injectScorersSpan = (events: Events): Events => {
         metadata: null,
       };
 
-      const scoreEvents: Events = collectedScorerEvents.map((event) => {
-        return {
-          ...event,
-          parent_id:
-            event.event === "span_begin"
-              ? event.parent_id || kScorersSpanId
-              : null,
-        };
-      });
+      const scoreEvents: Events = collectedScorerEvents.map(
+        (event: EventType) => {
+          return {
+            ...event,
+            parent_id:
+              event.event === "span_begin"
+                ? event.parent_id || kScorersSpanId
+                : null,
+          };
+        }
+      );
 
       const endSpan: SpanEndEvent = {
         id: kEndScorerId,

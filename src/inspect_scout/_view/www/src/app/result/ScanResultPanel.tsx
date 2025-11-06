@@ -43,7 +43,12 @@ export const ScanResultPanel: FC = () => {
   const scanData = useSelectedResultsRow(scanResultUuid);
 
   return (
-    <div className={clsx(styles.root)}>
+    <div
+      className={clsx(
+        styles.root,
+        singleFileMode ? styles.singleFileMode : undefined
+      )}
+    >
       {singleFileMode || <Navbar />}
       <ActivityBar animating={!!loading} />
       <ScanResultHeader />

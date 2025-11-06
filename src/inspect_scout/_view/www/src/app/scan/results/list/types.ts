@@ -10,6 +10,8 @@ import {
 } from "../../../../types/log";
 
 export interface ScannerPreview {
+  uuid?: string;
+  label?: string;
   type: "transcript" | "message" | "messages" | "event" | "events";
   explanation: string;
   validationResult: boolean | Record<string, boolean>;
@@ -41,6 +43,8 @@ export type MessageType =
 
 // Base interface with common properties
 interface ScannerDataBase {
+  uuid?: string;
+  label?: string;
   answer?: string;
   eventReferences: ScannerReference[];
   explanation?: string;

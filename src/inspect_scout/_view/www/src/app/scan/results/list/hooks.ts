@@ -48,6 +48,8 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
       const transcriptSourceId = r.transcript_source_id as string;
 
       return {
+        uuid: r.uuid as string | undefined,
+        label: r.label as string | undefined,
         explanation,
         type: r.input_type,
         validationResult,
@@ -67,6 +69,10 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
   const scannerSummaries = useMemo(() => {
     const rowData = columnTable.objects();
     const r = rowData[row] as Record<string, unknown>;
+
+    const uuid = r.uuid as string | undefined;
+    const label = r.label as string | undefined;
+
     const answer = r.answer as string | undefined;
     const eventReferences = JSON.parse(
       r.event_references as string
@@ -147,6 +153,8 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
       | "object";
 
     return {
+      uuid,
+      label,
       answer,
       eventReferences,
       explanation,

@@ -109295,6 +109295,8 @@ const useScannerPreviews = (columnTable) => {
       );
       const transcriptSourceId = r2.transcript_source_id;
       return {
+        uuid: r2.uuid,
+        label: r2.label,
         explanation: explanation2,
         type: r2.input_type,
         validationResult,

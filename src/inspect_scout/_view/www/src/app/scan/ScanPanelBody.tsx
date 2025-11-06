@@ -16,6 +16,9 @@ const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
 const kTabIdJson = "scan-detail-tabs-json";
 
+export const kSegmentList = "list";
+export const kSegmentDataframe = "dataframe";
+
 export const ScanPanelBody: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
@@ -43,7 +46,7 @@ export const ScanPanelBody: React.FC = () => {
   };
 
   const selectedResultsView =
-    useStore((state) => state.selectedResultsView) || "cards";
+    useStore((state) => state.selectedResultsView) || kSegmentList;
   const setSelectedResultsView = useStore(
     (state) => state.setSelectedResultsView
   );
@@ -55,11 +58,15 @@ export const ScanPanelBody: React.FC = () => {
         selectedId={selectedResultsView}
         segments={[
           {
-            id: "cards",
-            label: "cards",
+            id: kSegmentList,
+            label: kSegmentList,
             icon: ApplicationIcons.file,
           },
-          { icon: ApplicationIcons.samples, id: "grid", label: "dataframe" },
+          {
+            icon: ApplicationIcons.samples,
+            id: kSegmentDataframe,
+            label: kSegmentDataframe,
+          },
         ]}
         onSegmentChange={(segmentId: string, _index: number) => {
           setSelectedResultsView(segmentId);

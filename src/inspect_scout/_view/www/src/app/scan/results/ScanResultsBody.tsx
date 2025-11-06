@@ -5,6 +5,7 @@ import { FC, useMemo } from "react";
 
 import { DataframeView } from "../../../components/DataframeView";
 import { useStore } from "../../../state/store";
+import { kSegmentDataframe, kSegmentList } from "../ScanPanelBody";
 
 import { useSelectedScanner } from "./hooks";
 import { ScanResultsList } from "./list/ScanResultsList";
@@ -19,7 +20,7 @@ export const ScanResultsBody: FC = () => {
   const scanner = selectedResults?.scanners[selectedScanner || ""];
 
   const selectedResultsView =
-    useStore((state) => state.selectedResultsView) || "cards";
+    useStore((state) => state.selectedResultsView) || kSegmentList;
 
   const columnTable = useMemo(() => {
     if (!scanner || !scanner.data) {
@@ -42,10 +43,10 @@ export const ScanResultsBody: FC = () => {
     <div className={clsx(styles.scrollContainer)}>
       {scanner && (
         <div style={{ height: "100%", width: "100%" }}>
-          {selectedResultsView === "cards" && (
+          {selectedResultsView === kSegmentList && (
             <ScanResultsList columnTable={columnTable} />
           )}
-          {selectedResultsView === "grid" && (
+          {selectedResultsView === kSegmentDataframe && (
             <DataframeView columnTable={columnTable} />
           )}
         </div>

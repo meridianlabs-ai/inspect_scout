@@ -109404,7 +109404,7 @@ const ScanResultsBody = () => {
   const selectedScanner = useSelectedScanner();
   const selectedResults = useStore((state) => state.selectedResults);
   const scanner = selectedResults?.scanners[selectedScanner || ""];
-  const selectedResultsView = useStore((state) => state.selectedResultsView) || "cards";
+  const selectedResultsView = useStore((state) => state.selectedResultsView) || kSegmentList;
   const columnTable = reactExports.useMemo(() => {
     if (!scanner || !scanner.data) {
       return fromArrow(new ArrayBuffer(0));
@@ -109418,8 +109418,8 @@ const ScanResultsBody = () => {
     return table2;
   }, [scanner]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$5.scrollContainer), children: scanner && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { height: "100%", width: "100%" }, children: [
-    selectedResultsView === "cards" && /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsList, { columnTable }),
-    selectedResultsView === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsx(DataframeView, { columnTable })
+    selectedResultsView === kSegmentList && /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsList, { columnTable }),
+    selectedResultsView === kSegmentDataframe && /* @__PURE__ */ jsxRuntimeExports.jsx(DataframeView, { columnTable })
   ] }) });
 };
 const container$2 = "_container_zptle_1";
@@ -109556,6 +109556,8 @@ const styles$2 = {
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
 const kTabIdJson = "scan-detail-tabs-json";
+const kSegmentList = "list";
+const kSegmentDataframe = "dataframe";
 const ScanPanelBody = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
@@ -109576,7 +109578,7 @@ const ScanPanelBody = () => {
     setSelectedResultsTab(tabId);
     setSearchParams({ tab: tabId });
   };
-  const selectedResultsView = useStore((state) => state.selectedResultsView) || "cards";
+  const selectedResultsView = useStore((state) => state.selectedResultsView) || kSegmentList;
   const setSelectedResultsView = useStore(
     (state) => state.setSelectedResultsView
   );
@@ -109589,11 +109591,15 @@ const ScanPanelBody = () => {
           selectedId: selectedResultsView,
           segments: [
             {
-              id: "cards",
-              label: "cards",
+              id: kSegmentList,
+              label: kSegmentList,
               icon: ApplicationIcons.file
             },
-            { icon: ApplicationIcons.samples, id: "grid", label: "dataframe" }
+            {
+              icon: ApplicationIcons.samples,
+              id: kSegmentDataframe,
+              label: kSegmentDataframe
+            }
           ],
           onSegmentChange: (segmentId, _index) => {
             setSelectedResultsView(segmentId);

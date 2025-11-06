@@ -9,14 +9,12 @@ export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 
 // Helper functions to generate routes
 export const scanRoute = (relativePath: string) => {
-  // Split the path and encode each segment separately to preserve slashes
-  const segments = relativePath.split("/").map(encodeURIComponent);
-  return `/scan/${segments.join("/")}`;
+  return `/scan/${relativePath}`;
 };
 
 export const scansRoute = (relativePath?: string) => {
   if (relativePath) {
-    return `/scans/${encodeURIComponent(relativePath)}`;
+    return `/scans/${relativePath}`;
   } else {
     return "/scans";
   }
@@ -26,9 +24,7 @@ export const scanResultRoute = (
   scanRelativePath: string,
   scanResultId: string
 ) => {
-  // Split the scan path and encode each segment separately to preserve slashes
-  const segments = scanRelativePath.split("/").map(encodeURIComponent);
-  return `/scan/${segments.join("/")}/${encodeURIComponent(scanResultId)}`;
+  return `/scan/${scanRelativePath}/${scanResultId}`;
 };
 
 /**

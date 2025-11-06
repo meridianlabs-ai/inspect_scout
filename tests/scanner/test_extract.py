@@ -18,7 +18,7 @@ from inspect_ai.model import (
 from inspect_ai.tool import ToolCall, ToolCallError
 from inspect_scout._scanner.extract import (
     ContentPreprocessor,
-    extract_references,
+    _extract_references,
     message_as_str,
     messages_as_str,
 )
@@ -592,11 +592,17 @@ async def test_messages_as_str(
 ) -> None:
     """Test messages_as_str with various configurations."""
     if include_ids:
-        result, message_ids = await messages_as_str(
+        result, extract_references = await messages_as_str(
             messages, content_preprocessor=filter, include_ids=True
         )
         assert result == expected_result
-        assert message_ids == expected_ids
+        # Test that the extract_references function works correctly
+        if expected_ids:
+            for ordinal_id, msg_id in expected_ids.items():
+                refs = extract_references(f"See [{ordinal_id}]")
+                assert len(refs) == 1
+                assert refs[0].id == msg_id
+                assert refs[0].cite == f"[{ordinal_id}]"
     else:
         result = await messages_as_str(messages, content_preprocessor=filter)
         assert result == expected_result
@@ -617,16 +623,22 @@ async def test_messages_as_str_with_preprocessor() -> None:
         ChatMessageUser(content="User 2", id="msg3"),
     ]
 
-    result, message_ids = await messages_as_str(
+    result, extract_references = await messages_as_str(
         messages,
         content_preprocessor=ContentPreprocessor(messages=keep_only_user_messages),
         include_ids=True,
     )
 
-    assert message_ids == {"M1": "msg1", "M2": "msg3"}
+    # Test the formatted string
     assert "[M1] user:\nUser 1\n" in result
     assert "[M2] user:\nUser 2\n" in result
     assert "Assistant" not in result
+
+    # Test the extract_references function
+    refs = extract_references("See [M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg3"
 
 
 @pytest.mark.parametrize(
@@ -757,5 +769,5 @@ def test_extract_references(
     text: str, id_map: dict[str, str], expected: list[Reference]
 ) -> None:
     """Test extract_references with various message and event references."""
-    result = extract_references(text, id_map)
+    result = _extract_references(text, id_map)
     assert result == expected

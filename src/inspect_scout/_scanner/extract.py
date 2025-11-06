@@ -44,7 +44,7 @@ async def messages_as_str(
     *,
     content_preprocessor: ContentPreprocessor | None = None,
     include_ids: Literal[True],
-) -> tuple[str, dict[str, str]]: ...
+) -> tuple[str, Callable[[str], list[Reference]]]: ...
 
 
 async def messages_as_str(
@@ -52,21 +52,21 @@ async def messages_as_str(
     *,
     content_preprocessor: ContentPreprocessor | None = None,
     include_ids: Literal[True] | None = None,
-) -> str | tuple[str, dict[str, str]]:
+) -> str | tuple[str, Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
 
     Args:
        messages: List of chat messages.
        content_preprocessor: Content filter for messages.
        include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
-          to each message and return a mapping of ordinal IDs to original message
-          IDs. If None (default), return plain formatted string.
+          to each message and return a function to extract references from text.
+          If None (default), return plain formatted string.
 
     Returns:
        If include_ids is False: Messages concatenated as a formatted string.
        If include_ids is True: Tuple of (formatted string with [M1], [M2], etc.
-          prefixes, dict mapping ordinal IDs like "M1", "M2" to original message
-          IDs for non-excluded messages).
+          prefixes, function that takes text and returns list of Reference objects
+          for any [M1], [M2], etc. references found in the text).
     """
     if content_preprocessor is not None and content_preprocessor.messages is not None:
         messages = await content_preprocessor.messages(messages)
@@ -90,7 +90,10 @@ async def messages_as_str(
         reduce_message, messages, (list[str](), dict[str, str]())
     )
 
-    return "\n".join(formatted_messages), message_id_map
+    def extract_references(text: str) -> list[Reference]:
+        return _extract_references(text, message_id_map)
+
+    return "\n".join(formatted_messages), extract_references
 
 
 def message_as_str(
@@ -199,7 +202,7 @@ def _better_content_text(
         return "\n".join(all_text)
 
 
-def extract_references(text: str, id_map: dict[str, str]) -> list[Reference]:
+def _extract_references(text: str, id_map: dict[str, str]) -> list[Reference]:
     """Extract message and event references from text.
 
     Args:

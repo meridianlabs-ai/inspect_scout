@@ -65,7 +65,7 @@ def llm_scanner(
     resolved_answer = answer_from_argument(answer)
 
     async def scan(transcript: Transcript) -> Result:
-        messages_str, message_id_map = await messages_as_str(
+        messages_str, extract_references = await messages_as_str(
             transcript.messages, content_preprocessor=messages, include_ids=True
         )
 
@@ -78,7 +78,7 @@ def llm_scanner(
         )
 
         model_output = await get_model(model).generate(resolved_prompt)
-        return resolved_answer.result_for_answer(model_output, message_id_map)
+        return resolved_answer.result_for_answer(model_output, extract_references)
 
     # set name for collection by @scanner if specified
     if name is not None:

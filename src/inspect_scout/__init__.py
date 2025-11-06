@@ -15,7 +15,7 @@ from ._scan import (
 )
 from ._scanjob import ScanJob, ScanJobConfig, scanjob
 from ._scanlist import scan_list
-from ._scanner.extract import ContentPreprocessor, extract_references, messages_as_str
+from ._scanner.extract import ContentPreprocessor, messages_as_str
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Reference, Result
 from ._scanner.scanner import Scanner, scanner
@@ -107,7 +107,6 @@ __all__ = [
     "as_scorer",
     "messages_as_str",
     "ContentPreprocessor",
-    "extract_references",
     # llm_scanner
     "llm_scanner",
     "MultiLabels",

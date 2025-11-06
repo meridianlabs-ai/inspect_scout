@@ -6,13 +6,17 @@ import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
 import { Results, Status } from "../types";
+import { ColumnTable } from "arquero";
 
 interface StoreState {
   api?: ScanApi;
   scans: Status[];
   selectedResults?: Results;
   selectedScanLocation?: string;
+
   selectedScanResult?: string;
+  selectedScanResultData?: ColumnTable;
+
   resultsDir?: string;
   properties: Record<string, Record<string, unknown> | undefined>;
   scrollPositions: Record<string, number>;
@@ -37,6 +41,7 @@ interface StoreState {
   setSelectedResults: (results: Results) => void;
   setSelectedScanLocation: (location: string) => void;
   setSelectedScanResult: (result: string) => void;
+  setSelectedScanResultData: (data: ColumnTable) => void;
 
   setResultsDir: (dir: string) => void;
 
@@ -133,7 +138,10 @@ export const useStore = create<StoreState>()(
           set((state) => {
             state.selectedScanResult = result;
           }),
-
+        setSelectedScanResultData: (data: ColumnTable) =>
+          set((state) => {
+            state.selectedScanResultData = data;
+          }),
         setResultsDir: (dir: string) =>
           set((state) => {
             state.resultsDir = dir;

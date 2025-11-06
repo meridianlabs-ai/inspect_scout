@@ -4,8 +4,8 @@ from typing import Any, Callable
 
 import pytest
 from inspect_ai.model import ChatMessage, ChatMessageUser, ModelOutput
-from inspect_scout._llm_scanner._llm_scanner import render_scanner_prompt
 from inspect_scout._llm_scanner.answer import Answer, _BoolAnswer
+from inspect_scout._llm_scanner.llm_scanner import render_scanner_prompt
 from inspect_scout._llm_scanner.prompt import DEFAULT_SCANNER_TEMPLATE
 from inspect_scout._scanner.result import Reference, Result
 from inspect_scout._transcript.types import Transcript

@@ -33,7 +33,8 @@ def llm_structured_scanner(
 
     Args:
         json_type: Python type for structured output. The type is converted to JSON
-            schema and enforced via the model's structured output API.
+            schema and enforced via the model's structured output API. Supported
+            types include Pydantic BaseModel, dataclasses, and typed dicts
         template: Jinja2 template for scanner prompt.
             The template has access to:
               - {{ messages }} (transcript message history as string)

@@ -14,7 +14,7 @@ class LLMScannerMessages(NamedTuple):
     """Exclude tool usage (defaults to `False`)"""
 
 
-class MultiLabels(NamedTuple):
+class AnswerLabels(NamedTuple):
     """Label descriptions for LLM scanner multi-classification."""
 
     labels: list[str]

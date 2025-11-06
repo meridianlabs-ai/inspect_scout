@@ -13,7 +13,7 @@ from inspect_ai.scorer._common import normalize_number
 from jinja2 import Template
 from pydantic import JsonValue
 
-from inspect_scout._llm_scanner.types import MultiLabels
+from inspect_scout._llm_scanner.types import AnswerLabels
 
 from .._scanner.result import Reference, Result
 from .prompt import (
@@ -50,7 +50,7 @@ class Answer(Protocol):
 
 
 def answer_from_argument(
-    answer: Literal["boolean", "numeric", "string"] | list[str] | MultiLabels,
+    answer: Literal["boolean", "numeric", "string"] | list[str] | AnswerLabels,
 ) -> Answer:
     if isinstance(answer, str):
         match answer:

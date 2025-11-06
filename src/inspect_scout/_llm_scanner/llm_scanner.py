@@ -14,14 +14,14 @@ from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
 from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
-from .types import MultiLabels
+from .types import AnswerLabels
 
 
 @scanner(messages="all")
 def llm_scanner(
     *,
     question: str | Callable[[Transcript], Awaitable[str]],
-    answer: Literal["boolean", "numeric", "string"] | list[str] | MultiLabels,
+    answer: Literal["boolean", "numeric", "string"] | list[str] | AnswerLabels,
     template: str | None = None,
     content_preprocessor: ContentPreprocessor | None = None,
     model: str | Model | None = None,

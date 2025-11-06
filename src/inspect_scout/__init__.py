@@ -1,4 +1,4 @@
-from ._llm_scanner import MultiLabels, llm_scanner, llm_structured_scanner
+from ._llm_scanner import AnswerLabels, llm_scanner, llm_structured_scanner
 from ._recorder.recorder import (
     Results,
     ResultsDB,
@@ -107,7 +107,7 @@ __all__ = [
     # llm_scanner
     "llm_scanner",
     "llm_structured_scanner",
-    "MultiLabels",
+    "AnswerLabels",
     # validation
     "ValidationSet",
     "ValidationCase",

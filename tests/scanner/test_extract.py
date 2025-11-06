@@ -18,9 +18,11 @@ from inspect_ai.model import (
 from inspect_ai.tool import ToolCall, ToolCallError
 from inspect_scout._scanner.extract import (
     ContentPreprocessor,
+    extract_references,
     message_as_str,
     messages_as_str,
 )
+from inspect_scout._scanner.result import Reference
 
 
 @pytest.mark.parametrize(
@@ -625,3 +627,135 @@ async def test_messages_as_str_with_preprocessor() -> None:
     assert "[M1] user:\nUser 1\n" in result
     assert "[M2] user:\nUser 2\n" in result
     assert "Assistant" not in result
+
+
+@pytest.mark.parametrize(
+    "text,id_map,expected",
+    [
+        # Single message reference
+        (
+            "The issue is in [M1]",
+            {"M1": "msg-123"},
+            [Reference(type="message", cite="[M1]", id="msg-123")],
+        ),
+        # Single event reference
+        (
+            "The error occurred at [E1]",
+            {"E1": "evt-456"},
+            [Reference(type="event", cite="[E1]", id="evt-456")],
+        ),
+        # Multiple message references
+        (
+            "See [M1] and [M2] for details",
+            {"M1": "msg-123", "M2": "msg-456"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-123"),
+                Reference(type="message", cite="[M2]", id="msg-456"),
+            ],
+        ),
+        # Multiple event references
+        (
+            "Events [E1] and [E3] are related",
+            {"E1": "evt-111", "E2": "evt-222", "E3": "evt-333"},
+            [
+                Reference(type="event", cite="[E1]", id="evt-111"),
+                Reference(type="event", cite="[E3]", id="evt-333"),
+            ],
+        ),
+        # Mixed message and event references
+        (
+            "Message [M1] triggered event [E2]",
+            {"M1": "msg-123", "E2": "evt-456"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-123"),
+                Reference(type="event", cite="[E2]", id="evt-456"),
+            ],
+        ),
+        # Multiple mixed references in complex text
+        (
+            "Analysis: [M1] shows error, [E1] logged it, then [M2] confirmed, see [E3]",
+            {"M1": "msg-a", "M2": "msg-b", "E1": "evt-x", "E3": "evt-z"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-a"),
+                Reference(type="event", cite="[E1]", id="evt-x"),
+                Reference(type="message", cite="[M2]", id="msg-b"),
+                Reference(type="event", cite="[E3]", id="evt-z"),
+            ],
+        ),
+        # Duplicate references - should only appear once
+        (
+            "Both [M1] and [M1] show the same issue",
+            {"M1": "msg-123"},
+            [Reference(type="message", cite="[M1]", id="msg-123")],
+        ),
+        # Reference not in id_map - should be ignored
+        (
+            "Reference [M1] is valid but [M2] is not",
+            {"M1": "msg-123"},
+            [Reference(type="message", cite="[M1]", id="msg-123")],
+        ),
+        # No references in text
+        (
+            "This text has no references at all",
+            {"M1": "msg-123"},
+            [],
+        ),
+        # Empty text
+        (
+            "",
+            {"M1": "msg-123"},
+            [],
+        ),
+        # Empty id_map
+        (
+            "Text with [M1] reference",
+            {},
+            [],
+        ),
+        # References with different number of digits
+        (
+            "From [M1] to [M10] to [M100]",
+            {"M1": "msg-1", "M10": "msg-10", "M100": "msg-100"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-1"),
+                Reference(type="message", cite="[M10]", id="msg-10"),
+                Reference(type="message", cite="[M100]", id="msg-100"),
+            ],
+        ),
+        # Adjacent references
+        (
+            "[M1][M2][E1]",
+            {"M1": "msg-1", "M2": "msg-2", "E1": "evt-1"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-1"),
+                Reference(type="message", cite="[M2]", id="msg-2"),
+                Reference(type="event", cite="[E1]", id="evt-1"),
+            ],
+        ),
+        # References in various contexts
+        (
+            "At start [M1] and end [E1].\nNew line [M2]",
+            {"M1": "msg-a", "M2": "msg-b", "E1": "evt-x"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-a"),
+                Reference(type="event", cite="[E1]", id="evt-x"),
+                Reference(type="message", cite="[M2]", id="msg-b"),
+            ],
+        ),
+        # Case sensitivity - M vs m, E vs e (only uppercase should match)
+        (
+            "[M1] is valid but [m1] and [e1] are not, [E1] is valid",
+            {"M1": "msg-1", "E1": "evt-1", "m1": "msg-invalid", "e1": "evt-invalid"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-1"),
+                Reference(type="event", cite="[E1]", id="evt-1"),
+            ],
+        ),
+    ],
+)
+def test_extract_references(
+    text: str, id_map: dict[str, str], expected: list[Reference]
+) -> None:
+    """Test extract_references with various message and event references."""
+    result = extract_references(text, id_map)
+    assert result == expected

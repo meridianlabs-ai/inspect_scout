@@ -1,3 +1,4 @@
+import re
 from functools import reduce
 from typing import Awaitable, Callable, Literal, NamedTuple, overload
 
@@ -7,6 +8,8 @@ from inspect_ai.model import (
     ChatMessageTool,
     Content,
 )
+
+from inspect_scout._scanner.result import Reference
 
 from .util import _message_id
 
@@ -194,3 +197,39 @@ def _better_content_text(
             is not None
         ]
         return "\n".join(all_text)
+
+
+def extract_references(text: str, id_map: dict[str, str]) -> list[Reference]:
+    """Extract message and event references from text.
+
+    Args:
+        text: Text containing [M{n}] or [E{n}] style references
+        id_map: Dict mapping ordinal IDs (e.g., "M1", "M2", "E1", "E2") to actual IDs
+
+    Returns:
+        List of Reference objects with type="message" or type="event"
+    """
+    # Find all [M{number}] or [E{number}] patterns in the text
+    pattern = r"\[(M|E)\d+\]"
+    matches = re.finditer(pattern, text)
+
+    references = []
+    seen_ids = set()
+
+    for match in matches:
+        cite = match.group(0)
+        # Extract ordinal key (e.g., "M1" from "[M1]" or "E1" from "[E1]")
+        ordinal_key = cite[1:-1]
+
+        # Look up actual ID
+        if ordinal_key in id_map:
+            actual_id = id_map[ordinal_key]
+            # Avoid duplicate references
+            if actual_id not in seen_ids:
+                ref_type: Literal["message", "event"] = (
+                    "message" if ordinal_key.startswith("M") else "event"
+                )
+                references.append(Reference(type=ref_type, cite=cite, id=actual_id))
+                seen_ids.add(actual_id)
+
+    return references

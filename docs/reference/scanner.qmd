@@ -21,6 +21,7 @@ reference: "inspect_scout"
 
 ### messages_as_str
 ### ContentPreprocessor
+### extract_references
 
 ## Types
 

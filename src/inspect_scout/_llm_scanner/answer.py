@@ -15,6 +15,7 @@ from pydantic import JsonValue
 
 from inspect_scout._llm_scanner.types import MultiLabels
 
+from .._scanner.extract import extract_references
 from .._scanner.result import Result
 from .prompt import (
     BOOL_ANSWER_FORMAT,
@@ -27,7 +28,6 @@ from .prompt import (
     STR_ANSWER_FORMAT,
     STR_ANSWER_PROMPT,
 )
-from .util import extract_references
 
 
 class Answer(Protocol):

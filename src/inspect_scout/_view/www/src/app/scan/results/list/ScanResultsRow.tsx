@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, ReactNode } from "react";
+import { FC, ReactNode, use } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { MarkdownDiv } from "../../../../components/MarkdownDiv";
@@ -7,6 +7,7 @@ import {
   getRelativePathFromParams,
   scanResultRoute,
 } from "../../../../router/url";
+import { useStore } from "../../../../state/store";
 
 import styles from "./ScanResultsRow.module.css";
 import { ScannerPreview } from "./types";
@@ -20,12 +21,26 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ index, entry }) => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
 
+  const setSelectedScanResult = useStore(
+    (state) => state.setSelectedScanResult
+  );
+  const selectedScanResult = useStore((state) => state.selectedScanResult);
+
   // Generate the route to the scan result using the current scan path and the entry's uuid
   const scanResultUrl = scanResultRoute(relativePath, entry.uuid);
   const isNavigable = entry.uuid !== undefined;
 
   const grid = (
-    <div className={clsx(styles.row, !isNavigable ? styles.disabled : "")}>
+    <div
+      className={clsx(
+        styles.row,
+        !isNavigable ? styles.disabled : "",
+        selectedScanResult === entry.uuid ? styles.selected : ""
+      )}
+      onClick={() => {
+        setSelectedScanResult(entry.uuid);
+      }}
+    >
       <div className={clsx(styles.id, "text-size-smaller")}>
         <Identifier preview={entry} />
       </div>
@@ -39,7 +54,7 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ index, entry }) => {
   );
 
   return isNavigable ? (
-    <Link to={scanResultUrl} className={clsx(styles.link)}>
+    <Link to={scanResultUrl} className={clsx(styles.link)} onClick={() => {}}>
       {grid}
     </Link>
   ) : (

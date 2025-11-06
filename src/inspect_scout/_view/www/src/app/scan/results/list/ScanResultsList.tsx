@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, useCallback, useRef } from "react";
+import { FC, useCallback, useEffect, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
@@ -14,9 +14,9 @@ import { ScannerPreview } from "./types";
 interface ScanResultsListProps {
   columnTable: ColumnTable;
 }
-// TODO: selection?
-// TODO: click navigation to detail view
 // TODO: Filter by results value
+// TODO: Keyboard navigation
+// TODO: Ensure selected item is scrolled into view
 
 export const ScanResultsList: FC<ScanResultsListProps> = ({ columnTable }) => {
   const scannerSummaries = useScannerPreviews(columnTable);

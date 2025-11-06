@@ -7,3 +7,7 @@
 .gridWrapper :global(.ag-header-cell .ag-sort-order) {
   display: none;
 }
+
+.row {
+  cursor: pointer;
+}

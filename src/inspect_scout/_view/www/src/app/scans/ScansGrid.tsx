@@ -206,6 +206,7 @@ export const ScansGrid: FC = () => {
         onStateUpdated={(e: StateUpdatedEvent<ScanRow>) => {
           setGridState(GRID_STATE_NAME, e.state);
         }}
+        rowClass={styles.row}
         onRowClicked={(e: RowClickedEvent<ScanRow>) => {
           if (e.data) {
             void navigate(`/scan/${e.data.relativeLocation}`);

@@ -23186,11 +23186,11 @@ const resolveBase64 = (value2) => {
 };
 const rootControl = "_rootControl_88dfy_1";
 const segment = "_segment_88dfy_9";
-const selected$1 = "_selected_88dfy_9";
+const selected$2 = "_selected_88dfy_9";
 const styles$D = {
   rootControl,
   segment,
-  selected: selected$1
+  selected: selected$2
 };
 const SegmentedControl = ({
   segments,
@@ -23999,12 +23999,12 @@ const MoreToggle = ({
 ExpandablePanel.displayName = "ExpandablePanel";
 const labeledValueLabel = "_labeledValueLabel_1poe7_1";
 const labeledValue = "_labeledValue_1poe7_1";
-const row$1 = "_row_1poe7_10";
+const row$2 = "_row_1poe7_10";
 const column = "_column_1poe7_14";
 const styles$y = {
   labeledValueLabel,
   labeledValue,
-  row: row$1,
+  row: row$2,
   column
 };
 const LabeledValue = ({
@@ -109363,29 +109363,49 @@ const container$3 = "_container_1quph_1";
 const styles$8 = {
   container: container$3
 };
-const row = "_row_1nvas_1";
+const row$1 = "_row_1nvas_1";
 const disabled = "_disabled_1nvas_14";
 const value = "_value_1nvas_22";
 const explanation = "_explanation_1nvas_26";
+const selected$1 = "_selected_1nvas_32";
 const link = "_link_1nvas_36";
 const styles$7 = {
-  row,
+  row: row$1,
   disabled,
   value,
   explanation,
+  selected: selected$1,
   link
 };
 const ScanResultsRow$1 = ({ index, entry: entry2 }) => {
   const params = useParams();
   const relativePath = getRelativePathFromParams(params);
+  const setSelectedScanResult = useStore(
+    (state) => state.setSelectedScanResult
+  );
+  const selectedScanResult = useStore((state) => state.selectedScanResult);
   const scanResultUrl = scanResultRoute(relativePath, entry2.uuid);
   const isNavigable = entry2.uuid !== void 0;
-  const grid2 = /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.row, !isNavigable ? styles$7.disabled : ""), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.id, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Identifier, { preview: entry2 }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.explanation, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: entry2.explanation }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.value, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Value, { preview: entry2 }) })
-  ] });
-  return isNavigable ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: scanResultUrl, className: clsx(styles$7.link), children: grid2 }) : grid2;
+  const grid2 = /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: clsx(
+        styles$7.row,
+        !isNavigable ? styles$7.disabled : "",
+        selectedScanResult === entry2.uuid ? styles$7.selected : ""
+      ),
+      onClick: () => {
+        setSelectedScanResult(entry2.uuid);
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.id, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Identifier, { preview: entry2 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.explanation, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: entry2.explanation }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.value, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Value, { preview: entry2 }) })
+      ]
+    }
+  );
+  return isNavigable ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: scanResultUrl, className: clsx(styles$7.link), onClick: () => {
+  }, children: grid2 }) : grid2;
 };
 const Identifier = ({ preview }) => {
   if (preview.type === "transcript") {
@@ -109810,9 +109830,11 @@ const ScanResultPanel = () => {
     ] })
   ] });
 };
-const gridWrapper = "_gridWrapper_1hzqe_1";
+const gridWrapper = "_gridWrapper_1o0hu_1";
+const row = "_row_1o0hu_11";
 const styles = {
-  gridWrapper
+  gridWrapper,
+  row
 };
 ModuleRegistry.registerModules([AllCommunityModule]);
 const GRID_STATE_NAME = "ScansGrid";
@@ -109960,6 +109982,7 @@ const ScansGrid = () => {
       onStateUpdated: (e) => {
         setGridState(GRID_STATE_NAME, e.state);
       },
+      rowClass: styles.row,
       onRowClicked: (e) => {
         if (e.data) {
           void navigate(`/scan/${e.data.relativeLocation}`);

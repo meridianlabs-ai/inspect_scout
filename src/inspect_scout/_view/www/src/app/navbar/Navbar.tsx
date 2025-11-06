@@ -28,6 +28,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
 
   const params = useParams<{ "*": string }>();
   const currentPath = getRelativePathFromParams(params);
+  const singleFileMode = useStore((state) => state.singleFileMode);
 
   const pathContainerRef = useRef<HTMLDivElement>(null);
 
@@ -105,10 +106,10 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
                       className={clsx(
                         styles.pathLink,
                         "breadcrumb-item",
-                        isLast ? "active" : undefined
+                        isLast && !singleFileMode ? "active" : undefined
                       )}
                     >
-                      {segment.url ? (
+                      {segment.url && !singleFileMode ? (
                         <Link to={segment.url}>{segment.text}</Link>
                       ) : (
                         <span className={clsx(styles.pathSegment)}>

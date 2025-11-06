@@ -23446,6 +23446,7 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
   const baseResultsName = basename(resultsDir || "");
   const params = useParams();
   const currentPath = getRelativePathFromParams(params);
+  const singleFileMode = useStore((state) => state.singleFileMode);
   const pathContainerRef = reactExports.useRef(null);
   const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
   const backUrl = scanResultUuid ? scanRoute(scanPath) : scansRoute(dirname(currentPath || ""));
@@ -23506,9 +23507,9 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
                   className: clsx(
                     styles$F.pathLink,
                     "breadcrumb-item",
-                    isLast ? "active" : void 0
+                    isLast && !singleFileMode ? "active" : void 0
                   ),
-                  children: segment2.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$F.pathSegment), children: segment2.text })
+                  children: segment2.url && !singleFileMode ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$F.pathSegment), children: segment2.text })
                 }
               )
             ] }, index);
@@ -52188,13 +52189,11 @@ const ResultPanel = () => {
 const ScanResultHeader = () => {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Scan Result Header" });
 };
-const root$2 = "_root_1n97s_1";
-const singleFileMode = "_singleFileMode_1n97s_7";
-const tabSet$1 = "_tabSet_1n97s_17";
-const tabControl$1 = "_tabControl_1n97s_23";
+const root$2 = "_root_1xyi1_1";
+const tabSet$1 = "_tabSet_1xyi1_13";
+const tabControl$1 = "_tabControl_1xyi1_19";
 const styles$f = {
   root: root$2,
-  singleFileMode,
   tabSet: tabSet$1,
   tabControl: tabControl$1
 };
@@ -52212,106 +52211,95 @@ const ScanResultPanel = () => {
   const params = useParams();
   const relativePath = getRelativePathFromParams(params);
   const { scanResultUuid } = parseScanResultPath(relativePath);
-  const singleFileMode2 = useStore((state) => state.singleFileMode);
   const loading = useStore((state) => state.loading);
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
   const scanData = useSelectedResultsRow(scanResultUuid);
-  console.log({ singleFileMode: singleFileMode2 });
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      className: clsx(
-        styles$f.root,
-        singleFileMode2 ? styles$f.singleFileMode : void 0
-      ),
-      children: [
-        singleFileMode2 || /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultHeader, {}),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          TabSet,
-          {
-            id: "scan-result-tabs",
-            type: "pills",
-            tabPanelsClassName: clsx(styles$f.tabSet),
-            tabControlsClassName: clsx(styles$f.tabControl),
-            className: clsx(styles$f.tabs),
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                TabPanel,
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$f.root), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultHeader, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      TabSet,
+      {
+        id: "scan-result-tabs",
+        type: "pills",
+        tabPanelsClassName: clsx(styles$f.tabSet),
+        tabControlsClassName: clsx(styles$f.tabControl),
+        className: clsx(styles$f.tabs),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TabPanel,
+            {
+              id: kTabIdResult,
+              selected: selectedTab === kTabIdResult || selectedTab === void 0,
+              title: "Results",
+              onSelected: () => {
+                setSelectedResultTab(kTabIdResult);
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(ResultPanel, {})
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TabPanel,
+            {
+              id: kTabIdInput,
+              selected: selectedTab === kTabIdInput,
+              title: "Input",
+              onSelected: () => {
+                setSelectedResultTab(kTabIdInput);
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(InputPanel, {})
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TabPanel,
+            {
+              id: kTabIdTranscript,
+              selected: selectedTab === kTabIdTranscript,
+              title: "Transcript",
+              onSelected: () => {
+                setSelectedResultTab(kTabIdTranscript);
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(TranscriptPanel, {})
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TabPanel,
+            {
+              id: kTabIdInfo$1,
+              selected: selectedTab === kTabIdInfo$1,
+              title: "Info",
+              onSelected: () => {
+                setSelectedResultTab(kTabIdInfo$1);
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(InfoPanel, { scannerData: scanData })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TabPanel,
+            {
+              id: kTabIdJson$1,
+              selected: selectedTab === kTabIdJson$1,
+              title: "JSON",
+              onSelected: () => {
+                setSelectedResultTab(kTabIdJson$1);
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                JSONPanel,
                 {
-                  id: kTabIdResult,
-                  selected: selectedTab === kTabIdResult || selectedTab === void 0,
-                  title: "Results",
-                  onSelected: () => {
-                    setSelectedResultTab(kTabIdResult);
-                  },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(ResultPanel, {})
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                TabPanel,
-                {
-                  id: kTabIdInput,
-                  selected: selectedTab === kTabIdInput,
-                  title: "Input",
-                  onSelected: () => {
-                    setSelectedResultTab(kTabIdInput);
-                  },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(InputPanel, {})
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                TabPanel,
-                {
-                  id: kTabIdTranscript,
-                  selected: selectedTab === kTabIdTranscript,
-                  title: "Transcript",
-                  onSelected: () => {
-                    setSelectedResultTab(kTabIdTranscript);
-                  },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(TranscriptPanel, {})
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                TabPanel,
-                {
-                  id: kTabIdInfo$1,
-                  selected: selectedTab === kTabIdInfo$1,
-                  title: "Info",
-                  onSelected: () => {
-                    setSelectedResultTab(kTabIdInfo$1);
-                  },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(InfoPanel, { scannerData: scanData })
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                TabPanel,
-                {
-                  id: kTabIdJson$1,
-                  selected: selectedTab === kTabIdJson$1,
-                  title: "JSON",
-                  onSelected: () => {
-                    setSelectedResultTab(kTabIdJson$1);
-                  },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    JSONPanel,
-                    {
-                      id: "scan-result-json-contents",
-                      data: scanData,
-                      simple: true,
-                      className: styles$f.json
-                    }
-                  )
+                  id: "scan-result-json-contents",
+                  data: scanData,
+                  simple: true,
+                  className: styles$f.json
                 }
               )
-            ]
-          }
-        )
-      ]
-    }
-  );
+            }
+          )
+        ]
+      }
+    )
+  ] });
 };
 const ExtendedFindContext = reactExports.createContext(null);
 const useExtendedFind = () => {
@@ -110217,10 +110205,9 @@ const ScannerPanelTitle = () => {
 const ScannerPanel = () => {
   useServerScans();
   useServerScanner();
-  const singleFileMode2 = useStore((state) => state.singleFileMode);
   const loading = useStore((state) => state.loading);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$d.root), children: [
-    singleFileMode2 || /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScannerPanelTitle, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ExtendedFindProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(ScannerPanelBody, {}) })

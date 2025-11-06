@@ -657,29 +657,25 @@ a._citationLink_1ggvf_9:hover {
 ._preCompact_seqs2_15 {
   margin-bottom: 0;
 }
-._root_1n97s_1 {
+._root_1xyi1_1 {
   height: 100vh;
   display: grid;
   grid-template-rows: max-content max-content max-content max-content 1fr;
 }
 
-._root_1n97s_1._singleFileMode_1n97s_7 {
-  grid-template-rows: max-content max-content max-content 1fr;
-}
-
-._scroller_1n97s_11 {
+._scroller_1xyi1_7 {
   height: 100%;
   width: 100%;
   overflow-y: auto;
 }
 
-._tabSet_1n97s_17 {
+._tabSet_1xyi1_13 {
   max-height: 100%;
   border-top: solid 1px var(--bs-border-color);
   overflow-y: auto;
 }
 
-._tabControl_1n97s_23 {
+._tabControl_1xyi1_19 {
   margin: 0.5rem;
 }
 ._gridWrapper_1o0hu_1 {

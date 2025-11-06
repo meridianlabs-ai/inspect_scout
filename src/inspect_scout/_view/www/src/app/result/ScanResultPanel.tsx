@@ -35,7 +35,6 @@ export const ScanResultPanel: FC = () => {
   const relativePath = getRelativePathFromParams(params);
   const { scanResultUuid } = parseScanResultPath(relativePath);
 
-  const singleFileMode = useStore((state) => state.singleFileMode);
   const loading = useStore((state) => state.loading);
 
   const selectedTab = useStore((state) => state.selectedResultTab);
@@ -43,13 +42,8 @@ export const ScanResultPanel: FC = () => {
   const scanData = useSelectedResultsRow(scanResultUuid);
 
   return (
-    <div
-      className={clsx(
-        styles.root,
-        singleFileMode ? styles.singleFileMode : undefined
-      )}
-    >
-      {singleFileMode || <Navbar />}
+    <div className={clsx(styles.root)}>
+      <Navbar />
       <ActivityBar animating={!!loading} />
       <ScanResultHeader />
       <TabSet

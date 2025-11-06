@@ -19,7 +19,7 @@ The `llm_scanner()` provides a core implementation of an LLM-based
 ## Basic Usage
 
 Prompting and parsing several common answer types are supported. Here is
-simple example of using `llm_scanner()` for a boolean answer:
+a simple example of using `llm_scanner()` for a boolean answer:
 
 ``` python
 from inspect_scout import Scanner, Transcript, llm_scanner, scanner
@@ -194,8 +194,8 @@ The `Result` object returned from the scanner will consist of:
 ## Content Filtering
 
 Transcript messages are included within the prompt template subject to a
-`ContentFilter` passed to `llm_scanner()`. The content filter includes
-the following fields:
+`ContentPreprocessor` passed to `llm_scanner()`. The content filter
+includes the following fields:
 
 |  |  |
 |----|----|
@@ -204,5 +204,5 @@ the following fields:
 | `exclude_reasoning` | Exclude reasoning content (defaults to `False`) |
 | `exclude_tool_usage` | Excluding tool calls and output (defaults to `False`) |
 
-The default `ContentFilter` removes system messages and does no other
-transformation.
+The default `ContentPreprocessor` removes system messages and does no
+other transformation.

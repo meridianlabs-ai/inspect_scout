@@ -206,7 +206,7 @@ result = await get_model().generate(
 ```
 
 The `messages_as_str()` function will by default remove system messages
-from the list. See `ContentFilter` for other available options.
+from the list. See `ContentPreprocessor` for other available options.
 
 ## Event Scanners
 

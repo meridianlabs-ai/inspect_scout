@@ -321,7 +321,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="basic-usage" class="level2">
 <h2 class="anchored" data-anchor-id="basic-usage">Basic Usage</h2>
-<p>Prompting and parsing several common answer types are supported. Here is simple example of using <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> for a boolean answer:</p>
+<p>Prompting and parsing several common answer types are supported. Here is a simple example of using <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> for a boolean answer:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Scanner, Transcript, llm_scanner, scanner</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
@@ -534,7 +534,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="content-filtering" class="level2">
 <h2 class="anchored" data-anchor-id="content-filtering">Content Filtering</h2>
-<p>Transcript messages are included within the prompt template subject to a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#contentfilter">ContentFilter</a></span> passed to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>. The content filter includes the following fields:</p>
+<p>Transcript messages are included within the prompt template subject to a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#contentpreprocessor">ContentPreprocessor</a></span> passed to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>. The content filter includes the following fields:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 35%">
@@ -559,7 +559,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<p>The default <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#contentfilter">ContentFilter</a></span> removes system messages and does no other transformation.</p>
+<p>The default <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#contentpreprocessor">ContentPreprocessor</a></span> removes system messages and does no other transformation.</p>
 
 
 </section>

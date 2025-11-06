@@ -1,28 +1,17 @@
-import { FC, useEffect } from "react";
+import { FC } from "react";
 
 import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { useStore } from "../../state/store";
+import { useServerScans } from "../hooks";
 import { Navbar } from "../navbar/Navbar";
 
 import { ScanJobGrid } from "./ScanJobGrid";
 
 export const ScanJobsPanel: FC = () => {
-  const setScans = useStore((state) => state.setScans);
-  const setResultsDir = useStore((state) => state.setResultsDir);
-  const api = useStore((state) => state.api);
   const loading = useStore((state) => state.loading);
 
-  useEffect(() => {
-    const fetchScans = async () => {
-      const scansInfo = await api?.getScans();
-      if (scansInfo) {
-        setResultsDir(scansInfo.results_dir);
-        setScans(scansInfo.scans);
-      }
-    };
-    void fetchScans();
-  }, [api, setScans, setResultsDir]);
+  useServerScans();
 
   return (
     <>

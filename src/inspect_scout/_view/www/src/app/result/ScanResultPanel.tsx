@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { FC, useEffect } from "react";
+import { FC } from "react";
 import { useParams } from "react-router-dom";
 
 import { ActivityBar } from "../../components/ActivityBar";
@@ -10,6 +10,7 @@ import {
   parseScanResultPath,
 } from "../../router/url";
 import { useStore } from "../../state/store";
+import { useServerScans, useServerScanner } from "../hooks";
 import { Navbar } from "../navbar/Navbar";
 
 import { useSelectedResultsRow } from "./hooks";
@@ -27,49 +28,15 @@ const kTabIdJson = "JSON";
 const kTabIdTranscript = "transcript";
 
 export const ScanResultPanel: FC = () => {
+  useServerScans();
+  useServerScanner();
+
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
-  const { scanPath, scanResultUuid } = parseScanResultPath(relativePath);
+  const { scanResultUuid } = parseScanResultPath(relativePath);
 
   const singleFileMode = useStore((state) => state.singleFileMode);
   const loading = useStore((state) => state.loading);
-
-  const resultsDir = useStore((state) => state.resultsDir);
-  const setResultsDir = useStore((state) => state.setResultsDir);
-
-  const setScans = useStore((state) => state.setScans);
-  const api = useStore((state) => state.api);
-
-  const selectedScan = useStore((state) => state.selectedResults);
-  const setSelectedScan = useStore((state) => state.setSelectedResults);
-
-  useEffect(() => {
-    const fetchScans = async () => {
-      if (resultsDir === undefined) {
-        const scansInfo = await api?.getScans();
-        if (scansInfo) {
-          setResultsDir(scansInfo.results_dir);
-          setScans(scansInfo.scans);
-        }
-      }
-
-      if (!selectedScan) {
-        const scansInfo = await api?.getScan(scanPath);
-        if (scansInfo) {
-          setSelectedScan(scansInfo);
-        }
-      }
-    };
-    void fetchScans();
-  }, [
-    resultsDir,
-    relativePath,
-    api,
-    selectedScan,
-    setSelectedScan,
-    setResultsDir,
-    setScans,
-  ]);
 
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);

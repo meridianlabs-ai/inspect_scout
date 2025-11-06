@@ -5,6 +5,7 @@ from inspect_ai._util.json import to_json_str_safe
 from inspect_ai.event import Event
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 
@@ -27,6 +28,9 @@ class Reference(BaseModel):
 
 class Result(BaseModel):
     """Scan result."""
+
+    uuid: str | None = Field(default_factory=uuid)
+    """Unique identifer for scan result."""
 
     value: JsonValue
     """Scan value."""
@@ -94,6 +98,7 @@ class ResultReport(BaseModel):
 
         if self.result is not None:
             # result
+            columns["uuid"] = self.result.uuid
             if isinstance(self.result.value, str | bool | int | float | None):
                 columns["value"] = self.result.value
                 if isinstance(self.result.value, str):
@@ -128,6 +133,7 @@ class ResultReport(BaseModel):
             columns["scan_error"] = None
             columns["scan_error_traceback"] = None
         elif self.error is not None:
+            columns["uuid"] = uuid()
             columns["value"] = None
             columns["value_type"] = "null"
             columns["answer"] = None

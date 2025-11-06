@@ -117,6 +117,7 @@ The data frame includes the following fields (note that some fields included emb
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |
 | `input_ids` | list\[str\]<br/><small>JSON</small> | Unique ids of scanner input. |
 | `input` | ScannerInput<br/><small>JSON</small> | Scanner input value. |
+| `uuid` | str | Globally unique id for scan result. |
 | `value` | JsonValue<br/><small>JSON</small> | Value returned by scanner. |
 | `value_type` | string \| boolean \| number \| array \| object \| null | Type of value returned by scanner. |
 | `answer` | str | Answer extracted from scanner generation. |

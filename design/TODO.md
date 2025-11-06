@@ -6,6 +6,8 @@
 - General performance
 
 
+- Use generate cache?
+
 ## LLM Scanner
 
 - Chunking of long transcripts into multiple pieces

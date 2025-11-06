@@ -1,18 +1,14 @@
 # mypy: disable-error-code="unused-ignore"
-import json
+
 from pathlib import Path
+from typing import Any
 
 import yaml
-from inspect_ai.model import GenerateConfig, Model, ResponseSchema, get_model
-from inspect_ai.util import json_schema
-from jinja2 import Environment
 from pydantic import BaseModel, RootModel
 
-from .._scanner.extract import messages_as_str
-from .._scanner.result import Result
+from .._llm_scanner.llm_structured_scanner import llm_structured_scanner
 from .._scanner.scanner import Scanner, scanner
 from .._transcript.types import Transcript
-from .._util.jinja import StrictOnUseUndefined
 from .template import template  # type: ignore
 
 
@@ -32,60 +28,18 @@ class JsonResult(RootModel[dict[str, CategoryResult]]):
 
 
 @scanner(messages="all")
-def complex_scanner(
-    model: str | Model | None = None,
-) -> Scanner[Transcript]:
-    config = GenerateConfig(
-        response_schema=ResponseSchema(
-            name="JsonResult", json_schema=json_schema(JsonResult)
-        )
-    )
-
-    async def execute(transcript: Transcript) -> Result:
-        messages_str, extract_references = await messages_as_str(
-            transcript.messages, include_ids=True
-        )
-
-        model_output = await get_model(model).generate(
-            _render_prompt(messages_str, transcript), config=config
-        )
-
-        try:
-            value = json.loads(model_output.completion)
-        except json.JSONDecodeError:
-            print(f"JSONDecodeError decoding '{model_output.completion}'")
-            raise
-
-        # TODO: This isn't quite right yet, but...
-        return Result(
-            value=value,
-            answer=model_output.completion,
-            references=extract_references(model_output.completion),
-        )
-
-    return execute
-
-
-def _render_prompt(messages: str, transcript: Transcript) -> str:
+def complex_scanner() -> Scanner[Transcript]:
     path = Path(__file__).parent / "cheating.yml"
     with path.open("r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh) or {}
+        yaml_variables = yaml.safe_load(fh) or {}
 
-    rendered = (
-        Environment(undefined=StrictOnUseUndefined)
-        .from_string(template)
-        .render(
-            sample_name=transcript.metadata["id"] or "unknown",
-            user_request=transcript.metadata["input"],
-            solution="HACK_SOLUTION",
-            total_n_messages=len(transcript.messages),
-            target_answer=transcript.metadata["target"],
-            final_submission=(
-                transcript.messages[-1].text if transcript.messages else "unknown"
-            ),
-            task_success=transcript.score,
-            transcript=messages,
-            **data,
-        )
+    def extra_variables(transcript: Transcript) -> dict[str, Any]:
+        return yaml_variables | {
+            "solution": f"HACK_SOLUTION for {transcript.id}",
+        }
+
+    return llm_structured_scanner(
+        JsonResult,
+        template,
+        extra_variables=extra_variables,
     )
-    return rendered

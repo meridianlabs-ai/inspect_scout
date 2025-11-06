@@ -23,7 +23,7 @@ def llm_scanner(
     question: str | Callable[[Transcript], Awaitable[str]],
     answer: Literal["boolean", "numeric", "string"] | list[str] | MultiLabels,
     template: str | None = None,
-    messages: ContentPreprocessor | None = None,
+    content_preprocessor: ContentPreprocessor | None = None,
     model: str | Model | None = None,
     name: str | None = None,
 ) -> Scanner[Transcript]:
@@ -47,7 +47,7 @@ def llm_scanner(
               - {{ messages }} (transcript message history as string)
               - {{ answer_prompt }} (prompt the model for a specific type of answer and explanation).
               - {{ answer_format }} (instructions on formatting for value extraction)
-        messages: Filter conversation messages before analysis.
+        content_preprocessor: Filter conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls.
             Defaults to filtering system messages.
         model: Optional model specification. Can be a model
@@ -66,7 +66,9 @@ def llm_scanner(
 
     async def scan(transcript: Transcript) -> Result:
         messages_str, extract_references = await messages_as_str(
-            transcript.messages, content_preprocessor=messages, include_ids=True
+            transcript.messages,
+            content_preprocessor=content_preprocessor,
+            include_ids=True,
         )
 
         resolved_prompt = await render_scanner_prompt(

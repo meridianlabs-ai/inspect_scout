@@ -742,8 +742,8 @@ function requireReact_production() {
   };
   react_production.useDebugValue = function() {
   };
-  react_production.useDeferredValue = function(value, initialValue) {
-    return ReactSharedInternals.H.useDeferredValue(value, initialValue);
+  react_production.useDeferredValue = function(value2, initialValue) {
+    return ReactSharedInternals.H.useDeferredValue(value2, initialValue);
   };
   react_production.useEffect = function(create2, deps) {
     return ReactSharedInternals.H.useEffect(create2, deps);
@@ -1179,10 +1179,10 @@ function requireReactDomClient_production() {
   function pop2(cursor) {
     0 > index || (cursor.current = valueStack[index], valueStack[index] = null, index--);
   }
-  function push2(cursor, value) {
+  function push2(cursor, value2) {
     index++;
     valueStack[index] = cursor.current;
-    cursor.current = value;
+    cursor.current = value2;
   }
   var contextStackCursor = createCursor(null), contextFiberStackCursor = createCursor(null), rootInstanceStackCursor = createCursor(null), hostTransitionProviderCursor = createCursor(null);
   function pushHostContainer(fiber, nextRootInstance) {
@@ -1675,11 +1675,11 @@ function requireReactDomClient_production() {
     illegalAttributeNameCache[attributeName] = true;
     return false;
   }
-  function setValueForAttribute(node, name2, value) {
+  function setValueForAttribute(node, name2, value2) {
     if (isAttributeNameSafe(name2))
-      if (null === value) node.removeAttribute(name2);
+      if (null === value2) node.removeAttribute(name2);
       else {
-        switch (typeof value) {
+        switch (typeof value2) {
           case "undefined":
           case "function":
           case "symbol":
@@ -1692,13 +1692,13 @@ function requireReactDomClient_production() {
               return;
             }
         }
-        node.setAttribute(name2, "" + value);
+        node.setAttribute(name2, "" + value2);
       }
   }
-  function setValueForKnownAttribute(node, name2, value) {
-    if (null === value) node.removeAttribute(name2);
+  function setValueForKnownAttribute(node, name2, value2) {
+    if (null === value2) node.removeAttribute(name2);
     else {
-      switch (typeof value) {
+      switch (typeof value2) {
         case "undefined":
         case "function":
         case "symbol":
@@ -1706,13 +1706,13 @@ function requireReactDomClient_production() {
           node.removeAttribute(name2);
           return;
       }
-      node.setAttribute(name2, "" + value);
+      node.setAttribute(name2, "" + value2);
     }
   }
-  function setValueForNamespacedAttribute(node, namespace, name2, value) {
-    if (null === value) node.removeAttribute(name2);
+  function setValueForNamespacedAttribute(node, namespace, name2, value2) {
+    if (null === value2) node.removeAttribute(name2);
     else {
-      switch (typeof value) {
+      switch (typeof value2) {
         case "undefined":
         case "function":
         case "symbol":
@@ -1720,19 +1720,19 @@ function requireReactDomClient_production() {
           node.removeAttribute(name2);
           return;
       }
-      node.setAttributeNS(namespace, name2, "" + value);
+      node.setAttributeNS(namespace, name2, "" + value2);
     }
   }
-  function getToStringValue(value) {
-    switch (typeof value) {
+  function getToStringValue(value2) {
+    switch (typeof value2) {
       case "bigint":
       case "boolean":
       case "number":
       case "string":
       case "undefined":
-        return value;
+        return value2;
       case "object":
-        return value;
+        return value2;
       default:
         return "";
     }
@@ -1753,9 +1753,9 @@ function requireReactDomClient_production() {
         get: function() {
           return get2.call(this);
         },
-        set: function(value) {
-          currentValue = "" + value;
-          set3.call(this, value);
+        set: function(value2) {
+          currentValue = "" + value2;
+          set3.call(this, value2);
         }
       });
       Object.defineProperty(node, valueField, {
@@ -1765,8 +1765,8 @@ function requireReactDomClient_production() {
         getValue: function() {
           return currentValue;
         },
-        setValue: function(value) {
-          currentValue = "" + value;
+        setValue: function(value2) {
+          currentValue = "" + value2;
         },
         stopTracking: function() {
           node._valueTracker = null;
@@ -1790,9 +1790,9 @@ function requireReactDomClient_production() {
     var tracker = node._valueTracker;
     if (!tracker) return true;
     var lastValue = tracker.getValue();
-    var value = "";
-    node && (value = isCheckable(node) ? node.checked ? "true" : "false" : node.value);
-    node = value;
+    var value2 = "";
+    node && (value2 = isCheckable(node) ? node.checked ? "true" : "false" : node.value);
+    node = value2;
     return node !== lastValue ? (tracker.setValue(node), true) : false;
   }
   function getActiveElement(doc) {
@@ -1805,41 +1805,41 @@ function requireReactDomClient_production() {
     }
   }
   var escapeSelectorAttributeValueInsideDoubleQuotesRegex = /[\n"\\]/g;
-  function escapeSelectorAttributeValueInsideDoubleQuotes(value) {
-    return value.replace(
+  function escapeSelectorAttributeValueInsideDoubleQuotes(value2) {
+    return value2.replace(
       escapeSelectorAttributeValueInsideDoubleQuotesRegex,
       function(ch) {
         return "\\" + ch.charCodeAt(0).toString(16) + " ";
       }
     );
   }
-  function updateInput(element, value, defaultValue, lastDefaultValue, checked, defaultChecked, type, name2) {
+  function updateInput(element, value2, defaultValue, lastDefaultValue, checked, defaultChecked, type, name2) {
     element.name = "";
     null != type && "function" !== typeof type && "symbol" !== typeof type && "boolean" !== typeof type ? element.type = type : element.removeAttribute("type");
-    if (null != value)
+    if (null != value2)
       if ("number" === type) {
-        if (0 === value && "" === element.value || element.value != value)
-          element.value = "" + getToStringValue(value);
+        if (0 === value2 && "" === element.value || element.value != value2)
+          element.value = "" + getToStringValue(value2);
       } else
-        element.value !== "" + getToStringValue(value) && (element.value = "" + getToStringValue(value));
+        element.value !== "" + getToStringValue(value2) && (element.value = "" + getToStringValue(value2));
     else
       "submit" !== type && "reset" !== type || element.removeAttribute("value");
-    null != value ? setDefaultValue(element, type, getToStringValue(value)) : null != defaultValue ? setDefaultValue(element, type, getToStringValue(defaultValue)) : null != lastDefaultValue && element.removeAttribute("value");
+    null != value2 ? setDefaultValue(element, type, getToStringValue(value2)) : null != defaultValue ? setDefaultValue(element, type, getToStringValue(defaultValue)) : null != lastDefaultValue && element.removeAttribute("value");
     null == checked && null != defaultChecked && (element.defaultChecked = !!defaultChecked);
     null != checked && (element.checked = checked && "function" !== typeof checked && "symbol" !== typeof checked);
     null != name2 && "function" !== typeof name2 && "symbol" !== typeof name2 && "boolean" !== typeof name2 ? element.name = "" + getToStringValue(name2) : element.removeAttribute("name");
   }
-  function initInput(element, value, defaultValue, checked, defaultChecked, type, name2, isHydrating2) {
+  function initInput(element, value2, defaultValue, checked, defaultChecked, type, name2, isHydrating2) {
     null != type && "function" !== typeof type && "symbol" !== typeof type && "boolean" !== typeof type && (element.type = type);
-    if (null != value || null != defaultValue) {
-      if (!("submit" !== type && "reset" !== type || void 0 !== value && null !== value)) {
+    if (null != value2 || null != defaultValue) {
+      if (!("submit" !== type && "reset" !== type || void 0 !== value2 && null !== value2)) {
         track(element);
         return;
       }
       defaultValue = null != defaultValue ? "" + getToStringValue(defaultValue) : "";
-      value = null != value ? "" + getToStringValue(value) : defaultValue;
-      isHydrating2 || value === element.value || (element.value = value);
-      element.defaultValue = value;
+      value2 = null != value2 ? "" + getToStringValue(value2) : defaultValue;
+      isHydrating2 || value2 === element.value || (element.value = value2);
+      element.defaultValue = value2;
     }
     checked = null != checked ? checked : defaultChecked;
     checked = "function" !== typeof checked && "symbol" !== typeof checked && !!checked;
@@ -1848,8 +1848,8 @@ function requireReactDomClient_production() {
     null != name2 && "function" !== typeof name2 && "symbol" !== typeof name2 && "boolean" !== typeof name2 && (element.name = name2);
     track(element);
   }
-  function setDefaultValue(node, type, value) {
-    "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value || (node.defaultValue = "" + value);
+  function setDefaultValue(node, type, value2) {
+    "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value2 || (node.defaultValue = "" + value2);
   }
   function updateOptions(node, multiple, propValue, setDefaultSelected) {
     node = node.options;
@@ -1873,15 +1873,15 @@ function requireReactDomClient_production() {
       null !== multiple && (multiple.selected = true);
     }
   }
-  function updateTextarea(element, value, defaultValue) {
-    if (null != value && (value = "" + getToStringValue(value), value !== element.value && (element.value = value), null == defaultValue)) {
-      element.defaultValue !== value && (element.defaultValue = value);
+  function updateTextarea(element, value2, defaultValue) {
+    if (null != value2 && (value2 = "" + getToStringValue(value2), value2 !== element.value && (element.value = value2), null == defaultValue)) {
+      element.defaultValue !== value2 && (element.defaultValue = value2);
       return;
     }
     element.defaultValue = null != defaultValue ? "" + getToStringValue(defaultValue) : "";
   }
-  function initTextarea(element, value, defaultValue, children) {
-    if (null == value) {
+  function initTextarea(element, value2, defaultValue, children) {
+    if (null == value2) {
       if (null != children) {
         if (null != defaultValue) throw Error(formatProdErrorMessage(92));
         if (isArrayImpl(children)) {
@@ -1891,9 +1891,9 @@ function requireReactDomClient_production() {
         defaultValue = children;
       }
       null == defaultValue && (defaultValue = "");
-      value = defaultValue;
+      value2 = defaultValue;
     }
-    defaultValue = getToStringValue(value);
+    defaultValue = getToStringValue(value2);
     element.defaultValue = defaultValue;
     children = element.textContent;
     children === defaultValue && "" !== children && null !== children && (element.value = children);
@@ -1914,9 +1914,9 @@ function requireReactDomClient_production() {
       " "
     )
   );
-  function setValueForStyle(style2, styleName, value) {
+  function setValueForStyle(style2, styleName, value2) {
     var isCustomProperty = 0 === styleName.indexOf("--");
-    null == value || "boolean" === typeof value || "" === value ? isCustomProperty ? style2.setProperty(styleName, "") : "float" === styleName ? style2.cssFloat = "" : style2[styleName] = "" : isCustomProperty ? style2.setProperty(styleName, value) : "number" !== typeof value || 0 === value || unitlessNumbers.has(styleName) ? "float" === styleName ? style2.cssFloat = value : style2[styleName] = ("" + value).trim() : style2[styleName] = value + "px";
+    null == value2 || "boolean" === typeof value2 || "" === value2 ? isCustomProperty ? style2.setProperty(styleName, "") : "float" === styleName ? style2.cssFloat = "" : style2[styleName] = "" : isCustomProperty ? style2.setProperty(styleName, value2) : "number" !== typeof value2 || 0 === value2 || unitlessNumbers.has(styleName) ? "float" === styleName ? style2.cssFloat = value2 : style2[styleName] = ("" + value2).trim() : style2[styleName] = value2 + "px";
   }
   function setValueForStyles(node, styles2, prevStyles) {
     if (null != styles2 && "object" !== typeof styles2)
@@ -2834,20 +2834,20 @@ function requireReactDomClient_production() {
     return mode;
   }
   var CapturedStacks = /* @__PURE__ */ new WeakMap();
-  function createCapturedValueAtFiber(value, source2) {
-    if ("object" === typeof value && null !== value) {
-      var existing = CapturedStacks.get(value);
+  function createCapturedValueAtFiber(value2, source2) {
+    if ("object" === typeof value2 && null !== value2) {
+      var existing = CapturedStacks.get(value2);
       if (void 0 !== existing) return existing;
       source2 = {
-        value,
+        value: value2,
         source: source2,
         stack: getStackByFiberInDevAndProd(source2)
       };
-      CapturedStacks.set(value, source2);
+      CapturedStacks.set(value2, source2);
       return source2;
     }
     return {
-      value,
+      value: value2,
       source: source2,
       stack: getStackByFiberInDevAndProd(source2)
     };
@@ -3144,15 +3144,15 @@ function requireReactDomClient_production() {
     return readContextForConsumer(consumer, context);
   }
   function readContextForConsumer(consumer, context) {
-    var value = context._currentValue;
-    context = { context, memoizedValue: value, next: null };
+    var value2 = context._currentValue;
+    context = { context, memoizedValue: value2, next: null };
     if (null === lastContextDependency) {
       if (null === consumer) throw Error(formatProdErrorMessage(308));
       lastContextDependency = context;
       consumer.dependencies = { lanes: 0, firstContext: context };
       consumer.flags |= 524288;
     } else lastContextDependency = lastContextDependency.next = context;
-    return value;
+    return value2;
   }
   var AbortControllerLocal = "undefined" !== typeof AbortController ? AbortController : function() {
     var listeners = [], signal = this.signal = {
@@ -4712,21 +4712,21 @@ function requireReactDomClient_production() {
     hook.memoizedState = [prevState, deps];
     return prevState;
   }
-  function mountDeferredValueImpl(hook, value, initialValue) {
+  function mountDeferredValueImpl(hook, value2, initialValue) {
     if (void 0 === initialValue || 0 !== (renderLanes & 1073741824) && 0 === (workInProgressRootRenderLanes & 261930))
-      return hook.memoizedState = value;
+      return hook.memoizedState = value2;
     hook.memoizedState = initialValue;
     hook = requestDeferredLane();
     currentlyRenderingFiber.lanes |= hook;
     workInProgressRootSkippedLanes |= hook;
     return initialValue;
   }
-  function updateDeferredValueImpl(hook, prevValue, value, initialValue) {
-    if (objectIs(value, prevValue)) return value;
+  function updateDeferredValueImpl(hook, prevValue, value2, initialValue) {
+    if (objectIs(value2, prevValue)) return value2;
     if (null !== currentTreeHiddenStackCursor.current)
-      return hook = mountDeferredValueImpl(hook, value, initialValue), objectIs(hook, prevValue) || (didReceiveUpdate = true), hook;
+      return hook = mountDeferredValueImpl(hook, value2, initialValue), objectIs(hook, prevValue) || (didReceiveUpdate = true), hook;
     if (0 === (renderLanes & 42) || 0 !== (renderLanes & 1073741824) && 0 === (workInProgressRootRenderLanes & 261930))
-      return didReceiveUpdate = true, hook.memoizedState = value;
+      return didReceiveUpdate = true, hook.memoizedState = value2;
     hook = requestDeferredLane();
     currentlyRenderingFiber.lanes |= hook;
     workInProgressRootSkippedLanes |= hook;
@@ -5051,9 +5051,9 @@ function requireReactDomClient_production() {
       return [initialState.memoizedState, dispatch];
     },
     useDebugValue: mountDebugValue,
-    useDeferredValue: function(value, initialValue) {
+    useDeferredValue: function(value2, initialValue) {
       var hook = mountWorkInProgressHook();
-      return mountDeferredValueImpl(hook, value, initialValue);
+      return mountDeferredValueImpl(hook, value2, initialValue);
     },
     useTransition: function() {
       var stateHook = mountStateImpl(false);
@@ -5169,12 +5169,12 @@ function requireReactDomClient_production() {
       return updateReducer(basicStateReducer);
     },
     useDebugValue: mountDebugValue,
-    useDeferredValue: function(value, initialValue) {
+    useDeferredValue: function(value2, initialValue) {
       var hook = updateWorkInProgressHook();
       return updateDeferredValueImpl(
         hook,
         currentHook.memoizedState,
-        value,
+        value2,
         initialValue
       );
     },
@@ -5214,12 +5214,12 @@ function requireReactDomClient_production() {
       return rerenderReducer(basicStateReducer);
     },
     useDebugValue: mountDebugValue,
-    useDeferredValue: function(value, initialValue) {
+    useDeferredValue: function(value2, initialValue) {
       var hook = updateWorkInProgressHook();
-      return null === currentHook ? mountDeferredValueImpl(hook, value, initialValue) : updateDeferredValueImpl(
+      return null === currentHook ? mountDeferredValueImpl(hook, value2, initialValue) : updateDeferredValueImpl(
         hook,
         currentHook.memoizedState,
-        value,
+        value2,
         initialValue
       );
     },
@@ -5371,9 +5371,9 @@ function requireReactDomClient_production() {
       });
     });
   }
-  function throwException(root3, returnFiber, sourceFiber, value, rootRenderLanes) {
+  function throwException(root3, returnFiber, sourceFiber, value2, rootRenderLanes) {
     sourceFiber.flags |= 32768;
-    if (null !== value && "object" === typeof value && "function" === typeof value.then) {
+    if (null !== value2 && "object" === typeof value2 && "function" === typeof value2.then) {
       returnFiber = sourceFiber.alternate;
       null !== returnFiber && propagateParentContextChanges(
         returnFiber,
@@ -5386,48 +5386,48 @@ function requireReactDomClient_production() {
         switch (sourceFiber.tag) {
           case 31:
           case 13:
-            return null === shellBoundary ? renderDidSuspendDelayIfPossible() : null === sourceFiber.alternate && 0 === workInProgressRootExitStatus && (workInProgressRootExitStatus = 3), sourceFiber.flags &= -257, sourceFiber.flags |= 65536, sourceFiber.lanes = rootRenderLanes, value === noopSuspenseyCommitThenable ? sourceFiber.flags |= 16384 : (returnFiber = sourceFiber.updateQueue, null === returnFiber ? sourceFiber.updateQueue = /* @__PURE__ */ new Set([value]) : returnFiber.add(value), attachPingListener(root3, value, rootRenderLanes)), false;
+            return null === shellBoundary ? renderDidSuspendDelayIfPossible() : null === sourceFiber.alternate && 0 === workInProgressRootExitStatus && (workInProgressRootExitStatus = 3), sourceFiber.flags &= -257, sourceFiber.flags |= 65536, sourceFiber.lanes = rootRenderLanes, value2 === noopSuspenseyCommitThenable ? sourceFiber.flags |= 16384 : (returnFiber = sourceFiber.updateQueue, null === returnFiber ? sourceFiber.updateQueue = /* @__PURE__ */ new Set([value2]) : returnFiber.add(value2), attachPingListener(root3, value2, rootRenderLanes)), false;
           case 22:
-            return sourceFiber.flags |= 65536, value === noopSuspenseyCommitThenable ? sourceFiber.flags |= 16384 : (returnFiber = sourceFiber.updateQueue, null === returnFiber ? (returnFiber = {
+            return sourceFiber.flags |= 65536, value2 === noopSuspenseyCommitThenable ? sourceFiber.flags |= 16384 : (returnFiber = sourceFiber.updateQueue, null === returnFiber ? (returnFiber = {
               transitions: null,
               markerInstances: null,
-              retryQueue: /* @__PURE__ */ new Set([value])
-            }, sourceFiber.updateQueue = returnFiber) : (sourceFiber = returnFiber.retryQueue, null === sourceFiber ? returnFiber.retryQueue = /* @__PURE__ */ new Set([value]) : sourceFiber.add(value)), attachPingListener(root3, value, rootRenderLanes)), false;
+              retryQueue: /* @__PURE__ */ new Set([value2])
+            }, sourceFiber.updateQueue = returnFiber) : (sourceFiber = returnFiber.retryQueue, null === sourceFiber ? returnFiber.retryQueue = /* @__PURE__ */ new Set([value2]) : sourceFiber.add(value2)), attachPingListener(root3, value2, rootRenderLanes)), false;
         }
         throw Error(formatProdErrorMessage(435, sourceFiber.tag));
       }
-      attachPingListener(root3, value, rootRenderLanes);
+      attachPingListener(root3, value2, rootRenderLanes);
       renderDidSuspendDelayIfPossible();
       return false;
     }
     if (isHydrating)
-      return returnFiber = suspenseHandlerStackCursor.current, null !== returnFiber ? (0 === (returnFiber.flags & 65536) && (returnFiber.flags |= 256), returnFiber.flags |= 65536, returnFiber.lanes = rootRenderLanes, value !== HydrationMismatchException && (root3 = Error(formatProdErrorMessage(422), { cause: value }), queueHydrationError(createCapturedValueAtFiber(root3, sourceFiber)))) : (value !== HydrationMismatchException && (returnFiber = Error(formatProdErrorMessage(423), {
-        cause: value
+      return returnFiber = suspenseHandlerStackCursor.current, null !== returnFiber ? (0 === (returnFiber.flags & 65536) && (returnFiber.flags |= 256), returnFiber.flags |= 65536, returnFiber.lanes = rootRenderLanes, value2 !== HydrationMismatchException && (root3 = Error(formatProdErrorMessage(422), { cause: value2 }), queueHydrationError(createCapturedValueAtFiber(root3, sourceFiber)))) : (value2 !== HydrationMismatchException && (returnFiber = Error(formatProdErrorMessage(423), {
+        cause: value2
       }), queueHydrationError(
         createCapturedValueAtFiber(returnFiber, sourceFiber)
-      )), root3 = root3.current.alternate, root3.flags |= 65536, rootRenderLanes &= -rootRenderLanes, root3.lanes |= rootRenderLanes, value = createCapturedValueAtFiber(value, sourceFiber), rootRenderLanes = createRootErrorUpdate(
+      )), root3 = root3.current.alternate, root3.flags |= 65536, rootRenderLanes &= -rootRenderLanes, root3.lanes |= rootRenderLanes, value2 = createCapturedValueAtFiber(value2, sourceFiber), rootRenderLanes = createRootErrorUpdate(
         root3.stateNode,
-        value,
+        value2,
         rootRenderLanes
       ), enqueueCapturedUpdate(root3, rootRenderLanes), 4 !== workInProgressRootExitStatus && (workInProgressRootExitStatus = 2)), false;
-    var wrapperError = Error(formatProdErrorMessage(520), { cause: value });
+    var wrapperError = Error(formatProdErrorMessage(520), { cause: value2 });
     wrapperError = createCapturedValueAtFiber(wrapperError, sourceFiber);
     null === workInProgressRootConcurrentErrors ? workInProgressRootConcurrentErrors = [wrapperError] : workInProgressRootConcurrentErrors.push(wrapperError);
     4 !== workInProgressRootExitStatus && (workInProgressRootExitStatus = 2);
     if (null === returnFiber) return true;
-    value = createCapturedValueAtFiber(value, sourceFiber);
+    value2 = createCapturedValueAtFiber(value2, sourceFiber);
     sourceFiber = returnFiber;
     do {
       switch (sourceFiber.tag) {
         case 3:
-          return sourceFiber.flags |= 65536, root3 = rootRenderLanes & -rootRenderLanes, sourceFiber.lanes |= root3, root3 = createRootErrorUpdate(sourceFiber.stateNode, value, root3), enqueueCapturedUpdate(sourceFiber, root3), false;
+          return sourceFiber.flags |= 65536, root3 = rootRenderLanes & -rootRenderLanes, sourceFiber.lanes |= root3, root3 = createRootErrorUpdate(sourceFiber.stateNode, value2, root3), enqueueCapturedUpdate(sourceFiber, root3), false;
         case 1:
           if (returnFiber = sourceFiber.type, wrapperError = sourceFiber.stateNode, 0 === (sourceFiber.flags & 128) && ("function" === typeof returnFiber.getDerivedStateFromError || null !== wrapperError && "function" === typeof wrapperError.componentDidCatch && (null === legacyErrorBoundariesThatAlreadyFailed || !legacyErrorBoundariesThatAlreadyFailed.has(wrapperError))))
             return sourceFiber.flags |= 65536, rootRenderLanes &= -rootRenderLanes, sourceFiber.lanes |= rootRenderLanes, rootRenderLanes = createClassErrorUpdate(rootRenderLanes), initializeClassErrorUpdate(
               rootRenderLanes,
               root3,
               sourceFiber,
-              value
+              value2
             ), enqueueCapturedUpdate(sourceFiber, rootRenderLanes), false;
       }
       sourceFiber = sourceFiber.return;
@@ -10218,48 +10218,48 @@ function requireReactDomClient_production() {
     clientText = normalizeMarkupForTextOrAttribute(clientText);
     return normalizeMarkupForTextOrAttribute(serverText) === clientText ? true : false;
   }
-  function setProp(domElement, tag, key2, value, props, prevValue) {
+  function setProp(domElement, tag, key2, value2, props, prevValue) {
     switch (key2) {
       case "children":
-        "string" === typeof value ? "body" === tag || "textarea" === tag && "" === value || setTextContent(domElement, value) : ("number" === typeof value || "bigint" === typeof value) && "body" !== tag && setTextContent(domElement, "" + value);
+        "string" === typeof value2 ? "body" === tag || "textarea" === tag && "" === value2 || setTextContent(domElement, value2) : ("number" === typeof value2 || "bigint" === typeof value2) && "body" !== tag && setTextContent(domElement, "" + value2);
         break;
       case "className":
-        setValueForKnownAttribute(domElement, "class", value);
+        setValueForKnownAttribute(domElement, "class", value2);
         break;
       case "tabIndex":
-        setValueForKnownAttribute(domElement, "tabindex", value);
+        setValueForKnownAttribute(domElement, "tabindex", value2);
         break;
       case "dir":
       case "role":
       case "viewBox":
       case "width":
       case "height":
-        setValueForKnownAttribute(domElement, key2, value);
+        setValueForKnownAttribute(domElement, key2, value2);
         break;
       case "style":
-        setValueForStyles(domElement, value, prevValue);
+        setValueForStyles(domElement, value2, prevValue);
         break;
       case "data":
         if ("object" !== tag) {
-          setValueForKnownAttribute(domElement, "data", value);
+          setValueForKnownAttribute(domElement, "data", value2);
           break;
         }
       case "src":
       case "href":
-        if ("" === value && ("a" !== tag || "href" !== key2)) {
+        if ("" === value2 && ("a" !== tag || "href" !== key2)) {
           domElement.removeAttribute(key2);
           break;
         }
-        if (null == value || "function" === typeof value || "symbol" === typeof value || "boolean" === typeof value) {
+        if (null == value2 || "function" === typeof value2 || "symbol" === typeof value2 || "boolean" === typeof value2) {
           domElement.removeAttribute(key2);
           break;
         }
-        value = sanitizeURL("" + value);
-        domElement.setAttribute(key2, value);
+        value2 = sanitizeURL("" + value2);
+        domElement.setAttribute(key2, value2);
         break;
       case "action":
       case "formAction":
-        if ("function" === typeof value) {
+        if ("function" === typeof value2) {
           domElement.setAttribute(
             key2,
             "javascript:throw new Error('A React form was unexpectedly submitted. If you called form.submit() manually, consider using form.requestSubmit() instead. If you\\'re trying to use event.stopPropagation() in a submit event handler, consider also calling event.preventDefault().')"
@@ -10288,27 +10288,27 @@ function requireReactDomClient_production() {
             props,
             null
           )) : (setProp(domElement, tag, "encType", props.encType, props, null), setProp(domElement, tag, "method", props.method, props, null), setProp(domElement, tag, "target", props.target, props, null)));
-        if (null == value || "symbol" === typeof value || "boolean" === typeof value) {
+        if (null == value2 || "symbol" === typeof value2 || "boolean" === typeof value2) {
           domElement.removeAttribute(key2);
           break;
         }
-        value = sanitizeURL("" + value);
-        domElement.setAttribute(key2, value);
+        value2 = sanitizeURL("" + value2);
+        domElement.setAttribute(key2, value2);
         break;
       case "onClick":
-        null != value && (domElement.onclick = noop$1);
+        null != value2 && (domElement.onclick = noop$1);
         break;
       case "onScroll":
-        null != value && listenToNonDelegatedEvent("scroll", domElement);
+        null != value2 && listenToNonDelegatedEvent("scroll", domElement);
         break;
       case "onScrollEnd":
-        null != value && listenToNonDelegatedEvent("scrollend", domElement);
+        null != value2 && listenToNonDelegatedEvent("scrollend", domElement);
         break;
       case "dangerouslySetInnerHTML":
-        if (null != value) {
-          if ("object" !== typeof value || !("__html" in value))
+        if (null != value2) {
+          if ("object" !== typeof value2 || !("__html" in value2))
             throw Error(formatProdErrorMessage(61));
-          key2 = value.__html;
+          key2 = value2.__html;
           if (null != key2) {
             if (null != props.children) throw Error(formatProdErrorMessage(60));
             domElement.innerHTML = key2;
@@ -10316,10 +10316,10 @@ function requireReactDomClient_production() {
         }
         break;
       case "multiple":
-        domElement.multiple = value && "function" !== typeof value && "symbol" !== typeof value;
+        domElement.multiple = value2 && "function" !== typeof value2 && "symbol" !== typeof value2;
         break;
       case "muted":
-        domElement.muted = value && "function" !== typeof value && "symbol" !== typeof value;
+        domElement.muted = value2 && "function" !== typeof value2 && "symbol" !== typeof value2;
         break;
       case "suppressContentEditableWarning":
       case "suppressHydrationWarning":
@@ -10331,11 +10331,11 @@ function requireReactDomClient_production() {
       case "autoFocus":
         break;
       case "xlinkHref":
-        if (null == value || "function" === typeof value || "boolean" === typeof value || "symbol" === typeof value) {
+        if (null == value2 || "function" === typeof value2 || "boolean" === typeof value2 || "symbol" === typeof value2) {
           domElement.removeAttribute("xlink:href");
           break;
         }
-        key2 = sanitizeURL("" + value);
+        key2 = sanitizeURL("" + value2);
         domElement.setAttributeNS(
           "http://www.w3.org/1999/xlink",
           "xlink:href",
@@ -10350,7 +10350,7 @@ function requireReactDomClient_production() {
       case "externalResourcesRequired":
       case "focusable":
       case "preserveAlpha":
-        null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, "" + value) : domElement.removeAttribute(key2);
+        null != value2 && "function" !== typeof value2 && "symbol" !== typeof value2 ? domElement.setAttribute(key2, "" + value2) : domElement.removeAttribute(key2);
         break;
       case "inert":
       case "allowFullScreen":
@@ -10375,33 +10375,33 @@ function requireReactDomClient_production() {
       case "scoped":
       case "seamless":
       case "itemScope":
-        value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, "") : domElement.removeAttribute(key2);
+        value2 && "function" !== typeof value2 && "symbol" !== typeof value2 ? domElement.setAttribute(key2, "") : domElement.removeAttribute(key2);
         break;
       case "capture":
       case "download":
-        true === value ? domElement.setAttribute(key2, "") : false !== value && null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, value) : domElement.removeAttribute(key2);
+        true === value2 ? domElement.setAttribute(key2, "") : false !== value2 && null != value2 && "function" !== typeof value2 && "symbol" !== typeof value2 ? domElement.setAttribute(key2, value2) : domElement.removeAttribute(key2);
         break;
       case "cols":
       case "rows":
       case "size":
       case "span":
-        null != value && "function" !== typeof value && "symbol" !== typeof value && !isNaN(value) && 1 <= value ? domElement.setAttribute(key2, value) : domElement.removeAttribute(key2);
+        null != value2 && "function" !== typeof value2 && "symbol" !== typeof value2 && !isNaN(value2) && 1 <= value2 ? domElement.setAttribute(key2, value2) : domElement.removeAttribute(key2);
         break;
       case "rowSpan":
       case "start":
-        null == value || "function" === typeof value || "symbol" === typeof value || isNaN(value) ? domElement.removeAttribute(key2) : domElement.setAttribute(key2, value);
+        null == value2 || "function" === typeof value2 || "symbol" === typeof value2 || isNaN(value2) ? domElement.removeAttribute(key2) : domElement.setAttribute(key2, value2);
         break;
       case "popover":
         listenToNonDelegatedEvent("beforetoggle", domElement);
         listenToNonDelegatedEvent("toggle", domElement);
-        setValueForAttribute(domElement, "popover", value);
+        setValueForAttribute(domElement, "popover", value2);
         break;
       case "xlinkActuate":
         setValueForNamespacedAttribute(
           domElement,
           "http://www.w3.org/1999/xlink",
           "xlink:actuate",
-          value
+          value2
         );
         break;
       case "xlinkArcrole":
@@ -10409,7 +10409,7 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/1999/xlink",
           "xlink:arcrole",
-          value
+          value2
         );
         break;
       case "xlinkRole":
@@ -10417,7 +10417,7 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/1999/xlink",
           "xlink:role",
-          value
+          value2
         );
         break;
       case "xlinkShow":
@@ -10425,7 +10425,7 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/1999/xlink",
           "xlink:show",
-          value
+          value2
         );
         break;
       case "xlinkTitle":
@@ -10433,7 +10433,7 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/1999/xlink",
           "xlink:title",
-          value
+          value2
         );
         break;
       case "xlinkType":
@@ -10441,7 +10441,7 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/1999/xlink",
           "xlink:type",
-          value
+          value2
         );
         break;
       case "xmlBase":
@@ -10449,7 +10449,7 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/XML/1998/namespace",
           "xml:base",
-          value
+          value2
         );
         break;
       case "xmlLang":
@@ -10457,7 +10457,7 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/XML/1998/namespace",
           "xml:lang",
-          value
+          value2
         );
         break;
       case "xmlSpace":
@@ -10465,30 +10465,30 @@ function requireReactDomClient_production() {
           domElement,
           "http://www.w3.org/XML/1998/namespace",
           "xml:space",
-          value
+          value2
         );
         break;
       case "is":
-        setValueForAttribute(domElement, "is", value);
+        setValueForAttribute(domElement, "is", value2);
         break;
       case "innerText":
       case "textContent":
         break;
       default:
         if (!(2 < key2.length) || "o" !== key2[0] && "O" !== key2[0] || "n" !== key2[1] && "N" !== key2[1])
-          key2 = aliases.get(key2) || key2, setValueForAttribute(domElement, key2, value);
+          key2 = aliases.get(key2) || key2, setValueForAttribute(domElement, key2, value2);
     }
   }
-  function setPropOnCustomElement(domElement, tag, key2, value, props, prevValue) {
+  function setPropOnCustomElement(domElement, tag, key2, value2, props, prevValue) {
     switch (key2) {
       case "style":
-        setValueForStyles(domElement, value, prevValue);
+        setValueForStyles(domElement, value2, prevValue);
         break;
       case "dangerouslySetInnerHTML":
-        if (null != value) {
-          if ("object" !== typeof value || !("__html" in value))
+        if (null != value2) {
+          if ("object" !== typeof value2 || !("__html" in value2))
             throw Error(formatProdErrorMessage(61));
-          key2 = value.__html;
+          key2 = value2.__html;
           if (null != key2) {
             if (null != props.children) throw Error(formatProdErrorMessage(60));
             domElement.innerHTML = key2;
@@ -10496,16 +10496,16 @@ function requireReactDomClient_production() {
         }
         break;
       case "children":
-        "string" === typeof value ? setTextContent(domElement, value) : ("number" === typeof value || "bigint" === typeof value) && setTextContent(domElement, "" + value);
+        "string" === typeof value2 ? setTextContent(domElement, value2) : ("number" === typeof value2 || "bigint" === typeof value2) && setTextContent(domElement, "" + value2);
         break;
       case "onScroll":
-        null != value && listenToNonDelegatedEvent("scroll", domElement);
+        null != value2 && listenToNonDelegatedEvent("scroll", domElement);
         break;
       case "onScrollEnd":
-        null != value && listenToNonDelegatedEvent("scrollend", domElement);
+        null != value2 && listenToNonDelegatedEvent("scrollend", domElement);
         break;
       case "onClick":
-        null != value && (domElement.onclick = noop$1);
+        null != value2 && (domElement.onclick = noop$1);
         break;
       case "suppressContentEditableWarning":
       case "suppressHydrationWarning":
@@ -10518,12 +10518,12 @@ function requireReactDomClient_production() {
       default:
         if (!registrationNameDependencies.hasOwnProperty(key2))
           a: {
-            if ("o" === key2[0] && "n" === key2[1] && (props = key2.endsWith("Capture"), tag = key2.slice(2, props ? key2.length - 7 : void 0), prevValue = domElement[internalPropsKey] || null, prevValue = null != prevValue ? prevValue[key2] : null, "function" === typeof prevValue && domElement.removeEventListener(tag, prevValue, props), "function" === typeof value)) {
+            if ("o" === key2[0] && "n" === key2[1] && (props = key2.endsWith("Capture"), tag = key2.slice(2, props ? key2.length - 7 : void 0), prevValue = domElement[internalPropsKey] || null, prevValue = null != prevValue ? prevValue[key2] : null, "function" === typeof prevValue && domElement.removeEventListener(tag, prevValue, props), "function" === typeof value2)) {
               "function" !== typeof prevValue && null !== prevValue && (key2 in domElement ? domElement[key2] = null : domElement.hasAttribute(key2) && domElement.removeAttribute(key2));
-              domElement.addEventListener(tag, value, props);
+              domElement.addEventListener(tag, value2, props);
               break a;
             }
-            key2 in domElement ? domElement[key2] = value : true === value ? domElement.setAttribute(key2, "") : setValueForAttribute(domElement, key2, value);
+            key2 in domElement ? domElement[key2] = value2 : true === value2 ? domElement.setAttribute(key2, "") : setValueForAttribute(domElement, key2, value2);
           }
     }
   }
@@ -10741,7 +10741,7 @@ function requireReactDomClient_production() {
       case "li":
         break;
       case "input":
-        var name2 = null, type = null, value = null, defaultValue = null, lastDefaultValue = null, checked = null, defaultChecked = null;
+        var name2 = null, type = null, value2 = null, defaultValue = null, lastDefaultValue = null, checked = null, defaultChecked = null;
         for (propKey in lastProps) {
           var lastProp = lastProps[propKey];
           if (lastProps.hasOwnProperty(propKey) && null != lastProp)
@@ -10774,7 +10774,7 @@ function requireReactDomClient_production() {
                 defaultChecked = propKey;
                 break;
               case "value":
-                value = propKey;
+                value2 = propKey;
                 break;
               case "defaultValue":
                 defaultValue = propKey;
@@ -10797,7 +10797,7 @@ function requireReactDomClient_production() {
         }
         updateInput(
           domElement,
-          value,
+          value2,
           defaultValue,
           lastDefaultValue,
           checked,
@@ -10807,7 +10807,7 @@ function requireReactDomClient_production() {
         );
         return;
       case "select":
-        propKey = value = defaultValue = propKey$201 = null;
+        propKey = value2 = defaultValue = propKey$201 = null;
         for (type in lastProps)
           if (lastDefaultValue = lastProps[type], lastProps.hasOwnProperty(type) && null != lastDefaultValue)
             switch (type) {
@@ -10835,7 +10835,7 @@ function requireReactDomClient_production() {
                 defaultValue = type;
                 break;
               case "multiple":
-                value = type;
+                value2 = type;
               default:
                 type !== lastDefaultValue && setProp(
                   domElement,
@@ -10847,7 +10847,7 @@ function requireReactDomClient_production() {
                 );
             }
         tag = defaultValue;
-        lastProps = value;
+        lastProps = value2;
         nextProps = propKey;
         null != propKey$201 ? updateOptions(domElement, !!lastProps, propKey$201, false) : !!nextProps !== !!lastProps && (null != tag ? updateOptions(domElement, !!lastProps, tag, true) : updateOptions(domElement, !!lastProps, lastProps ? [] : "", false));
         return;
@@ -10863,9 +10863,9 @@ function requireReactDomClient_production() {
               default:
                 setProp(domElement, tag, defaultValue, null, nextProps, name2);
             }
-        for (value in nextProps)
-          if (name2 = nextProps[value], type = lastProps[value], nextProps.hasOwnProperty(value) && (null != name2 || null != type))
-            switch (value) {
+        for (value2 in nextProps)
+          if (name2 = nextProps[value2], type = lastProps[value2], nextProps.hasOwnProperty(value2) && (null != name2 || null != type))
+            switch (value2) {
               case "value":
                 propKey$201 = name2;
                 break;
@@ -10878,7 +10878,7 @@ function requireReactDomClient_production() {
                 if (null != name2) throw Error(formatProdErrorMessage(91));
                 break;
               default:
-                name2 !== type && setProp(domElement, tag, value, name2, nextProps, type);
+                name2 !== type && setProp(domElement, tag, value2, name2, nextProps, type);
             }
         updateTextarea(domElement, propKey$201, propKey);
         return;
@@ -12601,16 +12601,16 @@ var parse$2 = function parse(text2, reviver) {
   return root$2;
 };
 function internalize(holder, name2, reviver) {
-  const value = holder[name2];
-  if (value != null && typeof value === "object") {
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
+  const value2 = holder[name2];
+  if (value2 != null && typeof value2 === "object") {
+    if (Array.isArray(value2)) {
+      for (let i = 0; i < value2.length; i++) {
         const key2 = String(i);
-        const replacement = internalize(value, key2, reviver);
+        const replacement = internalize(value2, key2, reviver);
         if (replacement === void 0) {
-          delete value[key2];
+          delete value2[key2];
         } else {
-          Object.defineProperty(value, key2, {
+          Object.defineProperty(value2, key2, {
             value: replacement,
             writable: true,
             enumerable: true,
@@ -12619,12 +12619,12 @@ function internalize(holder, name2, reviver) {
         }
       }
     } else {
-      for (const key2 in value) {
-        const replacement = internalize(value, key2, reviver);
+      for (const key2 in value2) {
+        const replacement = internalize(value2, key2, reviver);
         if (replacement === void 0) {
-          delete value[key2];
+          delete value2[key2];
         } else {
-          Object.defineProperty(value, key2, {
+          Object.defineProperty(value2, key2, {
             value: replacement,
             writable: true,
             enumerable: true,
@@ -12634,7 +12634,7 @@ function internalize(holder, name2, reviver) {
       }
     }
   }
-  return reviver.call(holder, name2, value);
+  return reviver.call(holder, name2, value2);
 }
 let lexState;
 let buffer$1;
@@ -13130,10 +13130,10 @@ const lexStates = {
     throw invalidChar(read());
   }
 };
-function newToken(type, value) {
+function newToken(type, value2) {
   return {
     type,
-    value,
+    value: value2,
     line,
     column: column$1
   };
@@ -13303,15 +13303,15 @@ const parseStates = {
   }
 };
 function push() {
-  let value;
+  let value2;
   switch (token.type) {
     case "punctuator":
       switch (token.value) {
         case "{":
-          value = {};
+          value2 = {};
           break;
         case "[":
-          value = [];
+          value2 = [];
           break;
       }
       break;
@@ -13319,27 +13319,27 @@ function push() {
     case "boolean":
     case "numeric":
     case "string":
-      value = token.value;
+      value2 = token.value;
       break;
   }
   if (root$2 === void 0) {
-    root$2 = value;
+    root$2 = value2;
   } else {
     const parent = stack[stack.length - 1];
     if (Array.isArray(parent)) {
-      parent.push(value);
+      parent.push(value2);
     } else {
       Object.defineProperty(parent, key$2, {
-        value,
+        value: value2,
         writable: true,
         enumerable: true,
         configurable: true
       });
     }
   }
-  if (value !== null && typeof value === "object") {
-    stack.push(value);
-    if (Array.isArray(value)) {
+  if (value2 !== null && typeof value2 === "object") {
+    stack.push(value2);
+    if (Array.isArray(value2)) {
       parseState = "beforeArrayValue";
     } else {
       parseState = "beforePropertyName";
@@ -13412,7 +13412,7 @@ function syntaxError(message2) {
   err.columnNumber = column$1;
   return err;
 }
-var stringify = function stringify2(value, replacer, space) {
+var stringify = function stringify2(value2, replacer, space) {
   const stack2 = [];
   let indent = "";
   let propertyList;
@@ -13453,27 +13453,27 @@ var stringify = function stringify2(value, replacer, space) {
   } else if (typeof space === "string") {
     gap = space.substr(0, 10);
   }
-  return serializeProperty("", { "": value });
+  return serializeProperty("", { "": value2 });
   function serializeProperty(key2, holder) {
-    let value2 = holder[key2];
-    if (value2 != null) {
-      if (typeof value2.toJSON5 === "function") {
-        value2 = value2.toJSON5(key2);
-      } else if (typeof value2.toJSON === "function") {
-        value2 = value2.toJSON(key2);
+    let value3 = holder[key2];
+    if (value3 != null) {
+      if (typeof value3.toJSON5 === "function") {
+        value3 = value3.toJSON5(key2);
+      } else if (typeof value3.toJSON === "function") {
+        value3 = value3.toJSON(key2);
       }
     }
     if (replacerFunc) {
-      value2 = replacerFunc.call(holder, key2, value2);
+      value3 = replacerFunc.call(holder, key2, value3);
     }
-    if (value2 instanceof Number) {
-      value2 = Number(value2);
-    } else if (value2 instanceof String) {
-      value2 = String(value2);
-    } else if (value2 instanceof Boolean) {
-      value2 = value2.valueOf();
+    if (value3 instanceof Number) {
+      value3 = Number(value3);
+    } else if (value3 instanceof String) {
+      value3 = String(value3);
+    } else if (value3 instanceof Boolean) {
+      value3 = value3.valueOf();
     }
-    switch (value2) {
+    switch (value3) {
       case null:
         return "null";
       case true:
@@ -13481,18 +13481,18 @@ var stringify = function stringify2(value, replacer, space) {
       case false:
         return "false";
     }
-    if (typeof value2 === "string") {
-      return quoteString(value2);
+    if (typeof value3 === "string") {
+      return quoteString(value3);
     }
-    if (typeof value2 === "number") {
-      return String(value2);
+    if (typeof value3 === "number") {
+      return String(value3);
     }
-    if (typeof value2 === "object") {
-      return Array.isArray(value2) ? serializeArray(value2) : serializeObject(value2);
+    if (typeof value3 === "object") {
+      return Array.isArray(value3) ? serializeArray(value3) : serializeObject(value3);
     }
     return void 0;
   }
-  function quoteString(value2) {
+  function quoteString(value3) {
     const quotes = {
       "'": 0.1,
       '"': 0.2
@@ -13512,8 +13512,8 @@ var stringify = function stringify2(value, replacer, space) {
       "\u2029": "\\u2029"
     };
     let product2 = "";
-    for (let i = 0; i < value2.length; i++) {
-      const c2 = value2[i];
+    for (let i = 0; i < value3.length; i++) {
+      const c2 = value3[i];
       switch (c2) {
         case "'":
         case '"':
@@ -13521,7 +13521,7 @@ var stringify = function stringify2(value, replacer, space) {
           product2 += c2;
           continue;
         case "\0":
-          if (util.isDigit(value2[i + 1])) {
+          if (util.isDigit(value3[i + 1])) {
             product2 += "\\x00";
             continue;
           }
@@ -13541,17 +13541,17 @@ var stringify = function stringify2(value, replacer, space) {
     product2 = product2.replace(new RegExp(quoteChar, "g"), replacements[quoteChar]);
     return quoteChar + product2 + quoteChar;
   }
-  function serializeObject(value2) {
-    if (stack2.indexOf(value2) >= 0) {
+  function serializeObject(value3) {
+    if (stack2.indexOf(value3) >= 0) {
       throw TypeError("Converting circular structure to JSON5");
     }
-    stack2.push(value2);
+    stack2.push(value3);
     let stepback = indent;
     indent = indent + gap;
-    let keys2 = propertyList || Object.keys(value2);
+    let keys2 = propertyList || Object.keys(value3);
     let partial = [];
     for (const key2 of keys2) {
-      const propertyString = serializeProperty(key2, value2);
+      const propertyString = serializeProperty(key2, value3);
       if (propertyString !== void 0) {
         let member = serializeKey(key2) + ":";
         if (gap !== "") {
@@ -13594,16 +13594,16 @@ var stringify = function stringify2(value, replacer, space) {
     }
     return key2;
   }
-  function serializeArray(value2) {
-    if (stack2.indexOf(value2) >= 0) {
+  function serializeArray(value3) {
+    if (stack2.indexOf(value3) >= 0) {
       throw TypeError("Converting circular structure to JSON5");
     }
-    stack2.push(value2);
+    stack2.push(value3);
     let stepback = indent;
     indent = indent + gap;
     let partial = [];
-    for (let i = 0; i < value2.length; i++) {
-      const propertyString = serializeProperty(String(i), value2);
+    for (let i = 0; i < value3.length; i++) {
+      const propertyString = serializeProperty(String(i), value3);
       partial.push(propertyString !== void 0 ? propertyString : "null");
     }
     let final;
@@ -13739,7 +13739,7 @@ var __typeError = (msg) => {
 };
 var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
-var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value2);
 var PopStateEventType = "popstate";
 function createHashHistory(options = {}) {
   function createHashLocation(window2, globalHistory) {
@@ -13784,8 +13784,8 @@ function createHashHistory(options = {}) {
     options
   );
 }
-function invariant(value, message2) {
-  if (value === false || value === null || typeof value === "undefined") {
+function invariant(value2, message2) {
+  if (value2 === false || value2 === null || typeof value2 === "undefined") {
     throw new Error(message2);
   }
 }
@@ -13970,8 +13970,8 @@ var RouterContextProvider = class {
   constructor(init) {
     __privateAdd(this, _map, /* @__PURE__ */ new Map());
     if (init) {
-      for (let [context, value] of init) {
-        this.set(context, value);
+      for (let [context, value2] of init) {
+        this.set(context, value2);
       }
     }
   }
@@ -14000,8 +14000,8 @@ var RouterContextProvider = class {
    * @param value The value to set for the context
    * @returns {void}
    */
-  set(context, value) {
-    __privateGet(this, _map).set(context, value);
+  set(context, value2) {
+    __privateGet(this, _map).set(context, value2);
   }
 };
 _map = /* @__PURE__ */ new WeakMap();
@@ -14308,11 +14308,11 @@ function matchPath(pattern, pathname) {
         let splatValue = captureGroups[index] || "";
         pathnameBase = matchedPathname.slice(0, matchedPathname.length - splatValue.length).replace(/(.)\/+$/, "$1");
       }
-      const value = captureGroups[index];
-      if (isOptional && !value) {
+      const value2 = captureGroups[index];
+      if (isOptional && !value2) {
         memo2[paramName] = void 0;
       } else {
-        memo2[paramName] = (value || "").replace(/%2F/g, "/");
+        memo2[paramName] = (value2 || "").replace(/%2F/g, "/");
       }
       return memo2;
     },
@@ -14349,15 +14349,15 @@ function compilePath(path, caseSensitive = false, end = true) {
   let matcher = new RegExp(regexpSource, caseSensitive ? void 0 : "i");
   return [matcher, params];
 }
-function decodePath(value) {
+function decodePath(value2) {
   try {
-    return value.split("/").map((v) => decodeURIComponent(v).replace(/\//g, "%2F")).join("/");
+    return value2.split("/").map((v) => decodeURIComponent(v).replace(/\//g, "%2F")).join("/");
   } catch (error2) {
     warning(
       false,
-      `The URL path "${value}" could not be decoded because it is a malformed URL segment. This is probably due to a bad percent encoding (${error2}).`
+      `The URL path "${value2}" could not be decoded because it is a malformed URL segment. This is probably due to a bad percent encoding (${error2}).`
     );
-    return value;
+    return value2;
   }
 }
 function stripBasename(pathname, basename2) {
@@ -14640,8 +14640,8 @@ async function recurseRight(impls, info, handler, index) {
   let result2;
   if (!impl) {
     try {
-      let value = await handler();
-      result2 = { type: "success", value };
+      let value2 = await handler();
+      result2 = { type: "success", value: value2 };
     } catch (e) {
       result2 = { type: "error", value: e };
     }
@@ -16626,7 +16626,7 @@ function normalizeNavigateOptions(isFetcher, path, opts) {
       let text2 = typeof opts.body === "string" ? opts.body : opts.body instanceof FormData || opts.body instanceof URLSearchParams ? (
         // https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#plain-text-form-data
         Array.from(opts.body.entries()).reduce(
-          (acc, [name2, value]) => `${acc}${name2}=${value}
+          (acc, [name2, value2]) => `${acc}${name2}=${value2}
 `,
           ""
         )
@@ -17032,15 +17032,15 @@ var loadLazyRouteProperty = ({
         `Route "${routeToUpdate.id}" has a static property "${key2}" defined. The lazy property will be ignored.`
       );
     } else {
-      let value = await lazyFn();
-      if (value != null) {
-        Object.assign(routeToUpdate, { [key2]: value });
+      let value2 = await lazyFn();
+      if (value2 != null) {
+        Object.assign(routeToUpdate, { [key2]: value2 });
         Object.assign(routeToUpdate, mapRouteProperties2(routeToUpdate));
       }
     }
     if (typeof routeToUpdate.lazy === "object") {
       routeToUpdate.lazy[key2] = void 0;
-      if (Object.values(routeToUpdate.lazy).every((value) => value === void 0)) {
+      if (Object.values(routeToUpdate.lazy).every((value2) => value2 === void 0)) {
         routeToUpdate.lazy = void 0;
       }
     }
@@ -17254,8 +17254,8 @@ async function callRouteMiddleware(args2, middlewares, handler, processResult2, 
     }
   };
   try {
-    let value = await middleware(args2, next);
-    let result2 = value != null ? processResult2(value) : void 0;
+    let value2 = await middleware(args2, next);
+    let result2 = value2 != null ? processResult2(value2) : void 0;
     if (isResult(result2)) {
       return result2;
     } else if (nextResult) {
@@ -17458,7 +17458,7 @@ async function callLoaderOrAction({
     if (lazyHandlerPromise || lazyRoutePromise) {
       if (handler) {
         let handlerError;
-        let [value] = await Promise.all([
+        let [value2] = await Promise.all([
           // If the handler throws, don't let it immediately bubble out,
           // since we need to let the lazy() execution finish so we know if this
           // route has a boundary that can handle the error
@@ -17472,7 +17472,7 @@ async function callLoaderOrAction({
         if (handlerError !== void 0) {
           throw handlerError;
         }
-        result2 = value;
+        result2 = value2;
       } else {
         await lazyHandlerPromise;
         let handler2 = isAction ? match3.route.action : match3.route.loader;
@@ -17629,15 +17629,15 @@ function createClientSideRequest(history, location, signal, submission) {
 }
 function convertFormDataToSearchParams(formData) {
   let searchParams = new URLSearchParams();
-  for (let [key2, value] of formData.entries()) {
-    searchParams.append(key2, typeof value === "string" ? value : value.name);
+  for (let [key2, value2] of formData.entries()) {
+    searchParams.append(key2, typeof value2 === "string" ? value2 : value2.name);
   }
   return searchParams;
 }
 function convertSearchParamsToFormData(searchParams) {
   let formData = new FormData();
-  for (let [key2, value] of searchParams.entries()) {
-    formData.append(key2, value);
+  for (let [key2, value2] of searchParams.entries()) {
+    formData.append(key2, value2);
   }
   return formData;
 }
@@ -17851,7 +17851,7 @@ function isHashChangeOnly(a2, b) {
 }
 function isDataStrategyResults(result2) {
   return result2 != null && typeof result2 === "object" && Object.entries(result2).every(
-    ([key2, value]) => typeof key2 === "string" && isDataStrategyResult(value)
+    ([key2, value2]) => typeof key2 === "string" && isDataStrategyResult(value2)
   );
 }
 function isDataStrategyResult(result2) {
@@ -17866,11 +17866,11 @@ function isErrorResult(result2) {
 function isRedirectResult(result2) {
   return (result2 && result2.type) === "redirect";
 }
-function isDataWithResponseInit(value) {
-  return typeof value === "object" && value != null && "type" in value && "data" in value && "init" in value && value.type === "DataWithResponseInit";
+function isDataWithResponseInit(value2) {
+  return typeof value2 === "object" && value2 != null && "type" in value2 && "data" in value2 && "init" in value2 && value2.type === "DataWithResponseInit";
 }
-function isResponse(value) {
-  return value != null && typeof value.status === "number" && typeof value.statusText === "string" && typeof value.headers === "object" && typeof value.body !== "undefined";
+function isResponse(value2) {
+  return value2 != null && typeof value2.status === "number" && typeof value2.statusText === "string" && typeof value2.headers === "object" && typeof value2.body !== "undefined";
 }
 function isValidMethod(method) {
   return validRequestMethods.has(method.toUpperCase());
@@ -18641,10 +18641,10 @@ var Deferred = class {
   constructor() {
     this.status = "pending";
     this.promise = new Promise((resolve2, reject) => {
-      this.resolve = (value) => {
+      this.resolve = (value2) => {
         if (this.status === "pending") {
           this.status = "resolved";
-          resolve2(value);
+          resolve2(value2);
         }
       };
       this.reject = (reason) => {
@@ -18975,9 +18975,9 @@ function shouldProcessLinkClick(event, target) {
 function createSearchParams(init = "") {
   return new URLSearchParams(
     typeof init === "string" || Array.isArray(init) || init instanceof URLSearchParams ? init : Object.keys(init).reduce((memo2, key2) => {
-      let value = init[key2];
+      let value2 = init[key2];
       return memo2.concat(
-        Array.isArray(value) ? value.map((v) => [key2, v]) : [[key2, value]]
+        Array.isArray(value2) ? value2.map((v) => [key2, v]) : [[key2, value2]]
       );
     }, [])
   );
@@ -18987,8 +18987,8 @@ function getSearchParamsForLocation(locationSearch, defaultSearchParams) {
   if (defaultSearchParams) {
     defaultSearchParams.forEach((_, key2) => {
       if (!searchParams.has(key2)) {
-        defaultSearchParams.getAll(key2).forEach((value) => {
-          searchParams.append(key2, value);
+        defaultSearchParams.getAll(key2).forEach((value2) => {
+          searchParams.append(key2, value2);
         });
       }
     });
@@ -19051,13 +19051,13 @@ function getFormSubmissionInfo(target, basename2) {
     encType = getFormEncType(target.getAttribute("formenctype")) || getFormEncType(form.getAttribute("enctype")) || defaultEncType;
     formData = new FormData(form, target);
     if (!isFormDataSubmitterSupported()) {
-      let { name: name2, type, value } = target;
+      let { name: name2, type, value: value2 } = target;
       if (type === "image") {
         let prefix = name2 ? `${name2}.` : "";
         formData.append(`${prefix}x`, "0");
         formData.append(`${prefix}y`, "0");
       } else if (name2) {
-        formData.append(name2, value);
+        formData.append(name2, value2);
       }
     }
   } else if (isHtmlElement(target)) {
@@ -19077,8 +19077,8 @@ function getFormSubmissionInfo(target, basename2) {
   return { action, method: method.toLowerCase(), encType, formData, body };
 }
 Object.getOwnPropertyNames(Object.prototype).sort().join("\0");
-function invariant2(value, message2) {
-  if (value === false || value === null || typeof value === "undefined") {
+function invariant2(value2, message2) {
+  if (value2 === false || value2 === null || typeof value2 === "undefined") {
     throw new Error(message2);
   }
 }
@@ -19444,12 +19444,12 @@ function PrefetchPageLinksImpl({
   )));
 }
 function mergeRefs(...refs) {
-  return (value) => {
+  return (value2) => {
     refs.forEach((ref2) => {
       if (typeof ref2 === "function") {
-        ref2(value);
+        ref2(value2);
       } else if (ref2 != null) {
-        ref2.current = value;
+        ref2.current = value2;
       }
     });
   };
@@ -19906,24 +19906,24 @@ function clsx() {
   return n2;
 }
 const wrapper = "_wrapper_1tajk_1";
-const container$6 = "_container_1tajk_12";
+const container$7 = "_container_1tajk_12";
 const animate = "_animate_1tajk_21";
-const styles$D = {
+const styles$F = {
   wrapper,
-  container: container$6,
+  container: container$7,
   animate
 };
 const ActivityBar = ({ animating }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$D.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$F.wrapper), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
-      className: clsx(styles$D.container),
+      className: clsx(styles$F.container),
       role: "progressbar",
       "aria-label": "Progress bar",
       "aria-valuenow": 25,
       "aria-valuemin": 0,
       "aria-valuemax": 100,
-      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$D.animate })
+      children: animating && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$F.animate })
     }
   ) });
 };
@@ -20472,20 +20472,20 @@ function die(error2, ...args2) {
   );
 }
 var getPrototypeOf = Object.getPrototypeOf;
-function isDraft(value) {
-  return !!value && !!value[DRAFT_STATE];
+function isDraft(value2) {
+  return !!value2 && !!value2[DRAFT_STATE];
 }
-function isDraftable(value) {
-  if (!value)
+function isDraftable(value2) {
+  if (!value2)
     return false;
-  return isPlainObject(value) || Array.isArray(value) || !!value[DRAFTABLE] || !!value.constructor?.[DRAFTABLE] || isMap$1(value) || isSet$1(value);
+  return isPlainObject(value2) || Array.isArray(value2) || !!value2[DRAFTABLE] || !!value2.constructor?.[DRAFTABLE] || isMap$1(value2) || isSet$1(value2);
 }
 var objectCtorString = Object.prototype.constructor.toString();
 var cachedCtorStrings = /* @__PURE__ */ new WeakMap();
-function isPlainObject(value) {
-  if (!value || typeof value !== "object")
+function isPlainObject(value2) {
+  if (!value2 || typeof value2 !== "object")
     return false;
-  const proto = Object.getPrototypeOf(value);
+  const proto = Object.getPrototypeOf(value2);
   if (proto === null || proto === Object.prototype)
     return true;
   const Ctor = Object.hasOwnProperty.call(proto, "constructor") && proto.constructor;
@@ -20517,14 +20517,14 @@ function getArchtype(thing) {
 function has$2(thing, prop) {
   return getArchtype(thing) === 2 ? thing.has(prop) : Object.prototype.hasOwnProperty.call(thing, prop);
 }
-function set(thing, propOrOldValue, value) {
+function set(thing, propOrOldValue, value2) {
   const t2 = getArchtype(thing);
   if (t2 === 2)
-    thing.set(propOrOldValue, value);
+    thing.set(propOrOldValue, value2);
   else if (t2 === 3) {
-    thing.add(value);
+    thing.add(value2);
   } else
-    thing[propOrOldValue] = value;
+    thing[propOrOldValue] = value2;
 }
 function is$1(x, y) {
   if (x === y) {
@@ -20595,7 +20595,7 @@ function freeze(obj, deep = false) {
   }
   Object.freeze(obj);
   if (deep)
-    Object.values(obj).forEach((value) => freeze(value, true));
+    Object.values(obj).forEach((value2) => freeze(value2, true));
   return obj;
 }
 function dontMutateFrozenCollections() {
@@ -20691,21 +20691,21 @@ function processResult(result2, scope) {
   }
   return result2 !== NOTHING ? result2 : void 0;
 }
-function finalize(rootScope, value, path) {
-  if (isFrozen(value))
-    return value;
+function finalize(rootScope, value2, path) {
+  if (isFrozen(value2))
+    return value2;
   const useStrictIteration = rootScope.immer_.shouldUseStrictIteration();
-  const state = value[DRAFT_STATE];
+  const state = value2[DRAFT_STATE];
   if (!state) {
     each(
-      value,
-      (key2, childValue) => finalizeProperty(rootScope, state, value, key2, childValue, path),
+      value2,
+      (key2, childValue) => finalizeProperty(rootScope, state, value2, key2, childValue, path),
       useStrictIteration
     );
-    return value;
+    return value2;
   }
   if (state.scope_ !== rootScope)
-    return value;
+    return value2;
   if (!state.modified_) {
     maybeFreeze(rootScope, state.base_, true);
     return state.base_;
@@ -20781,9 +20781,9 @@ function finalizeProperty(rootScope, parentState, targetObject, prop, childValue
       maybeFreeze(rootScope, childValue);
   }
 }
-function maybeFreeze(scope, value, deep = false) {
+function maybeFreeze(scope, value2, deep = false) {
   if (!scope.parent_ && scope.immer_.autoFreeze_ && scope.canAutoFreeze_) {
-    freeze(value, deep);
+    freeze(value2, deep);
   }
 }
 function createProxyProxy(base2, parent) {
@@ -20830,15 +20830,15 @@ var objectTraps = {
     if (!has$2(source2, prop)) {
       return readPropFromProto(state, source2, prop);
     }
-    const value = source2[prop];
-    if (state.finalized_ || !isDraftable(value)) {
-      return value;
+    const value2 = source2[prop];
+    if (state.finalized_ || !isDraftable(value2)) {
+      return value2;
     }
-    if (value === peek(state.base_, prop)) {
+    if (value2 === peek(state.base_, prop)) {
       prepareCopy(state);
-      return state.copy_[prop] = createProxy(value, state);
+      return state.copy_[prop] = createProxy(value2, state);
     }
-    return value;
+    return value2;
   },
   has(state, prop) {
     return prop in latest(state);
@@ -20846,30 +20846,30 @@ var objectTraps = {
   ownKeys(state) {
     return Reflect.ownKeys(latest(state));
   },
-  set(state, prop, value) {
+  set(state, prop, value2) {
     const desc = getDescriptorFromProto(latest(state), prop);
     if (desc?.set) {
-      desc.set.call(state.draft_, value);
+      desc.set.call(state.draft_, value2);
       return true;
     }
     if (!state.modified_) {
       const current22 = peek(latest(state), prop);
       const currentState = current22?.[DRAFT_STATE];
-      if (currentState && currentState.base_ === value) {
-        state.copy_[prop] = value;
+      if (currentState && currentState.base_ === value2) {
+        state.copy_[prop] = value2;
         state.assigned_[prop] = false;
         return true;
       }
-      if (is$1(value, current22) && (value !== void 0 || has$2(state.base_, prop)))
+      if (is$1(value2, current22) && (value2 !== void 0 || has$2(state.base_, prop)))
         return true;
       prepareCopy(state);
       markChanged(state);
     }
-    if (state.copy_[prop] === value && // special case: handle new props with value 'undefined'
-    (value !== void 0 || prop in state.copy_) || // special case: NaN
-    Number.isNaN(value) && Number.isNaN(state.copy_[prop]))
+    if (state.copy_[prop] === value2 && // special case: handle new props with value 'undefined'
+    (value2 !== void 0 || prop in state.copy_) || // special case: NaN
+    Number.isNaN(value2) && Number.isNaN(state.copy_[prop]))
       return true;
-    state.copy_[prop] = value;
+    state.copy_[prop] = value2;
     state.assigned_[prop] = true;
     return true;
   },
@@ -20920,8 +20920,8 @@ each(objectTraps, (key2, fn2) => {
 arrayTraps.deleteProperty = function(state, prop) {
   return arrayTraps.set.call(this, state, prop, void 0);
 };
-arrayTraps.set = function(state, prop, value) {
-  return objectTraps.set.call(this, state[0], prop, value, state[0]);
+arrayTraps.set = function(state, prop, value2) {
+  return objectTraps.set.call(this, state[0], prop, value2, state[0]);
 };
 function peek(draft, prop) {
   const state = draft[DRAFT_STATE];
@@ -21058,16 +21058,16 @@ var Immer2 = class {
    *
    * By default, auto-freezing is enabled.
    */
-  setAutoFreeze(value) {
-    this.autoFreeze_ = value;
+  setAutoFreeze(value2) {
+    this.autoFreeze_ = value2;
   }
   /**
    * Pass true to enable strict shallow copy.
    *
    * By default, immer does not copy the object descriptors such as getter, setter and non-enumrable properties.
    */
-  setUseStrictShallowCopy(value) {
-    this.useStrictShallowCopy_ = value;
+  setUseStrictShallowCopy(value2) {
+    this.useStrictShallowCopy_ = value2;
   }
   /**
    * Pass false to use faster iteration that skips non-enumerable properties
@@ -21075,8 +21075,8 @@ var Immer2 = class {
    *
    * By default, strict iteration is enabled (includes all own properties).
    */
-  setUseStrictIteration(value) {
-    this.useStrictIteration_ = value;
+  setUseStrictIteration(value2) {
+    this.useStrictIteration_ = value2;
   }
   shouldUseStrictIteration() {
     return this.useStrictIteration_;
@@ -21103,31 +21103,31 @@ var Immer2 = class {
     );
   }
 };
-function createProxy(value, parent) {
-  const draft = isMap$1(value) ? getPlugin("MapSet").proxyMap_(value, parent) : isSet$1(value) ? getPlugin("MapSet").proxySet_(value, parent) : createProxyProxy(value, parent);
+function createProxy(value2, parent) {
+  const draft = isMap$1(value2) ? getPlugin("MapSet").proxyMap_(value2, parent) : isSet$1(value2) ? getPlugin("MapSet").proxySet_(value2, parent) : createProxyProxy(value2, parent);
   const scope = parent ? parent.scope_ : getCurrentScope();
   scope.drafts_.push(draft);
   return draft;
 }
-function current(value) {
-  if (!isDraft(value))
-    die(10, value);
-  return currentImpl(value);
+function current(value2) {
+  if (!isDraft(value2))
+    die(10, value2);
+  return currentImpl(value2);
 }
-function currentImpl(value) {
-  if (!isDraftable(value) || isFrozen(value))
-    return value;
-  const state = value[DRAFT_STATE];
+function currentImpl(value2) {
+  if (!isDraftable(value2) || isFrozen(value2))
+    return value2;
+  const state = value2[DRAFT_STATE];
   let copy;
   let strict = true;
   if (state) {
     if (!state.modified_)
       return state.base_;
     state.finalized_ = true;
-    copy = shallowCopy(value, state.scope_.immer_.useStrictShallowCopy_);
+    copy = shallowCopy(value2, state.scope_.immer_.useStrictShallowCopy_);
     strict = state.scope_.immer_.shouldUseStrictIteration();
   } else {
-    copy = shallowCopy(value, true);
+    copy = shallowCopy(value2, true);
   }
   each(
     copy,
@@ -21182,17 +21182,17 @@ const useStore = create()(
         setResultsDir: (dir) => set3((state) => {
           state.resultsDir = dir;
         }),
-        setPropertyValue(id, propertyName, value) {
+        setPropertyValue(id, propertyName, value2) {
           set3((state) => {
             if (!state.properties[id]) {
               state.properties[id] = {};
             }
-            state.properties[id][propertyName] = value;
+            state.properties[id][propertyName] = value2;
           });
         },
         getPropertyValue(id, propertyName, defaultValue) {
-          const value = get2().properties[id]?.[propertyName];
-          return value !== void 0 ? value : defaultValue;
+          const value2 = get2().properties[id]?.[propertyName];
+          return value2 !== void 0 ? value2 : defaultValue;
         },
         removePropertyValue(id, propertyName) {
           set3((state) => {
@@ -21238,9 +21238,9 @@ const useStore = create()(
         getVisibleRange: (name2) => {
           return get2().visibleRanges[name2] ?? { startIndex: 0, endIndex: 0 };
         },
-        setVisibleRange: (name2, value) => {
+        setVisibleRange: (name2, value2) => {
           set3((state) => {
-            state.visibleRanges[name2] = value;
+            state.visibleRanges[name2] = value2;
           });
         },
         clearVisibleRange: (name2) => {
@@ -21292,10 +21292,10 @@ const useStore = create()(
             state.selectedResultsTab = tab2;
           });
         },
-        setCollapsed: (bucket, key2, value) => {
+        setCollapsed: (bucket, key2, value2) => {
           set3((state) => {
             state.collapsedBuckets[bucket] = state.collapsedBuckets[bucket] || {};
-            state.collapsedBuckets[bucket][key2] = value;
+            state.collapsedBuckets[bucket][key2] = value2;
           });
         },
         clearCollapsed: (bucket) => {
@@ -21444,7 +21444,7 @@ const ApplicationIcons = {
     closed: "bi bi-caret-right-fill"
   }
 };
-const header = "_header_ctaca_1";
+const header$1 = "_header_ctaca_1";
 const bordered$1 = "_bordered_ctaca_11";
 const breadcrumbs = "_breadcrumbs_ctaca_15";
 const ellipsis = "_ellipsis_ctaca_26";
@@ -21452,8 +21452,8 @@ const left = "_left_ctaca_31";
 const right = "_right_ctaca_41";
 const toolbarButton = "_toolbarButton_ctaca_50";
 const pathContainer = "_pathContainer_ctaca_58";
-const styles$C = {
-  header,
+const styles$E = {
+  header: header$1,
   bordered: bordered$1,
   breadcrumbs,
   ellipsis,
@@ -21585,50 +21585,50 @@ const Navbar = ({ bordered: bordered2 = true, children }) => {
       className: clsx(
         "text-size-smaller",
         "header-nav",
-        styles$C.header,
-        bordered2 ? styles$C.bordered : void 0
+        styles$E.header,
+        bordered2 ? styles$E.bordered : void 0
       ),
       "aria-label": "breadcrumb",
       "data-unsearchable": true,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$C.left), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$C.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$E.left), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$E.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Link,
             {
               to: scansRoute(),
-              className: clsx(styles$C.toolbarButton),
+              className: clsx(styles$E.toolbarButton),
               onClick: () => {
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.home) })
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$C.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$C.breadcrumbs), children: visibleSegments.map((segment2, index) => {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$E.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$E.breadcrumbs), children: visibleSegments.map((segment2, index) => {
             const isLast = index === visibleSegments.length - 1;
             const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
             return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$C.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
+              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$E.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "li",
                 {
                   className: clsx(
-                    styles$C.pathLink,
+                    styles$E.pathLink,
                     "breadcrumb-item",
                     isLast ? "active" : void 0
                   ),
-                  children: segment2.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$C.pathSegment), children: segment2.text })
+                  children: segment2.url ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$E.pathSegment), children: segment2.text })
                 }
               )
             ] }, index);
           }) }) : "" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$C.right), children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$E.right), children })
       ]
     }
   );
 };
 const root$1 = "_root_ke0e7_1";
-const styles$B = {
+const styles$D = {
   root: root$1
 };
 const isBase64 = (str) => {
@@ -22042,8 +22042,8 @@ function requirePrism() {
             }
             var old = root2[inside];
             root2[inside] = ret;
-            _.languages.DFS(_.languages, function(key2, value) {
-              if (value === old && key2 != inside) {
+            _.languages.DFS(_.languages, function(key2, value2) {
+              if (value2 === old && key2 != inside) {
                 this[key2] = ret;
               }
             });
@@ -22466,9 +22466,9 @@ function requirePrism() {
         this.tail = tail;
         this.length = 0;
       }
-      function addAfter(list2, node, value) {
+      function addAfter(list2, node, value2) {
         var next = node.next;
-        var newNode = { value, prev: node, next };
+        var newNode = { value: value2, prev: node, next };
         node.next = newNode;
         next.prev = newNode;
         list2.length++;
@@ -23134,21 +23134,21 @@ const JSONPanel = ({
     }
   ) });
 };
-const resolveBase64 = (value) => {
+const resolveBase64 = (value2) => {
   const prefix = "data:image";
-  if (Array.isArray(value)) {
-    return value.map((v) => resolveBase64(v));
+  if (Array.isArray(value2)) {
+    return value2.map((v) => resolveBase64(v));
   }
-  if (value && typeof value === "object") {
+  if (value2 && typeof value2 === "object") {
     const resolvedObject = {};
-    for (const key2 of Object.keys(value)) {
-      const record = value;
+    for (const key2 of Object.keys(value2)) {
+      const record = value2;
       resolvedObject[key2] = resolveBase64(record[key2]);
     }
     return resolvedObject;
   }
-  if (typeof value === "string") {
-    let resolvedValue = value;
+  if (typeof value2 === "string") {
+    let resolvedValue = value2;
     if (resolvedValue.startsWith(prefix)) {
       resolvedValue = "[base64 image]";
     } else if (isBase64(resolvedValue)) {
@@ -23156,12 +23156,12 @@ const resolveBase64 = (value) => {
     }
     return resolvedValue;
   }
-  return value;
+  return value2;
 };
 const rootControl = "_rootControl_88dfy_1";
 const segment = "_segment_88dfy_9";
 const selected$1 = "_selected_88dfy_9";
-const styles$A = {
+const styles$C = {
   rootControl,
   segment,
   selected: selected$1
@@ -23180,13 +23180,13 @@ const SegmentedControl = ({
   if (selectedId === void 0) {
     selectedId = segments[0]?.id || "";
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$A.rootControl), children: segments.map((segment2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$C.rootControl), children: segments.map((segment2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
     {
       className: clsx(
-        styles$A.segment,
+        styles$C.segment,
         {
-          [styles$A.selected]: selectedId === segment2.id
+          [styles$C.selected]: selectedId === segment2.id
         },
         "text-size-smallest",
         "text-style-secondary"
@@ -23386,8 +23386,8 @@ const useVirtuosoState = (virtuosoRef, elementKey, delay = 1e3) => {
   const getRestoreState = reactExports.useCallback(() => stateRef.current, []);
   const setVisibleRangeRaw = useStore((state) => state.setVisibleRange);
   const setVisibleRange = reactExports.useCallback(
-    (value) => {
-      setVisibleRangeRaw(elementKey, value);
+    (value2) => {
+      setVisibleRangeRaw(elementKey, value2);
     },
     [setVisibleRangeRaw, elementKey]
   );
@@ -23607,7 +23607,7 @@ const Card = ({ id, children, className }) => {
 };
 const grid$1 = "_grid_14885_1";
 const cell = "_cell_14885_8";
-const styles$z = {
+const styles$B = {
   grid: grid$1,
   cell
 };
@@ -23623,8 +23623,8 @@ function useProperty(id, propertyName, options) {
     )
   );
   const setValue = reactExports.useCallback(
-    (value) => {
-      setPropertyValue(id, propertyName, value);
+    (value2) => {
+      setPropertyValue(id, propertyName, value2);
     },
     [id, propertyName, setPropertyValue]
   );
@@ -23640,12 +23640,12 @@ function useProperty(id, propertyName, options) {
   }, [id, propertyName, removePropertyValue, cleanup]);
   return [propertyValue, setValue, removeValue];
 }
-const usePrevious = (value) => {
-  const [current3, setCurrent] = reactExports.useState(value);
+const usePrevious = (value2) => {
+  const [current3, setCurrent] = reactExports.useState(value2);
   const [previous, setPrevious] = reactExports.useState(void 0);
-  if (value !== current3) {
+  if (value2 !== current3) {
     setPrevious(current3);
-    setCurrent(value);
+    setCurrent(value2);
   }
   return previous;
 };
@@ -23653,8 +23653,8 @@ const useCollapsibleIds = (key2) => {
   const collapsedIds = useStore((state) => state.collapsedBuckets[key2]);
   const setCollapsed = useStore((state) => state.setCollapsed);
   const collapseId = reactExports.useCallback(
-    (id, value) => {
-      setCollapsed(key2, id, value);
+    (id, value2) => {
+      setCollapsed(key2, id, value2);
     },
     [key2, setCollapsed]
   );
@@ -23674,8 +23674,8 @@ const useCollapsedState = (id, defaultValue, scope) => {
   );
   const setCollapsed = useStore((state) => state.setCollapsed);
   return reactExports.useMemo(() => {
-    const set3 = (value) => {
-      setCollapsed(resolvedScope, stateId, value);
+    const set3 = (value2) => {
+      setCollapsed(resolvedScope, stateId, value2);
     };
     return [collapsed || defaultValue || false, set3];
   }, [collapsed, resolvedScope, defaultValue, setCollapsed, stateId]);
@@ -23684,7 +23684,7 @@ const visible = "_visible_tm52u_1";
 const hidden = "_hidden_tm52u_5";
 const pills = "_pills_tm52u_9";
 const pill = "_pill_tm52u_9";
-const styles$y = {
+const styles$A = {
   visible,
   hidden,
   pills,
@@ -23714,7 +23714,7 @@ const NavPills = ({ id, children }) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
-        className: child["props"]?.title === activeItem ? styles$y.visible : styles$y.hidden,
+        className: child["props"]?.title === activeItem ? styles$A.visible : styles$A.hidden,
         children: child
       },
       `nav-pill-container-${idx}`
@@ -23724,7 +23724,7 @@ const NavPills = ({ id, children }) => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "ul",
       {
-        className: clsx("nav", "nav-pills", styles$y.pills),
+        className: clsx("nav", "nav-pills", styles$A.pills),
         role: "tablist",
         "aria-orientation": "horizontal",
         children: navPills
@@ -23760,7 +23760,7 @@ const NavPill = ({
           "nav-link",
           "text-style-label",
           active ? "active " : "",
-          styles$y.pill
+          styles$A.pill
         ),
         "data-target": title2,
         onClick: handleClick,
@@ -23776,12 +23776,12 @@ const Buckets = {
   final: 1e3
 };
 const copyButton = "_copyButton_1goi8_1";
-const styles$x = {
+const styles$z = {
   copyButton
 };
 const CopyButton = ({
   icon = ApplicationIcons.copy,
-  value,
+  value: value2,
   onCopySuccess,
   onCopyError,
   className = "",
@@ -23790,7 +23790,7 @@ const CopyButton = ({
   const [isCopied, setIsCopied] = reactExports.useState(false);
   const handleClick = async () => {
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(value2);
       setIsCopied(true);
       onCopySuccess?.();
       setTimeout(() => {
@@ -23806,7 +23806,7 @@ const CopyButton = ({
     "button",
     {
       type: "button",
-      className: clsx("copy-button", styles$x.copyButton, className),
+      className: clsx("copy-button", styles$z.copyButton, className),
       onClick: () => {
         void handleClick();
       },
@@ -23851,7 +23851,7 @@ const moreToggleButton = "_moreToggleButton_1cl3h_36";
 const separator = "_separator_1cl3h_42";
 const inlineRight = "_inlineRight_1cl3h_48";
 const blockLeft = "_blockLeft_1cl3h_54";
-const styles$w = {
+const styles$y = {
   expandablePanel,
   expandableBordered,
   expandableCollapsed,
@@ -23903,10 +23903,10 @@ const ExpandablePanel = reactExports.memo(
           style: baseStyles,
           ref: contentRef,
           className: clsx(
-            styles$w.expandablePanel,
-            collapsed ? styles$w.expandableCollapsed : void 0,
-            border ? styles$w.expandableBordered : void 0,
-            showToggle ? styles$w.padBottom : void 0,
+            styles$y.expandablePanel,
+            collapsed ? styles$y.expandableCollapsed : void 0,
+            border ? styles$y.expandableBordered : void 0,
+            showToggle ? styles$y.padBottom : void 0,
             className
           ),
           children: [
@@ -23932,7 +23932,7 @@ const ExpandablePanel = reactExports.memo(
           position: "block-left"
         }
       ) }),
-      showToggle && layout === "inline-right" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$w.separator) })
+      showToggle && layout === "inline-right" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$y.separator) })
     ] });
   }
 );
@@ -23951,15 +23951,15 @@ const MoreToggle = ({
     "div",
     {
       className: clsx(
-        styles$w.moreToggle,
-        border ? styles$w.bordered : void 0,
-        position === "inline-right" ? styles$w.inlineRight : styles$w.blockLeft
+        styles$y.moreToggle,
+        border ? styles$y.bordered : void 0,
+        position === "inline-right" ? styles$y.inlineRight : styles$y.blockLeft
       ),
       style,
       children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "button",
         {
-          className: clsx("btn", styles$w.moreToggleButton, "text-size-smallest"),
+          className: clsx("btn", styles$y.moreToggleButton, "text-size-smallest"),
           onClick: handleClick,
           children: [
             text2,
@@ -23975,7 +23975,7 @@ const labeledValueLabel = "_labeledValueLabel_1poe7_1";
 const labeledValue = "_labeledValue_1poe7_1";
 const row$1 = "_row_1poe7_10";
 const column = "_column_1poe7_14";
-const styles$v = {
+const styles$x = {
   labeledValueLabel,
   labeledValue,
   row: row$1,
@@ -23993,8 +23993,8 @@ const LabeledValue = ({
     "div",
     {
       className: clsx(
-        styles$v.labeledValue,
-        layout === "column" ? styles$v.column : styles$v.row,
+        styles$x.labeledValue,
+        layout === "column" ? styles$x.column : styles$x.row,
         className
       ),
       style: {
@@ -24005,14 +24005,14 @@ const LabeledValue = ({
           "div",
           {
             className: clsx(
-              styles$v.labeledValueLabel,
+              styles$x.labeledValueLabel,
               "text-style-label",
               "text-style-secondary"
             ),
             children: label
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$v.labeledValueValue), style: { ...valueStyle }, children })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$x.labeledValueValue), style: { ...valueStyle }, children })
       ]
     }
   );
@@ -27152,8 +27152,8 @@ const resolveStoreKeys = (record) => {
   for (let i = 0; i < entries2.length; i++) {
     const entry2 = entries2[i];
     if (!entry2) continue;
-    const [key2, value] = entry2;
-    const instanceInfo = parseStoreInstanceKey(key2, value);
+    const [key2, value2] = entry2;
+    const instanceInfo = parseStoreInstanceKey(key2, value2);
     if (instanceInfo) {
       const { storeName, instanceId } = instanceInfo;
       if (!storeName) {
@@ -27174,29 +27174,29 @@ const resolveStoreKeys = (record) => {
         }
         const instanceKey = storeKey(storeName, instanceId);
         if (storeInstances[instanceKey]) {
-          storeInstances[instanceKey][keyName] = value;
+          storeInstances[instanceKey][keyName] = value2;
           continue;
         }
       } else {
-        result2[key2] = value;
+        result2[key2] = value2;
       }
     }
   }
   for (const [instanceKey, children] of Object.entries(storeInstances)) {
     result2[instanceKey] = resolveStoreKeys(children);
   }
-  for (const [key2, value] of Object.entries(result2)) {
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      result2[key2] = resolveStoreKeys(value);
+  for (const [key2, value2] of Object.entries(result2)) {
+    if (typeof value2 === "object" && value2 !== null && !Array.isArray(value2)) {
+      result2[key2] = resolveStoreKeys(value2);
     }
   }
   return result2;
 };
-const parseStoreInstanceKey = (key2, value) => {
+const parseStoreInstanceKey = (key2, value2) => {
   const match3 = key2.match(kStoreInstanceKey);
   if (match3) {
     const [, storeName, instanceId] = match3;
-    if (typeof value === "string" && instanceId === value) {
+    if (typeof value2 === "string" && instanceId === value2) {
       return {
         storeName,
         instanceId
@@ -27227,7 +27227,7 @@ const keyPairBordered = "_keyPairBordered_qjlxf_9";
 const key$1 = "_key_qjlxf_1";
 const pre = "_pre_qjlxf_19";
 const treeIcon = "_treeIcon_qjlxf_23";
-const styles$u = {
+const styles$w = {
   keyPairContainer,
   keyPairBordered,
   key: key$1,
@@ -27252,8 +27252,8 @@ const RecordTree = ({
   const [collapsedIds, setCollapsed, clearIds] = useCollapsibleIds(id);
   const setCollapsedIds = reactExports.useCallback(
     (values2) => {
-      Object.entries(values2).forEach(([key2, value]) => {
-        setCollapsed(key2, value);
+      Object.entries(values2).forEach(([key2, value2]) => {
+        setCollapsed(key2, value2);
       });
     },
     [setCollapsed]
@@ -27349,8 +27349,8 @@ const RecordTree = ({
       "div",
       {
         className: clsx(
-          styles$u.keyPairContainer,
-          index < items.length - 1 && useBorders ? styles$u.keyPairBordered : void 0,
+          styles$w.keyPairContainer,
+          index < items.length - 1 && useBorders ? styles$w.keyPairBordered : void 0,
           "text-size-small"
         ),
         style: {
@@ -27363,7 +27363,7 @@ const RecordTree = ({
               "data-index": index,
               className: clsx(
                 kRecordTreeKey,
-                styles$u.key,
+                styles$w.key,
                 "font-monospace",
                 "text-style-secondary"
               ),
@@ -27373,16 +27373,16 @@ const RecordTree = ({
                 setCollapsed(item.id, !collapsedIds?.[item.id]);
               },
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: item.hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$u.pre), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: item.hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$w.pre), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                   "i",
                   {
                     className: clsx(
                       collapsedIds && collapsedIds[item.id] ? ApplicationIcons.tree.closed : ApplicationIcons.tree.open,
-                      styles$u.treeIcon
+                      styles$w.treeIcon
                     )
                   }
                 ) }) : void 0 }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("pre", { className: clsx(styles$u.pre), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("pre", { className: clsx(styles$w.pre), children: [
                   item.key,
                   ":"
                 ] })
@@ -27462,12 +27462,12 @@ const toTreeItems = (record, collapsedIds, recordProcessors = [], currentDepth =
     }
   }
   const result2 = [];
-  Object.entries(record).forEach(([key2, value], index) => {
+  Object.entries(record).forEach(([key2, value2], index) => {
     const itemSegment = index.toString();
     result2.push(
       ...processNodeRecursive(
         key2,
-        value,
+        value2,
         currentDepth,
         currentPath,
         itemSegment,
@@ -27477,15 +27477,15 @@ const toTreeItems = (record, collapsedIds, recordProcessors = [], currentDepth =
   });
   return result2;
 };
-const processNodeRecursive = (key2, value, depth, parentPath, thisPath, collapsedIds) => {
+const processNodeRecursive = (key2, value2, depth, parentPath, thisPath, collapsedIds) => {
   const items = [];
   const currentItemPath = [...parentPath, thisPath];
   const id = `${depth}.${currentItemPath.join(".")}`;
-  if (isPrimitiveOrNull(value)) {
+  if (isPrimitiveOrNull(value2)) {
     items.push({
       id,
       key: key2,
-      value: value === void 0 ? null : value,
+      value: value2 === void 0 ? null : value2,
       depth,
       hasChildren: false
     });
@@ -27493,22 +27493,22 @@ const processNodeRecursive = (key2, value, depth, parentPath, thisPath, collapse
   }
   let displayValue = null;
   let processChildren = false;
-  if (Array.isArray(value)) {
+  if (Array.isArray(value2)) {
     processChildren = true;
-    displayValue = `Array(${value.length})`;
-  } else if (typeof value === "object" && value !== null) {
+    displayValue = `Array(${value2.length})`;
+  } else if (typeof value2 === "object" && value2 !== null) {
     processChildren = true;
-    displayValue = `Object(${Object.keys(value).length})`;
+    displayValue = `Object(${Object.keys(value2).length})`;
   } else {
-    displayValue = String(value);
+    displayValue = String(value2);
     processChildren = false;
   }
   items.push({ id, key: key2, value: displayValue, depth, hasChildren: true });
   if (processChildren && !collapsedIds[id]) {
     const childDepth = depth + 1;
-    if (Array.isArray(value)) {
-      if (value.length > 0) {
-        value.forEach((element, index) => {
+    if (Array.isArray(value2)) {
+      if (value2.length > 0) {
+        value2.forEach((element, index) => {
           const elementKey = `[${index}]`;
           const elementIdentifier = `[${index}]`;
           items.push(
@@ -27523,8 +27523,8 @@ const processNodeRecursive = (key2, value, depth, parentPath, thisPath, collapse
           );
         });
       }
-    } else if (typeof value === "object" && value !== null) {
-      Object.entries(value).forEach(
+    } else if (typeof value2 === "object" && value2 !== null) {
+      Object.entries(value2).forEach(
         ([childKey, childValue], index) => {
           const childIdentifier = index.toString();
           items.push(
@@ -27543,8 +27543,8 @@ const processNodeRecursive = (key2, value, depth, parentPath, thisPath, collapse
   }
   return items;
 };
-const isPrimitiveOrNull = (value) => {
-  return value === null || value === void 0 || typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+const isPrimitiveOrNull = (value2) => {
+  return value2 === null || value2 === void 0 || typeof value2 === "string" || typeof value2 === "number" || typeof value2 === "boolean";
 };
 const message = "_message_b8oe1_1";
 const systemRole = "_systemRole_b8oe1_8";
@@ -27555,7 +27555,7 @@ const indented = "_indented_b8oe1_29";
 const copyLink = "_copyLink_b8oe1_33";
 const metadataLabel = "_metadataLabel_b8oe1_43";
 const hover = "_hover_b8oe1_47";
-const styles$t = {
+const styles$v = {
   message,
   systemRole,
   messageGrid,
@@ -28326,8 +28326,8 @@ function determineBranch(decodeTree, current3, nodeIdx, char) {
     return jumpOffset !== 0 && char === jumpOffset ? nodeIdx : -1;
   }
   if (jumpOffset) {
-    const value = char - jumpOffset;
-    return value < 0 || value >= branchCount ? -1 : decodeTree[nodeIdx + value] - 1;
+    const value2 = char - jumpOffset;
+    return value2 < 0 || value2 >= branchCount ? -1 : decodeTree[nodeIdx + value2] - 1;
   }
   let lo = nodeIdx;
   let hi = lo + branchCount - 1;
@@ -29069,9 +29069,9 @@ Token$1.prototype.attrPush = function attrPush(attrData) {
     this.attrs = [attrData];
   }
 };
-Token$1.prototype.attrSet = function attrSet(name2, value) {
+Token$1.prototype.attrSet = function attrSet(name2, value2) {
   const idx = this.attrIndex(name2);
-  const attrData = [name2, value];
+  const attrData = [name2, value2];
   if (idx < 0) {
     this.attrPush(attrData);
   } else {
@@ -29080,18 +29080,18 @@ Token$1.prototype.attrSet = function attrSet(name2, value) {
 };
 Token$1.prototype.attrGet = function attrGet(name2) {
   const idx = this.attrIndex(name2);
-  let value = null;
+  let value2 = null;
   if (idx >= 0) {
-    value = this.attrs[idx][1];
+    value2 = this.attrs[idx][1];
   }
-  return value;
+  return value2;
 };
-Token$1.prototype.attrJoin = function attrJoin(name2, value) {
+Token$1.prototype.attrJoin = function attrJoin(name2, value2) {
   const idx = this.attrIndex(name2);
   if (idx < 0) {
-    this.attrPush([name2, value]);
+    this.attrPush([name2, value2]);
   } else {
-    this.attrs[idx][1] = this.attrs[idx][1] + " " + value;
+    this.attrs[idx][1] = this.attrs[idx][1] + " " + value2;
   }
 };
 function StateCore(src, md, env) {
@@ -32231,17 +32231,17 @@ function ucs2decode(string2) {
   let counter2 = 0;
   const length2 = string2.length;
   while (counter2 < length2) {
-    const value = string2.charCodeAt(counter2++);
-    if (value >= 55296 && value <= 56319 && counter2 < length2) {
+    const value2 = string2.charCodeAt(counter2++);
+    if (value2 >= 55296 && value2 <= 56319 && counter2 < length2) {
       const extra = string2.charCodeAt(counter2++);
       if ((extra & 64512) == 56320) {
-        output2.push(((value & 1023) << 10) + (extra & 1023) + 65536);
+        output2.push(((value2 & 1023) << 10) + (extra & 1023) + 65536);
       } else {
-        output2.push(value);
+        output2.push(value2);
         counter2--;
       }
     } else {
-      output2.push(value);
+      output2.push(value2);
     }
   }
   return output2;
@@ -32745,9 +32745,9 @@ const __vitePreload = function preload(baseModule, deps, importerUrl) {
   let promise = Promise.resolve();
   if (deps && deps.length > 0) {
     let allSettled = function(promises$2) {
-      return Promise.all(promises$2.map((p) => Promise.resolve(p).then((value$1) => ({
+      return Promise.all(promises$2.map((p) => Promise.resolve(p).then((value$12) => ({
         status: "fulfilled",
-        value: value$1
+        value: value$12
       }), (reason) => ({
         status: "rejected",
         reason
@@ -33097,7 +33097,7 @@ function unescapeCodeHtmlEntities(str) {
   );
 }
 const content$1 = "_content_13ihw_1";
-const styles$s = {
+const styles$u = {
   content: content$1
 };
 reactExports.forwardRef(
@@ -33106,7 +33106,7 @@ reactExports.forwardRef(
       "pre",
       {
         ref: ref2,
-        className: clsx(styles$s.content, "text-size-smaller", className),
+        className: clsx(styles$u.content, "text-size-smaller", className),
         style,
         children: text2
       }
@@ -33156,23 +33156,23 @@ const asJsonObjArray = (text2) => {
   return void 0;
 };
 const contentData = "_contentData_1sd1z_1";
-const styles$r = {
+const styles$t = {
   contentData
 };
 const webSearch = "_webSearch_1376z_1";
 const query$1 = "_query_1376z_8";
-const styles$q = {
+const styles$s = {
   webSearch,
   query: query$1
 };
 const WebSearch = ({ query: query2 }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$q.webSearch, "text-size-smaller"), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$s.webSearch, "text-size-smaller"), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx("text-style-label", "text-style-secondary"), children: "Web Search:" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$q.query, "text-size-smallest"), children: query2 })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$s.query, "text-size-smallest"), children: query2 })
   ] });
 };
 const result = "_result_1mixg_12";
-const styles$p = {
+const styles$r = {
   result
 };
 const WebSearchResults = ({
@@ -33183,7 +33183,7 @@ const WebSearchResults = ({
       "div",
       {
         className: clsx(
-          styles$p.label,
+          styles$r.label,
           "text-style-label",
           "text-style-secondary",
           "text-size-smaller"
@@ -33191,10 +33191,10 @@ const WebSearchResults = ({
         children: "Results"
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx(styles$p.results, "text-size-smaller"), children: results.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx(styles$r.results, "text-size-smaller"), children: results.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
       "li",
       {
-        className: clsx(styles$p.result, "text-style-secondary"),
+        className: clsx(styles$r.result, "text-style-secondary"),
         children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "a",
           {
@@ -33218,17 +33218,17 @@ const ContentDataView = ({ id, contentData: contentData2 }) => {
   );
   if (!renderer) {
     const { encrypted_content, ...record } = renderableData;
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$r.contentData), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$t.contentData), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       RecordTree,
       {
         id: `${id}-tree`,
         record,
-        className: clsx(styles$r.data),
+        className: clsx(styles$t.data),
         defaultExpandLevel: 0
       }
     ) });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$r.contentData), children: renderer.render(renderableData) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$t.contentData), children: renderer.render(renderableData) });
 };
 const webSearchServerToolRenderer = {
   name: "WebSearch",
@@ -33270,7 +33270,7 @@ const serverToolRenderer = {
         {
           id: data2.name || "server-tool",
           record: data2,
-          className: clsx(styles$r.data)
+          className: clsx(styles$t.data)
         }
       )
     ] });
@@ -33288,7 +33288,7 @@ const documentFrame = "_documentFrame_1576h_1";
 const documentFrameTitle = "_documentFrameTitle_1576h_9";
 const downloadLink = "_downloadLink_1576h_16";
 const imageDocument = "_imageDocument_1576h_21";
-const styles$o = {
+const styles$q = {
   documentFrame,
   documentFrameTitle,
   downloadLink,
@@ -33303,7 +33303,7 @@ const ContentDocumentView = ({
     return /* @__PURE__ */ jsxRuntimeExports.jsx(ContentDocumentFrame, { document: document2, downloadable: canDownloadFiles, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       "img",
       {
-        className: clsx(styles$o.imageDocument),
+        className: clsx(styles$q.imageDocument),
         src: document2.document,
         alt: document2.filename,
         id
@@ -33328,17 +33328,17 @@ const ContentDocumentFrame = ({
     "div",
     {
       className: clsx(
-        styles$o.documentFrame,
+        styles$q.documentFrame,
         "text-size-small",
         "text-style-secondary"
       ),
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$o.documentFrameTitle), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$q.documentFrameTitle), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(iconForMimeType(document2.mime_type)) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: downloadable ? /* @__PURE__ */ jsxRuntimeExports.jsx(
             "a",
             {
-              className: clsx(styles$o.downloadLink),
+              className: clsx(styles$q.downloadLink),
               onClick: () => {
               },
               children: document2.filename
@@ -33351,7 +33351,7 @@ const ContentDocumentFrame = ({
   );
 };
 const jsonMessage = "_jsonMessage_oxf8d_1";
-const styles$n = {
+const styles$p = {
   jsonMessage
 };
 const JsonMessageContent = ({
@@ -33364,7 +33364,7 @@ const JsonMessageContent = ({
     {
       id,
       record: json2,
-      className: clsx(styles$n.jsonMessage, className),
+      className: clsx(styles$p.jsonMessage, className),
       useBorders: false
     }
   );
@@ -33376,7 +33376,7 @@ const decodeHtmlEntities = (text2) => {
 };
 const citations = "_citations_1ggvf_1";
 const citationLink = "_citationLink_1ggvf_9";
-const styles$m = {
+const styles$o = {
   citations,
   citationLink
 };
@@ -33384,7 +33384,7 @@ const MessageCitations = ({ citations: citations2 }) => {
   if (citations2.length === 0) {
     return void 0;
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$m.citations, "text-size-smallest"), children: citations2.map((citation, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$o.citations, "text-size-smallest"), children: citations2.map((citation, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: index + 1 }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(MessageCitation, { citation })
   ] }, index)) });
@@ -33404,7 +33404,7 @@ const UrlCitation = ({
     href: citation.url,
     target: "_blank",
     rel: "noopener noreferrer",
-    className: clsx(styles$m.citationLink),
+    className: clsx(styles$o.citationLink),
     title: citation.cited_text && typeof citation.cited_text === "string" ? `${citation.cited_text}
 ${citation.url}` : citation.url,
     children
@@ -33413,7 +33413,7 @@ ${citation.url}` : citation.url,
 const OtherCitation = ({ children }) => /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children });
 const contentImage = "_contentImage_8rgix_1";
 const reasoning = "_reasoning_8rgix_6";
-const styles$l = {
+const styles$n = {
   contentImage,
   reasoning
 };
@@ -33424,7 +33424,7 @@ const args = "_args_1792k_22";
 const argLabel = "_argLabel_1792k_31";
 const error$1 = "_error_1792k_35";
 const toolPanel = "_toolPanel_1792k_40";
-const styles$k = {
+const styles$m = {
   mcpToolUse,
   title: title$1,
   titleText,
@@ -33445,42 +33445,42 @@ const McpToolUse = ({ id, content: content2, className }) => {
   const titleStr = content2.context ? `${content2.context} — ${content2.name}()` : `${content2.name}()`;
   const listToolsResult = maybeListTools(content2);
   const webSearchResult = maybeWebSearchResult(content2);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id, className: clsx(styles$k.mcpToolUse, className), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id, className: clsx(styles$m.mcpToolUse, className), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         className: clsx(
-          styles$k.title,
+          styles$m.title,
           "text-size-small",
           "text-style-secondary"
         ),
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.role.tool }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$k.titleText, children: titleStr }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$k.type, children: content2.type })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$m.titleText, children: titleStr }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$m.type, children: content2.type })
         ]
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$k.args, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$m.args, children: [
       Object.keys(args2).map((key2, index) => {
-        const value = args2[key2];
+        const value2 = args2[key2];
         let valueRecord = void 0;
-        if (Array.isArray(value)) {
+        if (Array.isArray(value2)) {
           valueRecord = {};
-          for (let i = 0; i < value.length; i++) {
-            valueRecord[`[${i}]`] = value[i];
+          for (let i = 0; i < value2.length; i++) {
+            valueRecord[`[${i}]`] = value2[i];
           }
-        } else if (value && typeof value === "object") {
-          valueRecord = value;
+        } else if (value2 && typeof value2 === "object") {
+          valueRecord = value2;
         }
         return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(LabelDiv, { label: key2 }),
-          valueRecord ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordTree, { id: `${id}-val-${index}`, record: valueRecord }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: value })
+          valueRecord ? /* @__PURE__ */ jsxRuntimeExports.jsx(RecordTree, { id: `${id}-val-${index}`, record: valueRecord }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: value2 })
         ] });
       }),
       webSearchResult ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(LabelDiv, { label: "results" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: webSearchResult.result.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$k.result, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: webSearchResult.result.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$m.result, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "a",
           {
             href: result2.url,
@@ -33495,7 +33495,7 @@ const McpToolUse = ({ id, content: content2, className }) => {
         {
           id: `${id}-output`,
           collapse: true,
-          className: clsx(styles$k.toolPanel),
+          className: clsx(styles$m.toolPanel),
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(LabelDiv, { label: tool.name }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(ValueDiv, { children: [
@@ -33513,7 +33513,7 @@ const McpToolUse = ({ id, content: content2, className }) => {
         }
       ) })) : void 0
     ] }),
-    content2.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$k.error, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+    content2.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$m.error, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
       "Error: ",
       content2.error
     ] }) }) : !listToolsResult && !webSearchResult ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-small"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ExpandablePanel, { id: `${id}-output`, collapse: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -33570,7 +33570,7 @@ const LabelDiv = ({ label }) => {
     "div",
     {
       className: clsx(
-        styles$k.argLabel,
+        styles$m.argLabel,
         "text-style-secondary",
         "text-size-smaller"
       ),
@@ -33585,7 +33585,7 @@ const toolImage = "_toolImage_1wvgr_1";
 const output$3 = "_output_1wvgr_6";
 const textOutput = "_textOutput_1wvgr_10";
 const textCode = "_textCode_1wvgr_18";
-const styles$j = {
+const styles$l = {
   toolImage,
   output: output$3,
   textOutput,
@@ -33604,7 +33604,7 @@ const ToolOutput = ({ output: output2, className }) => {
       } else {
         if (out.image.startsWith("data:")) {
           outputs.push(
-            /* @__PURE__ */ jsxRuntimeExports.jsx("img", { className: clsx(styles$j.toolImage), src: out.image }, key2)
+            /* @__PURE__ */ jsxRuntimeExports.jsx("img", { className: clsx(styles$l.toolImage), src: out.image }, key2)
           );
         } else {
           outputs.push(/* @__PURE__ */ jsxRuntimeExports.jsx(ToolTextOutput, { text: String(out.image) }, key2));
@@ -33616,14 +33616,14 @@ const ToolOutput = ({ output: output2, className }) => {
       /* @__PURE__ */ jsxRuntimeExports.jsx(ToolTextOutput, { text: String(output2) }, "tool-output-single")
     );
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$j.output, className), children: outputs });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$l.output, className), children: outputs });
 };
 const ToolTextOutput = ({ text: text2 }) => {
   if (isJson(text2)) {
     const obj = JSON.parse(text2);
     return /* @__PURE__ */ jsxRuntimeExports.jsx(JsonMessageContent, { id: `1-json`, json: obj });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$j.textOutput, "tool-output"), children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("sourceCode", styles$j.textCode), children: text2.trim() }) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$l.textOutput, "tool-output"), children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("sourceCode", styles$l.textCode), children: text2.trim() }) });
 };
 const isMessageContent = (content2) => {
   return typeof content2 === "object" && content2 !== null && "type" in content2 && typeof content2.type === "string";
@@ -33723,7 +33723,7 @@ const messageRenderers = {
       } else if (!text2) {
         text2 = r2.summary || "Reasoning text not provided.";
       }
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$l.reasoning, "text-size-small"), children: [
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$n.reasoning, "text-size-small"), children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
@@ -33746,7 +33746,7 @@ const messageRenderers = {
     render: (key2, content2, _isLast, _context) => {
       const c2 = content2;
       if (c2.image.startsWith("data:")) {
-        return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: c2.image, className: styles$l.contentImage }, key2);
+        return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: c2.image, className: styles$n.contentImage }, key2);
       } else {
         return /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: c2.image }, key2);
       }
@@ -33872,7 +33872,7 @@ const normalizeContent$2 = (contents) => {
 const isCitationWithRange = (citation) => Array.isArray(citation.cited_text);
 const content = "_content_1b2jp_1";
 const codeCompact = "_codeCompact_1b2jp_5";
-const styles$i = {
+const styles$k = {
   content,
   codeCompact
 };
@@ -34262,8 +34262,8 @@ const extractInputMetadata = (toolName) => {
   }
 };
 const extractInput = (args2, inputDescriptor) => {
-  const formatArg = (key2, value) => {
-    const quotedValue = value === null ? "None" : typeof value === "string" ? `"${value}"` : typeof value === "object" || Array.isArray(value) ? JSON.stringify(value, void 0, 2) : String(value);
+  const formatArg = (key2, value2) => {
+    const quotedValue = value2 === null ? "None" : typeof value2 === "string" ? `"${value2}"` : typeof value2 === "object" || Array.isArray(value2) ? JSON.stringify(value2, void 0, 2) : String(value2);
     return `${key2}: ${quotedValue}`;
   };
   if (!args2) {
@@ -34301,12 +34301,12 @@ const extractInput = (args2, inputDescriptor) => {
   }
 };
 const toolCallView = "_toolCallView_l6wae_1";
-const styles$h = {
+const styles$j = {
   toolCallView
 };
 const todoList = "_todoList_1t8rx_1";
 const inProgress = "_inProgress_1t8rx_9";
-const styles$g = {
+const styles$i = {
   todoList,
   inProgress
 };
@@ -34326,7 +34326,7 @@ const toToolTodos = (obj) => {
 };
 const TodoWriteInput = ({ contents, parentRef }) => {
   const todoItems = toToolTodos(contents);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: parentRef, className: clsx(styles$g.todoList), children: todoItems.map((todo) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: parentRef, className: clsx(styles$i.todoList), children: todoItems.map((todo) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "i",
@@ -34341,9 +34341,9 @@ const TodoWriteInput = ({ contents, parentRef }) => {
         "span",
         {
           className: clsx(
-            styles$g.todoItem,
+            styles$i.todoItem,
             "text-size-smallest",
-            todo.status === "in_progress" ? styles$g.inProgress : void 0
+            todo.status === "in_progress" ? styles$i.inProgress : void 0
           ),
           children: todo.content
         }
@@ -34354,7 +34354,7 @@ const TodoWriteInput = ({ contents, parentRef }) => {
 const outputPre = "_outputPre_1jznn_1";
 const toolView = "_toolView_1jznn_7";
 const outputCode = "_outputCode_1jznn_15";
-const styles$f = {
+const styles$h = {
   outputPre,
   toolView,
   outputCode
@@ -34371,7 +34371,7 @@ const ToolInput = (props) => {
       {
         markdown: toolCallView2.content,
         ref: sourceCodeRef,
-        className: clsx("tool-output", styles$f.toolView, className)
+        className: clsx("tool-output", styles$h.toolView, className)
       }
     );
   } else {
@@ -34401,8 +34401,8 @@ const RenderTool = ({
     {
       className: clsx(
         "tool-output",
-        styles$f.outputPre,
-        styles$f.bottomMargin,
+        styles$h.outputPre,
+        styles$h.bottomMargin,
         className
       ),
       children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -34412,7 +34412,7 @@ const RenderTool = ({
             "source-code",
             "sourceCode",
             contentType ? `language-${contentType}` : void 0,
-            styles$f.outputCode
+            styles$h.outputCode
           ),
           children: formattedContent
         }
@@ -34423,16 +34423,16 @@ const RenderTool = ({
 const image = "_image_1vcac_1";
 const toolTitle = "_toolTitle_1vcac_6";
 const description = "_description_1vcac_10";
-const styles$e = {
+const styles$g = {
   image,
   toolTitle,
   description
 };
 const ToolTitle = ({ title: title2, description: description2 }) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx("bi", "bi-tools", styles$e.image) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("text-size-small", styles$e.toolTitle), children: title2 }),
-    description2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: clsx(styles$e.description, "text-size-smallest"), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx("bi", "bi-tools", styles$g.image) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("text-size-small", styles$g.toolTitle), children: title2 }),
+    description2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: clsx(styles$g.description, "text-size-smallest"), children: [
       "- ",
       description2
     ] }) : void 0
@@ -34449,12 +34449,12 @@ const ToolCallView = ({
   mode,
   collapsible = true
 }) => {
-  function isContentImage(value) {
-    if (value && typeof value === "object") {
-      if (value.type === "image") {
+  function isContentImage(value2) {
+    if (value2 && typeof value2 === "object") {
+      if (value2.type === "image") {
         return true;
-      } else if (value.type === "tool") {
-        if (Array.isArray(value.content) && value.content.some(isContentImage)) {
+      } else if (value2.type === "tool") {
+        if (Array.isArray(value2.content) && value2.content.some(isContentImage)) {
           return true;
         }
       }
@@ -34481,7 +34481,7 @@ const ToolCallView = ({
   });
   const contents = mode !== "compact" ? input : input || functionCall;
   const context = defaultContext();
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$h.toolCallView), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$j.toolCallView), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
       mode !== "compact" && (!view || view.title) ? /* @__PURE__ */ jsxRuntimeExports.jsx(
         ToolTitle,
@@ -34558,7 +34558,7 @@ const MessageContents = ({
       }
       const resolvedToolOutput = resolveToolMessage(toolMessage);
       if (toolCallStyle === "compact") {
-        return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("code", { className: clsx(styles$i.codeCompact), children: [
+        return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("code", { className: clsx(styles$k.codeCompact), children: [
           "tool: ",
           functionCall
         ] }) }, `tool-call-${idx}`);
@@ -34581,7 +34581,7 @@ const MessageContents = ({
       }
     });
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-      message2.content && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$i.content, children: /* @__PURE__ */ jsxRuntimeExports.jsx(MessageContent, { contents: message2.content, context }) }),
+      message2.content && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$k.content, children: /* @__PURE__ */ jsxRuntimeExports.jsx(MessageContent, { contents: message2.content, context }) }),
       toolCalls
     ] });
   } else {
@@ -34662,10 +34662,10 @@ const ChatMessage = reactExports.memo(
         className: clsx(
           message2.role,
           "text-size-base",
-          styles$t.message,
-          message2.role === "system" ? styles$t.systemRole : void 0,
-          message2.role === "user" ? styles$t.userRole : void 0,
-          mouseOver ? styles$t.hover : void 0
+          styles$v.message,
+          message2.role === "system" ? styles$v.systemRole : void 0,
+          message2.role === "user" ? styles$v.userRole : void 0,
+          mouseOver ? styles$v.hover : void 0
         ),
         onMouseEnter: () => setMouseOver(true),
         onMouseLeave: () => setMouseOver(false),
@@ -34674,8 +34674,8 @@ const ChatMessage = reactExports.memo(
             "div",
             {
               className: clsx(
-                styles$t.messageGrid,
-                message2.role === "tool" ? styles$t.toolMessageGrid : void 0,
+                styles$v.messageGrid,
+                message2.role === "tool" ? styles$v.toolMessageGrid : void 0,
                 "text-style-label"
               ),
               children: [
@@ -34686,7 +34686,7 @@ const ChatMessage = reactExports.memo(
                   {
                     icon: ApplicationIcons.link,
                     value: toFullUrl(messageUrl),
-                    className: clsx(styles$t.copyLink)
+                    className: clsx(styles$v.copyLink)
                   }
                 ) : ""
               ]
@@ -34696,8 +34696,8 @@ const ChatMessage = reactExports.memo(
             "div",
             {
               className: clsx(
-                styles$t.messageContents,
-                indented2 ? styles$t.indented : void 0
+                styles$v.messageContents,
+                indented2 ? styles$v.indented : void 0
               ),
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -34722,7 +34722,7 @@ const ChatMessage = reactExports.memo(
                   LabeledValue,
                   {
                     label: "Metadata",
-                    className: clsx(styles$t.metadataLabel, "text-size-smaller"),
+                    className: clsx(styles$v.metadataLabel, "text-size-smaller"),
                     children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                       RecordTree,
                       {
@@ -34744,12 +34744,12 @@ const ChatMessage = reactExports.memo(
 const grid = "_grid_rmdrx_1";
 const number = "_number_rmdrx_7";
 const user = "_user_rmdrx_11";
-const container$5 = "_container_rmdrx_16";
-const styles$d = {
+const container$6 = "_container_rmdrx_16";
+const styles$f = {
   grid,
   number,
   user,
-  container: container$5
+  container: container$6
 };
 const ChatMessageRow = ({
   parentName,
@@ -34766,9 +34766,9 @@ const ChatMessageRow = ({
         "div",
         {
           className: clsx(
-            styles$d.grid,
-            styles$d.container,
-            highlightUserMessage && resolvedMessage.message.role === "user" ? styles$d.user : void 0
+            styles$f.grid,
+            styles$f.container,
+            highlightUserMessage && resolvedMessage.message.role === "user" ? styles$f.user : void 0
           ),
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -34777,7 +34777,7 @@ const ChatMessageRow = ({
                 className: clsx(
                   "text-size-smaller",
                   "text-style-secondary",
-                  styles$d.number
+                  styles$f.number
                 ),
                 children: number2
               }
@@ -34803,9 +34803,9 @@ const ChatMessageRow = ({
       "div",
       {
         className: clsx(
-          styles$d.container,
-          styles$d.simple,
-          highlightUserMessage && resolvedMessage.message.role === "user" ? styles$d.user : void 0
+          styles$f.container,
+          styles$f.simple,
+          highlightUserMessage && resolvedMessage.message.role === "user" ? styles$f.user : void 0
         ),
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -35852,7 +35852,7 @@ function requireAnsiOutput() {
          * @returns
          */
         static equivalent(left2, right2) {
-          const setReplacer = (_, value) => value instanceof Set ? !value.size ? void 0 : [...value] : value;
+          const setReplacer = (_, value2) => value2 instanceof Set ? !value2.size ? void 0 : [...value2] : value2;
           return left2 === right2 || JSON.stringify(left2, setReplacer) === JSON.stringify(right2, setReplacer);
         }
         //#endregion Public Methods
@@ -36221,16 +36221,16 @@ function requireAnsiOutput() {
           return this._text;
         }
       }
-      const rangeParam = (value, defaultValue, minValue) => {
-        const param = getParam(value, defaultValue);
+      const rangeParam = (value2, defaultValue, minValue) => {
+        const param = getParam(value2, defaultValue);
         return Math.max(param, minValue);
       };
-      const getParam = (value, defaultValue) => {
-        const param = parseInt(value);
+      const getParam = (value2, defaultValue) => {
+        const param = parseInt(value2);
         return Number.isNaN(param) ? defaultValue : param;
       };
-      const twoDigitHex = (value) => {
-        const hex = Math.max(Math.min(255, value), 0).toString(16);
+      const twoDigitHex = (value2) => {
+        const hex = Math.max(Math.min(255, value2), 0).toString(16);
         return hex.length === 2 ? hex : "0" + hex;
       };
     });
@@ -36369,7 +36369,7 @@ const query = "_query_seqs2_1";
 const summary = "_summary_seqs2_6";
 const preWrap = "_preWrap_seqs2_10";
 const preCompact = "_preCompact_seqs2_15";
-const styles$c = {
+const styles$e = {
   query,
   summary,
   preWrap,
@@ -36494,7 +36494,7 @@ const contentRenderers = (renderObject) => {
           };
         } else {
           return {
-            rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$c.preWrap, styles$c.preCompact), children: rendered })
+            rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$e.preWrap, styles$e.preCompact), children: rendered })
           };
         }
       }
@@ -36543,7 +36543,7 @@ const contentRenderers = (renderObject) => {
       render: (_id, entry2, _options) => {
         const results = [];
         results.push(
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$c.query, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$e.query, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.search }),
             " ",
             entry2.value.query
@@ -36555,7 +36555,7 @@ const contentRenderers = (renderObject) => {
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: result2.url, children: result2.url }) })
             );
             results.push(
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-smaller", styles$c.summary), children: result2.summary })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-smaller", styles$e.summary), children: result2.summary })
             );
           }
         );
@@ -36571,7 +36571,7 @@ const contentRenderers = (renderObject) => {
       },
       render: (_id, entry2, _options) => {
         return {
-          rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$c.preWrap, children: entry2.value })
+          rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$e.preWrap, children: entry2.value })
         };
       }
     },
@@ -36663,7 +36663,7 @@ const MetaDataGrid = ({
         {
           className: clsx(
             `${baseId}-key`,
-            styles$z.cell,
+            styles$B.cell,
             "text-style-label",
             "text-style-secondary",
             fontStyle
@@ -36671,7 +36671,7 @@ const MetaDataGrid = ({
           children: entry2?.name
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$z.value, `${baseId}-value`, fontStyle), children: entry2 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$B.value, `${baseId}-value`, fontStyle), children: entry2 && /* @__PURE__ */ jsxRuntimeExports.jsx(
         RenderedContent,
         {
           id: id2,
@@ -36681,7 +36681,7 @@ const MetaDataGrid = ({
               MetaDataGrid,
               {
                 id: id2,
-                className: clsx(styles$z.nested),
+                className: clsx(styles$B.nested),
                 entries: obj,
                 size,
                 plain
@@ -36692,30 +36692,30 @@ const MetaDataGrid = ({
       ) })
     ] }, `${baseId}-record-${index}`);
   });
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id, className: clsx(className, styles$z.grid), style, children: entryEls });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id, className: clsx(className, styles$B.grid), style, children: entryEls });
 };
 const entryRecords = (entries2) => {
   if (!entries2) {
     return [];
   }
   if (!Array.isArray(entries2)) {
-    return Object.entries(entries2 || {}).map(([key2, value]) => {
-      return { name: key2, value };
+    return Object.entries(entries2 || {}).map(([key2, value2]) => {
+      return { name: key2, value: value2 };
     });
   } else {
     return entries2;
   }
 };
-const container$4 = "_container_1q66p_1";
-const styles$b = {
-  container: container$4
+const container$5 = "_container_1q66p_1";
+const styles$d = {
+  container: container$5
 };
 const ScanInfo = () => {
   const selectedResults = useStore((state) => state.selectedResults);
   if (!selectedResults) {
     return null;
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { className: clsx(styles$b.container), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { className: clsx(styles$d.container), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(CardHeader, { label: "Scan Information" }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(CardBody, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       MetaDataGrid,
@@ -36841,20 +36841,20 @@ var LocalEventService = class {
     }
   }
 };
-function _makeNull(value) {
-  if (value == null || value === "") {
+function _makeNull(value2) {
+  if (value2 == null || value2 === "") {
     return null;
   }
-  return value;
+  return value2;
 }
-function _exists(value) {
-  return value != null && value !== "";
+function _exists(value2) {
+  return value2 != null && value2 !== "";
 }
-function _missing(value) {
-  return !_exists(value);
+function _missing(value2) {
+  return !_exists(value2);
 }
-function _toStringOrNull(value) {
-  return value != null && typeof value.toString === "function" ? value.toString() : null;
+function _toStringOrNull(value2) {
+  return value2 != null && typeof value2.toString === "function" ? value2.toString() : null;
 }
 function _jsonEquals(val1, val2) {
   const val1Json = val1 ? JSON.stringify(val1) : null;
@@ -36967,15 +36967,15 @@ function _getBodyHeight(beans) {
   const body = _getPageBody(beans);
   return body?.clientHeight ?? (window.innerHeight || -1);
 }
-function _toggleAriaAttribute(element, attribute2, value) {
-  if (value == null || typeof value === "string" && value == "") {
+function _toggleAriaAttribute(element, attribute2, value2) {
+  if (value2 == null || typeof value2 === "string" && value2 == "") {
     _removeAriaAttribute(element, attribute2);
   } else {
-    _setAriaAttribute(element, attribute2, value);
+    _setAriaAttribute(element, attribute2, value2);
   }
 }
-function _setAriaAttribute(element, attribute2, value) {
-  element.setAttribute(_ariaAttributeName(attribute2), value.toString());
+function _setAriaAttribute(element, attribute2, value2) {
+  element.setAttribute(_ariaAttributeName(attribute2), value2.toString());
 }
 function _removeAriaAttribute(element, attribute2) {
   element.removeAttribute(_ariaAttributeName(attribute2));
@@ -37211,11 +37211,11 @@ function _getScrollLeft(element, rtl) {
   }
   return scrollLeft;
 }
-function _setScrollLeft(element, value, rtl) {
+function _setScrollLeft(element, value2, rtl) {
   if (rtl) {
-    value *= -1;
+    value2 *= -1;
   }
-  element.scrollLeft = value;
+  element.scrollLeft = value2;
 }
 function _clearElement(el) {
   while (el?.firstChild) {
@@ -37285,11 +37285,11 @@ function _formatSize(size) {
 function _isNodeOrElement(o) {
   return o instanceof Node || o instanceof HTMLElement;
 }
-function _addOrRemoveAttribute(element, name2, value) {
-  if (value == null || value === "") {
+function _addOrRemoveAttribute(element, name2, value2) {
+  if (value2 == null || value2 === "") {
     element.removeAttribute(name2);
   } else {
-    element.setAttribute(name2, value.toString());
+    element.setAttribute(name2, value2.toString());
   }
 }
 function _observeResize(beans, element, callback) {
@@ -37878,8 +37878,8 @@ function _mergeDeep(dest, source2, copyUndefined = true, makeCopyOfSimpleObjects
     }
   });
 }
-function _isNonNullObject(value) {
-  return typeof value === "object" && value !== null;
+function _isNonNullObject(value2) {
+  return typeof value2 === "object" && value2 !== null;
 }
 var _GlobalGridOptions = class _GlobalGridOptions2 {
   /**
@@ -38257,12 +38257,12 @@ function stringifyObject(inputObj) {
   }
   return JSON.stringify(object2);
 }
-function stringifyValue(value) {
-  let output2 = value;
-  if (value instanceof Error) {
-    output2 = value.toString();
-  } else if (typeof value === "object") {
-    output2 = stringifyObject(value);
+function stringifyValue(value2) {
+  let output2 = value2;
+  if (value2 instanceof Error) {
+    output2 = value2.toString();
+  } else if (typeof value2 === "object") {
+    output2 = stringifyObject(value2);
   }
   return output2;
 }
@@ -38275,7 +38275,7 @@ function getParamsUrl(baseUrl, params) {
 function truncateUrl(baseUrl, params, maxLength) {
   const sortedParams = Array.from(params.entries()).sort((a2, b) => b[1].length - a2[1].length);
   let url = getParamsUrl(baseUrl, params);
-  for (const [key2, value] of sortedParams) {
+  for (const [key2, value2] of sortedParams) {
     if (key2 === VERSION_PARAM_NAME) {
       continue;
     }
@@ -38285,7 +38285,7 @@ function truncateUrl(baseUrl, params, maxLength) {
     }
     const ellipse = "...";
     const truncateAmount = excessLength + ellipse.length;
-    const truncatedValue = value.length - truncateAmount > MIN_PARAM_LENGTH ? value.slice(0, value.length - truncateAmount) + ellipse : value.slice(0, MIN_PARAM_LENGTH) + ellipse;
+    const truncatedValue = value2.length - truncateAmount > MIN_PARAM_LENGTH ? value2.slice(0, value2.length - truncateAmount) + ellipse : value2.slice(0, MIN_PARAM_LENGTH) + ellipse;
     params.set(key2, truncatedValue);
     url = getParamsUrl(baseUrl, params);
   }
@@ -38399,21 +38399,21 @@ function _getRowHeightAsNumber(beans) {
   _warn(24);
   return environment.getDefaultRowHeight();
 }
-function isNumeric(value) {
-  return !isNaN(value) && typeof value === "number" && isFinite(value);
+function isNumeric(value2) {
+  return !isNaN(value2) && typeof value2 === "number" && isFinite(value2);
 }
 function _getDomData(gos, element, key2) {
   const domData = element[gos.getDomDataKey()];
   return domData ? domData[key2] : void 0;
 }
-function _setDomData(gos, element, key2, value) {
+function _setDomData(gos, element, key2, value2) {
   const domDataKey = gos.getDomDataKey();
   let domData = element[domDataKey];
   if (_missing(domData)) {
     domData = {};
     element[domDataKey] = domData;
   }
-  domData[key2] = value;
+  domData[key2] = value2;
 }
 function _isAnimateRows(gos) {
   if (gos.get("ensureDomOrder")) {
@@ -38629,9 +38629,9 @@ function _combineAttributesAndGridOptions(gridOptions, component, gridOptionsKey
   }
   const mergedOptions = { ...gridOptions };
   for (const key2 of gridOptionsKeys) {
-    const value = component[key2];
-    if (typeof value !== "undefined") {
-      mergedOptions[key2] = value;
+    const value2 = component[key2];
+    if (typeof value2 !== "undefined") {
+      mergedOptions[key2] = value2;
     }
   }
   return mergedOptions;
@@ -38902,13 +38902,13 @@ var AgColumn = class extends BeanStub {
   getColDefValue(key2) {
     return this.colDef[key2] ?? COL_DEF_DEFAULTS[key2];
   }
-  isColumnFunc(rowNode, value) {
-    if (typeof value === "boolean") {
-      return value;
+  isColumnFunc(rowNode, value2) {
+    if (typeof value2 === "boolean") {
+      return value2;
     }
-    if (typeof value === "function") {
+    if (typeof value2 === "function") {
       const params = this.createColumnFunctionCallbackParams(rowNode);
-      const editableFunc = value;
+      const editableFunc = value2;
       return editableFunc(params);
     }
     return false;
@@ -39430,8 +39430,8 @@ function _forAll(array2, callback) {
   if (!array2) {
     return;
   }
-  for (const value of array2) {
-    callback(value);
+  for (const value2 of array2) {
+    callback(value2);
   }
 }
 function _removeFromArray(array2, object2) {
@@ -39756,15 +39756,15 @@ function assignColumnTypes(beans, typeKeys, colDefMerged) {
   const allColumnTypes = Object.assign({}, DefaultColumnTypes);
   const userTypes = beans.gos.get("columnTypes") || {};
   for (const key2 of Object.keys(userTypes)) {
-    const value = userTypes[key2];
+    const value2 = userTypes[key2];
     if (key2 in allColumnTypes) {
       _warn(34, { key: key2 });
     } else {
-      const colType = value;
+      const colType = value2;
       if (colType.type) {
         _warn(35);
       }
-      allColumnTypes[key2] = value;
+      allColumnTypes[key2] = value2;
     }
   }
   for (const t2 of typeKeys) {
@@ -41106,7 +41106,7 @@ var AgPromise = class _AgPromise {
     this.resolution = null;
     this.waiters = [];
     callback(
-      (value) => this.onDone(value),
+      (value2) => this.onDone(value2),
       (params) => this.onReject(params)
     );
   }
@@ -41115,8 +41115,8 @@ var AgPromise = class _AgPromise {
       let remainingToResolve = promises.length;
       const combinedValues = new Array(remainingToResolve);
       promises.forEach((promise, index) => {
-        promise.then((value) => {
-          combinedValues[index] = value;
+        promise.then((value2) => {
+          combinedValues[index] = value2;
           remainingToResolve--;
           if (remainingToResolve === 0) {
             resolve2(combinedValues);
@@ -41125,23 +41125,23 @@ var AgPromise = class _AgPromise {
       });
     }) : _AgPromise.resolve();
   }
-  static resolve(value = null) {
-    return new _AgPromise((resolve2) => resolve2(value));
+  static resolve(value2 = null) {
+    return new _AgPromise((resolve2) => resolve2(value2));
   }
   then(func2) {
     return new _AgPromise((resolve2) => {
       if (this.status === 1) {
         resolve2(func2(this.resolution));
       } else {
-        this.waiters.push((value) => resolve2(func2(value)));
+        this.waiters.push((value2) => resolve2(func2(value2)));
       }
     });
   }
-  onDone(value) {
+  onDone(value2) {
     this.status = 1;
-    this.resolution = value;
+    this.resolution = value2;
     for (const waiter of this.waiters) {
-      waiter(value);
+      waiter(value2);
     }
   }
   onReject(_) {
@@ -41593,8 +41593,8 @@ function _isInvisibleScrollbar() {
 var DATE_TIME_SEPARATOR = "T";
 var DATE_TIME_SEPARATOR_REGEXP = new RegExp(`[${DATE_TIME_SEPARATOR} ]`);
 var DATE_TIME_REGEXP = new RegExp(`^\\d{4}-\\d{2}-\\d{2}(${DATE_TIME_SEPARATOR}\\d{2}:\\d{2}:\\d{2}\\D?)?`);
-function _padStartWidthZeros(value, totalStringSize) {
-  return value.toString().padStart(totalStringSize, "0");
+function _padStartWidthZeros(value2, totalStringSize) {
+  return value2.toString().padStart(totalStringSize, "0");
 }
 function _serialiseDate(date2, includeTime = true, separator2 = DATE_TIME_SEPARATOR) {
   if (!date2) {
@@ -41622,11 +41622,11 @@ function _getDateParts(d, includeTime = true) {
   }
   return [d.getFullYear(), d.getMonth() + 1, _padStartWidthZeros(d.getDate(), 2)].map(String);
 }
-var calculateOrdinal = (value) => {
-  if (value > 3 && value < 21) {
+var calculateOrdinal = (value2) => {
+  if (value2 > 3 && value2 < 21) {
     return "th";
   }
-  const remainder = value % 10;
+  const remainder = value2 % 10;
   switch (remainder) {
     case 1:
       return "st";
@@ -41683,20 +41683,20 @@ function _dateToFormattedString(date2, format2) {
     return match3;
   });
 }
-function _isValidDate(value, bailIfInvalidTime = false) {
-  return !!_parseDateTimeFromString(value, bailIfInvalidTime);
+function _isValidDate(value2, bailIfInvalidTime = false) {
+  return !!_parseDateTimeFromString(value2, bailIfInvalidTime);
 }
-function _isValidDateTime(value) {
-  return _isValidDate(value, true);
+function _isValidDateTime(value2) {
+  return _isValidDate(value2, true);
 }
-function _parseDateTimeFromString(value, bailIfInvalidTime = false, skipValidation) {
-  if (!value) {
+function _parseDateTimeFromString(value2, bailIfInvalidTime = false, skipValidation) {
+  if (!value2) {
     return null;
   }
-  if (!skipValidation && !DATE_TIME_REGEXP.test(value)) {
+  if (!skipValidation && !DATE_TIME_REGEXP.test(value2)) {
     return null;
   }
-  const [dateStr, timeStr] = value.split(DATE_TIME_SEPARATOR_REGEXP);
+  const [dateStr, timeStr] = value2.split(DATE_TIME_SEPARATOR_REGEXP);
   if (!dateStr) {
     return null;
   }
@@ -42024,12 +42024,12 @@ var AgAbstractField = class extends AgAbstractLabel {
   }
   postConstruct() {
     super.postConstruct();
-    const { width, value, onValueChange } = this.config;
+    const { width, value: value2, onValueChange } = this.config;
     if (width != null) {
       this.setWidth(width);
     }
-    if (value != null) {
-      this.setValue(value);
+    if (value2 != null) {
+      this.setValue(value2);
     }
     if (onValueChange != null) {
       this.onValueChange(onValueChange);
@@ -42076,12 +42076,12 @@ var AgAbstractField = class extends AgAbstractLabel {
   getValue() {
     return this.value;
   }
-  setValue(value, silent) {
-    if (this.value === value) {
+  setValue(value2, silent) {
+    if (this.value === value2) {
       return this;
     }
     this.previousValue = this.value;
-    this.value = value;
+    this.value = value2;
     if (!silent) {
       this.dispatchLocalEvent({ type: "fieldValueChanged" });
     }
@@ -42175,11 +42175,11 @@ var AgAbstractInputField = class extends AgAbstractField {
     _setDisabled(this.eInput, disabled);
     return super.setDisabled(disabled);
   }
-  setAutoComplete(value) {
-    if (value === true) {
+  setAutoComplete(value2) {
+    if (value2 === true) {
       _addOrRemoveAttribute(this.eInput, "autocomplete", null);
     } else {
-      const autoCompleteValue = typeof value === "string" ? value : "off";
+      const autoCompleteValue = typeof value2 === "string" ? value2 : "off";
       _addOrRemoveAttribute(this.eInput, "autocomplete", autoCompleteValue);
     }
     return this;
@@ -42240,9 +42240,9 @@ var AgCheckbox = class extends AgAbstractInputField {
   getValue() {
     return this.isSelected();
   }
-  setValue(value, silent) {
-    this.refreshSelectedClass(value);
-    this.setSelected(value, silent);
+  setValue(value2, silent) {
+    this.refreshSelectedClass(value2);
+    this.setSelected(value2, silent);
     return this;
   }
   setName(name2) {
@@ -42286,10 +42286,10 @@ var AgCheckbox = class extends AgAbstractInputField {
     this.refreshSelectedClass(selected2);
     this.dispatchChange(selected2, previousValue, e);
   }
-  refreshSelectedClass(value) {
+  refreshSelectedClass(value2) {
     const classList = this.eWrapper.classList;
-    classList.toggle("ag-checked", value === true);
-    classList.toggle("ag-indeterminate", value == null);
+    classList.toggle("ag-checked", value2 === true);
+    classList.toggle("ag-indeterminate", value2 == null);
   }
 };
 var AgCheckboxSelector = {
@@ -42338,16 +42338,16 @@ var AgInputTextField = class extends AgAbstractInputField {
       this.preventDisallowedCharacters();
     }
   }
-  setValue(value, silent) {
+  setValue(value2, silent) {
     const eInput = this.eInput;
-    if (eInput.value !== value) {
-      eInput.value = _exists(value) ? value : "";
+    if (eInput.value !== value2) {
+      eInput.value = _exists(value2) ? value2 : "";
     }
-    return super.setValue(value, silent);
+    return super.setValue(value2, silent);
   }
   /** Used to set an initial value into the input without necessarily setting `this.value` or triggering events (e.g. to set an invalid value) */
-  setStartValue(value) {
-    this.setValue(value, true);
+  setStartValue(value2) {
+    this.setValue(value2, true);
   }
   preventDisallowedCharacters() {
     const pattern = new RegExp(`[${this.config.allowedCharPattern}]`);
@@ -42378,9 +42378,9 @@ var AgInputTextArea = class extends AgAbstractInputField {
   constructor(config2) {
     super(config2, "ag-text-area", null, "textarea");
   }
-  setValue(value, silent) {
-    const ret = super.setValue(value, silent);
-    this.eInput.value = value;
+  setValue(value2, silent) {
+    const ret = super.setValue(value2, silent);
+    this.eInput.value = value2;
     return ret;
   }
   setCols(cols) {
@@ -42406,9 +42406,9 @@ var AgInputNumberField = class extends AgInputTextField {
     this.addManagedListeners(eInput, {
       blur: () => {
         const floatedValue = Number.parseFloat(eInput.value);
-        const value = isNaN(floatedValue) ? "" : this.normalizeValue(floatedValue.toString());
-        if (this.value !== value) {
-          this.setValue(value);
+        const value2 = isNaN(floatedValue) ? "" : this.normalizeValue(floatedValue.toString());
+        if (this.value !== value2) {
+          this.setValue(value2);
         }
       },
       wheel: this.onWheel.bind(this)
@@ -42433,28 +42433,28 @@ var AgInputNumberField = class extends AgInputTextField {
       e.preventDefault();
     }
   }
-  normalizeValue(value) {
-    if (value === "") {
+  normalizeValue(value2) {
+    if (value2 === "") {
       return "";
     }
     if (this.precision != null) {
-      value = this.adjustPrecision(value);
+      value2 = this.adjustPrecision(value2);
     }
-    return value;
+    return value2;
   }
-  adjustPrecision(value, isScientificNotation) {
+  adjustPrecision(value2, isScientificNotation) {
     const precision = this.precision;
     if (precision == null) {
-      return value;
+      return value2;
     }
     if (isScientificNotation) {
-      const floatString = Number.parseFloat(value).toFixed(precision);
+      const floatString = Number.parseFloat(value2).toFixed(precision);
       return Number.parseFloat(floatString).toString();
     }
-    const parts = String(value).split(".");
+    const parts = String(value2).split(".");
     if (parts.length > 1) {
       if (parts[1].length <= precision) {
-        return value;
+        return value2;
       } else if (precision > 0) {
         return `${parts[0]}.${parts[1].slice(0, precision)}`;
       }
@@ -42489,38 +42489,38 @@ var AgInputNumberField = class extends AgInputTextField {
     _addOrRemoveAttribute(this.eInput, "step", step);
     return this;
   }
-  setValue(value, silent) {
+  setValue(value2, silent) {
     return this.setValueOrInputValue(
       (v) => super.setValue(v, silent),
       () => this,
-      value
+      value2
     );
   }
-  setStartValue(value) {
+  setStartValue(value2) {
     return this.setValueOrInputValue(
       (v) => super.setValue(v, true),
       (v) => {
         this.eInput.value = v;
       },
-      value
+      value2
     );
   }
-  setValueOrInputValue(setValueFunc, setInputValueOnlyFunc, value) {
-    if (_exists(value)) {
-      let setInputValueOnly = this.isScientificNotation(value);
+  setValueOrInputValue(setValueFunc, setInputValueOnlyFunc, value2) {
+    if (_exists(value2)) {
+      let setInputValueOnly = this.isScientificNotation(value2);
       if (setInputValueOnly && this.eInput.validity.valid) {
-        return setValueFunc(value);
+        return setValueFunc(value2);
       }
       if (!setInputValueOnly) {
-        value = this.adjustPrecision(value);
-        const normalizedValue = this.normalizeValue(value);
-        setInputValueOnly = value != normalizedValue;
+        value2 = this.adjustPrecision(value2);
+        const normalizedValue = this.normalizeValue(value2);
+        setInputValueOnly = value2 != normalizedValue;
       }
       if (setInputValueOnly) {
-        return setInputValueOnlyFunc(value);
+        return setInputValueOnlyFunc(value2);
       }
     }
-    return setValueFunc(value);
+    return setValueFunc(value2);
   }
   getValue() {
     const eInput = this.eInput;
@@ -42533,8 +42533,8 @@ var AgInputNumberField = class extends AgInputTextField {
     }
     return super.getValue();
   }
-  isScientificNotation(value) {
-    return typeof value === "string" && value.includes("e");
+  isScientificNotation(value2) {
+    return typeof value2 === "string" && value2.includes("e");
   }
 };
 var AgInputNumberFieldSelector = {
@@ -42633,10 +42633,10 @@ var getAgListElement = (cssIdentifier, label) => ({
   ]
 });
 var AgListItem = class extends AgComponentStub {
-  constructor(cssIdentifier, label, value) {
+  constructor(cssIdentifier, label, value2) {
     super(getAgListElement(cssIdentifier, label));
     this.label = label;
-    this.value = value;
+    this.value = value2;
     this.eText = RefPlaceholder;
   }
   postConstruct() {
@@ -42740,10 +42740,10 @@ var AgList = class extends AgComponentStub {
     return this;
   }
   addOption(listOption) {
-    const { value, text: text2 } = listOption;
-    const valueToRender = text2 ?? value;
-    this.options.push({ value, text: valueToRender });
-    this.renderOption(value, valueToRender);
+    const { value: value2, text: text2 } = listOption;
+    const valueToRender = text2 ?? value2;
+    this.options.push({ value: value2, text: valueToRender });
+    this.renderOption(value2, valueToRender);
     this.updateIndices();
     return this;
   }
@@ -42757,16 +42757,16 @@ var AgList = class extends AgComponentStub {
     this.listItems = [];
     this.refreshAriaRole();
   }
-  setValue(value, silent) {
-    if (this.value === value) {
+  setValue(value2, silent) {
+    if (this.value === value2) {
       this.fireItemSelected();
       return this;
     }
-    if (value == null) {
+    if (value2 == null) {
       this.reset(silent);
       return this;
     }
-    const idx = this.options.findIndex((option) => option.value === value);
+    const idx = this.options.findIndex((option) => option.value === value2);
     if (idx !== -1) {
       const option = this.options[idx];
       this.value = option.value;
@@ -42828,8 +42828,8 @@ var AgList = class extends AgComponentStub {
     this.highlightedItem?.setHighlighted(false);
     this.highlightedItem = null;
   }
-  renderOption(value, text2) {
-    const item = new AgListItem(this.cssIdentifier, text2, value);
+  renderOption(value2, text2) {
+    const item = new AgListItem(this.cssIdentifier, text2, value2);
     item.setParentComponent(this);
     const listItem = this.createManagedBean(item);
     this.listItems.push(listItem);
@@ -43214,14 +43214,14 @@ var AgSelect = class extends AgPickerField {
     super.postConstruct();
     this.createListComponent();
     this.eWrapper.tabIndex = this.gos.get("tabIndex");
-    const { options, value, placeholder } = this.config;
+    const { options, value: value2, placeholder } = this.config;
     if (options != null) {
       this.addOptions(options);
     }
-    if (value != null) {
-      this.setValue(value, true);
+    if (value2 != null) {
+      this.setValue(value2, true);
     }
-    if (placeholder && value == null) {
+    if (placeholder && value2 == null) {
       this.eDisplayField.textContent = placeholder;
     }
     this.addManagedElementListeners(this.eWrapper, { focusout: this.onWrapperFocusOut.bind(this) });
@@ -43322,18 +43322,18 @@ var AgSelect = class extends AgPickerField {
     this.setValue(void 0, true);
     return this;
   }
-  setValue(value, silent, fromPicker) {
+  setValue(value2, silent, fromPicker) {
     const {
       listComponent,
       config: { placeholder },
       eDisplayField,
       tooltipFeature
     } = this;
-    if (this.value === value || !listComponent) {
+    if (this.value === value2 || !listComponent) {
       return this;
     }
     if (!fromPicker) {
-      listComponent.setValue(value, true);
+      listComponent.setValue(value2, true);
     }
     const newValue = listComponent.getValue();
     if (newValue === this.getValue()) {
@@ -43345,7 +43345,7 @@ var AgSelect = class extends AgPickerField {
     }
     eDisplayField.textContent = displayValue;
     tooltipFeature?.setTooltipAndRefresh(displayValue ?? null);
-    return super.setValue(value, silent);
+    return super.setValue(value2, silent);
   }
   destroy() {
     this.listComponent = this.destroyBean(this.listComponent);
@@ -43477,7 +43477,7 @@ ${css}`;
 var kebabCase = (str) => str.replace(/[A-Z]/g, (m) => `-${m}`).toLowerCase();
 var paramToVariableName = (paramName) => `--ag-${kebabCase(paramName)}`;
 var paramToVariableExpression = (paramName) => `var(${paramToVariableName(paramName)})`;
-var clamp = (value, min2, max2) => Math.max(min2, Math.min(max2, value));
+var clamp = (value2, min2, max2) => Math.max(min2, Math.min(max2, value2));
 var memoize = (fn2) => {
   const values2 = /* @__PURE__ */ new Map();
   return (a2) => {
@@ -43612,96 +43612,96 @@ var getParamType = memoize((param) => {
   param = param.toLowerCase();
   return paramTypes.find((type) => param.endsWith(type.toLowerCase())) ?? "length";
 });
-var literalToCSS = (value) => {
-  if (typeof value === "object" && value?.ref) {
-    return paramToVariableExpression(value.ref);
+var literalToCSS = (value2) => {
+  if (typeof value2 === "object" && value2?.ref) {
+    return paramToVariableExpression(value2.ref);
   }
-  if (typeof value === "string") {
-    return value;
+  if (typeof value2 === "string") {
+    return value2;
   }
-  if (typeof value === "number") {
-    return String(value);
+  if (typeof value2 === "number") {
+    return String(value2);
   }
   return false;
 };
-var colorValueToCss = (value) => {
-  if (typeof value === "string") {
-    return value;
+var colorValueToCss = (value2) => {
+  if (typeof value2 === "string") {
+    return value2;
   }
-  if (value && "ref" in value) {
-    const colorExpr = paramToVariableExpression(value.ref);
-    if (value.mix == null) {
+  if (value2 && "ref" in value2) {
+    const colorExpr = paramToVariableExpression(value2.ref);
+    if (value2.mix == null) {
       return colorExpr;
     }
-    const backgroundExpr = value.onto ? paramToVariableExpression(value.onto) : "transparent";
-    return `color-mix(in srgb, ${backgroundExpr}, ${colorExpr} ${clamp(value.mix * 100, 0, 100)}%)`;
+    const backgroundExpr = value2.onto ? paramToVariableExpression(value2.onto) : "transparent";
+    return `color-mix(in srgb, ${backgroundExpr}, ${colorExpr} ${clamp(value2.mix * 100, 0, 100)}%)`;
   }
   return false;
 };
 var colorSchemeValueToCss = literalToCSS;
-var lengthValueToCss = (value) => {
-  if (typeof value === "string") {
-    return value;
+var lengthValueToCss = (value2) => {
+  if (typeof value2 === "string") {
+    return value2;
   }
-  if (typeof value === "number") {
-    return `${value}px`;
+  if (typeof value2 === "number") {
+    return `${value2}px`;
   }
-  if (value && "calc" in value) {
-    const valueWithSpaces = value.calc.replace(/ ?[*/+] ?/g, " $& ");
+  if (value2 && "calc" in value2) {
+    const valueWithSpaces = value2.calc.replace(/ ?[*/+] ?/g, " $& ");
     return `calc(${valueWithSpaces.replace(/-?\b[a-z][a-z0-9]*\b(?![-(])/gi, (p) => p[0] === "-" ? p : " " + paramToVariableExpression(p) + " ")})`;
   }
-  if (value && "ref" in value) {
-    return paramToVariableExpression(value.ref);
+  if (value2 && "ref" in value2) {
+    return paramToVariableExpression(value2.ref);
   }
   return false;
 };
 var scaleValueToCss = literalToCSS;
-var borderValueToCss = (value, param) => {
-  if (typeof value === "string") {
-    return value;
+var borderValueToCss = (value2, param) => {
+  if (typeof value2 === "string") {
+    return value2;
   }
-  if (value === true) {
+  if (value2 === true) {
     return borderValueToCss({}, param);
   }
-  if (value === false) {
+  if (value2 === false) {
     return param === "columnBorder" ? borderValueToCss({ color: "transparent" }, param) : "none";
   }
-  if (value && "ref" in value) {
-    return paramToVariableExpression(value.ref);
+  if (value2 && "ref" in value2) {
+    return paramToVariableExpression(value2.ref);
   }
-  return borderStyleValueToCss(value.style ?? "solid") + " " + lengthValueToCss(value.width ?? { ref: "borderWidth" }) + " " + colorValueToCss(value.color ?? { ref: "borderColor" });
+  return borderStyleValueToCss(value2.style ?? "solid") + " " + lengthValueToCss(value2.width ?? { ref: "borderWidth" }) + " " + colorValueToCss(value2.color ?? { ref: "borderColor" });
 };
-var shadowValueToCss = (value) => {
-  if (typeof value === "string") {
-    return value;
+var shadowValueToCss = (value2) => {
+  if (typeof value2 === "string") {
+    return value2;
   }
-  if (value === false) {
+  if (value2 === false) {
     return "none";
   }
-  if (value && "ref" in value) {
-    return paramToVariableExpression(value.ref);
+  if (value2 && "ref" in value2) {
+    return paramToVariableExpression(value2.ref);
   }
   return [
-    lengthValueToCss(value.offsetX ?? 0),
-    lengthValueToCss(value.offsetY ?? 0),
-    lengthValueToCss(value.radius ?? 0),
-    lengthValueToCss(value.spread ?? 0),
-    colorValueToCss(value.color ?? { ref: "foregroundColor" })
+    lengthValueToCss(value2.offsetX ?? 0),
+    lengthValueToCss(value2.offsetY ?? 0),
+    lengthValueToCss(value2.radius ?? 0),
+    lengthValueToCss(value2.spread ?? 0),
+    colorValueToCss(value2.color ?? { ref: "foregroundColor" })
   ].join(" ");
 };
 var borderStyleValueToCss = literalToCSS;
-var fontFamilyValueToCss = (value) => {
-  if (typeof value === "string") {
-    return value.includes(",") ? value : quoteUnsafeChars(value);
+var fontFamilyValueToCss = (value2) => {
+  if (typeof value2 === "string") {
+    return value2.includes(",") ? value2 : quoteUnsafeChars(value2);
   }
-  if (value && "googleFont" in value) {
-    return fontFamilyValueToCss(value.googleFont);
+  if (value2 && "googleFont" in value2) {
+    return fontFamilyValueToCss(value2.googleFont);
   }
-  if (value && "ref" in value) {
-    return paramToVariableExpression(value.ref);
+  if (value2 && "ref" in value2) {
+    return paramToVariableExpression(value2.ref);
   }
-  if (Array.isArray(value)) {
-    return value.map((font) => {
+  if (Array.isArray(value2)) {
+    return value2.map((font) => {
       if (typeof font === "object" && "googleFont" in font) {
         font = font.googleFont;
       }
@@ -43717,33 +43717,33 @@ var quoteUnsafeChars = (font) => (
   /^[\w-]+$|\w\(/.test(font) ? font : JSON.stringify(font)
 );
 var fontWeightValueToCss = literalToCSS;
-var imageValueToCss = (value) => {
-  if (typeof value === "string") {
-    return value;
+var imageValueToCss = (value2) => {
+  if (typeof value2 === "string") {
+    return value2;
   }
-  if (value && "url" in value) {
-    return `url(${JSON.stringify(value.url)})`;
+  if (value2 && "url" in value2) {
+    return `url(${JSON.stringify(value2.url)})`;
   }
-  if (value && "svg" in value) {
-    return imageValueToCss({ url: `data:image/svg+xml,${encodeURIComponent(value.svg)}` });
+  if (value2 && "svg" in value2) {
+    return imageValueToCss({ url: `data:image/svg+xml,${encodeURIComponent(value2.svg)}` });
   }
-  if (value && "ref" in value) {
-    return paramToVariableExpression(value.ref);
+  if (value2 && "ref" in value2) {
+    return paramToVariableExpression(value2.ref);
   }
   return false;
 };
-var durationValueToCss = (value, param, themeLogger) => {
-  if (typeof value === "string") {
-    return value;
+var durationValueToCss = (value2, param, themeLogger) => {
+  if (typeof value2 === "string") {
+    return value2;
   }
-  if (typeof value === "number") {
-    if (value >= 10) {
-      themeLogger.warn(104, { value, param });
+  if (typeof value2 === "number") {
+    if (value2 >= 10) {
+      themeLogger.warn(104, { value: value2, param });
     }
-    return `${value}s`;
+    return `${value2}s`;
   }
-  if (value && "ref" in value) {
-    return paramToVariableExpression(value.ref);
+  if (value2 && "ref" in value2) {
+    return paramToVariableExpression(value2.ref);
   }
   return false;
 };
@@ -43760,9 +43760,9 @@ var paramValidators = {
   fontWeight: fontWeightValueToCss,
   duration: durationValueToCss
 };
-var paramValueToCss = (param, value, themeLogger) => {
+var paramValueToCss = (param, value2, themeLogger) => {
   const type = getParamType(param);
-  return paramValidators[type](value, param, themeLogger);
+  return paramValidators[type](value2, param, themeLogger);
 };
 var createSharedTheme = (themeLogger) => new ThemeImpl(themeLogger);
 var ThemeImpl = class _ThemeImpl {
@@ -43883,10 +43883,10 @@ var ThemeImpl = class _ThemeImpl {
           inheritanceCss += wrapPrefix;
         }
         for (const key2 of Object.keys(params).sort()) {
-          const value = params[key2];
-          const cssValue = paramValueToCss(key2, value, this.themeLogger);
+          const value2 = params[key2];
+          const cssValue = paramValueToCss(key2, value2, this.themeLogger);
           if (cssValue === false) {
-            this.themeLogger.error(107, { key: key2, value });
+            this.themeLogger.error(107, { key: key2, value: value2 });
           } else {
             const cssName = paramToVariableName(key2);
             const inheritedName = cssName.replace("--ag-", "--ag-inherited-");
@@ -44470,15 +44470,15 @@ var BaseTooltipStateManager = class extends AgBeanStub {
     this.lastMouseEvent = null;
   }
   showTooltip() {
-    const value = this.getTooltipValue();
+    const value2 = this.getTooltipValue();
     const ctrl = this.tooltipCtrl;
-    if (!_exists(value) || ctrl.shouldDisplayTooltip && !ctrl.shouldDisplayTooltip()) {
+    if (!_exists(value2) || ctrl.shouldDisplayTooltip && !ctrl.shouldDisplayTooltip()) {
       this.setToDoNothing();
       return;
     }
     const params = this.gos.addCommon({
       location: ctrl.getLocation?.() ?? "UNKNOWN",
-      value,
+      value: value2,
       hideTooltipCallback: () => this.hideTooltip(true),
       ...ctrl.getAdditionalParams?.()
     });
@@ -45231,9 +45231,9 @@ var AgTooltipComponent = class extends AgPopupComponent {
   }
   // will need to type params
   init(params) {
-    const { value } = params;
+    const { value: value2 } = params;
     const eGui = this.getGui();
-    eGui.textContent = _toString(value);
+    eGui.textContent = _toString(value2);
     const locationKebabCase = params.location.replace(/([a-z])([A-Z0-9])/g, "$1-$2").toLowerCase();
     eGui.classList.add(`ag-${locationKebabCase}-tooltip`);
   }
@@ -46285,8 +46285,8 @@ var RowNode = class {
     const leafs = this._leafs;
     return leafs === void 0 ? this.beans.groupStage?.loadLeafs?.(this) ?? null : leafs;
   }
-  set allLeafChildren(value) {
-    this._leafs = value;
+  set allLeafChildren(value2) {
+    this._leafs = value2;
   }
   /**
    * Replaces the data on the `rowNode`. When this method is called, the grid refreshes the entire rendered row if it is displayed.
@@ -47289,8 +47289,8 @@ function setFilterNumberComparator(a2, b) {
   }
   return Number.parseFloat(a2) - Number.parseFloat(b);
 }
-function isValidDate(value) {
-  return value instanceof Date && !isNaN(value.getTime());
+function isValidDate(value2) {
+  return value2 instanceof Date && !isNaN(value2.getTime());
 }
 var filterParamsForEachDataType = {
   number: () => void 0,
@@ -47325,7 +47325,7 @@ var filterParamsForEachDataType = {
       }
       return 0;
     },
-    isValidDate: (value) => typeof value === "string" && isValidDate(dataTypeDefinition.dateParser(value))
+    isValidDate: (value2) => typeof value2 === "string" && isValidDate(dataTypeDefinition.dateParser(value2))
   }),
   dateTime: (args2) => filterParamsForEachDataType.date(args2),
   dateTimeString: (args2) => filterParamsForEachDataType.dateString(args2),
@@ -47361,7 +47361,7 @@ var setFilterParamsForEachDataType = {
       return _exists(valueFormatted) ? valueFormatted : t2("blanks", "(Blanks)");
     },
     treeList: true,
-    treeListPathGetter: (value) => _getDateParts(dataTypeDefinition.dateParser(value ?? void 0), false),
+    treeListPathGetter: (value2) => _getDateParts(dataTypeDefinition.dateParser(value2 ?? void 0), false),
     treeListFormatter: (pathKey, level) => {
       if (level === 1 && pathKey != null) {
         const monthKey = MONTH_KEYS[Number(pathKey) - 1];
@@ -47378,7 +47378,7 @@ var setFilterParamsForEachDataType = {
   dateTimeString(args2) {
     const convertToDate = args2.dataTypeDefinition.dateParser;
     const params = setFilterParamsForEachDataType.dateString(args2);
-    params.treeListPathGetter = (value) => _getDateParts(convertToDate(value ?? void 0));
+    params.treeListPathGetter = (value2) => _getDateParts(convertToDate(value2 ?? void 0));
     return params;
   },
   object: ({ formatValue: formatValue2, t: t2 }) => ({
@@ -47950,7 +47950,7 @@ var PositionableFeature = class extends BeanStub {
     }
   }
   isResizable() {
-    return Object.values(this.resizable).some((value) => value);
+    return Object.values(this.resizable).some((value2) => value2);
   }
   onResize(e) {
     if (!this.isResizing || !this.currentResizer) {
@@ -49833,8 +49833,8 @@ var RowContainerCtrl = class extends BeanStub {
     };
     return res;
   }
-  setCenterViewportScrollLeft(value) {
-    _setScrollLeft(this.eViewport, value, this.enableRtl);
+  setCenterViewportScrollLeft(value2) {
+    _setScrollLeft(this.eViewport, value2, this.enableRtl);
   }
   isContainerVisible() {
     const pinned = this.options.pinnedType != null;
@@ -50319,12 +50319,12 @@ var AbstractFakeScrollComp = class extends Component {
       }
     });
   }
-  attemptSettingScrollPosition(value) {
+  attemptSettingScrollPosition(value2) {
     const viewport = this.eViewport;
     _waitUntil(
       this,
       () => _isVisible(viewport),
-      () => this.setScrollPosition(value),
+      () => this.setScrollPosition(value2),
       100
     );
   }
@@ -50442,11 +50442,11 @@ var FakeHScrollComp = class extends AbstractFakeScrollComp {
   getScrollPosition() {
     return _getScrollLeft(this.eViewport, this.enableRtl);
   }
-  setScrollPosition(value) {
+  setScrollPosition(value2) {
     if (!_isVisible(this.eViewport)) {
-      this.attemptSettingScrollPosition(value);
+      this.attemptSettingScrollPosition(value2);
     }
-    _setScrollLeft(this.eViewport, value, this.enableRtl);
+    _setScrollLeft(this.eViewport, value2, this.enableRtl);
   }
 };
 var FakeVScrollElement = {
@@ -50499,11 +50499,11 @@ var FakeVScrollComp = class extends AbstractFakeScrollComp {
   getScrollPosition() {
     return this.eViewport.scrollTop;
   }
-  setScrollPosition(value, force) {
+  setScrollPosition(value2, force) {
     if (!force && !_isVisible(this.eViewport)) {
-      this.attemptSettingScrollPosition(value);
+      this.attemptSettingScrollPosition(value2);
     }
-    this.eViewport.scrollTop = value;
+    this.eViewport.scrollTop = value2;
   }
 };
 var CSS_FIRST_COLUMN = "ag-column-first";
@@ -50858,9 +50858,9 @@ var SetLeftFeature = class extends BeanStub {
     }
     return leftWidth + leftPosition;
   }
-  setLeft(value) {
-    if (_exists(value)) {
-      this.eCell.style.left = `${value}px`;
+  setLeft(value2) {
+    if (_exists(value2)) {
+      this.eCell.style.left = `${value2}px`;
     }
     if (isColumnGroup(this.columnOrGroup)) {
       const children = this.columnOrGroup.getLeafColumns();
@@ -51339,9 +51339,9 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
         sortSvc?.setSortForColumn(this.column, sort, !!multiSort, "uiColumnSorted");
       },
       eGridHeader: this.eGui,
-      setTooltip: (value, shouldDisplayTooltip) => {
+      setTooltip: (value2, shouldDisplayTooltip) => {
         gos.assertModuleRegistered("Tooltip", 3);
-        this.setupTooltip(value, shouldDisplayTooltip);
+        this.setupTooltip(value2, shouldDisplayTooltip);
       }
     });
     return params;
@@ -51411,11 +51411,11 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
     }
     this.setActiveHeader(false);
   }
-  setupTooltip(value, shouldDisplayTooltip) {
+  setupTooltip(value2, shouldDisplayTooltip) {
     this.tooltipFeature = this.beans.tooltipSvc?.setupHeaderTooltip(
       this.tooltipFeature,
       this,
-      value,
+      value2,
       shouldDisplayTooltip
     );
   }
@@ -51643,9 +51643,9 @@ var HeaderCellCtrl = class extends AbstractHeaderCellCtrl {
       this.setAriaDescriptionProperty("filter", null);
     }
   }
-  setAriaDescriptionProperty(property, value) {
-    if (value != null) {
-      this.ariaDescriptionProperties.set(property, value);
+  setAriaDescriptionProperty(property, value2) {
+    if (value2 != null) {
+      this.ariaDescriptionProperties.set(property, value2);
     } else {
       this.ariaDescriptionProperties.delete(property);
     }
@@ -52485,24 +52485,24 @@ var CheckboxCellRenderer = class extends Component {
   updateCheckbox(params) {
     let isSelected;
     let displayed = true;
-    const { value, column: column2, node } = params;
+    const { value: value2, column: column2, node } = params;
     if (node.group && column2) {
-      if (typeof value === "boolean") {
-        isSelected = value;
+      if (typeof value2 === "boolean") {
+        isSelected = value2;
       } else {
         const colId = column2.getColId();
         if (colId.startsWith(GROUP_AUTO_COLUMN_ID)) {
-          isSelected = value == null || value === "" ? void 0 : value === "true";
+          isSelected = value2 == null || value2 === "" ? void 0 : value2 === "true";
         } else if (node.aggData && node.aggData[colId] !== void 0) {
-          isSelected = value ?? void 0;
+          isSelected = value2 ?? void 0;
         } else if (node.sourceRowIndex >= 0) {
-          isSelected = value ?? void 0;
+          isSelected = value2 ?? void 0;
         } else {
           displayed = false;
         }
       }
     } else {
-      isSelected = value ?? void 0;
+      isSelected = value2 ?? void 0;
     }
     const { eCheckbox } = this;
     if (!displayed) {
@@ -52519,7 +52519,7 @@ var CheckboxCellRenderer = class extends Component {
   }
   onCheckboxChanged(isSelected) {
     const { params } = this;
-    const { column: column2, node, value } = params;
+    const { column: column2, node, value: value2 } = params;
     this.beans?.editSvc?.setEditingCells(
       [
         {
@@ -52528,8 +52528,8 @@ var CheckboxCellRenderer = class extends Component {
           rowIndex: node.rowIndex,
           rowPinned: node.rowPinned,
           state: "changed",
-          oldValue: value,
-          newValue: value
+          oldValue: value2,
+          newValue: value2
         }
       ],
       { update: true, forceRefreshOfEditCellsOnly: true }
@@ -52851,8 +52851,8 @@ var ManualPinnedRowModel = class extends BeanStub {
   getGrandTotalPinned() {
     return this._grandTotalPinned;
   }
-  setGrandTotalPinned(value) {
-    this._grandTotalPinned = value;
+  setGrandTotalPinned(value2) {
+    this._grandTotalPinned = value2;
   }
   tryToEmptyQueues() {
     this.forContainers((pinned, container2) => {
@@ -53270,8 +53270,8 @@ var PinnedRowModel = class extends BeanStub {
   setPinnedState(state) {
     return this.inner.setPinnedState(state);
   }
-  setGrandTotalPinned(value) {
-    return this.inner.setGrandTotalPinned(value);
+  setGrandTotalPinned(value2) {
+    return this.inner.setGrandTotalPinned(value2);
   }
   getGrandTotalPinned() {
     return this.inner.getGrandTotalPinned();
@@ -53717,7 +53717,7 @@ var SelectAllFeature = class extends BeanStub {
     if (!this.cbSelectAllVisible) {
       return;
     }
-    const value = this.cbSelectAll.getValue();
+    const value2 = this.cbSelectAll.getValue();
     const selectAll2 = this.getSelectAllMode();
     let source2 = "uiSelectAll";
     if (selectAll2 === "currentPage") {
@@ -53727,7 +53727,7 @@ var SelectAllFeature = class extends BeanStub {
     }
     const params = { source: source2, selectAll: selectAll2 };
     const selectionSvc = this.beans.selectionSvc;
-    if (value) {
+    if (value2) {
       selectionSvc.selectAllRowNodes(params);
     } else {
       selectionSvc.deselectAllRowNodes(params);
@@ -55326,8 +55326,8 @@ function isDestroyed(beans) {
 function getGridOption(beans, key2) {
   return beans.gos.get(key2);
 }
-function setGridOption(beans, key2, value) {
-  updateGridOptions(beans, { [key2]: value });
+function setGridOption(beans, key2, value2) {
+  updateGridOptions(beans, { [key2]: value2 });
 }
 function updateGridOptions(beans, options) {
   beans.gos.updateGridOptions({ options });
@@ -58812,9 +58812,9 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
       setExpanded: (expanded) => {
         colGroupSvc.setColumnGroupOpened(providedColumnGroup, expanded, "gridInitializing");
       },
-      setTooltip: (value, shouldDisplayTooltip) => {
+      setTooltip: (value2, shouldDisplayTooltip) => {
         gos.assertModuleRegistered("Tooltip", 3);
-        this.setupTooltip(value, shouldDisplayTooltip);
+        this.setupTooltip(value2, shouldDisplayTooltip);
       },
       showColumnMenu: (buttonElement, onClosedCallback) => enterpriseMenuFactory?.showMenuAfterButtonClick(
         providedColumnGroup,
@@ -58852,11 +58852,11 @@ var HeaderGroupCellCtrl = class extends AbstractHeaderCellCtrl {
       column: this.column.getProvidedColumnGroup()
     });
   }
-  setupTooltip(value, shouldDisplayTooltip) {
+  setupTooltip(value2, shouldDisplayTooltip) {
     this.tooltipFeature = this.beans.tooltipSvc?.setupHeaderGroupTooltip(
       this.tooltipFeature,
       this,
-      value,
+      value2,
       shouldDisplayTooltip
     );
   }
@@ -59923,12 +59923,12 @@ function _deepCloneDefinition(object2, keysToSkip) {
     if (keysToSkip && keysToSkip.indexOf(key2) >= 0 || SKIP_JS_BUILTINS.has(key2)) {
       continue;
     }
-    const value = obj[key2];
-    const sourceIsSimpleObject = typeof value === "object" && value !== null && value.constructor === Object;
+    const value2 = obj[key2];
+    const sourceIsSimpleObject = typeof value2 === "object" && value2 !== null && value2.constructor === Object;
     if (sourceIsSimpleObject) {
-      res[key2] = _deepCloneDefinition(value);
+      res[key2] = _deepCloneDefinition(value2);
     } else {
-      res[key2] = value;
+      res[key2] = value2;
     }
   }
   return res;
@@ -60256,12 +60256,12 @@ var DataTypeService = class extends BeanStub {
     const newFormatValueFuncs = {};
     const generateFormatValueFunc = (dataTypeDefinition) => {
       return (params) => {
-        const { column: column2, node, value } = params;
+        const { column: column2, node, value: value2 } = params;
         let valueFormatter = column2.getColDef().valueFormatter;
         if (valueFormatter === dataTypeDefinition.groupSafeValueFormatter) {
           valueFormatter = dataTypeDefinition.valueFormatter;
         }
-        return this.beans.valueSvc.formatValue(column2, node, value, valueFormatter);
+        return this.beans.valueSvc.formatValue(column2, node, value2, valueFormatter);
       };
     };
     for (const cellDataType of Object.keys(defaultDataTypes)) {
@@ -60424,19 +60424,19 @@ var DataTypeService = class extends BeanStub {
     if (!field2) {
       return void 0;
     }
-    let value;
+    let value2;
     const initialData = this.getInitialData();
     if (initialData) {
       const fieldContainsDots = field2.includes(".") && !this.gos.get("suppressFieldDotNotation");
-      value = _getValueUsingField(initialData, field2, fieldContainsDots);
+      value2 = _getValueUsingField(initialData, field2, fieldContainsDots);
     } else {
       this.initWaitForRowData(colId);
     }
-    if (value == null) {
+    if (value2 == null) {
       return void 0;
     }
     const matchedType = Object.keys(this.dataTypeMatchers).find(
-      (_cellDataType) => this.dataTypeMatchers[_cellDataType](value)
+      (_cellDataType) => this.dataTypeMatchers[_cellDataType](value2)
     );
     return matchedType ?? "object";
   }
@@ -60567,15 +60567,15 @@ var DataTypeService = class extends BeanStub {
   getBaseDataType(column2) {
     return this.getDataTypeDefinition(column2)?.baseDataType;
   }
-  checkType(column2, value) {
-    if (value == null) {
+  checkType(column2, value2) {
+    if (value2 == null) {
       return true;
     }
     const dataTypeMatcher = this.getDataTypeDefinition(column2)?.dataTypeMatcher;
     if (!dataTypeMatcher) {
       return true;
     }
-    return dataTypeMatcher(value);
+    return dataTypeMatcher(value2);
   }
   validateColDef(colDef) {
     const warning2 = (property) => _warn(48, { property });
@@ -60635,18 +60635,18 @@ var DataTypeService = class extends BeanStub {
         }
         return _serialiseDate(params.value, includeTime) ?? "";
       },
-      dataTypeMatcher: (value) => value instanceof Date
+      dataTypeMatcher: (value2) => value2 instanceof Date
     };
   }
   getDateStringTypeDef(baseDataType) {
     const includeTime = this.getDateIncludesTimeFlag(baseDataType);
     return {
       baseDataType,
-      dateParser: (value) => _parseDateTimeFromString(value) ?? void 0,
-      dateFormatter: (value) => _serialiseDate(value ?? null, includeTime) ?? void 0,
+      dateParser: (value2) => _parseDateTimeFromString(value2) ?? void 0,
+      dateFormatter: (value2) => _serialiseDate(value2 ?? null, includeTime) ?? void 0,
       valueParser: (params) => _isValidDate(String(params.newValue)) ? params.newValue : null,
       valueFormatter: (params) => _isValidDate(String(params.value)) ? String(params.value) : "",
-      dataTypeMatcher: (value) => typeof value === "string" && _isValidDate(value)
+      dataTypeMatcher: (value2) => typeof value2 === "string" && _isValidDate(value2)
     };
   }
   getDefaultDataTypes() {
@@ -60665,12 +60665,12 @@ var DataTypeService = class extends BeanStub {
           }
           return String(params.value);
         },
-        dataTypeMatcher: (value) => typeof value === "number"
+        dataTypeMatcher: (value2) => typeof value2 === "number"
       },
       text: {
         baseDataType: "text",
         valueParser: (params) => params.newValue === "" ? null : _toStringOrNull(params.newValue),
-        dataTypeMatcher: (value) => typeof value === "string"
+        dataTypeMatcher: (value2) => typeof value2 === "string"
       },
       boolean: {
         baseDataType: "boolean",
@@ -60681,14 +60681,14 @@ var DataTypeService = class extends BeanStub {
           return params.newValue?.trim?.() === "" ? null : String(params.newValue).toLowerCase() === "true";
         },
         valueFormatter: (params) => params.value == null ? "" : String(params.value),
-        dataTypeMatcher: (value) => typeof value === "boolean"
+        dataTypeMatcher: (value2) => typeof value2 === "boolean"
       },
       date: this.getDateObjectTypeDef("date"),
       dateString: this.getDateStringTypeDef("dateString"),
       dateTime: this.getDateObjectTypeDef("dateTime"),
       dateTimeString: {
         ...this.getDateStringTypeDef("dateTimeString"),
-        dataTypeMatcher: (value) => typeof value === "string" && _isValidDateTime(value)
+        dataTypeMatcher: (value2) => typeof value2 === "string" && _isValidDateTime(value2)
       },
       object: {
         baseDataType: "object",
@@ -60783,12 +60783,12 @@ function doesColDefPropPreventInference(colDef, checkProps, prop, comparisonValu
   if (!checkProps[prop]) {
     return false;
   }
-  const value = colDef[prop];
-  if (value === null) {
+  const value2 = colDef[prop];
+  if (value2 === null) {
     checkProps[prop] = false;
     return false;
   } else {
-    return comparisonValue === void 0 ? !!value : value === comparisonValue;
+    return comparisonValue === void 0 ? !!value2 : value2 === comparisonValue;
   }
 }
 function doColDefPropsPreventInference(colDef, propsToCheckForInference) {
@@ -64623,12 +64623,12 @@ var GRID_OPTION_DEPRECATIONS = () => ({
     message: "Advanced filter no longer uses function evaluation, so this option has no effect."
   }
 });
-function toConstrainedNum(key2, value, min2) {
-  if (typeof value === "number" || value == null) {
-    if (value == null) {
+function toConstrainedNum(key2, value2, min2) {
+  if (typeof value2 === "number" || value2 == null) {
+    if (value2 == null) {
       return null;
     }
-    return value >= min2 ? null : `${key2}: value should be greater than or equal to ${min2}`;
+    return value2 >= min2 ? null : `${key2}: value should be greater than or equal to ${min2}`;
   }
   return `${key2}: value should be a number`;
 }
@@ -65199,15 +65199,15 @@ var GridOptionsService = class extends BeanStub {
     const events = [];
     const { gridOptions, validation } = this;
     for (const key2 of Object.keys(options)) {
-      const value = GlobalGridOptions.applyGlobalGridOption(key2, options[key2]);
+      const value2 = GlobalGridOptions.applyGlobalGridOption(key2, options[key2]);
       validation?.warnOnInitialPropertyUpdate(source2, key2);
-      const shouldForce = force || typeof value === "object" && source2 === "api";
+      const shouldForce = force || typeof value2 === "object" && source2 === "api";
       const previousValue = gridOptions[key2];
-      if (shouldForce || previousValue !== value) {
-        gridOptions[key2] = value;
+      if (shouldForce || previousValue !== value2) {
+        gridOptions[key2] = value2;
         const event = {
           type: key2,
-          currentValue: value,
+          currentValue: value2,
           previousValue,
           changeSet,
           source: source2
@@ -65239,8 +65239,8 @@ var GridOptionsService = class extends BeanStub {
   }
   validateOptions(options, modValidations) {
     for (const key2 of Object.keys(options)) {
-      const value = options[key2];
-      if (value == null || value === false) {
+      const value2 = options[key2];
+      if (value2 == null || value2 === false) {
         continue;
       }
       let moduleToCheck = modValidations[key2];
@@ -66795,9 +66795,9 @@ function _createEditorParams(beans, position, key2, cellStartedEdit) {
   const editor = cellCtrl.comp?.getCellEditor();
   const cellDataValue = editSvc?.getCellDataValue(position, false);
   const initialNewValue = cellDataValue === void 0 ? editor ? _valueFromEditor(beans, editor)?.editorValue : void 0 : cellDataValue;
-  const value = initialNewValue === UNEDITED ? valueSvc.getValueForDisplay(agColumn, rowNode)?.value : initialNewValue;
+  const value2 = initialNewValue === UNEDITED ? valueSvc.getValueForDisplay(agColumn, rowNode)?.value : initialNewValue;
   return _addGridCommonParams(gos, {
-    value: enableGroupEditing ? initialNewValue : value,
+    value: enableGroupEditing ? initialNewValue : value2,
     eventKey: key2 ?? null,
     column: column2,
     colDef: column2.getColDef(),
@@ -67107,12 +67107,12 @@ function _validateEdit(beans) {
   });
   return validations;
 }
-function _createCellEvent(beans, domEvent, eventType, { rowNode, column: column2 }, value) {
+function _createCellEvent(beans, domEvent, eventType, { rowNode, column: column2 }, value2) {
   const event = _addGridCommonParams(beans.gos, {
     type: eventType,
     node: rowNode,
     data: rowNode.data,
-    value,
+    value: value2,
     column: column2,
     colDef: column2.getColDef(),
     rowPinned: rowNode.rowPinned,
@@ -67778,8 +67778,8 @@ var CellCtrl = class extends BeanStub {
     this.rowResizeFeature = context.destroyBean(this.rowResizeFeature);
     this.disableTooltipFeature();
   }
-  enableTooltipFeature(value, shouldDisplayTooltip) {
-    this.tooltipFeature = this.beans.tooltipSvc?.enableCellTooltipFeature(this, value, shouldDisplayTooltip);
+  enableTooltipFeature(value2, shouldDisplayTooltip) {
+    this.tooltipFeature = this.beans.tooltipSvc?.enableCellTooltipFeature(this, value2, shouldDisplayTooltip);
   }
   disableTooltipFeature() {
     this.tooltipFeature = this.beans.context.destroyBean(this.tooltipFeature);
@@ -67940,9 +67940,9 @@ var CellCtrl = class extends BeanStub {
    * @param allowManuallyPinned Whether manually pinned rows are permitted this form of control element
    */
   // eslint-disable-next-line @typescript-eslint/ban-types
-  isIncludeControl(value, allowManuallyPinned = false) {
+  isIncludeControl(value2, allowManuallyPinned = false) {
     const rowUnpinned = this.rowNode.rowPinned == null;
-    return (rowUnpinned || allowManuallyPinned && _isManualPinnedRow(this.rowNode)) && !!value;
+    return (rowUnpinned || allowManuallyPinned && _isManualPinnedRow(this.rowNode)) && !!value2;
   }
   isCheckboxSelection(colDef) {
     const { rowSelection, groupDisplayType } = this.beans.gridOptions;
@@ -67979,7 +67979,7 @@ var CellCtrl = class extends BeanStub {
   }
   createCellRendererParams() {
     const {
-      value,
+      value: value2,
       valueFormatted,
       column: column2,
       rowNode,
@@ -67988,10 +67988,10 @@ var CellCtrl = class extends BeanStub {
       beans: { valueSvc, gos, editSvc }
     } = this;
     const res = _addGridCommonParams(gos, {
-      value,
+      value: value2,
       valueFormatted,
       getValue: () => valueSvc.getValueForDisplay(column2, rowNode).value,
-      setValue: (value2) => editSvc?.setDataValue({ rowNode, column: column2 }, value2) || rowNode.setDataValue(column2, value2),
+      setValue: (value22) => editSvc?.setDataValue({ rowNode, column: column2 }, value22) || rowNode.setDataValue(column2, value22),
       formatValue: this.formatValue.bind(this),
       data: rowNode.data,
       node: rowNode,
@@ -68001,13 +68001,13 @@ var CellCtrl = class extends BeanStub {
       refreshCell: this.refreshCell.bind(this),
       eGridCell: eGui,
       eParentOfValue: comp.getParentOfValue(),
-      registerRowDragger: (rowDraggerElement, dragStartPixels, value2, suppressVisibilityChange) => this.registerRowDragger(rowDraggerElement, dragStartPixels, suppressVisibilityChange),
-      setTooltip: (value2, shouldDisplayTooltip) => {
+      registerRowDragger: (rowDraggerElement, dragStartPixels, value22, suppressVisibilityChange) => this.registerRowDragger(rowDraggerElement, dragStartPixels, suppressVisibilityChange),
+      setTooltip: (value22, shouldDisplayTooltip) => {
         gos.assertModuleRegistered("Tooltip", 3);
         if (this.tooltipFeature) {
           this.disableTooltipFeature();
         }
-        this.enableTooltipFeature(value2, shouldDisplayTooltip);
+        this.enableTooltipFeature(value22, shouldDisplayTooltip);
         this.tooltipFeature?.refreshTooltip();
       }
     });
@@ -68079,17 +68079,17 @@ var CellCtrl = class extends BeanStub {
   isCellEditable() {
     return this.column.isCellEditable(this.rowNode);
   }
-  formatValue(value) {
-    return this.callValueFormatter(value) ?? value;
+  formatValue(value2) {
+    return this.callValueFormatter(value2) ?? value2;
   }
-  callValueFormatter(value) {
-    return this.beans.valueSvc.formatValue(this.column, this.rowNode, value);
+  callValueFormatter(value2) {
+    return this.beans.valueSvc.formatValue(this.column, this.rowNode, value2);
   }
   updateAndFormatValue(compareValues) {
     const oldValue = this.value;
     const oldValueFormatted = this.valueFormatted;
-    const { value, valueFormatted } = this.beans.valueSvc.getValueForDisplay(this.column, this.rowNode, true);
-    this.value = value;
+    const { value: value2, valueFormatted } = this.beans.valueSvc.getValueForDisplay(this.column, this.rowNode, true);
+    this.value = value2;
     this.valueFormatted = valueFormatted;
     if (compareValues) {
       return !this.valuesAreEqual(oldValue, this.value) || this.valueFormatted != oldValueFormatted;
@@ -68106,8 +68106,8 @@ var CellCtrl = class extends BeanStub {
     compBean.addDestroyFunc(() => _setDomData(this.beans.gos, element, DOM_DATA_KEY_CELL_CTRL, null));
   }
   createEvent(domEvent, eventType) {
-    const { rowNode, column: column2, value, beans } = this;
-    return _createCellEvent(beans, domEvent, eventType, { rowNode, column: column2 }, value);
+    const { rowNode, column: column2, value: value2, beans } = this;
+    return _createCellEvent(beans, domEvent, eventType, { rowNode, column: column2 }, value2);
   }
   processCharacter(event) {
     this.keyboardListener?.processCharacter(event);
@@ -68317,8 +68317,8 @@ var CellCtrl = class extends BeanStub {
     }
   }
   setWrapText() {
-    const value = this.column.getColDef().wrapText == true;
-    this.comp.toggleCss(CSS_CELL_WRAP_TEXT, value);
+    const value2 = this.column.getColDef().wrapText == true;
+    this.comp.toggleCss(CSS_CELL_WRAP_TEXT, value2);
   }
   dispatchCellContextMenuEvent(event) {
     const colDef = this.column.getColDef();
@@ -69461,10 +69461,10 @@ var RowCtrl = class extends BeanStub {
       pinned,
       addRenderedRowListener: this.addEventListener.bind(this),
       // This is not on the type of ICellRendererParams
-      registerRowDragger: (rowDraggerElement, dragStartPixels, value, rowDragEntireRow) => this.addFullWidthRowDragging(rowDraggerElement, dragStartPixels, value, rowDragEntireRow),
-      setTooltip: (value, shouldDisplayTooltip) => {
+      registerRowDragger: (rowDraggerElement, dragStartPixels, value2, rowDragEntireRow) => this.addFullWidthRowDragging(rowDraggerElement, dragStartPixels, value2, rowDragEntireRow),
+      setTooltip: (value2, shouldDisplayTooltip) => {
         gos.assertModuleRegistered("Tooltip", 3);
-        this.setupFullWidthRowTooltip(value, shouldDisplayTooltip);
+        this.setupFullWidthRowTooltip(value2, shouldDisplayTooltip);
       }
     });
     const compFactory = this.beans.userCompFactory;
@@ -69472,8 +69472,8 @@ var RowCtrl = class extends BeanStub {
       case "FullWidthDetail":
         return _getFullWidthDetailCellRendererDetails(compFactory, params);
       case "FullWidthGroup": {
-        const { value, valueFormatted } = this.beans.valueSvc.getValueForDisplay(void 0, this.rowNode, true);
-        params.value = value;
+        const { value: value2, valueFormatted } = this.beans.valueSvc.getValueForDisplay(void 0, this.rowNode, true);
+        params.value = value2;
         params.valueFormatted = valueFormatted;
         return _getFullWidthGroupCellRendererDetails(compFactory, params);
       }
@@ -69483,24 +69483,24 @@ var RowCtrl = class extends BeanStub {
         return _getFullWidthCellRendererDetails(compFactory, params);
     }
   }
-  setupFullWidthRowTooltip(value, shouldDisplayTooltip) {
+  setupFullWidthRowTooltip(value2, shouldDisplayTooltip) {
     if (!this.fullWidthGui) {
       return;
     }
     this.tooltipFeature = this.beans.tooltipSvc?.setupFullWidthRowTooltip(
       this.tooltipFeature,
       this,
-      value,
+      value2,
       shouldDisplayTooltip
     );
   }
-  addFullWidthRowDragging(rowDraggerElement, dragStartPixels, value = "", alwaysVisible) {
+  addFullWidthRowDragging(rowDraggerElement, dragStartPixels, value2 = "", alwaysVisible) {
     const { rowDragSvc, context } = this.beans;
     if (!rowDragSvc || !this.isFullWidth()) {
       return;
     }
     const rowDragComp = rowDragSvc.createRowDragComp(
-      () => value,
+      () => value2,
       this.rowNode,
       void 0,
       rowDraggerElement,
@@ -70607,11 +70607,11 @@ var PageBoundsService = class extends BeanStub {
     return this.pixelOffset;
   }
   calculatePixelOffset() {
-    const value = this.topRowBounds?.rowTop ?? 0;
-    if (this.pixelOffset === value) {
+    const value2 = this.topRowBounds?.rowTop ?? 0;
+    if (this.pixelOffset === value2) {
       return;
     }
-    this.pixelOffset = value;
+    this.pixelOffset = value2;
     this.eventSvc.dispatchEvent({ type: "paginationPixelOffsetChanged" });
   }
 };
@@ -70875,26 +70875,26 @@ var AriaAnnouncementService = class extends BeanStub {
   /**
    * @param key used for debouncing calls
    */
-  announceValue(value, key2) {
-    this.pendingAnnouncements.set(key2, value);
+  announceValue(value2, key2) {
+    this.pendingAnnouncements.set(key2, value2);
     this.updateAnnouncement();
   }
   updateAnnouncement() {
     if (!this.descriptionContainer) {
       return;
     }
-    const value = Array.from(this.pendingAnnouncements.values()).join(". ");
+    const value2 = Array.from(this.pendingAnnouncements.values()).join(". ");
     this.pendingAnnouncements.clear();
     this.descriptionContainer.textContent = "";
     setTimeout(() => {
-      this.handleAnnouncementUpdate(value);
+      this.handleAnnouncementUpdate(value2);
     }, 50);
   }
-  handleAnnouncementUpdate(value) {
+  handleAnnouncementUpdate(value2) {
     if (!this.isAlive() || !this.descriptionContainer) {
       return;
     }
-    let valueToAnnounce = value;
+    let valueToAnnounce = value2;
     if (valueToAnnounce == null || valueToAnnounce.replace(/[ .]/g, "") == "") {
       this.lastAnnouncement = "";
       return;
@@ -72926,14 +72926,14 @@ var ValueCache = class extends BeanStub {
   expire() {
     this.cacheVersion++;
   }
-  setValue(rowNode, colId, value) {
+  setValue(rowNode, colId, value2) {
     if (this.active) {
       const cacheVersion = this.cacheVersion;
       if (rowNode.__cacheVersion !== cacheVersion) {
         rowNode.__cacheVersion = cacheVersion;
         rowNode.__cacheData = {};
       }
-      rowNode.__cacheData[colId] = value;
+      rowNode.__cacheData[colId] = value2;
     }
   }
   getValue(rowNode, colId) {
@@ -73040,11 +73040,11 @@ var ValueService = class extends BeanStub {
     const isOpenedGroup = node.group && node.expanded && !node.footer && !isPivotLeaf;
     const groupShowsAggData = this.gos.get("groupSuppressBlankHeader") || !node.sibling;
     const ignoreAggData = isOpenedGroup && !groupShowsAggData;
-    const value = this.getValue(column2, node, ignoreAggData, source2);
+    const value2 = this.getValue(column2, node, ignoreAggData, source2);
     const format2 = includeValueFormatted && !(exporting && column2.colDef.useValueFormatterForExport === false);
     return {
-      value,
-      valueFormatted: format2 ? this.formatValue(column2, node, value) : null
+      value: value2,
+      valueFormatted: format2 ? this.formatValue(column2, node, value2) : null
     };
   }
   getValue(column2, rowNode, ignoreAggData = false, source2 = "ui") {
@@ -73134,7 +73134,7 @@ var ValueService = class extends BeanStub {
     }
     return null;
   }
-  formatValue(column2, node, value, suppliedFormatter, useFormatterFromColumn = true) {
+  formatValue(column2, node, value2, suppliedFormatter, useFormatterFromColumn = true) {
     const { expressionSvc } = this.beans;
     let result2 = null;
     let formatter;
@@ -73147,7 +73147,7 @@ var ValueService = class extends BeanStub {
     if (formatter) {
       const data2 = node ? node.data : null;
       const params = _addGridCommonParams(this.gos, {
-        value,
+        value: value2,
         node,
         data: data2,
         colDef,
@@ -73159,10 +73159,10 @@ var ValueService = class extends BeanStub {
         result2 = expressionSvc ? expressionSvc.evaluate(formatter, params) : null;
       }
     } else if (colDef.refData) {
-      return colDef.refData[value] || "";
+      return colDef.refData[value2] || "";
     }
-    if (result2 == null && Array.isArray(value)) {
-      result2 = value.join(", ");
+    if (result2 == null && Array.isArray(value2)) {
+      result2 = value2.join(", ");
     }
     return result2;
   }
@@ -73225,7 +73225,7 @@ var ValueService = class extends BeanStub {
     }
     return true;
   }
-  dispatchCellValueChangedEvent(rowNode, params, value, source2) {
+  dispatchCellValueChangedEvent(rowNode, params, value2, source2) {
     this.eventSvc.dispatchEvent({
       type: "cellValueChanged",
       event: null,
@@ -73236,8 +73236,8 @@ var ValueService = class extends BeanStub {
       data: rowNode.data,
       node: rowNode,
       oldValue: params.oldValue,
-      newValue: value,
-      value,
+      newValue: value2,
+      value: value2,
       source: source2
     });
   }
@@ -73320,12 +73320,12 @@ var ValueService = class extends BeanStub {
   }
   // used by row grouping and pivot, to get key for a row. col can be a pivot col or a row grouping col
   getKeyForNode(col, rowNode) {
-    const value = this.getValue(col, rowNode);
+    const value2 = this.getValue(col, rowNode);
     const keyCreator = col.getColDef().keyCreator;
-    let result2 = value;
+    let result2 = value2;
     if (keyCreator) {
       const keyParams = _addGridCommonParams(this.gos, {
-        value,
+        value: value2,
         colDef: col.getColDef(),
         column: col,
         node: rowNode,
@@ -73599,9 +73599,9 @@ var missingModule = ({
   }
   const chartModules = resolvedModuleNames.filter((m) => m === "IntegratedCharts" || m === "Sparklines");
   const chartImportRequired = chartModules.length > 0 ? `${chartModules.map((m) => convertToUserModuleName(m)).join()} must be initialised with an AG Charts module. One of 'AgChartsCommunityModule' / 'AgChartsEnterpriseModule'.` : "";
-  const explanation = `Unable to use ${reason} as ${resolvedModuleNames.length > 1 ? "one of " + resolvedModuleNames.map((m) => convertToUserModuleName(m)).join(", ") : convertToUserModuleName(resolvedModuleNames[0])} is not registered${gridScoped ? " for gridId: " + gridId : ""}. ${chartImportRequired} Check if you have registered the module:
+  const explanation2 = `Unable to use ${reason} as ${resolvedModuleNames.length > 1 ? "one of " + resolvedModuleNames.map((m) => convertToUserModuleName(m)).join(", ") : convertToUserModuleName(resolvedModuleNames[0])} is not registered${gridScoped ? " for gridId: " + gridId : ""}. ${chartImportRequired} Check if you have registered the module:
 `;
-  return `${explanation}
+  return `${explanation2}
 ${moduleImportMsg(resolvedModuleNames)}` + (additionalText ? ` 
 
 ${additionalText}` : "");
@@ -73792,10 +73792,10 @@ ${clipboardApiError(method)}`,
   },
   102: () => "selectAll: 'filtered' only works when gridOptions.rowModelType='clientSide'",
   103: () => "Invalid selection state. When using client-side row model, the state must conform to `string[]`.",
-  104: ({ value, param }) => `Numeric value ${value} passed to ${param} param will be interpreted as ${value} seconds. If this is intentional use "${value}s" to silence this warning.`,
+  104: ({ value: value2, param }) => `Numeric value ${value2} passed to ${param} param will be interpreted as ${value2} seconds. If this is intentional use "${value2}s" to silence this warning.`,
   105: ({ e }) => [`chart rendering failed`, e],
   106: () => `Theming API and Legacy Themes are both used in the same page. A Theming API theme has been provided to the 'theme' grid option, but the file (ag-grid.css) is also included and will cause styling issues. Remove ag-grid.css from the page. See the migration guide: ${baseDocLink}/theming-migration/`,
-  107: ({ key: key2, value }) => `Invalid value for theme param ${key2} - ${value}`,
+  107: ({ key: key2, value: value2 }) => `Invalid value for theme param ${key2} - ${value2}`,
   108: ({ e }) => ["chart update failed", e],
   109: ({ inputValue, allSuggestions }) => {
     const suggestions = _fuzzySuggestions({
@@ -74324,14 +74324,14 @@ var BaseComponentWrapper = class {
 function _isShowTooltipWhenTruncated(gos) {
   return gos.get("tooltipShowMode") === "whenTruncated";
 }
-function _formatNumberCommas(value, getLocaleTextFunc) {
-  if (typeof value !== "number") {
+function _formatNumberCommas(value2, getLocaleTextFunc) {
+  if (typeof value2 !== "number") {
     return "";
   }
   const localeTextFunc = getLocaleTextFunc();
   const thousandSeparator = localeTextFunc("thousandSeparator", ",");
   const decimalSeparator = localeTextFunc("decimalSeparator", ".");
-  return value.toString().replace(".", decimalSeparator).replace(/(\d)(?=(\d{3})+(?!\d))/g, `$1${thousandSeparator}`);
+  return value2.toString().replace(".", decimalSeparator).replace(/(\d)(?=(\d{3})+(?!\d))/g, `$1${thousandSeparator}`);
 }
 var BaseCreator = class extends BeanStub {
   getFileName(fileName) {
@@ -74375,8 +74375,8 @@ var BaseGridSerializingSession = class {
   prepare(_columnsToExport) {
   }
   extractHeaderValue(column2) {
-    const value = this.getHeaderName(this.processHeaderCallback, column2);
-    return value ?? "";
+    const value2 = this.getHeaderName(this.processHeaderCallback, column2);
+    return value2 ?? "";
   }
   extractRowCellValue(column2, currentColumnIndex, accumulatedRowIndex, type, node) {
     const isFullWidthGroup = currentColumnIndex === 0 && _isFullWidthGroupRow(this.gos, node, this.colModel.isPivotMode());
@@ -74411,14 +74411,14 @@ var BaseGridSerializingSession = class {
       let concatenatedGroupValue = "";
       let pointer = node;
       while (pointer && pointer.level !== -1) {
-        const { value: value2, valueFormatted: valueFormatted2 } = valueService.getValueForDisplay(
+        const { value: value22, valueFormatted: valueFormatted2 } = valueService.getValueForDisplay(
           isFullWidthGroup ? void 0 : column2,
           // full width group doesn't have a column
           pointer,
           true,
           true
         );
-        concatenatedGroupValue = ` -> ${valueFormatted2 ?? value2 ?? ""}${concatenatedGroupValue}`;
+        concatenatedGroupValue = ` -> ${valueFormatted2 ?? value22 ?? ""}${concatenatedGroupValue}`;
         pointer = pointer.parent;
       }
       return {
@@ -74427,9 +74427,9 @@ var BaseGridSerializingSession = class {
         valueFormatted: concatenatedGroupValue
       };
     }
-    const { value, valueFormatted } = valueService.getValueForDisplay(column2, node, true, true);
+    const { value: value2, valueFormatted } = valueService.getValueForDisplay(column2, node, true, true);
     return {
-      value: value ?? "",
+      value: value2 ?? "",
       valueFormatted
     };
   }
@@ -74952,8 +74952,8 @@ var ValidationService = class extends BeanStub {
         const { message: message2, version: version2 } = deprecation;
         warnings.add(`As of v${version2}, ${String(key2)} is deprecated. ${message2 ?? ""}`);
       }
-      const value = options[key2];
-      if (value == null || value === false) {
+      const value2 = options[key2];
+      if (value2 == null || value2 === false) {
         return;
       }
       const rules = validations[key2];
@@ -74962,10 +74962,10 @@ var ValidationService = class extends BeanStub {
       }
       const { dependencies, validate, supportedRowModels, expectedType } = rules;
       if (expectedType) {
-        const actualType = typeof value;
+        const actualType = typeof value2;
         if (actualType !== expectedType) {
           warnings.add(
-            `${String(key2)} should be of type '${expectedType}' but received '${actualType}' (${value}).`
+            `${String(key2)} should be of type '${expectedType}' but received '${actualType}' (${value2}).`
           );
           return;
         }
@@ -75002,9 +75002,9 @@ var ValidationService = class extends BeanStub {
   }
   checkForRequiredDependencies(key2, validator, options) {
     const optionEntries = Object.entries(validator);
-    const failedOptions = optionEntries.filter(([key22, value]) => {
+    const failedOptions = optionEntries.filter(([key22, value2]) => {
       const gridOptionValue = options[key22];
-      return !value.required.includes(gridOptionValue);
+      return !value2.required.includes(gridOptionValue);
     });
     if (failedOptions.length === 0) {
       return null;
@@ -75029,8 +75029,8 @@ var ValidationService = class extends BeanStub {
     );
     const invalidPropertiesKeys = Object.keys(invalidProperties);
     for (const key2 of invalidPropertiesKeys) {
-      const value = invalidProperties[key2];
-      let message2 = `invalid ${containerName} property '${key2}' did you mean any of these: ${value.slice(0, 8).join(", ")}.`;
+      const value2 = invalidProperties[key2];
+      let message2 = `invalid ${containerName} property '${key2}' did you mean any of these: ${value2.slice(0, 8).join(", ")}.`;
       if (validProperties.includes("context")) {
         message2 += `
 If you are trying to annotate ${containerName} with application data, use the '${containerName}.context' property instead.`;
@@ -77646,15 +77646,15 @@ var SimpleFilter = class extends ProvidedFilter {
     }
   }
   // floating filter calls this when user applies filter from floating filter
-  onFloatingFilterChanged(type, value) {
+  onFloatingFilterChanged(type, value2) {
     this.setTypeFromFloatingFilter(type);
-    this.setValueFromFloatingFilter(value);
+    this.setValueFromFloatingFilter(value2);
     this.onUiChanged("immediately", true);
   }
   setTypeFromFloatingFilter(type) {
     this.eTypes.forEach((eType, position) => {
-      const value = position === 0 ? type : this.optionsFactory.defaultOption;
-      eType.setValue(value, true);
+      const value2 = position === 0 ? type : this.optionsFactory.defaultOption;
+      eType.setValue(value2, true);
     });
   }
   getModelFromUi() {
@@ -78026,9 +78026,9 @@ var SimpleFilter = class extends ProvidedFilter {
     });
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setElementValue(element, value, fromFloatingFilter) {
+  setElementValue(element, value2, fromFloatingFilter) {
     if (element instanceof AgAbstractInputField) {
-      element.setValue(value != null ? String(value) : null, true);
+      element.setValue(value2 != null ? String(value2) : null, true);
     }
   }
   setElementDisplayed(element, displayed) {
@@ -78157,9 +78157,9 @@ var SimpleFilter = class extends ProvidedFilter {
       uniqueGroupId
     );
   }
-  resetJoinOperator(eJoinOperator, index, value, label, uniqueGroupId) {
+  resetJoinOperator(eJoinOperator, index, value2, label, uniqueGroupId) {
     this.updateJoinOperatorDisabled(
-      eJoinOperator.setValue(value, true).setName(`ag-simple-filter-and-or-${this.getCompId()}-${uniqueGroupId}`).setLabel(label),
+      eJoinOperator.setValue(value2, true).setName(`ag-simple-filter-and-or-${this.getCompId()}-${uniqueGroupId}`).setLabel(label),
       index
     );
   }
@@ -78187,9 +78187,9 @@ var SimpleFilter = class extends ProvidedFilter {
   }
   // after floating filter changes, this sets the 'value' section. this is implemented by the base class
   // (as that's where value is controlled), the 'type' part from the floating filter is dealt with in this class.
-  setValueFromFloatingFilter(value) {
+  setValueFromFloatingFilter(value2) {
     this.forEachInput((element, index, position) => {
-      this.setElementValue(element, index === 0 && position === 0 ? value : null, true);
+      this.setElementValue(element, index === 0 && position === 0 ? value2 : null, true);
     });
   }
   addChangedListeners(eType, position) {
@@ -78245,12 +78245,12 @@ var DateCompWrapper = class {
   getDate() {
     return this.dateComp ? this.dateComp.getDate() : this.tempValue;
   }
-  setDate(value) {
+  setDate(value2) {
     const dateComp = this.dateComp;
     if (dateComp) {
-      dateComp.setDate(value);
+      dateComp.setDate(value2);
     } else {
-      this.tempValue = value;
+      this.tempValue = value2;
     }
   }
   setDisabled(disabled) {
@@ -78315,10 +78315,10 @@ var DateFilter = class extends SimpleFilter {
   commonUpdateSimpleParams(params) {
     super.commonUpdateSimpleParams(params);
     const yearParser = (param, fallback) => {
-      const value = params[param];
-      if (value != null) {
-        if (!isNaN(value)) {
-          return value == null ? fallback : Number(value);
+      const value2 = params[param];
+      if (value2 != null) {
+        if (!isNaN(value2)) {
+          return value2 == null ? fallback : Number(value2);
         } else {
           _warn(82, { param });
         }
@@ -78360,8 +78360,8 @@ var DateFilter = class extends SimpleFilter {
     this.addDestroyFunc(() => dateCompWrapper.destroy());
     return dateCompWrapper;
   }
-  setElementValue(element, value) {
-    element.setDate(value);
+  setElementValue(element, value2) {
+    element.setDate(value2);
   }
   setElementDisplayed(element, displayed) {
     element.setDisplayed(displayed);
@@ -78393,23 +78393,23 @@ var DateFilter = class extends SimpleFilter {
       comp.destroy();
     }
   }
-  isValidDateValue(value) {
-    if (value === null) {
+  isValidDateValue(value2) {
+    if (value2 === null) {
       return false;
     }
     const { minValidDate, maxValidDate, minValidYear, maxValidYear } = this;
     if (minValidDate) {
-      if (value < minValidDate) {
+      if (value2 < minValidDate) {
         return false;
       }
-    } else if (value.getUTCFullYear() < minValidYear) {
+    } else if (value2.getUTCFullYear() < minValidYear) {
       return false;
     }
     if (maxValidDate) {
-      if (value > maxValidDate) {
+      if (value2 > maxValidDate) {
         return false;
       }
-    } else if (value.getUTCFullYear() > maxValidYear) {
+    } else if (value2.getUTCFullYear() > maxValidYear) {
       return false;
     }
     return true;
@@ -78759,18 +78759,18 @@ var SimpleFilterModelFormatter = class extends BeanStub {
     const suffix = this.filterTypeKeys[type];
     return suffix ? `filterSummary${suffix}` : null;
   }
-  formatValue(value) {
+  formatValue(value2) {
     const valueFormatter = this.valueFormatter;
-    return valueFormatter ? valueFormatter(value ?? null) ?? "" : String(value);
+    return valueFormatter ? valueFormatter(value2 ?? null) ?? "" : String(value2);
   }
 };
 var DateFilterModelFormatter = class extends SimpleFilterModelFormatter {
   constructor(optionsFactory, filterParams) {
-    super(optionsFactory, filterParams, (value) => {
+    super(optionsFactory, filterParams, (value2) => {
       const { dataTypeSvc, valueSvc } = this.beans;
       const column2 = filterParams.column;
       const dateFormatFn = dataTypeSvc?.getDateFormatterFunction(column2);
-      const valueToFormat = dateFormatFn ? dateFormatFn(value ?? void 0) : value;
+      const valueToFormat = dateFormatFn ? dateFormatFn(value2 ?? void 0) : value2;
       return valueSvc.formatValue(column2, null, valueToFormat);
     });
     this.filterTypeKeys = SCALAR_FILTER_TYPE_KEYS;
@@ -78780,7 +78780,7 @@ var DateFilterModelFormatter = class extends SimpleFilterModelFormatter {
     const dateFrom = _parseDateTimeFromString(condition.dateFrom);
     const dateTo = _parseDateTimeFromString(condition.dateTo);
     const format2 = this.filterParams.inRangeFloatingFilterDateFormat;
-    const formatDate2 = forToolPanel ? this.formatValue.bind(this) : (value) => _dateToFormattedString(value, format2);
+    const formatDate2 = forToolPanel ? this.formatValue.bind(this) : (value2) => _dateToFormattedString(value2, format2);
     const formattedFrom = () => dateFrom !== null ? formatDate2(dateFrom) : "null";
     const formattedTo = () => dateTo !== null ? formatDate2(dateTo) : "null";
     if (forToolPanel) {
@@ -78824,9 +78824,9 @@ var DateFilterHandler = class extends ScalarFilterHandler {
   comparator() {
     return this.params.filterParams.comparator ?? defaultDateComparator;
   }
-  isValid(value) {
+  isValid(value2) {
     const isValidDate2 = this.params.filterParams.isValidDate;
-    return !isValidDate2 || isValidDate2(value);
+    return !isValidDate2 || isValidDate2(value2);
   }
 };
 var SimpleFloatingFilter = class extends Component {
@@ -79185,11 +79185,11 @@ function getAllowedCharPattern(filterParams) {
   const { allowedCharPattern } = filterParams ?? {};
   return allowedCharPattern ?? null;
 }
-function processNumberFilterValue(value) {
-  if (value == null) {
+function processNumberFilterValue(value2) {
+  if (value2 == null) {
     return null;
   }
-  return isNaN(value) ? null : value;
+  return isNaN(value2) ? null : value2;
 }
 function mapValuesFromNumberFilterModel(filterModel, optionsFactory) {
   const { filter: filter2, filterTo, type } = filterModel || {};
@@ -79206,9 +79206,9 @@ var NumberFilter = class extends SimpleFilter {
     this.filterType = "number";
     this.defaultDebounceMs = 500;
   }
-  setElementValue(element, value, fromFloatingFilter) {
+  setElementValue(element, value2, fromFloatingFilter) {
     const { numberFormatter } = this.params;
-    const valueToSet = !fromFloatingFilter && numberFormatter ? numberFormatter(value ?? null) : value;
+    const valueToSet = !fromFloatingFilter && numberFormatter ? numberFormatter(value2 ?? null) : value2;
     super.setElementValue(element, valueToSet);
   }
   createEValue() {
@@ -79244,11 +79244,11 @@ var NumberFilter = class extends SimpleFilter {
   areSimpleModelsEqual(aSimple, bSimple) {
     return aSimple.filter === bSimple.filter && aSimple.filterTo === bSimple.filterTo && aSimple.type === bSimple.type;
   }
-  stringToFloat(value) {
-    if (typeof value === "number") {
-      return value;
+  stringToFloat(value2) {
+    if (typeof value2 === "number") {
+      return value2;
     }
-    let filterText = _makeNull(value);
+    let filterText = _makeNull(value2);
     if (filterText != null && filterText.trim() === "") {
       filterText = null;
     }
@@ -79334,8 +79334,8 @@ var NumberFilterHandler = class extends ScalarFilterHandler {
       return left2 < right2 ? 1 : -1;
     };
   }
-  isValid(value) {
-    return !isNaN(value);
+  isValid(value2) {
+    return !isNaN(value2);
   }
 };
 var FloatingFilterTextInputService = class extends BeanStub {
@@ -79362,8 +79362,8 @@ var FloatingFilterTextInputService = class extends BeanStub {
   getValue() {
     return this.eInput.getValue();
   }
-  setValue(value, silent) {
-    this.eInput.setValue(value, silent);
+  setValue(value2, silent) {
+    this.eInput.setValue(value2, silent);
   }
   setValueChangedListener(listener) {
     this.onValueChanged = listener;
@@ -79376,9 +79376,9 @@ var FloatingFilterTextInputService = class extends BeanStub {
     }
   }
 };
-function trimInputForFilter(value) {
-  const trimmedInput = value?.trim();
-  return trimmedInput === "" ? value : trimmedInput;
+function trimInputForFilter(value2) {
+  const trimmedInput = value2?.trim();
+  return trimmedInput === "" ? value2 : trimmedInput;
 }
 function mapValuesFromTextFilterModel(filterModel, optionsFactory) {
   const { filter: filter2, filterTo, type } = filterModel || {};
@@ -79437,11 +79437,11 @@ var TextInputFloatingFilter = class extends SimpleFloatingFilter {
   }
   recreateFloatingFilterInputService(params) {
     const { inputSvc } = this;
-    const value = inputSvc.getValue();
+    const value2 = inputSvc.getValue();
     _clearElement(this.eFloatingFilterInputContainer);
     this.destroyBean(inputSvc);
     this.setupFloatingFilterInputService(params);
-    inputSvc.setValue(value, true);
+    inputSvc.setValue(value2, true);
   }
   syncUpWithParentFilter(e) {
     const isEnterKey = e.key === KeyCode.ENTER;
@@ -79454,15 +79454,15 @@ var TextInputFloatingFilter = class extends SimpleFloatingFilter {
       return;
     }
     const { inputSvc, params, lastType } = this;
-    let value = inputSvc.getValue();
+    let value2 = inputSvc.getValue();
     if (params.filterParams.trimInput) {
-      value = trimInputForFilter(value);
-      inputSvc.setValue(value, true);
+      value2 = trimInputForFilter(value2);
+      inputSvc.setValue(value2, true);
     }
     if (reactive) {
       const reactiveParams = params;
       const model = reactiveParams.model;
-      const parsedValue = this.convertValue(value);
+      const parsedValue = this.convertValue(value2);
       const newModel = parsedValue == null ? null : {
         ...model ?? {
           filterType: this.filterType,
@@ -79473,12 +79473,12 @@ var TextInputFloatingFilter = class extends SimpleFloatingFilter {
       reactiveParams.onModelChange(newModel, { afterFloatingFilter: true });
     } else {
       params.parentFilterInstance((filterInstance) => {
-        filterInstance?.onFloatingFilterChanged(lastType || null, value || null);
+        filterInstance?.onFloatingFilterChanged(lastType || null, value2 || null);
       });
     }
   }
-  convertValue(value) {
-    return value || null;
+  convertValue(value2) {
+    return value2 || null;
   }
   setEditable(editable) {
     this.inputSvc.setEditable(editable);
@@ -79514,8 +79514,8 @@ var FloatingFilterNumberInputService = class extends BeanStub {
   getValue() {
     return this.getActiveInputElement().getValue();
   }
-  setValue(value, silent) {
-    this.getActiveInputElement().setValue(value, silent);
+  setValue(value2, silent) {
+    this.getActiveInputElement().setValue(value2, silent);
   }
   getActiveInputElement() {
     return this.numberInputActive ? this.eNumberInput : this.eTextInput;
@@ -79565,8 +79565,8 @@ var NumberFloatingFilter = class extends TextInputFloatingFilter {
     }
     return this.createManagedBean(new FloatingFilterNumberInputService());
   }
-  convertValue(value) {
-    return value ? Number(value) : null;
+  convertValue(value2) {
+    return value2 ? Number(value2) : null;
   }
 };
 var DEFAULT_TEXT_FILTER_OPTIONS = [
@@ -79650,7 +79650,7 @@ var TextFilterModelFormatter = class extends SimpleFilterModelFormatter {
   conditionToString(condition, forToolPanel, isRange, customDisplayKey, customDisplayName) {
     const { filter: filter2, filterTo, type } = condition;
     if (forToolPanel) {
-      const getValueFunc = (value) => () => translateForFilter(this, "filterSummaryTextQuote", [value]);
+      const getValueFunc = (value2) => () => translateForFilter(this, "filterSummaryTextQuote", [value2]);
       const valueForToolPanel = this.conditionForToolPanel(
         type,
         isRange,
@@ -79672,24 +79672,24 @@ var TextFilterModelFormatter = class extends SimpleFilterModelFormatter {
     return `${type}`;
   }
 };
-var defaultMatcher = ({ filterOption, value, filterText }) => {
+var defaultMatcher = ({ filterOption, value: value2, filterText }) => {
   if (filterText == null) {
     return false;
   }
   switch (filterOption) {
     case "contains":
-      return value.includes(filterText);
+      return value2.includes(filterText);
     case "notContains":
-      return !value.includes(filterText);
+      return !value2.includes(filterText);
     case "equals":
-      return value === filterText;
+      return value2 === filterText;
     case "notEqual":
-      return value != filterText;
+      return value2 != filterText;
     case "startsWith":
-      return value.indexOf(filterText) === 0;
+      return value2.indexOf(filterText) === 0;
     case "endsWith": {
-      const index = value.lastIndexOf(filterText);
-      return index >= 0 && index === value.length - filterText.length;
+      const index = value2.lastIndexOf(filterText);
+      return index >= 0 && index === value2.length - filterText.length;
     }
     default:
       return false;
@@ -79923,19 +79923,19 @@ var QuickFilterService = class extends BeanStub {
     }
   }
   getTextForColumn(column2, node) {
-    let value = this.beans.filterValueSvc.getValue(column2, node);
+    let value2 = this.beans.filterValueSvc.getValue(column2, node);
     const colDef = column2.getColDef();
     if (colDef.getQuickFilterText) {
       const params = _addGridCommonParams(this.gos, {
-        value,
+        value: value2,
         node,
         data: node.data,
         column: column2,
         colDef
       });
-      value = colDef.getQuickFilterText(params);
+      value2 = colDef.getQuickFilterText(params);
     }
-    return _exists(value) ? value.toString().toUpperCase() : null;
+    return _exists(value2) ? value2.toString().toUpperCase() : null;
   }
   getAggText(node) {
     const stringParts = [];
@@ -80108,12 +80108,12 @@ var TooltipService = class extends BeanStub {
     const location = "header";
     const headerLocation = "header";
     const valueFormatted = this.beans.colNames.getDisplayNameForColumn(column2, headerLocation, true);
-    const value = passedValue ?? valueFormatted;
+    const value2 = passedValue ?? valueFormatted;
     const tooltipCtrl = {
       getGui: () => eGui,
       getLocation: () => location,
       getTooltipValue: () => passedValue ?? colDef?.headerTooltipValueGetter?.(
-        _addGridCommonParams(gos, { location, colDef, column: column2, value, valueFormatted })
+        _addGridCommonParams(gos, { location, colDef, column: column2, value: value2, valueFormatted })
       ) ?? colDef?.headerTooltip,
       shouldDisplayTooltip,
       getAdditionalParams: () => ({
@@ -80144,12 +80144,12 @@ var TooltipService = class extends BeanStub {
     const location = "headerGroup";
     const headerLocation = "header";
     const valueFormatted = this.beans.colNames.getDisplayNameForColumnGroup(column2, headerLocation);
-    const value = passedValue ?? valueFormatted;
+    const value2 = passedValue ?? valueFormatted;
     const tooltipCtrl = {
       getGui: () => eGui,
       getLocation: () => location,
       getTooltipValue: () => passedValue ?? colDef?.headerTooltipValueGetter?.(
-        _addGridCommonParams(gos, { location, colDef, column: column2, value, valueFormatted })
+        _addGridCommonParams(gos, { location, colDef, column: column2, value: value2, valueFormatted })
       ) ?? colDef?.headerTooltip,
       shouldDisplayTooltip,
       getAdditionalParams: () => {
@@ -80165,7 +80165,7 @@ var TooltipService = class extends BeanStub {
     const tooltipFeature = this.createTooltipFeature(tooltipCtrl);
     return tooltipFeature ? ctrl.createBean(tooltipFeature) : tooltipFeature;
   }
-  enableCellTooltipFeature(ctrl, value, shouldDisplayTooltip) {
+  enableCellTooltipFeature(ctrl, value2, shouldDisplayTooltip) {
     const { beans } = this;
     const { gos, editSvc } = beans;
     const { column: column2, rowNode } = ctrl;
@@ -80226,7 +80226,7 @@ var TooltipService = class extends BeanStub {
     const tooltipCtrl = {
       getGui: () => ctrl.eGui,
       getLocation: () => location,
-      getTooltipValue: value != null ? () => value : getTooltipValue,
+      getTooltipValue: value2 != null ? () => value2 : getTooltipValue,
       shouldDisplayTooltip,
       getAdditionalParams: () => ({
         column: column2,
@@ -80239,10 +80239,10 @@ var TooltipService = class extends BeanStub {
     };
     return this.createTooltipFeature(tooltipCtrl, beans);
   }
-  setupFullWidthRowTooltip(existingTooltipFeature, ctrl, value, shouldDisplayTooltip) {
+  setupFullWidthRowTooltip(existingTooltipFeature, ctrl, value2, shouldDisplayTooltip) {
     const tooltipParams = {
       getGui: () => ctrl.getFullWidthElement(),
-      getTooltipValue: () => value,
+      getTooltipValue: () => value2,
       getLocation: () => "fullWidthRow",
       shouldDisplayTooltip
     };
@@ -80380,12 +80380,12 @@ var UndoRedoService = class extends BeanStub {
       if (!shouldCaptureAction) {
         return;
       }
-      const { rowPinned, rowIndex, column: column2, oldValue, value } = event;
+      const { rowPinned, rowIndex, column: column2, oldValue, value: value2 } = event;
       const cellValueChange = {
         rowPinned,
         rowIndex,
         columnId: column2.getColId(),
-        newValue: value,
+        newValue: value2,
         oldValue
       };
       this.cellValueChanges.push(cellValueChange);
@@ -80611,11 +80611,11 @@ var UndoRedoService = class extends BeanStub {
   startBigChange(key2) {
     this.updateBigChange(key2, true);
   }
-  updateBigChange(key2, value) {
+  updateBigChange(key2, value2) {
     if (key2 === "bulkEditing") {
-      this.bulkEditing = value;
+      this.bulkEditing = value2;
     } else {
-      this.batchEditing = value;
+      this.batchEditing = value2;
     }
   }
   stopBigChange(key2, changes) {
@@ -80693,12 +80693,12 @@ var CheckboxCellEditor = class extends AgAbstractCellEditor {
   getValidationErrors() {
     const { params } = this;
     const { getValidationErrors } = params;
-    const value = this.getValue();
+    const value2 = this.getValue();
     if (!getValidationErrors) {
       return null;
     }
     return getValidationErrors({
-      value,
+      value: value2,
       internalErrors: null,
       cellEditorParams: params
     });
@@ -80826,15 +80826,15 @@ var DateCellEditorInput = class {
   }
   getValidationErrors() {
     const eInput = this.eEditor.getInputElement();
-    const value = eInput.valueAsDate;
+    const value2 = eInput.valueAsDate;
     const { params } = this;
     const { min: min2, max: max2, getValidationErrors } = params;
     let internalErrors = [];
     const translate = this.getLocaleTextFunc();
-    if (value instanceof Date && !isNaN(value.getTime())) {
+    if (value2 instanceof Date && !isNaN(value2.getTime())) {
       if (min2) {
         const minValue = min2 instanceof Date ? min2 : new Date(min2);
-        if (value < minValue) {
+        if (value2 < minValue) {
           const minDateString = minValue.toLocaleDateString();
           internalErrors.push(
             translate("minDateValidation", `Date must be after ${minDateString}`, [minDateString])
@@ -80843,7 +80843,7 @@ var DateCellEditorInput = class {
       }
       if (max2) {
         const maxValue = max2 instanceof Date ? max2 : new Date(max2);
-        if (value > maxValue) {
+        if (value2 > maxValue) {
           const maxDateString = maxValue.toLocaleDateString();
           internalErrors.push(
             translate("maxDateValidation", `Date must be before ${maxDateString}`, [maxDateString])
@@ -80855,24 +80855,24 @@ var DateCellEditorInput = class {
       internalErrors = null;
     }
     if (getValidationErrors) {
-      return getValidationErrors({ value, cellEditorParams: params, internalErrors });
+      return getValidationErrors({ value: value2, cellEditorParams: params, internalErrors });
     }
     return internalErrors;
   }
   getValue() {
     const { eEditor, params } = this;
-    const value = eEditor.getDate();
-    if (!_exists(value) && !_exists(params.value)) {
+    const value2 = eEditor.getDate();
+    if (!_exists(value2) && !_exists(params.value)) {
       return params.value;
     }
-    return value ?? null;
+    return value2 ?? null;
   }
   getStartValue() {
-    const { value } = this.params;
-    if (!(value instanceof Date)) {
+    const { value: value2 } = this.params;
+    if (!(value2 instanceof Date)) {
       return void 0;
     }
-    return _serialiseDate(value, this.includeTime ?? false);
+    return _serialiseDate(value2, this.includeTime ?? false);
   }
 };
 var DateCellEditor = class extends SimpleCellEditor {
@@ -80922,11 +80922,11 @@ var DateStringCellEditorInput = class {
   getValidationErrors() {
     const { eEditor, params } = this;
     const raw = eEditor.getInputElement().value;
-    const value = this.formatDate(this.parseDate(raw ?? void 0));
+    const value2 = this.formatDate(this.parseDate(raw ?? void 0));
     const { min: min2, max: max2, getValidationErrors } = params;
     let internalErrors = [];
-    if (value) {
-      const date2 = new Date(value);
+    if (value2) {
+      const date2 = new Date(value2);
       const translate = this.getLocaleTextFunc();
       if (min2) {
         const minDate = new Date(min2);
@@ -80961,22 +80961,22 @@ var DateStringCellEditorInput = class {
   }
   getValue() {
     const { params, eEditor } = this;
-    const value = this.formatDate(eEditor.getDate());
-    if (!_exists(value) && !_exists(params.value)) {
+    const value2 = this.formatDate(eEditor.getDate());
+    if (!_exists(value2) && !_exists(params.value)) {
       return params.value;
     }
-    return params.parseValue(value ?? "");
+    return params.parseValue(value2 ?? "");
   }
   getStartValue() {
     return _serialiseDate(this.parseDate(this.params.value ?? void 0) ?? null, this.includeTime ?? false);
   }
-  parseDate(value) {
+  parseDate(value2) {
     const dataTypeSvc = this.getDataTypeService();
-    return dataTypeSvc ? dataTypeSvc.getDateParserFunction(this.params.column)(value) : _parseDateTimeFromString(value) ?? void 0;
+    return dataTypeSvc ? dataTypeSvc.getDateParserFunction(this.params.column)(value2) : _parseDateTimeFromString(value2) ?? void 0;
   }
-  formatDate(value) {
+  formatDate(value2) {
     const dataTypeSvc = this.getDataTypeService();
-    return dataTypeSvc ? dataTypeSvc.getDateFormatterFunction(this.params.column)(value) : _serialiseDate(value ?? null, this.includeTime ?? false) ?? void 0;
+    return dataTypeSvc ? dataTypeSvc.getDateFormatterFunction(this.params.column)(value2) : _serialiseDate(value2 ?? null, this.includeTime ?? false) ?? void 0;
   }
 };
 var DateStringCellEditor = class extends SimpleCellEditor {
@@ -81035,8 +81035,8 @@ var LargeTextCellEditor = class extends AgAbstractCellEditor {
     this.activateTabIndex();
   }
   getStartValue(params) {
-    const { value } = params;
-    return value?.toString() ?? value;
+    const { value: value2 } = params;
+    return value2?.toString() ?? value2;
   }
   onKeyDown(event) {
     const key2 = event.key;
@@ -81057,10 +81057,10 @@ var LargeTextCellEditor = class extends AgAbstractCellEditor {
   }
   getValue() {
     const { eEditor, params } = this;
-    const { value } = params;
+    const { value: value2 } = params;
     const editorValue = eEditor.getValue();
-    if (!_exists(editorValue) && !_exists(value)) {
-      return value;
+    if (!_exists(editorValue) && !_exists(value2)) {
+      return value2;
     }
     return params.parseValue(editorValue);
   }
@@ -81071,9 +81071,9 @@ var LargeTextCellEditor = class extends AgAbstractCellEditor {
     const { params } = this;
     const { maxLength, getValidationErrors } = params;
     const translate = this.getLocaleTextFunc();
-    const value = this.getValue();
+    const value2 = this.getValue();
     let internalErrors = [];
-    if (typeof value === "string" && maxLength != null && value.length > maxLength) {
+    if (typeof value2 === "string" && maxLength != null && value2.length > maxLength) {
       internalErrors.push(
         translate("maxLengthValidation", `Must be ${maxLength} characters or fewer.`, [String(maxLength)])
       );
@@ -81083,7 +81083,7 @@ var LargeTextCellEditor = class extends AgAbstractCellEditor {
     }
     if (getValidationErrors) {
       return getValidationErrors({
-        value,
+        value: value2,
         internalErrors,
         cellEditorParams: params
       });
@@ -81133,16 +81133,16 @@ var NumberCellEditorInput = class {
     const { params } = this;
     const { min: min2, max: max2, getValidationErrors } = params;
     const eInput = this.eEditor.getInputElement();
-    const value = eInput.valueAsNumber;
+    const value2 = eInput.valueAsNumber;
     const translate = this.getLocaleTextFunc();
     let internalErrors = [];
-    if (typeof value === "number") {
-      if (min2 != null && value < min2) {
+    if (typeof value2 === "number") {
+      if (min2 != null && value2 < min2) {
         internalErrors.push(
           translate("minValueValidation", `Must be greater than or equal to ${min2}.`, [String(min2)])
         );
       }
-      if (max2 != null && value > max2) {
+      if (max2 != null && value2 > max2) {
         internalErrors.push(
           translate("maxValueValidation", `Must be less than or equal to ${max2}.`, [String(max2)])
         );
@@ -81153,7 +81153,7 @@ var NumberCellEditorInput = class {
     }
     if (getValidationErrors) {
       return getValidationErrors({
-        value,
+        value: value2,
         cellEditorParams: params,
         internalErrors
       });
@@ -81167,11 +81167,11 @@ var NumberCellEditorInput = class {
   }
   getValue() {
     const { eEditor, params } = this;
-    const value = eEditor.getValue();
-    if (!_exists(value) && !_exists(params.value)) {
+    const value2 = eEditor.getValue();
+    if (!_exists(value2) && !_exists(params.value)) {
       return params.value;
     }
-    let parsedValue = params.parseValue(value);
+    let parsedValue = params.parseValue(value2);
     if (parsedValue == null) {
       return parsedValue;
     }
@@ -81220,7 +81220,7 @@ var SelectCellEditor = class extends AgAbstractCellEditor {
   initialiseEditor(params) {
     this.focusAfterAttached = params.cellStartedEdit;
     const { eEditor, valueSvc, gos } = this;
-    const { values: values2, value, eventKey } = params;
+    const { values: values2, value: value2, eventKey } = params;
     if (_missing(values2)) {
       _warn(58);
       return;
@@ -81233,7 +81233,7 @@ var SelectCellEditor = class extends AgAbstractCellEditor {
       const valueFormattedExits = valueFormatted !== null && valueFormatted !== void 0;
       option.text = valueFormattedExits ? valueFormatted : currentValue;
       eEditor.addOption(option);
-      hasValue = hasValue || value === currentValue;
+      hasValue = hasValue || value2 === currentValue;
     });
     if (hasValue) {
       eEditor.setValue(params.value, true);
@@ -81281,9 +81281,9 @@ var SelectCellEditor = class extends AgAbstractCellEditor {
   getValidationErrors() {
     const { params } = this;
     const { values: values2, getValidationErrors } = params;
-    const value = this.getValue();
+    const value2 = this.getValue();
     let internalErrors = [];
-    if (values2 && !values2.includes(value)) {
+    if (values2 && !values2.includes(value2)) {
       const translate = this.getLocaleTextFunc();
       internalErrors.push(translate("invalidSelectionValidation", "Invalid selection."));
     } else {
@@ -81291,7 +81291,7 @@ var SelectCellEditor = class extends AgAbstractCellEditor {
     }
     if (getValidationErrors) {
       return getValidationErrors({
-        value,
+        value: value2,
         internalErrors,
         cellEditorParams: params
       });
@@ -81325,10 +81325,10 @@ var TextCellEditorInput = class {
   getValidationErrors() {
     const { params } = this;
     const { maxLength, getValidationErrors } = params;
-    const value = this.getValue();
+    const value2 = this.getValue();
     const translate = this.getLocaleTextFunc();
     let internalErrors = [];
-    if (maxLength != null && typeof value === "string" && value.length > maxLength) {
+    if (maxLength != null && typeof value2 === "string" && value2.length > maxLength) {
       internalErrors.push(
         translate("maxLengthValidation", `Must be ${maxLength} characters or fewer.`, [String(maxLength)])
       );
@@ -81337,17 +81337,17 @@ var TextCellEditorInput = class {
       internalErrors = null;
     }
     if (getValidationErrors) {
-      return getValidationErrors({ value, cellEditorParams: params, internalErrors });
+      return getValidationErrors({ value: value2, cellEditorParams: params, internalErrors });
     }
     return internalErrors;
   }
   getValue() {
     const { eEditor, params } = this;
-    const value = eEditor.getValue();
-    if (!_exists(value) && !_exists(params.value)) {
+    const value2 = eEditor.getValue();
+    if (!_exists(value2) && !_exists(params.value)) {
       return params.value;
     }
-    return params.parseValue(value);
+    return params.parseValue(value2);
   }
   getStartValue() {
     const params = this.params;
@@ -81359,8 +81359,8 @@ var TextCellEditorInput = class {
       this.eEditor.getInputElement().focus({ preventScroll: true });
     }
     const eInput = this.eEditor;
-    const value = eInput.getValue();
-    const len = _exists(value) && value.length || 0;
+    const value2 = eInput.getValue();
+    const len = _exists(value2) && value2.length || 0;
     if (len) {
       eInput.getInputElement().setSelectionRange(len, len);
     }
@@ -83415,14 +83415,14 @@ var SelectionService = class extends BaseSelectionService {
   }
   // not to be mixed up with 'cell range selection' where you drag the mouse, this is row range selection, by
   // holding down 'shift'.
-  selectRange(nodesToSelect, value, source2) {
+  selectRange(nodesToSelect, value2, source2) {
     let updatedCount = 0;
     nodesToSelect.forEach((node) => {
       const rowNode = _normaliseSiblingRef(node);
       if (rowNode.group && this.groupSelectsDescendants) {
         return;
       }
-      const nodeWasSelected = this.selectRowNode(rowNode, value, void 0, source2);
+      const nodeWasSelected = this.selectRowNode(rowNode, value2, void 0, source2);
       if (nodeWasSelected) {
         updatedCount++;
       }
@@ -86074,18 +86074,18 @@ var CsvSerializingSession = class extends BaseGridSerializingSession {
     const rowCellValue = this.extractRowCellValue(column2, index, index, "csv", node);
     this.result += this.putInQuotes(rowCellValue.valueFormatted ?? rowCellValue.value);
   }
-  putInQuotes(value) {
+  putInQuotes(value2) {
     if (this.suppressQuotes) {
-      return value;
+      return value2;
     }
-    if (value === null || value === void 0) {
+    if (value2 === null || value2 === void 0) {
       return '""';
     }
     let stringValue;
-    if (typeof value === "string") {
-      stringValue = value;
-    } else if (typeof value.toString === "function") {
-      stringValue = value.toString();
+    if (typeof value2 === "string") {
+      stringValue = value2;
+    } else if (typeof value2.toString === "function") {
+      stringValue = value2.toString();
     } else {
       _warn(53);
       stringValue = "";
@@ -86914,22 +86914,22 @@ var AnimateShowChangeCellRenderer = class extends Component {
     _clearElement(this.eDelta);
   }
   refresh(params, isInitialRender = false) {
-    const { value, valueFormatted } = params;
+    const { value: value2, valueFormatted } = params;
     const { eValue, lastValue, beans } = this;
-    if (value === lastValue) {
+    if (value2 === lastValue) {
       return false;
     }
     if (_exists(valueFormatted)) {
       eValue.textContent = valueFormatted;
-    } else if (_exists(value)) {
-      eValue.textContent = value;
+    } else if (_exists(value2)) {
+      eValue.textContent = value2;
     } else {
       _clearElement(eValue);
     }
     if (beans.filterManager?.isSuppressFlashingCellsBecauseFiltering()) {
       return false;
     }
-    const numericValue = value && typeof value === "object" && "toNumber" in value ? value.toNumber() : value;
+    const numericValue = value2 && typeof value2 === "object" && "toNumber" in value2 ? value2.toNumber() : value2;
     const numericLastValue = lastValue && typeof lastValue === "object" && "toNumber" in lastValue ? lastValue.toNumber() : lastValue;
     if (numericValue === numericLastValue) {
       return false;
@@ -86944,7 +86944,7 @@ var AnimateShowChangeCellRenderer = class extends Component {
     if (!isInitialRender) {
       this.setTimerToRemoveDelta();
     }
-    this.lastValue = value;
+    this.lastValue = value2;
     return true;
   }
 };
@@ -86992,11 +86992,11 @@ var AnimateSlideCellRenderer = class extends Component {
     });
   }
   refresh(params, isInitialRender = false) {
-    let value = params.value;
-    if (_missing(value)) {
-      value = "";
+    let value2 = params.value;
+    if (_missing(value2)) {
+      value2 = "";
     }
-    if (value === this.lastValue) {
+    if (value2 === this.lastValue) {
       return false;
     }
     if (this.beans.filterManager?.isSuppressFlashingCellsBecauseFiltering()) {
@@ -87005,12 +87005,12 @@ var AnimateSlideCellRenderer = class extends Component {
     if (!isInitialRender) {
       this.addSlideAnimation();
     }
-    this.lastValue = value;
+    this.lastValue = value2;
     const eCurrent = this.eCurrent;
     if (_exists(params.valueFormatted)) {
       eCurrent.textContent = params.valueFormatted;
     } else if (_exists(params.value)) {
-      eCurrent.textContent = value;
+      eCurrent.textContent = value2;
     } else {
       _clearElement(eCurrent);
     }
@@ -87849,8 +87849,8 @@ var StateService = class extends BeanStub {
     let hasChanged = false;
     const cachedState = this.cachedState;
     for (const key2 of Object.keys(newColumnState)) {
-      const value = newColumnState[key2];
-      if (!_jsonEquals(value, cachedState[key2])) {
+      const value2 = newColumnState[key2];
+      if (!_jsonEquals(value2, cachedState[key2])) {
         hasChanged = true;
       }
     }
@@ -87862,17 +87862,17 @@ var StateService = class extends BeanStub {
       this.dispatchStateUpdateEvent(features);
     }
   }
-  updateCachedState(key2, value) {
+  updateCachedState(key2, value2) {
     const existingValue = this.cachedState[key2];
-    this.setCachedStateValue(key2, value);
-    if (!_jsonEquals(value, existingValue)) {
+    this.setCachedStateValue(key2, value2);
+    if (!_jsonEquals(value2, existingValue)) {
       this.dispatchStateUpdateEvent([key2]);
     }
   }
-  setCachedStateValue(key2, value) {
+  setCachedStateValue(key2, value2) {
     this.cachedState = {
       ...this.cachedState,
-      [key2]: value
+      [key2]: value2
     };
   }
   refreshStaleState() {
@@ -88103,28 +88103,28 @@ var PageSizeSelectorComp = class extends Component {
       }
       pageSizeOptions.unshift("");
     }
-    const value = String(shouldAddAndSelectEmptyOption ? "" : paginationPageSizeOption);
+    const value2 = String(shouldAddAndSelectEmptyOption ? "" : paginationPageSizeOption);
     if (this.selectPageSizeComp) {
       if (!_areEqual(this.pageSizeOptions, pageSizeOptions)) {
         this.selectPageSizeComp.clearOptions().addOptions(this.createPageSizeSelectOptions(pageSizeOptions));
         this.pageSizeOptions = pageSizeOptions;
       }
-      this.selectPageSizeComp.setValue(value, true);
+      this.selectPageSizeComp.setValue(value2, true);
     } else {
-      this.createPageSizeSelectorComp(pageSizeOptions, value);
+      this.createPageSizeSelectorComp(pageSizeOptions, value2);
     }
     this.hasEmptyOption = shouldAddAndSelectEmptyOption;
   }
   createPageSizeSelectOptions(pageSizeOptions) {
-    return pageSizeOptions.map((value) => ({
-      value: String(value)
+    return pageSizeOptions.map((value2) => ({
+      value: String(value2)
     }));
   }
-  createPageSizeSelectorComp(pageSizeOptions, value) {
+  createPageSizeSelectorComp(pageSizeOptions, value2) {
     const localeTextFunc = this.getLocaleTextFunc();
     const localisedLabel = localeTextFunc("pageSizeSelectorLabel", "Page Size:");
     const localisedAriaLabel = localeTextFunc("ariaPageSizeSelectorLabel", "Page Size");
-    this.selectPageSizeComp = this.createManagedBean(new AgSelect()).addOptions(this.createPageSizeSelectOptions(pageSizeOptions)).setValue(value).setAriaLabel(localisedAriaLabel).setLabel(localisedLabel).onValueChange(() => this.handlePageSizeItemSelected());
+    this.selectPageSizeComp = this.createManagedBean(new AgSelect()).addOptions(this.createPageSizeSelectOptions(pageSizeOptions)).setValue(value2).setAriaLabel(localisedAriaLabel).setLabel(localisedLabel).onValueChange(() => this.handlePageSizeItemSelected());
     this.appendChild(this.selectPageSizeComp);
   }
   getPageSizeSelectorValues() {
@@ -88251,13 +88251,13 @@ var PaginationComp = class extends TabGuardComp$1 {
       this.pagination.goToFirstPage();
     }
   }
-  formatNumber(value) {
+  formatNumber(value2) {
     const userFunc = this.gos.getCallback("paginationNumberFormatter");
     if (userFunc) {
-      const params = { value };
+      const params = { value: value2 };
       return userFunc(params);
     }
-    return _formatNumberCommas(value, this.getLocaleTextFunc.bind(this));
+    return _formatNumberCommas(value2, this.getLocaleTextFunc.bind(this));
   }
   getTemplate() {
     const localeTextFunc = this.getLocaleTextFunc();
@@ -88812,16 +88812,16 @@ var ScrollApiModule = {
     ensureNodeVisible
   }
 };
-function setGridAriaProperty(beans, property, value) {
+function setGridAriaProperty(beans, property, value2) {
   if (!property) {
     return;
   }
   const eGrid = beans.ctrlsSvc.getGridBodyCtrl().eGridBody;
   const ariaProperty = `aria-${property}`;
-  if (value === null) {
+  if (value2 === null) {
     eGrid.removeAttribute(ariaProperty);
   } else {
-    eGrid.setAttribute(ariaProperty, value);
+    eGrid.setAttribute(ariaProperty, value2);
   }
 }
 function refreshCells(beans, params = {}) {
@@ -89438,10 +89438,10 @@ var RowSpanCache = class extends BeanStub {
     let lastNode = null;
     let spanData = null;
     let lastValue;
-    const setNewHead = (node, value) => {
+    const setNewHead = (node, value2) => {
       lastNode = node;
       spanData = null;
-      lastValue = value;
+      lastValue = value2;
     };
     const checkNodeForCache = (node) => {
       const doesNodeSupportSpanning = !node.isExpandable() && !node.group && !node.detail && (isFullWidthCellFunc ? !isFullWidthCellFunc({ rowNode: node }) : true);
@@ -89454,22 +89454,22 @@ var RowSpanCache = class extends BeanStub {
         setNewHead(node, valueSvc.getValue(column2, node));
         return;
       }
-      const value = valueSvc.getValue(column2, node);
+      const value2 = valueSvc.getValue(column2, node);
       if (isCustomCompare) {
         const params = _addGridCommonParams(gos, {
           valueA: lastValue,
           nodeA: lastNode,
-          valueB: value,
+          valueB: value2,
           nodeB: node,
           column: column2,
           colDef
         });
         if (!customCompare(params)) {
-          setNewHead(node, value);
+          setNewHead(node, value2);
           return;
         }
-      } else if (equalsFnc ? !equalsFnc(lastValue, value) : lastValue !== value) {
-        setNewHead(node, value);
+      } else if (equalsFnc ? !equalsFnc(lastValue, value2) : lastValue !== value2) {
+        setNewHead(node, value2);
         return;
       }
       if (!spanData) {
@@ -90001,9 +90001,9 @@ var CellCustomStyleFeature = class extends BeanStub {
     }
   }
   getCellClassParams(column2, colDef) {
-    const { value, rowNode } = this.cellCtrl;
+    const { value: value2, rowNode } = this.cellCtrl;
     return _addGridCommonParams(this.beans.gos, {
-      value,
+      value: value2,
       data: rowNode.data,
       node: rowNode,
       colDef,
@@ -90657,17 +90657,17 @@ class BitSet {
     return this;
   }
 }
-function bin(value, min2, max2, step, offset2) {
-  return value == null ? null : value < min2 ? -Infinity : value > max2 ? Infinity : (value = Math.max(min2, Math.min(value, max2)), min2 + step * Math.floor(1e-14 + (value - min2) / step + (offset2 || 0)));
+function bin(value2, min2, max2, step, offset2) {
+  return value2 == null ? null : value2 < min2 ? -Infinity : value2 > max2 ? Infinity : (value2 = Math.max(min2, Math.min(value2, max2)), min2 + step * Math.floor(1e-14 + (value2 - min2) / step + (offset2 || 0)));
 }
-function isDate$1(value) {
-  return value instanceof Date;
+function isDate$1(value2) {
+  return value2 instanceof Date;
 }
-function isRegExp(value) {
-  return value instanceof RegExp;
+function isRegExp(value2) {
+  return value2 instanceof RegExp;
 }
-function isObject(value) {
-  return value === Object(value);
+function isObject(value2) {
+  return value2 === Object(value2);
 }
 function equal(a2, b) {
   return a2 == null || b == null || a2 !== a2 || b !== b ? false : a2 === b ? true : isDate$1(a2) || isDate$1(b) ? +a2 === +b : isRegExp(a2) && isRegExp(b) ? a2 + "" === b + "" : isObject(a2) && isObject(b) ? deepEqual(a2, b) : false;
@@ -90708,14 +90708,14 @@ function arrayEqual(a2, b, test2 = equal) {
   }
   return true;
 }
-function recode(value, map2, fallback) {
+function recode(value2, map2, fallback) {
   if (map2 instanceof Map) {
-    if (map2.has(value)) return map2.get(value);
+    if (map2.has(value2)) return map2.get(value2);
   } else {
-    const key2 = `${value}`;
+    const key2 = `${value2}`;
     if (Object.hasOwn(map2, key2)) return map2[key2];
   }
-  return fallback !== void 0 ? fallback : value;
+  return fallback !== void 0 ? fallback : value2;
 }
 function sequence(start, stop, step) {
   let n2 = arguments.length;
@@ -90730,21 +90730,21 @@ function sequence(start, stop, step) {
   return seq;
 }
 const NULL = void 0;
-function isArray$2(value) {
-  return Array.isArray(value);
+function isArray$2(value2) {
+  return Array.isArray(value2);
 }
 const TypedArray$1 = Object.getPrototypeOf(Int8Array);
-function isTypedArray$1(value) {
-  return value instanceof TypedArray$1;
+function isTypedArray$1(value2) {
+  return value2 instanceof TypedArray$1;
 }
-function isArrayType(value) {
-  return isArray$2(value) || isTypedArray$1(value);
+function isArrayType(value2) {
+  return isArray$2(value2) || isTypedArray$1(value2);
 }
-function isString(value) {
-  return typeof value === "string";
+function isString(value2) {
+  return typeof value2 === "string";
 }
-function isValid(value) {
-  return value != null && value === value;
+function isValid(value2) {
+  return value2 != null && value2 === value2;
 }
 const isSeq = (seq) => isArrayType(seq) || isString(seq);
 function compact(array2) {
@@ -90753,17 +90753,17 @@ function compact(array2) {
 function concat$2(...values2) {
   return [].concat(...values2);
 }
-function includes(sequence2, value, index) {
-  return isSeq(sequence2) ? sequence2.includes(value, index) : false;
+function includes(sequence2, value2, index) {
+  return isSeq(sequence2) ? sequence2.includes(value2, index) : false;
 }
-function indexof(sequence2, value) {
-  return isSeq(sequence2) ? sequence2.indexOf(value) : -1;
+function indexof(sequence2, value2) {
+  return isSeq(sequence2) ? sequence2.indexOf(value2) : -1;
 }
 function join$1(array2, delim) {
   return isArrayType(array2) ? array2.join(delim) : NULL;
 }
-function lastindexof(sequence2, value) {
-  return isSeq(sequence2) ? sequence2.lastIndexOf(value) : -1;
+function lastindexof(sequence2, value2) {
+  return isSeq(sequence2) ? sequence2.lastIndexOf(value2) : -1;
 }
 function length(sequence2) {
   return isSeq(sequence2) ? sequence2.length : 0;
@@ -90790,8 +90790,8 @@ const array$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   reverse,
   slice: slice$2
 }, Symbol.toStringTag, { value: "Module" }));
-function pad(value, width, char = "0") {
-  const s = value + "";
+function pad(value2, width, char = "0") {
+  const s = value2 + "";
   const len = s.length;
   return len < width ? Array(width - len + 1).join(char) + s : s;
 }
@@ -90828,11 +90828,11 @@ function formatUTCDate(d, short) {
   );
 }
 const iso_re = /^([-+]\d{2})?\d{4}(-\d{2}(-\d{2})?)?(T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?(Z|[-+]\d{2}:\d{2})?)?$/;
-function isISODateString(value) {
-  return value.match(iso_re) && !isNaN(Date.parse(value));
+function isISODateString(value2) {
+  return value2.match(iso_re) && !isNaN(Date.parse(value2));
 }
-function parseISODate(value, parse5 = Date.parse) {
-  return isISODateString(value) ? parse5(value) : value;
+function parseISODate(value2, parse5 = Date.parse) {
+  return isISODateString(value2) ? parse5(value2) : value2;
 }
 const msMinute = 6e4;
 const msDay = 864e5;
@@ -90999,11 +90999,11 @@ const date$2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   week,
   year
 }, Symbol.toStringTag, { value: "Module" }));
-function parse_json(value) {
-  return JSON.parse(value);
+function parse_json(value2) {
+  return JSON.parse(value2);
 }
-function to_json(value) {
-  return JSON.stringify(value);
+function to_json(value2) {
+  return JSON.stringify(value2);
 }
 const json = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
@@ -91017,35 +91017,35 @@ function random$1() {
 function random() {
   return random$1();
 }
-function is_nan(value) {
-  return Number.isNaN(value);
+function is_nan(value2) {
+  return Number.isNaN(value2);
 }
-function is_finite(value) {
-  return Number.isFinite(value);
+function is_finite(value2) {
+  return Number.isFinite(value2);
 }
-function abs(value) {
-  return Math.abs(value);
+function abs(value2) {
+  return Math.abs(value2);
 }
-function cbrt(value) {
-  return Math.cbrt(value);
+function cbrt(value2) {
+  return Math.cbrt(value2);
 }
-function ceil(value) {
-  return Math.ceil(value);
+function ceil(value2) {
+  return Math.ceil(value2);
 }
-function clz32(value) {
-  return Math.clz32(value);
+function clz32(value2) {
+  return Math.clz32(value2);
 }
-function exp(value) {
-  return Math.exp(value);
+function exp(value2) {
+  return Math.exp(value2);
 }
-function expm1(value) {
-  return Math.expm1(value);
+function expm1(value2) {
+  return Math.expm1(value2);
 }
-function floor(value) {
-  return Math.floor(value);
+function floor(value2) {
+  return Math.floor(value2);
 }
-function fround(value) {
-  return Math.fround(value);
+function fround(value2) {
+  return Math.fround(value2);
 }
 function greatest(...values2) {
   return Math.max(...values2);
@@ -91053,32 +91053,32 @@ function greatest(...values2) {
 function least(...values2) {
   return Math.min(...values2);
 }
-function log(value) {
-  return Math.log(value);
+function log(value2) {
+  return Math.log(value2);
 }
-function log10(value) {
-  return Math.log10(value);
+function log10(value2) {
+  return Math.log10(value2);
 }
-function log1p(value) {
-  return Math.log1p(value);
+function log1p(value2) {
+  return Math.log1p(value2);
 }
-function log2(value) {
-  return Math.log2(value);
+function log2(value2) {
+  return Math.log2(value2);
 }
 function pow(base2, exponent) {
   return Math.pow(base2, exponent);
 }
-function round(value) {
-  return Math.round(value);
+function round(value2) {
+  return Math.round(value2);
 }
-function sign(value) {
-  return Math.sign(value);
+function sign(value2) {
+  return Math.sign(value2);
 }
-function sqrt(value) {
-  return Math.sqrt(value);
+function sqrt(value2) {
+  return Math.sqrt(value2);
 }
-function trunc(value) {
-  return Math.trunc(value);
+function trunc(value2) {
+  return Math.trunc(value2);
 }
 function degrees(radians2) {
   return 180 * radians2 / Math.PI;
@@ -91086,44 +91086,44 @@ function degrees(radians2) {
 function radians(degrees2) {
   return Math.PI * degrees2 / 180;
 }
-function acos(value) {
-  return Math.acos(value);
+function acos(value2) {
+  return Math.acos(value2);
 }
-function acosh(value) {
-  return Math.acosh(value);
+function acosh(value2) {
+  return Math.acosh(value2);
 }
-function asin(value) {
-  return Math.asin(value);
+function asin(value2) {
+  return Math.asin(value2);
 }
-function asinh(value) {
-  return Math.asinh(value);
+function asinh(value2) {
+  return Math.asinh(value2);
 }
-function atan(value) {
-  return Math.atan(value);
+function atan(value2) {
+  return Math.atan(value2);
 }
 function atan2(y, x) {
   return Math.atan2(y, x);
 }
-function atanh(value) {
-  return Math.atanh(value);
+function atanh(value2) {
+  return Math.atanh(value2);
 }
-function cos(value) {
-  return Math.cos(value);
+function cos(value2) {
+  return Math.cos(value2);
 }
-function cosh(value) {
-  return Math.cosh(value);
+function cosh(value2) {
+  return Math.cosh(value2);
 }
-function sin(value) {
-  return Math.sin(value);
+function sin(value2) {
+  return Math.sin(value2);
 }
-function sinh(value) {
-  return Math.sinh(value);
+function sinh(value2) {
+  return Math.sinh(value2);
 }
-function tan(value) {
-  return Math.tan(value);
+function tan(value2) {
+  return Math.tan(value2);
 }
-function tanh(value) {
-  return Math.tanh(value);
+function tanh(value2) {
+  return Math.tanh(value2);
 }
 const math = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
@@ -91165,14 +91165,14 @@ const math = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty
   tanh,
   trunc
 }, Symbol.toStringTag, { value: "Module" }));
-function isMap(value) {
-  return value instanceof Map;
+function isMap(value2) {
+  return value2 instanceof Map;
 }
-function isSet(value) {
-  return value instanceof Set;
+function isSet(value2) {
+  return value2 instanceof Set;
 }
-function isMapOrSet(value) {
-  return isMap(value) || isSet(value);
+function isMapOrSet(value2) {
+  return isMap(value2) || isSet(value2);
 }
 function array(iter) {
   return Array.from(iter);
@@ -91209,54 +91209,54 @@ const object$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProp
   object,
   values: values$1
 }, Symbol.toStringTag, { value: "Module" }));
-function parse_date(value) {
-  return value == null ? value : new Date(value);
+function parse_date(value2) {
+  return value2 == null ? value2 : new Date(value2);
 }
-function parse_float(value) {
-  return value == null ? value : Number.parseFloat(value);
+function parse_float(value2) {
+  return value2 == null ? value2 : Number.parseFloat(value2);
 }
-function parse_int(value, radix) {
-  return value == null ? value : Number.parseInt(value, radix);
+function parse_int(value2, radix) {
+  return value2 == null ? value2 : Number.parseInt(value2, radix);
 }
-function endswith(value, search, length2) {
-  return value == null ? false : String(value).endsWith(search, length2);
+function endswith(value2, search, length2) {
+  return value2 == null ? false : String(value2).endsWith(search, length2);
 }
-function match2(value, regexp, index) {
-  const m = value == null ? value : String(value).match(regexp);
+function match2(value2, regexp, index) {
+  const m = value2 == null ? value2 : String(value2).match(regexp);
   return index == null || m == null ? m : typeof index === "number" ? m[index] : m.groups ? m.groups[index] : null;
 }
-function normalize2(value, form) {
-  return value == null ? value : String(value).normalize(form);
+function normalize2(value2, form) {
+  return value2 == null ? value2 : String(value2).normalize(form);
 }
-function padend(value, length2, fill) {
-  return value == null ? value : String(value).padEnd(length2, fill);
+function padend(value2, length2, fill) {
+  return value2 == null ? value2 : String(value2).padEnd(length2, fill);
 }
-function padstart(value, length2, fill) {
-  return value == null ? value : String(value).padStart(length2, fill);
+function padstart(value2, length2, fill) {
+  return value2 == null ? value2 : String(value2).padStart(length2, fill);
 }
-function upper(value) {
-  return value == null ? value : String(value).toUpperCase();
+function upper(value2) {
+  return value2 == null ? value2 : String(value2).toUpperCase();
 }
-function lower(value) {
-  return value == null ? value : String(value).toLowerCase();
+function lower(value2) {
+  return value2 == null ? value2 : String(value2).toLowerCase();
 }
-function repeat$1(value, number2) {
-  return value == null ? value : String(value).repeat(number2);
+function repeat$1(value2, number2) {
+  return value2 == null ? value2 : String(value2).repeat(number2);
 }
-function replace(value, pattern, replacement) {
-  return value == null ? value : String(value).replace(pattern, String(replacement));
+function replace(value2, pattern, replacement) {
+  return value2 == null ? value2 : String(value2).replace(pattern, String(replacement));
 }
-function split(value, separator2, limit) {
-  return value == null ? [] : String(value).split(separator2, limit);
+function split(value2, separator2, limit) {
+  return value2 == null ? [] : String(value2).split(separator2, limit);
 }
-function startswith(value, search, position) {
-  return value == null ? false : String(value).startsWith(search, position);
+function startswith(value2, search, position) {
+  return value2 == null ? false : String(value2).startsWith(search, position);
 }
-function substring(value, start, end) {
-  return value == null ? value : String(value).substring(start, end);
+function substring(value2, start, end) {
+  return value2 == null ? value2 : String(value2).substring(start, end);
 }
-function trim(value) {
-  return value == null ? value : String(value).trim();
+function trim(value2) {
+  return value2 == null ? value2 : String(value2).trim();
 }
 const string = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
@@ -91289,11 +91289,11 @@ const functions = {
   ...object$1,
   ...string
 };
-function toArray(value) {
-  return value != null ? isArray$2(value) ? value : [value] : [];
+function toArray(value2) {
+  return value2 != null ? isArray$2(value2) ? value2 : [value2] : [];
 }
-function isBigInt(value) {
-  return typeof value === "bigint";
+function isBigInt(value2) {
+  return typeof value2 === "bigint";
 }
 function toString$1(v) {
   return v === void 0 ? v + "" : isBigInt(v) ? v + "n" : JSON.stringify(v);
@@ -91322,9 +91322,9 @@ const any = (field2) => op("any", field2);
 const count = () => op("count");
 const array_agg = (field2) => op("array_agg", field2);
 const array_agg_distinct = (field2) => op("array_agg_distinct", field2);
-const map_agg = (key2, value) => op("map_agg", [key2, value]);
-const object_agg = (key2, value) => op("object_agg", [key2, value]);
-const entries_agg = (key2, value) => op("entries_agg", [key2, value]);
+const map_agg = (key2, value2) => op("map_agg", [key2, value2]);
+const object_agg = (key2, value2) => op("object_agg", [key2, value2]);
+const entries_agg = (key2, value2) => op("entries_agg", [key2, value2]);
 ({
   ...functions
 });
@@ -91340,17 +91340,17 @@ function uniqueName(names, name2) {
   }
   return uname;
 }
-function isFunction(value) {
-  return typeof value === "function";
+function isFunction(value2) {
+  return typeof value2 === "function";
 }
-function repeat(reps, value) {
+function repeat(reps, value2) {
   const result2 = Array(reps);
-  if (isFunction(value)) {
+  if (isFunction(value2)) {
     for (let i = 0; i < reps; ++i) {
-      result2[i] = value(i);
+      result2[i] = value2(i);
     }
   } else {
-    result2.fill(value);
+    result2.fill(value2);
   }
   return result2;
 }
@@ -91390,16 +91390,16 @@ function bins(min2, max2, maxbins = 15, nice = true, minstep = 0, step) {
     step
   ];
 }
-function key(value) {
-  const type = typeof value;
-  return type === "string" ? `"${value}"` : type !== "object" || !value ? value : isDate$1(value) ? +value : isArray$2(value) || isTypedArray$1(value) ? `[${value.map(key)}]` : isRegExp(value) ? value + "" : objectKey$1(value);
+function key(value2) {
+  const type = typeof value2;
+  return type === "string" ? `"${value2}"` : type !== "object" || !value2 ? value2 : isDate$1(value2) ? +value2 : isArray$2(value2) || isTypedArray$1(value2) ? `[${value2.map(key)}]` : isRegExp(value2) ? value2 + "" : objectKey$1(value2);
 }
-function objectKey$1(value) {
+function objectKey$1(value2) {
   let s = "{";
   let i = -1;
-  for (const k in value) {
+  for (const k in value2) {
     if (++i > 0) s += ",";
-    s += `"${k}":${key(value[k])}`;
+    s += `"${k}":${key(value2[k])}`;
   }
   s += "}";
   return s;
@@ -91456,9 +91456,9 @@ function initOp(op2) {
   op2.rem = op2.rem || noop;
   return op2;
 }
-function initProduct(s, value) {
+function initProduct(s, value2) {
   s.product_v = false;
-  return s.product = value;
+  return s.product = value2;
 }
 const aggregateFunctions = {
   /** @type {AggregateDef} */
@@ -91548,10 +91548,10 @@ const aggregateFunctions = {
       value: (s) => {
         let mode = NULL;
         let max2 = 0;
-        s.distinct.forEach((value, count2) => {
+        s.distinct.forEach((value2, count2) => {
           if (count2 > max2) {
             max2 = count2;
-            mode = value;
+            mode = value2;
           }
         });
         return mode;
@@ -91820,10 +91820,10 @@ const windowFunctions = {
   /** @type {WindowDef} */
   percent_rank: {
     create() {
-      const { init, value } = rank.create();
+      const { init, value: value2 } = rank.create();
       return {
         init,
-        value: (w2) => (value(w2) - 1) / (w2.size - 1)
+        value: (w2) => (value2(w2) - 1) / (w2.size - 1)
       };
     },
     param: []
@@ -91835,10 +91835,10 @@ const windowFunctions = {
     create(num) {
       num = +num;
       if (!(num > 0)) error("ntile num must be greater than zero.");
-      const { init, value } = cume_dist.create();
+      const { init, value: value2 } = cume_dist.create();
       return {
         init,
-        value: (w2) => Math.ceil(num * value(w2))
+        value: (w2) => Math.ceil(num * value2(w2))
       };
     },
     param: [0, 1]
@@ -91909,12 +91909,12 @@ const windowFunctions = {
   /** @type {WindowDef} */
   fill_down: {
     create(defaultValue = NULL) {
-      let value;
+      let value2;
       return {
-        init: () => value = defaultValue,
+        init: () => value2 = defaultValue,
         value: (w2, f) => {
           const v = w2.value(w2.index, f);
-          return isValid(v) ? value = v : value;
+          return isValid(v) ? value2 = v : value2;
         }
       };
     },
@@ -91923,10 +91923,10 @@ const windowFunctions = {
   /** @type {WindowDef} */
   fill_up: {
     create(defaultValue = NULL) {
-      let value, idx;
+      let value2, idx;
       return {
-        init: () => (value = defaultValue, idx = -1),
-        value: (w2, f) => w2.index <= idx ? value : (idx = find(w2, f, w2.index)) >= 0 ? value = w2.value(idx, f) : (idx = w2.size, value = defaultValue)
+        init: () => (value2 = defaultValue, idx = -1),
+        value: (w2, f) => w2.index <= idx ? value2 : (idx = find(w2, f, w2.index)) >= 0 ? value2 = w2.value(idx, f) : (idx = w2.size, value2 = defaultValue)
       };
     },
     param: [1, 1]
@@ -91991,8 +91991,8 @@ function min(values2, start = 0, stop = values2.length) {
   }
   return min2;
 }
-function toNumeric(value) {
-  return isBigInt(value) ? value : +value;
+function toNumeric(value2) {
+  return isBigInt(value2) ? value2 : +value2;
 }
 function quantile(values2, p) {
   const n2 = values2.length;
@@ -92017,8 +92017,8 @@ class ValueList {
     }
     return copy ? this._values.slice() : this._values;
   }
-  add(value) {
-    this._values.push(value);
+  add(value2) {
+    this._values.push(value2);
     this._sorted = null;
   }
   rem() {
@@ -92142,21 +92142,21 @@ class Field1Reducer extends FieldReducer {
     this._rem = update(ops, args2, "rem");
   }
   add(state, row2, data2) {
-    const value = this._fields[0](row2, data2);
+    const value2 = this._fields[0](row2, data2);
     ++state.count;
-    if (isValid(value)) {
+    if (isValid(value2)) {
       ++state.valid;
-      if (state.list) state.list.add(value);
-      this._add(state, value);
+      if (state.list) state.list.add(value2);
+      this._add(state, value2);
     }
   }
   rem(state, row2, data2) {
-    const value = this._fields[0](row2, data2);
+    const value2 = this._fields[0](row2, data2);
     --state.count;
-    if (isValid(value)) {
+    if (isValid(value2)) {
       --state.valid;
       if (state.list) state.list.rem();
-      this._rem(state, value);
+      this._rem(state, value2);
     }
   }
 }
@@ -92288,13 +92288,13 @@ function groupOutput(cols, groups) {
     }
   }
 }
-function entries(value) {
-  return isArray$2(value) ? value : isMap(value) ? value.entries() : value ? Object.entries(value) : [];
+function entries(value2) {
+  return isArray$2(value2) ? value2 : isMap(value2) ? value2.entries() : value2 ? Object.entries(value2) : [];
 }
 const ArrayPattern = "ArrayPattern";
 const ArrowFunctionExpression = "ArrowFunctionExpression";
 const FunctionExpression = "FunctionExpression";
-const Identifier = "Identifier";
+const Identifier$1 = "Identifier";
 const Literal = "Literal";
 const MemberExpression = "MemberExpression";
 const ObjectExpression = "ObjectExpression";
@@ -92616,8 +92616,8 @@ function rowObjectCode(table2, props) {
 function rowObjectBuilder(table2, props) {
   return compile.expr(rowObjectCode(table2, props));
 }
-function toFunction(value) {
-  return isFunction(value) ? value : () => value;
+function toFunction(value2) {
+  return isFunction(value2) ? value2 : () => value2;
 }
 const ERROR_ESC_AGGRONLY = "Escaped functions are not valid as rollup or pivot values.";
 function parseEscape(ctx, spec, params) {
@@ -94025,15 +94025,15 @@ pp$8.parseClassMethod = function(method, isGenerator, isAsync, allowsDirectSuper
   } else if (method.static && checkKeyName(method, "prototype")) {
     this.raise(key2.start, "Classes may not have a static property named prototype");
   }
-  var value = method.value = this.parseMethod(isGenerator, isAsync, allowsDirectSuper);
-  if (method.kind === "get" && value.params.length !== 0) {
-    this.raiseRecoverable(value.start, "getter should have no params");
+  var value2 = method.value = this.parseMethod(isGenerator, isAsync, allowsDirectSuper);
+  if (method.kind === "get" && value2.params.length !== 0) {
+    this.raiseRecoverable(value2.start, "getter should have no params");
   }
-  if (method.kind === "set" && value.params.length !== 1) {
-    this.raiseRecoverable(value.start, "setter should have exactly one param");
+  if (method.kind === "set" && value2.params.length !== 1) {
+    this.raiseRecoverable(value2.start, "setter should have exactly one param");
   }
-  if (method.kind === "set" && value.params[0].type === "RestElement") {
-    this.raiseRecoverable(value.params[0].start, "Setter cannot use rest params");
+  if (method.kind === "set" && value2.params[0].type === "RestElement") {
+    this.raiseRecoverable(value2.params[0].start, "Setter cannot use rest params");
   }
   return this.finishNode(method, "MethodDefinition");
 };
@@ -95205,9 +95205,9 @@ pp$5.parseExprAtom = function(refDestructuringErrors, forInit, forNew) {
       }
       return id;
     case types$1.regexp:
-      var value = this.value;
-      node = this.parseLiteral(value.value);
-      node.regex = { pattern: value.pattern, flags: value.flags };
+      var value2 = this.value;
+      node = this.parseLiteral(value2.value);
+      node.regex = { pattern: value2.pattern, flags: value2.flags };
       return node;
     case types$1.num:
     case types$1.string:
@@ -95326,9 +95326,9 @@ pp$5.parseImportMeta = function(node) {
   }
   return this.finishNode(node, "MetaProperty");
 };
-pp$5.parseLiteral = function(value) {
+pp$5.parseLiteral = function(value2) {
   var node = this.startNode();
-  node.value = value;
+  node.value = value2;
   node.raw = this.input.slice(this.start, this.end);
   if (node.raw.charCodeAt(node.raw.length - 1) === 110) {
     node.bigint = node.value != null ? node.value.toString() : node.raw.slice(0, -1).replace(/_/g, "");
@@ -96880,8 +96880,8 @@ pp$1.regexp_eatUnicodePropertyValueExpression = function(state) {
   )) {
     var name2 = state.lastStringValue;
     if (this.regexp_eatUnicodePropertyValue(state)) {
-      var value = state.lastStringValue;
-      this.regexp_validateUnicodePropertyNameAndValue(state, name2, value);
+      var value2 = state.lastStringValue;
+      this.regexp_validateUnicodePropertyNameAndValue(state, name2, value2);
       return CharSetOk;
     }
   }
@@ -96892,11 +96892,11 @@ pp$1.regexp_eatUnicodePropertyValueExpression = function(state) {
   }
   return CharSetNone;
 };
-pp$1.regexp_validateUnicodePropertyNameAndValue = function(state, name2, value) {
+pp$1.regexp_validateUnicodePropertyNameAndValue = function(state, name2, value2) {
   if (!hasOwn(state.unicodeProperties.nonBinary, name2)) {
     state.raise("Invalid property name");
   }
-  if (!state.unicodeProperties.nonBinary[name2].test(value)) {
+  if (!state.unicodeProperties.nonBinary[name2].test(value2)) {
     state.raise("Invalid property value");
   }
 };
@@ -97796,12 +97796,12 @@ pp.readRegexp = function() {
   state.reset(start, pattern, flags);
   this.validateRegExpFlags(state);
   this.validateRegExpPattern(state);
-  var value = null;
+  var value2 = null;
   try {
-    value = new RegExp(pattern, flags);
+    value2 = new RegExp(pattern, flags);
   } catch (e) {
   }
-  return this.finishToken(types$1.regexp, { pattern, flags, value });
+  return this.finishToken(types$1.regexp, { pattern, flags, value: value2 });
 };
 pp.readInt = function(radix, len, maybeLegacyOctalNumericLiteral) {
   var allowSeparators = this.options.ecmaVersion >= 12 && len === void 0;
@@ -98226,8 +98226,8 @@ const constants = {
   SQRT1_2: "Math.SQRT1_2",
   SQRT2: "Math.SQRT2"
 };
-function isNumber(value) {
-  return typeof value === "number";
+function isNumber(value2) {
+  return typeof value2 === "number";
 }
 const PARSER_OPT = { ecmaVersion: 11 };
 const DEFAULT_PARAM_ID = "$";
@@ -98344,9 +98344,9 @@ const visitors = {
   },
   MemberExpression(node, ctx, parent) {
     const { object: object2, property } = node;
-    if (!is(Identifier, object2)) return;
+    if (!is(Identifier$1, object2)) return;
     const { name: name2 } = object2;
-    if (isMath(node) && is(Identifier, property) && Object.hasOwn(constants, property.name)) {
+    if (isMath(node) && is(Identifier$1, property) && Object.hasOwn(constants, property.name)) {
       updateConstantNode(node, property.name);
       return;
     }
@@ -98416,13 +98416,13 @@ function parseFunction(node, ctx) {
   ctx.root = node.body;
 }
 function parseRef(ctx, node, refName, alias) {
-  if (is(Identifier, node)) {
+  if (is(Identifier$1, node)) {
     ctx.scope.add(node.name);
     ctx[refName] = node.name;
   } else if (is(ObjectPattern, node)) {
     node.properties.forEach((p) => {
-      const key2 = is(Identifier, p.key) ? p.key.name : is(Literal, p.key) ? p.key.value : ctx.error(p, ERROR_ARGUMENT);
-      if (!is(Identifier, p.value)) {
+      const key2 = is(Identifier$1, p.key) ? p.key.name : is(Literal, p.key) ? p.key.value : ctx.error(p, ERROR_ARGUMENT);
+      if (!is(Identifier$1, p.value)) {
         ctx.error(p.value, ERROR_DESTRUCTURE);
       }
       alias(p.value.name, key2);
@@ -98448,10 +98448,10 @@ function parseOperator(ctx, def, name2, args2) {
   return { name: name2, fields, params, ...ctx.spec.window || {} };
 }
 function functionName(node) {
-  return is(Identifier, node) ? node.name : !is(MemberExpression, node) ? null : isMath(node) ? rewriteMath(node.property.name) : node.property.name;
+  return is(Identifier$1, node) ? node.name : !is(MemberExpression, node) ? null : isMath(node) ? rewriteMath(node.property.name) : node.property.name;
 }
 function isMath(node) {
-  return is(Identifier, node.object) && node.object.name === "Math";
+  return is(Identifier$1, node.object) && node.object.name === "Math";
 }
 function rewriteMath(name2) {
   return name2 === "max" ? "greatest" : name2 === "min" ? "least" : name2;
@@ -98521,7 +98521,7 @@ function updateFunctionNode(node, name2, ctx) {
   }
 }
 function handleDeclaration(node, ctx) {
-  if (is(Identifier, node)) {
+  if (is(Identifier$1, node)) {
     ctx.scope.add(node.name);
   } else if (is(ArrayPattern, node)) {
     node.elements.forEach((elm) => handleDeclaration(elm, ctx));
@@ -98571,10 +98571,10 @@ function parse4(input, opt2 = {}) {
     }
   };
   Object.assign(ctx, opt2, { params });
-  for (const [name2, value] of entries(input)) {
+  for (const [name2, value2] of entries(input)) {
     ctx.value(
       name2 + "",
-      value.escape ? parseEscape(ctx, value, params) : parseExpression(ctx, value)
+      value2.escape ? parseEscape(ctx, value2, params) : parseExpression(ctx, value2)
     );
   }
   if (opt2.ast) {
@@ -98632,8 +98632,8 @@ function field$1(expr, name2, table2 = 0) {
   );
 }
 function assign$1(map2, pairs2) {
-  for (const [key2, value] of entries(pairs2)) {
-    map2.set(key2, value);
+  for (const [key2, value2] of entries(pairs2)) {
+    map2.set(key2, value2);
   }
   return map2;
 }
@@ -98652,12 +98652,12 @@ function resolve(table2, sel, map2 = /* @__PURE__ */ new Map()) {
   }
   return map2;
 }
-function decorate(value, toObject2) {
-  value.toObject = toObject2;
-  return value;
+function decorate(value2, toObject2) {
+  value2.toObject = toObject2;
+  return value2;
 }
-function toObject(value) {
-  return isArray$2(value) ? value.map(toObject) : value && value.toObject ? value.toObject() : value;
+function toObject(value2) {
+  return isArray$2(value2) ? value2.map(toObject) : value2 && value2.toObject ? value2.toObject() : value2;
 }
 function all() {
   return decorate(
@@ -98826,8 +98826,8 @@ function select(table2, ...columns2) {
 }
 function _select(table2, columns2) {
   const cols = columnSet();
-  columns2.forEach((value, curr) => {
-    const next = isString(value) ? value : curr;
+  columns2.forEach((value2, curr) => {
+    const next = isString(value2) ? value2 : curr;
     if (next) {
       const col = table2.column(curr) || error(`Unrecognized column: ${curr}`);
       cols.add(next, col);
@@ -99461,8 +99461,8 @@ function relocate(table2, columns2, {
     const assign2 = !columns2.has(name2);
     if (name2 === anchor) {
       if (aft && assign2) select2.set(name2, name2);
-      for (const [key2, value] of columns2) {
-        select2.set(key2, value);
+      for (const [key2, value2] of columns2) {
+        select2.set(key2, value2);
       }
       if (aft) return;
     }
@@ -99902,9 +99902,9 @@ function _unroll(table2, { names = [], exprs = [], ops = [] }, options = {}) {
     table2.scan((row2, data2) => {
       let maxlen = 0;
       const arrays = get2.map((fn2) => {
-        const value = toArray(fn2(row2, data2));
-        maxlen = Math.min(Math.max(maxlen, value.length), limit);
-        return value;
+        const value2 = toArray(fn2(row2, data2));
+        maxlen = Math.min(Math.max(maxlen, value2.length), limit);
+        return value2;
       });
       copy(row2, maxlen);
       for (let i = 0; i < n2; ++i) {
@@ -99960,7 +99960,7 @@ function impute(table2, values2, options = {}) {
 }
 function preparse$1(map2) {
   map2.forEach(
-    (value, key2) => value.field ? map2.set(key2, array_agg_distinct(value + "")) : 0
+    (value2, key2) => value2.field ? map2.set(key2, array_agg_distinct(value2 + "")) : 0
   );
 }
 function _impute(table2, values2, keys2, arrays) {
@@ -100360,10 +100360,10 @@ function pivot(table2, on, values2, options) {
 }
 function preparse(map2) {
   map2.forEach(
-    (value, key2) => value.field ? map2.set(key2, any(value + "")) : 0
+    (value2, key2) => value2.field ? map2.set(key2, any(value2 + "")) : 0
   );
 }
-const opt = (value, defaultValue) => value != null ? value : defaultValue;
+const opt = (value2, defaultValue) => value2 != null ? value2 : defaultValue;
 function _pivot(table2, on, values2, options = {}) {
   const { keys: keys2, keyColumn } = pivotKeys(table2, on, options);
   const vsep = opt(options.valueSeparator, "_");
@@ -101019,14 +101019,14 @@ function intArrayType(bitWidth, signed) {
   return (signed ? [int8Array, int16Array, int32Array, int64Array] : [uint8Array, uint16Array, uint32Array, uint64Array])[i];
 }
 const TypedArray = Object.getPrototypeOf(Int8Array);
-function isTypedArray(value) {
-  return value instanceof TypedArray;
+function isTypedArray(value2) {
+  return value2 instanceof TypedArray;
 }
-function isArray(value) {
-  return Array.isArray(value) || isTypedArray(value);
+function isArray(value2) {
+  return Array.isArray(value2) || isTypedArray(value2);
 }
-function isInt64ArrayType(value) {
-  return value === int64Array || value === uint64Array;
+function isInt64ArrayType(value2) {
+  return value2 === int64Array || value2 === uint64Array;
 }
 function bisect(offsets, index) {
   let a2 = 0;
@@ -101067,27 +101067,27 @@ function grow(array2, index, shift) {
   }
   return array2;
 }
-function isDate(value) {
-  return value instanceof Date;
+function isDate(value2) {
+  return value2 instanceof Date;
 }
-function isIterable(value) {
-  return typeof value[Symbol.iterator] === "function";
+function isIterable(value2) {
+  return typeof value2[Symbol.iterator] === "function";
 }
-function check(value, test2, message2) {
-  if (test2(value)) return value;
-  throw new Error(message2(value));
+function check(value2, test2, message2) {
+  if (test2(value2)) return value2;
+  throw new Error(message2(value2));
 }
-function checkOneOf(value, set3, message2) {
+function checkOneOf(value2, set3, message2) {
   set3 = Array.isArray(set3) ? set3 : Object.values(set3);
   return check(
-    value,
-    (value2) => set3.includes(value2),
-    message2 ?? (() => `${value} must be one of ${set3}`)
+    value2,
+    (value3) => set3.includes(value3),
+    message2 ?? (() => `${value2} must be one of ${set3}`)
   );
 }
-function keyFor(object2, value) {
+function keyFor(object2, value2) {
   for (const [key2, val] of Object.entries(object2)) {
-    if (val === value) return key2;
+    if (val === value2) return key2;
   }
   return "<Unknown>";
 }
@@ -101098,16 +101098,16 @@ const field = (name2, type, nullable = true, metadata = null) => ({
   nullable,
   metadata
 });
-function isField(value) {
-  return Object.hasOwn(value, "name") && isDataType(value.type);
+function isField(value2) {
+  return Object.hasOwn(value2, "name") && isDataType(value2.type);
 }
-function isDataType(value) {
-  return typeof value?.typeId === "number";
+function isDataType(value2) {
+  return typeof value2?.typeId === "number";
 }
-function asField(value, defaultName = "", defaultNullable = true) {
-  return isField(value) ? value : field(
+function asField(value2, defaultName = "", defaultNullable = true) {
+  return isField(value2) ? value2 : field(
     defaultName,
-    check(value, isDataType, () => `Data type expected.`),
+    check(value2, isDataType, () => `Data type expected.`),
     defaultNullable
   );
 }
@@ -101268,20 +101268,20 @@ const i64 = new int64Array(buf);
 const u32 = new uint32Array(buf);
 const i32 = new int32Array(buf);
 const u8 = new uint8Array(buf);
-function identity$1(value) {
-  return value;
+function identity$1(value2) {
+  return value2;
 }
-function toBigInt(value) {
-  return BigInt(value);
+function toBigInt(value2) {
+  return BigInt(value2);
 }
 function toOffset(type) {
   return isInt64ArrayType(type) ? toBigInt : identity$1;
 }
-function toDateDay(value) {
-  return value / 864e5 | 0;
+function toDateDay(value2) {
+  return value2 / 864e5 | 0;
 }
 function toTimestamp(unit) {
-  return unit === TimeUnit.SECOND ? (value) => toBigInt(value / 1e3) : unit === TimeUnit.MILLISECOND ? toBigInt : unit === TimeUnit.MICROSECOND ? (value) => toBigInt(value * 1e3) : (value) => toBigInt(value * 1e6);
+  return unit === TimeUnit.SECOND ? (value2) => toBigInt(value2 / 1e3) : unit === TimeUnit.MILLISECOND ? toBigInt : unit === TimeUnit.MICROSECOND ? (value2) => toBigInt(value2 * 1e3) : (value2) => toBigInt(value2 * 1e6);
 }
 function toMonthDayNanoBytes([m, d, n2]) {
   i32[0] = m;
@@ -101289,20 +101289,20 @@ function toMonthDayNanoBytes([m, d, n2]) {
   i64[1] = toBigInt(n2);
   return u8;
 }
-function toNumber(value) {
-  if (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER) {
-    throw Error(`BigInt exceeds integer number representation: ${value}`);
+function toNumber(value2) {
+  if (value2 > Number.MAX_SAFE_INTEGER || value2 < Number.MIN_SAFE_INTEGER) {
+    throw Error(`BigInt exceeds integer number representation: ${value2}`);
   }
-  return Number(value);
+  return Number(value2);
 }
 function divide(num, div) {
   return Number(num / div) + Number(num % div) / Number(div);
 }
 function toDecimal32(scale) {
-  return (value) => typeof value === "bigint" ? Number(value) : Math.trunc(value * scale);
+  return (value2) => typeof value2 === "bigint" ? Number(value2) : Math.trunc(value2 * scale);
 }
-function toDecimal(value, buf2, offset2, stride, scale) {
-  const v = typeof value === "bigint" ? value : toBigInt(Math.trunc(value * scale));
+function toDecimal(value2, buf2, offset2, stride, scale) {
+  const v = typeof value2 === "bigint" ? value2 : toBigInt(Math.trunc(value2 * scale));
   buf2[offset2] = v;
   if (stride > 1) {
     buf2[offset2 + 1] = v >> 64n;
@@ -101338,9 +101338,9 @@ function fromDecimal256(buf2, offset2) {
   }
   return x;
 }
-function toFloat16(value) {
-  if (value !== value) return 32256;
-  f64[0] = value;
+function toFloat16(value2) {
+  if (value2 !== value2) return 32256;
+  f64[0] = value2;
   const sign2 = (u32[1] & 2147483648) >> 16 & 65535;
   let expo = u32[1] & 2146435072, sigf = 0;
   if (expo >= 1089470464) {
@@ -101368,16 +101368,16 @@ function decodeUtf8(buf2) {
 function encodeUtf8(str) {
   return textEncoder.encode(str);
 }
-function keyString(value) {
-  const val = typeof value !== "object" || !value ? value ?? null : isDate(value) ? +value : isArray(value) ? `[${value.map(keyString)}]` : objectKey(value);
+function keyString(value2) {
+  const val = typeof value2 !== "object" || !value2 ? value2 ?? null : isDate(value2) ? +value2 : isArray(value2) ? `[${value2.map(keyString)}]` : objectKey(value2);
   return `${val}`;
 }
-function objectKey(value) {
+function objectKey(value2) {
   let s = "";
   let i = -1;
-  for (const k in value) {
+  for (const k in value2) {
     if (++i > 0) s += ",";
-    s += `"${k}":${keyString(value[k])}`;
+    s += `"${k}":${keyString(value2[k])}`;
   }
   return `{${s}}`;
 }
@@ -102863,7 +102863,7 @@ function createTable(data2, options = {}) {
       dict2.add(batch);
     }
   }
-  dicts.forEach((value, key2) => dictionaryMap.set(key2, value.done()));
+  dicts.forEach((value2, key2) => dictionaryMap.set(key2, value2.done()));
   const cols = fields.map((f) => columnBuilder(f.type));
   for (const batch of records) {
     const ctx = context(batch);
@@ -103011,11 +103011,11 @@ function visit$1(type, ctx) {
       throw new Error(invalidDataType(typeId));
   }
 }
-function writeInt32(buf2, index, value) {
-  buf2[index] = value;
-  buf2[index + 1] = value >> 8;
-  buf2[index + 2] = value >> 16;
-  buf2[index + 3] = value >> 24;
+function writeInt32(buf2, index, value2) {
+  buf2[index] = value2;
+  buf2[index + 1] = value2 >> 8;
+  buf2[index + 2] = value2 >> 16;
+  buf2[index + 3] = value2 >> 24;
 }
 const INIT_SIZE = 1024;
 class Builder {
@@ -103043,33 +103043,33 @@ class Builder {
    * and advance the internal cursor.
    * @param {number} value
    */
-  writeInt8(value) {
-    this.buf[this.space -= 1] = value;
+  writeInt8(value2) {
+    this.buf[this.space -= 1] = value2;
   }
   /**
    * Write a flatbuffer int16 value at the current buffer position
    * and advance the internal cursor.
    * @param {number} value
    */
-  writeInt16(value) {
-    this.buf[this.space -= 2] = value;
-    this.buf[this.space + 1] = value >> 8;
+  writeInt16(value2) {
+    this.buf[this.space -= 2] = value2;
+    this.buf[this.space + 1] = value2 >> 8;
   }
   /**
    * Write a flatbuffer int32 value at the current buffer position
    * and advance the internal cursor.
    * @param {number} value
    */
-  writeInt32(value) {
-    writeInt32(this.buf, this.space -= 4, value);
+  writeInt32(value2) {
+    writeInt32(this.buf, this.space -= 4, value2);
   }
   /**
    * Write a flatbuffer int64 value at the current buffer position
    * and advance the internal cursor.
    * @param {number} value
    */
-  writeInt64(value) {
-    const v = BigInt(value);
+  writeInt64(value2) {
+    const v = BigInt(value2);
     this.writeInt32(Number(BigInt.asIntN(32, v >> BigInt(32))));
     this.writeInt32(Number(BigInt.asIntN(32, v)));
   }
@@ -103077,33 +103077,33 @@ class Builder {
    * Add a flatbuffer int8 value, properly aligned,
    * @param value The int8 value to add the buffer.
    */
-  addInt8(value) {
+  addInt8(value2) {
     prep(this, 1, 0);
-    this.writeInt8(value);
+    this.writeInt8(value2);
   }
   /**
    * Add a flatbuffer int16 value, properly aligned,
    * @param value The int16 value to add the buffer.
    */
-  addInt16(value) {
+  addInt16(value2) {
     prep(this, 2, 0);
-    this.writeInt16(value);
+    this.writeInt16(value2);
   }
   /**
    * Add a flatbuffer int32 value, properly aligned,
    * @param value The int32 value to add the buffer.
    */
-  addInt32(value) {
+  addInt32(value2) {
     prep(this, 4, 0);
-    this.writeInt32(value);
+    this.writeInt32(value2);
   }
   /**
    * Add a flatbuffer int64 values, properly aligned.
    * @param value The int64 value to add the buffer.
    */
-  addInt64(value) {
+  addInt64(value2) {
     prep(this, 8, 0);
-    this.writeInt64(value);
+    this.writeInt64(value2);
   }
   /**
    * Add a flatbuffer offset, relative to where it will be written.
@@ -103251,9 +103251,9 @@ function objectBuilder(builder2, numFields) {
      * @param {number} value
      * @param {number} defaultValue
      */
-    addInt8(index, value, defaultValue) {
-      if (value != defaultValue) {
-        builder2.addInt8(value);
+    addInt8(index, value2, defaultValue) {
+      if (value2 != defaultValue) {
+        builder2.addInt8(value2);
         slot(index);
       }
     },
@@ -103263,9 +103263,9 @@ function objectBuilder(builder2, numFields) {
      * @param {number} value
      * @param {number} defaultValue
      */
-    addInt16(index, value, defaultValue) {
-      if (value != defaultValue) {
-        builder2.addInt16(value);
+    addInt16(index, value2, defaultValue) {
+      if (value2 != defaultValue) {
+        builder2.addInt16(value2);
         slot(index);
       }
     },
@@ -103275,9 +103275,9 @@ function objectBuilder(builder2, numFields) {
      * @param {number} value
      * @param {number} defaultValue
      */
-    addInt32(index, value, defaultValue) {
-      if (value != defaultValue) {
-        builder2.addInt32(value);
+    addInt32(index, value2, defaultValue) {
+      if (value2 != defaultValue) {
+        builder2.addInt32(value2);
         slot(index);
       }
     },
@@ -103287,9 +103287,9 @@ function objectBuilder(builder2, numFields) {
      * @param {number} value
      * @param {number} defaultValue
      */
-    addInt64(index, value, defaultValue) {
-      if (value != defaultValue) {
-        builder2.addInt64(value);
+    addInt64(index, value2, defaultValue) {
+      if (value2 != defaultValue) {
+        builder2.addInt64(value2);
         slot(index);
       }
     },
@@ -103299,9 +103299,9 @@ function objectBuilder(builder2, numFields) {
      * @param {number} value
      * @param {number} defaultValue
      */
-    addOffset(index, value, defaultValue) {
-      if (value != defaultValue) {
-        builder2.addOffset(value);
+    addOffset(index, value2, defaultValue) {
+      if (value2 != defaultValue) {
+        builder2.addOffset(value2);
         slot(index);
       }
     },
@@ -103495,7 +103495,7 @@ function encodeUnion(builder2, type) {
     type.typeIds,
     4,
     4,
-    (builder3, value) => builder3.addInt32(value)
+    (builder3, value2) => builder3.addInt32(value2)
   );
   return builder2.addObject(2, (b) => {
     b.addInt16(0, type.mode, UnionMode.Sparse);
@@ -103956,9 +103956,9 @@ class Buffer {
    * @param {number | bigint} value The value to set.
    * @param {number} index The index to write to.
    */
-  set(value, index) {
+  set(value2, index) {
     this.prep(index);
-    this.buf[index] = value;
+    this.buf[index] = value2;
   }
   /**
    * Write a byte array at the given index. The method should be called
@@ -104005,7 +104005,7 @@ class BatchBuilder {
    * @param {number} index
    * @returns {boolean | void}
    */
-  set(value, index) {
+  set(value2, index) {
     this.index = index;
     return false;
   }
@@ -104041,9 +104041,9 @@ class ValidityBuilder extends BatchBuilder {
    * @param {number} index
    * @returns {boolean | void}
    */
-  set(value, index) {
+  set(value2, index) {
     this.index = index;
-    const isValid2 = value != null;
+    const isValid2 = value2 != null;
     if (isValid2) {
       this.validity.set(index);
     } else {
@@ -104106,12 +104106,12 @@ function dictionaryValues(type, ctx) {
       batches.push(batch);
       return batch;
     },
-    key(value) {
-      const v = keyString(value);
+    key(value2) {
+      const v = keyString(value2);
       let k = keys2[v];
       if (k === void 0) {
         keys2[v] = k = ++index;
-        values2.set(value, k);
+        values2.set(value2, k);
       }
       return k;
     },
@@ -104132,9 +104132,9 @@ class DictionaryBuilder extends ValidityBuilder {
     this.values = buffer(this.type.indices.values);
     return super.init();
   }
-  set(value, index) {
-    if (super.set(value, index)) {
-      this.values.set(this.dict.key(value), index);
+  set(value2, index) {
+    if (super.set(value2, index)) {
+      this.values.set(this.dict.key(value2), index);
     }
   }
   done() {
@@ -104149,7 +104149,7 @@ class DictionaryBuilder extends ValidityBuilder {
 }
 function inferType(visit2) {
   const profile = profiler();
-  visit2((value) => profile.add(value));
+  visit2((value2) => profile.add(value2));
   return profile.type();
 }
 function profiler() {
@@ -104173,50 +104173,50 @@ function profiler() {
   let arrayProfile;
   let structProfiles = {};
   return {
-    add(value) {
+    add(value2) {
       length2++;
-      if (value == null) {
+      if (value2 == null) {
         nullCount++;
         return;
       }
-      switch (typeof value) {
+      switch (typeof value2) {
         case "string":
           stringCount++;
           break;
         case "number":
           numberCount++;
-          if (value < min2) min2 = value;
-          if (value > max2) max2 = value;
-          if (Number.isInteger(value)) intCount++;
+          if (value2 < min2) min2 = value2;
+          if (value2 > max2) max2 = value2;
+          if (Number.isInteger(value2)) intCount++;
           break;
         case "bigint":
           bigintCount++;
           if (minBigInt === void 0) {
-            minBigInt = maxBigInt = value;
+            minBigInt = maxBigInt = value2;
           } else {
-            if (value < minBigInt) minBigInt = value;
-            if (value > maxBigInt) maxBigInt = value;
+            if (value2 < minBigInt) minBigInt = value2;
+            if (value2 > maxBigInt) maxBigInt = value2;
           }
           break;
         case "boolean":
           boolCount++;
           break;
         case "object":
-          if (value instanceof Date) {
+          if (value2 instanceof Date) {
             dateCount++;
-            if (+value % 864e5 === 0) dayCount++;
-          } else if (isArray(value)) {
+            if (+value2 % 864e5 === 0) dayCount++;
+          } else if (isArray(value2)) {
             arrayCount++;
-            const len = value.length;
+            const len = value2.length;
             if (len < minLength) minLength = len;
             if (len > maxLength) maxLength = len;
             arrayProfile ??= profiler();
-            value.forEach(arrayProfile.add);
+            value2.forEach(arrayProfile.add);
           } else {
             structCount++;
-            for (const key2 in value) {
+            for (const key2 in value2) {
               const fieldProfiler = structProfiles[key2] ?? (structProfiles[key2] = profiler());
-              fieldProfiler.add(value[key2]);
+              fieldProfiler.add(value2[key2]);
             }
           }
       }
@@ -104257,11 +104257,11 @@ class BinaryBuilder extends ValidityBuilder {
     this.pos = 0;
     return super.init();
   }
-  set(value, index) {
+  set(value2, index) {
     const { offsets, values: values2, toOffset: toOffset2 } = this;
-    if (super.set(value, index)) {
-      values2.write(value, this.pos);
-      this.pos += value.length;
+    if (super.set(value2, index)) {
+      values2.write(value2, this.pos);
+      this.pos += value2.length;
     }
     offsets.set(toOffset2(this.pos), index + 1);
   }
@@ -104281,9 +104281,9 @@ class BoolBuilder extends ValidityBuilder {
     this.values = bitmap();
     return super.init();
   }
-  set(value, index) {
-    super.set(value, index);
-    if (value) this.values.set(index);
+  set(value2, index) {
+    super.set(value2, index);
+    if (value2) this.values.set(index);
   }
   done() {
     return {
@@ -104302,11 +104302,11 @@ class DecimalBuilder extends ValidityBuilder {
     this.values = buffer(this.type.values);
     return super.init();
   }
-  set(value, index) {
+  set(value2, index) {
     const { scale, stride, values: values2 } = this;
-    if (super.set(value, index)) {
+    if (super.set(value2, index)) {
       values2.prep((index + 1) * stride);
-      toDecimal(value, values2.buf, index * stride, stride, scale);
+      toDecimal(value2, values2.buf, index * stride, stride, scale);
     }
   }
   done() {
@@ -104326,9 +104326,9 @@ class FixedSizeBinaryBuilder extends ValidityBuilder {
     this.values = buffer();
     return super.init();
   }
-  set(value, index) {
-    if (super.set(value, index)) {
-      this.values.write(value, index * this.stride);
+  set(value2, index) {
+    if (super.set(value2, index)) {
+      this.values.write(value2, index * this.stride);
     }
   }
   done() {
@@ -104349,12 +104349,12 @@ class FixedSizeListBuilder extends ValidityBuilder {
     this.child.init();
     return super.init();
   }
-  set(value, index) {
+  set(value2, index) {
     const { child, stride } = this;
     const base2 = index * stride;
-    if (super.set(value, index)) {
+    if (super.set(value2, index)) {
       for (let i = 0; i < stride; ++i) {
-        child.set(value[i], base2 + i);
+        child.set(value2[i], base2 + i);
       }
     } else {
       child.index = base2 + stride;
@@ -104373,11 +104373,11 @@ class IntervalDayTimeBuilder extends ValidityBuilder {
     this.values = buffer(this.type.values);
     return super.init();
   }
-  set(value, index) {
-    if (super.set(value, index)) {
+  set(value2, index) {
+    if (super.set(value2, index)) {
       const i = index << 1;
-      this.values.set(value[0], i);
-      this.values.set(value[1], i + 1);
+      this.values.set(value2[0], i);
+      this.values.set(value2[1], i + 1);
     }
   }
   done() {
@@ -104392,9 +104392,9 @@ class IntervalMonthDayNanoBuilder extends ValidityBuilder {
     this.values = buffer();
     return super.init();
   }
-  set(value, index) {
-    if (super.set(value, index)) {
-      this.values.write(toMonthDayNanoBytes(value), index << 4);
+  set(value2, index) {
+    if (super.set(value2, index)) {
+      this.values.write(toMonthDayNanoBytes(value2), index << 4);
     }
   }
   done() {
@@ -104429,10 +104429,10 @@ class ListBuilder extends AbstractListBuilder {
   constructor(type, ctx) {
     super(type, ctx, ctx.builder(type.children[0].type));
   }
-  set(value, index) {
+  set(value2, index) {
     const { child, offsets, toOffset: toOffset2 } = this;
-    if (super.set(value, index)) {
-      value.forEach((v) => child.set(v, this.pos++));
+    if (super.set(value2, index)) {
+      value2.forEach((v) => child.set(v, this.pos++));
     }
     offsets.set(toOffset2(this.pos), index + 1);
   }
@@ -104460,14 +104460,14 @@ class StructBuilder extends AbstractStructBuilder {
     super(type, ctx);
     this.setters = this.children.map((child, i) => {
       const name2 = type.children[i].name;
-      return (value, index) => child.set(value?.[name2], index);
+      return (value2, index) => child.set(value2?.[name2], index);
     });
   }
-  set(value, index) {
-    super.set(value, index);
+  set(value2, index) {
+    super.set(value2, index);
     const setters = this.setters;
     for (let i = 0; i < setters.length; ++i) {
-      setters[i](value, index);
+      setters[i](value2, index);
     }
   }
 }
@@ -104475,10 +104475,10 @@ class MapBuilder extends AbstractListBuilder {
   constructor(type, ctx) {
     super(type, ctx, new MapStructBuilder(type.children[0].type, ctx));
   }
-  set(value, index) {
+  set(value2, index) {
     const { child, offsets, toOffset: toOffset2 } = this;
-    if (super.set(value, index)) {
-      for (const keyValuePair of value) {
+    if (super.set(value2, index)) {
+      for (const keyValuePair of value2) {
         child.set(keyValuePair, this.pos++);
       }
     }
@@ -104486,11 +104486,11 @@ class MapBuilder extends AbstractListBuilder {
   }
 }
 class MapStructBuilder extends AbstractStructBuilder {
-  set(value, index) {
-    super.set(value, index);
+  set(value2, index) {
+    super.set(value2, index);
     const [key2, val] = this.children;
-    key2.set(value[0], index);
-    val.set(value[1], index);
+    key2.set(value2[0], index);
+    val.set(value2[1], index);
   }
 }
 const NO_VALUE = {};
@@ -104511,13 +104511,13 @@ class RunEndEncodedBuilder extends BatchBuilder {
     runs.set(this.index + 1, this.pos);
     vals.set(this.value, this.pos++);
   }
-  set(value, index) {
-    if (value !== this.value) {
-      const key2 = keyString(value);
+  set(value2, index) {
+    if (value2 !== this.value) {
+      const key2 = keyString(value2);
       if (key2 !== this.key) {
         if (this.key) this.next();
         this.key = key2;
-        this.value = value;
+        this.value = value2;
       }
     }
     this.index = index;
@@ -104546,14 +104546,14 @@ class AbstractUnionBuilder extends BatchBuilder {
     this.children.forEach((c2) => c2.init());
     return super.init();
   }
-  set(value, index) {
+  set(value2, index) {
     const { children, lookup: lookup2, typeMap, typeIds } = this;
     this.index = index;
-    const typeId = lookup2(value, index);
+    const typeId = lookup2(value2, index);
     const child = children[typeMap[typeId]];
     typeIds.set(typeId, index);
-    if (value == null) ++this.nullCount;
-    this.update(value, index, child);
+    if (value2 == null) ++this.nullCount;
+    this.update(value2, index, child);
   }
   done() {
     const { children, nullCount, type, typeIds } = this;
@@ -104568,8 +104568,8 @@ class AbstractUnionBuilder extends BatchBuilder {
   }
 }
 class SparseUnionBuilder extends AbstractUnionBuilder {
-  update(value, index, child) {
-    child.set(value, index);
+  update(value2, index, child) {
+    child.set(value2, index);
     this.children.forEach((c2) => {
       if (c2 !== child) c2.set(null, index);
     });
@@ -104580,9 +104580,9 @@ class DenseUnionBuilder extends AbstractUnionBuilder {
     this.offsets = buffer(this.type.offsets);
     return super.init();
   }
-  update(value, index, child) {
+  update(value2, index, child) {
     const offset2 = child.index + 1;
-    child.set(value, offset2);
+    child.set(value2, offset2);
     this.offsets.set(offset2, index);
   }
   done() {
@@ -104593,8 +104593,8 @@ class DenseUnionBuilder extends AbstractUnionBuilder {
   }
 }
 class Utf8Builder extends BinaryBuilder {
-  set(value, index) {
-    super.set(value && encodeUtf8(value), index);
+  set(value2, index) {
+    super.set(value2 && encodeUtf8(value2), index);
   }
 }
 class DirectBuilder extends ValidityBuilder {
@@ -104611,9 +104611,9 @@ class DirectBuilder extends ValidityBuilder {
    * @param {number} index
    * @returns {boolean | void}
    */
-  set(value, index) {
-    if (super.set(value, index)) {
-      this.values.set(value, index);
+  set(value2, index) {
+    if (super.set(value2, index)) {
+      this.values.set(value2, index);
     }
   }
   done() {
@@ -104624,8 +104624,8 @@ class DirectBuilder extends ValidityBuilder {
   }
 }
 class Int64Builder extends DirectBuilder {
-  set(value, index) {
-    super.set(value == null ? value : toBigInt(value), index);
+  set(value2, index) {
+    super.set(value2 == null ? value2 : toBigInt(value2), index);
   }
 }
 class TransformBuilder extends DirectBuilder {
@@ -104633,8 +104633,8 @@ class TransformBuilder extends DirectBuilder {
     super(type, ctx);
     this.transform = transform;
   }
-  set(value, index) {
-    super.set(value == null ? value : this.transform(value), index);
+  set(value2, index) {
+    super.set(value2 == null ? value2 : this.transform(value2), index);
   }
 }
 function builderContext(options = {}, dictionaries = dictionaryContext()) {
@@ -104702,7 +104702,7 @@ function builder(type, ctx = builderContext()) {
 }
 function columnFromValues(values2, type, options = {}, dicts) {
   const visit2 = isIterable(values2) ? (callback) => {
-    for (const value of values2) callback(value);
+    for (const value2 of values2) callback(value2);
   } : values2;
   type ??= inferType(visit2);
   const { maxBatchRows = Infinity, ...opt2 } = options;
@@ -104717,8 +104717,8 @@ function columnFromValues(values2, type, options = {}, dicts) {
     const next = (b2) => data2.push(b2.batch());
     data2 = [];
     let row2 = 0;
-    visit2((value) => {
-      b.set(value, row2++);
+    visit2((value2) => {
+      b.set(value2, row2++);
       if (row2 >= maxBatchRows) {
         next(b);
         row2 = 0;
@@ -104862,12 +104862,12 @@ function toCSV(table2, options = {}) {
   const header2 = options.header ?? true;
   const reFormat = new RegExp(`["${delim}
 \r]`);
-  const formatValue2 = (value) => value == null ? "" : isDate$1(value) ? formatUTCDate(value, true) : reFormat.test(value += "") ? '"' + value.replace(/"/g, '""') + '"' : value;
+  const formatValue2 = (value2) => value2 == null ? "" : isDate$1(value2) ? formatUTCDate(value2, true) : reFormat.test(value2 += "") ? '"' + value2.replace(/"/g, '""') + '"' : value2;
   const vals = names.map(formatValue2);
   let text2 = header2 ? vals.join(delim) + "\n" : "";
   scan(table2, names, options.limit || Infinity, options.offset, {
-    cell(value, name2, index) {
-      vals[index] = formatValue2(format2[name2] ? format2[name2](value) : value);
+    cell(value2, name2, index) {
+      vals[index] = formatValue2(format2[name2] ? format2[name2](value2) : value2);
     },
     end() {
       text2 += vals.join(delim) + "\n";
@@ -104891,20 +104891,20 @@ function inferFormat(scan2, options = {}) {
   let dutcs = 0;
   let nums = 0;
   let digits = 0;
-  scan2((value) => {
+  scan2((value2) => {
     ++count2;
-    if (value == null) {
+    if (value2 == null) {
       ++nulls;
       return;
     }
-    const type = typeof value;
-    if (type === "object" && isDate$1(value)) {
+    const type = typeof value2;
+    if (type === "object" && isDate$1(value2)) {
       ++dates;
-      if (isExactDateUTC(value)) ++dutcs;
+      if (isExactDateUTC(value2)) ++dutcs;
     } else if (type === "number") {
       ++nums;
-      if (value === value && (value | 0) !== value) {
-        const s = value + "";
+      if (value2 === value2 && (value2 | 0) !== value2) {
+        const s = value2 + "";
         const p = s.indexOf(".");
         if (p >= 0) {
           const e = s.indexOf("e");
@@ -104966,12 +104966,12 @@ function formatValue(v, options = {}) {
 function toHTML(table2, options = {}) {
   const names = columns(table2, options.columns);
   const { align: align2, format: format2 } = formats(table2, names, options);
-  const style = styles$a(options);
+  const style = styles$c(options);
   const nullish = options.null;
   const alignValue = (a2) => a2 === "c" ? "center" : a2 === "r" ? "right" : "left";
   const escape2 = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const baseFormat = (value, opt2) => escape2(formatValue(value, opt2));
-  const formatter = nullish ? (value, opt2) => value == null ? nullish(value) : baseFormat(value, opt2) : baseFormat;
+  const baseFormat = (value2, opt2) => escape2(formatValue(value2, opt2));
+  const formatter = nullish ? (value2, opt2) => value2 == null ? nullish(value2) : baseFormat(value2, opt2) : baseFormat;
   let r2 = -1;
   let idx = -1;
   const tag = (tag2, name2, shouldAlign) => {
@@ -104987,8 +104987,8 @@ function toHTML(table2, options = {}) {
       ++idx;
       text2 += tag("tr");
     },
-    cell(value, name2) {
-      text2 += tag("td", name2, 1) + formatter(value, format2[name2]) + "</td>";
+    cell(value2, name2) {
+      text2 += tag("td", name2, 1) + formatter(value2, format2[name2]) + "</td>";
     },
     end() {
       text2 += "</tr>";
@@ -104996,15 +104996,15 @@ function toHTML(table2, options = {}) {
   });
   return text2 + "</tbody></table>";
 }
-function styles$a(options) {
+function styles$c(options) {
   return mapObject(
     options.style,
-    (value) => isFunction(value) ? value : () => value
+    (value2) => isFunction(value2) ? value2 : () => value2
   );
 }
 const COLUMNS = "columns";
 const NDJSON = "ndjson";
-const defaultFormatter = (value) => isDate$1(value) ? formatUTCDate(value, true) : value;
+const defaultFormatter = (value2) => isDate$1(value2) ? formatUTCDate(value2, true) : value2;
 function toJSON(table2, {
   type,
   columns: cols,
@@ -105025,8 +105025,8 @@ function toColumns(table2, names, format2, scan2) {
     const formatter = format2[i];
     let r2 = -1;
     scan2((row2) => {
-      const value = column2.at(row2);
-      text2 += (++r2 ? "," : "") + JSON.stringify(formatter(value));
+      const value2 = column2.at(row2);
+      text2 += (++r2 ? "," : "") + JSON.stringify(formatter(value2));
     });
     text2 += "]";
   });
@@ -105059,8 +105059,8 @@ function toMarkdown(table2, options = {}) {
     start() {
       text2 += "|";
     },
-    cell(value, name2) {
-      text2 += escape2(formatValue(value, format2[name2])) + "|";
+    cell(value2, name2) {
+      text2 += escape2(formatValue(value2, format2[name2])) + "|";
     },
     end() {
       text2 += "\n";
@@ -105862,10 +105862,10 @@ function dictionary(column2) {
     nullCount,
     at: (row2) => get2(keys2[row2]),
     key: (row2) => keys2[row2],
-    keyFor(value) {
-      if (value === null) return nullCount ? size : -1;
+    keyFor(value2) {
+      if (value2 === null) return nullCount ? size : -1;
       for (let i = 0; i < size; ++i) {
-        if (cache[i] === value) return i;
+        if (cache[i] === value2) return i;
       }
       return -1;
     },
@@ -105957,16 +105957,16 @@ var showJsComp = (compDetails, context, eParent, ref2) => {
     }
   };
 };
-var setRef = (ref2, value) => {
+var setRef = (ref2, value2) => {
   if (!ref2) {
     return;
   }
   if (ref2 instanceof Function) {
     const refCallback = ref2;
-    refCallback(value);
+    refCallback(value2);
   } else {
     const refObj = ref2;
-    refObj.current = value;
+    refObj.current = value2;
   }
 };
 var classesList = (...list2) => {
@@ -106090,7 +106090,7 @@ var GroupCellRenderer = reactExports.forwardRef((props, ref2) => {
   const ctrlRef = reactExports.useRef();
   const [innerCompDetails, setInnerCompDetails] = reactExports.useState();
   const [childCount, setChildCount] = reactExports.useState();
-  const [value, setValue] = reactExports.useState();
+  const [value2, setValue] = reactExports.useState();
   const [cssClasses, setCssClasses] = reactExports.useState(() => new CssClasses());
   const [expandedCssClasses, setExpandedCssClasses] = reactExports.useState(() => new CssClasses("ag-hidden"));
   const [contractedCssClasses, setContractedCssClasses] = reactExports.useState(() => new CssClasses("ag-hidden"));
@@ -106147,8 +106147,8 @@ var GroupCellRenderer = reactExports.forwardRef((props, ref2) => {
   const checkboxClassName = reactExports.useMemo(() => `ag-group-checkbox ${checkboxCssClasses.toString()}`, [checkboxCssClasses]);
   const useFwRenderer = innerCompDetails?.componentFromFramework;
   const FwRenderer = useFwRenderer ? innerCompDetails.componentClass : void 0;
-  const useValue = innerCompDetails == null && value != null;
-  const escapedValue = _toString(value);
+  const useValue = innerCompDetails == null && value2 != null;
+  const escapedValue = _toString(value2);
   return /* @__PURE__ */ React20.createElement(
     "span",
     {
@@ -106897,11 +106897,11 @@ var HeaderFilterCellComp = ({ ctrl }) => {
   const eButtonShowMainFilter = reactExports.useRef(null);
   const userCompResolve = reactExports.useRef();
   const userCompPromise = reactExports.useRef();
-  const userCompRef = (value) => {
-    if (value == null) {
+  const userCompRef = (value2) => {
+    if (value2 == null) {
       return;
     }
-    userCompResolve.current && userCompResolve.current(value);
+    userCompResolve.current && userCompResolve.current(value2);
   };
   const setRef2 = reactExports.useCallback((eRef) => {
     eGui.current = eRef;
@@ -107029,17 +107029,17 @@ var HeaderGroupCellComp = ({ ctrl }) => {
           headerCompWrapper.style.removeProperty("display");
         }
       },
-      setHeaderWrapperMaxHeight: (value) => {
+      setHeaderWrapperMaxHeight: (value2) => {
         const headerCompWrapper = eHeaderCompWrapper.current;
         if (!headerCompWrapper) {
           return;
         }
-        if (value != null) {
-          headerCompWrapper.style.setProperty("max-height", `${value}px`);
+        if (value2 != null) {
+          headerCompWrapper.style.setProperty("max-height", `${value2}px`);
         } else {
           headerCompWrapper.style.removeProperty("max-height");
         }
-        headerCompWrapper.classList.toggle("ag-header-cell-comp-wrapper-limited-height", value != null);
+        headerCompWrapper.classList.toggle("ag-header-cell-comp-wrapper-limited-height", value2 != null);
       },
       setUserCompDetails: (compDetails) => setUserCompDetails(compDetails),
       setResizableDisplayed: (displayed) => {
@@ -107246,7 +107246,7 @@ var CellEditorComponentProxy = class {
     this.instanceCreated = new AgPromise((resolve2) => {
       this.resolveInstanceCreated = resolve2;
     });
-    this.onValueChange = (value) => this.updateValue(value);
+    this.onValueChange = (value2) => this.updateValue(value2);
     this.value = cellEditorParams.value;
   }
   getProps() {
@@ -107286,8 +107286,8 @@ var CellEditorComponentProxy = class {
       "getValidationElement"
     ];
   }
-  updateValue(value) {
-    this.value = value;
+  updateValue(value2) {
+    this.value = value2;
     this.refreshProps();
   }
 };
@@ -107661,12 +107661,12 @@ var CellComp = ({
       getCellEditor: () => cellEditorRef.current ?? null,
       getCellRenderer: () => cellRendererRef.current ?? jsCellRendererRef.current,
       getParentOfValue: () => eCellValue.current ?? eCellWrapper.current ?? eGui.current,
-      setRenderDetails: (compDetails, value, force) => {
+      setRenderDetails: (compDetails, value2, force) => {
         const setDetails = () => {
           setRenderDetails((prev) => {
-            if (prev?.compDetails !== compDetails || prev?.value !== value || prev?.force !== force) {
+            if (prev?.compDetails !== compDetails || prev?.value !== value2 || prev?.force !== force) {
               return {
-                value,
+                value: value2,
                 compDetails,
                 force
               };
@@ -107765,9 +107765,9 @@ var CellComp = ({
     current3.toggleCss("ag-cell-not-inline-editing", !editDetails || !!editDetails.popup);
   });
   const valueOrCellComp = () => {
-    const { compDetails, value } = renderDetails;
+    const { compDetails, value: value2 } = renderDetails;
     if (!compDetails) {
-      return value?.toString?.() ?? value;
+      return value2?.toString?.() ?? value2;
     }
     if (compDetails.componentFromFramework) {
       const CellRendererClass = compDetails.componentClass;
@@ -108325,8 +108325,8 @@ var TabGuardCompRef = (props, forwardRef4) => {
   const topTabGuardRef = reactExports.useRef(null);
   const bottomTabGuardRef = reactExports.useRef(null);
   const tabGuardCtrlRef = reactExports.useRef();
-  const setTabIndex = (value) => {
-    const processedValue = value == null ? void 0 : parseInt(value, 10).toString();
+  const setTabIndex = (value2) => {
+    const processedValue = value2 == null ? void 0 : parseInt(value2, 10).toString();
     for (const tabGuard of [topTabGuardRef, bottomTabGuardRef]) {
       if (processedValue === void 0) {
         tabGuard.current?.removeAttribute("tabindex");
@@ -108955,7 +108955,7 @@ var AgGridReact = class extends reactExports.Component {
   }
 };
 const gridWrapper$1 = "_gridWrapper_yeano_1";
-const styles$9 = {
+const styles$b = {
   gridWrapper: gridWrapper$1
 };
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -108982,7 +108982,7 @@ const DataframeView = ({ columnTable }) => {
     const rowData2 = columnTable.objects();
     return { columnDefs: columnDefs2, rowData: rowData2 };
   }, [columnTable]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$9.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$b.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     AgGridReact,
     {
       rowData,
@@ -109018,10 +109018,10 @@ const useSelectedScanner = () => {
   return selectedScanner || defaultScanner;
 };
 const progressContainer = "_progressContainer_1cjjr_1";
-const styles$8 = {
+const styles$a = {
   progressContainer
 };
-const container$3 = "_container_4p85e_2";
+const container$4 = "_container_4p85e_2";
 const dotsContainer = "_dotsContainer_4p85e_8";
 const small = "_small_4p85e_15";
 const medium = "_medium_4p85e_19";
@@ -109030,8 +109030,8 @@ const dot = "_dot_4p85e_8";
 const subtle = "_subtle_4p85e_36";
 const primary = "_primary_4p85e_40";
 const visuallyHidden = "_visuallyHidden_4p85e_59";
-const styles$7 = {
-  container: container$3,
+const styles$9 = {
+  container: container$4,
   dotsContainer,
   small,
   medium,
@@ -109052,24 +109052,24 @@ const PulsingDots = ({
     "div",
     {
       className: clsx(
-        styles$7.container,
-        size === "small" ? styles$7.small : size === "medium" ? styles$7.medium : styles$7.large,
+        styles$9.container,
+        size === "small" ? styles$9.small : size === "medium" ? styles$9.medium : styles$9.large,
         className
       ),
       role: "status",
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$7.dotsContainer, children: Array.from({ length: dotsCount }, (_, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$9.dotsContainer, children: Array.from({ length: dotsCount }, (_, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
             className: clsx(
-              styles$7.dot,
-              subtle2 ? styles$7.subtle : styles$7.primary
+              styles$9.dot,
+              subtle2 ? styles$9.subtle : styles$9.primary
             ),
             style: { animationDelay: `${index * 0.2}s` }
           },
           `dot-${index}`
         )) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$7.visuallyHidden, children: text2 })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$9.visuallyHidden, children: text2 })
       ]
     }
   );
@@ -109202,7 +109202,7 @@ const LiveVirtualList = ({
     return unregister;
   }, [id, registerVirtualList, searchInData]);
   const Footer = () => {
-    return showProgress ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.progressContainer), children: /* @__PURE__ */ jsxRuntimeExports.jsx(PulsingDots, { subtle: false, size: "medium" }) }) : void 0;
+    return showProgress ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$a.progressContainer), children: /* @__PURE__ */ jsxRuntimeExports.jsx(PulsingDots, { subtle: false, size: "medium" }) }) : void 0;
   };
   reactExports.useEffect(() => {
     const parent = scrollRef?.current;
@@ -109271,47 +109271,120 @@ const LiveVirtualList = ({
     }
   );
 };
-const row = "_row_ei69a_1";
+const useScannerPreviews = (columnTable) => {
+  const scannerPreviews = reactExports.useMemo(() => {
+    const rowData = columnTable.objects();
+    const previews = rowData.map((row2) => {
+      const r2 = row2;
+      const explanation2 = r2.explanation;
+      const validationResult = JSON.parse(r2.validation_result);
+      const validationTarget = JSON.parse(r2.validation_target);
+      const value2 = r2.value;
+      const valueType = r2.value_type;
+      const transcriptMetadata = JSON.parse(
+        r2.transcript_metadata
+      );
+      const transcriptSourceId = r2.transcript_source_id;
+      return {
+        explanation: explanation2,
+        type: r2.input_type,
+        validationResult,
+        validationTarget,
+        value: value2,
+        valueType,
+        transcriptMetadata,
+        transcriptSourceId
+      };
+    });
+    return previews;
+  }, [columnTable]);
+  return scannerPreviews;
+};
+const header = "_header_194g9_1";
+const value$1 = "_value_194g9_25";
+const styles$8 = {
+  header,
+  value: value$1
+};
+const ScanResultsHeader = () => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+  "div",
+  {
+    className: clsx(
+      styles$8.header,
+      "text-size-smallestest",
+      "text-style-label",
+      "text-style-secondary"
+    ),
+    children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Id" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Explanation" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$8.value), children: "Value" })
+    ]
+  }
+);
+const container$3 = "_container_1quph_1";
+const styles$7 = {
+  container: container$3
+};
+const row = "_row_1f3u6_1";
+const value = "_value_1f3u6_14";
+const explanation = "_explanation_1f3u6_18";
 const styles$6 = {
-  row
+  row,
+  value,
+  explanation
 };
 const ScanResultsRow$1 = ({ index, entry: entry2 }) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$6.row), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.id, "text-size-smaller"), children: entry2.id }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.id, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Identifier, { preview: entry2 }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.explanation, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: entry2.explanation }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.value, "text-size-smaller"), children: entry2.value })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$6.value, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Value, { preview: entry2 }) })
   ] });
 };
+const Identifier = ({ preview }) => {
+  if (preview.type === "transcript") {
+    if (preview.transcriptMetadata["id"] && preview.transcriptMetadata["epoch"]) {
+      const id = String(preview.transcriptMetadata["id"]);
+      const epoch = String(preview.transcriptMetadata["epoch"]);
+      return `${id} (${epoch})`;
+    }
+  }
+  return preview.transcriptSourceId;
+};
+const Value = ({ preview }) => {
+  if (preview.valueType === "string") {
+    return `"${String(preview.value)}"`;
+  } else if (preview.valueType === "number" || preview.valueType === "boolean") {
+    return String(preview.value);
+  } else if (preview.valueType === "null") {
+    return "null";
+  } else if (preview.valueType === "array") {
+    return `[Array of length ${preview.value.length}]`;
+  } else if (preview.valueType === "object") {
+    return `{Object with keys: ${Object.keys(preview.value).join(", ")}}`;
+  } else {
+    return "Unknown value type";
+  }
+};
 const ScanResultsList = ({ columnTable }) => {
-  const scannerSummaries = reactExports.useMemo(() => {
-    const rowData = columnTable.objects();
-    const summaries = rowData.map((row2) => {
-      const r2 = row2;
-      return {
-        id: r2.id,
-        inputType: r2.input_type,
-        input: JSON.parse(r2.input),
-        value: r2.value,
-        valueType: r2.value_type,
-        explanation: r2.explanation,
-        answer: r2.answer
-      };
-    });
-    return summaries;
-  }, [columnTable]);
+  const scannerSummaries = useScannerPreviews(columnTable);
   const listHandle = reactExports.useRef(null);
   const renderRow = reactExports.useCallback((index, entry2) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsRow$1, { index, entry: entry2 });
   }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { height: "100%", width: "100%" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-    LiveVirtualList,
-    {
-      id: "scan-results-list",
-      listHandle,
-      data: scannerSummaries,
-      renderRow
-    }
-  ) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.container), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ScanResultsHeader, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      LiveVirtualList,
+      {
+        id: "scan-results-list",
+        listHandle,
+        data: scannerSummaries,
+        renderRow,
+        className: clsx(styles$7.list)
+      }
+    )
+  ] });
 };
 const scrollContainer = "_scrollContainer_94id2_15";
 const styles$5 = {
@@ -109642,7 +109715,7 @@ const ScanPanel = () => {
       clearScanState();
     };
   }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$B.root), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$D.root), children: [
     singleFileMode || /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ScanPanelTitle, {}),

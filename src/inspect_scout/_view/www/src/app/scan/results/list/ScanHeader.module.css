@@ -1,0 +1,27 @@
+.header {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  display: grid;
+  padding-bottom: 0.3rem;
+  padding-top: 0.3rem;
+  border-bottom: solid var(--bs-light-border-subtle) 1px;
+  display: grid;
+  grid-template-columns: 1fr 10fr 1fr;
+  column-gap: 0.5rem;
+}
+
+.center {
+  justify-self: center;
+}
+
+.shrinkable {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.value {
+  justify-self: end;
+}

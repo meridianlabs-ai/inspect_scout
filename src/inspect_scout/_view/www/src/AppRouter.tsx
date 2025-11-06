@@ -8,14 +8,17 @@ import {
 } from "react-router-dom";
 
 import { ScanPanel } from "./app/scan/ScanPanel";
+import { ScanResultPanel } from "./app/scanResult/ScanResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
   kScansRouteUrlPattern,
   kScansWithPathRouteUrlPattern,
   kScanRouteUrlPattern,
+  kScanResultRouteUrlPattern,
   isValidScanPath,
   getRelativePathFromParams,
+  parseScanResultPath,
 } from "./router/url";
 import { useStore } from "./state/store";
 import { getEmbeddedScanState } from "./utils/embeddedState";
@@ -67,9 +70,17 @@ const AppLayout = () => {
 };
 
 // Wrapper component that validates scan path before rendering
-const ValidatedScanDetail = () => {
+const ScanOrScanResultsRoute = () => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
+
+  // Parse the path to check if it contains a scan result UUID
+  const { scanResultUuid } = parseScanResultPath(relativePath);
+
+  // If there's a scan result UUID, render the ScanResultPanel
+  if (scanResultUuid) {
+    return <ScanResultPanel />;
+  }
 
   // Validate that the path ends with the correct scan_id pattern
   if (!isValidScanPath(relativePath)) {
@@ -100,7 +111,7 @@ export const AppRouter = createHashRouter(
         },
         {
           path: kScanRouteUrlPattern,
-          element: <ValidatedScanDetail />,
+          element: <ScanOrScanResultsRoute />,
         },
       ],
     },

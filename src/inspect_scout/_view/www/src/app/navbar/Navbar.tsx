@@ -2,9 +2,14 @@ import clsx from "clsx";
 import { FC, Fragment, ReactNode, useMemo, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getRelativePathFromParams, scansRoute } from "../../router/url";
+import {
+  getRelativePathFromParams,
+  parseScanResultPath,
+  scanRoute,
+  scansRoute,
+} from "../../router/url";
 import { useStore } from "../../state/store";
-import { basename, dirname, ensureTrailingSlash } from "../../utils/path";
+import { basename, dirname } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";
 import { ApplicationIcons } from "../appearance/icons";
 
@@ -25,7 +30,12 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
   const currentPath = getRelativePathFromParams(params);
 
   const pathContainerRef = useRef<HTMLDivElement>(null);
-  const backUrl = scansRoute(ensureTrailingSlash(dirname(currentPath || "")));
+
+  // Check if we're on a scan result page and calculate the appropriate back URL
+  const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
+  const backUrl = scanResultUuid
+    ? scanRoute(scanPath) // Go back to the scan from scan result
+    : scansRoute(dirname(currentPath || "")); // Go back to parent directory
 
   const segments = useMemo(() => {
     const pathSegments = currentPath ? currentPath.split("/") : [];

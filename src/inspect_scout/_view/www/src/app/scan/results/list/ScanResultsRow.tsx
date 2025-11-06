@@ -1,7 +1,12 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
+import { Link, useParams } from "react-router-dom";
 
 import { MarkdownDiv } from "../../../../components/MarkdownDiv";
+import {
+  getRelativePathFromParams,
+  scanResultRoute,
+} from "../../../../router/url";
 
 import styles from "./ScanResultsRow.module.css";
 import { ScannerPreview } from "./types";
@@ -12,19 +17,26 @@ interface ScanResultsRowProps {
 }
 
 export const ScanResultsRow: FC<ScanResultsRowProps> = ({ index, entry }) => {
-  // Find the identifier in metadata if it exists
+  const params = useParams<{ "*": string }>();
+  const relativePath = getRelativePathFromParams(params);
+
+  // Generate the route to the scan result using the current scan path and the entry's uuid
+  const scanResultUrl = scanResultRoute(relativePath, entry.uuid);
+
   return (
-    <div className={clsx(styles.row)}>
-      <div className={clsx(styles.id, "text-size-smaller")}>
-        <Identifier preview={entry} />
+    <Link to={scanResultUrl} className={clsx(styles.link)}>
+      <div className={clsx(styles.row)}>
+        <div className={clsx(styles.id, "text-size-smaller")}>
+          <Identifier preview={entry} />
+        </div>
+        <div className={clsx(styles.explanation, "text-size-smaller")}>
+          <MarkdownDiv markdown={entry.explanation} />
+        </div>
+        <div className={clsx(styles.value, "text-size-smaller")}>
+          <Value preview={entry} />
+        </div>
       </div>
-      <div className={clsx(styles.explanation, "text-size-smaller")}>
-        <MarkdownDiv markdown={entry.explanation} />
-      </div>
-      <div className={clsx(styles.value, "text-size-smaller")}>
-        <Value preview={entry} />
-      </div>
-    </div>
+    </Link>
   );
 };
 

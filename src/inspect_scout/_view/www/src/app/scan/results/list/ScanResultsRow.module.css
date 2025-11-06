@@ -24,3 +24,12 @@
 .row.selected {
   background-color: var(--bs-secondary-bg);
 }
+
+.link {
+  color: var(--bs-body-color);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--bs-body-color);
+}

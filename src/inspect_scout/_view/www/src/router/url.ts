@@ -2,6 +2,7 @@
 export const kScansRouteUrlPattern = "/scans";
 export const kScansWithPathRouteUrlPattern = "/scans/*";
 export const kScanRouteUrlPattern = "/scan/*";
+export const kScanResultRouteUrlPattern = "/scan/*/*";
 
 // Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
 export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
@@ -19,6 +20,15 @@ export const scansRoute = (relativePath?: string) => {
   } else {
     return "/scans";
   }
+};
+
+export const scanResultRoute = (
+  scanRelativePath: string,
+  scanResultId: string
+) => {
+  // Split the scan path and encode each segment separately to preserve slashes
+  const segments = scanRelativePath.split("/").map(encodeURIComponent);
+  return `/scan/${segments.join("/")}/${encodeURIComponent(scanResultId)}`;
 };
 
 /**
@@ -45,4 +55,36 @@ export const getRelativePathFromParams = (
   params: Readonly<Partial<{ "*": string }>>
 ): string => {
   return params["*"] || "";
+};
+
+// Extracts the scanPath and scanResultUuid from a full path.
+// const { scanPath, scanResultUuid } = parseScanResultPath("old_scans/scan_id=3oUGqQCpPQ9WSNPV4oy7Fe/8B90F1605892");
+//   scanPath: "old_scans/scan_id=3oUGqQCpPQ9WSNPV4oy7Fe"
+//   scanResultUuid: "8B90F1605892"
+//
+export const parseScanResultPath = (
+  fullPath: string
+): { scanPath: string; scanResultUuid?: string } => {
+  // Find the scan_id pattern in the path
+  const scanIdMatch = fullPath.match(/scan_id=[a-zA-Z0-9_.-]{22}/);
+
+  if (!scanIdMatch || scanIdMatch.index === undefined) {
+    // No valid scan_id found
+    return { scanPath: fullPath };
+  }
+
+  // Extract everything up to and including the scan_id
+  const scanIdEndIndex = scanIdMatch.index + scanIdMatch[0].length;
+  const scanPath = fullPath.slice(0, scanIdEndIndex);
+  const remainingPath = fullPath.slice(scanIdEndIndex);
+
+  // Check if there's a scan result UUID after the scan_id
+  if (remainingPath && remainingPath.length > 1) {
+    const scanResultUuid = remainingPath.startsWith("/")
+      ? remainingPath.slice(1)
+      : remainingPath;
+    return { scanPath, scanResultUuid };
+  }
+
+  return { scanPath };
 };

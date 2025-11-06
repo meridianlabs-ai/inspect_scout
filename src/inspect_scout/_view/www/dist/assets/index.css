@@ -891,7 +891,7 @@ a._citationLink_1ggvf_9:hover {
   height: 100%;
   width: 100%;
 }
-._row_1f3u6_1 {
+._row_1ya60_1 {
   display: grid;
   grid-template-columns: 1fr 10fr 1fr;
   column-gap: 0.5rem;
@@ -900,22 +900,31 @@ a._citationLink_1ggvf_9:hover {
   height: 150px;
 }
 
-._row_1f3u6_1:hover {
+._row_1ya60_1:hover {
   cursor: pointer;
 }
 
-._value_1f3u6_14 {
+._value_1ya60_14 {
   justify-self: end;
 }
 
-._explanation_1f3u6_18 {
+._explanation_1ya60_18 {
   overflow: hidden;
   text-overflow: ellipsis;
   height: calc(150px - 3em);
 }
 
-._row_1f3u6_1._selected_1f3u6_24 {
+._row_1ya60_1._selected_1ya60_24 {
   background-color: var(--bs-secondary-bg);
+}
+
+._link_1ya60_28 {
+  color: var(--bs-body-color);
+  text-decoration: none;
+}
+
+._link_1ya60_28:hover {
+  color: var(--bs-body-color);
 }
 ._scannerHeaderRow_94id2_1 {
   display: grid;
@@ -1013,6 +1022,8 @@ a._citationLink_1ggvf_9:hover {
 
 ._subtitle_w3uwk_41 {
   grid-column: 1 / -1;
+}
+._container_1vktp_1 {
 }
 ._gridWrapper_1hzqe_1 {
   height: 100%;

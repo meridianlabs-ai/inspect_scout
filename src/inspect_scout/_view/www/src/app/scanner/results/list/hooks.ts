@@ -80,7 +80,6 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
 
     const r = rowData[row] as Record<string, unknown>;
     const uuid = r.uuid as string | undefined;
-    const label = r.label as string | undefined;
 
     const answer = r.answer as string | undefined;
     const eventReferences = JSON.parse(
@@ -163,7 +162,6 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
 
     return {
       uuid,
-      label,
       answer,
       eventReferences,
       explanation,

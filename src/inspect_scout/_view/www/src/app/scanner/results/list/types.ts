@@ -44,7 +44,6 @@ export type MessageType =
 // Base interface with common properties
 interface ScannerDataBase {
   uuid?: string;
-  label?: string;
   answer?: string;
   eventReferences: ScannerReference[];
   explanation?: string;

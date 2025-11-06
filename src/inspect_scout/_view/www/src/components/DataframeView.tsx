@@ -10,9 +10,9 @@ import { ColumnTable } from "arquero";
 import { FC, useCallback, useMemo, useRef } from "react";
 
 import { useStore } from "../state/store";
+import { debounce } from "../utils/sync";
 
 import styles from "./DataframeView.module.css";
-import { debounce } from "../utils/sync";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);

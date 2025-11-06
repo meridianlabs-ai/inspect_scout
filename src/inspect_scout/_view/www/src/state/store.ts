@@ -12,6 +12,7 @@ interface StoreState {
   scans: Status[];
   selectedResults?: Results;
   selectedScanLocation?: string;
+  selectedScanResult?: string;
   resultsDir?: string;
   properties: Record<string, Record<string, unknown> | undefined>;
   scrollPositions: Record<string, number>;
@@ -34,6 +35,8 @@ interface StoreState {
   setScans: (scans: Status[]) => void;
   setSelectedResults: (results: Results) => void;
   setSelectedScanLocation: (location: string) => void;
+  setSelectedScanResult: (result: string) => void;
+
   setResultsDir: (dir: string) => void;
 
   setPropertyValue: <T>(id: string, propertyName: string, value: T) => void;
@@ -123,6 +126,10 @@ export const useStore = create<StoreState>()(
         setSelectedScanLocation: (location: string) =>
           set((state) => {
             state.selectedScanLocation = location;
+          }),
+        setSelectedScanResult: (result: string) =>
+          set((state) => {
+            state.selectedScanResult = result;
           }),
 
         setResultsDir: (dir: string) =>

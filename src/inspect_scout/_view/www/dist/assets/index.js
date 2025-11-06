@@ -21179,6 +21179,9 @@ const useStore = create()(
         setSelectedScanLocation: (location) => set3((state) => {
           state.selectedScanLocation = location;
         }),
+        setSelectedScanResult: (result2) => set3((state) => {
+          state.selectedScanResult = result2;
+        }),
         setResultsDir: (dir) => set3((state) => {
           state.resultsDir = dir;
         }),

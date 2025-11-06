@@ -68,8 +68,17 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
 export const useScannerData = (row: number, columnTable: ColumnTable) => {
   const scannerSummaries = useMemo(() => {
     const rowData = columnTable.objects();
-    const r = rowData[row] as Record<string, unknown>;
+    // Not a valid index
+    if (row === -1) {
+      return undefined;
+    }
 
+    // Out of bounds
+    if (row > rowData.length - 1) {
+      return undefined;
+    }
+
+    const r = rowData[row] as Record<string, unknown>;
     const uuid = r.uuid as string | undefined;
     const label = r.label as string | undefined;
 

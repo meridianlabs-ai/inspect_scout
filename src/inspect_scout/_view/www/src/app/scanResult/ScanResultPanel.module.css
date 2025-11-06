@@ -1,2 +1,21 @@
-.container {
+.root {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: max-content max-content max-content max-content 1fr;
+}
+
+.scroller {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+}
+
+.tabSet {
+  max-height: 100%;
+  border-top: solid 1px var(--bs-border-color);
+  overflow-y: auto;
+}
+
+.tabControl {
+  margin: 0.5rem;
 }

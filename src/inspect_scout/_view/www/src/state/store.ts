@@ -25,6 +25,7 @@ interface StoreState {
 
   // Scan specific properties (clear when switching scans)
   selectedResultsTab?: string;
+  selectedResultTab?: string;
   collapsedBuckets: Record<string, Record<string, boolean>>;
   selectedScanner?: string;
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -72,6 +73,7 @@ interface StoreState {
   setLoading: (loading: boolean) => void;
 
   setSelectedResultsTab: (tab: string) => void;
+  setSelectedResultTab: (tab: string) => void;
 
   setSelectedScanner: (scanner: string) => void;
 
@@ -276,6 +278,11 @@ export const useStore = create<StoreState>()(
         setSelectedResultsTab: (tab: string) => {
           set((state) => {
             state.selectedResultsTab = tab;
+          });
+        },
+        setSelectedResultTab: (tab: string) => {
+          set((state) => {
+            state.selectedResultTab = tab;
           });
         },
         setCollapsed: (bucket: string, key: string, value: boolean) => {

@@ -1034,7 +1034,26 @@ a._citationLink_1ggvf_9:hover {
 ._subtitle_w3uwk_41 {
   grid-column: 1 / -1;
 }
-._container_1vktp_1 {
+._root_1xyi1_1 {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: max-content max-content max-content max-content 1fr;
+}
+
+._scroller_1xyi1_7 {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+}
+
+._tabSet_1xyi1_13 {
+  max-height: 100%;
+  border-top: solid 1px var(--bs-border-color);
+  overflow-y: auto;
+}
+
+._tabControl_1xyi1_19 {
+  margin: 0.5rem;
 }
 ._gridWrapper_1o0hu_1 {
   height: 100%;

@@ -8,14 +8,13 @@ import {
 } from "react-router-dom";
 
 import { ScanPanel } from "./app/scan/ScanPanel";
+import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResult/ScanResultPanel";
-import { ScansPanel } from "./app/scans/ScansPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
   kScansRouteUrlPattern,
   kScansWithPathRouteUrlPattern,
   kScanRouteUrlPattern,
-  kScanResultRouteUrlPattern,
   isValidScanPath,
   getRelativePathFromParams,
   parseScanResultPath,
@@ -103,11 +102,11 @@ export const AppRouter = createHashRouter(
         },
         {
           path: kScansRouteUrlPattern,
-          element: <ScansPanel />,
+          element: <ScanJobsPanel />,
         },
         {
           path: kScansWithPathRouteUrlPattern,
-          element: <ScansPanel />,
+          element: <ScanJobsPanel />,
         },
         {
           path: kScanRouteUrlPattern,

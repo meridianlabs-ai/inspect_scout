@@ -5,9 +5,9 @@ import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { useStore } from "../../state/store";
 import { Navbar } from "../navbar/Navbar";
 
-import { ScansGrid } from "./ScansGrid";
+import { ScanJobGrid } from "./ScanJobGrid";
 
-export const ScansPanel: FC = () => {
+export const ScanJobsPanel: FC = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const api = useStore((state) => state.api);
@@ -29,7 +29,7 @@ export const ScansPanel: FC = () => {
       <Navbar bordered={false} />
       <ActivityBar animating={!!loading} />
       <ExtendedFindProvider>
-        <ScansGrid />
+        <ScanJobGrid />
       </ExtendedFindProvider>
     </>
   );

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, ReactNode, use } from "react";
+import { FC, ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { MarkdownDiv } from "../../../../components/MarkdownDiv";
@@ -17,7 +17,7 @@ interface ScanResultsRowProps {
   entry: ScannerPreview;
 }
 
-export const ScanResultsRow: FC<ScanResultsRowProps> = ({ index, entry }) => {
+export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
 

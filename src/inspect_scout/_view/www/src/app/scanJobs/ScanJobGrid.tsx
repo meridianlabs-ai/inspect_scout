@@ -17,14 +17,14 @@ import { useStore } from "../../state/store";
 import { dirname, toRelativePath } from "../../utils/path";
 import { ApplicationIcons } from "../appearance/icons";
 
-import styles from "./ScansGrid.module.css";
+import styles from "./ScanJobGrid.module.css";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const GRID_STATE_NAME = "ScansGrid";
+const GRID_STATE_NAME = "ScanJobsGrid";
 
-interface ScanRow {
+interface ScanJobSummary {
   status: "incomplete" | "complete" | "error";
   icon: string;
   model: string;
@@ -36,7 +36,7 @@ interface ScanRow {
   scanners: string[];
 }
 
-export const ScansGrid: FC = () => {
+export const ScanJobGrid: FC = () => {
   const params = useParams<{ "*": string }>();
   const paramsRelativePath = getRelativePathFromParams(params);
 
@@ -67,14 +67,14 @@ export const ScansGrid: FC = () => {
   // Transform logDetails into flat rows
   const data = useMemo(() => {
     const dirs = new Set<string>();
-    const rows: ScanRow[] = [];
+    const rows: ScanJobSummary[] = [];
 
     scans.forEach((scan) => {
       const relativeLocation = toRelativePath(scan.location, resultsDir || "");
 
       const dir = dirname(relativeLocation);
       if (dir === paramsRelativePath) {
-        const row: ScanRow = {
+        const row: ScanJobSummary = {
           icon:
             scan.errors.length > 1
               ? ApplicationIcons.error
@@ -100,7 +100,7 @@ export const ScansGrid: FC = () => {
 
       if (!dirs.has(dir) && dir !== "" && dir !== paramsRelativePath) {
         dirs.add(dir);
-        const dirRow: ScanRow = {
+        const dirRow: ScanJobSummary = {
           timestamp: "",
           location: "",
           icon: ApplicationIcons.folder,
@@ -119,8 +119,8 @@ export const ScansGrid: FC = () => {
   }, [scans, resultsDir, paramsRelativePath]);
 
   // Create column definitions
-  const columnDefs = useMemo((): ColDef<ScanRow>[] => {
-    const baseColumns: ColDef<ScanRow>[] = [
+  const columnDefs = useMemo((): ColDef<ScanJobSummary>[] => {
+    const baseColumns: ColDef<ScanJobSummary>[] = [
       {
         field: "icon",
         headerName: "",
@@ -188,7 +188,7 @@ export const ScansGrid: FC = () => {
 
   return (
     <div className={styles.gridWrapper}>
-      <AgGridReact<ScanRow>
+      <AgGridReact<ScanJobSummary>
         rowData={data}
         columnDefs={columnDefs}
         defaultColDef={{
@@ -203,11 +203,11 @@ export const ScansGrid: FC = () => {
         enableCellTextSelection={true}
         autoSizeStrategy={{ type: "fitGridWidth" }}
         initialState={gridState}
-        onStateUpdated={(e: StateUpdatedEvent<ScanRow>) => {
+        onStateUpdated={(e: StateUpdatedEvent<ScanJobSummary>) => {
           setGridState(GRID_STATE_NAME, e.state);
         }}
         rowClass={styles.row}
-        onRowClicked={(e: RowClickedEvent<ScanRow>) => {
+        onRowClicked={(e: RowClickedEvent<ScanJobSummary>) => {
           if (e.data) {
             void navigate(`/scan/${e.data.relativeLocation}`);
           }

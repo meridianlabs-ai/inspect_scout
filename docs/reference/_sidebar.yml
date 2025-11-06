@@ -110,8 +110,6 @@ website:
           href: reference/scanner.qmd#messages_as_str
         - text: ContentPreprocessor
           href: reference/scanner.qmd#contentpreprocessor
-        - text: extract_references
-          href: reference/scanner.qmd#extract_references
         - text: MessageType
           href: reference/scanner.qmd#messagetype
         - text: EventType

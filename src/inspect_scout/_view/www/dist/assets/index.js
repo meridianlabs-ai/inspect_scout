@@ -108982,9 +108982,17 @@ const DataframeView = ({ columnTable }) => {
     const rowData2 = columnTable.objects();
     return { columnDefs: columnDefs2, rowData: rowData2 };
   }, [columnTable]);
+  const gridRef = reactExports.useRef(null);
+  const resizeGridColumns = reactExports.useCallback(
+    debounce(() => {
+      gridRef.current?.api?.sizeColumnsToFit();
+    }, 10),
+    []
+  );
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$b.gridWrapper, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     AgGridReact,
     {
+      ref: gridRef,
       rowData,
       columnDefs,
       defaultColDef: {
@@ -109002,7 +109010,8 @@ const DataframeView = ({ columnTable }) => {
       initialState: gridState,
       onStateUpdated: (e) => {
         setGridState(GRID_STATE_NAME$1, e.state);
-      }
+      },
+      onGridSizeChanged: resizeGridColumns
     }
   ) });
 };

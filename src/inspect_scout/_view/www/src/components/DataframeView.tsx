@@ -7,11 +7,12 @@ import {
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { ColumnTable } from "arquero";
-import { FC, useMemo } from "react";
+import { FC, useCallback, useMemo, useRef } from "react";
 
 import { useStore } from "../state/store";
 
 import styles from "./DataframeView.module.css";
+import { debounce } from "../utils/sync";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -52,9 +53,19 @@ export const DataframeView: FC<DataframeViewProps> = ({ columnTable }) => {
     return { columnDefs, rowData };
   }, [columnTable]);
 
+  const gridRef = useRef<AgGridReact>(null);
+  const resizeGridColumns = useCallback(
+    debounce(() => {
+      // Trigger column sizing after grid is ready
+      gridRef.current?.api?.sizeColumnsToFit();
+    }, 10),
+    []
+  );
+
   return (
     <div className={styles.gridWrapper}>
       <AgGridReact
+        ref={gridRef}
         rowData={rowData}
         columnDefs={columnDefs}
         defaultColDef={{
@@ -73,6 +84,7 @@ export const DataframeView: FC<DataframeViewProps> = ({ columnTable }) => {
         onStateUpdated={(e: StateUpdatedEvent) => {
           setGridState(GRID_STATE_NAME, e.state);
         }}
+        onGridSizeChanged={resizeGridColumns}
       />
     </div>
   );

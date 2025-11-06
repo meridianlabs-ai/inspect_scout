@@ -8,11 +8,11 @@ import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Navbar } from "../navbar/Navbar";
 
-import styles from "./ScanPanel.module.css";
-import { ScanPanelBody } from "./ScanPanelBody";
-import { ScanPanelTitle } from "./ScanPanelTitle";
+import styles from "./ScannerPanel.module.css";
+import { ScannerPanelBody } from "./ScannerPanelBody";
+import { ScannerPanelTitle } from "./ScannerPanelTitle";
 
-export const ScanPanel: React.FC = () => {
+export const ScannerPanel: React.FC = () => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const singleFileMode = useStore((state) => state.singleFileMode);
@@ -55,9 +55,9 @@ export const ScanPanel: React.FC = () => {
     <div className={clsx(styles.root)}>
       {singleFileMode || <Navbar />}
       <ActivityBar animating={!!loading} />
-      <ScanPanelTitle />
+      <ScannerPanelTitle />
       <ExtendedFindProvider>
-        <ScanPanelBody />
+        <ScannerPanelBody />
       </ExtendedFindProvider>
     </div>
   );

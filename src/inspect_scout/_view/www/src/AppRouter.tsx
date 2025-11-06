@@ -7,7 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import { ScanPanel } from "./app/scan/ScanPanel";
+import { ScannerPanel } from "./app/scanner/ScannerPanel";
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResult/ScanResultPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -87,7 +87,7 @@ const ScanOrScanResultsRoute = () => {
     return <Navigate to={`/scans/${relativePath}`} replace />;
   }
 
-  return <ScanPanel />;
+  return <ScannerPanel />;
 };
 
 export const AppRouter = createHashRouter(

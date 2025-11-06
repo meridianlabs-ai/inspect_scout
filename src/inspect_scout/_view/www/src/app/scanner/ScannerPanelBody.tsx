@@ -10,7 +10,7 @@ import { ApplicationIcons } from "../appearance/icons";
 
 import { ScanInfo } from "./info/ScanInfo";
 import { ScanResultsPanel } from "./results/ScanResultsPanel";
-import styles from "./ScanPanelBody.module.css";
+import styles from "./ScannerPanelBody.module.css";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -19,7 +19,7 @@ const kTabIdJson = "scan-detail-tabs-json";
 export const kSegmentList = "list";
 export const kSegmentDataframe = "dataframe";
 
-export const ScanPanelBody: React.FC = () => {
+export const ScannerPanelBody: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
   const setSelectedResultsTab = useStore(

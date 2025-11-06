@@ -1034,6 +1034,19 @@ a._citationLink_1ggvf_9:hover {
 ._subtitle_w3uwk_41 {
   grid-column: 1 / -1;
 }
+._gridWrapper_1o0hu_1 {
+  height: 100%;
+  border-top: solid 1px var(--bs-border-color);
+}
+
+/* Hide sort index numbers in multi-column sort */
+._gridWrapper_1o0hu_1 .ag-header-cell .ag-sort-order {
+  display: none;
+}
+
+._row_1o0hu_11 {
+  cursor: pointer;
+}
 ._root_1xyi1_1 {
   height: 100vh;
   display: grid;
@@ -1054,19 +1067,6 @@ a._citationLink_1ggvf_9:hover {
 
 ._tabControl_1xyi1_19 {
   margin: 0.5rem;
-}
-._gridWrapper_1o0hu_1 {
-  height: 100%;
-  border-top: solid 1px var(--bs-border-color);
-}
-
-/* Hide sort index numbers in multi-column sort */
-._gridWrapper_1o0hu_1 .ag-header-cell .ag-sort-order {
-  display: none;
-}
-
-._row_1o0hu_11 {
-  cursor: pointer;
 }
 .error-panel {
   flex-direction: column;

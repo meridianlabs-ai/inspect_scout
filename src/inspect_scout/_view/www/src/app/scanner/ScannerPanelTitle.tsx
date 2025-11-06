@@ -3,9 +3,9 @@ import { FC } from "react";
 
 import { useStore } from "../../state/store";
 
-import styles from "./ScanPanelTitle.module.css";
+import styles from "./ScannerPanelTitle.module.css";
 
-export const ScanPanelTitle: FC = () => {
+export const ScannerPanelTitle: FC = () => {
   const selectedResults = useStore((state) => state.selectedResults);
   const errorCount = selectedResults?.errors.length || 0;
   const status =

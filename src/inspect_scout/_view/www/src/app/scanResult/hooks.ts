@@ -2,8 +2,8 @@ import { fromArrow } from "arquero";
 import { useMemo } from "react";
 
 import { useStore } from "../../state/store";
-import { useSelectedScanner } from "../scan/results/hooks";
-import { useScannerData } from "../scan/results/list/hooks";
+import { useSelectedScanner } from "../scanner/results/hooks";
+import { useScannerData } from "../scanner/results/list/hooks";
 
 export const useSelectedResultsRow = (scanResultUuid: string) => {
   // TODO: Centralize this with a cache in the store

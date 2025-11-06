@@ -9,15 +9,16 @@ import {
   themeBalham,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { FC, useMemo } from "react";
+import { FC, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
 import { dirname, toRelativePath } from "../../utils/path";
+import { debounce } from "../../utils/sync";
 import { ApplicationIcons } from "../appearance/icons";
 
-import styles from "./ScanJobGrid.module.css";
+import styles from "./ScanJobsGrid.module.css";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -186,9 +187,19 @@ export const ScanJobGrid: FC = () => {
     return baseColumns;
   }, []);
 
+  const gridRef = useRef<AgGridReact>(null);
+  const resizeGridColumns = useCallback(
+    debounce(() => {
+      // Trigger column sizing after grid is ready
+      gridRef.current?.api?.sizeColumnsToFit();
+    }, 10),
+    []
+  );
+
   return (
     <div className={styles.gridWrapper}>
       <AgGridReact<ScanJobSummary>
+        ref={gridRef}
         rowData={data}
         columnDefs={columnDefs}
         defaultColDef={{
@@ -212,6 +223,7 @@ export const ScanJobGrid: FC = () => {
             void navigate(`/scan/${e.data.relativeLocation}`);
           }
         }}
+        onGridSizeChanged={resizeGridColumns}
       />
     </div>
   );

@@ -5,7 +5,7 @@ import { FC, useMemo } from "react";
 
 import { DataframeView } from "../../../components/DataframeView";
 import { useStore } from "../../../state/store";
-import { kSegmentDataframe, kSegmentList } from "../ScanPanelBody";
+import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
 import { useSelectedScanner } from "./hooks";
 import { ScanResultsList } from "./list/ScanResultsList";

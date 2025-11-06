@@ -1,37 +1,49 @@
 # mypy: disable-error-code="unused-ignore"
+import json
 from pathlib import Path
 
 import yaml
+from inspect_ai.model import Model, get_model
 from jinja2 import Environment
 
-from inspect_scout import (
-    Result,
-    Scanner,
-    scanner,
-)
-
 from .._scanner.extract import messages_as_str
+from .._scanner.result import Result
+from .._scanner.scanner import Scanner, scanner
 from .._transcript.types import Transcript
 from .._util.jinja import StrictOnUseUndefined
 from .template import template  # type: ignore
 
 
 @scanner(messages="all")
-def complex_scanner() -> Scanner[Transcript]:
+def complex_scanner(
+    model: str | Model | None = None,
+) -> Scanner[Transcript]:
     async def execute(transcript: Transcript) -> Result:
-        prompt = _render_prompt(transcript)
-
-        messages_str, message_id_map = await messages_as_str(
+        messages_str, extract_references = await messages_as_str(
             transcript.messages, include_ids=True
         )
 
-        print(prompt, messages_str, message_id_map)
-        return Result(value=0)
+        model_output = await get_model(model).generate(
+            _render_prompt(messages_str, transcript)
+        )
+
+        try:
+            value = json.loads(model_output.completion)
+        except json.JSONDecodeError:
+            print(f"JSONDecodeError decoding '{model_output.completion}'")
+            raise
+
+        # TODO: This isn't quite right yet, but...
+        return Result(
+            value=value,
+            answer=model_output.completion,
+            references=extract_references(model_output.completion),
+        )
 
     return execute
 
 
-def _render_prompt(transcript: Transcript) -> str:
+def _render_prompt(messages: str, transcript: Transcript) -> str:
     path = Path(__file__).parent / "cheating.yml"
     with path.open("r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
@@ -49,7 +61,7 @@ def _render_prompt(transcript: Transcript) -> str:
                 transcript.messages[-1].text if transcript.messages else "unknown"
             ),
             task_success=transcript.score,
-            transcript="this will be the messages_as_str output",
+            transcript=messages,
             **data,
         )
     )

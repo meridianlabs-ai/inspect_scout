@@ -1,5 +1,5 @@
 import re
-from typing import Literal, Protocol, Sequence
+from typing import Callable, Literal, Protocol, Sequence
 
 from inspect_ai._util.pattern import ANSWER_PATTERN_LINE, ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
@@ -15,8 +15,7 @@ from pydantic import JsonValue
 
 from inspect_scout._llm_scanner.types import MultiLabels
 
-from .._scanner.extract import extract_references
-from .._scanner.result import Result
+from .._scanner.result import Reference, Result
 from .prompt import (
     BOOL_ANSWER_FORMAT,
     BOOL_ANSWER_PROMPT,
@@ -44,7 +43,7 @@ class Answer(Protocol):
         ...
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: dict[str, str]
+        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
         """Extract and return the result from model output."""
         ...
@@ -64,9 +63,9 @@ def answer_from_argument(
             case _:
                 raise ValueError(f"Invalid answer type: {answer}")
     elif isinstance(answer, list):
-        return LabelsAnswer(labels=answer)
+        return _LabelsAnswer(labels=answer)
     else:
-        return LabelsAnswer(labels=answer.labels, multi_classification=True)
+        return _LabelsAnswer(labels=answer.labels, multi_classification=True)
 
 
 class _BoolAnswer(Answer):
@@ -81,14 +80,14 @@ class _BoolAnswer(Answer):
         return BOOL_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: dict[str, str]
+        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
         match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
 
         if match:
             answer = match.group(1).lower()
             explanation = output.completion[: match.start()].strip()
-            references = extract_references(explanation, message_id_map)
+            references = extract_references(explanation)
 
             # Use a match instead of if/else so that answers other than yes or no flow
             # to the bottom.
@@ -123,7 +122,7 @@ class _NumberAnswer(Answer):
         return NUMBER_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: dict[str, str]
+        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
         match = re.search(ANSWER_PATTERN_WORD, output.completion)
 
@@ -132,7 +131,7 @@ class _NumberAnswer(Answer):
 
             if answer is not None:
                 explanation = output.completion[: match.start()].strip()
-                references = extract_references(explanation, message_id_map)
+                references = extract_references(explanation)
 
                 return Result(
                     value=answer,
@@ -145,7 +144,7 @@ class _NumberAnswer(Answer):
         return Result(value=False, explanation=output.completion)
 
 
-class LabelsAnswer(Answer):
+class _LabelsAnswer(Answer):
     """Answer implementation for multiple choice questions."""
 
     def __init__(self, labels: list[str], multi_classification: bool = False) -> None:
@@ -169,7 +168,7 @@ class LabelsAnswer(Answer):
         return Template(format_template).render(letters=letters)
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: dict[str, str]
+        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
         if not self.labels:
             raise ValueError("Must have labels")
@@ -183,7 +182,7 @@ class LabelsAnswer(Answer):
         if match:
             answer_text = match.group(1).strip()
             explanation = output.completion[: match.start()].strip()
-            references = extract_references(explanation, message_id_map)
+            references = extract_references(explanation)
 
             # Generate valid characters for all labels
             valid_characters = [_answer_character(i) for i in range(len(self.labels))]
@@ -241,7 +240,7 @@ class _StrAnswer(Answer):
         return STR_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: dict[str, str]
+        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
         match = re.search(ANSWER_PATTERN_LINE, output.completion, re.IGNORECASE)
 
@@ -252,7 +251,7 @@ class _StrAnswer(Answer):
                 return Result(value=None, explanation=output.completion)
 
             explanation = output.completion[: match.start()].strip()
-            references = extract_references(explanation, message_id_map)
+            references = extract_references(explanation)
 
             return Result(
                 value=answer_text,

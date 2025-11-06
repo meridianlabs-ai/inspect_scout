@@ -1,27 +1,34 @@
 """Tests for prompt rendering in llm_scanner."""
 
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 from inspect_ai.model import ChatMessage, ChatMessageUser, ModelOutput
 from inspect_scout._llm_scanner._llm_scanner import render_scanner_prompt
-from inspect_scout._llm_scanner.answer import _BoolAnswer
+from inspect_scout._llm_scanner.answer import Answer, _BoolAnswer
 from inspect_scout._llm_scanner.prompt import DEFAULT_SCANNER_TEMPLATE
-from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.result import Reference, Result
 from inspect_scout._transcript.types import Transcript
 from pydantic import JsonValue
 
 
-@dataclass
-class _TestAnswer:
+class _TestAnswer(Answer):
     """Test answer implementation."""
 
-    prompt: str
-    format: str
+    def __init__(self, prompt: str, format: str) -> None:
+        self._prompt = prompt
+        self._format = format
+
+    @property
+    def prompt(self) -> str:
+        return self._prompt
+
+    @property
+    def format(self) -> str:
+        return self._format
 
     def result_for_answer(
-        self, output: ModelOutput, message_id_map: dict[str, str]
+        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
         """Stub implementation for testing."""
         return Result(value=None)

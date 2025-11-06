@@ -4,11 +4,17 @@ import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout._llm_scanner.answer import (
     Answer,
-    LabelsAnswer,
     _BoolAnswer,
+    _LabelsAnswer,
     _NumberAnswer,
     _StrAnswer,
 )
+from inspect_scout._scanner.result import Reference
+
+
+def _dummy_extract_references(text: str) -> list[Reference]:
+    """Dummy extract_references function for testing."""
+    return []
 
 
 @pytest.mark.parametrize(
@@ -25,12 +31,12 @@ from inspect_scout._llm_scanner.answer import (
             "'ANSWER: $NUMBER' (without quotes) where $NUMBER is the numeric value.",
         ),
         (
-            LabelsAnswer(labels=["Choice A", "Choice B", "Choice C"]),
+            _LabelsAnswer(labels=["Choice A", "Choice B", "Choice C"]),
             "Answer the following multiple choice question about the conversation above",
             "'ANSWER: $LETTER' (without quotes) where $LETTER is one of A,B,C.",
         ),
         (
-            LabelsAnswer(
+            _LabelsAnswer(
                 labels=["Choice A", "Choice B", "Choice C"], multi_classification=True
             ),
             "Answer the following multiple choice question about the conversation above",
@@ -71,7 +77,7 @@ def test_bool_results(
     answer = _BoolAnswer()
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, {})
+    result = answer.result_for_answer(output, _dummy_extract_references)
 
     assert result.value is expected_value
     assert result.answer == expected_answer
@@ -94,7 +100,7 @@ def test_number_results(
     answer = _NumberAnswer()
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, {})
+    result = answer.result_for_answer(output, _dummy_extract_references)
 
     assert result.value == expected_value
     assert result.explanation == expected_explanation
@@ -136,10 +142,10 @@ def test_labels_results(
     expected_explanation: str,
 ) -> None:
     """Labels results parse various completion patterns."""
-    answer = LabelsAnswer(labels=labels)
+    answer = _LabelsAnswer(labels=labels)
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, {})
+    result = answer.result_for_answer(output, _dummy_extract_references)
 
     assert result.value == expected_value
     assert result.answer == expected_answer
@@ -247,10 +253,10 @@ def test_multi_classification_results(
     expected_explanation: str,
 ) -> None:
     """Multi-classification results parse comma-separated letters."""
-    answer = LabelsAnswer(labels=labels, multi_classification=True)
+    answer = _LabelsAnswer(labels=labels, multi_classification=True)
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, {})
+    result = answer.result_for_answer(output, _dummy_extract_references)
 
     assert result.value == expected_value
     assert result.answer == expected_answer
@@ -342,7 +348,7 @@ def test_str_results(
     answer = _StrAnswer()
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, {})
+    result = answer.result_for_answer(output, _dummy_extract_references)
 
     assert result.value == expected_value
     assert result.answer == expected_answer

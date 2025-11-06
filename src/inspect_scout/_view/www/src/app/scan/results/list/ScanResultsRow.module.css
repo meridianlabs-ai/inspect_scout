@@ -11,6 +11,14 @@
   cursor: pointer;
 }
 
+.row.disabled {
+  opacity: 0.7;
+}
+
+.row.disabled:hover {
+  cursor: default;
+}
+
 .value {
   justify-self: end;
 }
@@ -32,4 +40,7 @@
 
 .link:hover {
   color: var(--bs-body-color);
+}
+
+.navigable {
 }

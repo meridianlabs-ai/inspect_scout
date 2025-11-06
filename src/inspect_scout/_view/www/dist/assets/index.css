@@ -891,7 +891,7 @@ a._citationLink_1ggvf_9:hover {
   height: 100%;
   width: 100%;
 }
-._row_1ya60_1 {
+._row_1nvas_1 {
   display: grid;
   grid-template-columns: 1fr 10fr 1fr;
   column-gap: 0.5rem;
@@ -900,31 +900,42 @@ a._citationLink_1ggvf_9:hover {
   height: 150px;
 }
 
-._row_1ya60_1:hover {
+._row_1nvas_1:hover {
   cursor: pointer;
 }
 
-._value_1ya60_14 {
+._row_1nvas_1._disabled_1nvas_14 {
+  opacity: 0.7;
+}
+
+._row_1nvas_1._disabled_1nvas_14:hover {
+  cursor: default;
+}
+
+._value_1nvas_22 {
   justify-self: end;
 }
 
-._explanation_1ya60_18 {
+._explanation_1nvas_26 {
   overflow: hidden;
   text-overflow: ellipsis;
   height: calc(150px - 3em);
 }
 
-._row_1ya60_1._selected_1ya60_24 {
+._row_1nvas_1._selected_1nvas_32 {
   background-color: var(--bs-secondary-bg);
 }
 
-._link_1ya60_28 {
+._link_1nvas_36 {
   color: var(--bs-body-color);
   text-decoration: none;
 }
 
-._link_1ya60_28:hover {
+._link_1nvas_36:hover {
   color: var(--bs-body-color);
+}
+
+._navigable_1nvas_45 {
 }
 ._scannerHeaderRow_94id2_1 {
   display: grid;

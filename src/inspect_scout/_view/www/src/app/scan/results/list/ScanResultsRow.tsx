@@ -22,21 +22,28 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ index, entry }) => {
 
   // Generate the route to the scan result using the current scan path and the entry's uuid
   const scanResultUrl = scanResultRoute(relativePath, entry.uuid);
+  const isNavigable = entry.uuid !== undefined;
 
-  return (
-    <Link to={scanResultUrl} className={clsx(styles.link)}>
-      <div className={clsx(styles.row)}>
-        <div className={clsx(styles.id, "text-size-smaller")}>
-          <Identifier preview={entry} />
-        </div>
-        <div className={clsx(styles.explanation, "text-size-smaller")}>
-          <MarkdownDiv markdown={entry.explanation} />
-        </div>
-        <div className={clsx(styles.value, "text-size-smaller")}>
-          <Value preview={entry} />
-        </div>
+  const grid = (
+    <div className={clsx(styles.row, !isNavigable ? styles.disabled : "")}>
+      <div className={clsx(styles.id, "text-size-smaller")}>
+        <Identifier preview={entry} />
       </div>
+      <div className={clsx(styles.explanation, "text-size-smaller")}>
+        <MarkdownDiv markdown={entry.explanation} />
+      </div>
+      <div className={clsx(styles.value, "text-size-smaller")}>
+        <Value preview={entry} />
+      </div>
+    </div>
+  );
+
+  return isNavigable ? (
+    <Link to={scanResultUrl} className={clsx(styles.link)}>
+      {grid}
     </Link>
+  ) : (
+    grid
   );
 };
 

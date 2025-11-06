@@ -37050,8 +37050,8 @@ function _setAriaRelevant(element, relevant) {
 function _setAriaInvalid(element, invalid) {
   _toggleAriaAttribute(element, "invalid", invalid);
 }
-function _setAriaDisabled(element, disabled) {
-  _toggleAriaAttribute(element, "disabled", disabled);
+function _setAriaDisabled(element, disabled2) {
+  _toggleAriaAttribute(element, "disabled", disabled2);
 }
 function _setAriaHidden(element, hidden2) {
   _toggleAriaAttribute(element, "hidden", hidden2);
@@ -37135,9 +37135,9 @@ function _setVisible(element, visible2, options = {}) {
     _setAriaHidden(element, !visible2);
   }
 }
-function _setDisabled(element, disabled) {
+function _setDisabled(element, disabled2) {
   const attributeName = "disabled";
-  const addOrRemoveDisabledAttribute = disabled ? (e) => e.setAttribute(attributeName, "") : (e) => e.removeAttribute(attributeName);
+  const addOrRemoveDisabledAttribute = disabled2 ? (e) => e.setAttribute(attributeName, "") : (e) => e.removeAttribute(attributeName);
   addOrRemoveDisabledAttribute(element);
   const inputs = element.querySelectorAll("input") ?? [];
   for (const input of inputs) {
@@ -41954,9 +41954,9 @@ var AgAbstractLabel = class extends AgComponentStub {
   postConstruct() {
     this.addCss("ag-labeled");
     this.eLabel.classList.add("ag-label");
-    const { labelSeparator, label, labelWidth, labelAlignment, disabled } = this.config;
-    if (disabled != null) {
-      this.setDisabled(disabled);
+    const { labelSeparator, label, labelWidth, labelAlignment, disabled: disabled2 } = this.config;
+    if (disabled2 != null) {
+      this.setDisabled(disabled2);
     }
     if (labelSeparator != null) {
       this.setLabelSeparator(labelSeparator);
@@ -42031,12 +42031,12 @@ var AgAbstractLabel = class extends AgComponentStub {
     _setElementWidth(this.eLabel, width);
     return this;
   }
-  setDisabled(disabled) {
-    disabled = !!disabled;
+  setDisabled(disabled2) {
+    disabled2 = !!disabled2;
     const element = this.getGui();
-    _setDisabled(element, disabled);
-    element.classList.toggle("ag-disabled", disabled);
-    this.disabled = disabled;
+    _setDisabled(element, disabled2);
+    element.classList.toggle("ag-disabled", disabled2);
+    this.disabled = disabled2;
     return this;
   }
   isDisabled() {
@@ -42197,9 +42197,9 @@ var AgAbstractInputField = class extends AgAbstractField {
     this.refreshAriaLabelledBy();
     return this;
   }
-  setDisabled(disabled) {
-    _setDisabled(this.eInput, disabled);
-    return super.setDisabled(disabled);
+  setDisabled(disabled2) {
+    _setDisabled(this.eInput, disabled2);
+    return super.setDisabled(disabled2);
   }
   setAutoComplete(value2) {
     if (value2 === true) {
@@ -42247,9 +42247,9 @@ var AgCheckbox = class extends AgAbstractInputField {
     this.eInput.disabled = readOnly;
     this.readOnly = readOnly;
   }
-  setDisabled(disabled) {
-    this.eWrapper.classList.toggle("ag-disabled", disabled);
-    return super.setDisabled(disabled);
+  setDisabled(disabled2) {
+    this.eWrapper.classList.toggle("ag-disabled", disabled2);
+    return super.setDisabled(disabled2);
   }
   toggle() {
     if (this.eInput.disabled) {
@@ -52536,11 +52536,11 @@ var CheckboxCellRenderer = class extends Component {
       return;
     }
     eCheckbox.setValue(isSelected);
-    const disabled = params.disabled ?? !column2?.isCellEditable(node);
-    eCheckbox.setDisabled(disabled);
+    const disabled2 = params.disabled ?? !column2?.isCellEditable(node);
+    eCheckbox.setDisabled(disabled2);
     const translate = this.getLocaleTextFunc();
     const stateName = _getAriaCheckboxStateName(translate, isSelected);
-    const ariaLabel = disabled ? stateName : `${translate("ariaToggleCellValue", "Press SPACE to toggle cell value")} (${stateName})`;
+    const ariaLabel = disabled2 ? stateName : `${translate("ariaToggleCellValue", "Press SPACE to toggle cell value")} (${stateName})`;
     eCheckbox.setInputAriaLabel(ariaLabel);
   }
   onCheckboxChanged(isSelected) {
@@ -53435,14 +53435,14 @@ var CheckboxSelectionComponent = class extends Component {
     } else {
       checkboxes = isVisible ?? false;
     }
-    const disabled = selectable && !checkboxes || !selectable && checkboxes;
+    const disabled2 = selectable && !checkboxes || !selectable && checkboxes;
     const visible2 = selectable || checkboxes;
     const so2 = gos.get("rowSelection");
     const showDisabledCheckboxes = so2 && typeof so2 !== "string" ? !_getHideDisabledCheckboxes(so2) : !!column2?.getColDef().showDisabledCheckboxes;
-    this.setVisible(visible2 && (disabled ? showDisabledCheckboxes : true));
-    this.setDisplayed(visible2 && (disabled ? showDisabledCheckboxes : true));
+    this.setVisible(visible2 && (disabled2 ? showDisabledCheckboxes : true));
+    this.setDisplayed(visible2 && (disabled2 ? showDisabledCheckboxes : true));
     if (visible2) {
-      this.eCheckbox.setDisabled(disabled);
+      this.eCheckbox.setDisabled(disabled2);
     }
     if (overrides?.removeHidden) {
       this.setDisplayed(visible2);
@@ -77896,12 +77896,12 @@ var SimpleFilter = class extends ProvidedFilter {
   }
   updateConditionStatusesAndValues(lastUiCompletePosition, joinOperator) {
     this.eTypes.forEach((eType, position) => {
-      const disabled = this.isConditionDisabled(position, lastUiCompletePosition);
-      eType.setDisabled(disabled || this.filterListOptions.length <= 1);
+      const disabled2 = this.isConditionDisabled(position, lastUiCompletePosition);
+      eType.setDisabled(disabled2 || this.filterListOptions.length <= 1);
       if (position === 1) {
-        _setDisabled(this.eJoinPanels[0], disabled);
-        this.eJoinAnds[0].setDisabled(disabled);
-        this.eJoinOrs[0].setDisabled(disabled);
+        _setDisabled(this.eJoinPanels[0], disabled2);
+        this.eJoinAnds[0].setDisabled(disabled2);
+        this.eJoinOrs[0].setDisabled(disabled2);
       }
     });
     this.eConditionBodies.forEach((element, index) => {
@@ -78062,9 +78062,9 @@ var SimpleFilter = class extends ProvidedFilter {
       _setDisplayed(element.getGui(), displayed);
     }
   }
-  setElementDisabled(element, disabled) {
+  setElementDisabled(element, disabled2) {
     if (_isComponent(element)) {
-      _setDisabled(element.getGui(), disabled);
+      _setDisabled(element.getGui(), disabled2);
     }
   }
   attachElementOnChange(element, listener) {
@@ -78254,12 +78254,12 @@ var DateCompWrapper = class {
       }
       eParent.appendChild(dateComp.getGui());
       dateComp?.afterGuiAttached?.();
-      const { tempValue, disabled } = this;
+      const { tempValue, disabled: disabled2 } = this;
       if (tempValue) {
         dateComp.setDate(tempValue);
       }
-      if (disabled != null) {
-        dateComp.setDisabled?.(disabled);
+      if (disabled2 != null) {
+        dateComp.setDisabled?.(disabled2);
       }
       onReady?.(this);
     });
@@ -78279,12 +78279,12 @@ var DateCompWrapper = class {
       this.tempValue = value2;
     }
   }
-  setDisabled(disabled) {
+  setDisabled(disabled2) {
     const dateComp = this.dateComp;
     if (dateComp) {
-      dateComp.setDisabled?.(disabled);
+      dateComp.setDisabled?.(disabled2);
     } else {
-      this.disabled = disabled;
+      this.disabled = disabled2;
     }
   }
   setDisplayed(displayed) {
@@ -78392,8 +78392,8 @@ var DateFilter = class extends SimpleFilter {
   setElementDisplayed(element, displayed) {
     element.setDisplayed(displayed);
   }
-  setElementDisabled(element, disabled) {
-    element.setDisabled(disabled);
+  setElementDisabled(element, disabled2) {
+    element.setDisabled(disabled2);
   }
   createEValue() {
     const eCondition = _createElement({ tag: "div", cls: "ag-filter-body" });
@@ -79184,8 +79184,8 @@ var DefaultDateComponent = class extends Component {
   setInputAriaLabel(ariaLabel) {
     this.eDateInput.setAriaLabel(ariaLabel);
   }
-  setDisabled(disabled) {
-    this.eDateInput.setDisabled(disabled);
+  setDisabled(disabled2) {
+    this.eDateInput.setDisabled(disabled2);
   }
   afterGuiAttached(params) {
     if (!params?.suppressFocus) {
@@ -88422,9 +88422,9 @@ var PaginationComp = class extends TabGuardComp$1 {
     this.toggleButtonDisabled(this.btNext, this.nextButtonDisabled);
     this.toggleButtonDisabled(this.btLast, this.lastButtonDisabled);
   }
-  toggleButtonDisabled(button, disabled) {
-    _setAriaDisabled(button, disabled);
-    button.classList.toggle("ag-disabled", disabled);
+  toggleButtonDisabled(button, disabled2) {
+    _setAriaDisabled(button, disabled2);
+    button.classList.toggle("ag-disabled", disabled2);
   }
   isZeroPagesToDisplay() {
     const maxRowFound = this.rowModel.isLastRowIndexKnown();
@@ -109363,12 +109363,14 @@ const container$3 = "_container_1quph_1";
 const styles$8 = {
   container: container$3
 };
-const row = "_row_1ya60_1";
-const value = "_value_1ya60_14";
-const explanation = "_explanation_1ya60_18";
-const link = "_link_1ya60_28";
+const row = "_row_1nvas_1";
+const disabled = "_disabled_1nvas_14";
+const value = "_value_1nvas_22";
+const explanation = "_explanation_1nvas_26";
+const link = "_link_1nvas_36";
 const styles$7 = {
   row,
+  disabled,
   value,
   explanation,
   link
@@ -109377,11 +109379,13 @@ const ScanResultsRow$1 = ({ index, entry: entry2 }) => {
   const params = useParams();
   const relativePath = getRelativePathFromParams(params);
   const scanResultUrl = scanResultRoute(relativePath, entry2.uuid);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: scanResultUrl, className: clsx(styles$7.link), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.row), children: [
+  const isNavigable = entry2.uuid !== void 0;
+  const grid2 = /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$7.row, !isNavigable ? styles$7.disabled : ""), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.id, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Identifier, { preview: entry2 }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.explanation, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: entry2.explanation }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$7.value, "text-size-smaller"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(Value, { preview: entry2 }) })
-  ] }) });
+  ] });
+  return isNavigable ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: scanResultUrl, className: clsx(styles$7.link), children: grid2 }) : grid2;
 };
 const Identifier = ({ preview }) => {
   if (preview.type === "transcript") {

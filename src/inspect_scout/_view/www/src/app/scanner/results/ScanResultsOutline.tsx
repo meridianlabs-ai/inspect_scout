@@ -47,7 +47,9 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
   const handleClick = useCallback(
     (title: string) => {
       setSelectedScanner(title);
-      setSearchParams(updateScannerParam(searchParams, title), { replace: true });
+      setSearchParams(updateScannerParam(searchParams, title), {
+        replace: true,
+      });
     },
     [setSelectedScanner, searchParams, setSearchParams]
   );

@@ -99,18 +99,21 @@ export const ScanResultPanel: FC = () => {
               handleTabChange(kTabIdInput);
             }}
           >
-            <InputPanel />
+            <InputPanel result={selectedResult} />
           </TabPanel>
-          <TabPanel
-            id={kTabIdTranscript}
-            selected={selectedTab === kTabIdTranscript}
-            title="Transcript"
-            onSelected={() => {
-              handleTabChange(kTabIdTranscript);
-            }}
-          >
-            <TranscriptPanel id="scan-transcript" result={selectedResult} />
-          </TabPanel>
+          {selectedResult?.scanEvents &&
+            selectedResult?.scanEvents.length > 0 && (
+              <TabPanel
+                id={kTabIdTranscript}
+                selected={selectedTab === kTabIdTranscript}
+                title="Transcript"
+                onSelected={() => {
+                  handleTabChange(kTabIdTranscript);
+                }}
+              >
+                <TranscriptPanel id="scan-transcript" result={selectedResult} />
+              </TabPanel>
+            )}
           <TabPanel
             id={kTabIdInfo}
             selected={selectedTab === kTabIdInfo}

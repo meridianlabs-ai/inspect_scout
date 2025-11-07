@@ -908,6 +908,8 @@ We can also use it with the `inspect score` command:
 inspect score --scorer scanners.py@confusion <logfile.eval>
 ```
 
+### Metrics
+
 The metrics used for the scorer will default to `accuracy()` and
 `stderr()`—however, you can also explicitly specify metrics on the
 `@scanner` decorator:
@@ -930,6 +932,29 @@ from .scanners import confusion
 
 eval(ctf_task(scorer=as_scorer(confusion())))
 ```
+
+### Result Sets
+
+If your scanner yields [multiple results](#multiple-results) you can
+still use it as a scorer, but you will want to provide a dictionary of
+metrics corresponding to the labels used by your results. For example,
+if you have a scanner that can yield results with `label="deception"` or
+`label="misconfiguration"`, you might declare your metrics like this:
+
+``` python
+@scanner(messages="all", metrics=[{ "deception": [accuracy(), stderr()], "misconfiguration": [accuracy(), stderr()] }])
+def my_scanner() -> Scanner[Transcript]: ...
+```
+
+Or you can use a glob (\*) to use the same metrics for all labels:
+
+``` python
+@scanner(messages="all", metrics=[{ "*": [accuracy(), stderr()] }])
+def my_scanner() -> Scanner[Transcript]: ...
+```
+
+You should also be sure to return a result for each supported label (so
+that metrics can be computed correctly on each row).
 
 ## Custom Loaders
 

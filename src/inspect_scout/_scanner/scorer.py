@@ -1,5 +1,6 @@
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, cast
 
+from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.registry import is_registry_object, registry_unqualified_name
 from inspect_ai.log import transcript as sample_transcript
 from inspect_ai.scorer import (
@@ -70,13 +71,30 @@ def as_scorer(
             if result.value is None:
                 return None
 
-            # return score
-            return Score(
-                value=_as_score_value(result.value),
-                answer=result.answer,
-                explanation=result.explanation,
-                metadata=_metadata_from_result(result),
-            )
+            # if its a resultset, then project as dict
+            if result.type == "resultset":
+                results_list = cast(list[dict[str, JsonValue]], result.value)
+                results_dict: dict[str, int | bool | float | str | None] = {}
+                for result_item in results_list:
+                    # get and validate label
+                    label = result_item.get("label", None)
+                    if label is None:
+                        raise RuntimeError("Unlabeled result.")
+                    # take first label only
+                    if label not in results_dict:
+                        # extract and setvalue (must be scalar)
+                        value = result_item.get("value")
+                        if isinstance(value, list | dict):
+                            value = to_json_str_safe(value)
+                        results_dict[str(label)] = value
+                return Score(value=results_dict)
+            else:
+                return Score(
+                    value=_as_score_value(result.value),
+                    answer=result.answer,
+                    explanation=result.explanation,
+                    metadata=_metadata_from_result(result),
+                )
 
         return score
 
@@ -108,10 +126,15 @@ def _metadata_from_result(result: Result) -> dict[str, Any] | None:
 
 def _as_score_value(value: JsonValue) -> Value:
     if isinstance(value, list):
-        return [v if isinstance(v, str | int | float | bool) else str(v) for v in value]
+        return [
+            v if isinstance(v, str | int | float | bool) else to_json_str_safe(v)
+            for v in value
+        ]
     elif isinstance(value, dict):
         return {
-            k: v if isinstance(v, str | int | float | bool | None) else str(v)
+            k: v
+            if isinstance(v, str | int | float | bool | None)
+            else to_json_str_safe(v)
             for k, v in value.items()
         }
     elif isinstance(value, str | int | float | bool):

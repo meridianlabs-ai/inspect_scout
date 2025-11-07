@@ -1,15 +1,13 @@
 .container {
   padding: 1rem;
-  display: grid;
-  grid-template-columns: 1fr max-content;
-  grid-template-rows: max-content max-content;
-  row-gap: 1rem;
-  column-gap: 0.5rem;
-}
-
-.labeled {
 }
 
 .colspan {
   grid-column: span 2;
+}
+
+.explanation {
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  column-gap: 0.5rem;
 }

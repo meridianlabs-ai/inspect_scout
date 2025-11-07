@@ -8,6 +8,7 @@ interface CardHeaderProps {
   id?: string;
   icon?: string;
   label?: string;
+  type?: "default" | "modern";
   className?: string;
   children?: ReactNode;
 }
@@ -36,19 +37,27 @@ interface CardCollapsingHeaderProps {
 export const CardHeader: FC<CardHeaderProps> = ({
   id,
   icon,
+  type,
   label,
   className,
   children,
 }) => {
   return (
     <div
-      className={clsx("card-header-container", "text-style-label", className)}
+      className={clsx(
+        "card-header-container",
+        "text-style-label",
+        className,
+        type === "modern" ? "card-header-modern" : ""
+      )}
       id={id || ""}
     >
       {icon ? (
         <i className={clsx("card-header-icon", icon)}></i>
       ) : (
-        <span className={"card-header-icon"}></span>
+        <span
+          className={clsx("card-header-icon", "card-header-icon-empty")}
+        ></span>
       )}
       {label ? label : ""} {children}
     </div>

@@ -1,4 +1,4 @@
-.card-header-container {
+.card-header-container:not(.card-header-modern) {
   display: grid;
   grid-template-columns: max-content auto;
   column-gap: 0em;
@@ -8,20 +8,29 @@
   border-bottom: solid 1px var(--bs-light-border-subtle);
 }
 
-.card-header-icon {
+.card-header-container.card-header-modern {
+  display: grid;
+  grid-template-columns: max-content auto;
+  column-gap: 0rem;
+  font-size: var(--inspect-font-size-small);
+  color: var(--bs-secondary);
+  padding: 0.5rem 0.5rem 0rem 0.5rem;
+}
+
+.card-header-icon:not(.card-header-icon-empty) {
   padding-right: 0.2rem;
 }
 
 .card-body {
   background-color: var(--bs-body-bg);
-
-  padding: 0.5em;
+  padding: 0.5rem !important;
 }
 
 .card {
   background-color: var(--bs-light-bg-subtle);
   border: solid 1px var(--bs-light-border-subtle);
   border-radius: var(--bs-border-radius);
+  overflow: hidden;
 }
 
 .card-collaping-header {

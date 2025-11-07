@@ -1,6 +1,10 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, useMemo } from "react";
 
+import { ChatView } from "../../../chat/ChatView";
+import { messagesFromEvents } from "../../../chat/messages";
+import { Card, CardBody } from "../../../components/Card";
+import { LabeledValue } from "../../../components/LabeledValue";
 import { MarkdownDiv } from "../../../components/MarkdownDiv";
 import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
@@ -13,43 +17,56 @@ interface ResultPanelProps {
 }
 
 export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
+  const messages = useMemo(() => {
+    if (result && result.scanEvents && result.scanEvents.length > 0) {
+      return messagesFromEvents(result.scanEvents);
+    }
+    return [];
+  }, [result?.scanEvents]);
+  console.log({ messages });
+
   return (
     result && (
-      <div className={clsx(styles.container)}>
-        <div className={clsx(styles.labeled)}>
-          <div className={clsx("text-size-small")}>
-            <div className={clsx("text-style-label", "text-style-secondary")}>
-              Explanation
-            </div>
-            <MarkdownDiv
-              markdown={result?.explanation || "No explanation provided."}
-            />
-          </div>
-        </div>
-        <div className={clsx(styles.labeled)}>
-          <div className={clsx("text-size-small")}>
-            <div className={clsx("text-style-label", "text-style-secondary")}>
-              Value
-            </div>
-            <Value result={result} />
-          </div>
-        </div>
+      <div className={clsx(styles.container, "text-size-base")}>
+        <Card>
+          <CardBody className={clsx(styles.explanation)}>
+            <LabeledValue label="Explanation">
+              <MarkdownDiv
+                markdown={result?.explanation || "No explanation provided."}
+              />
+            </LabeledValue>
+            <LabeledValue label="Value">
+              <Value result={result} />
+            </LabeledValue>
+          </CardBody>
+        </Card>
+        {messages.length > 0 && (
+          <Card>
+            <CardBody>
+              <LabeledValue label="Scan Conversation">
+                <ChatView
+                  numbered={false}
+                  messages={messages}
+                  id={`scan-result-chat`}
+                  toolCallStyle={"compact"}
+                  indented={false}
+                />
+              </LabeledValue>
+            </CardBody>
+          </Card>
+        )}
+
         {result.metadata && Object.keys(result.metadata).length > 0 && (
-          <div className={clsx(styles.colspan)}>
-            <div className={clsx(styles.labeled)}>
-              <div className={clsx("text-size-small")}>
-                <div
-                  className={clsx("text-style-label", "text-style-secondary")}
-                >
-                  Metadata
-                </div>
+          <Card>
+            <CardBody>
+              <LabeledValue label="Metadata">
                 <RecordTree
                   id={`result-metadata-${result.uuid}`}
                   record={result.metadata || {}}
                 />
-              </div>
-            </div>
-          </div>
+              </LabeledValue>
+            </CardBody>
+          </Card>
         )}
       </div>
     )

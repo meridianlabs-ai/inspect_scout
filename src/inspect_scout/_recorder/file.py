@@ -378,6 +378,8 @@ def _create_expanded_view_sql(
         "answer",
         "explanation",
         "metadata",
+        "message_references",
+        "event_references",
     }
 
     # These columns should be NULL in expanded rows to avoid incorrect aggregation
@@ -418,7 +420,7 @@ def _create_expanded_view_sql(
     for col in all_columns:
         if col in base_columns:
             # Base columns from the parquet table
-            expanded_col_selects.append(f"r.{col}")
+            expanded_col_selects.append(f"base_row.{col}")
         elif col in scan_execution_fields:
             # NULL out scan execution fields to avoid incorrect aggregation
             expanded_col_selects.append(f"NULL AS {col}")
@@ -448,13 +450,29 @@ def _create_expanded_view_sql(
             expanded_col_selects.append(
                 "COALESCE(json_extract_string(CAST(elem AS JSON), '$.metadata'), '{{}}') AS metadata"
             )
+        elif col == "message_references":
+            # Extract references array and filter by type="message"
+            # Use CASE to handle NULL references, scalar subquery to filter
+            expanded_col_selects.append(
+                "CAST(CASE WHEN json_extract(CAST(elem AS JSON), '$.references') IS NULL THEN '[]'::JSON "
+                "ELSE (SELECT COALESCE(list(ref), []) FROM UNNEST(CAST(json_extract(CAST(elem AS JSON), '$.references') AS JSON[])) AS t(ref) "
+                "WHERE json_extract_string(CAST(ref AS JSON), '$.type') = 'message') END AS JSON) AS message_references"
+            )
+        elif col == "event_references":
+            # Extract references array and filter by type="event"
+            # Use CASE to handle NULL references, scalar subquery to filter
+            expanded_col_selects.append(
+                "CAST(CASE WHEN json_extract(CAST(elem AS JSON), '$.references') IS NULL THEN '[]'::JSON "
+                "ELSE (SELECT COALESCE(list(ref), []) FROM UNNEST(CAST(json_extract(CAST(elem AS JSON), '$.references') AS JSON[])) AS t(ref) "
+                "WHERE json_extract_string(CAST(ref AS JSON), '$.type') = 'event') END AS JSON) AS event_references"
+            )
 
     expanded_resultset_query = f"""
     SELECT
         {", ".join(expanded_col_selects)}
-    FROM read_parquet('{parquet_path}') r,
-    UNNEST(CAST(json_extract(r.value, '$') AS JSON[])) AS t(elem)
-    WHERE r.value_type = 'resultset'
+    FROM read_parquet('{parquet_path}') base_row,
+    UNNEST(CAST(json_extract(base_row.value, '$') AS JSON[])) AS t(elem)
+    WHERE base_row.value_type = 'resultset'
     """
 
     # Combine both queries with UNION ALL

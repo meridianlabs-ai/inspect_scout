@@ -572,3 +572,147 @@ def test_duckdb_resultset_expansion_nulls_scan_execution_fields() -> None:
         assert df["scan_model_usage"].isna().all()
 
         results_db.conn.close()
+
+
+@scanner(name="resultset_with_references_scanner", messages="all")
+def resultset_with_references_scanner_factory() -> Scanner[Transcript]:
+    """Scanner that returns a resultset with Results containing references."""
+    from inspect_scout._scanner.result import Reference
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        # Create results with different reference types
+        results = [
+            Result(
+                label="finding1",
+                value=True,
+                explanation="Found issue in message 1",
+                references=[
+                    Reference(type="message", cite="[M1]", id="msg-1"),
+                    Reference(type="message", cite="[M2]", id="msg-2"),
+                ],
+            ),
+            Result(
+                label="finding2",
+                value=False,
+                explanation="No issue in event 1",
+                references=[
+                    Reference(type="event", cite="[E1]", id="event-1"),
+                ],
+            ),
+            Result(
+                label="finding3",
+                value="mixed",
+                explanation="Mixed references",
+                references=[
+                    Reference(type="message", cite="[M3]", id="msg-3"),
+                    Reference(type="event", cite="[E2]", id="event-2"),
+                    Reference(type="event", cite="[E3]", id="event-3"),
+                ],
+            ),
+        ]
+        return result_set(results)
+
+    return scan_transcript
+
+
+def test_resultset_expansion_with_references() -> None:
+    """Test that references are properly split by type in expanded rows."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[resultset_with_references_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,
+            max_processes=1,
+        )
+
+        results = scan_results_df(
+            status.location, scanner="resultset_with_references_scanner"
+        )
+        df = results.scanners["resultset_with_references_scanner"]
+
+        # Should have 3 rows (one for each result in the resultset)
+        assert len(df) == 3
+
+        # Check that reference columns exist
+        assert "message_references" in df.columns
+        assert "event_references" in df.columns
+
+        # Check first row (2 message refs, 0 event refs)
+        row1 = df[df["label"] == "finding1"].iloc[0]
+        import json
+
+        msg_refs_1 = json.loads(row1["message_references"])
+        event_refs_1 = json.loads(row1["event_references"])
+        assert len(msg_refs_1) == 2
+        assert len(event_refs_1) == 0
+        assert msg_refs_1[0]["type"] == "message"
+        assert msg_refs_1[0]["cite"] == "[M1]"
+
+        # Check second row (0 message refs, 1 event ref)
+        row2 = df[df["label"] == "finding2"].iloc[0]
+        msg_refs_2 = json.loads(row2["message_references"])
+        event_refs_2 = json.loads(row2["event_references"])
+        assert len(msg_refs_2) == 0
+        assert len(event_refs_2) == 1
+        assert event_refs_2[0]["type"] == "event"
+        assert event_refs_2[0]["cite"] == "[E1]"
+
+        # Check third row (1 message ref, 2 event refs)
+        row3 = df[df["label"] == "finding3"].iloc[0]
+        msg_refs_3 = json.loads(row3["message_references"])
+        event_refs_3 = json.loads(row3["event_references"])
+        assert len(msg_refs_3) == 1
+        assert len(event_refs_3) == 2
+        assert msg_refs_3[0]["cite"] == "[M3]"
+        assert event_refs_3[0]["cite"] == "[E2]"
+        assert event_refs_3[1]["cite"] == "[E3]"
+
+
+def test_duckdb_resultset_expansion_with_references() -> None:
+    """Test that references are properly split by type in expanded DuckDB rows."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[resultset_with_references_scanner_factory()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,
+            max_processes=1,
+        )
+
+        results_db = scan_results_db(status.location)
+        df = results_db.conn.execute(
+            "SELECT * FROM resultset_with_references_scanner"
+        ).fetchdf()
+
+        # Should have 3 rows
+        assert len(df) == 3
+
+        # Check that reference columns exist
+        assert "message_references" in df.columns
+        assert "event_references" in df.columns
+
+        import json
+
+        # Check first row (2 message refs, 0 event refs)
+        row1 = df[df["label"] == "finding1"].iloc[0]
+        msg_refs_1 = json.loads(row1["message_references"])
+        event_refs_1 = json.loads(row1["event_references"])
+        assert len(msg_refs_1) == 2
+        assert len(event_refs_1) == 0
+
+        # Check second row (0 message refs, 1 event ref)
+        row2 = df[df["label"] == "finding2"].iloc[0]
+        msg_refs_2 = json.loads(row2["message_references"])
+        event_refs_2 = json.loads(row2["event_references"])
+        assert len(msg_refs_2) == 0
+        assert len(event_refs_2) == 1
+
+        # Check third row (1 message ref, 2 event refs)
+        row3 = df[df["label"] == "finding3"].iloc[0]
+        msg_refs_3 = json.loads(row3["message_references"])
+        event_refs_3 = json.loads(row3["event_references"])
+        assert len(msg_refs_3) == 1
+        assert len(event_refs_3) == 2
+
+        results_db.conn.close()

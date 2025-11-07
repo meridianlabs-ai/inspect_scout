@@ -3,6 +3,7 @@ from typing import Literal
 
 import pandas as pd
 from inspect_ai._util._async import run_coroutine
+from inspect_ai._util.json import to_json_str_safe
 from upath import UPath
 
 from ._recorder.factory import scan_recorder_type_for_location
@@ -52,7 +53,7 @@ def scan_results_df(
         scanner: Scanner name (defaults to all scanners).
         rows: Row granularity. Specify "results" to yield a row for each scanner result
             (potentially multiple per transcript); Specify "transcript" to yield a row
-            for each transcript (in which case multiple results (if any) will be packed
+            for each transcript (in which case multiple results will be packed
             into the `value` field as a JSON list of `Result`).
 
     Returns:
@@ -76,7 +77,7 @@ async def scan_results_df_async(
         scanner: Scanner name (defaults to all scanners).
         rows: Row granularity. Specify "results" to yield a row for each scanner result
             (potentially multiple per transcript); Specify "transcript" to yield a row
-            for each transcript (in which case multiple results (if any) will be packed
+            for each transcript (in which case multiple results will be packed
             into the `value` field as a JSON list of `Result`).
 
     Returns:
@@ -246,6 +247,30 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
         if isinstance(x, dict)
         else (json.dumps({}) if pd.isna(x) else x)
     )
+
+    # Handle references: split by type into message_references and event_references
+    if "references" in expanded.columns:
+        # Filter references by type (matching ResultReport.to_df_columns logic)
+        expanded["message_references"] = expanded["references"].apply(
+            lambda refs: to_json_str_safe(
+                [r for r in refs if isinstance(r, dict) and r.get("type") == "message"]
+            )
+            if isinstance(refs, list)
+            else "[]"
+        )
+        expanded["event_references"] = expanded["references"].apply(
+            lambda refs: to_json_str_safe(
+                [r for r in refs if isinstance(r, dict) and r.get("type") == "event"]
+            )
+            if isinstance(refs, list)
+            else "[]"
+        )
+        # Drop the references column as it's been split
+        expanded = expanded.drop(columns=["references"])
+    else:
+        # No references field, set both to empty arrays
+        expanded["message_references"] = "[]"
+        expanded["event_references"] = "[]"
 
     # Apply type casting to the value column based on value_type
     expanded = _cast_value_column(expanded)

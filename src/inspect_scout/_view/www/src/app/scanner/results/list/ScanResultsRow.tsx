@@ -8,9 +8,9 @@ import {
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
+import { ScannerPreview } from "../../../types";
 
 import styles from "./ScanResultsRow.module.css";
-import { ScannerPreview } from "./types";
 
 interface ScanResultsRowProps {
   index: number;

@@ -23226,300 +23226,6 @@ const parseScanResultPath = (fullPath) => {
   }
   return { scanPath };
 };
-const useServerScans = () => {
-  const api = useStore((state) => state.api);
-  const setScans = useStore((state) => state.setScans);
-  const setResultsDir = useStore((state) => state.setResultsDir);
-  reactExports.useEffect(() => {
-    const fetchScans = async () => {
-      const scansInfo = await api?.getScans();
-      if (scansInfo) {
-        setResultsDir(scansInfo.results_dir);
-        setScans(scansInfo.scans);
-      }
-    };
-    void fetchScans();
-  }, [api, setScans, setResultsDir]);
-};
-const useServerScanner = () => {
-  const params = useParams();
-  const relativePath = getRelativePathFromParams(params);
-  const setSelectedScan = useStore((state) => state.setSelectedResults);
-  const api = useStore((state) => state.api);
-  reactExports.useEffect(() => {
-    const fetchScans = async () => {
-      const scansInfo = await api?.getScan(relativePath);
-      if (scansInfo) {
-        setSelectedScan(scansInfo);
-      }
-    };
-    void fetchScans();
-  }, [relativePath, api, setSelectedScan]);
-};
-const basename = (path) => {
-  if (!path) {
-    return "";
-  }
-  path = path.endsWith("/") ? path.slice(0, -1) : path;
-  const pathparts = path.split("/");
-  return pathparts.slice(-1)[0] ?? "";
-};
-const dirname = (path) => {
-  path = path.endsWith("/") ? path.slice(0, -1) : path;
-  const pathparts = path.split("/");
-  if (pathparts.length > 1) {
-    pathparts.pop();
-    return pathparts.join("/");
-  }
-  return "";
-};
-const ensureTrailingSlash = (path) => {
-  if (!path) {
-    return "";
-  }
-  return path.endsWith("/") ? path : path + "/";
-};
-const toRelativePath = (absolutePath, basePath) => {
-  const normalizedResultsDir = ensureTrailingSlash(basePath).replace(
-    "file://",
-    ""
-  );
-  const normalizedPath = absolutePath.startsWith("file://") ? decodeURIComponent(absolutePath.replace("file://", "")) : absolutePath;
-  if (normalizedPath.startsWith(normalizedResultsDir)) {
-    return normalizedPath.substring(normalizedResultsDir.length);
-  }
-  return normalizedPath;
-};
-const prettyDirUri = (uri) => {
-  if (uri.startsWith("file://")) {
-    return uri.replace("file://", "");
-  } else {
-    return uri;
-  }
-};
-const iconForMimeType = (mimeType) => {
-  if (mimeType === "application/pdf") {
-    return "bi bi-file-pdf";
-  } else if (mimeType.startsWith("image/")) {
-    return "bi bi-file-image";
-  } else {
-    return "bi bi-file-earmark";
-  }
-};
-const ApplicationIcons = {
-  checkbox: {
-    checked: "bi bi-check-circle",
-    unchecked: "bi bi-circle"
-  },
-  confirm: "bi bi-check",
-  copy: "bi bi-copy",
-  error: "bi bi-exclamation-circle-fill",
-  file: "bi bi-file-code",
-  folder: "bi bi-folder",
-  link: "bi bi-link-45deg",
-  model: "bi bi-grid-3x3-gap",
-  navbar: {
-    home: "ii inspect-icon-home",
-    back: "ii inspect-icon-back"
-  },
-  pendingTask: "bi bi-clock",
-  role: {
-    tool: "bi bi-tools"
-  },
-  samples: "bi bi-file-spreadsheet",
-  scorer: "bi bi-calculator",
-  search: "bi bi-search",
-  success: "bi bi-check-circle-fill",
-  tree: {
-    open: "bi bi-caret-down-fill",
-    closed: "bi bi-caret-right-fill"
-  }
-};
-const header$1 = "_header_ctaca_1";
-const bordered$1 = "_bordered_ctaca_11";
-const breadcrumbs = "_breadcrumbs_ctaca_15";
-const ellipsis = "_ellipsis_ctaca_26";
-const left = "_left_ctaca_31";
-const right = "_right_ctaca_41";
-const toolbarButton = "_toolbarButton_ctaca_50";
-const pathContainer = "_pathContainer_ctaca_58";
-const styles$F = {
-  header: header$1,
-  bordered: bordered$1,
-  breadcrumbs,
-  ellipsis,
-  left,
-  right,
-  toolbarButton,
-  pathContainer
-};
-const useBreadcrumbTruncation = (segments, containerRef) => {
-  const [truncatedData, setTruncatedData] = reactExports.useState({
-    visibleSegments: segments,
-    hiddenCount: 0,
-    showEllipsis: false
-  });
-  reactExports.useEffect(() => {
-    const measureAndTruncate = () => {
-      if (!containerRef.current || segments.length <= 3) {
-        setTruncatedData({
-          visibleSegments: segments,
-          hiddenCount: 0,
-          showEllipsis: false
-        });
-        return;
-      }
-      const container2 = containerRef.current;
-      const containerWidth = container2.offsetWidth;
-      const testElement = document.createElement("ol");
-      testElement.className = "breadcrumb";
-      testElement.style.position = "absolute";
-      testElement.style.visibility = "hidden";
-      testElement.style.whiteSpace = "nowrap";
-      testElement.style.margin = "0";
-      testElement.style.padding = "0";
-      container2.appendChild(testElement);
-      testElement.innerHTML = segments.map((segment2) => `<li class="breadcrumb-item">${segment2.text}</li>`).join("");
-      if (testElement.scrollWidth <= containerWidth) {
-        container2.removeChild(testElement);
-        setTruncatedData({
-          visibleSegments: segments,
-          hiddenCount: 0,
-          showEllipsis: false
-        });
-        return;
-      }
-      const firstSegment = segments[0];
-      const lastSegment = segments[segments.length - 1];
-      if (!firstSegment || !lastSegment) {
-        container2.removeChild(testElement);
-        return;
-      }
-      let maxVisible = 2;
-      for (let endCount = 1; endCount < segments.length - 1; endCount++) {
-        const candidateSegments = [
-          firstSegment,
-          ...segments.slice(segments.length - 1 - endCount, -1),
-          lastSegment
-        ];
-        const testHTML = [
-          `<li class="breadcrumb-item">${firstSegment.text}</li>`,
-          `<li class="breadcrumb-item">...</li>`,
-          ...segments.slice(segments.length - 1 - endCount, -1).map((s) => `<li class="breadcrumb-item">${s.text}</li>`),
-          `<li class="breadcrumb-item">${lastSegment.text}</li>`
-        ].join("");
-        testElement.innerHTML = testHTML;
-        if (testElement.scrollWidth <= containerWidth) {
-          maxVisible = candidateSegments.length;
-          setTruncatedData({
-            visibleSegments: candidateSegments,
-            hiddenCount: segments.length - candidateSegments.length,
-            showEllipsis: true
-          });
-        } else {
-          break;
-        }
-      }
-      if (maxVisible === 2) {
-        setTruncatedData({
-          visibleSegments: [firstSegment, lastSegment],
-          hiddenCount: segments.length - 2,
-          showEllipsis: true
-        });
-      }
-      container2.removeChild(testElement);
-    };
-    measureAndTruncate();
-    const resizeObserver = new ResizeObserver(measureAndTruncate);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [segments, containerRef]);
-  return truncatedData;
-};
-const Navbar = ({ bordered: bordered2 = true, children }) => {
-  const resultsDir = useStore((state) => state.resultsDir);
-  const baseResultsDir = dirname(resultsDir || "");
-  const baseResultsName = basename(resultsDir || "");
-  const params = useParams();
-  const currentPath = getRelativePathFromParams(params);
-  const singleFileMode = useStore((state) => state.singleFileMode);
-  const pathContainerRef = reactExports.useRef(null);
-  const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
-  const backUrl = scanResultUuid ? scanRoute(scanPath) : scansRoute(dirname(currentPath || ""));
-  const segments = reactExports.useMemo(() => {
-    const pathSegments = currentPath ? currentPath.split("/") : [];
-    const dirSegments = [];
-    const currentSegment = [];
-    for (const pathSegment of pathSegments) {
-      currentSegment.push(pathSegment);
-      const segmentUrl = scansRoute(currentSegment.join("/"));
-      dirSegments.push({
-        text: pathSegment,
-        url: segmentUrl
-      });
-    }
-    return [
-      { text: prettyDirUri(baseResultsDir) },
-      { text: baseResultsName, url: scansRoute() },
-      ...dirSegments
-    ];
-  }, [baseResultsDir, baseResultsName, currentPath]);
-  const { visibleSegments, showEllipsis } = useBreadcrumbTruncation(
-    segments,
-    pathContainerRef
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "nav",
-    {
-      className: clsx(
-        "text-size-smaller",
-        "header-nav",
-        styles$F.header,
-        bordered2 ? styles$F.bordered : void 0
-      ),
-      "aria-label": "breadcrumb",
-      "data-unsearchable": true,
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$F.left), children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$F.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            Link,
-            {
-              to: scansRoute(),
-              className: clsx(styles$F.toolbarButton),
-              onClick: () => {
-              },
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.home) })
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$F.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$F.breadcrumbs), children: visibleSegments.map((segment2, index) => {
-            const isLast = index === visibleSegments.length - 1;
-            const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
-              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$F.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "li",
-                {
-                  className: clsx(
-                    styles$F.pathLink,
-                    "breadcrumb-item",
-                    isLast && !singleFileMode ? "active" : void 0
-                  ),
-                  children: segment2.url && !singleFileMode ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$F.pathSegment), children: segment2.text })
-                }
-              )
-            ] }, index);
-          }) }) : "" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$F.right), children })
-      ]
-    }
-  );
-};
 const ONE = 2147483648;
 const ALL = 4294967295;
 class BitSet {
@@ -37969,7 +37675,7 @@ function formatValue(v, options = {}) {
 function toHTML(table2, options = {}) {
   const names = columns(table2, options.columns);
   const { align: align2, format: format2 } = formats(table2, names, options);
-  const style = styles$E(options);
+  const style = styles$F(options);
   const nullish = options.null;
   const alignValue = (a2) => a2 === "c" ? "center" : a2 === "r" ? "right" : "left";
   const escape2 = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -37999,7 +37705,7 @@ function toHTML(table2, options = {}) {
   });
   return text2 + "</tbody></table>";
 }
-function styles$E(options) {
+function styles$F(options) {
   return mapObject(
     options.style,
     (value2) => isFunction$1(value2) ? value2 : () => value2
@@ -38938,36 +38644,35 @@ const useSelectedScanner = () => {
   }, [selectedResults]);
   return selectedScanner || defaultScanner;
 };
-const useScannerPreviews = (columnTable) => {
-  const scannerPreviews = reactExports.useMemo(() => {
-    const rowData = columnTable.objects();
-    const previews = rowData.map((row2) => {
-      const r2 = row2;
-      const explanation2 = r2.explanation;
-      const validationResult = JSON.parse(r2.validation_result);
-      const validationTarget = JSON.parse(r2.validation_target);
-      const value2 = r2.value;
-      const valueType = r2.value_type;
-      const transcriptMetadata = JSON.parse(
-        r2.transcript_metadata
-      );
-      const transcriptSourceId = r2.transcript_source_id;
-      return {
-        uuid: r2.uuid,
-        label: r2.label,
-        explanation: explanation2,
-        type: r2.input_type,
-        validationResult,
-        validationTarget,
-        value: value2,
-        valueType,
-        transcriptMetadata,
-        transcriptSourceId
-      };
-    });
-    return previews;
-  }, [columnTable]);
-  return scannerPreviews;
+const useServerScans = () => {
+  const api = useStore((state) => state.api);
+  const setScans = useStore((state) => state.setScans);
+  const setResultsDir = useStore((state) => state.setResultsDir);
+  reactExports.useEffect(() => {
+    const fetchScans = async () => {
+      const scansInfo = await api?.getScans();
+      if (scansInfo) {
+        setResultsDir(scansInfo.results_dir);
+        setScans(scansInfo.scans);
+      }
+    };
+    void fetchScans();
+  }, [api, setScans, setResultsDir]);
+};
+const useServerScanner = () => {
+  const params = useParams();
+  const relativePath = getRelativePathFromParams(params);
+  const setSelectedScan = useStore((state) => state.setSelectedResults);
+  const api = useStore((state) => state.api);
+  reactExports.useEffect(() => {
+    const fetchScans = async () => {
+      const scansInfo = await api?.getScan(relativePath);
+      if (scansInfo) {
+        setSelectedScan(scansInfo);
+      }
+    };
+    void fetchScans();
+  }, [relativePath, api, setSelectedScan]);
 };
 const useScannerData = (row2, columnTable) => {
   const scannerSummaries = reactExports.useMemo(() => {
@@ -39075,6 +38780,301 @@ const useSelectedResultsRow = (scanResultUuid) => {
   }, [columnTable, scanResultUuid]);
   const scanData = useScannerData(row2, columnTable);
   return scanData;
+};
+const useScannerPreviews = (columnTable) => {
+  const scannerPreviews = reactExports.useMemo(() => {
+    const rowData = columnTable.objects();
+    const previews = rowData.map((row2) => {
+      const r2 = row2;
+      const explanation2 = r2.explanation;
+      const validationResult = JSON.parse(r2.validation_result);
+      const validationTarget = JSON.parse(r2.validation_target);
+      const value2 = r2.value;
+      const valueType = r2.value_type;
+      const transcriptMetadata = JSON.parse(
+        r2.transcript_metadata
+      );
+      const transcriptSourceId = r2.transcript_source_id;
+      return {
+        uuid: r2.uuid,
+        label: r2.label,
+        explanation: explanation2,
+        type: r2.input_type,
+        validationResult,
+        validationTarget,
+        value: value2,
+        valueType,
+        transcriptMetadata,
+        transcriptSourceId
+      };
+    });
+    return previews;
+  }, [columnTable]);
+  return scannerPreviews;
+};
+const basename = (path) => {
+  if (!path) {
+    return "";
+  }
+  path = path.endsWith("/") ? path.slice(0, -1) : path;
+  const pathparts = path.split("/");
+  return pathparts.slice(-1)[0] ?? "";
+};
+const dirname = (path) => {
+  path = path.endsWith("/") ? path.slice(0, -1) : path;
+  const pathparts = path.split("/");
+  if (pathparts.length > 1) {
+    pathparts.pop();
+    return pathparts.join("/");
+  }
+  return "";
+};
+const ensureTrailingSlash = (path) => {
+  if (!path) {
+    return "";
+  }
+  return path.endsWith("/") ? path : path + "/";
+};
+const toRelativePath = (absolutePath, basePath) => {
+  const normalizedResultsDir = ensureTrailingSlash(basePath).replace(
+    "file://",
+    ""
+  );
+  const normalizedPath = absolutePath.startsWith("file://") ? decodeURIComponent(absolutePath.replace("file://", "")) : absolutePath;
+  if (normalizedPath.startsWith(normalizedResultsDir)) {
+    return normalizedPath.substring(normalizedResultsDir.length);
+  }
+  return normalizedPath;
+};
+const prettyDirUri = (uri) => {
+  if (uri.startsWith("file://")) {
+    return uri.replace("file://", "");
+  } else {
+    return uri;
+  }
+};
+const iconForMimeType = (mimeType) => {
+  if (mimeType === "application/pdf") {
+    return "bi bi-file-pdf";
+  } else if (mimeType.startsWith("image/")) {
+    return "bi bi-file-image";
+  } else {
+    return "bi bi-file-earmark";
+  }
+};
+const ApplicationIcons = {
+  checkbox: {
+    checked: "bi bi-check-circle",
+    unchecked: "bi bi-circle"
+  },
+  confirm: "bi bi-check",
+  copy: "bi bi-copy",
+  error: "bi bi-exclamation-circle-fill",
+  file: "bi bi-file-code",
+  folder: "bi bi-folder",
+  link: "bi bi-link-45deg",
+  model: "bi bi-grid-3x3-gap",
+  navbar: {
+    home: "ii inspect-icon-home",
+    back: "ii inspect-icon-back"
+  },
+  pendingTask: "bi bi-clock",
+  role: {
+    tool: "bi bi-tools"
+  },
+  samples: "bi bi-file-spreadsheet",
+  scorer: "bi bi-calculator",
+  search: "bi bi-search",
+  success: "bi bi-check-circle-fill",
+  tree: {
+    open: "bi bi-caret-down-fill",
+    closed: "bi bi-caret-right-fill"
+  }
+};
+const header$1 = "_header_ctaca_1";
+const bordered$1 = "_bordered_ctaca_11";
+const breadcrumbs = "_breadcrumbs_ctaca_15";
+const ellipsis = "_ellipsis_ctaca_26";
+const left = "_left_ctaca_31";
+const right = "_right_ctaca_41";
+const toolbarButton = "_toolbarButton_ctaca_50";
+const pathContainer = "_pathContainer_ctaca_58";
+const styles$E = {
+  header: header$1,
+  bordered: bordered$1,
+  breadcrumbs,
+  ellipsis,
+  left,
+  right,
+  toolbarButton,
+  pathContainer
+};
+const useBreadcrumbTruncation = (segments, containerRef) => {
+  const [truncatedData, setTruncatedData] = reactExports.useState({
+    visibleSegments: segments,
+    hiddenCount: 0,
+    showEllipsis: false
+  });
+  reactExports.useEffect(() => {
+    const measureAndTruncate = () => {
+      if (!containerRef.current || segments.length <= 3) {
+        setTruncatedData({
+          visibleSegments: segments,
+          hiddenCount: 0,
+          showEllipsis: false
+        });
+        return;
+      }
+      const container2 = containerRef.current;
+      const containerWidth = container2.offsetWidth;
+      const testElement = document.createElement("ol");
+      testElement.className = "breadcrumb";
+      testElement.style.position = "absolute";
+      testElement.style.visibility = "hidden";
+      testElement.style.whiteSpace = "nowrap";
+      testElement.style.margin = "0";
+      testElement.style.padding = "0";
+      container2.appendChild(testElement);
+      testElement.innerHTML = segments.map((segment2) => `<li class="breadcrumb-item">${segment2.text}</li>`).join("");
+      if (testElement.scrollWidth <= containerWidth) {
+        container2.removeChild(testElement);
+        setTruncatedData({
+          visibleSegments: segments,
+          hiddenCount: 0,
+          showEllipsis: false
+        });
+        return;
+      }
+      const firstSegment = segments[0];
+      const lastSegment = segments[segments.length - 1];
+      if (!firstSegment || !lastSegment) {
+        container2.removeChild(testElement);
+        return;
+      }
+      let maxVisible = 2;
+      for (let endCount = 1; endCount < segments.length - 1; endCount++) {
+        const candidateSegments = [
+          firstSegment,
+          ...segments.slice(segments.length - 1 - endCount, -1),
+          lastSegment
+        ];
+        const testHTML = [
+          `<li class="breadcrumb-item">${firstSegment.text}</li>`,
+          `<li class="breadcrumb-item">...</li>`,
+          ...segments.slice(segments.length - 1 - endCount, -1).map((s) => `<li class="breadcrumb-item">${s.text}</li>`),
+          `<li class="breadcrumb-item">${lastSegment.text}</li>`
+        ].join("");
+        testElement.innerHTML = testHTML;
+        if (testElement.scrollWidth <= containerWidth) {
+          maxVisible = candidateSegments.length;
+          setTruncatedData({
+            visibleSegments: candidateSegments,
+            hiddenCount: segments.length - candidateSegments.length,
+            showEllipsis: true
+          });
+        } else {
+          break;
+        }
+      }
+      if (maxVisible === 2) {
+        setTruncatedData({
+          visibleSegments: [firstSegment, lastSegment],
+          hiddenCount: segments.length - 2,
+          showEllipsis: true
+        });
+      }
+      container2.removeChild(testElement);
+    };
+    measureAndTruncate();
+    const resizeObserver = new ResizeObserver(measureAndTruncate);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [segments, containerRef]);
+  return truncatedData;
+};
+const Navbar = ({ bordered: bordered2 = true, children }) => {
+  const resultsDir = useStore((state) => state.resultsDir);
+  const baseResultsDir = dirname(resultsDir || "");
+  const baseResultsName = basename(resultsDir || "");
+  const params = useParams();
+  const currentPath = getRelativePathFromParams(params);
+  const singleFileMode = useStore((state) => state.singleFileMode);
+  const pathContainerRef = reactExports.useRef(null);
+  const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
+  const backUrl = scanResultUuid ? scanRoute(scanPath) : scansRoute(dirname(currentPath || ""));
+  const segments = reactExports.useMemo(() => {
+    const pathSegments = currentPath ? currentPath.split("/") : [];
+    const dirSegments = [];
+    const currentSegment = [];
+    for (const pathSegment of pathSegments) {
+      currentSegment.push(pathSegment);
+      const segmentUrl = scansRoute(currentSegment.join("/"));
+      dirSegments.push({
+        text: pathSegment,
+        url: segmentUrl
+      });
+    }
+    return [
+      { text: prettyDirUri(baseResultsDir) },
+      { text: baseResultsName, url: scansRoute() },
+      ...dirSegments
+    ];
+  }, [baseResultsDir, baseResultsName, currentPath]);
+  const { visibleSegments, showEllipsis } = useBreadcrumbTruncation(
+    segments,
+    pathContainerRef
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "nav",
+    {
+      className: clsx(
+        "text-size-smaller",
+        "header-nav",
+        styles$E.header,
+        bordered2 ? styles$E.bordered : void 0
+      ),
+      "aria-label": "breadcrumb",
+      "data-unsearchable": true,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$E.left), children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: backUrl, className: clsx(styles$E.toolbarButton), children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.back) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Link,
+            {
+              to: scansRoute(),
+              className: clsx(styles$E.toolbarButton),
+              onClick: () => {
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.navbar.home) })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$E.pathContainer), ref: pathContainerRef, children: resultsDir ? /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx("breadcrumb", styles$E.breadcrumbs), children: visibleSegments.map((segment2, index) => {
+            const isLast = index === visibleSegments.length - 1;
+            const shouldShowEllipsis = showEllipsis && index === 1 && visibleSegments.length >= 2;
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
+              shouldShowEllipsis && /* @__PURE__ */ jsxRuntimeExports.jsx("li", { className: clsx("breadcrumb-item", styles$E.ellipsis), children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "..." }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "li",
+                {
+                  className: clsx(
+                    styles$E.pathLink,
+                    "breadcrumb-item",
+                    isLast && !singleFileMode ? "active" : void 0
+                  ),
+                  children: segment2.url && !singleFileMode ? /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: segment2.url, children: segment2.text }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$E.pathSegment), children: segment2.text })
+                }
+              )
+            ] }, index);
+          }) }) : "" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$E.right), children })
+      ]
+    }
+  );
 };
 const grid$1 = "_grid_14885_1";
 const cell = "_cell_14885_8";

@@ -10,10 +10,13 @@ import {
   parseScanResultPath,
 } from "../../router/url";
 import { useStore } from "../../state/store";
-import { useServerScans, useServerScanner } from "../hooks";
+import {
+  useServerScans,
+  useServerScanner,
+  useSelectedResultsRow,
+} from "../hooks";
 import { Navbar } from "../navbar/Navbar";
 
-import { useSelectedResultsRow } from "./hooks";
 import { InfoPanel } from "./info/InfoPanel";
 import { InputPanel } from "./input/InputPanel";
 import { ResultPanel } from "./result/ResultPanel";

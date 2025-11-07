@@ -5,9 +5,9 @@ import { FC, useMemo } from "react";
 
 import { DataframeView } from "../../../components/DataframeView";
 import { useStore } from "../../../state/store";
+import { useSelectedScanner } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
-import { useSelectedScanner } from "./hooks";
 import { ScanResultsList } from "./list/ScanResultsList";
 import styles from "./ScanResultsBody.module.css";
 

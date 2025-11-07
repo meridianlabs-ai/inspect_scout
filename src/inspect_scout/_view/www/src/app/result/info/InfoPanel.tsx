@@ -1,7 +1,7 @@
 import { FC } from "react";
 
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
-import { ScannerData } from "../../scanner/results/list/types";
+import { ScannerData } from "../../types";
 
 interface InfoPanelProps {
   scannerData: ScannerData;

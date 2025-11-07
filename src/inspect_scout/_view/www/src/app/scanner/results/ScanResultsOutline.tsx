@@ -7,8 +7,8 @@ import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { useStore } from "../../../state/store";
 import { Results } from "../../../types";
 import { ApplicationIcons } from "../../appearance/icons";
+import { useSelectedScanner } from "../../hooks";
 
-import { useSelectedScanner } from "./hooks";
 import styles from "./ScanResultsOutline.module.css";
 
 export const ScanResultsOutline: FC = () => {

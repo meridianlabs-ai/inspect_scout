@@ -4,12 +4,12 @@ import { FC, useCallback, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
+import { useScannerPreviews } from "../../../hooks";
+import { ScannerPreview } from "../../../types";
 
-import { useScannerPreviews } from "./hooks";
 import { ScanResultsHeader } from "./ScanHeader";
 import styles from "./ScanResultsList.module.css";
 import { ScanResultsRow } from "./ScanResultsRow";
-import { ScannerPreview } from "./types";
 
 interface ScanResultsListProps {
   columnTable: ColumnTable;

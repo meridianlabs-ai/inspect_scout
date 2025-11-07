@@ -1,13 +1,13 @@
-import { EventType } from "../../../../transcript/types";
-import { ModelUsage, Transcript } from "../../../../types";
+import { EventType } from "../transcript/types";
+import { ModelUsage, Transcript } from "../types";
 import {
-  ChatMessageAssistant,
-  ChatMessageSystem,
-  ChatMessageTool,
-  ChatMessageUser,
-  Events,
   JsonValue,
-} from "../../../../types/log";
+  ChatMessageSystem,
+  ChatMessageUser,
+  ChatMessageAssistant,
+  ChatMessageTool,
+  Events,
+} from "../types/log";
 
 export interface ScannerPreview {
   uuid?: string;

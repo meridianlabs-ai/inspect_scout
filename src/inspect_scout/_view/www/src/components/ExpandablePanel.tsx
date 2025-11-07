@@ -139,7 +139,7 @@ const MoreToggle: FC<MoreToggleProps> = ({
       style={style}
     >
       <button
-        className={clsx("btn", styles.moreToggleButton, "text-size-smallest")}
+        className={clsx(styles.moreToggleButton, "text-size-smallest")}
         onClick={handleClick}
       >
         {text}...

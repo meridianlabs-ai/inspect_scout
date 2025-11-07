@@ -32,9 +32,11 @@ interface StoreState {
   selectedResultTab?: string;
   collapsedBuckets: Record<string, Record<string, boolean>>;
   selectedScanner?: string;
+  selectedResultsView?: string;
+
+  // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
-  selectedResultsView?: string;
 
   setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;

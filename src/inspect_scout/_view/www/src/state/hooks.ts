@@ -89,7 +89,6 @@ export const useCollapsedState = (
   defaultValue?: boolean,
   scope?: string
 ): [boolean, (value: boolean) => void] => {
-  const stateId = scope ? `${scope}-${id}` : id;
   const resolvedScope = scope || "collapse-state-scope";
 
   const collapsed = useStore(
@@ -99,8 +98,8 @@ export const useCollapsedState = (
 
   return useMemo(() => {
     const set = (value: boolean) => {
-      setCollapsed(resolvedScope, stateId, value);
+      setCollapsed(resolvedScope, id, value);
     };
-    return [collapsed || defaultValue || false, set];
-  }, [collapsed, resolvedScope, defaultValue, setCollapsed, stateId]);
+    return [collapsed ?? defaultValue ?? false, set];
+  }, [collapsed, resolvedScope, defaultValue, setCollapsed, id]);
 };

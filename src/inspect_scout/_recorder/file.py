@@ -1,5 +1,5 @@
 import io
-from typing import Sequence
+from typing import Literal, Sequence
 
 import duckdb
 import pandas as pd
@@ -221,7 +221,9 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def results_db(scan_location: str) -> ScanResultsDB:
+    async def results_db(
+        scan_location: str, *, rows: Literal["results", "transcripts"] = "results"
+    ) -> ScanResultsDB:
         from upath import UPath
 
         scan_dir = UPath(scan_location)
@@ -237,17 +239,24 @@ class FileRecorder(ScanRecorder):
             # Use absolute path to ensure it works regardless of working directory
             abs_path = parquet_file.resolve().as_posix()
 
-            # Check if value_type is uniform and needs casting
-            uniform_type = _get_uniform_value_type(conn, abs_path)
-            if uniform_type in ("boolean", "number"):
-                cast_expr = _cast_value_sql(uniform_type)
-                select_clause = f"SELECT * REPLACE ({cast_expr} AS value)"
+            # Check if we need to expand resultsets
+            if rows == "results" and _has_resultsets(conn, abs_path):
+                # Create expanded view with UNNEST for resultset rows
+                sql = _create_expanded_view_sql(conn, abs_path, scanner_name)
+                conn.execute(sql)
             else:
-                select_clause = "SELECT *"
+                # Use existing simple view logic (for transcripts mode or non-resultset scanners)
+                # Check if value_type is uniform and needs casting
+                uniform_type = _get_uniform_value_type(conn, abs_path)
+                if uniform_type in ("boolean", "number"):
+                    cast_expr = _cast_value_sql(uniform_type)
+                    select_clause = f"SELECT * REPLACE ({cast_expr} AS value)"
+                else:
+                    select_clause = "SELECT *"
 
-            conn.execute(
-                f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}')"
-            )
+                conn.execute(
+                    f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}')"
+                )
 
         return ScanResultsDB(
             status=status.complete,
@@ -313,6 +322,148 @@ def _ensure_scan_dir(scans_path: UPath, scan_id: str) -> UPath:
 
 def _ensure_scans_dir(scans_dir: UPath) -> None:
     scans_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _has_resultsets(conn: duckdb.DuckDBPyConnection, parquet_path: str) -> bool:
+    """
+    Check if a parquet file contains any resultset rows.
+
+    Args:
+        conn: DuckDB connection
+        parquet_path: Path to the parquet file
+
+    Returns:
+        True if any rows have value_type == 'resultset', False otherwise
+    """
+    result = conn.execute(
+        f"SELECT COUNT(*) FROM read_parquet('{parquet_path}') WHERE value_type = 'resultset' LIMIT 1"
+    ).fetchone()
+    return result is not None and result[0] > 0
+
+
+def _create_expanded_view_sql(
+    conn: duckdb.DuckDBPyConnection, parquet_path: str, scanner_name: str
+) -> str:
+    """
+    Generate SQL to create an expanded view that unnests resultset rows.
+
+    For rows where value_type == 'resultset', the value field contains a JSON array
+    of Result objects. This function generates SQL that:
+    1. Passes through non-resultset rows as-is
+    2. Unnests resultset rows using json_extract and UNNEST
+    3. Extracts Result fields into columns
+    4. Applies type casting to the value column
+
+    Args:
+        conn: DuckDB connection to query schema
+        parquet_path: Path to the parquet file
+        scanner_name: Name for the view
+
+    Returns:
+        SQL CREATE VIEW statement with UNION of non-resultset and expanded resultset rows
+    """
+    # Query the actual column names from the parquet file to avoid hardcoding
+    # We use LIMIT 0 to get just the schema without reading data
+    result = conn.execute(
+        f"SELECT * FROM read_parquet('{parquet_path}') LIMIT 0"
+    ).description
+    all_columns = [col[0] for col in result]
+
+    # These are the Result fields that need special handling during expansion
+    result_fields = {
+        "uuid",
+        "label",
+        "value",
+        "value_type",
+        "answer",
+        "explanation",
+        "metadata",
+    }
+
+    # These columns should be NULL in expanded rows to avoid incorrect aggregation
+    # (they represent the scan execution, not individual results)
+    scan_execution_fields = {"scan_total_tokens", "scan_model_usage"}
+
+    # Build the non-resultset rows query with explicit column selection
+    non_resultset_cols = ", ".join(all_columns)
+    non_resultset_query = f"""
+    SELECT {non_resultset_cols} FROM read_parquet('{parquet_path}')
+    WHERE value_type != 'resultset' OR value_type IS NULL
+    """
+
+    # Build the expanded resultset rows query
+    # Base columns are everything except the result fields and scan execution fields
+    base_columns = [
+        col
+        for col in all_columns
+        if col not in result_fields and col not in scan_execution_fields
+    ]
+
+    # Type casting expression for the extracted value
+    # elem will be a JSON string from UNNEST, need to cast it first
+    cast_value_expr = """CASE
+            WHEN COALESCE(json_extract_string(CAST(elem AS JSON), '$.type'), 'null') = 'boolean'
+            THEN CASE
+                WHEN json_extract_string(CAST(elem AS JSON), '$.value') IN ('true', 'True') THEN TRUE
+                WHEN json_extract_string(CAST(elem AS JSON), '$.value') IN ('false', 'False') THEN FALSE
+                ELSE NULL
+            END
+            WHEN COALESCE(json_extract_string(CAST(elem AS JSON), '$.type'), 'null') = 'number'
+            THEN TRY_CAST(json_extract_string(CAST(elem AS JSON), '$.value') AS DOUBLE)
+            ELSE json_extract(CAST(elem AS JSON), '$.value')
+        END"""
+
+    # Build column selects for expanded query in the same order as all_columns
+    expanded_col_selects = []
+    for col in all_columns:
+        if col in base_columns:
+            # Base columns from the parquet table
+            expanded_col_selects.append(f"r.{col}")
+        elif col in scan_execution_fields:
+            # NULL out scan execution fields to avoid incorrect aggregation
+            expanded_col_selects.append(f"NULL AS {col}")
+        elif col == "uuid":
+            expanded_col_selects.append(
+                "json_extract_string(CAST(elem AS JSON), '$.uuid') AS uuid"
+            )
+        elif col == "label":
+            expanded_col_selects.append(
+                "json_extract_string(CAST(elem AS JSON), '$.label') AS label"
+            )
+        elif col == "value":
+            expanded_col_selects.append(f"({cast_value_expr}) AS value")
+        elif col == "value_type":
+            expanded_col_selects.append(
+                "COALESCE(json_extract_string(CAST(elem AS JSON), '$.type'), 'null') AS value_type"
+            )
+        elif col == "answer":
+            expanded_col_selects.append(
+                "json_extract_string(CAST(elem AS JSON), '$.answer') AS answer"
+            )
+        elif col == "explanation":
+            expanded_col_selects.append(
+                "json_extract_string(CAST(elem AS JSON), '$.explanation') AS explanation"
+            )
+        elif col == "metadata":
+            expanded_col_selects.append(
+                "COALESCE(json_extract_string(CAST(elem AS JSON), '$.metadata'), '{{}}') AS metadata"
+            )
+
+    expanded_resultset_query = f"""
+    SELECT
+        {", ".join(expanded_col_selects)}
+    FROM read_parquet('{parquet_path}') r,
+    UNNEST(CAST(json_extract(r.value, '$') AS JSON[])) AS t(elem)
+    WHERE r.value_type = 'resultset'
+    """
+
+    # Combine both queries with UNION ALL
+    return f"""CREATE VIEW {scanner_name} AS
+    SELECT * FROM (
+        {non_resultset_query}
+        UNION ALL
+        {expanded_resultset_query}
+    )"""
 
 
 def _get_uniform_value_type(

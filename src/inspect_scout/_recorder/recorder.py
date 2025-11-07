@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Sequence
+from typing import Literal, Sequence
 
 import duckdb
 import pandas as pd
@@ -192,7 +192,9 @@ class ScanRecorder(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    async def results_db(scan_location: str) -> ScanResultsDB: ...
+    async def results_db(
+        scan_location: str, *, rows: Literal["results", "transcripts"] = "results"
+    ) -> ScanResultsDB: ...
 
     @staticmethod
     @abc.abstractmethod

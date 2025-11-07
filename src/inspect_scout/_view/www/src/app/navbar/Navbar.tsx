@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import {
   getRelativePathFromParams,
+  isValidScanPath,
   parseScanResultPath,
   scanRoute,
   scansRoute,
@@ -45,7 +46,12 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
     const currentSegment = [];
     for (const pathSegment of pathSegments) {
       currentSegment.push(pathSegment);
-      const segmentUrl = scansRoute(currentSegment.join("/"));
+      const fullSegmentPath = currentSegment.join("/");
+      // Check if this segment path contains a valid scan_id pattern
+      // If so, use scanRoute instead of scansRoute
+      const segmentUrl = isValidScanPath(fullSegmentPath)
+        ? scanRoute(fullSegmentPath, searchParams)
+        : scansRoute(fullSegmentPath);
       dirSegments.push({
         text: pathSegment,
         url: segmentUrl,
@@ -57,7 +63,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
       { text: baseResultsName, url: scansRoute() },
       ...dirSegments,
     ];
-  }, [baseResultsDir, baseResultsName, currentPath]);
+  }, [baseResultsDir, baseResultsName, currentPath, searchParams]);
 
   const { visibleSegments, showEllipsis } = useBreadcrumbTruncation(
     segments,

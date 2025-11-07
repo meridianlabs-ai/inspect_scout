@@ -145,6 +145,18 @@ export const ScanJobGrid: FC = () => {
         resizable: true,
       },
       {
+        field: "scanners",
+        headerName: "Scanners",
+        initialWidth: 120,
+        minWidth: 120,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        valueFormatter: (params: { value: unknown[] }) =>
+          params.value.join(", "),
+      },
+
+      {
         field: "scanId",
         headerName: "Scan Id",
         initialWidth: 150,
@@ -161,17 +173,6 @@ export const ScanJobGrid: FC = () => {
         sortable: true,
         filter: true,
         resizable: true,
-      },
-      {
-        field: "scanners",
-        headerName: "Scanners",
-        initialWidth: 120,
-        minWidth: 120,
-        sortable: false,
-        filter: false,
-        resizable: true,
-        valueFormatter: (params: { value: unknown[] }) =>
-          params.value.join(", "),
       },
       {
         field: "timestamp",

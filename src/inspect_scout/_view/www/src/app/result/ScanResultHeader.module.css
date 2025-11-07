@@ -10,7 +10,7 @@
 }
 
 .oneCol {
-  grid-template-columns: 1fr;
+  grid-template-columns: 2fr;
 }
 
 .twoCol {
@@ -18,13 +18,13 @@
 }
 
 .threeCol {
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr;
 }
 
 .fourCol {
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
 }
 
 .fiveCol {
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
 }

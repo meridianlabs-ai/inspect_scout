@@ -123,7 +123,7 @@ export const ScanResultPanel: FC = () => {
               handleTabChange(kTabIdInfo);
             }}
           >
-            <InfoPanel scannerData={selectedResult} />
+            <InfoPanel result={selectedResult} />
           </TabPanel>
           <TabPanel
             id={kTabIdJson}

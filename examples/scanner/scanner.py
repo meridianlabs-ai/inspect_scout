@@ -54,7 +54,7 @@ def target_word_scanner(target_word: str = "quill") -> Scanner[ChatMessageAssist
 
     async def execute(message: ChatMessageAssistant) -> Result:
         count = message.text.lower().count(target_word)
-        return Result(value=count)
+        return Result(value=count, explanation=message.text)
 
     return execute
 

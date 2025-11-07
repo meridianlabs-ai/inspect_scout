@@ -2,11 +2,11 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { Card, CardBody, CardHeader } from "../../../components/Card";
+import { MarkdownDiv } from "../../../components/MarkdownDiv";
 import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
 
 import styles from "./ResultPanel.module.css";
-import { MarkdownDiv } from "../../../components/MarkdownDiv";
 
 interface ResultPanelProps {
   result?: ScannerData;

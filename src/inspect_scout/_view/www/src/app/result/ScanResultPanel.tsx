@@ -21,6 +21,7 @@ import { Navbar } from "../navbar/Navbar";
 import { InfoPanel } from "./info/InfoPanel";
 import { InputPanel } from "./input/InputPanel";
 import { ResultPanel } from "./result/ResultPanel";
+import { ScanResultHeader } from "./ScanResultHeader";
 import styles from "./ScanResultPanel.module.css";
 import { TranscriptPanel } from "./transcript/TranscriptPanel";
 
@@ -73,6 +74,7 @@ export const ScanResultPanel: FC = () => {
     <div className={clsx(styles.root)}>
       <Navbar />
       <ActivityBar animating={!!loading} />
+      <ScanResultHeader result={selectedResult} />
       <ExtendedFindProvider>
         <TabSet
           id={"scan-result-tabs"}
@@ -106,7 +108,7 @@ export const ScanResultPanel: FC = () => {
               <TabPanel
                 id={kTabIdTranscript}
                 selected={selectedTab === kTabIdTranscript}
-                title="Transcript"
+                title="Events"
                 onSelected={() => {
                   handleTabChange(kTabIdTranscript);
                 }}

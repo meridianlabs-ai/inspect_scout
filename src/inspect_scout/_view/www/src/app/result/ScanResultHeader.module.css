@@ -1,8 +1,30 @@
 .header {
+  padding-left: 1rem;
+  padding-right: 1rem;
   display: grid;
-  grid-template-columns: 1fr 10fr 1fr;
-  column-gap: 0.5rem;
-  padding: 1rem;
-  height: 100px;
-  overflow: hidden;
+  padding-bottom: 1rem;
+  padding-top: 1rem;
+  border-top: solid var(--bs-light-border-subtle) 1px;
+  column-gap: 1rem;
+  grid-template-rows: max-content max-content;
+}
+
+.oneCol {
+  grid-template-columns: 1fr;
+}
+
+.twoCol {
+  grid-template-columns: 1fr 1fr;
+}
+
+.threeCol {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.fourCol {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+.fiveCol {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
 }

@@ -1,10 +1,8 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, ReactNode } from "react";
 
+import { filename } from "../../utils/path";
 import { ScannerData } from "../types";
-import { Explanation } from "../values/Explanation";
-import { Identifier } from "../values/Identifier";
-import { Value } from "../values/Value";
 
 import styles from "./ScanResultHeader.module.css";
 
@@ -12,19 +10,75 @@ interface ScanResultHeaderProps {
   result?: ScannerData;
 }
 
+interface Column {
+  label: string;
+  value: ReactNode;
+  className?: string | string[];
+}
+
 export const ScanResultHeader: FC<ScanResultHeaderProps> = ({ result }) => {
+  const columns: Column[] = [];
+  if (result?.inputType === "transcript") {
+    columns.push({
+      label: "Log",
+      value: filename(result.input.metadata.log) as ReactNode,
+    });
+    columns.push({
+      label: "Task",
+      value: result.input.metadata.task_name as ReactNode,
+    });
+
+    columns.push({
+      label: "Sample Id",
+      value:
+        `${result.input.metadata.id} Epoch ${result.input.metadata.epoch}` as ReactNode,
+    });
+
+    columns.push({
+      label: "Model",
+      value: result.input.metadata.model as ReactNode,
+    });
+  }
+
   return (
-    <div className={clsx(styles.header, "text-size-smaller")}>
-      <div className={clsx("text-style-label", "text-size-smallest")}>Id</div>
-      <div className={clsx("text-style-label", "text-size-smallest")}>
-        Explanation
-      </div>
-      <div className={clsx("text-style-label", "text-size-smallest")}>
-        Value
-      </div>
-      <div>{result && <Identifier result={result} />}</div>
-      <div>{result && <Explanation result={result} />}</div>
-      <div>{result && <Value result={result} />}</div>
+    <div className={clsx(styles.header, classForCols(columns.length))}>
+      {columns.map((col) => {
+        return (
+          <div
+            className={clsx(
+              "text-size-smallest",
+              "text-style-label",
+              "text-style-secondary",
+              styles.label,
+              col.className
+            )}
+          >
+            {col.label}
+          </div>
+        );
+      })}
+
+      {columns.map((col) => {
+        return (
+          <div className={clsx("text-size-small", styles.value, col.className)}>
+            {col.value}
+          </div>
+        );
+      })}
     </div>
+  );
+};
+
+const classForCols = (numCols: number) => {
+  return clsx(
+    numCols === 1
+      ? styles.oneCol
+      : numCols === 2
+        ? styles.twoCol
+        : numCols === 3
+          ? styles.threeCol
+          : numCols === 4
+            ? styles.fourCol
+            : styles.fiveCol
   );
 };

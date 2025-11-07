@@ -112,8 +112,26 @@ export type ChatMessage =
   | ChatMessageTool;
 
 export interface Transcript {
+  id: string;
+  source_id: string;
+  source_url: string;
   messages: ChatMessages;
   events: Events;
+  metadata: TranscriptMetadata;
+}
+
+export interface TranscriptMetadata {
+  sample_id: string;
+  id: string | number;
+  epoch: number;
+  eval_id: string;
+  log: string;
+  eval_created: string;
+  eval_metadata: Record<string, unknown>;
+  task_name: string;
+  model: string;
+  score: string;
+  [key: string]: unknown;
 }
 
 export interface ContentTool {

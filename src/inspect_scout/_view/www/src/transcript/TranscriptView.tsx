@@ -8,17 +8,19 @@ import styles from "./TranscriptView.module.css";
 import { TranscriptVirtualList } from "./TranscriptVirtualList";
 import { flatTree } from "./transform/flatten";
 import { useEventNodes } from "./transform/hooks";
-import { kTranscriptCollapseScope } from "./types";
+import { EventNode, EventType, kTranscriptCollapseScope } from "./types";
 
 interface TranscriptViewProps {
   id: string;
   events?: Events;
+  nodeFilter?: (node: EventNode<EventType>[]) => EventNode<EventType>[];
   scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const TranscriptView: FC<TranscriptViewProps> = ({
   id,
   events,
+  nodeFilter,
   scrollRef,
 }) => {
   const listHandle = useRef<VirtuosoHandle | null>(null);
@@ -30,7 +32,7 @@ export const TranscriptView: FC<TranscriptViewProps> = ({
   const flattenedNodes = useMemo(() => {
     // flattten the event tree
     return flatTree(
-      eventNodes,
+      nodeFilter ? nodeFilter(eventNodes) : eventNodes,
       (collapsedEvents
         ? collapsedEvents[kTranscriptCollapseScope]
         : undefined) || defaultCollapsedIds

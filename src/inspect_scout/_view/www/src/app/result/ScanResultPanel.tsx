@@ -24,6 +24,7 @@ import { ResultPanel } from "./result/ResultPanel";
 import { ScanResultHeader } from "./ScanResultHeader";
 import styles from "./ScanResultPanel.module.css";
 import { TranscriptPanel } from "./transcript/TranscriptPanel";
+import { EventNode, EventType } from "../../transcript/types";
 
 const kTabIdResult = "Result";
 const kTabIdInput = "Input";
@@ -103,7 +104,7 @@ export const ScanResultPanel: FC = () => {
             <InputPanel result={selectedResult} />
           </TabPanel>
           {selectedResult?.scanEvents &&
-            selectedResult?.scanEvents.length > 0 && (
+            selectedResult?.scanEvents.length > 1 && (
               <TabPanel
                 id={kTabIdTranscript}
                 selected={selectedTab === kTabIdTranscript}
@@ -112,7 +113,11 @@ export const ScanResultPanel: FC = () => {
                   handleTabChange(kTabIdTranscript);
                 }}
               >
-                <TranscriptPanel id="scan-transcript" result={selectedResult} />
+                <TranscriptPanel
+                  id="scan-transcript"
+                  result={selectedResult}
+                  nodeFilter={skipScanSpan}
+                />
               </TabPanel>
             )}
           <TabPanel
@@ -144,4 +149,13 @@ export const ScanResultPanel: FC = () => {
       </ExtendedFindProvider>
     </div>
   );
+};
+
+const skipScanSpan = (
+  nodes: EventNode<EventType>[]
+): EventNode<EventType>[] => {
+  if (nodes.length === 1 && nodes[0].event.event === "span_begin") {
+    return nodes[0].children;
+  }
+  return nodes;
 };

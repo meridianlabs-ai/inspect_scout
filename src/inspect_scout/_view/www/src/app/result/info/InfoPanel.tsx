@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { LabeledValue } from "../../../components/LabeledValue";
@@ -8,7 +9,6 @@ import { ModelTokenTable } from "../../../usage/ModelTokenTable";
 import { ScannerData } from "../../types";
 
 import styles from "./InfoPanel.module.css";
-import clsx from "clsx";
 
 interface InfoPanelProps {
   result?: ScannerData;

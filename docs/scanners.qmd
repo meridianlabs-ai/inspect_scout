@@ -49,7 +49,6 @@ def confusion() -> Scanner[Transcript]:
     return scan
 ```
 
-
 ### Input Types
 
 `Transcript` is the most common `ScannerInput` however several other types are possible:
@@ -98,7 +97,6 @@ Transcripts are the most common input to scanners, and are read from one or more
 
 {{< include _transcript_fields.md >}}
 
-
 ### Content Filtering
 
 Note that the `messages` and `events` fields will not be populated unless you specify a `messages` or `events` filter on your scanner. For example, this scanner will see all messages and events:
@@ -141,6 +139,26 @@ result = await get_model().generate(
 ```
 
 The `messages_as_str()` function will by default remove system messages from the list. See `ContentPreprocessor` for other available options.
+
+## Multiple Results
+
+It is possible for scanners to return multiple results using the `result_set()` function. For example:
+
+``` python
+result = result_set([
+    Result(label="deception", value=True, explanation="..."),
+    Result(label="misconfiguration", value=True, explanation="...")
+])
+```
+
+This is useful when a scanner is capable of making several types of observation. In this case it's also important to indicate the origin of the result (i.e. which class of observation is is). Consequently, a `label` field is required for each `Result` passed to `result_set()` (note that `label` can repeat multiple times in a set, so e.g. you could have multiple results with `label="deception"`).
+
+When a `result_set()` is returned by scanner, the record for the scan in the [results data frame](results.qmd#results-data) will include the following:
+
+|              |                                    |
+|--------------|------------------------------------|
+| `value_type` | "resultset"                        |
+| `value`      | List of `Result` (encoded as JSON) |
 
 ## Event Scanners {#events}
 

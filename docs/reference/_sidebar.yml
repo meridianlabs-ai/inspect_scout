@@ -96,6 +96,8 @@ website:
           href: reference/scanner.qmd#scannerinput
         - text: Result
           href: reference/scanner.qmd#result
+        - text: result_set
+          href: reference/scanner.qmd#result_set
         - text: Reference
           href: reference/scanner.qmd#reference
         - text: Error
@@ -104,8 +106,8 @@ website:
           href: reference/scanner.qmd#loader
         - text: llm_scanner
           href: reference/scanner.qmd#llm_scanner
-        - text: MultiLabels
-          href: reference/scanner.qmd#multilabels
+        - text: AnswerLabels
+          href: reference/scanner.qmd#answerlabels
         - text: messages_as_str
           href: reference/scanner.qmd#messages_as_str
         - text: ContentPreprocessor

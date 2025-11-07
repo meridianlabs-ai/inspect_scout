@@ -42,7 +42,7 @@ export const ScanResultPanel: FC = () => {
 
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
-  const scanData = useSelectedResultsRow(scanResultUuid);
+  const selectedResult = useSelectedResultsRow(scanResultUuid);
 
   return (
     <div className={clsx(styles.root)}>
@@ -95,7 +95,7 @@ export const ScanResultPanel: FC = () => {
             setSelectedResultTab(kTabIdInfo);
           }}
         >
-          <InfoPanel scannerData={scanData} />
+          <InfoPanel scannerData={selectedResult} />
         </TabPanel>
         <TabPanel
           id={kTabIdJson}
@@ -107,7 +107,7 @@ export const ScanResultPanel: FC = () => {
         >
           <JSONPanel
             id="scan-result-json-contents"
-            data={scanData}
+            data={selectedResult}
             simple={true}
             className={styles.json}
           />

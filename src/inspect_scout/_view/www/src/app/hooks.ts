@@ -1,5 +1,5 @@
 import { ColumnTable, fromArrow } from "arquero";
-import { useEffect, useMemo } from "react";
+import { use, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams } from "../router/url";
@@ -63,11 +63,10 @@ export const useServerScanner = () => {
   }, [relativePath, api, setSelectedScan]);
 };
 
-export const useScannerResult = (scanResultUuid: string) => {
+export const useScannerResults = () => {
   const selectedScanner = useSelectedScanner();
   const selectedResults = useStore((state) => state.selectedResults);
   const scanner = selectedResults?.scanners[selectedScanner || ""];
-
   const columnTable = useMemo(() => {
     if (!scanner || !scanner.data) {
       return fromArrow(new ArrayBuffer(0));
@@ -84,16 +83,21 @@ export const useScannerResult = (scanResultUuid: string) => {
     const table = fromArrow(bytes.buffer);
     return table;
   }, [scanner]);
+  return columnTable;
+};
+
+export const useScannerResult = (scanResultUuid: string) => {
+  const scannerResults = useScannerResults();
 
   const row = useMemo(() => {
-    const rowData = columnTable.objects();
+    const rowData = scannerResults.objects();
     const row = rowData.findIndex((r) => {
       return (r as Record<string, string>).uuid === scanResultUuid;
     });
     return row;
-  }, [columnTable, scanResultUuid]);
+  }, [scannerResults, scanResultUuid]);
 
-  const scanData = useScannerData(row, columnTable);
+  const scanData = useScannerData(row, scannerResults);
   return scanData;
 };
 
@@ -229,37 +233,16 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
 };
 
 export const useSelectedResultsRow = (scanResultUuid: string) => {
-  // TODO: Centralize this with a cache in the store
-  const selectedScanner = useSelectedScanner();
-  const selectedResults = useStore((state) => state.selectedResults);
-  const scanner = selectedResults?.scanners[selectedScanner || ""];
-
-  const columnTable = useMemo(() => {
-    if (!scanner || !scanner.data) {
-      return fromArrow(new ArrayBuffer(0));
-    }
-
-    // Decode base64 string to Uint8Array
-    const binaryString = atob(scanner.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // Load Arrow data using Arquero
-    const table = fromArrow(bytes.buffer);
-    return table;
-  }, [scanner]);
-
+  const scannerResults = useScannerResults();
   const row = useMemo(() => {
-    const rowData = columnTable.objects();
+    const rowData = scannerResults.objects();
     const row = rowData.findIndex((r) => {
       return (r as Record<string, string>).uuid === scanResultUuid;
     });
     return row;
-  }, [columnTable, scanResultUuid]);
+  }, [scannerResults, scanResultUuid]);
 
-  const scanData = useScannerData(row, columnTable);
+  const scanData = useScannerData(row, scannerResults);
   return scanData;
 };
 

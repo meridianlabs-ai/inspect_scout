@@ -38674,6 +38674,24 @@ const useServerScanner = () => {
     void fetchScans();
   }, [relativePath, api, setSelectedScan]);
 };
+const useScannerResults = () => {
+  const selectedScanner = useSelectedScanner();
+  const selectedResults = useStore((state) => state.selectedResults);
+  const scanner = selectedResults?.scanners[selectedScanner || ""];
+  const columnTable = reactExports.useMemo(() => {
+    if (!scanner || !scanner.data) {
+      return fromArrow(new ArrayBuffer(0));
+    }
+    const binaryString = atob(scanner.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i2 = 0; i2 < binaryString.length; i2++) {
+      bytes[i2] = binaryString.charCodeAt(i2);
+    }
+    const table2 = fromArrow(bytes.buffer);
+    return table2;
+  }, [scanner]);
+  return columnTable;
+};
 const useScannerData = (row2, columnTable) => {
   const scannerSummaries = reactExports.useMemo(() => {
     const rowData = columnTable.objects();
@@ -38756,29 +38774,15 @@ const useScannerData = (row2, columnTable) => {
   return scannerSummaries;
 };
 const useSelectedResultsRow = (scanResultUuid) => {
-  const selectedScanner = useSelectedScanner();
-  const selectedResults = useStore((state) => state.selectedResults);
-  const scanner = selectedResults?.scanners[selectedScanner || ""];
-  const columnTable = reactExports.useMemo(() => {
-    if (!scanner || !scanner.data) {
-      return fromArrow(new ArrayBuffer(0));
-    }
-    const binaryString = atob(scanner.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i2 = 0; i2 < binaryString.length; i2++) {
-      bytes[i2] = binaryString.charCodeAt(i2);
-    }
-    const table2 = fromArrow(bytes.buffer);
-    return table2;
-  }, [scanner]);
+  const scannerResults = useScannerResults();
   const row2 = reactExports.useMemo(() => {
-    const rowData = columnTable.objects();
+    const rowData = scannerResults.objects();
     const row22 = rowData.findIndex((r2) => {
       return r2.uuid === scanResultUuid;
     });
     return row22;
-  }, [columnTable, scanResultUuid]);
-  const scanData = useScannerData(row2, columnTable);
+  }, [scannerResults, scanResultUuid]);
+  const scanData = useScannerData(row2, scannerResults);
   return scanData;
 };
 const useScannerPreviews = (columnTable) => {
@@ -52214,7 +52218,7 @@ const ScanResultPanel = () => {
   const loading = useStore((state) => state.loading);
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
-  const scanData = useSelectedResultsRow(scanResultUuid);
+  const selectedResult = useSelectedResultsRow(scanResultUuid);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$f.root), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
@@ -52273,7 +52277,7 @@ const ScanResultPanel = () => {
               onSelected: () => {
                 setSelectedResultTab(kTabIdInfo$1);
               },
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx(InfoPanel, { scannerData: scanData })
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(InfoPanel, { scannerData: selectedResult })
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -52289,7 +52293,7 @@ const ScanResultPanel = () => {
                 JSONPanel,
                 {
                   id: "scan-result-json-contents",
-                  data: scanData,
+                  data: selectedResult,
                   simple: true,
                   className: styles$f.json
                 }

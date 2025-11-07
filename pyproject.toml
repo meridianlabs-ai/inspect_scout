@@ -62,7 +62,6 @@ dist = ["twine", "build"]
 
 [tool.hatch.build]
 only-packages = true
-include = ["src/inspect_scout/_view/www"]
 exclude = ["docs/", "tests/"]
 
 [tool.hatch.version]

@@ -116,7 +116,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
                         isLast && !singleFileMode ? "active" : undefined
                       )}
                     >
-                      {segment.url && !singleFileMode ? (
+                      {segment.url && !singleFileMode && !isLast ? (
                         <Link to={segment.url}>{segment.text}</Link>
                       ) : (
                         <span className={clsx(styles.pathSegment)}>

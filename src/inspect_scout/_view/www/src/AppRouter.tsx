@@ -30,6 +30,7 @@ const AppLayout = () => {
   const hasInitializedEmbeddedData = useStore(
     (state) => state.hasInitializedEmbeddedData
   );
+  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   const setHasInitializedEmbeddedData = useStore(
     (state) => state.setHasInitializedEmbeddedData
   );
@@ -42,11 +43,14 @@ const AppLayout = () => {
     // Check for embedded state on initial load
     const embeddedState = getEmbeddedScanState();
     if (embeddedState) {
-      const { dir, scan } = embeddedState;
+      const { dir, scan, scanner } = embeddedState;
 
       // Set the results directory in the store
       setResultsDir(dir);
       setSingleFileMode(true);
+      if (scanner) {
+        setSelectedScanner(scanner);
+      }
 
       // Navigate to the scan
       void navigate(`/scan/${scan}`, { replace: true });

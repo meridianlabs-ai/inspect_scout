@@ -5,6 +5,7 @@ import { basename, dirname } from "./path";
 export interface EmbeddedScanState {
   dir: string;
   scan: string;
+  scanner?: string;
 }
 
 /**
@@ -21,7 +22,7 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
   }
 
   try {
-    const state: { type: string; url: string } = JSON5.parse(
+    const state: { type: string; url: string; scanner?: string } = JSON5.parse(
       embeddedState.textContent
     );
 
@@ -29,7 +30,7 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
       const url = state.url;
       const dir = dirname(url);
       const scan = basename(url);
-      return { dir, scan };
+      return { dir, scan, scanner: state.scanner };
     }
   } catch (error) {
     console.error("Failed to parse embedded state:", error);

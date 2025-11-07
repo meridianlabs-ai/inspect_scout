@@ -73,24 +73,23 @@ export const ScanResultPanel: FC = () => {
     <div className={clsx(styles.root)}>
       <Navbar />
       <ActivityBar animating={!!loading} />
-      <ScanResultHeader />
+      <ScanResultHeader result={selectedResult} />
       <TabSet
         id={"scan-result-tabs"}
         type="pills"
         tabPanelsClassName={clsx(styles.tabSet)}
         tabControlsClassName={clsx(styles.tabControl)}
         className={clsx(styles.tabs)}
-        //tools={tools}
       >
         <TabPanel
           id={kTabIdResult}
           selected={selectedTab === kTabIdResult || selectedTab === undefined}
-          title="Results"
+          title="Explanation"
           onSelected={() => {
             handleTabChange(kTabIdResult);
           }}
         >
-          <ResultPanel />
+          <ResultPanel result={selectedResult} />
         </TabPanel>
         <TabPanel
           id={kTabIdInput}

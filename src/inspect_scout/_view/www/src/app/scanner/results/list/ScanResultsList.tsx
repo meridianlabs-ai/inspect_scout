@@ -5,7 +5,7 @@ import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
 import { useScannerPreviews } from "../../../hooks";
-import { ScannerPreview } from "../../../types";
+import { ScannerCore } from "../../../types";
 
 import { ScanResultsHeader } from "./ScanHeader";
 import styles from "./ScanResultsList.module.css";
@@ -21,14 +21,14 @@ interface ScanResultsListProps {
 export const ScanResultsList: FC<ScanResultsListProps> = ({ columnTable }) => {
   const scannerSummaries = useScannerPreviews(columnTable);
   const listHandle = useRef<VirtuosoHandle | null>(null);
-  const renderRow = useCallback((index: number, entry: ScannerPreview) => {
+  const renderRow = useCallback((index: number, entry: ScannerCore) => {
     return <ScanResultsRow index={index} entry={entry} />;
   }, []);
 
   return (
     <div className={clsx(styles.container)}>
       <ScanResultsHeader />
-      <LiveVirtualList<ScannerPreview>
+      <LiveVirtualList<ScannerCore>
         id="scan-results-list"
         listHandle={listHandle}
         data={scannerSummaries}

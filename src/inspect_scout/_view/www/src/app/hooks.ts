@@ -11,7 +11,7 @@ import { JsonValue, Events } from "../types/log";
 import {
   MessageType,
   ScannerData,
-  ScannerPreview,
+  ScannerCore,
   ScannerReference,
 } from "./types";
 
@@ -253,7 +253,7 @@ export const useSelectedResultsRow = (scanResultUuid: string) => {
 export const useScannerPreviews = (columnTable: ColumnTable) => {
   const scannerPreviews = useMemo(() => {
     const rowData = columnTable.objects();
-    const previews: ScannerPreview[] = rowData.map((row) => {
+    const previews: ScannerCore[] = rowData.map((row) => {
       const r = row as Record<string, unknown>;
 
       const explanation = r.explanation as string;
@@ -289,14 +289,14 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
         uuid: r.uuid as string | undefined,
         label: r.label as string | undefined,
         explanation,
-        type: r.input_type,
+        inputType: r.input_type,
         validationResult,
         validationTarget,
         value,
         valueType,
         transcriptMetadata,
         transcriptSourceId,
-      } as ScannerPreview;
+      } as ScannerCore;
     });
     return previews;
   }, [columnTable]);

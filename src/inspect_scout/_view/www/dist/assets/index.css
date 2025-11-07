@@ -657,6 +657,19 @@ a._citationLink_1ggvf_9:hover {
 ._preCompact_seqs2_15 {
   margin-bottom: 0;
 }
+._header_1mj1d_1 {
+  display: grid;
+  grid-template-columns: 1fr 10fr 1fr;
+  column-gap: 0.5rem;
+}
+._header_1dthr_1 {
+  display: grid;
+  grid-template-columns: 1fr 10fr 1fr;
+  column-gap: 0.5rem;
+  padding: 1rem;
+  height: 100px;
+  overflow: hidden;
+}
 ._root_1xyi1_1 {
   height: 100vh;
   display: grid;

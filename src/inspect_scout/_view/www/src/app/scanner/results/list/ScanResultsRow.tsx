@@ -1,20 +1,22 @@
 import clsx from "clsx";
-import { FC, ReactNode } from "react";
+import { FC } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { MarkdownDiv } from "../../../../components/MarkdownDiv";
 import {
   getRelativePathFromParams,
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
-import { ScannerPreview } from "../../../types";
+import { ScannerCore } from "../../../types";
+import { Explanation } from "../../../values/Explanation";
+import { Identifier } from "../../../values/Identifier";
+import { Value } from "../../../values/Value";
 
 import styles from "./ScanResultsRow.module.css";
 
 interface ScanResultsRowProps {
   index: number;
-  entry: ScannerPreview;
+  entry: ScannerCore;
 }
 
 export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
@@ -42,13 +44,13 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
       }}
     >
       <div className={clsx(styles.id, "text-size-smaller")}>
-        <Identifier preview={entry} />
+        <Identifier result={entry} />
       </div>
       <div className={clsx(styles.explanation, "text-size-smaller")}>
-        <MarkdownDiv markdown={entry.explanation} />
+        <Explanation result={entry} />
       </div>
       <div className={clsx(styles.value, "text-size-smaller")}>
-        <Value preview={entry} />
+        <Value result={entry} />
       </div>
     </div>
   );
@@ -60,47 +62,4 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
   ) : (
     grid
   );
-};
-
-interface IndentifierProps {
-  preview: ScannerPreview;
-}
-
-const Identifier: FC<IndentifierProps> = ({ preview }): ReactNode => {
-  if (preview.type === "transcript") {
-    // Look in the metadata for a sample identifier
-    if (
-      preview.transcriptMetadata["id"] &&
-      preview.transcriptMetadata["epoch"]
-    ) {
-      const id = String(preview.transcriptMetadata["id"]);
-      const epoch = String(preview.transcriptMetadata["epoch"]);
-      return `${id} (${epoch})`;
-    }
-  }
-  return preview.transcriptSourceId;
-};
-
-interface ValueProps {
-  preview: ScannerPreview;
-}
-
-// TODO: Implement popover viewer for object and list values
-const Value: FC<ValueProps> = ({ preview }): ReactNode => {
-  if (preview.valueType === "string") {
-    return `"${String(preview.value)}"`;
-  } else if (
-    preview.valueType === "number" ||
-    preview.valueType === "boolean"
-  ) {
-    return String(preview.value);
-  } else if (preview.valueType === "null") {
-    return "null";
-  } else if (preview.valueType === "array") {
-    return `[Array of length ${(preview.value as unknown[]).length}]`;
-  } else if (preview.valueType === "object") {
-    return `{Object with keys: ${Object.keys(preview.value as object).join(", ")}}`;
-  } else {
-    return "Unknown value type";
-  }
 };

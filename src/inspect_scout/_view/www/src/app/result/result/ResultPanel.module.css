@@ -1,0 +1,5 @@
+.header {
+  display: grid;
+  grid-template-columns: 1fr 10fr 1fr;
+  column-gap: 0.5rem;
+}

@@ -9,11 +9,10 @@ import {
   Events,
 } from "../types/log";
 
-export interface ScannerPreview {
+export interface ScannerCore {
   uuid?: string;
-  label?: string;
-  type: "transcript" | "message" | "messages" | "event" | "events";
-  explanation: string;
+  inputType: "transcript" | "message" | "messages" | "event" | "events";
+  explanation?: string;
   validationResult: boolean | Record<string, boolean>;
   validationTarget: boolean | Record<string, boolean>;
   value: string | boolean | number | null | unknown[] | object;
@@ -42,11 +41,9 @@ export type MessageType =
   | ChatMessageTool;
 
 // Base interface with common properties
-interface ScannerDataBase {
-  uuid?: string;
+interface ScannerDataBase extends ScannerCore {
   answer?: string;
   eventReferences: ScannerReference[];
-  explanation?: string;
   inputIds: string[];
   messageReferences: ScannerReference[];
   metadata: Record<string, JsonValue>;
@@ -64,13 +61,7 @@ interface ScannerDataBase {
   scannerParams: Record<string, JsonValue>;
   timestamp: Date;
   transcriptId: string;
-  transcriptMetadata: Record<string, JsonValue>;
-  transcriptSourceId: string;
   transcriptSourceUri: string;
-  validationResult: boolean | Record<string, boolean>;
-  validationTarget: boolean | Record<string, boolean>;
-  value: string | boolean | number | null | unknown[] | object;
-  valueType: "string" | "number" | "boolean" | "null" | "array" | "object";
 }
 
 interface ScannerDataTranscript extends ScannerDataBase {

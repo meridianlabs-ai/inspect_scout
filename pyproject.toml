@@ -61,7 +61,6 @@ dist = ["twine", "build"]
 
 
 [tool.hatch.build]
-only-packages = true
 exclude = ["docs/", "tests/"]
 
 [tool.hatch.version]

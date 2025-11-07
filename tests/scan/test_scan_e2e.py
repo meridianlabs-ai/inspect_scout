@@ -3,7 +3,7 @@ from pathlib import Path
 
 from inspect_ai.model import ModelOutput
 from inspect_scout import Result, Scanner, llm_scanner, scan, scanner
-from inspect_scout._scanresults import scan_results
+from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.database import transcripts_from_logs
 from inspect_scout._transcript.types import Transcript
 
@@ -77,14 +77,14 @@ def test_scan_basic_e2e() -> None:
         assert status.location is not None
 
         # Verify simple scanner results
-        results = scan_results(status.location, scanner="simple_scanner")
+        results = scan_results_df(status.location, scanner="simple_scanner")
         simple_df = results.scanners["simple_scanner"]
         assert len(simple_df) == 2
         assert "value" in simple_df.columns
         assert "explanation" in simple_df.columns
 
         # Verify LLM scanner results
-        results = scan_results(status.location, scanner="llm_test_scanner")
+        results = scan_results_df(status.location, scanner="llm_test_scanner")
         llm_df = results.scanners["llm_test_scanner"]
         assert len(llm_df) == 2
         assert "value" in llm_df.columns
@@ -119,7 +119,9 @@ def test_scan_with_dynamic_question() -> None:
         assert status.location is not None
 
         # Verify dynamic question scanner results
-        results = scan_results(status.location, scanner="llm_dynamic_question_scanner")
+        results = scan_results_df(
+            status.location, scanner="llm_dynamic_question_scanner"
+        )
         scanner_df = results.scanners["llm_dynamic_question_scanner"]
         assert len(scanner_df) == 1
         assert "value" in scanner_df.columns

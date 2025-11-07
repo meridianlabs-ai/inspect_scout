@@ -28,7 +28,7 @@ from inspect_scout._display._display import display
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanlist import scan_list_async
-from inspect_scout._scanresults import remove_scan_results, scan_results
+from inspect_scout._scanresults import remove_scan_results, scan_results_df
 from inspect_scout._scanspec import ScanSpec
 
 from .._scanner.result import Error
@@ -225,7 +225,7 @@ def view_server_app(
         await _validate_read(request, scan_path)
 
         # read the results and return
-        result = scan_results(str(scan_path))
+        result = scan_results_df(str(scan_path))
 
         # convert the dataframes to their serializable form
         serializable_scanners: dict[str, IPCDataFrame] = {}

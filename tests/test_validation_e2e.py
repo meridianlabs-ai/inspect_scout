@@ -18,7 +18,7 @@ from inspect_scout import (
     scanner,
 )
 from inspect_scout._scanner.loader import Loader
-from inspect_scout._scanresults import scan_results, scan_results_db
+from inspect_scout._scanresults import scan_results_db, scan_results_df
 from inspect_scout._transcript.database import transcripts_from_logs
 from inspect_scout._transcript.types import Transcript
 from pydantic import JsonValue
@@ -181,7 +181,7 @@ async def test_validation_basic_single_target_e2e() -> None:
         )
 
         # Get results using scan_results
-        results = scan_results(scan_result.location, scanner="bool_scanner")
+        results = scan_results_df(scan_result.location, scanner="bool_scanner")
         df = results.scanners["bool_scanner"]
 
         # Verify validation columns exist
@@ -253,7 +253,7 @@ async def test_validation_multi_target_dict_e2e() -> None:
         )
 
         # Get results
-        results = scan_results(scan_result.location, scanner="dict_scanner")
+        results = scan_results_df(scan_result.location, scanner="dict_scanner")
         df = results.scanners["dict_scanner"]
 
         # Verify validation columns exist
@@ -324,7 +324,9 @@ async def test_validation_multiple_scanners_e2e() -> None:
         )
 
         # Get results for scanner A
-        results_a = scan_results(scan_result.location, scanner="validation_scanner_a")
+        results_a = scan_results_df(
+            scan_result.location, scanner="validation_scanner_a"
+        )
         df_a = results_a.scanners["validation_scanner_a"]
         assert "validation_target" in df_a.columns
         assert "validation_result" in df_a.columns
@@ -332,7 +334,9 @@ async def test_validation_multiple_scanners_e2e() -> None:
         assert all(df_a["validation_result"]), "Scanner A validations should all pass"
 
         # Get results for scanner B
-        results_b = scan_results(scan_result.location, scanner="validation_scanner_b")
+        results_b = scan_results_df(
+            scan_result.location, scanner="validation_scanner_b"
+        )
         df_b = results_b.scanners["validation_scanner_b"]
         assert "validation_target" in df_b.columns
         assert "validation_result" in df_b.columns
@@ -362,7 +366,7 @@ async def test_validation_different_predicates_e2e() -> None:
         )
 
         # Get results
-        results = scan_results(scan_result.location, scanner="int_scanner")
+        results = scan_results_df(scan_result.location, scanner="int_scanner")
         df = results.scanners["int_scanner"]
 
         # Verify validation columns exist
@@ -401,7 +405,7 @@ async def test_validation_partial_coverage_e2e() -> None:
         )
 
         # Get all results
-        results = scan_results(scan_result.location, scanner="bool_scanner")
+        results = scan_results_df(scan_result.location, scanner="bool_scanner")
         df = results.scanners["bool_scanner"]
 
         # Verify we have 5 total results
@@ -475,7 +479,7 @@ async def test_validation_with_custom_predicate_e2e() -> None:
         )
 
         # Get results
-        results = scan_results(scan_result.location, scanner="int_scanner")
+        results = scan_results_df(scan_result.location, scanner="int_scanner")
         df = results.scanners["int_scanner"]
 
         # Verify validation columns exist
@@ -511,7 +515,7 @@ async def test_validation_failing_cases_e2e() -> None:
         )
 
         # Get results
-        results = scan_results(scan_result.location, scanner="bool_scanner")
+        results = scan_results_df(scan_result.location, scanner="bool_scanner")
         df = results.scanners["bool_scanner"]
 
         # Verify validation columns exist
@@ -626,7 +630,7 @@ async def test_validation_message_based_scanner_e2e() -> None:
         )
 
         # Get results from first scan
-        results = scan_results(scan_result.location, scanner="message_scanner")
+        results = scan_results_df(scan_result.location, scanner="message_scanner")
         df_first = results.scanners["message_scanner"]
 
         # Verify we have message-based results
@@ -663,7 +667,7 @@ async def test_validation_message_based_scanner_e2e() -> None:
         )
 
         # Get results with validation
-        results = scan_results(scan_result.location, scanner="message_scanner")
+        results = scan_results_df(scan_result.location, scanner="message_scanner")
         df = results.scanners["message_scanner"]
 
         # Verify validation columns exist
@@ -704,7 +708,7 @@ async def test_validation_event_based_scanner_e2e() -> None:
         )
 
         # Get results from first scan
-        results = scan_results(scan_result.location, scanner="event_scanner")
+        results = scan_results_df(scan_result.location, scanner="event_scanner")
         df_first = results.scanners["event_scanner"]
 
         # Verify we have event-based results
@@ -739,7 +743,7 @@ async def test_validation_event_based_scanner_e2e() -> None:
         )
 
         # Get results with validation
-        results = scan_results(scan_result.location, scanner="event_scanner")
+        results = scan_results_df(scan_result.location, scanner="event_scanner")
         df = results.scanners["event_scanner"]
 
         # Verify validation columns exist
@@ -820,7 +824,7 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
         )
 
         # Get results from first scan
-        results = scan_results(scan_result.location, scanner="pair_scanner")
+        results = scan_results_df(scan_result.location, scanner="pair_scanner")
         df_first = results.scanners["pair_scanner"]
 
         # Verify we have message pair results
@@ -857,7 +861,7 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
         )
 
         # Get results with validation
-        results = scan_results(scan_result.location, scanner="pair_scanner")
+        results = scan_results_df(scan_result.location, scanner="pair_scanner")
         df = results.scanners["pair_scanner"]
 
         # Verify validation columns exist

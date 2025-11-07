@@ -24,9 +24,9 @@ from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .recorder import (
-    Results,
-    ResultsDB,
     ScanRecorder,
+    ScanResultsDB,
+    ScanResultsDF,
     Status,
 )
 
@@ -175,7 +175,7 @@ class FileRecorder(ScanRecorder):
         scan_location: str,
         *,
         scanner: str | None = None,
-    ) -> Results:
+    ) -> ScanResultsDF:
         import pyarrow.parquet as pq
         from upath import UPath
 
@@ -210,7 +210,7 @@ class FileRecorder(ScanRecorder):
                     name = parquet_file.stem
                     scanners[name] = await scanner_df(parquet_file)
 
-            return Results(
+            return ScanResultsDF(
                 status=status.complete,
                 spec=status.spec,
                 location=status.location,
@@ -221,7 +221,7 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def results_db(scan_location: str) -> ResultsDB:
+    async def results_db(scan_location: str) -> ScanResultsDB:
         from upath import UPath
 
         scan_dir = UPath(scan_location)
@@ -249,7 +249,7 @@ class FileRecorder(ScanRecorder):
                 f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}')"
             )
 
-        return ResultsDB(
+        return ScanResultsDB(
             status=status.complete,
             spec=status.spec,
             location=status.location,

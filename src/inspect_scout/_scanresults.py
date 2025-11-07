@@ -3,8 +3,8 @@ from upath import UPath
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._recorder.recorder import (
-    Results,
-    ResultsDB,
+    ScanResultsDB,
+    ScanResultsDF,
     Status,
 )
 
@@ -34,7 +34,7 @@ async def scan_status_async(scan_location: str) -> Status:
     return await recorder.status(scan_location)
 
 
-def scan_results(scan_location: str, *, scanner: str | None = None) -> Results:
+def scan_results_df(scan_location: str, *, scanner: str | None = None) -> ScanResultsDF:
     """Scan results as Pandas data frames.
 
     Args:
@@ -44,12 +44,14 @@ def scan_results(scan_location: str, *, scanner: str | None = None) -> Results:
     Returns:
          ScanResults: Results as pandas data frames.
     """
-    return run_coroutine(scan_results_async(scan_location, scanner=scanner))
+    return run_coroutine(scan_results_df_async(scan_location, scanner=scanner))
 
 
-async def scan_results_async(
-    scan_location: str, *, scanner: str | None = None
-) -> Results:
+async def scan_results_df_async(
+    scan_location: str,
+    *,
+    scanner: str | None = None,
+) -> ScanResultsDF:
     """Scan results as Pandas data frames.
 
     Args:
@@ -63,7 +65,7 @@ async def scan_results_async(
     return await recorder.results(scan_location, scanner=scanner)
 
 
-def scan_results_db(scan_location: str) -> ResultsDB:
+def scan_results_db(scan_location: str) -> ScanResultsDB:
     """Scan results as DuckDB database.
 
     Args:
@@ -75,7 +77,7 @@ def scan_results_db(scan_location: str) -> ResultsDB:
     return run_coroutine(scan_results_db_async(scan_location))
 
 
-async def scan_results_db_async(scan_location: str) -> ResultsDB:
+async def scan_results_db_async(scan_location: str) -> ScanResultsDB:
     """Scan results as DuckDB database.
 
     Args:

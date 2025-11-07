@@ -7,12 +7,12 @@ reference: inspect_scout
 
 ### scan_list
 ### scan_status
-### scan_results
-### scan_results_db
 ### Status
 ### Summary
-### Results
-### ResultsDB
+### scan_results_df
+### ScanResultsDF
+### scan_results_db
+### ScanResultsDB
 
 ## Validation
 

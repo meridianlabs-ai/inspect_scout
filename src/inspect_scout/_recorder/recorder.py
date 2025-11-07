@@ -33,7 +33,7 @@ class Status:
 
 
 @dataclass
-class Results(Status):
+class ScanResultsDF(Status):
     """Scan results as pandas data frames."""
 
     scanners: dict[str, pd.DataFrame]
@@ -53,7 +53,7 @@ class Results(Status):
 
 
 @dataclass
-class ResultsDB(Status):
+class ScanResultsDB(Status):
     """Scan results as DuckDB database.
 
     Use `ScanResultsDB` as a context manager to close the DuckDb connection
@@ -77,7 +77,7 @@ class ResultsDB(Status):
         super().__init__(status, spec, location, summary, errors)
         self.conn = conn
 
-    def __enter__(self) -> "ResultsDB":
+    def __enter__(self) -> "ScanResultsDB":
         """Enter the async context manager."""
         return self
 
@@ -186,11 +186,13 @@ class ScanRecorder(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    async def results(scan_location: str, *, scanner: str | None = None) -> Results: ...
+    async def results(
+        scan_location: str, *, scanner: str | None = None
+    ) -> ScanResultsDF: ...
 
     @staticmethod
     @abc.abstractmethod
-    async def results_db(scan_location: str) -> ResultsDB: ...
+    async def results_db(scan_location: str) -> ScanResultsDB: ...
 
     @staticmethod
     @abc.abstractmethod

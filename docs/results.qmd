@@ -22,12 +22,12 @@ The `scout scan` command will print its status at the end of its run. If all of 
 
 ![](images/scan-complete.png)
 
-You can then pass that directory to the `scan_results()` function to get access to the underlying data frames for each scanner:
+You can then pass that directory to the `scan_results_df()` function to get access to the underlying data frames for each scanner:
 
 ``` python
 from inspect_scout import scan_results
 
-results = scan_results("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
+results = scan_results_df("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
 deception_df = results.scanners["deception"]
 tool_errors_df = results.scanners["tool_errors"]
 ```
@@ -49,7 +49,7 @@ status = scan(
 )
 
 if status.complete:
-    results = scan_results(status.location)
+    results = scan_results_df(status.location)
     deception_df = results.scanners["deception"]
     tool_errors_df = results.scanners["tool_errors"]
 ```
@@ -70,7 +70,7 @@ with results:
 
 ## Results Data
 
-The `Results` object returned from `scan_results()` includes both metadata about the scan as well as the scanner data frames:
+The `Results` object returned from `scan_results_df()` includes both metadata about the scan as well as the scanner data frames:
 
 | Field | Type | Description |
 |---------------|---------------|------------------------------------------|

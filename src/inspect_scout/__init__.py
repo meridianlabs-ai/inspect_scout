@@ -1,7 +1,9 @@
+from inspect_ai._util.deprecation import relocated_module_attribute
+
 from ._llm_scanner import AnswerLabels, llm_scanner, llm_structured_scanner
 from ._recorder.recorder import (
-    Results,
-    ResultsDB,
+    ScanResultsDB,
+    ScanResultsDF,
     Status,
 )
 from ._recorder.summary import Summary
@@ -19,8 +21,8 @@ from ._scanner.scanner import Scanner, scanner
 from ._scanner.scorer import as_scorer
 from ._scanner.types import ScannerInput
 from ._scanresults import (
-    scan_results,
     scan_results_db,
+    scan_results_df,
     scan_status,
 )
 from ._scanspec import (
@@ -73,11 +75,11 @@ __all__ = [
     # results
     "scan_list",
     "scan_status",
-    "scan_results",
+    "scan_results_df",
     "scan_results_db",
     "Status",
-    "Results",
-    "ResultsDB",
+    "ScanResultsDF",
+    "ScanResultsDB",
     "Summary",
     # transcript
     "transcripts_from_logs",
@@ -117,3 +119,13 @@ __all__ = [
     # version
     "__version__",
 ]
+
+
+_SCAN_RESULTS_VERSION_2_2 = "0.2.2"
+_REMOVED_IN = "0.3"
+relocated_module_attribute(
+    "scan_results",
+    "inspect_scout.scan_results_df",
+    _SCAN_RESULTS_VERSION_2_2,
+    _REMOVED_IN,
+)

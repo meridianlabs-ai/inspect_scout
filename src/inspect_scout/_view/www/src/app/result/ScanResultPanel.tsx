@@ -64,13 +64,10 @@ export const ScanResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedResultTab]);
 
-  // Helper function to update both store and URL
   const handleTabChange = (tabId: string) => {
     setSelectedResultTab(tabId);
     setSearchParams({ tab: tabId });
   };
-
-  console.log({ selectedResult });
 
   return (
     <div className={clsx(styles.root)}>

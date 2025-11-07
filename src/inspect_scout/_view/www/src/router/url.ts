@@ -11,23 +11,29 @@ export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 export const kScannerQueryParam = "scanner";
 
 // Helper functions to generate routes
-export const scanRoute = (relativePath: string) => {
-  return `/scan/${relativePath}`;
+export const scanRoute = (
+  relativePath: string,
+  searchParams?: URLSearchParams
+) => {
+  const route = `/scan/${relativePath}`;
+  return searchParams?.toString() ? `${route}?${searchParams.toString()}` : route;
 };
 
-export const scansRoute = (relativePath?: string) => {
-  if (relativePath) {
-    return `/scans/${relativePath}`;
-  } else {
-    return "/scans";
-  }
+export const scansRoute = (
+  relativePath?: string,
+  searchParams?: URLSearchParams
+) => {
+  const route = relativePath ? `/scans/${relativePath}` : "/scans";
+  return searchParams?.toString() ? `${route}?${searchParams.toString()}` : route;
 };
 
 export const scanResultRoute = (
   scanRelativePath: string,
-  scanResultId: string
+  scanResultId: string,
+  searchParams?: URLSearchParams
 ) => {
-  return `/scan/${scanRelativePath}/${scanResultId}`;
+  const route = `/scan/${scanRelativePath}/${scanResultId}`;
+  return searchParams?.toString() ? `${route}?${searchParams.toString()}` : route;
 };
 
 /**

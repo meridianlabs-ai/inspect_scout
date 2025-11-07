@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { FC, Fragment, ReactNode, useMemo, useRef } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import {
   getRelativePathFromParams,
@@ -29,13 +29,14 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
   const params = useParams<{ "*": string }>();
   const currentPath = getRelativePathFromParams(params);
   const singleFileMode = useStore((state) => state.singleFileMode);
+  const [searchParams] = useSearchParams();
 
   const pathContainerRef = useRef<HTMLDivElement>(null);
 
   // Check if we're on a scan result page and calculate the appropriate back URL
   const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
   const backUrl = scanResultUuid
-    ? scanRoute(scanPath) // Go back to the scan from scan result
+    ? scanRoute(scanPath, searchParams) // Go back to the scan from scan result, preserving query params
     : scansRoute(dirname(currentPath || "")); // Go back to parent directory
 
   const segments = useMemo(() => {

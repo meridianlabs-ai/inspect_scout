@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { FC } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import {
   getRelativePathFromParams,
@@ -22,6 +22,7 @@ interface ScanResultsRowProps {
 export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
+  const [searchParams] = useSearchParams();
 
   const setSelectedScanResult = useStore(
     (state) => state.setSelectedScanResult
@@ -29,8 +30,10 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
   const selectedScanResult = useStore((state) => state.selectedScanResult);
 
   // Generate the route to the scan result using the current scan path and the entry's uuid
-  const scanResultUrl = scanResultRoute(relativePath, entry.uuid);
   const isNavigable = entry.uuid !== undefined;
+  const scanResultUrl = isNavigable
+    ? scanResultRoute(relativePath, entry.uuid, searchParams)
+    : "";
 
   const grid = (
     <div

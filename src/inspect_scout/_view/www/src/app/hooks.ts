@@ -169,7 +169,6 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
       string,
       JsonValue
     >;
-    const timestamp = new Date(r.timestamp as string);
 
     const transcriptId = r.transcript_id as string;
     const transcriptMetadata = JSON.parse(
@@ -222,7 +221,6 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
       scannerKey,
       scannerName,
       scannerParams,
-      timestamp,
       transcriptId,
       transcriptMetadata,
       transcriptSourceId,

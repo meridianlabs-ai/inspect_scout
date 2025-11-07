@@ -59,7 +59,6 @@ interface ScannerDataBase extends ScannerCore {
   scannerKey: string;
   scannerName: string;
   scannerParams: Record<string, JsonValue>;
-  timestamp: Date;
   transcriptId: string;
   transcriptSourceUri: string;
 }

@@ -3754,13 +3754,20 @@ span.ap-marker-container:hover span.ap-marker {
   height: 100%;
   overflow-y: auto;
 }
-._root_h3cnt_1 {
+._container_dua3v_1 {
   padding: 1rem;
-}
-
-._container_h3cnt_5 {
   display: grid;
   grid-template-columns: 1fr max-content;
+  grid-template-rows: max-content max-content;
+  row-gap: 1rem;
+  column-gap: 0.5rem;
+}
+
+._labeled_dua3v_10 {
+}
+
+._colspan_dua3v_13 {
+  grid-column: span 2;
 }
 ._header_ruo4a_1 {
   padding-left: 1rem;

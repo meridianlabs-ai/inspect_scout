@@ -19,6 +19,8 @@ if (!container) {
   );
 }
 
+// TODO: When restoring vscode state, look for specific scan from parquet file
+
 // Render into the root
 const root = createRoot(container);
 

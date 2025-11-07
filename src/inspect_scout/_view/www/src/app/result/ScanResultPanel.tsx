@@ -84,7 +84,7 @@ export const ScanResultPanel: FC = () => {
           <TabPanel
             id={kTabIdResult}
             selected={selectedTab === kTabIdResult || selectedTab === undefined}
-            title="Explanation"
+            title="Result"
             onSelected={() => {
               handleTabChange(kTabIdResult);
             }}

@@ -8,5 +8,5 @@ interface ExplanationProps {
 }
 
 export const Explanation: FC<ExplanationProps> = ({ result }): ReactNode => {
-  return <MarkdownDiv markdown={result.explanation} />;
+  return <MarkdownDiv markdown={result.explanation || ""} />;
 };

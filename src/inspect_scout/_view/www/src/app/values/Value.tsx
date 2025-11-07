@@ -7,6 +7,7 @@ interface ValueProps {
 }
 
 // TODO: Implement popover viewer for object and list values
+// TODO: Implement support for list results
 export const Value: FC<ValueProps> = ({ result }): ReactNode => {
   if (result.valueType === "string") {
     return `"${String(result.value)}"`;

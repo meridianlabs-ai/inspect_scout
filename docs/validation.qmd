@@ -95,6 +95,58 @@ In the case of a custom loader (.e.g. one that extracts user/assistant message p
 "Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true
 ```
 
+
+### Result Set Validation
+
+When a scanner returns multiple results using `result_set()` (see [Multiple 
+Results](scanners.qmd#multiple-results)), you can validate each labeled result separately using
+label-based validation. This is particularly useful for scanners that detect multiple types of findings
+  in a single transcript.
+
+#### Format
+
+For CSV files, use `label_*` columns instead of `target_*` columns:
+
+``` {.default filename="security-validation.csv"}
+id, label_deception, label_jailbreak, label_misconfig
+Fg3KBpgFr6RSsEWmHBUqeo, true, false, false
+VFkCH7gXWpJYUYonvfHxrG, false, true, false
+SiEXpECj7U9nNAvM3H7JqB, false, false, true
+```
+
+For YAML/JSON files, use a labels key instead of target:
+
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  labels:
+    deception: true
+    jailbreak: false
+    misconfig: false
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  labels:
+    deception: false
+    jailbreak: true
+    misconfig: false
+
+#### Validation Semantics
+
+Label-based validation uses "at least one" logic: if any result with a given label matches the expected
+  value, validation passes for that label. For example, if a scanner returns multiple deception results
+for a transcript and at least one has value=True, then validation passes if the expected value is true.
+
+Missing labels are treated as negative/absent values. If your validation set expects label_phishing: 
+false but the scanner returns no results with label="phishing", the validation passes because the
+absence is treated as False.
+
+
+### Comparison Predicates
+
+The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. "gt", "gte", "contains") or with a custom function. Specify the `ValidationPredicate` as a parameter to the `validation_set()` function:
+
+``` python
+validation_set(cases="validation.csv", predicate="gte")
+```
+
 ### Value Dictionary
 
 If our scanner produces a `dict` of values, we can also build a validation dataset which provides ground truth for each distinct field in the `dict`. To do this, we introduce column names as follows:
@@ -105,13 +157,6 @@ Fg3KBpgFr6RSsEWmHBUqeo, true, 2
 VFkCH7gXWpJYUYonvfHxrG, false, 0
 ```
 
-### Comparison Predicates
-
-The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. "gt", "gte", "contains") or with a custom function. Specify the `ValidationPredicate` as a parameter to the `validation_set()` function:
-
-``` python
-validation_set(cases="validation.csv", predicate="gte")
-```
 
 ## File Formats {#validation-files}
 

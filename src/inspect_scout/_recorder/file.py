@@ -386,6 +386,12 @@ def _create_expanded_view_sql(
     # (they represent the scan execution, not individual results)
     scan_execution_fields = {"scan_total_tokens", "scan_model_usage"}
 
+    # Validation columns should also be NULL in expanded rows because:
+    # 1. Label-based validation can't create synthetic rows in SQL (too complex)
+    # 2. Without synthetic rows, validation results would be incomplete/misleading
+    # 3. Users should use Pandas (rows="results") for full validation support
+    validation_fields = {"validation_target", "validation_result"}
+
     # Build the non-resultset rows query with explicit column selection
     non_resultset_cols = ", ".join(all_columns)
     non_resultset_query = f"""
@@ -423,6 +429,11 @@ def _create_expanded_view_sql(
             expanded_col_selects.append(f"base_row.{col}")
         elif col in scan_execution_fields:
             # NULL out scan execution fields to avoid incorrect aggregation
+            expanded_col_selects.append(f"NULL AS {col}")
+        elif col in validation_fields or col.startswith("validation_result_"):
+            # NULL out validation fields in expanded rows because:
+            # 1. Label-based validation can't create synthetic rows in SQL
+            # 2. Without synthetic rows, validation results are incomplete/misleading
             expanded_col_selects.append(f"NULL AS {col}")
         elif col == "uuid":
             expanded_col_selects.append(

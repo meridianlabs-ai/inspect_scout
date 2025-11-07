@@ -155,6 +155,8 @@ This is useful when a scanner is capable of making several types of observation.
 
 By default, each individual result in the result set will yield its own row in the [results data frame](results.qmd#data-frames). 
 
+When validating scanners that return result sets, you can use [result set validation](validation.qmd#result-set-validation) to specify expected values for each label independently.
+
 
 ## Event Scanners {#events}
 

@@ -881,11 +881,21 @@ async def _validate_scan(
     # if so then perform the validation and return it
     if v_case:
         async with span("validation"):
-            valid = await validate(
-                validation_set,
-                scan_result,
-                v_case.target,
-            )
-            return ResultValidation(target=v_case.target, valid=valid)
+            # Handle label-based validation for resultsets
+            if v_case.labels is not None:
+                valid = await validate(
+                    validation_set,
+                    scan_result,
+                    labels=v_case.labels,
+                )
+                return ResultValidation(target=v_case.labels, valid=valid)
+            # Handle regular target-based validation
+            else:
+                valid = await validate(
+                    validation_set,
+                    scan_result,
+                    target=v_case.target,
+                )
+                return ResultValidation(target=v_case.target, valid=valid)
     else:
         return None

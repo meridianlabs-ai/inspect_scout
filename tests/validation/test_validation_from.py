@@ -365,7 +365,7 @@ test,123"""
 
     with pytest.raises(
         ValueError,
-        match="must contain either a 'target' column or 'target_\\*' columns",
+        match="must contain either a 'target' column, 'target_\\*' columns, or 'label_\\*' columns",
     ):
         validation_from(csv_file)
 

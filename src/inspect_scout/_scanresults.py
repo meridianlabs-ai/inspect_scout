@@ -143,6 +143,142 @@ def remove_scan_results(scan_location: str) -> None:
         scan_path.rmdir(recursive=True)
 
 
+def _handle_label_validation(
+    expanded: pd.DataFrame, resultset_rows: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Handle label-based validation for expanded resultset rows.
+
+    This function:
+    1. Propagates per-label validation results to individual expanded rows
+    2. Creates synthetic rows for missing labels (where expected value is negative)
+
+    Args:
+        expanded: DataFrame of expanded result rows
+        resultset_rows: Original resultset rows before expansion
+
+    Returns:
+        Tuple of (expanded DataFrame with validation, synthetic rows DataFrame)
+    """
+    # Check if we have validation columns
+    if (
+        "validation_target" not in expanded.columns
+        or "validation_result" not in expanded.columns
+    ):
+        return expanded, pd.DataFrame()
+
+    # Check if validation is label-based (both target and result should be JSON dicts)
+    # Get a sample validation_target to check
+    sample_target = (
+        expanded["validation_target"].iloc[0] if not expanded.empty else None
+    )
+    if sample_target is None or not isinstance(sample_target, str):
+        return expanded, pd.DataFrame()
+
+    # Try to parse as JSON dict
+    try:
+        parsed_target = json.loads(sample_target)
+        if not isinstance(parsed_target, dict):
+            # Not label-based validation
+            return expanded, pd.DataFrame()
+    except (json.JSONDecodeError, TypeError):
+        return expanded, pd.DataFrame()
+
+    # Parse validation results (should also be a dict)
+    sample_result = (
+        expanded["validation_result"].iloc[0] if not expanded.empty else None
+    )
+    try:
+        parsed_results = (
+            json.loads(sample_result)
+            if isinstance(sample_result, str)
+            else sample_result
+        )
+        if not isinstance(parsed_results, dict):
+            return expanded, pd.DataFrame()
+    except (json.JSONDecodeError, TypeError):
+        return expanded, pd.DataFrame()
+
+    # This is label-based validation! Propagate per-label results
+    def assign_label_validation(row: pd.Series) -> pd.Series:
+        """Assign validation result based on the row's label."""
+        label = row.get("label")
+        if pd.isna(label):
+            return row
+
+        # Parse validation results for this row
+        val_result_str = row.get("validation_result")
+        if pd.isna(val_result_str):
+            return row
+
+        try:
+            val_results_dict = (
+                json.loads(val_result_str)
+                if isinstance(val_result_str, str)
+                else val_result_str
+            )
+            if isinstance(val_results_dict, dict) and label in val_results_dict:
+                # Replace overall validation_result with this label's specific result
+                row["validation_result"] = val_results_dict[label]
+        except (json.JSONDecodeError, TypeError, KeyError):
+            pass
+
+        return row
+
+    expanded = expanded.apply(assign_label_validation, axis=1)
+
+    # Create synthetic rows for missing labels
+    # Get all labels present in expanded rows
+    present_labels = set(expanded["label"].dropna().unique())
+
+    # Get expected labels from validation_target
+    expected_labels = set(parsed_target.keys())
+
+    # Missing labels = expected but not present
+    missing_labels = expected_labels - present_labels
+
+    # Create synthetic rows for missing labels with negative expected values
+    synthetic_rows_list = []
+    for label in missing_labels:
+        expected_value = parsed_target[label]
+        # Only create synthetic row if expected value is negative
+        negative_values = (False, None, "NONE", "none", 0, "")
+        if expected_value not in negative_values:
+            continue
+
+        # Get a template row from the first resultset row
+        if resultset_rows.empty:
+            continue
+        template_row = resultset_rows.iloc[0].copy()
+
+        # Set result-specific fields for the synthetic row
+        template_row["label"] = label
+        template_row["value"] = expected_value
+        template_row["value_type"] = (
+            "boolean" if isinstance(expected_value, bool) else "null"
+        )
+        template_row["answer"] = None
+        template_row["explanation"] = None
+        template_row["metadata"] = json.dumps({})
+        template_row["message_references"] = "[]"
+        template_row["event_references"] = "[]"
+        template_row["uuid"] = None  # Will be assigned by system if needed
+
+        # Set validation result for this synthetic row
+        template_row["validation_result"] = parsed_results.get(label, None)
+
+        # NULL out scan execution fields
+        template_row["scan_total_tokens"] = None
+        template_row["scan_model_usage"] = None
+
+        synthetic_rows_list.append(template_row)
+
+    synthetic_rows = (
+        pd.DataFrame(synthetic_rows_list) if synthetic_rows_list else pd.DataFrame()
+    )
+
+    return expanded, synthetic_rows
+
+
 def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
     """
     Expand rows where value_type == "resultset" into multiple rows.
@@ -282,7 +418,13 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
     if "scan_model_usage" in expanded.columns:
         expanded["scan_model_usage"] = None
 
-    # Combine with other rows
-    result_df = pd.concat([other_rows, expanded], ignore_index=True)
+    # Handle label-based validation: propagate per-label results and add synthetic rows
+    expanded, synthetic_rows = _handle_label_validation(expanded, resultset_rows)
+
+    # Combine with other rows (including synthetic rows)
+    all_rows = [other_rows, expanded]
+    if not synthetic_rows.empty:
+        all_rows.append(synthetic_rows)
+    result_df = pd.concat(all_rows, ignore_index=True)
 
     return result_df

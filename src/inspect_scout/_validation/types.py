@@ -11,13 +11,34 @@ class ValidationCase(BaseModel):
     """Validation case for comparing to scanner results.
 
     A `ValidationCase` specifies the ground truth for a scan of particular id (e.g. transcript id, message id, etc.
+
+    Use `target` for single-value or dict validation.
+    Use `labels` for validating resultsets with label-specific expectations.
     """
 
     id: str | list[str]
     """Target id (e.g. transcript_id, message, id, etc.)"""
 
-    target: JsonValue
-    """Target value that the scanner is expected to output."""
+    target: JsonValue | None = Field(default=None)
+    """Target value that the scanner is expected to output.
+
+    For single-value results, this is the expected value.
+    For dict-valued results, this is a dict of expected values.
+    """
+
+    labels: dict[str, JsonValue] | None = Field(default=None)
+    """Label-specific target values for resultset validation.
+
+    Maps result labels to their expected values. Used when validating
+    scanners that return result_set() with multiple results per transcript.
+    """
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validate that exactly one of target or labels is set."""
+        if (self.target is None) == (self.labels is None):
+            raise ValueError(
+                "ValidationCase must specify exactly one of 'target' or 'labels', not both or neither"
+            )
 
 
 class ValidationSet(BaseModel):

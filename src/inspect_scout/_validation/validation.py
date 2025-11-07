@@ -35,10 +35,14 @@ def validation_set(
     # Parse id column to handle arrays
     df["id"] = df["id"].apply(_parse_id)
 
-    # Detect and process target columns
+    # Detect and process target/label columns
     target_cols = [col for col in df.columns if col.startswith("target_")]
+    label_cols = [col for col in df.columns if col.startswith("label_")]
 
-    if target_cols:
+    if label_cols:
+        # Multiple label_* columns - create label-based validation for resultsets
+        validate_cases = _create_cases_with_labels(df, label_cols)
+    elif target_cols:
         # Multiple target_* columns - create dict targets
         validate_cases = _create_cases_with_dict_target(df, target_cols)
     elif "target" in df.columns:
@@ -46,7 +50,7 @@ def validation_set(
         validate_cases = _create_cases_with_single_target(df)
     else:
         raise ValueError(
-            "Validation data must contain either a 'target' column or 'target_*' columns"
+            "Validation data must contain either a 'target' column, 'target_*' columns, or 'label_*' columns"
         )
 
     return ValidationSet(cases=validate_cases, predicate=predicate)
@@ -71,6 +75,7 @@ def _load_file(file: str | Path) -> pd.DataFrame:
             if not any(
                 name.lower() in ["id", "target", "name", "value", "key"]
                 or name.startswith("target_")
+                or name.startswith("label_")
                 for name in col_names
             ):
                 df = pd.read_csv(path, header=None, names=["id", "target"])
@@ -84,6 +89,8 @@ def _load_file(file: str | Path) -> pd.DataFrame:
         try:
             with open(path, "r") as f:
                 data = json.load(f)
+            # Preprocess to flatten labels: {...} into label_* columns
+            data = _flatten_labels_in_data(data)
             return pd.DataFrame(data)
         except Exception:
             # Fall back to pandas JSON reader
@@ -92,10 +99,14 @@ def _load_file(file: str | Path) -> pd.DataFrame:
         # Read JSONL manually to preserve types better
         with open(path, "r") as f:
             data = [json.loads(line) for line in f if line.strip()]
+        # Preprocess to flatten labels: {...} into label_* columns
+        data = _flatten_labels_in_data(data)
         return pd.DataFrame(data)
     elif suffix in [".yaml", ".yml"]:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
+        # Preprocess to flatten labels: {...} into label_* columns
+        data = _flatten_labels_in_data(data)
         return pd.DataFrame(data)
     else:
         raise ValueError(
@@ -181,6 +192,36 @@ def _parse_id(id_value: str | list[str]) -> str | list[str]:
     return id_str
 
 
+def _flatten_labels_in_data(data: Any) -> Any:
+    """Flatten labels: {...} into label_* columns for DataFrame processing.
+
+    Transforms:
+        {"id": "123", "labels": {"deception": true, "jailbreak": false}}
+    Into:
+        {"id": "123", "label_deception": true, "label_jailbreak": false}
+    """
+    if not isinstance(data, list):
+        return data
+
+    flattened = []
+    for item in data:
+        if not isinstance(item, dict):
+            flattened.append(item)
+            continue
+
+        # Check if this item has a "labels" field
+        if "labels" in item and isinstance(item["labels"], dict):
+            # Flatten labels dict into label_* keys
+            new_item = {k: v for k, v in item.items() if k != "labels"}
+            for label_key, label_value in item["labels"].items():
+                new_item[f"label_{label_key}"] = label_value
+            flattened.append(new_item)
+        else:
+            flattened.append(item)
+
+    return flattened
+
+
 def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:
     """Create ValidationCase objects with a single target column."""
     cases = []
@@ -208,6 +249,26 @@ def _create_cases_with_dict_target(
         case = ValidationCase(
             id=row["id"],
             target=target_dict,
+        )
+        cases.append(case)
+    return cases
+
+
+def _create_cases_with_labels(
+    df: pd.DataFrame, label_cols: list[str]
+) -> list[ValidationCase]:
+    """Create ValidationCase objects with multiple label_* columns for resultset validation."""
+    cases = []
+    for _, row in df.iterrows():
+        # Build dict from label_* columns, stripping the "label_" prefix
+        labels_dict = {}
+        for col in label_cols:
+            key = col[6:]  # Remove "label_" prefix
+            labels_dict[key] = row[col]
+
+        case = ValidationCase(
+            id=row["id"],
+            labels=labels_dict,
         )
         cases.append(case)
     return cases

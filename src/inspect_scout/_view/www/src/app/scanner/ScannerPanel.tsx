@@ -1,8 +1,10 @@
 import clsx from "clsx";
-import React from "react";
+import React, { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { useServerScanner, useServerScans } from "../hooks";
 import { Navbar } from "../navbar/Navbar";
@@ -15,6 +17,16 @@ export const ScannerPanel: React.FC = () => {
   useServerScans();
   useServerScanner();
   const loading = useStore((state) => state.loading);
+  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
+  const [searchParams] = useSearchParams();
+
+  // Sync URL query param with store state
+  useEffect(() => {
+    const scannerParam = getScannerParam(searchParams);
+    if (scannerParam) {
+      setSelectedScanner(scannerParam);
+    }
+  }, [searchParams, setSelectedScanner]);
 
   return (
     <div className={clsx(styles.root)}>

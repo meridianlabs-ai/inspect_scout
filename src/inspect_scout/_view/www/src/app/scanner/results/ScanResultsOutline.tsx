@@ -1,9 +1,11 @@
 import clsx from "clsx";
 import { FC, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { LabeledValue } from "../../../components/LabeledValue";
 import { LiveVirtualList } from "../../../components/LiveVirtualList";
+import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Results } from "../../../types";
 import { ApplicationIcons } from "../../appearance/icons";
@@ -41,11 +43,13 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
 }) => {
   const selectedScanner = useSelectedScanner();
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
+  const [searchParams, setSearchParams] = useSearchParams();
   const handleClick = useCallback(
     (title: string) => {
       setSelectedScanner(title);
+      setSearchParams(updateScannerParam(searchParams, title), { replace: true });
     },
-    [setSelectedScanner]
+    [setSelectedScanner, searchParams, setSearchParams]
   );
 
   return (
@@ -60,13 +64,6 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
       }}
     >
       <div className={clsx("text-size-large", styles.title)}>{entry.title}</div>
-      <LabeledValue
-        label="Scans"
-        layout="row"
-        className={clsx("text-size-smallest")}
-      >
-        {entry.scans}
-      </LabeledValue>
 
       <LabeledValue
         label="Results"

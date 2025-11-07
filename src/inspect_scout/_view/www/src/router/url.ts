@@ -7,6 +7,9 @@ export const kScanResultRouteUrlPattern = "/scan/*/*";
 // Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
 export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 
+// Query parameter constants
+export const kScannerQueryParam = "scanner";
+
 // Helper functions to generate routes
 export const scanRoute = (relativePath: string) => {
   return `/scan/${relativePath}`;
@@ -83,4 +86,21 @@ export const parseScanResultPath = (
   }
 
   return { scanPath };
+};
+
+// Updates the scanner parameter in URL search params.
+export const updateScannerParam = (
+  searchParams: URLSearchParams,
+  scanner: string
+): URLSearchParams => {
+  const newParams = new URLSearchParams(searchParams);
+  newParams.set(kScannerQueryParam, scanner);
+  return newParams;
+};
+
+// Retrieves the scanner parameter from URL search params.
+export const getScannerParam = (
+  searchParams: URLSearchParams
+): string | undefined => {
+  return searchParams.get(kScannerQueryParam) || undefined;
 };

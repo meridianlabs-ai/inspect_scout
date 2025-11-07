@@ -14,7 +14,7 @@ Normal usage of Scout (e.g. in a script or notebook) should prefer the correspon
 ### scan_complete_async
 ### scan_list_async
 ### scan_status_async
-### scan_results_async
+### scan_results_db_async
 ### scan_results_db_async
 
 

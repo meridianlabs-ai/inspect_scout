@@ -44,18 +44,18 @@ website:
           href: reference/results.qmd#scan_list
         - text: scan_status
           href: reference/results.qmd#scan_status
-        - text: scan_results
-          href: reference/results.qmd#scan_results
-        - text: scan_results_db
-          href: reference/results.qmd#scan_results_db
         - text: Status
           href: reference/results.qmd#status
         - text: Summary
           href: reference/results.qmd#summary
-        - text: Results
-          href: reference/results.qmd#results
-        - text: ResultsDB
-          href: reference/results.qmd#resultsdb
+        - text: scan_results_df
+          href: reference/results.qmd#scan_results_df
+        - text: ScanResultsDF
+          href: reference/results.qmd#scanresultsdf
+        - text: scan_results_db
+          href: reference/results.qmd#scan_results_db
+        - text: ScanResultsDB
+          href: reference/results.qmd#scanresultsdb
         - text: validation_set
           href: reference/results.qmd#validation_set
         - text: ValidationSet
@@ -135,8 +135,8 @@ website:
           href: reference/async.qmd#scan_list_async
         - text: scan_status_async
           href: reference/async.qmd#scan_status_async
-        - text: scan_results_async
-          href: reference/async.qmd#scan_results_async
+        - text: scan_results_db_async
+          href: reference/async.qmd#scan_results_db_async
         - text: scan_results_db_async
           href: reference/async.qmd#scan_results_db_async
     - section: Scout CLI

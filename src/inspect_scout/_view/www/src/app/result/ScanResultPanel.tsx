@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
-import { FC } from "react";
-import { useParams } from "react-router-dom";
+import { FC, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { ActivityBar } from "../../components/ActivityBar";
 import JSONPanel from "../../components/JsonPanel";
@@ -40,9 +40,34 @@ export const ScanResultPanel: FC = () => {
 
   const loading = useStore((state) => state.loading);
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
   const selectedResult = useSelectedResultsRow(scanResultUuid);
+
+  // Sync URL tab parameter with store on mount and URL changes
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      // Valid tab IDs
+      const validTabs = [
+        kTabIdResult,
+        kTabIdInput,
+        kTabIdInfo,
+        kTabIdJson,
+        kTabIdTranscript,
+      ];
+      if (validTabs.includes(tabParam)) {
+        setSelectedResultTab(tabParam);
+      }
+    }
+  }, [searchParams, setSelectedResultTab]);
+
+  // Helper function to update both store and URL
+  const handleTabChange = (tabId: string) => {
+    setSelectedResultTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
 
   return (
     <div className={clsx(styles.root)}>
@@ -62,7 +87,7 @@ export const ScanResultPanel: FC = () => {
           selected={selectedTab === kTabIdResult || selectedTab === undefined}
           title="Results"
           onSelected={() => {
-            setSelectedResultTab(kTabIdResult);
+            handleTabChange(kTabIdResult);
           }}
         >
           <ResultPanel />
@@ -72,7 +97,7 @@ export const ScanResultPanel: FC = () => {
           selected={selectedTab === kTabIdInput}
           title="Input"
           onSelected={() => {
-            setSelectedResultTab(kTabIdInput);
+            handleTabChange(kTabIdInput);
           }}
         >
           <InputPanel />
@@ -82,7 +107,7 @@ export const ScanResultPanel: FC = () => {
           selected={selectedTab === kTabIdTranscript}
           title="Transcript"
           onSelected={() => {
-            setSelectedResultTab(kTabIdTranscript);
+            handleTabChange(kTabIdTranscript);
           }}
         >
           <TranscriptPanel />
@@ -92,7 +117,7 @@ export const ScanResultPanel: FC = () => {
           selected={selectedTab === kTabIdInfo}
           title="Info"
           onSelected={() => {
-            setSelectedResultTab(kTabIdInfo);
+            handleTabChange(kTabIdInfo);
           }}
         >
           <InfoPanel scannerData={selectedResult} />
@@ -102,7 +127,7 @@ export const ScanResultPanel: FC = () => {
           selected={selectedTab === kTabIdJson}
           title="JSON"
           onSelected={() => {
-            setSelectedResultTab(kTabIdJson);
+            handleTabChange(kTabIdJson);
           }}
         >
           <JSONPanel

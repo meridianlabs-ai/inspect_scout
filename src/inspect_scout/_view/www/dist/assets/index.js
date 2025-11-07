@@ -52216,9 +52216,29 @@ const ScanResultPanel = () => {
   const relativePath = getRelativePathFromParams(params);
   const { scanResultUuid } = parseScanResultPath(relativePath);
   const loading = useStore((state) => state.loading);
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
   const selectedResult = useSelectedResultsRow(scanResultUuid);
+  reactExports.useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      const validTabs = [
+        kTabIdResult,
+        kTabIdInput,
+        kTabIdInfo$1,
+        kTabIdJson$1,
+        kTabIdTranscript
+      ];
+      if (validTabs.includes(tabParam)) {
+        setSelectedResultTab(tabParam);
+      }
+    }
+  }, [searchParams, setSelectedResultTab]);
+  const handleTabChange = (tabId) => {
+    setSelectedResultTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$f.root), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(Navbar, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityBar, { animating: !!loading }),
@@ -52239,7 +52259,7 @@ const ScanResultPanel = () => {
               selected: selectedTab === kTabIdResult || selectedTab === void 0,
               title: "Results",
               onSelected: () => {
-                setSelectedResultTab(kTabIdResult);
+                handleTabChange(kTabIdResult);
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx(ResultPanel, {})
             }
@@ -52251,7 +52271,7 @@ const ScanResultPanel = () => {
               selected: selectedTab === kTabIdInput,
               title: "Input",
               onSelected: () => {
-                setSelectedResultTab(kTabIdInput);
+                handleTabChange(kTabIdInput);
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx(InputPanel, {})
             }
@@ -52263,7 +52283,7 @@ const ScanResultPanel = () => {
               selected: selectedTab === kTabIdTranscript,
               title: "Transcript",
               onSelected: () => {
-                setSelectedResultTab(kTabIdTranscript);
+                handleTabChange(kTabIdTranscript);
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx(TranscriptPanel, {})
             }
@@ -52275,7 +52295,7 @@ const ScanResultPanel = () => {
               selected: selectedTab === kTabIdInfo$1,
               title: "Info",
               onSelected: () => {
-                setSelectedResultTab(kTabIdInfo$1);
+                handleTabChange(kTabIdInfo$1);
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx(InfoPanel, { scannerData: selectedResult })
             }
@@ -52287,7 +52307,7 @@ const ScanResultPanel = () => {
               selected: selectedTab === kTabIdJson$1,
               title: "JSON",
               onSelected: () => {
-                setSelectedResultTab(kTabIdJson$1);
+                handleTabChange(kTabIdJson$1);
               },
               children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                 JSONPanel,

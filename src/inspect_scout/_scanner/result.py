@@ -1,7 +1,7 @@
 import json
 from typing import Any, Literal, Sequence
 
-from inspect_ai._util.json import to_json_str_safe
+from inspect_ai._util.json import jsonable_python, to_json_str_safe
 from inspect_ai.event import Event
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -46,6 +46,39 @@ class Result(BaseModel):
 
     references: list[Reference] = Field(default_factory=list)
     """References to relevant messages or events."""
+
+    label: str | None = Field(default=None)
+    """Label for result to indicate its origin."""
+
+    type: str | None = Field(default=None)
+    """Type to designate contents of 'value' (used in `value_type` field in result data frames)."""
+
+
+def result_set(results: list[Result]) -> Result:
+    """Create a result that aggregates a list of other results.
+
+    The passed `results` must each have a `label` field to distinguish
+    their source (normally this isn't required for results because their
+    scanner is their implicit source, however if a scanner returns multiple
+    results they benfit from additional identification).
+
+    Note that labels can be repeated multiple times (e.g. if a scanner is
+    looking for instances of "deception" it might return multiple
+    `label="deception"` results).
+
+    Args:
+        results: List of results (each result must have a `label` field).
+
+    Returns:
+        Result of type "resultset" which aggregates the passed results.
+
+    """
+    # first ensure that the results all have labels
+    if not all([result.label is not None for result in results]):
+        raise ValueError("Results passed to `result_set()` must all have labels")
+
+    # pack the results into the value
+    return Result(value=jsonable_python(results), type="resultset")
 
 
 class Error(BaseModel):
@@ -99,6 +132,7 @@ class ResultReport(BaseModel):
         if self.result is not None:
             # result
             columns["uuid"] = self.result.uuid
+            columns["label"] = self.result.label
             if isinstance(self.result.value, str | bool | int | float | None):
                 columns["value"] = self.result.value
                 if isinstance(self.result.value, str):
@@ -112,9 +146,12 @@ class ResultReport(BaseModel):
 
             else:
                 columns["value"] = to_json_str_safe(self.result.value)
-                columns["value_type"] = (
-                    "array" if isinstance(self.result.value, list) else "object"
-                )
+                if self.result.type is not None:
+                    columns["value_type"] = self.result.type
+                else:
+                    columns["value_type"] = (
+                        "array" if isinstance(self.result.value, list) else "object"
+                    )
             columns["answer"] = self.result.answer
             columns["explanation"] = self.result.explanation
             columns["metadata"] = to_json_str_safe(self.result.metadata or {})
@@ -134,6 +171,7 @@ class ResultReport(BaseModel):
             columns["scan_error_traceback"] = None
         elif self.error is not None:
             columns["uuid"] = uuid()
+            columns["label"] = None
             columns["value"] = None
             columns["value_type"] = "null"
             columns["answer"] = None

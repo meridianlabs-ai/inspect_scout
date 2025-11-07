@@ -8,6 +8,7 @@ reference: "inspect_scout"
 ### Scanner
 ### ScannerInput
 ### Result
+### result_set
 ### Reference
 ### Error
 ### Loader

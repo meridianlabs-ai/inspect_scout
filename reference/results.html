@@ -330,18 +330,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_results" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_results_db" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_db</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../reference/results.html#status" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Status</span></a>
   </div>
@@ -354,14 +342,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#results" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Results</span></a>
+  <a href="../reference/results.html#scan_results_df" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_df</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#resultsdb" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ResultsDB</span></a>
+  <a href="../reference/results.html#scanresultsdf" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanResultsDF</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/results.html#scan_results_db" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_db</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/results.html#scanresultsdb" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanResultsDB</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -490,6 +490,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#result_set" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">result_set</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#reference" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reference</span></a>
   </div>
@@ -514,8 +520,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#multilabels" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MultiLabels</span></a>
+  <a href="../reference/scanner.html#answerlabels" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">AnswerLabels</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -528,12 +534,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#contentpreprocessor" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ContentPreprocessor</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#extract_references" class="sidebar-item-text sidebar-link">
- <span class="menu-text">extract_references</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -609,8 +609,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_results_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_async</span></a>
+  <a href="../reference/async.html#scan_results_df_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_df_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -660,12 +660,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#scan_list" id="toc-scan_list" class="nav-link" data-scroll-target="#scan_list">scan_list</a></li>
   <li><a href="#scan_status" id="toc-scan_status" class="nav-link" data-scroll-target="#scan_status">scan_status</a></li>
-  <li><a href="#scan_results" id="toc-scan_results" class="nav-link" data-scroll-target="#scan_results">scan_results</a></li>
-  <li><a href="#scan_results_db" id="toc-scan_results_db" class="nav-link" data-scroll-target="#scan_results_db">scan_results_db</a></li>
   <li><a href="#status" id="toc-status" class="nav-link" data-scroll-target="#status">Status</a></li>
   <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
-  <li><a href="#results-1" id="toc-results-1" class="nav-link" data-scroll-target="#results-1">Results</a></li>
-  <li><a href="#resultsdb" id="toc-resultsdb" class="nav-link" data-scroll-target="#resultsdb">ResultsDB</a></li>
+  <li><a href="#scan_results_df" id="toc-scan_results_df" class="nav-link" data-scroll-target="#scan_results_df">scan_results_df</a></li>
+  <li><a href="#scanresultsdf" id="toc-scanresultsdf" class="nav-link" data-scroll-target="#scanresultsdf">ScanResultsDF</a></li>
+  <li><a href="#scan_results_db" id="toc-scan_results_db" class="nav-link" data-scroll-target="#scan_results_db">scan_results_db</a></li>
+  <li><a href="#scanresultsdb" id="toc-scanresultsdb" class="nav-link" data-scroll-target="#scanresultsdb">ScanResultsDB</a></li>
   </ul></li>
   <li><a href="#validation" id="toc-validation" class="nav-link" data-scroll-target="#validation">Validation</a>
   <ul class="collapse">
@@ -705,7 +705,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scan_list">scan_list</h3>
 <p>List completed and pending scans.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanlist.py#L7">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanlist.py#L7">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_list(scans_location: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[Status]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -719,7 +719,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scan_status">scan_status</h3>
 <p>Status of scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanresults.py#L12">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanresults.py#L18">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_status(scan_location: <span class="bu">str</span>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -729,46 +729,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dd>
 </dl>
 </section>
-<section id="scan_results" class="level3">
-<h3 class="anchored" data-anchor-id="scan_results">scan_results</h3>
-<p>Scan results as Pandas data frames.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanresults.py#L37">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_results(scan_location: <span class="bu">str</span>, <span class="op">*</span>, scanner: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> Results</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Location of scan (e.g.&nbsp;directory or s3 bucket).</p>
-</dd>
-<dt><code class="ref-definition">scanner</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Scanner name (defaults to all scanners).</p>
-</dd>
-</dl>
-</section>
-<section id="scan_results_db" class="level3">
-<h3 class="anchored" data-anchor-id="scan_results_db">scan_results_db</h3>
-<p>Scan results as DuckDB database.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanresults.py#L66">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_results_db(scan_location: <span class="bu">str</span>) <span class="op">-&gt;</span> ResultsDB</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Location of scan (e.g.&nbsp;directory or s3 bucket).</p>
-</dd>
-</dl>
-</section>
 <section id="status" class="level3">
 <h3 class="anchored" data-anchor-id="status">Status</h3>
 <p>Status of scan job.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_recorder/recorder.py#L15">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_recorder/recorder.py#L15">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -799,9 +767,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="summary">Summary</h3>
 <p>Summary of scan results.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_recorder/summary.py#L32">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_recorder/summary.py#L32">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Summary(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Summary(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -812,14 +780,41 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dl>
 </section>
 </section>
-<section id="results-1" class="level3">
-<h3 class="anchored" data-anchor-id="results-1">Results</h3>
+<section id="scan_results_df" class="level3">
+<h3 class="anchored" data-anchor-id="scan_results_df">scan_results_df</h3>
+<p>Scan results as Pandas data frames.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanresults.py#L43">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_results_df(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    scanner: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    rows: Literal[<span class="st">"results"</span>, <span class="st">"transcripts"</span>] <span class="op">=</span> <span class="st">"results"</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> ScanResultsDF</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Location of scan (e.g.&nbsp;directory or s3 bucket).</p>
+</dd>
+<dt><code class="ref-definition">scanner</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Scanner name (defaults to all scanners).</p>
+</dd>
+<dt><code class="ref-definition">rows</code> <span class="element-type"><span class="element-type-name">Literal</span>['results', 'transcripts']</span></dt>
+<dd>
+<p>Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results will be packed into the <code>value</code> field as a JSON list of <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>).</p>
+</dd>
+</dl>
+</section>
+<section id="scanresultsdf" class="level3">
+<h3 class="anchored" data-anchor-id="scanresultsdf">ScanResultsDF</h3>
 <p>Scan results as pandas data frames.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_recorder/recorder.py#L35">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_recorder/recorder.py#L35">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Results(Status)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanResultsDF(Status)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -830,16 +825,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dl>
 </section>
 </section>
-<section id="resultsdb" class="level3">
-<h3 class="anchored" data-anchor-id="resultsdb">ResultsDB</h3>
+<section id="scan_results_db" class="level3">
+<h3 class="anchored" data-anchor-id="scan_results_db">scan_results_db</h3>
 <p>Scan results as DuckDB database.</p>
-<p>Use <code>ScanResultsDB</code> as a context manager to close the DuckDb connection when you are finished using it.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanresults.py#L99">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_results_db(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    rows: Literal[<span class="st">"results"</span>, <span class="st">"transcripts"</span>] <span class="op">=</span> <span class="st">"results"</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> ScanResultsDB</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Location of scan (e.g.&nbsp;directory or s3 bucket).</p>
+</dd>
+<dt><code class="ref-definition">rows</code> <span class="element-type"><span class="element-type-name">Literal</span>['results', 'transcripts']</span></dt>
+<dd>
+<p>Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results (if any) will be packed into the <code>value</code> field as a JSON list of <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>).</p>
+</dd>
+</dl>
+</section>
+<section id="scanresultsdb" class="level3">
+<h3 class="anchored" data-anchor-id="scanresultsdb">ScanResultsDB</h3>
+<p>Scan results as DuckDB database.</p>
+<p>Use <span class="element-type-name ref-interlink"><a href="../reference/results.html#scanresultsdb">ScanResultsDB</a></span> as a context manager to close the DuckDb connection when you are finished using it.</p>
 <p>Use the <code>to_file()</code> method to create a DuckDB database file for the results.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_recorder/recorder.py#L55">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_recorder/recorder.py#L55">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ResultsDB(Status)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanResultsDB(Status)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -857,7 +874,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Write the database contents to a DuckDB file.</p>
 <p>This materializes all views and tables from the in-memory connection into a persistent DuckDB database file.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_recorder/recorder.py#L92">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_recorder/recorder.py#L92">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> to_file(<span class="va">self</span>, <span class="bu">file</span>: <span class="bu">str</span>, overwrite: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -881,7 +898,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="validation_set">validation_set</h3>
 <p>Create a validation set by reading cases from a file or data frame.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_validation/validation.py#L12">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_validation/validation.py#L12">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> validation_set(</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    cases: <span class="bu">str</span> <span class="op">|</span> Path <span class="op">|</span> pd.DataFrame,</span>
@@ -902,7 +919,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="validationset">ValidationSet</h3>
 <p>Validation set for a scanner.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_validation/types.py#L23">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_validation/types.py#L44">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ValidationSet(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -924,8 +941,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="validationcase">ValidationCase</h3>
 <p>Validation case for comparing to scanner results.</p>
 <p>A <span class="element-type-name ref-interlink"><a href="../reference/results.html#validationcase">ValidationCase</a></span> specifies the ground truth for a scan of particular id (e.g.&nbsp;transcript id, message id, etc.</p>
+<p>Use <code>target</code> for single-value or dict validation. Use <code>labels</code> for validating resultsets with label-specific expectations.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_validation/types.py#L10">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_validation/types.py#L10">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ValidationCase(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -935,9 +953,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Target id (e.g.&nbsp;transcript_id, message, id, etc.)</p>
 </dd>
-<dt><code class="ref-definition">target</code> <span class="element-type"><span class="element-type-name">JsonValue</span></span></dt>
+<dt><code class="ref-definition">target</code> <span class="element-type"><span class="element-type-name">JsonValue</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p>Target value that the scanner is expected to output.</p>
+<p>For single-value results, this is the expected value. For dict-valued results, this is a dict of expected values.</p>
+</dd>
+<dt><code class="ref-definition">labels</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">JsonValue</span>] | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Label-specific target values for resultset validation.</p>
+<p>Maps result labels to their expected values. Used when validating scanners that return result_set() with multiple results per transcript.</p>
+</dd>
+</dl>
+</section>
+<section class="level4 class-methods">
+<h4 class="class-methods anchored" data-anchor-id="">Methods</h4>
+<dl>
+<dt>model_post_init</dt>
+<dd>
+<p>Validate that exactly one of target or labels is set.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_validation/types.py#L36">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> model_post_init(<span class="va">self</span>, __context: Any) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">__context</code> <span class="element-type"><span class="element-type-name">Any</span></span></dt>
+<dd>
+
+</dd>
+</dl>
 </dd>
 </dl>
 </section>
@@ -946,24 +989,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="validationpredicate">ValidationPredicate</h3>
 <p>Predicate used to compare scanner result with target value.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_validation/predicates.py#L12">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_validation/predicates.py#L12">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>ValidationPredicate: TypeAlias <span class="op">=</span> (</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    Literal[</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"gt"</span>,</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"gte"</span>,</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"lt"</span>,</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"lte"</span>,</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"eq"</span>,</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"ne"</span>,</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"contains"</span>,</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"startswith"</span>,</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"endswith"</span>,</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"icontains"</span>,</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"iequals"</span>,</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> PredicateFn</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>ValidationPredicate: TypeAlias <span class="op">=</span> (</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    Literal[</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"gt"</span>,</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"gte"</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"lt"</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"lte"</span>,</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"eq"</span>,</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"ne"</span>,</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"contains"</span>,</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"startswith"</span>,</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"endswith"</span>,</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"icontains"</span>,</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"iequals"</span>,</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> PredicateFn</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

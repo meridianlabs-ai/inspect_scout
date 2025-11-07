@@ -353,7 +353,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li><p><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> — LLM conversation to analyze (e.g.&nbsp;an Inspect sample trajectory).</p></li>
 <li><p><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> — Function that takes an input from a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> and returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> (conceptually very similar to an Inspect <code>Scorer</code>).</p></li>
-<li><p><span class="element-type-name ref-interlink"><a href="./reference/results.html#results">Results</a></span> — Data frame(s) that includes the results of scanners applied to transcripts.</p></li>
+<li><p><code>Results</code> — Data frame(s) that includes the results of scanners applied to transcripts.</p></li>
 </ul>
 <section id="creating-a-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="creating-a-scanner">Creating a Scanner</h3>
@@ -527,7 +527,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>By default, the results of scans are written into the <code>./scans</code> directory. You can override this using the <code>--results</code> option—both file paths and S3 buckets are supported.</p>
 <p>Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database (there will be a table for each scanner).</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># results as pandas data frames</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_df(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span>
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
@@ -539,7 +539,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
 <span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See the <a href="./results.html">Results</a> article for more details on the columns available in the data frames returned by <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results">scan_results()</a></span>.</p>
+<p>See the <a href="./results.html">Results</a> article for more details on the columns available in the data frames returned by <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span>.</p>
 </section>
 <section id="validation" class="level2">
 <h2 class="anchored" data-anchor-id="validation">Validation</h2>

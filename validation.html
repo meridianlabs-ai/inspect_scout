@@ -290,8 +290,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#filtering-transcripts" id="toc-filtering-transcripts" class="nav-link" data-scroll-target="#filtering-transcripts">Filtering Transcripts</a></li>
   <li><a href="#ids-and-targets" id="toc-ids-and-targets" class="nav-link" data-scroll-target="#ids-and-targets">IDs and Targets</a>
   <ul class="collapse">
-  <li><a href="#value-dictionary" id="toc-value-dictionary" class="nav-link" data-scroll-target="#value-dictionary">Value Dictionary</a></li>
+  <li><a href="#result-set-validation" id="toc-result-set-validation" class="nav-link" data-scroll-target="#result-set-validation">Result Set Validation</a></li>
   <li><a href="#comparison-predicates" id="toc-comparison-predicates" class="nav-link" data-scroll-target="#comparison-predicates">Comparison Predicates</a></li>
+  <li><a href="#value-dictionary" id="toc-value-dictionary" class="nav-link" data-scroll-target="#value-dictionary">Value Dictionary</a></li>
   </ul></li>
   <li><a href="#validation-files" id="toc-validation-files" class="nav-link" data-scroll-target="#validation-files">File Formats</a></li>
   </ul>
@@ -405,6 +406,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<section id="result-set-validation" class="level3">
+<h3 class="anchored" data-anchor-id="result-set-validation">Result Set Validation</h3>
+<p>When a scanner returns multiple results using <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result_set">result_set()</a></span> (see <a href="./scanners.html#multiple-results">Multiple Results</a>), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.</p>
+<section id="format" class="level4">
+<h4 class="anchored" data-anchor-id="format">Format</h4>
+<p>For CSV files, use <code>label_*</code> columns instead of <code>target_*</code> columns:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>security-validation.csv</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-filename="security-validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>id, label_deception, label_jailbreak, label_misconfig</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, true, false, false</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, false, true, false</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB, false, false, true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>For YAML/JSON files, use a labels key instead of target:</p>
+<ul>
+<li><p>id: Fg3KBpgFr6RSsEWmHBUqeo labels: deception: true jailbreak: false misconfig: false</p></li>
+<li><p>id: VFkCH7gXWpJYUYonvfHxrG labels: deception: false jailbreak: true misconfig: false</p></li>
+</ul>
+</section>
+<section id="validation-semantics" class="level4">
+<h4 class="anchored" data-anchor-id="validation-semantics">Validation Semantics</h4>
+<p>Label-based validation uses “at least one” logic: if any result with a given label matches the expected value, validation passes for that label. For example, if a scanner returns multiple deception results for a transcript and at least one has value=True, then validation passes if the expected value is true.</p>
+<p>Missing labels are treated as negative/absent values. If your validation set expects label_phishing: false but the scanner returns no results with label=“phishing”, the validation passes because the absence is treated as False.</p>
+</section>
+</section>
+<section id="comparison-predicates" class="level3">
+<h3 class="anchored" data-anchor-id="comparison-predicates">Comparison Predicates</h3>
+<p>The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g.&nbsp;“gt”, “gte”, “contains”) or with a custom function. Specify the <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationpredicate">ValidationPredicate</a></span> as a parameter to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#validation_set">validation_set()</a></span> function:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>validation_set(cases<span class="op">=</span><span class="st">"validation.csv"</span>, predicate<span class="op">=</span><span class="st">"gte"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
 <section id="value-dictionary" class="level3">
 <h3 class="anchored" data-anchor-id="value-dictionary">Value Dictionary</h3>
 <p>If our scanner produces a <code>dict</code> of values, we can also build a validation dataset which provides ground truth for each distinct field in the <code>dict</code>. To do this, we introduce column names as follows:</p>
@@ -412,15 +445,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-with-filename-file">
 <pre><strong>validation.csv</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-filename="validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>id, target_deception, target_backtracks</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, true, 2</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, false, 0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9" data-filename="validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>id, target_deception, target_backtracks</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, true, 2</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, false, 0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-</section>
-<section id="comparison-predicates" class="level3">
-<h3 class="anchored" data-anchor-id="comparison-predicates">Comparison Predicates</h3>
-<p>The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g.&nbsp;“gt”, “gte”, “contains”) or with a custom function. Specify the <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationpredicate">ValidationPredicate</a></span> as a parameter to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#validation_set">validation_set()</a></span> function:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>validation_set(cases<span class="op">=</span><span class="st">"validation.csv"</span>, predicate<span class="op">=</span><span class="st">"gte"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="validation-files" class="level2">
@@ -430,26 +458,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-with-filename-file">
 <pre><strong>validation.yaml</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9" data-filename="validation.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> Fg3KBpgFr6RSsEWmHBUqeo</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10" data-filename="validation.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> Fg3KBpgFr6RSsEWmHBUqeo</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>And for multiple targets:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>validation.yaml</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10" data-filename="validation.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> Fg3KBpgFr6RSsEWmHBUqeo</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">backtracks</span><span class="kw">:</span><span class="at"> </span><span class="dv">2</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">backtracks</span><span class="kw">:</span><span class="at"> </span><span class="dv">0</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11" data-filename="validation.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> Fg3KBpgFr6RSsEWmHBUqeo</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">backtracks</span><span class="kw">:</span><span class="at"> </span><span class="dv">2</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">backtracks</span><span class="kw">:</span><span class="at"> </span><span class="dv">0</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 
 

@@ -208,6 +208,32 @@ result = await get_model().generate(
 The `messages_as_str()` function will by default remove system messages
 from the list. See `ContentPreprocessor` for other available options.
 
+## Multiple Results
+
+It is possible for scanners to return multiple results using the
+`result_set()` function. For example:
+
+``` python
+result = result_set([
+    Result(label="deception", value=True, explanation="..."),
+    Result(label="misconfiguration", value=True, explanation="...")
+])
+```
+
+This is useful when a scanner is capable of making several types of
+observation. In this case it’s also important to indicate the origin of
+the result (i.e. which class of observation is is). Consequently, a
+`label` field is required for each `Result` passed to `result_set()`
+(note that `label` can repeat multiple times in a set, so e.g. you could
+have multiple results with `label="deception"`).
+
+By default, each individual result in the result set will yield its own
+row in the [results data frame](results.qmd#data-frames).
+
+When validating scanners that return result sets, you can use [result
+set validation](validation.qmd#result-set-validation) to specify
+expected values for each label independently.
+
 ## Event Scanners
 
 To write a scanner that targets events, write a function that takes the

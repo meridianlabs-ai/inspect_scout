@@ -23,7 +23,7 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scan.py#L154)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scan.py#L154)
 
 ``` python
 async def scan_async(
@@ -117,7 +117,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scan.py#L298)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scan.py#L298)
 
 ``` python
 async def scan_resume_async(scan_location: str, log_level: str | None = None) -> Status
@@ -137,7 +137,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scan.py#L362)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scan.py#L362)
 
 ``` python
 async def scan_complete_async(
@@ -156,7 +156,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanlist.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanlist.py#L19)
 
 ``` python
 async def scan_list_async(scans_location: str) -> list[Status]
@@ -169,7 +169,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanresults.py#L24)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanresults.py#L30)
 
 ``` python
 async def scan_status_async(scan_location: str) -> Status
@@ -178,16 +178,19 @@ async def scan_status_async(scan_location: str) -> Status
 `scan_location` str  
 Location to get status for (e.g. directory or s3 bucket)
 
-### scan_results_async
+### scan_results_df_async
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanresults.py#L50)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanresults.py#L67)
 
 ``` python
-async def scan_results_async(
-    scan_location: str, *, scanner: str | None = None
-) -> Results
+async def scan_results_df_async(
+    scan_location: str,
+    *,
+    scanner: str | None = None,
+    rows: Literal["results", "transcripts"] = "results",
+) -> ScanResultsDF
 ```
 
 `scan_location` str  
@@ -196,15 +199,31 @@ Location of scan (e.g. directory or s3 bucket).
 `scanner` str \| None  
 Scanner name (defaults to all scanners).
 
+`rows` Literal\['results', 'transcripts'\]  
+Row granularity. Specify “results” to yield a row for each scanner
+result (potentially multiple per transcript); Specify “transcript” to
+yield a row for each transcript (in which case multiple results will be
+packed into the `value` field as a JSON list of `Result`).
+
 ### scan_results_db_async
 
 Scan results as DuckDB database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e06426ac3ecfc441bd276c06c17e4f8d6102d26f/src/inspect_scout/_scanresults.py#L78)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/0465669ee90aebb0e50724e1d25bd66bea071193/src/inspect_scout/_scanresults.py#L119)
 
 ``` python
-async def scan_results_db_async(scan_location: str) -> ResultsDB
+async def scan_results_db_async(
+    scan_location: str,
+    *,
+    rows: Literal["results", "transcripts"] = "results",
+) -> ScanResultsDB
 ```
 
 `scan_location` str  
 Location of scan (e.g. directory or s3 bucket).
+
+`rows` Literal\['results', 'transcripts'\]  
+Row granularity. Specify “results” to yield a row for each scanner
+result (potentially multiple per transcript); Specify “transcript” to
+yield a row for each transcript (in which case multiple results (if any)
+will be packed into the `value` field as a JSON list of `Result`).

@@ -32,13 +32,13 @@ directory where results are stored:
 
 ![](images/scan-complete.png)
 
-You can then pass that directory to the `scan_results()` function to get
-access to the underlying data frames for each scanner:
+You can then pass that directory to the `scan_results_df()` function to
+get access to the underlying data frames for each scanner:
 
 ``` python
 from inspect_scout import scan_results
 
-results = scan_results("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
+results = scan_results_df("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
 deception_df = results.scanners["deception"]
 tool_errors_df = results.scanners["tool_errors"]
 ```
@@ -63,7 +63,7 @@ status = scan(
 )
 
 if status.complete:
-    results = scan_results(status.location)
+    results = scan_results_df(status.location)
     deception_df = results.scanners["deception"]
     tool_errors_df = results.scanners["tool_errors"]
 ```
@@ -86,7 +86,7 @@ with results:
 
 ## Results Data
 
-The `Results` object returned from `scan_results()` includes both
+The `Results` object returned from `scan_results_df()` includes both
 metadata about the scan as well as the scanner data frames:
 
 | Field | Type | Description |
@@ -96,24 +96,39 @@ metadata about the scan as well as the scanner data frames:
 | `location` | str | Location of scan directory |
 | `summary` | Summary | Summary of scan (results, errors, tokens, etc.) |
 | `errors` | list\[Error\] | Errors during last scan attempt. |
-| `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#scanner-data) for details) |
+| `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#data-frames) for details) |
 
 ### Data Frames
 
 <style type="text/css">
-#scanner-data td:nth-child(2) {
+#data-frames td:nth-child(2) {
   font-size: 0.9em;
   line-height: 1.2;
 }
-#scanner-data small {
+#data-frames small {
   font-size: x-small;
 }
 </style>
 
 The data frames available for each scanner contain information about the
 source evaluation and transcript, the results found for each transcript,
-as well as data on token usage, model calls, and errors which may have
-occurred during the scan.
+as well as model calls, errors and other events which may have occurred
+during the scan.
+
+#### Row Granularity
+
+Note that by default the results data frame will include an individual
+row for each result returned by a scanner. This means that if a scanner
+returned [multiple results](#0) there would be multiple rows all sharing
+the same `transcript_id`. You can customize this behavior via the `rows`
+option of the scan results functions:
+
+|  |  |
+|----|----|
+| `rows = "results"` | Default. Yield a row for each scanner result (potentially multiple rows per transcript) |
+| `rows = "transcripts"` | Yield a row for each transcript (in which case multiple results will be packed into the `value` field as a JSON list of `Result`) and the `value_type` will be “resultset”. |
+
+#### Available Fields
 
 The data frame includes the following fields (note that some fields
 included embedded JSON data, these are all noted below):
@@ -134,6 +149,8 @@ included embedded JSON data, these are all noted below):
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |
 | `input_ids` | list\[str\]JSON | Unique ids of scanner input. |
 | `input` | ScannerInputJSON | Scanner input value. |
+| `uuid` | str | Globally unique id for scan result. |
+| `label` | str | Label for the origin of the result (optional). |
 | `value` | JsonValueJSON | Value returned by scanner. |
 | `value_type` | string \| boolean \| number \| array \| object \| null | Type of value returned by scanner. |
 | `answer` | str | Answer extracted from scanner generation. |
@@ -141,13 +158,13 @@ included embedded JSON data, these are all noted below):
 | `metadata` | dictJSON | Metadata for scan result. |
 | `message_references` | list\[Reference\]JSON | Messages referenced by scanner. |
 | `event_references` | list\[Reference\]JSON | Events referenced by scanner. |
-| `scan_error` | str | Error which occurred during scan. |
-| `scan_error_traceback` | str | Traceback for error (if any) |
-| `scan_total_tokens` | number | Total tokens used by scan. |
-| `scan_model_usage` | dict \[str, ModelUsage\]JSON | Token usage by model for scan. |
-| `scan_events` | list\[Event\]JSON | Scan events (e.g. model event, log event, etc.) |
 | `validation_target` | JsonValueJSON | Target value from validation set. |
 | `validation_result` | JsonValueJSON | Result returned from comparing `validation_target` to `value`. |
+| `scan_error` | str | Error which occurred during scan. |
+| `scan_error_traceback` | str | Traceback for error (if any) |
+| `scan_events` | list\[Event\]JSON | Scan events (e.g. model event, log event, etc.) |
+| `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
+| `scan_model_usage` | dict \[str, ModelUsage\]JSON | Token usage by model for scan (only included when `rows = "transcripts"`). |
 
 Several of these fields can be used to link back to the source eval log
 and sample for the transcript:

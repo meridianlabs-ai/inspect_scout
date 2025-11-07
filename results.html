@@ -292,7 +292,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#results-data" id="toc-results-data" class="nav-link" data-scroll-target="#results-data">Results Data</a>
   <ul class="collapse">
-  <li><a href="#scanner-data" id="toc-scanner-data" class="nav-link" data-scroll-target="#scanner-data">Data Frames</a></li>
+  <li><a href="#data-frames" id="toc-data-frames" class="nav-link" data-scroll-target="#data-frames">Data Frames</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -335,10 +335,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scout-cli">Scout CLI</h3>
 <p>The <code>scout scan</code> command will print its status at the end of its run. If all of the scanners completed without errors you’ll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:</p>
 <p><img src="images/scan-complete.png" class="img-fluid"></p>
-<p>You can then pass that directory to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results">scan_results()</a></span> function to get access to the underlying data frames for each scanner:</p>
+<p>You can then pass that directory to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> function to get access to the underlying data frames for each scanner:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan_results</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results(<span class="st">"scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_df(<span class="st">"scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8"</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
@@ -357,7 +357,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> status.complete:</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    results <span class="op">=</span> scan_results(status.location)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    results <span class="op">=</span> scan_results_df(status.location)</span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
@@ -375,7 +375,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="results-data" class="level2">
 <h2 class="anchored" data-anchor-id="results-data">Results Data</h2>
-<p>The <span class="element-type-name ref-interlink"><a href="./reference/results.html#results">Results</a></span> object returned from <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results">scan_results()</a></span> includes both metadata about the scan as well as the scanner data frames:</p>
+<p>The <code>Results</code> object returned from <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> includes both metadata about the scan as well as the scanner data frames:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
@@ -418,22 +418,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td><code>scanners</code></td>
 <td>dict[str, pd.DataFrame]</td>
-<td>Results data for each scanner (see <a href="#scanner-data">Data Frames</a> for details)</td>
+<td>Results data for each scanner (see <a href="#data-frames">Data Frames</a> for details)</td>
 </tr>
 </tbody>
 </table>
-<section id="scanner-data" class="level3">
-<h3 class="anchored" data-anchor-id="scanner-data">Data Frames</h3>
+<section id="data-frames" class="level3">
+<h3 class="anchored" data-anchor-id="data-frames">Data Frames</h3>
 <style type="text/css">
-#scanner-data td:nth-child(2) {
+#data-frames td:nth-child(2) {
   font-size: 0.9em;
   line-height: 1.2;
 }
-#scanner-data small {
+#data-frames small {
   font-size: x-small;
 }
 </style>
-<p>The data frames available for each scanner contain information about the source evaluation and transcript, the results found for each transcript, as well as data on token usage, model calls, and errors which may have occurred during the scan.</p>
+<p>The data frames available for each scanner contain information about the source evaluation and transcript, the results found for each transcript, as well as model calls, errors and other events which may have occurred during the scan.</p>
+<section id="row-granularity" class="level4">
+<h4 class="anchored" data-anchor-id="row-granularity">Row Granularity</h4>
+<p>Note that by default the results data frame will include an individual row for each result returned by a scanner. This means that if a scanner returned <a href="#0">multiple results</a> there would be multiple rows all sharing the same <code>transcript_id</code>. You can customize this behavior via the <code>rows</code> option of the scan results functions:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 40%">
+<col style="width: 60%">
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><code>rows = "results"</code></td>
+<td>Default. Yield a row for each scanner result (potentially multiple rows per transcript)</td>
+</tr>
+<tr class="even">
+<td><code>rows = "transcripts"</code></td>
+<td>Yield a row for each transcript (in which case multiple results will be packed into the <code>value</code> field as a JSON list of <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span>) and the <code>value_type</code> will be “resultset”.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="available-fields" class="level4">
+<h4 class="anchored" data-anchor-id="available-fields">Available Fields</h4>
 <p>The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below):</p>
 <table class="caption-top table">
 <colgroup>
@@ -520,6 +542,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Scanner input value.</td>
 </tr>
 <tr class="odd">
+<td><code>uuid</code></td>
+<td>str</td>
+<td>Globally unique id for scan result.</td>
+</tr>
+<tr class="even">
+<td><code>label</code></td>
+<td>str</td>
+<td>Label for the origin of the result (optional).</td>
+</tr>
+<tr class="odd">
 <td><code>value</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value returned by scanner.</td>
@@ -555,6 +587,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Events referenced by scanner.</td>
 </tr>
 <tr class="even">
+<td><code>validation_target</code></td>
+<td>JsonValue<br><small>JSON</small></td>
+<td>Target value from validation set.</td>
+</tr>
+<tr class="odd">
+<td><code>validation_result</code></td>
+<td>JsonValue<br><small>JSON</small></td>
+<td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
+</tr>
+<tr class="even">
 <td><code>scan_error</code></td>
 <td>str</td>
 <td>Error which occurred during scan.</td>
@@ -565,29 +607,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Traceback for error (if any)</td>
 </tr>
 <tr class="even">
-<td><code>scan_total_tokens</code></td>
-<td>number</td>
-<td>Total tokens used by scan.</td>
-</tr>
-<tr class="odd">
-<td><code>scan_model_usage</code></td>
-<td>dict [str, ModelUsage]<br><small>JSON</small></td>
-<td>Token usage by model for scan.</td>
-</tr>
-<tr class="even">
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
 <td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
 </tr>
 <tr class="odd">
-<td><code>validation_target</code></td>
-<td>JsonValue<br><small>JSON</small></td>
-<td>Target value from validation set.</td>
+<td><code>scan_total_tokens</code></td>
+<td>number</td>
+<td>Total tokens used by scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
 <tr class="even">
-<td><code>validation_result</code></td>
-<td>JsonValue<br><small>JSON</small></td>
-<td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
+<td><code>scan_model_usage</code></td>
+<td>dict [str, ModelUsage]<br><small>JSON</small></td>
+<td>Token usage by model for scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
 </tbody>
 </table>
@@ -599,6 +631,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 
 
+</section>
 </section>
 </section>
 

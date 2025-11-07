@@ -280,7 +280,7 @@ table for each scanner).
 
 ``` python
 # results as pandas data frames
-results = scan_results("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
+results = scan_results_df("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
 deception_df = results.scanners["deception"]
 tool_errors_df = results.scanners["tool_errors"]
 
@@ -295,7 +295,7 @@ with results:
 ```
 
 See the [Results](results.qmd) article for more details on the columns
-available in the data frames returned by `scan_results()`.
+available in the data frames returned by `scan_results_df()`.
 
 ## Validation
 

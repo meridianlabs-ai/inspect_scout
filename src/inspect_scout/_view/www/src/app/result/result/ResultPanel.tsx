@@ -6,9 +6,10 @@ import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
 
 import styles from "./ResultPanel.module.css";
+import { MarkdownDiv } from "../../../components/MarkdownDiv";
 
 interface ResultPanelProps {
-  result: ScannerData;
+  result?: ScannerData;
 }
 
 export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
@@ -18,6 +19,10 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
         <Card>
           <CardHeader label="Result" />
           <CardBody>
+            <MarkdownDiv
+              markdown={result?.explanation || "No explanation provided."}
+            />
+
             <RecordTree
               record={result as unknown as Record<string, unknown>}
               id={"results-tree"}

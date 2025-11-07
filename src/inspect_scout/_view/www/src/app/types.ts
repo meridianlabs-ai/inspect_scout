@@ -51,7 +51,7 @@ interface ScannerDataBase extends ScannerCore {
   scanErrorTraceback?: string;
   scanEvents: Events;
   scanId: string;
-  scanMetdata: Record<string, JsonValue>;
+  scanMetadata: Record<string, JsonValue>;
   scanModelUsage: Record<string, ModelUsage>;
   scanTags: string[];
   scanTotalTokens: number;

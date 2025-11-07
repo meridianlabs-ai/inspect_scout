@@ -152,7 +152,7 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
     const scanErrorTraceback = r.scan_error_traceback as string | undefined;
     const scanEvents = JSON.parse(r.scan_events as string) as Events;
     const scanId = r.scan_id as string;
-    const scanMetdata = JSON.parse(r.scan_metadata as string) as Record<
+    const scanMetadata = JSON.parse(r.scan_metadata as string) as Record<
       string,
       JsonValue
     >;
@@ -214,7 +214,7 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
       scanErrorTraceback,
       scanEvents,
       scanId,
-      scanMetdata,
+      scanMetadata,
       scanModelUsage,
       scanTags,
       scanTotalTokens,

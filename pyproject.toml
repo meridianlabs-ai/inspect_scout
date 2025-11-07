@@ -31,7 +31,7 @@ dependencies = [
     "shortuuid",
     "typing_extensions>=4.9.0",
     "universal-pathlib>=0.2.6",
-    "uvicorn"
+    "uvicorn",
 ]
 
 [project.urls]
@@ -54,15 +54,9 @@ dev = [
     "pyarrow-stubs>=20.0.0.20250928",
     "types-jsonschema",
     "types-psutil",
-    "types-PyYAML"
+    "types-PyYAML",
 ]
-doc = [
-    "jupyter",
-    "panflute",
-    "markdown",
-    "griffe",
-    "pyyaml",
-]
+doc = ["jupyter", "panflute", "markdown", "griffe", "pyyaml"]
 dist = ["twine", "build"]
 
 

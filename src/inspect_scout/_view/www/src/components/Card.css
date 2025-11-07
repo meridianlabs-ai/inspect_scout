@@ -1,8 +1,8 @@
 .card-header-container:not(.card-header-modern) {
   display: grid;
   grid-template-columns: max-content auto;
-  column-gap: 0em;
-  padding: 0.5em 0.5em 0.5em 0.5em;
+  column-gap: 0rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
   font-size: var(--inspect-font-size-small);
   font-weight: 600;
   border-bottom: solid 1px var(--bs-light-border-subtle);

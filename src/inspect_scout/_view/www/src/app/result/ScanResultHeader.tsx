@@ -17,29 +17,7 @@ interface Column {
 }
 
 export const ScanResultHeader: FC<ScanResultHeaderProps> = ({ result }) => {
-  const columns: Column[] = [];
-  if (result?.inputType === "transcript") {
-    columns.push({
-      label: "Log",
-      value: filename(result.input.metadata.log) as ReactNode,
-    });
-    columns.push({
-      label: "Task",
-      value: result.input.metadata.task_name as ReactNode,
-    });
-
-    columns.push({
-      label: "Sample Id",
-      value:
-        `${result.input.metadata.id} Epoch ${result.input.metadata.epoch}` as ReactNode,
-    });
-
-    columns.push({
-      label: "Model",
-      value: result.input.metadata.model as ReactNode,
-    });
-  }
-
+  const columns = colsForResult(result);
   return (
     <div className={clsx(styles.header, classForCols(columns.length))}>
       {columns.map((col) => {
@@ -81,4 +59,117 @@ const classForCols = (numCols: number) => {
             ? styles.fourCol
             : styles.fiveCol
   );
+};
+
+const colsForResult: (result?: ScannerData) => Column[] | undefined = (
+  result
+) => {
+  if (!result) {
+    return [];
+  }
+  if (result.inputType === "transcript") {
+    return transcriptCols(result);
+  } else if (result.inputType === "message") {
+    return messageCols(result);
+  } else if (result.inputType === "messages") {
+    return messagesCols(result);
+  } else if (result.inputType === "event") {
+    return eventCols(result);
+  } else if (result.inputType === "events") {
+    return eventsCols(result);
+  } else {
+    return [];
+  }
+};
+
+const transcriptCols = (result: ScannerData) => {
+  if (result.inputType === "transcript") {
+    return [
+      {
+        label: "Log",
+        value: filename(result.input.metadata.log) as ReactNode,
+      },
+      {
+        label: "Task",
+        value: result.input.metadata.task_name as ReactNode,
+      },
+
+      {
+        label: "Sample Id",
+        value:
+          `${result.input.metadata.id} Epoch ${result.input.metadata.epoch}` as ReactNode,
+      },
+
+      {
+        label: "Model",
+        value: result.input.metadata.model as ReactNode,
+      },
+    ];
+  }
+};
+
+const messageCols = (result: ScannerData) => {
+  if (result.inputType === "message") {
+    const cols = [
+      {
+        label: "Message ID",
+        value: result.input.id as ReactNode,
+      },
+    ];
+
+    if (result.input.role === "assistant") {
+      cols.push({
+        label: "Model",
+        value: result.input.model as ReactNode,
+      });
+      cols.push({
+        label: "Tool Calls",
+        value: ((result.input.tool_calls as []) || []).length as ReactNode,
+      });
+    } else {
+      cols.push({
+        label: "Role",
+        value: result.input.role as ReactNode,
+      });
+    }
+
+    return cols;
+  }
+};
+
+const messagesCols = (result: ScannerData) => {
+  if (result.inputType === "messages") {
+    return [
+      {
+        label: "Message Count",
+        value: (result.input as []).length as ReactNode,
+      },
+    ];
+  }
+};
+
+const eventCols = (result: ScannerData) => {
+  if (result.inputType === "event") {
+    return [
+      {
+        label: "Event Type",
+        value: result.input.event as ReactNode,
+      },
+      {
+        label: "Timestamp",
+        value: new Date(result.input.timestamp).toLocaleString() as ReactNode,
+      },
+    ];
+  }
+};
+
+const eventsCols = (result: ScannerData) => {
+  if (result.inputType === "events") {
+    return [
+      {
+        label: "Event Count",
+        value: (result.input as []).length as ReactNode,
+      },
+    ];
+  }
 };

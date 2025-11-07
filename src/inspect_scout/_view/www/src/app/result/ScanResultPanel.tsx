@@ -70,6 +70,8 @@ export const ScanResultPanel: FC = () => {
     setSearchParams({ tab: tabId });
   };
 
+  console.log({ selectedResult });
+
   return (
     <div className={clsx(styles.root)}>
       <Navbar />

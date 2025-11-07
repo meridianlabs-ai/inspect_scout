@@ -2,7 +2,7 @@ import { ColumnTable, fromArrow } from "arquero";
 import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
-import { getRelativePathFromParams } from "../router/url";
+import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
 import { useStore } from "../state/store";
 import { EventType } from "../transcript/types";
 import { Transcript, ModelUsage } from "../types";
@@ -32,6 +32,7 @@ export const useServerScans = () => {
   const api = useStore((state) => state.api);
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
+  const resultsDir = useStore((state) => state.resultsDir);
 
   useEffect(() => {
     const fetchScans = async () => {
@@ -41,20 +42,23 @@ export const useServerScans = () => {
         setScans(scansInfo.scans);
       }
     };
-    void fetchScans();
-  }, [api, setScans, setResultsDir]);
+    if (!resultsDir) {
+      void fetchScans();
+    }
+  }, [api, resultsDir, setScans, setResultsDir]);
 };
 
 export const useServerScanner = () => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
+  const { scanPath } = parseScanResultPath(relativePath);
 
   const setSelectedResults = useStore((state) => state.setSelectedResults);
   const api = useStore((state) => state.api);
 
   useEffect(() => {
     const fetchScans = async () => {
-      const scansInfo = await api?.getScan(relativePath);
+      const scansInfo = await api?.getScan(scanPath);
       if (scansInfo) {
         setSelectedResults(scansInfo);
       }

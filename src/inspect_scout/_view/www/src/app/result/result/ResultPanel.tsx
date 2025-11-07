@@ -1,10 +1,9 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { MarkdownDiv } from "../../../components/MarkdownDiv";
-import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
+import { Value } from "../../values/Value";
 
 import styles from "./ResultPanel.module.css";
 
@@ -15,20 +14,26 @@ interface ResultPanelProps {
 export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
   return (
     result && (
-      <div className={clsx(styles.root)}>
-        <Card>
-          <CardHeader label="Result" />
-          <CardBody>
+      <div className={clsx(styles.container)}>
+        <div className={clsx(styles.root)}>
+          <div className={clsx("text-size-small")}>
+            <div className={clsx("text-style-label", "text-style-secondary")}>
+              Explanation
+            </div>
             <MarkdownDiv
               markdown={result?.explanation || "No explanation provided."}
             />
+          </div>
+        </div>
 
-            <RecordTree
-              record={result as unknown as Record<string, unknown>}
-              id={"results-tree"}
-            />
-          </CardBody>
-        </Card>
+        <div className={clsx(styles.root)}>
+          <div className={clsx("text-size-small")}>
+            <div className={clsx("text-style-label", "text-style-secondary")}>
+              Value
+            </div>
+            <Value result={result} />
+          </div>
+        </div>
       </div>
     )
   );

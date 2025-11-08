@@ -49,6 +49,7 @@ from inspect_scout._util.async_zip import AsyncZipReader
 from .._scanspec import ScanTranscripts, TranscriptField
 from .._transcript.transcripts import Transcripts
 from .json.load_filtered import load_filtered_transcript
+from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
@@ -198,6 +199,9 @@ class EvalLogTranscriptsDB:
         # AsyncFilesystem (starts out none)
         self._fs: AsyncFilesystem | None = None
 
+        # LocalFilesCache (starts out none)
+        self._files_cache: LocalFilesCache | None = None
+
     async def connect(self) -> None:
         # Skip if already connected
         if self._conn is not None:
@@ -206,6 +210,7 @@ class EvalLogTranscriptsDB:
         self._transcripts_df.to_sql(
             TRANSCRIPTS, self._conn, index=False, if_exists="replace"
         )
+        self._files_cache = create_temp_cache()
 
     async def count(
         self,
@@ -324,7 +329,13 @@ class EvalLogTranscriptsDB:
         if not self._fs:
             self._fs = AsyncFilesystem()
 
-        zip_reader = AsyncZipReader(self._fs, t.source_uri)
+        if not self._files_cache:
+            self._files_cache = create_temp_cache()
+
+        zip_reader = AsyncZipReader(
+            self._fs,
+            await self._files_cache.resolve_remote_uri_to_local(self._fs, t.source_uri),
+        )
         json_iterator = await zip_reader.open_member(sample_file_name)
         return await load_filtered_transcript(
             json_iterator,
@@ -341,6 +352,10 @@ class EvalLogTranscriptsDB:
         if self._fs is not None:
             await self._fs.close()
             self._fs = None
+
+        if self._files_cache is not None:
+            self._files_cache.cleanup()
+            self._files_cache = None
 
     def _build_where_clause(self, where: list[Condition]) -> tuple[str, list[Any]]:
         """Build WHERE clause and parameters from conditions.

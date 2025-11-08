@@ -316,6 +316,9 @@ export const LiveVirtualList = <T,>({
         Footer,
         ...components,
       }}
+      computeItemKey={(index, item) => {
+        return `${id}-item-${index}`;
+      }}
     />
   );
 };

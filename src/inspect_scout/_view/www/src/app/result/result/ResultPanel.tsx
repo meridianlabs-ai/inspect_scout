@@ -23,8 +23,6 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
     }
     return [];
   }, [result?.scanEvents]);
-  console.log({ messages });
-
   return (
     result && (
       <div className={clsx(styles.container, "text-size-base")}>
@@ -35,8 +33,9 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
                 markdown={result?.explanation || "No explanation provided."}
               />
             </LabeledValue>
-            <LabeledValue label="Value">
+            <LabeledValue label="Value" className={clsx(styles.scanValue)}>
               <Value result={result} />
+              123
             </LabeledValue>
           </CardBody>
         </Card>

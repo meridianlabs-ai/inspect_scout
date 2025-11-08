@@ -6,10 +6,10 @@ import { LabeledValue } from "../../../components/LabeledValue";
 import { RecordTree } from "../../../content/RecordTree";
 import { ModelUsage, ModelUsage2 } from "../../../types/log";
 import { ModelTokenTable } from "../../../usage/ModelTokenTable";
+import { formatNumber } from "../../../utils/format";
 import { ScannerData } from "../../types";
 
 import styles from "./InfoPanel.module.css";
-import { formatNumber } from "../../../utils/format";
 
 interface InfoPanelProps {
   result?: ScannerData;

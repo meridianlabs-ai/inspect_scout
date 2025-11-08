@@ -44,7 +44,10 @@ export const ScanResultsBody: FC = () => {
       {scanner && (
         <div style={{ height: "100%", width: "100%" }}>
           {selectedResultsView === kSegmentList && (
-            <ScanResultsList columnTable={columnTable} />
+            <ScanResultsList
+              columnTable={columnTable}
+              id={`scan-list-${selectedScanner}`}
+            />
           )}
           {selectedResultsView === kSegmentDataframe && (
             <DataframeView columnTable={columnTable} />

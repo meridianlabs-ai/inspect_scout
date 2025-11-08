@@ -10,6 +10,10 @@
   column-gap: 0.5rem;
 }
 
+.header.noExplanation {
+  grid-template-columns: 1fr 1fr;
+}
+
 .center {
   justify-self: center;
 }

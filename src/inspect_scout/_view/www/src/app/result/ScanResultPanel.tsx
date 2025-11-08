@@ -11,6 +11,7 @@ import {
   parseScanResultPath,
 } from "../../router/url";
 import { useStore } from "../../state/store";
+import { EventNode, EventType } from "../../transcript/types";
 import {
   useServerScans,
   useServerScanner,
@@ -24,7 +25,6 @@ import { ResultPanel } from "./result/ResultPanel";
 import { ScanResultHeader } from "./ScanResultHeader";
 import styles from "./ScanResultPanel.module.css";
 import { TranscriptPanel } from "./transcript/TranscriptPanel";
-import { EventNode, EventType } from "../../transcript/types";
 
 const kTabIdResult = "Result";
 const kTabIdInput = "Input";

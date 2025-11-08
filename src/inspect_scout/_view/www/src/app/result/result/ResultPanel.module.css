@@ -11,3 +11,7 @@
   grid-template-columns: 1fr max-content;
   column-gap: 0.5rem;
 }
+
+.scanValue {
+  padding-right: 0.5rem;
+}

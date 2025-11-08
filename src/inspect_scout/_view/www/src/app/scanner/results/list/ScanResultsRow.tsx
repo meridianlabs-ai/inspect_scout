@@ -17,9 +17,13 @@ import styles from "./ScanResultsRow.module.css";
 interface ScanResultsRowProps {
   index: number;
   entry: ScannerCore;
+  hasExplanation: boolean;
 }
 
-export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
+export const ScanResultsRow: FC<ScanResultsRowProps> = ({
+  entry,
+  hasExplanation,
+}) => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const [searchParams] = useSearchParams();
@@ -40,7 +44,8 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
       className={clsx(
         styles.row,
         !isNavigable ? styles.disabled : "",
-        selectedScanResult === entry.uuid ? styles.selected : ""
+        selectedScanResult === entry.uuid ? styles.selected : "",
+        hasExplanation ? "" : styles.noExplanation
       )}
       onClick={() => {
         setSelectedScanResult(entry.uuid);
@@ -49,9 +54,11 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({ entry }) => {
       <div className={clsx(styles.id, "text-size-smaller")}>
         <Identifier result={entry} />
       </div>
-      <div className={clsx(styles.explanation, "text-size-smaller")}>
-        <Explanation result={entry} />
-      </div>
+      {hasExplanation && (
+        <div className={clsx(styles.explanation, "text-size-smaller")}>
+          <Explanation result={entry} />
+        </div>
+      )}
       <div className={clsx(styles.value, "text-size-smaller")}>
         <Value result={entry} />
       </div>

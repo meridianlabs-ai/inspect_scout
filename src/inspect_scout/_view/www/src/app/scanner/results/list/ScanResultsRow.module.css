@@ -7,6 +7,11 @@
   height: 150px;
 }
 
+.row.noExplanation {
+  grid-template-columns: 1fr 1fr;
+  height: 40px;
+}
+
 .row:hover {
   cursor: pointer;
 }

@@ -10,3 +10,7 @@
 .labeledValue.column {
   flex-direction: column;
 }
+
+.labeledValue.row .labeledValueLabel {
+  margin-right: 0.5em;
+}

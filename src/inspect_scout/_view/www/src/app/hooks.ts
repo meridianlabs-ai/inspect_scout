@@ -52,18 +52,22 @@ export const useServerScanner = () => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const { scanPath } = parseScanResultPath(relativePath);
+  const setSelectedScanLocation = useStore(
+    (state) => state.setSelectedScanLocation
+  );
 
   const setSelectedResults = useStore((state) => state.setSelectedResults);
   const api = useApi();
 
   useEffect(() => {
-    const fetchScans = async () => {
+    const fetchScan = async () => {
       const scansInfo = await api.getScan(scanPath);
       if (scansInfo) {
         setSelectedResults(scansInfo);
       }
+      setSelectedScanLocation(scanPath);
     };
-    void fetchScans();
+    void fetchScan();
   }, [relativePath, api, setSelectedResults, scanPath]);
 };
 

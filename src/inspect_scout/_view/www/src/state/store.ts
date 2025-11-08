@@ -26,6 +26,7 @@ interface StoreState {
   gridStates: Record<string, GridState>;
   singleFileMode?: boolean;
   hasInitializedEmbeddedData?: boolean;
+  hasInitializedRouting?: boolean;
   loading: number;
 
   // Scan specific properties (clear when switching scans)
@@ -76,6 +77,7 @@ interface StoreState {
 
   setSingleFileMode: (enabled: boolean) => void;
   setHasInitializedEmbeddedData: (initialized: boolean) => void;
+  setHasInitializedRouting: (initialized: boolean) => void;
 
   setLoading: (loading: boolean) => void;
 
@@ -289,6 +291,11 @@ export const createStore = (api: ScanApi) =>
               state.hasInitializedEmbeddedData = initialized;
             });
           },
+          setHasInitializedRouting: (initialized: boolean) => {
+            set((state) => {
+              state.hasInitializedRouting = initialized;
+            });
+          },
           setLoading: (loading: boolean) => {
             set((state) => {
               // increment or decrement loading counter
@@ -386,7 +393,9 @@ export const createStore = (api: ScanApi) =>
           ),
           version: 1,
           partialize: (state) => {
-            return state;
+            // Exclude runtime-only flags from persistence
+            const { hasInitializedRouting, ...persistedState } = state;
+            return persistedState;
           },
         }
       )

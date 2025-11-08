@@ -1,6 +1,6 @@
 import { Results, Scans } from "../types";
 
-import { ScanApi } from "./api";
+import { NoPersistence, ScanApi } from "./api";
 
 export const apiScoutServer = (): ScanApi => {
   return {
@@ -24,5 +24,6 @@ export const apiScoutServer = (): ScanApi => {
 
       return responseObj;
     },
+    storage: NoPersistence,
   };
 };

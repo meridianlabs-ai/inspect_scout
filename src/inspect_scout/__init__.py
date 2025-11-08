@@ -1,6 +1,6 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
 
-from ._llm_scanner import AnswerLabels, llm_scanner, llm_structured_scanner
+from ._llm_scanner import AnswerMultiLabel, llm_scanner, llm_structured_scanner
 from ._recorder.recorder import (
     ScanResultsDB,
     ScanResultsDF,
@@ -14,7 +14,7 @@ from ._scan import (
 )
 from ._scanjob import ScanJob, ScanJobConfig, scanjob
 from ._scanlist import scan_list
-from ._scanner.extract import ContentPreprocessor, messages_as_str
+from ._scanner.extract import MessagesPreprocessor, messages_as_str
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Reference, Result, result_set
 from ._scanner.scanner import Scanner, scanner
@@ -106,11 +106,11 @@ __all__ = [
     "MessageType",
     "as_scorer",
     "messages_as_str",
-    "ContentPreprocessor",
+    "MessagesPreprocessor",
     # llm_scanner
     "llm_scanner",
     "llm_structured_scanner",
-    "AnswerLabels",
+    "AnswerMultiLabel",
     # validation
     "ValidationSet",
     "ValidationCase",

@@ -14,10 +14,18 @@ from inspect_scout._scanner.result import Reference
 from .util import _message_id
 
 
-class ContentPreprocessor(NamedTuple):
-    """Message content options for LLM scanner."""
+class MessagesPreprocessor(NamedTuple):
+    """ChatMessage preprocessing transformations.
 
-    messages: Callable[[list[ChatMessage]], Awaitable[list[ChatMessage]]] | None = None
+    Provide a `transform` function for fully custom transformations.
+    Use the higher-level options (e.g. `exclude_system`) to
+    perform varioius common content removal transformations.
+
+    The default `MessagesPreprocessor` will exclude system
+    messages and do no other transformations.
+    """
+
+    transform: Callable[[list[ChatMessage]], Awaitable[list[ChatMessage]]] | None = None
     """Transform the list of messages."""
 
     exclude_system: bool = True
@@ -34,7 +42,7 @@ class ContentPreprocessor(NamedTuple):
 async def messages_as_str(
     messages: list[ChatMessage],
     *,
-    content_preprocessor: ContentPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor | None = None,
 ) -> str: ...
 
 
@@ -42,7 +50,7 @@ async def messages_as_str(
 async def messages_as_str(
     messages: list[ChatMessage],
     *,
-    content_preprocessor: ContentPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor | None = None,
     include_ids: Literal[True],
 ) -> tuple[str, Callable[[str], list[Reference]]]: ...
 
@@ -50,14 +58,14 @@ async def messages_as_str(
 async def messages_as_str(
     messages: list[ChatMessage],
     *,
-    content_preprocessor: ContentPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor | None = None,
     include_ids: Literal[True] | None = None,
 ) -> str | tuple[str, Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
 
     Args:
        messages: List of chat messages.
-       content_preprocessor: Content filter for messages.
+       preprocessor: Content filter for messages.
        include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
           to each message and return a function to extract references from text.
           If None (default), return plain formatted string.
@@ -68,19 +76,17 @@ async def messages_as_str(
           prefixes, function that takes text and returns list of Reference objects
           for any [M1], [M2], etc. references found in the text).
     """
-    if content_preprocessor is not None and content_preprocessor.messages is not None:
-        messages = await content_preprocessor.messages(messages)
+    if preprocessor is not None and preprocessor.transform is not None:
+        messages = await preprocessor.transform(messages)
 
     if not include_ids:
-        return "\n".join(
-            [message_as_str(m, content_preprocessor) or "" for m in messages]
-        )
+        return "\n".join([message_as_str(m, preprocessor) or "" for m in messages])
 
     def reduce_message(
         acc: tuple[list[str], dict[str, str]], message: ChatMessage
     ) -> tuple[list[str], dict[str, str]]:
         formatted_messages, message_id_map = acc
-        if (msg_str := message_as_str(message, content_preprocessor)) is not None:
+        if (msg_str := message_as_str(message, preprocessor)) is not None:
             ordinal = f"M{len(message_id_map) + 1}"
             message_id_map[ordinal] = _message_id(message)
             formatted_messages.append(f"[{ordinal}] {msg_str}")
@@ -97,20 +103,20 @@ async def messages_as_str(
 
 
 def message_as_str(
-    message: ChatMessage, content_preprocessor: ContentPreprocessor | None = None
+    message: ChatMessage, preprocessor: MessagesPreprocessor | None = None
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
     Args:
         message: The `ChatMessage` to convert.
-        content_preprocessor: Content filter for messages.
+        preprocessor: Content filter for messages. Defaults to removing system messages.
 
     Returns:
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
     """
-    content_preprocessor = content_preprocessor or ContentPreprocessor()
-    _, exclude_system, exclude_reasoning, exclude_tool_usage = content_preprocessor
+    preprocessor = preprocessor or MessagesPreprocessor()
+    _, exclude_system, exclude_reasoning, exclude_tool_usage = preprocessor
 
     if exclude_system and message.role == "system":
         return None

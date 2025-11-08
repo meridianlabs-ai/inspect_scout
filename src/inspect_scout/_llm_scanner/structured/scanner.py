@@ -5,7 +5,7 @@ from inspect_ai.model import GenerateConfig, Model, ResponseSchema, get_model
 from inspect_ai.util import json_schema
 from jinja2 import Environment
 
-from ..._scanner.extract import ContentPreprocessor, messages_as_str
+from ..._scanner.extract import MessagesPreprocessor, messages_as_str
 from ..._scanner.result import Result
 from ..._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from ..._transcript.types import Transcript
@@ -38,7 +38,7 @@ def llm_structured_scanner(
     extra_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
     | None = None,
-    content_preprocessor: ContentPreprocessor | None = None,
+    content_preprocessor: MessagesPreprocessor | None = None,
     model: str | Model | None = None,
     name: str | None = None,
 ) -> Scanner[Transcript]:
@@ -84,7 +84,7 @@ def llm_structured_scanner(
     async def scan(transcript: Transcript) -> Result:
         messages_str, extract_references = await messages_as_str(
             transcript.messages,
-            content_preprocessor=content_preprocessor,
+            preprocessor=content_preprocessor,
             include_ids=True,
         )
 

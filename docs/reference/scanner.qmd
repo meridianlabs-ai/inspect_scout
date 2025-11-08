@@ -16,12 +16,12 @@ reference: "inspect_scout"
 ## LLM Scanner
 
 ### llm_scanner
-### AnswerLabels
+### AnswerMultiLabel
 
 ## Utils
 
 ### messages_as_str
-### ContentPreprocessor
+### MessagesPreprocessor
 
 ## Types
 

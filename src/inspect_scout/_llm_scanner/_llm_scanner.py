@@ -8,57 +8,49 @@ from jinja2 import Environment
 
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
-from .._scanner.extract import ContentPreprocessor, messages_as_str
+from .._scanner.extract import MessagesPreprocessor, messages_as_str
 from .._scanner.result import Result
 from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
 from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
-from .types import AnswerLabels
+from .types import AnswerMultiLabel
 
 
 @scanner(messages="all")
 def llm_scanner(
     *,
     question: str | Callable[[Transcript], Awaitable[str]],
-    answer: Literal["boolean", "numeric", "string"] | list[str] | AnswerLabels,
+    answer: Literal["boolean", "numeric", "string"] | list[str] | AnswerMultiLabel,
     template: str | None = None,
-    content_preprocessor: ContentPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor | None = None,
     model: str | Model | None = None,
     name: str | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
-    This scanner presents a conversation transcript to an LLM along with a custom
-    prompt and answer specification, enabling automated analysis of conversations
-    for specific patterns, behaviors, or outcomes.
+    This scanner presents a conversation transcript to an LLM along with a custom prompt and answer specification, enabling automated analysis of conversations for specific patterns, behaviors, or outcomes.
 
     Args:
-        question: Question for the scanner to answer. Can be a static string (e.g.,
-            "Did the assistant refuse the request?") or a function that takes a
-            Transcript and returns an string for dynamic questions based on transcript
-            content.
+        question: Question for the scanner to answer.
+            Can be a static string (e.g., "Did the assistant refuse the request?") or a function that takes a Transcript and returns an string for dynamic questions based on transcript content.
         answer: Specification of the answer format.
-            Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]`
-            for a set of labels; or pass `MultiLabels` for multi-classification.
+            Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]` for a set of labels; or pass `MultiLabels` for multi-classification.
         template: Overall template for scanner prompt.
             The scanner template should include the following variables:
               - {{ question }} (question for the model to answer)
               - {{ messages }} (transcript message history as string)
               - {{ answer_prompt }} (prompt the model for a specific type of answer and explanation).
               - {{ answer_format }} (instructions on formatting for value extraction)
-        content_preprocessor: Filter conversation messages before analysis.
-            Controls exclusion of system messages, reasoning tokens, and tool calls.
-            Defaults to filtering system messages.
-        model: Optional model specification. Can be a model
-            name string or Model instance. If None, uses the default model
-        name: Scanner name (use this to assign a name when passing `llm_scanner()`
-            directly to `scan()` rather than delegating to it from another scanner).
+        preprocessor: Transform conversation messages before analysis.
+            Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to removing system messages.
+        model: Optional model specification.
+            Can be a model name string or `Mode`l instance. If None, uses the default model
+        name: Scanner name.
+            Use this to assign a name when passing `llm_scanner()` directly to `scan()` rather than delegating to it from another scanner.
 
     Returns:
-        A Scanner function that analyzes Transcript instances and returns Results
-            based on the LLM's assessment according to the specified prompt and answer
-            format
+        A `Scanner` function that analyzes Transcript instances and returns `Results` based on the LLM's assessment according to the specified prompt and answer format
     """
     if template is None:
         template = DEFAULT_SCANNER_TEMPLATE
@@ -67,7 +59,7 @@ def llm_scanner(
     async def scan(transcript: Transcript) -> Result:
         messages_str, extract_references = await messages_as_str(
             transcript.messages,
-            content_preprocessor=content_preprocessor,
+            preprocessor=preprocessor,
             include_ids=True,
         )
 

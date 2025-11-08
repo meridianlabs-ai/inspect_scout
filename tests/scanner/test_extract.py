@@ -17,7 +17,7 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolCall, ToolCallError
 from inspect_scout._scanner.extract import (
-    ContentPreprocessor,
+    MessagesPreprocessor,
     _extract_references,
     message_as_str,
     messages_as_str,
@@ -515,7 +515,7 @@ def test_exclude_parameters(
     """Test exclude_tool_usage and exclude_reasoning parameters control output."""
     result = message_as_str(
         message,
-        ContentPreprocessor(
+        MessagesPreprocessor(
             exclude_tool_usage=exclude_tool_usage, exclude_reasoning=exclude_reasoning
         ),
     )
@@ -553,7 +553,7 @@ def test_exclude_parameters(
                 ChatMessageSystem(content="System", id="sys1"),
                 ChatMessageUser(content="Hello", id="msg1"),
             ],
-            ContentPreprocessor(),
+            MessagesPreprocessor(),
             True,
             "[M1] user:\nHello\n",
             {"M1": "msg1"},
@@ -565,7 +565,7 @@ def test_exclude_parameters(
                 ChatMessageTool(content="Tool result", function="test", id="tool1"),
                 ChatMessageAssistant(content="Done", id="msg2"),
             ],
-            ContentPreprocessor(exclude_tool_usage=True),
+            MessagesPreprocessor(exclude_tool_usage=True),
             True,
             "[M1] user:\nHello\n\n[M2] assistant:\nDone\n",
             {"M1": "msg1", "M2": "msg2"},
@@ -585,7 +585,7 @@ def test_exclude_parameters(
 @pytest.mark.asyncio
 async def test_messages_as_str(
     messages: list[ChatMessage],
-    filter: ContentPreprocessor | None,
+    filter: MessagesPreprocessor | None,
     include_ids: bool,
     expected_result: str,
     expected_ids: dict[str, str] | None,
@@ -593,7 +593,7 @@ async def test_messages_as_str(
     """Test messages_as_str with various configurations."""
     if include_ids:
         result, extract_references = await messages_as_str(
-            messages, content_preprocessor=filter, include_ids=True
+            messages, preprocessor=filter, include_ids=True
         )
         assert result == expected_result
         # Test that the extract_references function works correctly
@@ -604,7 +604,7 @@ async def test_messages_as_str(
                 assert refs[0].id == msg_id
                 assert refs[0].cite == f"[{ordinal_id}]"
     else:
-        result = await messages_as_str(messages, content_preprocessor=filter)
+        result = await messages_as_str(messages, preprocessor=filter)
         assert result == expected_result
 
 
@@ -625,7 +625,7 @@ async def test_messages_as_str_with_preprocessor() -> None:
 
     result, extract_references = await messages_as_str(
         messages,
-        content_preprocessor=ContentPreprocessor(messages=keep_only_user_messages),
+        preprocessor=MessagesPreprocessor(transform=keep_only_user_messages),
         include_ids=True,
     )
 

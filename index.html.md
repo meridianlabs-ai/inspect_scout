@@ -103,7 +103,7 @@ specified in the top level call to scan).
 Lines 16-18  
 Convert the message history into a string for presentation to the model.
 The `messages_as_str()` function will by default remove system messages
-from the list. See `ContentPreprocessor` for other available options.
+from the list. See `MessagesPreprocessor` for other available options.
 
 Lines 33-37  
 As with scorers, results also include additional context (here the

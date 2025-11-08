@@ -69,6 +69,7 @@ dist = ["twine", "build"]
 [tool.hatch.build]
 only-packages = true
 exclude = ["docs/", "tests/"]
+artifacts = ["src/inspect_scout/_view/www/dist"]
 
 [tool.hatch.version]
 source = "vcs"

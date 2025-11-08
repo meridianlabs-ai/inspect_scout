@@ -1,11 +1,13 @@
 import JSON5 from "json5";
 
 import { Results, Scans } from "../types";
+import { VSCodeApi } from "../utils/vscode";
 
-import { ScanApi } from "./api";
+import { NoPersistence, ScanApi } from "./api";
 import { kMethodGetScan, kMethodGetScans } from "./jsonrpc";
 
 export const apiVscode = (
+  vscodeApi: VSCodeApi,
   rpcClient: (method: string, params?: unknown) => Promise<unknown>
 ): ScanApi => {
   return {
@@ -29,5 +31,6 @@ export const apiVscode = (
         throw new Error("Invalid response for getScans");
       }
     },
+    storage: NoPersistence,
   };
 };

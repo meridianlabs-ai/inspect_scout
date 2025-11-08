@@ -7,6 +7,7 @@ import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { createStore, StoreProvider } from "./state/store";
 import { getVscodeApi } from "./utils/vscode";
 
 // Find the root element and render into it
@@ -29,11 +30,19 @@ const selectApi = (): ScanApi => {
   const vscodeApi = getVscodeApi();
   if (vscodeApi) {
     const vscodeClient = webViewJsonRpcClient(vscodeApi);
-    return apiVscode(vscodeClient);
+    return apiVscode(vscodeApi, vscodeClient);
   } else {
     return apiScoutServer();
   }
 };
 
+// Create the API and store
+const api = selectApi();
+const store = createStore(api);
+
 // Render the app
-root.render(<App api={selectApi()} />);
+root.render(
+  <StoreProvider value={store}>
+    <App />
+  </StoreProvider>
+);

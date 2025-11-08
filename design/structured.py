@@ -1,16 +1,15 @@
 import json
 from textwrap import dedent
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Dataset, MemoryDataset, Sample
 from inspect_ai.event import ModelEvent, ToolEvent
 from inspect_ai.log import transcript
-from inspect_ai.model import ChatMessageTool, execute_tools, get_model
 from inspect_ai.scorer import Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import Generate, Solver, TaskState, solver
-from inspect_ai.tool import ToolDef, ToolFunction, ToolParams
 from inspect_ai.util import JSONSchema, json_schema
+from inspect_scout._llm_scanner.generate import structured_generate
 from pydantic import BaseModel, Field, ValidationError
 
 
@@ -18,67 +17,28 @@ from pydantic import BaseModel, Field, ValidationError
 def structured_output(max_attempts: int = 3) -> Task:
     return Task(
         dataset=structured_output_dataset(),
-        solver=structured_output_tool_calling(max_attempts=max_attempts),
+        solver=structured_output_solver(max_attempts=max_attempts),
         scorer=structured_output_scorer(),
     )
 
 
 @solver
-def structured_output_tool_calling(max_attempts: int = 3) -> Solver:
+def structured_output_solver(max_attempts: int = 3) -> Solver:
     async def solve(state: TaskState, generate: Generate) -> TaskState:
-        # create an answer tool from the schema
-        schema = cast(JSONSchema, state.metadata["schema"])
-
-        async def answer(**kwargs: Any) -> str:
-            return ""
-
-        answer_tool = ToolDef(
-            tool=answer,
-            name="answer",
-            description="Use this tool to submit your final answer.",
-            parameters=ToolParams(
-                type="object",
-                properties=schema.properties or {},
-                required=schema.required or [],
-            ),
+        # structured generate
+        result = await structured_generate(
+            input=state.messages,
+            schema=cast(JSONSchema, state.metadata["schema"]),
+            max_attempts=max_attempts,
         )
 
-        # setup a generate loop that will run until a successful call to the
-        # anwser tool is made
-        attempts = 0
-        while attempts < max_attempts:
-            # run the generation
-            state.output = await get_model().generate(
-                input=state.messages,
-                tools=[answer_tool],
-                tool_choice=ToolFunction(answer_tool.name),
-            )
-            state.messages.append(state.output.message)
+        # update state
+        state.messages.extend(result.messages)
+        state.output = result.output
 
-            # check for a call to the 'answer' tool
-            answer_tool_call = next(
-                (tool_call for tool_call in state.output.message.tool_calls or []), None
-            )
-            if answer_tool_call:
-                # execute the tool calls (this will take care of validating the
-                # answer tool parameters and providing feedback for invalid cases)
-                if state.output.message.tool_calls:
-                    messages, tools_output = await execute_tools(
-                        messages=state.messages, tools=[answer_tool]
-                    )
-                    state.messages.extend(messages)
-                    if tools_output is not None:
-                        state.output = tools_output
-
-                # exit if there was a successful call of the answer tool
-                if isinstance(state.messages[-1], ChatMessageTool):
-                    tool_message = state.messages[-1]
-                    if tool_message.error is None:
-                        state.output.completion = json.dumps(answer_tool_call.arguments)
-                        break
-
-            # keep going
-            attempts += 1
+        # if we got a value then update completion for scoring
+        if result.value is not None:
+            state.output.completion = json.dumps(result.value)
 
         return state
 

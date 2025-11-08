@@ -7,7 +7,7 @@ import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { createStore, StoreProvider } from "./state/store";
+import { ApiProvider, createStore, StoreProvider } from "./state/store";
 import { getVscodeApi } from "./utils/vscode";
 
 // Find the root element and render into it
@@ -42,7 +42,9 @@ const store = createStore(api);
 
 // Render the app
 root.render(
-  <StoreProvider value={store}>
-    <App />
-  </StoreProvider>
+  <ApiProvider value={api}>
+    <StoreProvider value={store}>
+      <App />
+    </StoreProvider>
+  </ApiProvider>
 );

@@ -10,7 +10,6 @@ import { ScanApi } from "../api/api";
 import { Results, Status } from "../types";
 
 interface StoreState {
-  api?: ScanApi;
   scans: Status[];
   selectedResults?: Results;
   selectedScanLocation?: string;
@@ -39,7 +38,6 @@ interface StoreState {
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
 
-  setApi(api: ScanApi): void;
   setScans: (scans: Status[]) => void;
   setSelectedResults: (results: Results) => void;
   setSelectedScanLocation: (location: string) => void;
@@ -111,7 +109,6 @@ export const createStore = (api: ScanApi) =>
         immer((set, get) => ({
           // Initial state
           scans: [],
-          api: api,
           properties: {},
           scrollPositions: {},
           listPositions: {},
@@ -121,260 +118,252 @@ export const createStore = (api: ScanApi) =>
           collapsedBuckets: {},
           transcriptCollapsedEvents: {},
 
-        // Actions
-        setApi: (api: ScanApi) =>
-          set((state) => {
-            state.api = api;
-          }),
-        setScans: (scans: Status[]) =>
-          set((state) => {
-            state.scans = scans;
-          }),
-        setSelectedResults: (results: Results) =>
-          set((state) => {
-            state.selectedResults = results;
-          }),
-        setSelectedScanLocation: (location: string) =>
-          set((state) => {
-            state.selectedScanLocation = location;
-          }),
-        setSelectedScanResult: (result: string) =>
-          set((state) => {
-            state.selectedScanResult = result;
-          }),
-        setSelectedScanResultData: (data: ColumnTable) =>
-          set((state) => {
-            state.selectedScanResultData = data;
-          }),
-        setResultsDir: (dir: string) =>
-          set((state) => {
-            state.resultsDir = dir;
-          }),
+          // Actions
+          setScans: (scans: Status[]) =>
+            set((state) => {
+              state.scans = scans;
+            }),
+          setSelectedResults: (results: Results) =>
+            set((state) => {
+              state.selectedResults = results;
+            }),
+          setSelectedScanLocation: (location: string) =>
+            set((state) => {
+              state.selectedScanLocation = location;
+            }),
+          setSelectedScanResult: (result: string) =>
+            set((state) => {
+              state.selectedScanResult = result;
+            }),
+          setSelectedScanResultData: (data: ColumnTable) =>
+            set((state) => {
+              state.selectedScanResultData = data;
+            }),
+          setResultsDir: (dir: string) =>
+            set((state) => {
+              state.resultsDir = dir;
+            }),
 
-        setPropertyValue<T>(id: string, propertyName: string, value: T) {
-          set((state) => {
-            if (!state.properties[id]) {
-              state.properties[id] = {};
-            }
-            state.properties[id][propertyName] = value;
-          });
-        },
+          setPropertyValue<T>(id: string, propertyName: string, value: T) {
+            set((state) => {
+              if (!state.properties[id]) {
+                state.properties[id] = {};
+              }
+              state.properties[id][propertyName] = value;
+            });
+          },
 
-        getPropertyValue<T>(
-          id: string,
-          propertyName: string,
-          defaultValue: T
-        ): T | undefined {
-          const value = get().properties[id]?.[propertyName];
-          return value !== undefined ? (value as T) : defaultValue;
-        },
+          getPropertyValue<T>(
+            id: string,
+            propertyName: string,
+            defaultValue: T
+          ): T | undefined {
+            const value = get().properties[id]?.[propertyName];
+            return value !== undefined ? (value as T) : defaultValue;
+          },
 
-        removePropertyValue(id: string, propertyName: string) {
-          set((state) => {
-            const propertyGroup = state.properties[id];
+          removePropertyValue(id: string, propertyName: string) {
+            set((state) => {
+              const propertyGroup = state.properties[id];
 
-            // No property, go ahead and return
-            if (!propertyGroup || !propertyGroup[propertyName]) {
-              return;
-            }
+              // No property, go ahead and return
+              if (!propertyGroup || !propertyGroup[propertyName]) {
+                return;
+              }
 
-            // Destructure to remove the property
-            const { [propertyName]: _removed, ...remainingProperties } =
-              propertyGroup;
+              // Destructure to remove the property
+              const { [propertyName]: _removed, ...remainingProperties } =
+                propertyGroup;
 
-            // If no remaining properties, remove the entire group
-            if (Object.keys(remainingProperties).length === 0) {
-              const { [id]: _removedGroup, ...remainingGroups } =
-                state.properties;
-              state.properties = remainingGroups;
-              return;
-            }
+              // If no remaining properties, remove the entire group
+              if (Object.keys(remainingProperties).length === 0) {
+                const { [id]: _removedGroup, ...remainingGroups } =
+                  state.properties;
+                state.properties = remainingGroups;
+                return;
+              }
 
-            // Update to the delete properties
-            state.properties[id] = remainingProperties;
-          });
-        },
-        getScrollPosition(path) {
-          const state = get();
-          return state.scrollPositions[path];
-        },
-        setScrollPosition(path, position) {
-          set((state) => {
-            state.scrollPositions[path] = position;
-          });
-        },
-        setListPosition: (name: string, position: StateSnapshot) => {
-          set((state) => {
-            state.listPositions[name] = position;
-          });
-        },
-        clearListPosition: (name: string) => {
-          set((state) => {
-            // Remove the key
-            const newListPositions = { ...state.listPositions };
-            // TODO: Revisit
+              // Update to the delete properties
+              state.properties[id] = remainingProperties;
+            });
+          },
+          getScrollPosition(path) {
+            const state = get();
+            return state.scrollPositions[path];
+          },
+          setScrollPosition(path, position) {
+            set((state) => {
+              state.scrollPositions[path] = position;
+            });
+          },
+          setListPosition: (name: string, position: StateSnapshot) => {
+            set((state) => {
+              state.listPositions[name] = position;
+            });
+          },
+          clearListPosition: (name: string) => {
+            set((state) => {
+              // Remove the key
+              const newListPositions = { ...state.listPositions };
+              // TODO: Revisit
 
-            delete newListPositions[name];
+              delete newListPositions[name];
 
-            return {
-              app: {
+              return {
+                app: {
+                  ...state,
+                  listPositions: newListPositions,
+                },
+              };
+            });
+          },
+          getVisibleRange: (name: string) => {
+            return get().visibleRanges[name] ?? { startIndex: 0, endIndex: 0 };
+          },
+          setVisibleRange: (
+            name: string,
+            value: { startIndex: number; endIndex: number }
+          ) => {
+            set((state) => {
+              state.visibleRanges[name] = value;
+            });
+          },
+          clearVisibleRange: (name: string) => {
+            set((state) => {
+              // Remove the key
+              const newVisibleRanges = { ...state.visibleRanges };
+              // TODO: Revisit
+
+              delete newVisibleRanges[name];
+
+              return {
                 ...state,
-                listPositions: newListPositions,
-              },
-            };
-          });
-        },
-        getVisibleRange: (name: string) => {
-          return get().visibleRanges[name] ?? { startIndex: 0, endIndex: 0 };
-        },
-        setVisibleRange: (
-          name: string,
-          value: { startIndex: number; endIndex: number }
-        ) => {
-          set((state) => {
-            state.visibleRanges[name] = value;
-          });
-        },
-        clearVisibleRange: (name: string) => {
-          set((state) => {
-            // Remove the key
-            const newVisibleRanges = { ...state.visibleRanges };
-            // TODO: Revisit
+                visibleRanges: newVisibleRanges,
+              };
+            });
+          },
+          setGridState: (name: string, gridState: GridState) => {
+            set((state) => {
+              state.gridStates[name] = gridState;
+            });
+          },
+          clearGridState: (name: string) => {
+            set((state) => {
+              const newGridStates = { ...state.gridStates };
+              // TODO: Revisit
 
-            delete newVisibleRanges[name];
+              delete newGridStates[name];
 
-            return {
-              ...state,
-              visibleRanges: newVisibleRanges,
-            };
-          });
-        },
-        setGridState: (name: string, gridState: GridState) => {
-          set((state) => {
-            state.gridStates[name] = gridState;
-          });
-        },
-        clearGridState: (name: string) => {
-          set((state) => {
-            const newGridStates = { ...state.gridStates };
-            // TODO: Revisit
-
-            delete newGridStates[name];
-
-            return {
-              ...state,
-              gridStates: newGridStates,
-            };
-          });
-        },
-        setSingleFileMode: (enabled: boolean) => {
-          set((state) => {
-            state.singleFileMode = enabled;
-          });
-        },
-        setHasInitializedEmbeddedData: (initialized: boolean) => {
-          set((state) => {
-            state.hasInitializedEmbeddedData = initialized;
-          });
-        },
-        setLoading: (loading: boolean) => {
-          set((state) => {
-            // increment or decrement loading counter
-            if (loading) {
-              state.loading += 1;
-            } else {
-              state.loading = Math.max(0, state.loading - 1);
-            }
-          });
-        },
-        setSelectedResultsTab: (tab: string) => {
-          set((state) => {
-            state.selectedResultsTab = tab;
-          });
-        },
-        setSelectedResultTab: (tab: string) => {
-          set((state) => {
-            state.selectedResultTab = tab;
-          });
-        },
-        setCollapsed: (bucket: string, key: string, value: boolean) => {
-          set((state) => {
-            state.collapsedBuckets[bucket] =
-              state.collapsedBuckets[bucket] || {};
-            state.collapsedBuckets[bucket][key] = value;
-          });
-        },
-        clearCollapsed: (bucket: string) => {
-          set((state) => {
-            state.collapsedBuckets[bucket] = {};
-          });
-        },
-        setSelectedScanner: (scanner: string) => {
-          set((state) => {
-            state.selectedScanner = scanner;
-          });
-        },
-        setTranscriptOutlineId: (id: string) => {
-          set((state) => {
-            state.transcriptOutlineId = id;
-          });
-        },
-        clearTranscriptOutlineId: () => {
-          set((state) => {
-            state.transcriptOutlineId = undefined;
-          });
-        },
-        setTranscriptCollapsedEvent: (
-          scope: string,
-          event: string,
-          collapsed: boolean
-        ) => {
-          set((state) => {
-            if (!state.transcriptCollapsedEvents[scope]) {
+              return {
+                ...state,
+                gridStates: newGridStates,
+              };
+            });
+          },
+          setSingleFileMode: (enabled: boolean) => {
+            set((state) => {
+              state.singleFileMode = enabled;
+            });
+          },
+          setHasInitializedEmbeddedData: (initialized: boolean) => {
+            set((state) => {
+              state.hasInitializedEmbeddedData = initialized;
+            });
+          },
+          setLoading: (loading: boolean) => {
+            set((state) => {
+              // increment or decrement loading counter
+              if (loading) {
+                state.loading += 1;
+              } else {
+                state.loading = Math.max(0, state.loading - 1);
+              }
+            });
+          },
+          setSelectedResultsTab: (tab: string) => {
+            set((state) => {
+              state.selectedResultsTab = tab;
+            });
+          },
+          setSelectedResultTab: (tab: string) => {
+            set((state) => {
+              state.selectedResultTab = tab;
+            });
+          },
+          setCollapsed: (bucket: string, key: string, value: boolean) => {
+            set((state) => {
+              state.collapsedBuckets[bucket] =
+                state.collapsedBuckets[bucket] || {};
+              state.collapsedBuckets[bucket][key] = value;
+            });
+          },
+          clearCollapsed: (bucket: string) => {
+            set((state) => {
+              state.collapsedBuckets[bucket] = {};
+            });
+          },
+          setSelectedScanner: (scanner: string) => {
+            set((state) => {
+              state.selectedScanner = scanner;
+            });
+          },
+          setTranscriptOutlineId: (id: string) => {
+            set((state) => {
+              state.transcriptOutlineId = id;
+            });
+          },
+          clearTranscriptOutlineId: () => {
+            set((state) => {
+              state.transcriptOutlineId = undefined;
+            });
+          },
+          setTranscriptCollapsedEvent: (
+            scope: string,
+            event: string,
+            collapsed: boolean
+          ) => {
+            set((state) => {
+              if (!state.transcriptCollapsedEvents[scope]) {
+                state.transcriptCollapsedEvents[scope] = {};
+              }
+              state.transcriptCollapsedEvents[scope][event] = collapsed;
+            });
+          },
+          setTranscriptCollapsedEvents: (
+            scope: string,
+            events: Record<string, boolean>
+          ) => {
+            set((state) => {
+              state.transcriptCollapsedEvents[scope] = events;
+            });
+          },
+          clearTranscriptCollapsedEvents: (scope: string) => {
+            set((state) => {
               state.transcriptCollapsedEvents[scope] = {};
-            }
-            state.transcriptCollapsedEvents[scope][event] = collapsed;
-          });
-        },
-        setTranscriptCollapsedEvents: (
-          scope: string,
-          events: Record<string, boolean>
-        ) => {
-          set((state) => {
-            state.transcriptCollapsedEvents[scope] = events;
-          });
-        },
-        clearTranscriptCollapsedEvents: (scope: string) => {
-          set((state) => {
-            state.transcriptCollapsedEvents[scope] = {};
-          });
-        },
-        setSelectedResultsView: (view: string) => {
-          set((state) => {
-            state.selectedResultsView = view;
-          });
-        },
-        clearScanState: () => {
-          set((state) => {
-            state.selectedResults = undefined;
-            state.selectedResultsTab = undefined;
-            state.collapsedBuckets = {};
-            state.selectedScanner = undefined;
-            state.transcriptCollapsedEvents = {};
-            state.transcriptOutlineId = undefined;
-            state.selectedResults = undefined;
-            state.selectedResultsView = undefined;
-          });
-        },
-      })),
+            });
+          },
+          setSelectedResultsView: (view: string) => {
+            set((state) => {
+              state.selectedResultsView = view;
+            });
+          },
+          clearScanState: () => {
+            set((state) => {
+              state.selectedResults = undefined;
+              state.selectedResultsTab = undefined;
+              state.collapsedBuckets = {};
+              state.selectedScanner = undefined;
+              state.transcriptCollapsedEvents = {};
+              state.transcriptOutlineId = undefined;
+              state.selectedResults = undefined;
+              state.selectedResultsView = undefined;
+            });
+          },
+        })),
         {
           name: "inspect-scout-storage",
           storage: api.storage,
-          partialize: (state) => ({
-            scans: state.scans,
-            selectedScanLocation: state.selectedScanLocation,
-            // Skip api, which isn't serializable
-          }),
+          partialize: (state) => state,
         }
       )
     )
@@ -383,17 +372,25 @@ export const createStore = (api: ScanApi) =>
 type StoreApi = ReturnType<typeof createStore>;
 
 const StoreContext = createContext<StoreApi | null>(null);
+const ApiContext = createContext<ScanApi | null>(null);
 
 export const StoreProvider = StoreContext.Provider;
+export const ApiProvider = ApiContext.Provider;
 
-export const useStore = <T,>(selector?: (state: StoreState) => T) => {
+export const useStore = <T>(selector?: (state: StoreState) => T) => {
   const store = useContext(StoreContext);
   if (!store) throw new Error("useStore must be used within StoreProvider");
 
   // If no selector is provided, return the whole state
   if (!selector) {
-    return store(state => state) as T;
+    return store((state) => state) as T;
   }
 
   return store(selector);
+};
+
+export const useApi = (): ScanApi => {
+  const api = useContext(ApiContext);
+  if (!api) throw new Error("useApi must be used within ApiProvider");
+  return api;
 };

@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
-import { useStore } from "../state/store";
+import { useApi, useStore } from "../state/store";
 import { EventType } from "../transcript/types";
 import { Transcript, ModelUsage } from "../types";
 import { JsonValue, Events } from "../types/log";
@@ -29,14 +29,14 @@ export const useSelectedScanner = () => {
 };
 
 export const useServerScans = () => {
-  const api = useStore((state) => state.api);
+  const api = useApi();
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const resultsDir = useStore((state) => state.resultsDir);
 
   useEffect(() => {
     const fetchScans = async () => {
-      const scansInfo = await api?.getScans();
+      const scansInfo = await api.getScans();
       if (scansInfo) {
         setResultsDir(scansInfo.results_dir);
         setScans(scansInfo.scans);
@@ -54,17 +54,17 @@ export const useServerScanner = () => {
   const { scanPath } = parseScanResultPath(relativePath);
 
   const setSelectedResults = useStore((state) => state.setSelectedResults);
-  const api = useStore((state) => state.api);
+  const api = useApi();
 
   useEffect(() => {
     const fetchScans = async () => {
-      const scansInfo = await api?.getScan(scanPath);
+      const scansInfo = await api.getScan(scanPath);
       if (scansInfo) {
         setSelectedResults(scansInfo);
       }
     };
     void fetchScans();
-  }, [relativePath, api, setSelectedResults]);
+  }, [relativePath, api, setSelectedResults, scanPath]);
 };
 
 export const useScannerResults = () => {

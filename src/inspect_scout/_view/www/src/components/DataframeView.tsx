@@ -7,10 +7,9 @@ import {
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { ColumnTable } from "arquero";
-import { FC, useCallback, useMemo, useRef } from "react";
+import { FC, useMemo, useRef } from "react";
 
 import { useStore } from "../state/store";
-import { debounce } from "../utils/sync";
 
 import styles from "./DataframeView.module.css";
 
@@ -36,14 +35,18 @@ export const DataframeView: FC<DataframeViewProps> = ({ columnTable }) => {
   const { columnDefs, rowData } = useMemo(() => {
     // Create column definitions for ag-grid
     const columnDefs: ColDef[] = columnTable.columnNames().map((name) => {
+      const col = columnTable.column(name);
+      const sampleValue = col.at(0);
+
       return {
         field: name,
         headerName: name,
         sortable: true,
         filter: true,
         resizable: true,
-        wrapText: true,
         tooltipField: name,
+        maxWidth: 400,
+        cellDataType: typeof sampleValue === "boolean" ? false : undefined,
       };
     });
 
@@ -54,14 +57,6 @@ export const DataframeView: FC<DataframeViewProps> = ({ columnTable }) => {
   }, [columnTable]);
 
   const gridRef = useRef<AgGridReact>(null);
-  const resizeGridColumns = useCallback(
-    debounce(() => {
-      // Trigger column sizing after grid is ready
-      gridRef.current?.api?.sizeColumnsToFit();
-    }, 10),
-    []
-  );
-
   return (
     <div className={styles.gridWrapper}>
       <AgGridReact
@@ -73,18 +68,18 @@ export const DataframeView: FC<DataframeViewProps> = ({ columnTable }) => {
           filter: true,
           resizable: true,
         }}
-        rowHeight={100}
         animateRows={false}
         suppressColumnMoveAnimation={true}
         suppressCellFocus={true}
         theme={themeBalham}
         enableCellTextSelection={true}
-        autoSizeStrategy={{ type: "fitGridWidth" }}
         initialState={gridState}
         onStateUpdated={(e: StateUpdatedEvent) => {
           setGridState(GRID_STATE_NAME, e.state);
         }}
-        onGridSizeChanged={resizeGridColumns}
+        autoSizeStrategy={{
+          type: "fitCellContents",
+        }}
       />
     </div>
   );

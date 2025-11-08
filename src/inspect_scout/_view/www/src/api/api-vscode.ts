@@ -37,18 +37,38 @@ export const apiVscode = (
 
 const createVSCodeStore = (api: VSCodeApi): ClientStorage => {
   return {
-    getItem: (_key: string): string | null => {
+    getItem: (key: string): string | null => {
       const state = api.getState();
-      if (typeof state === "string") {
-        return state;
+
+      // VSCode stores a single state object, so we need to parse it and extract by key
+      if (state && typeof state === "object") {
+        const stateObj = state as Record<string, string>;
+        const value = stateObj[key];
+        return value || null;
       }
+
       return null;
     },
-    setItem: (_key: string, value: string): void => {
-      api.setState(value);
+    setItem: (key: string, value: string): void => {
+      // Get existing state object or create new one
+      const existingState = api.getState() || {};
+      const stateObj = (
+        typeof existingState === "object" ? existingState : {}
+      ) as Record<string, string>;
+
+      // Update the specific key
+      stateObj[key] = value;
+
+      // Save the entire state object back
+      api.setState(stateObj);
     },
-    removeItem: (_key: string): void => {
-      api.setState(null);
+    removeItem: (key: string): void => {
+      const existingState = api.getState();
+      if (existingState && typeof existingState === "object") {
+        const stateObj = existingState as Record<string, string>;
+        delete stateObj[key];
+        api.setState(stateObj);
+      }
     },
   };
 };

@@ -385,7 +385,9 @@ export const createStore = (api: ScanApi) =>
             createJSONStorage(() => api.storage)
           ),
           version: 1,
-          partialize: (state) => state,
+          partialize: (state) => {
+            return state;
+          },
         }
       )
     )

@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, RootModel
 
-from .._llm_scanner.llm_structured_scanner import llm_structured_scanner
+from .._llm_scanner.structured.scanner import llm_structured_scanner
 from .._scanner.scanner import Scanner, scanner
 from .._transcript.types import Transcript
 from .template import template  # type: ignore

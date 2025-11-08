@@ -5,11 +5,11 @@ from inspect_ai.model import GenerateConfig, Model, ResponseSchema, get_model
 from inspect_ai.util import json_schema
 from jinja2 import Environment
 
-from .._scanner.extract import ContentPreprocessor, messages_as_str
-from .._scanner.result import Result
-from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
-from .._transcript.types import Transcript
-from .._util.jinja import StrictOnUseUndefined
+from ..._scanner.extract import ContentPreprocessor, messages_as_str
+from ..._scanner.result import Result
+from ..._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
+from ..._transcript.types import Transcript
+from ..._util.jinja import StrictOnUseUndefined
 
 DEFAULT_SCANNER_TEMPLATE = """
 Here is an LLM conversation between a user and an assistant:

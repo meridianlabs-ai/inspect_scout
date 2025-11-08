@@ -172,3 +172,21 @@ if __name__ == "__main__":
     from inspect_ai import eval
 
     eval(structured_output(), model="ollama/gpt-oss:20b")
+
+    # from inspect_ai import eval_set
+    # eval_set(
+    #     structured_output(),
+    #     model=[
+    #         "openai/gpt-4o-mini",
+    #         "openai/gpt-5-mini",
+    #         "google/gemini-2.5-flash",
+    #         "google/gemini-2.5-flash-lite",
+    #         "anthropic/claude-haiku-4-5",
+    #         "anthropic/claude-3-5-haiku-latest",
+    #         "grok/grok-3-mini",
+    #         "grok/grok-4-fast-reasoning",
+    #         "ollama/gpt-oss:20b",
+    #     ],
+    #     log_dir="logs-structured",
+    #     max_tasks=10,
+    # )

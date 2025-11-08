@@ -11,6 +11,24 @@ from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
 from .._util.jinja import StrictOnUseUndefined
 
+DEFAULT_SCANNER_TEMPLATE = """
+Here is an LLM conversation between a user and an assistant:
+
+[BEGIN CONVERSATION]
+===================================
+{{ messages }}
+===================================
+[END CONVERSATION]
+
+{{ question }}
+
+Your answer should include an explanation of your assessment. It should also
+include the message id's (e.g. '[M2]') to clarify which message(s) you are
+referring to.
+
+You should use the {{ answer_tool }}() tool to provide your final answer.
+"""
+
 
 @scanner(messages="all")
 def llm_structured_scanner(
@@ -38,6 +56,7 @@ def llm_structured_scanner(
         template: Jinja2 template for scanner prompt.
             The template has access to:
               - {{ messages }} (transcript message history as string)
+              - {{ question }} (the `question` which describes the scanning task)
               - {{ transcript }} (full Transcript object)
               - Any variables provided via `extra_variables`
         extra_variables: Additional template variables. Can be a dict or a function

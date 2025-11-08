@@ -1,4 +1,4 @@
-from typing import Awaitable, Callable, Literal
+from typing import Any, Awaitable, Callable, Literal
 
 from inspect_ai.model import (
     Model,
@@ -23,6 +23,9 @@ def llm_scanner(
     question: str | Callable[[Transcript], Awaitable[str]],
     answer: Literal["boolean", "numeric", "string"] | list[str] | AnswerMultiLabel,
     template: str | None = None,
+    template_variables: dict[str, Any]
+    | Callable[[Transcript], dict[str, Any]]
+    | None = None,
     preprocessor: MessagesPreprocessor | None = None,
     model: str | Model | None = None,
     name: str | None = None,
@@ -38,10 +41,15 @@ def llm_scanner(
             Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]` for a set of labels; or pass `MultiLabels` for multi-classification.
         template: Overall template for scanner prompt.
             The scanner template should include the following variables:
-              - {{ question }} (question for the model to answer)
-              - {{ messages }} (transcript message history as string)
-              - {{ answer_prompt }} (prompt the model for a specific type of answer and explanation).
-              - {{ answer_format }} (instructions on formatting for value extraction)
+                - {{ question }} (question for the model to answer)
+                - {{ messages }} (transcript message history as string)
+                - {{ answer_prompt }} (prompt for a specific type of answer).
+                - {{ answer_format }} (instructions on how to format the answer)
+            In addition, scanner templates can bind to any data with the
+            `Transcript` being processes (e.g. {{ transcript.score }})
+        template_variables: Additional variables to make available in the template.
+            Optionally takes a function which receives the current `Transcript` which
+            can return variables.
         preprocessor: Transform conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to removing system messages.
         model: Optional model specification.
@@ -65,6 +73,7 @@ def llm_scanner(
 
         resolved_prompt = await render_scanner_prompt(
             template=template,
+            template_variables=template_variables,
             transcript=transcript,
             messages=messages_str,
             question=question,
@@ -84,6 +93,9 @@ def llm_scanner(
 async def render_scanner_prompt(
     *,
     template: str,
+    template_variables: dict[str, Any]
+    | Callable[[Transcript], dict[str, Any]]
+    | None = None,
     transcript: Transcript,
     messages: str,
     question: str | Callable[[Transcript], Awaitable[str]],
@@ -93,6 +105,7 @@ async def render_scanner_prompt(
 
     Args:
         template: Jinja2 template string for the scanner prompt.
+        template_variables: Additional variables
         transcript: Transcript to extract variables from.
         messages: Formatted conversation messages string.
         question: Question for the scanner to answer. Can be a static string
@@ -102,6 +115,11 @@ async def render_scanner_prompt(
     Returns:
         Rendered prompt string with all variables substituted.
     """
+    # resolve variables
+    template_variables = template_variables or {}
+    if callable(template_variables):
+        template_variables = template_variables(transcript)
+
     return (
         Environment(undefined=StrictOnUseUndefined)
         .from_string(template)
@@ -113,5 +131,6 @@ async def render_scanner_prompt(
             answer_prompt=answer.prompt,
             answer_format=answer.format,
             transcript=transcript,
+            **template_variables,
         )
     )

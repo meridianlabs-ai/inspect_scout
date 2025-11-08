@@ -9,6 +9,7 @@ from inspect_scout._llm_scanner.answer import (
     _NumberAnswer,
     _StrAnswer,
 )
+from inspect_scout._llm_scanner.prompt import ANSWER_FORMAT_PREAMBLE
 from inspect_scout._scanner.result import Reference
 
 
@@ -22,29 +23,29 @@ def _dummy_extract_references(text: str) -> list[Reference]:
     [
         (
             _BoolAnswer(),
-            "Answer the following yes or no question about the conversation above",
+            "Answer the following yes or no question about the conversation above:",
             "'ANSWER: $VALUE' (without quotes) where $VALUE is yes or no.",
         ),
         (
             _NumberAnswer(),
-            "Answer the following numeric question about the conversation above",
+            "Answer the following numeric question about the conversation above:",
             "'ANSWER: $NUMBER' (without quotes) where $NUMBER is the numeric value.",
         ),
         (
             _LabelsAnswer(labels=["Choice A", "Choice B", "Choice C"]),
-            "Answer the following multiple choice question about the conversation above",
+            "Answer the following multiple choice question about the conversation above:",
             "'ANSWER: $LETTER' (without quotes) where $LETTER is one of A,B,C.",
         ),
         (
             _LabelsAnswer(
                 labels=["Choice A", "Choice B", "Choice C"], multi_classification=True
             ),
-            "Answer the following multiple choice question about the conversation above",
+            "Answer the following multiple choice question about the conversation above:",
             "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from A,B,C.",
         ),
         (
             _StrAnswer(),
-            "Answer the following question about the conversation above",
+            "Answer the following question about the conversation above:",
             "'ANSWER: $TEXT' (without quotes) where $TEXT is your answer.",
         ),
     ],
@@ -54,7 +55,7 @@ def test_answer_templates(
 ) -> None:
     """Answer prompt and format properties return expected values."""
     assert answer_type.prompt == expected_prompt
-    assert answer_type.format == expected_format
+    assert answer_type.format == ANSWER_FORMAT_PREAMBLE + expected_format
 
 
 @pytest.mark.parametrize(

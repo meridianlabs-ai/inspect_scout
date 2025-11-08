@@ -3,7 +3,7 @@ import JSON5 from "json5";
 import { Results, Scans } from "../types";
 import { VSCodeApi } from "../utils/vscode";
 
-import { NoPersistence, ScanApi } from "./api";
+import { ClientStorage, ScanApi } from "./api";
 import { kMethodGetScan, kMethodGetScans } from "./jsonrpc";
 
 export const apiVscode = (
@@ -31,6 +31,24 @@ export const apiVscode = (
         throw new Error("Invalid response for getScans");
       }
     },
-    storage: NoPersistence,
+    storage: createVSCodeStore(vscodeApi),
+  };
+};
+
+const createVSCodeStore = (api: VSCodeApi): ClientStorage => {
+  return {
+    getItem: (_key: string): string | null => {
+      const state = api.getState();
+      if (typeof state === "string") {
+        return state;
+      }
+      return null;
+    },
+    setItem: (_key: string, value: string): void => {
+      api.setState(value);
+    },
+    removeItem: (_key: string): void => {
+      api.setState(null);
+    },
   };
 };

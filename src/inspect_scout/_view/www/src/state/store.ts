@@ -3,11 +3,12 @@ import { ColumnTable } from "arquero";
 import { createContext, useContext } from "react";
 import { StateSnapshot } from "react-virtuoso";
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
 import { Results, Status } from "../types";
+import { debounce } from "../utils/sync";
 
 interface StoreState {
   scans: Status[];
@@ -101,6 +102,24 @@ interface StoreState {
 
   clearScanState: () => void;
 }
+
+const createDebouncedPersistStorage = (
+  storage: ReturnType<typeof createJSONStorage>,
+  delay = 2000
+) => {
+  type StorageValue = Parameters<typeof storage.setItem>[1];
+
+  const debouncedSetItem = debounce((key: string, value: StorageValue) => {
+    storage.setItem(key, value);
+  }, delay);
+
+  return {
+    ...storage,
+    setItem: (key: string, value: StorageValue) => {
+      debouncedSetItem(key, value);
+    },
+  };
+};
 
 export const createStore = (api: ScanApi) =>
   create<StoreState>()(
@@ -362,7 +381,10 @@ export const createStore = (api: ScanApi) =>
         })),
         {
           name: "inspect-scout-storage",
-          storage: api.storage,
+          storage: createDebouncedPersistStorage(
+            createJSONStorage(() => api.storage)
+          ),
+          version: 1,
           partialize: (state) => state,
         }
       )

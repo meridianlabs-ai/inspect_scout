@@ -1,10 +1,8 @@
+import { StateStorage } from "zustand/middleware";
+
 import { Results, Scans } from "../types";
 
-export interface ClientStorage {
-  getItem: <T>(name: string) => T | null;
-  setItem: <T>(name: string, value: T) => void;
-  removeItem: (name: string) => void;
-}
+export type ClientStorage = StateStorage;
 
 export interface ScanApi {
   getScans(): Promise<Scans>;
@@ -13,14 +11,9 @@ export interface ScanApi {
 }
 
 export const NoPersistence: ClientStorage = {
-  getItem: <T>(_name: string): T | null => {
-    console.log("Get Item", _name);
+  getItem: (_name: string): string | null => {
     return null;
   },
-  setItem: <T>(_name: string, _value: T): void => {
-    console.log("Set Item", _name, _value);
-  },
-  removeItem: (_name: string): void => {
-    console.log("Remove Item", _name);
-  },
+  setItem: (_name: string, _value: string): void => {},
+  removeItem: (_name: string): void => {},
 };

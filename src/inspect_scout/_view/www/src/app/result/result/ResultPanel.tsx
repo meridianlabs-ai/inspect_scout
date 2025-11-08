@@ -35,7 +35,6 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
             </LabeledValue>
             <LabeledValue label="Value" className={clsx(styles.scanValue)}>
               <Value result={result} />
-              123
             </LabeledValue>
           </CardBody>
         </Card>

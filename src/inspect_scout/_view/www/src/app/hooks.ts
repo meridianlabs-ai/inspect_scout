@@ -69,7 +69,6 @@ export const useServerScanner = () => {
 
 export const useScannerResults = () => {
   const selectedScanner = useSelectedScanner();
-  console.log({ selectedScanner });
   const selectedResults = useStore((state) => state.selectedResults);
   const scanner = selectedResults?.scanners[selectedScanner || ""];
   const columnTable = useMemo(() => {

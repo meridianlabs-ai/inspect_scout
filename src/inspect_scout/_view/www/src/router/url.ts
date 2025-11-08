@@ -16,7 +16,9 @@ export const scanRoute = (
   searchParams?: URLSearchParams
 ) => {
   const route = `/scan/${relativePath}`;
-  return searchParams?.toString() ? `${route}?${searchParams.toString()}` : route;
+  return searchParams?.toString()
+    ? `${route}?${searchParams.toString()}`
+    : route;
 };
 
 export const scansRoute = (
@@ -24,7 +26,9 @@ export const scansRoute = (
   searchParams?: URLSearchParams
 ) => {
   const route = relativePath ? `/scans/${relativePath}` : "/scans";
-  return searchParams?.toString() ? `${route}?${searchParams.toString()}` : route;
+  return searchParams?.toString()
+    ? `${route}?${searchParams.toString()}`
+    : route;
 };
 
 export const scanResultRoute = (
@@ -33,7 +37,9 @@ export const scanResultRoute = (
   searchParams?: URLSearchParams
 ) => {
   const route = `/scan/${scanRelativePath}/${scanResultId}`;
-  return searchParams?.toString() ? `${route}?${searchParams.toString()}` : route;
+  return searchParams?.toString()
+    ? `${route}?${searchParams.toString()}`
+    : route;
 };
 
 /**

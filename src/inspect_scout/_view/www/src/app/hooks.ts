@@ -69,6 +69,7 @@ export const useServerScanner = () => {
 
 export const useScannerResults = () => {
   const selectedScanner = useSelectedScanner();
+  console.log({ selectedScanner });
   const selectedResults = useStore((state) => state.selectedResults);
   const scanner = selectedResults?.scanners[selectedScanner || ""];
   const columnTable = useMemo(() => {
@@ -92,106 +93,117 @@ export const useScannerResults = () => {
 
 export const useScannerResult = (scanResultUuid: string) => {
   const scannerResults = useScannerResults();
-
-  const row = useMemo(() => {
-    const rowData = scannerResults.objects();
-    const row = rowData.findIndex((r) => {
-      return (r as Record<string, string>).uuid === scanResultUuid;
-    });
-    return row;
-  }, [scannerResults, scanResultUuid]);
-
-  const scanData = useScannerData(row, scannerResults);
+  const scanData = useScannerData(scannerResults, scanResultUuid);
   return scanData;
 };
 
-export const useScannerData = (row: number, columnTable: ColumnTable) => {
+export const useScannerData = (
+  columnTable: ColumnTable,
+  scanResultUuid?: string
+) => {
   const scannerSummaries = useMemo(() => {
-    const rowData = columnTable.objects();
     // Not a valid index
-    if (row === -1) {
+    if (!scanResultUuid) {
       return undefined;
     }
 
-    // Out of bounds
-    if (row > rowData.length - 1) {
+    // Empty table
+    if (columnTable.columnNames().length === 0) {
+      return undefined;
+    }
+    const filtered = columnTable
+      .params({ targetUuid: scanResultUuid })
+      .filter(
+        (d: { uuid: string }, $: { targetUuid: string }) =>
+          d.uuid === $.targetUuid
+      );
+
+    if (filtered.numRows() === 0) {
       return undefined;
     }
 
-    const r = rowData[row] as Record<string, unknown>;
-    const uuid = r.uuid as string | undefined;
-
-    const answer = r.answer as string | undefined;
+    const uuid = filtered.get("uuid", 0) as string | undefined;
+    const answer = filtered.get("answer", 0) as string | undefined;
     const eventReferences = JSON.parse(
-      r.event_references as string
+      filtered.get("event_references", 0) as string
     ) as ScannerReference[];
-    const explanation = r.explanation as string | undefined;
+    const explanation = filtered.get("explanation", 0) as string | undefined;
 
-    const input = JSON.parse(r.input as string) as
+    const input = JSON.parse(filtered.get("input", 0) as string) as
       | Transcript
       | MessageType
       | MessageType[]
       | EventType
       | EventType[];
-    const inputIds = JSON.parse(r.input_ids as string) as string[];
-    const inputType = r.input_type as
+    const inputIds = JSON.parse(
+      filtered.get("input_ids", 0) as string
+    ) as string[];
+    const inputType = filtered.get("input_type", 0) as
       | "transcript"
       | "message"
       | "messages"
       | "event"
       | "events";
     const messageReferences = JSON.parse(
-      r.message_references as string
+      filtered.get("message_references", 0) as string
     ) as ScannerReference[];
-    const metadata = JSON.parse(r.metadata as string) as Record<
-      string,
-      JsonValue
-    >;
-
-    const scanError = r.scan_error as string | undefined;
-    const scanErrorTraceback = r.scan_error_traceback as string | undefined;
-    const scanEvents = JSON.parse(r.scan_events as string) as Events;
-    const scanId = r.scan_id as string;
-    const scanMetadata = JSON.parse(r.scan_metadata as string) as Record<
-      string,
-      JsonValue
-    >;
-    const scanModelUsage = JSON.parse(r.scan_model_usage as string) as Record<
-      string,
-      ModelUsage
-    >;
-    const scanTags = JSON.parse(r.scan_tags as string) as string[];
-    const scanTotalTokens = r.scan_total_tokens as number;
-    const scannerFile = r.scanner_file as string;
-    const scannerKey = r.scanner_key as string;
-    const scannerName = r.scanner_name as string;
-    const scannerParams = JSON.parse(r.scanner_params as string) as Record<
-      string,
-      JsonValue
-    >;
-
-    const transcriptId = r.transcript_id as string;
-    const transcriptMetadata = JSON.parse(
-      r.transcript_metadata as string
+    const metadata = JSON.parse(
+      filtered.get("metadata", 0) as string
     ) as Record<string, JsonValue>;
-    const transcriptSourceId = r.transcript_source_id as string;
-    const transcriptSourceUri = r.transcript_source_uri as string;
 
-    const validationResult = JSON.parse(r.validation_result as string) as
-      | boolean
-      | Record<string, boolean>;
-    const validationTarget = JSON.parse(r.validation_target as string) as
-      | boolean
-      | Record<string, boolean>;
+    const scanError = filtered.get("scan_error", 0) as string | undefined;
+    const scanErrorTraceback = filtered.get("scan_error_traceback", 0) as
+      | string
+      | undefined;
+    const scanEvents = JSON.parse(
+      filtered.get("scan_events", 0) as string
+    ) as Events;
+    const scanId = filtered.get("scan_id", 0) as string;
+    const scanMetadata = JSON.parse(
+      filtered.get("scan_metadata", 0) as string
+    ) as Record<string, JsonValue>;
+    const scanModelUsage = JSON.parse(
+      filtered.get("scan_model_usage", 0) as string
+    ) as Record<string, ModelUsage>;
+    const scanTags = JSON.parse(
+      filtered.get("scan_tags", 0) as string
+    ) as string[];
+    const scanTotalTokens = filtered.get("scan_total_tokens", 0) as number;
+    const scannerFile = filtered.get("scanner_file", 0) as string;
+    const scannerKey = filtered.get("scanner_key", 0) as string;
+    const scannerName = filtered.get("scanner_name", 0) as string;
+    const scannerParams = JSON.parse(
+      filtered.get("scanner_params", 0) as string
+    ) as Record<string, JsonValue>;
 
-    const value = r.value as
+    const transcriptId = filtered.get("transcript_id", 0) as string;
+    const transcriptMetadata = JSON.parse(
+      filtered.get("transcript_metadata", 0) as string
+    ) as Record<string, JsonValue>;
+    const transcriptSourceId = filtered.get(
+      "transcript_source_id",
+      0
+    ) as string;
+    const transcriptSourceUri = filtered.get(
+      "transcript_source_uri",
+      0
+    ) as string;
+
+    const validationResult = JSON.parse(
+      filtered.get("validation_result", 0) as string
+    ) as boolean | Record<string, boolean>;
+    const validationTarget = JSON.parse(
+      filtered.get("validation_target", 0) as string
+    ) as boolean | Record<string, boolean>;
+
+    const value = filtered.get("value", 0) as
       | string
       | boolean
       | number
       | null
       | unknown[]
       | object;
-    const valueType = r.value_type as
+    const valueType = filtered.get("value_type", 0) as
       | "string"
       | "number"
       | "boolean"
@@ -230,21 +242,14 @@ export const useScannerData = (row: number, columnTable: ColumnTable) => {
       value,
       valueType,
     } as ScannerData;
-  }, [columnTable, row]);
+  }, [columnTable, scanResultUuid]);
   return scannerSummaries;
 };
 
 export const useSelectedResultsRow = (scanResultUuid: string) => {
   const scannerResults = useScannerResults();
-  const row = useMemo(() => {
-    const rowData = scannerResults.objects();
-    const row = rowData.findIndex((r) => {
-      return (r as Record<string, string>).uuid === scanResultUuid;
-    });
-    return row;
-  }, [scannerResults, scanResultUuid]);
 
-  const scanData = useScannerData(row, scannerResults);
+  const scanData = useScannerData(scannerResults, scanResultUuid);
   return scanData;
 };
 

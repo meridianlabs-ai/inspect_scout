@@ -8,6 +8,7 @@ import JSONPanel from "../../components/JsonPanel";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import {
   getRelativePathFromParams,
+  getScannerParam,
   parseScanResultPath,
 } from "../../router/url";
 import { useStore } from "../../state/store";
@@ -36,13 +37,23 @@ export const ScanResultPanel: FC = () => {
   useServerScans();
   useServerScanner();
 
+  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Sync URL query param with store state
+  useEffect(() => {
+    const scannerParam = getScannerParam(searchParams);
+    if (scannerParam) {
+      setSelectedScanner(scannerParam);
+    }
+  }, [searchParams, setSelectedScanner]);
+
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const { scanResultUuid } = parseScanResultPath(relativePath);
 
   const loading = useStore((state) => state.loading);
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
   const selectedResult = useSelectedResultsRow(scanResultUuid);

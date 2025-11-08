@@ -2,7 +2,7 @@ import { GridState } from "ag-grid-community";
 import { ColumnTable } from "arquero";
 import { StateSnapshot } from "react-virtuoso";
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";

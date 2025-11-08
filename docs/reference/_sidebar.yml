@@ -106,12 +106,12 @@ website:
           href: reference/scanner.qmd#loader
         - text: llm_scanner
           href: reference/scanner.qmd#llm_scanner
-        - text: AnswerLabels
-          href: reference/scanner.qmd#answerlabels
+        - text: AnswerMultiLabel
+          href: reference/scanner.qmd#answermultilabel
         - text: messages_as_str
           href: reference/scanner.qmd#messages_as_str
-        - text: ContentPreprocessor
-          href: reference/scanner.qmd#contentpreprocessor
+        - text: MessagesPreprocessor
+          href: reference/scanner.qmd#messagespreprocessor
         - text: MessageType
           href: reference/scanner.qmd#messagetype
         - text: EventType

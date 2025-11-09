@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { FC, useEffect } from "react";
+import { FC, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import { ActivityBar } from "../../components/ActivityBar";
@@ -81,6 +81,18 @@ export const ScanResultPanel: FC = () => {
     setSearchParams({ tab: tabId });
   };
 
+  const showEvents = useMemo(() => {
+    if (!selectedResult?.scanEvents) {
+      return false;
+    }
+
+    const hasNonSpanEvents = selectedResult.scanEvents.some((event) => {
+      return event.event !== "span_begin" && event.event !== "span_end";
+    });
+
+    return hasNonSpanEvents;
+  }, [selectedResult?.scanEvents]);
+
   return (
     <div className={clsx(styles.root)}>
       <Navbar />
@@ -114,23 +126,22 @@ export const ScanResultPanel: FC = () => {
           >
             <InputPanel result={selectedResult} />
           </TabPanel>
-          {selectedResult?.scanEvents &&
-            selectedResult?.scanEvents.length > 2 && ( // span begin and end only
-              <TabPanel
-                id={kTabIdTranscript}
-                selected={selectedTab === kTabIdTranscript}
-                title="Events"
-                onSelected={() => {
-                  handleTabChange(kTabIdTranscript);
-                }}
-              >
-                <TranscriptPanel
-                  id="scan-transcript"
-                  result={selectedResult}
-                  nodeFilter={skipScanSpan}
-                />
-              </TabPanel>
-            )}
+          {showEvents && (
+            <TabPanel
+              id={kTabIdTranscript}
+              selected={selectedTab === kTabIdTranscript}
+              title="Events"
+              onSelected={() => {
+                handleTabChange(kTabIdTranscript);
+              }}
+            >
+              <TranscriptPanel
+                id="scan-transcript"
+                result={selectedResult}
+                nodeFilter={skipScanSpan}
+              />
+            </TabPanel>
+          )}
           <TabPanel
             id={kTabIdInfo}
             selected={selectedTab === kTabIdInfo}

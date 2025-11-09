@@ -3942,22 +3942,24 @@ span.ap-marker-container:hover span.ap-marker {
   display: grid;
   grid-template-rows: max-content max-content max-content max-content 1fr;
 }
-._rootControl_88dfy_1 {
-  background-color: var(--bs-secondary-bg);
+._rootControl_19z32_1 {
+  background-color: var(--bs-body-bg);
   border-radius: var(--bs-border-radius);
   display: flex;
   flex-direction: row;
   align-items: center;
+  border: solid 1px var(--bs-border-color);
 }
 
-._segment_88dfy_9._selected_88dfy_9 {
-  background-color: var(--bs-body-bg);
+._segment_19z32_10._selected_19z32_10 {
+  background-color: var(--bs-secondary-bg);
   border-radius: var(--bs-border-radius);
 }
 
-button._segment_88dfy_9 {
+button._segment_19z32_10 {
   margin: 1px;
-  background-color: var(--bs-secondary-bg);
+  background-color: var(--bs-body-bg);
+  border-radius: var(--bs-border-radius);
   border: none;
   padding-block-end: 0;
   padding-block-start: 0;
@@ -3966,7 +3968,7 @@ button._segment_88dfy_9 {
   height: calc(100% - 2px);
 }
 
-._segment_88dfy_9 i {
+._segment_19z32_10 i {
   margin-right: 0.2em;
 }
 ._container_1q66p_1 {

@@ -1,19 +1,21 @@
 .rootControl {
-  background-color: var(--bs-secondary-bg);
+  background-color: var(--bs-body-bg);
   border-radius: var(--bs-border-radius);
   display: flex;
   flex-direction: row;
   align-items: center;
+  border: solid 1px var(--bs-border-color);
 }
 
 .segment.selected {
-  background-color: var(--bs-body-bg);
+  background-color: var(--bs-secondary-bg);
   border-radius: var(--bs-border-radius);
 }
 
 button.segment {
   margin: 1px;
-  background-color: var(--bs-secondary-bg);
+  background-color: var(--bs-body-bg);
+  border-radius: var(--bs-border-radius);
   border: none;
   padding-block-end: 0;
   padding-block-start: 0;

@@ -133,7 +133,14 @@ def structured_result(
     output: ModelOutput,
     extract_references: Callable[[str], list[Reference]],
 ) -> Result:
-    # TODO
+    # TODO: The model has completed a generation and produced raw JSON that
+    # conforms to our schema (this has been ensured via the tool calling layer).
+    # that validated JSON is available as a str in output.completion.
+    #
+    # We need to take that output and do the following:
+    #
+    #
+    #
 
     return Result(value=True)
 

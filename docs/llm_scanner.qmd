@@ -156,10 +156,6 @@ The `Result` object returned from the scanner will consist of:
 
 : {tbl-colwidths=\[25,75\]}
 
-## Structured Answers
-
-
-### Multiple Results
 
 ## Message Filtering
 
@@ -176,6 +172,10 @@ Transcript messages are included within the prompt template subject to a `Messag
 
 The default `MessagesPreprocessor` used by the LLM scanner removes system messages and leaves all other content alone.
 
+## Structured Answers
+
+
+### Multiple Results
 
 ## Dynamic Questions
 

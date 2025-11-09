@@ -4,6 +4,7 @@ import { FC, useCallback, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
+import { NoContentsPanel } from "../../../../components/NoContentsPanel";
 import { useStore } from "../../../../state/store";
 import { useScannerPreviews } from "../../../hooks";
 import { ScannerCore } from "../../../types";
@@ -17,7 +18,6 @@ interface ScanResultsListProps {
   id: string;
   columnTable: ColumnTable;
 }
-// TODO: Filter by results value
 // TODO: Keyboard navigation
 // TODO: Ensure selected item is scrolled into view
 
@@ -59,13 +59,18 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   return (
     <div className={clsx(styles.container)}>
       <ScanResultsHeader hasExplanation={hasExplanation} />
-      <LiveVirtualList<ScannerCore>
-        id={id}
-        listHandle={listHandle}
-        data={filteredScanners}
-        renderRow={renderRow}
-        className={clsx(styles.list)}
-      />
+      {filteredScanners.length === 0 && (
+        <NoContentsPanel text="No scan results to display." />
+      )}
+      {filteredScanners.length > 0 && (
+        <LiveVirtualList<ScannerCore>
+          id={id}
+          listHandle={listHandle}
+          data={filteredScanners}
+          renderRow={renderRow}
+          className={clsx(styles.list)}
+        />
+      )}
     </div>
   );
 };

@@ -10,6 +10,7 @@ import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
 import styles from "./ScanResultsBody.module.css";
+import { NoContentsPanel } from "../../../components/NoContentsPanel";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -54,6 +55,7 @@ export const ScanResultsBody: FC = () => {
           )}
         </div>
       )}
+      {!scanner && <NoContentsPanel text="No scanner data available." />}
     </div>
   );
 };

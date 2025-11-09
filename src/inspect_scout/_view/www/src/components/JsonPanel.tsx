@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { CSSProperties, FC, useMemo, useRef } from "react";
 
 import "./JsonPanel.css";
-import { isBase64 } from "../utils/base64";
+import { maybeBase64 } from "../utils/base64";
 
 import { usePrismHighlight } from "./prism";
 
@@ -69,7 +69,7 @@ const resolveBase64 = (value: unknown): unknown => {
     let resolvedValue = value;
     if (resolvedValue.startsWith(prefix)) {
       resolvedValue = "[base64 image]";
-    } else if (isBase64(resolvedValue)) {
+    } else if (maybeBase64(resolvedValue)) {
       resolvedValue = "[base64 data]";
     }
     return resolvedValue;

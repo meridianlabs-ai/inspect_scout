@@ -1,0 +1,57 @@
+import clsx from "clsx";
+import { ChangeEvent, FC, useCallback } from "react";
+
+import { useStore } from "../../../state/store";
+
+import styles from "./ScanResultsFilter.module.css";
+
+export const kFilterPositiveResults = "positive_results";
+export const kFilterAllResults = "all_results";
+
+export const ScanResultsFilter: FC = () => {
+  const setSelectedFilter = useStore((state) => state.setSelectedFilter);
+  const selectedFilter = useStore((state) => state.selectedFilter);
+
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLSelectElement>) => {
+      const sel = e.target as HTMLSelectElement;
+      setSelectedFilter(sel.value);
+    },
+    [setSelectedFilter]
+  );
+
+  const options = [
+    { label: "Positive Results", val: kFilterPositiveResults },
+    { label: "All Results", val: kFilterAllResults },
+  ];
+
+  return (
+    <div className={styles.flex}>
+      <span
+        className={clsx(
+          "sort-filter-label",
+          "text-size-smaller",
+          "text-style-label",
+          "text-style-secondary",
+          styles.label
+        )}
+      >
+        Filter:
+      </span>
+      <select
+        className={clsx("form-select", "form-select-sm", "text-size-smaller")}
+        aria-label=".sort-filter-label"
+        value={selectedFilter}
+        onChange={handleChange}
+      >
+        {options.map((option) => {
+          return (
+            <option key={option.val} value={option.val}>
+              {option.label}
+            </option>
+          );
+        })}
+      </select>
+    </div>
+  );
+};

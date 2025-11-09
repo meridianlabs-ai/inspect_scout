@@ -9,6 +9,7 @@ import { useStore } from "../../state/store";
 import { ApplicationIcons } from "../appearance/icons";
 
 import { ScanInfo } from "./info/ScanInfo";
+import { ScanResultsFilter } from "./results/ScanResultsFilter";
 import { ScanResultsPanel } from "./results/ScanResultsPanel";
 import styles from "./ScannerPanelBody.module.css";
 
@@ -53,6 +54,8 @@ export const ScannerPanelBody: React.FC = () => {
 
   const tools: ReactNode[] = [];
   if (selectedTab === kTabIdScans || selectedTab === undefined) {
+    tools.push(<ScanResultsFilter />);
+
     tools.push(
       <SegmentedControl
         selectedId={selectedResultsView}

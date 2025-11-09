@@ -3972,6 +3972,15 @@ button._segment_88dfy_9 {
 ._container_1q66p_1 {
   margin: 0.5em;
 }
+._flex_1kye9_1 {
+  display: flex;
+}
+
+._label_1kye9_5 {
+  align-self: center;
+  margin-right: 0.3em;
+  margin-left: 0.2em;
+}
 ._gridWrapper_yeano_1 {
   height: 100%;
   width: 100%;

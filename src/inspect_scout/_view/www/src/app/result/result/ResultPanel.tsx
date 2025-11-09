@@ -41,7 +41,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
         {messages.length > 0 && (
           <Card>
             <CardBody>
-              <LabeledValue label="Scan Conversation">
+              <LabeledValue label="Scanner">
                 <ChatView
                   numbered={false}
                   messages={messages}

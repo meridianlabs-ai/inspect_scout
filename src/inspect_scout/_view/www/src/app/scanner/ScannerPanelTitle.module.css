@@ -11,8 +11,8 @@
   display: grid;
   grid-template-columns: max-content max-content 1fr;
   align-items: baseline;
-  row-gap: 0.2em;
-  column-gap: 0.5em;
+  row-gap: 0.2rem;
+  column-gap: 0.3rem;
 }
 
 .rightColumn {
@@ -29,6 +29,12 @@
   font-weight: 500;
   font-size: 1em;
   color: var(--bs-secondary-text-color);
+}
+
+.scanTitleView .secondaryRow {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.2rem;
 }
 
 .scanTitleView h3 {

@@ -115,7 +115,7 @@ export const ScanResultPanel: FC = () => {
             <InputPanel result={selectedResult} />
           </TabPanel>
           {selectedResult?.scanEvents &&
-            selectedResult?.scanEvents.length > 1 && (
+            selectedResult?.scanEvents.length > 2 && ( // span begin and end only
               <TabPanel
                 id={kTabIdTranscript}
                 selected={selectedTab === kTabIdTranscript}

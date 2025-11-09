@@ -25,16 +25,21 @@ export const InfoPanel: FC<InfoPanelProps> = ({ result }) => {
             <ScannerInfoPanel result={result} />
           </CardBody>
         </Card>
-        <Card>
-          <CardHeader label="Model Usage" type="modern" />
-          <CardBody>
-            <ModelTokenTable
-              model_usage={
-                result?.scanModelUsage as unknown as ModelUsage2 | ModelUsage
-              }
-            />
-          </CardBody>
-        </Card>
+        {result?.scanModelUsage &&
+          Object.keys(result?.scanModelUsage).length > 0 && (
+            <Card>
+              <CardHeader label="Model Usage" type="modern" />
+              <CardBody>
+                <ModelTokenTable
+                  model_usage={
+                    result?.scanModelUsage as unknown as
+                      | ModelUsage2
+                      | ModelUsage
+                  }
+                />
+              </CardBody>
+            </Card>
+          )}
         {result?.scanMetadata &&
           Object.keys(result.scanMetadata).length > 0 && (
             <Card>

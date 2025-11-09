@@ -263,7 +263,7 @@ Scanners produce results which ultimately carry a specific `value`. By default, 
 
 ### Field Names
 
-We've noted the special `label` field. There is also an an `explanation` fields automatically added for the model to provide an explanation with references. If these field names don't make sense in your domain you can use other names and alias them back to `label` and `explanation`. For example, here we alias the `category` and `reason` fields to `label` and `explanation` fields (respectively):
+We've noted the special `label` field. There is also an `explanation` fields automatically added for the model to provide an explanation with references. If these field names don't make sense in your domain you can use other names and alias them back to `label` and `explanation`. For example, here we alias the `category` and `reason` fields to `label` and `explanation` fields (respectively):
 
 ```python
 class CyberLint(BaseModel):

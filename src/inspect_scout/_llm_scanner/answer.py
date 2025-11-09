@@ -13,7 +13,8 @@ from inspect_ai.scorer._common import normalize_number
 from jinja2 import Template
 from pydantic import JsonValue
 
-from inspect_scout._llm_scanner.types import AnswerMultiLabel
+from inspect_scout._llm_scanner.structured import structured_result
+from inspect_scout._llm_scanner.types import AnswerMultiLabel, AnswerStructured
 
 from .._scanner.result import Reference, Result
 from .prompt import (
@@ -50,7 +51,10 @@ class Answer(Protocol):
 
 
 def answer_from_argument(
-    answer: Literal["boolean", "numeric", "string"] | list[str] | AnswerMultiLabel,
+    answer: Literal["boolean", "numeric", "string"]
+    | list[str]
+    | AnswerMultiLabel
+    | AnswerStructured,
 ) -> Answer:
     if isinstance(answer, str):
         match answer:
@@ -64,8 +68,10 @@ def answer_from_argument(
                 raise ValueError(f"Invalid answer type: {answer}")
     elif isinstance(answer, list):
         return _LabelsAnswer(labels=answer)
-    else:
+    elif isinstance(answer, AnswerMultiLabel):
         return _LabelsAnswer(labels=answer.labels, multi_classification=True)
+    else:
+        return _StructuredAnswer(answer)
 
 
 class _BoolAnswer(Answer):
@@ -293,3 +299,25 @@ def _answer_character(index: int) -> str:
         0 -> 'A', 1 -> 'B', etc
     """
     return chr(ord("A") + index) if index < 26 else str(index - 25)
+
+
+class _StructuredAnswer(Answer):
+    def __init__(self, answer: AnswerStructured):
+        self.answer = answer
+
+    @property
+    def prompt(self) -> str:
+        return Template(self.answer.answer_prompt).render(
+            answer_tool=self.answer.answer_tool
+        )
+
+    @property
+    def format(self) -> str:
+        return Template(self.answer.answer_format).render(
+            answer_tool=self.answer.answer_tool
+        )
+
+    def result_for_answer(
+        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+    ) -> Result:
+        return structured_result(self.answer, output, extract_references)

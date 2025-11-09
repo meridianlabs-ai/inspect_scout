@@ -6,7 +6,9 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, RootModel
 
-from .._llm_scanner.structured.scanner import llm_structured_scanner
+from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+from inspect_scout._llm_scanner.types import AnswerStructured
+
 from .._scanner.scanner import Scanner, scanner
 from .._transcript.types import Transcript
 from .template import template  # type: ignore
@@ -38,8 +40,9 @@ def complex_scanner() -> Scanner[Transcript]:
             "solution": f"HACK_SOLUTION for {transcript.id}",
         }
 
-    return llm_structured_scanner(
-        JsonResult,
-        template,
-        extra_variables=extra_variables,
+    return llm_scanner(
+        question="",
+        answer=AnswerStructured(type=JsonResult),
+        template=template,
+        template_variables=extra_variables,
     )

@@ -11,11 +11,9 @@ Here is an LLM conversation between a user and an assistant:
 
 {{ question }}
 
-Your response should include an explanation of your assessment. It should include
-the message id's (e.g. '[M2]') to clarify which message(s) you are referring
-to.
+Your answer should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
 
-{{answer_format}}
+{{ answer_format }}
 """
 
 

@@ -9,7 +9,7 @@ from inspect_ai.log import transcript
 from inspect_ai.scorer import Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.util import JSONSchema, json_schema
-from inspect_scout._llm_scanner.structured.generate import structured_generate
+from inspect_scout._llm_scanner.structured import structured_generate
 from pydantic import BaseModel, Field, ValidationError
 
 

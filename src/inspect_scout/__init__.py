@@ -1,6 +1,6 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
 
-from ._llm_scanner import AnswerMultiLabel, llm_scanner, llm_structured_scanner
+from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
 from ._recorder.recorder import (
     ScanResultsDB,
     ScanResultsDF,
@@ -109,8 +109,8 @@ __all__ = [
     "MessagesPreprocessor",
     # llm_scanner
     "llm_scanner",
-    "llm_structured_scanner",
     "AnswerMultiLabel",
+    "AnswerStructured",
     # validation
     "ValidationSet",
     "ValidationCase",

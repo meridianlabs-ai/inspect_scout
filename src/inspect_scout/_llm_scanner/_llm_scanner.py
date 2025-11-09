@@ -6,6 +6,7 @@ from inspect_ai.model import (
 )
 from jinja2 import Environment
 
+from inspect_scout._llm_scanner.structured import structured_generate, structured_schema
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
 from .._scanner.extract import MessagesPreprocessor, messages_as_str
@@ -14,14 +15,17 @@ from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
 from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
-from .types import AnswerMultiLabel
+from .types import AnswerMultiLabel, AnswerStructured
 
 
 @scanner(messages="all")
 def llm_scanner(
     *,
     question: str | Callable[[Transcript], Awaitable[str]],
-    answer: Literal["boolean", "numeric", "string"] | list[str] | AnswerMultiLabel,
+    answer: Literal["boolean", "numeric", "string"]
+    | list[str]
+    | AnswerMultiLabel
+    | AnswerStructured,
     template: str | None = None,
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
@@ -80,7 +84,20 @@ def llm_scanner(
             answer=resolved_answer,
         )
 
-        model_output = await get_model(model).generate(resolved_prompt)
+        # do a structured generate if this is AnswerStructured
+        if isinstance(answer, AnswerStructured):
+            model_output = await structured_generate(
+                input=resolved_prompt,
+                schema=structured_schema(answer.type, answer.result_set),
+                answer_tool=answer.answer_tool,
+                model=model,
+                max_attempts=answer.max_attempts,
+            )
+        # otherwise do a normal generate
+        else:
+            model_output = await get_model(model).generate(resolved_prompt)
+
+        # resolve answer
         return resolved_answer.result_for_answer(model_output, extract_references)
 
     # set name for collection by @scanner if specified

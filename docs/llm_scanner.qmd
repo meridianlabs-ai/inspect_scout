@@ -44,34 +44,6 @@ def response_quality() -> Scanner[Transcript]:
 
 The section below provides more details on how prompts are constructed for `llm_scanner()`.
 
-## Dynamic Questions
-
-Instead of a static string, you can pass a function that takes a `Transcript` and returns a string. This enables you to dynamically generate questions based on the transcript content:
-
-``` python
-async def question_from_transcript(transcript: Transcript) -> str:
-    # Access transcript metadata
-    topic = transcript.variables.get("topic", "unknown")
-
-    # Access message count
-    num_messages = len(transcript.messages)
-
-    # Generate a dynamic question
-    return f"In this {num_messages}-message conversation about {topic}, did the assistant provide accurate information?"
-
-@scanner(messages="all")
-def contextual_accuracy() -> Scanner[Transcript]:
-    return llm_scanner(
-        question=question_from_transcript,
-        answer="boolean",
-    )
-```
-
-Dynamic questions are useful when:
-
-- The question depends on transcript metadata or variables
-- You need to reference specific aspects of the conversation in your question
-- The same scanner needs to adapt its question based on context
 
 ## Answer Types
 
@@ -102,11 +74,9 @@ Here is an LLM conversation between a user and an assistant:
 
 {{ question }}
 
-Your response should include an explanation of your assessment. It should include
-the message id's (e.g. '[M2]') to clarify which message(s) you are referring
-to.
+Your answer should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
 
-{{answer_format}}
+{{ answer_format }}
 ```
 
 You can provide your own `template` as an argument to `llm_scanner()`. The following substitutable values are available for prompt templates:
@@ -158,7 +128,7 @@ Answer the following yes or no question about the conversation above:
 
 Did the assistant refuse the user's request?
 
-Your response should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
+Your answer should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
 
 The last line of your response should be of the following format:
 
@@ -186,6 +156,11 @@ The `Result` object returned from the scanner will consist of:
 
 : {tbl-colwidths=\[25,75\]}
 
+## Structured Answers
+
+
+### Multiple Results
+
 ## Message Filtering
 
 Transcript messages are included within the prompt template subject to a `MessagesPreprocessor` passed to `llm_scanner()`. The preprocessor exposes the following options:
@@ -200,3 +175,33 @@ Transcript messages are included within the prompt template subject to a `Messag
 : {tbl-colwidths=\[35,65\]}
 
 The default `MessagesPreprocessor` used by the LLM scanner removes system messages and leaves all other content alone.
+
+
+## Dynamic Questions
+
+Instead of a static string, you can pass a function that takes a `Transcript` and returns a string. This enables you to dynamically generate questions based on the transcript content:
+
+``` python
+async def question_from_transcript(transcript: Transcript) -> str:
+    # Access transcript metadata
+    topic = transcript.variables.get("topic", "unknown")
+
+    # Access message count
+    num_messages = len(transcript.messages)
+
+    # Generate a dynamic question
+    return f"In this {num_messages}-message conversation about {topic}, did the assistant provide accurate information?"
+
+@scanner(messages="all")
+def contextual_accuracy() -> Scanner[Transcript]:
+    return llm_scanner(
+        question=question_from_transcript,
+        answer="boolean",
+    )
+```
+
+Dynamic questions are useful when:
+
+- The question depends on transcript metadata or variables
+- You need to reference specific aspects of the conversation in your question
+- The same scanner needs to adapt its question based on context

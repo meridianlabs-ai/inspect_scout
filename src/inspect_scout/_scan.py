@@ -15,6 +15,7 @@ from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
 from inspect_ai._util.error import PrerequisiteError
+from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import rich_traceback
@@ -543,10 +544,9 @@ async def _scan_async_inner(
                     loader = scanner_config.loader
 
                     async for loader_result in loader(job.union_transcript):
+                        result: Result | None = None
+                        error: Error | None = None
                         try:
-                            result: Result | None = None
-                            error: Error | None = None
-
                             type_and_ids = get_input_type_and_ids(loader_result)
                             if type_and_ids is None:
                                 continue
@@ -578,6 +578,8 @@ async def _scan_async_inner(
                         # Always append a result (success or error) if we have type_and_ids
                         if type_and_ids is not None:
                             results.append(
+                                # All of this data needs to be pickeable (i.e. no
+                                # async functions that catpure the task group)
                                 ResultReport(
                                     input_type=type_and_ids[0],
                                     input_ids=type_and_ids[1],
@@ -585,8 +587,8 @@ async def _scan_async_inner(
                                     result=result,
                                     validation=validation,
                                     error=error,
-                                    events=resolve_event_attachments(
-                                        inspect_transcript
+                                    events=jsonable_python(
+                                        resolve_event_attachments(inspect_transcript)
                                     ),
                                     model_usage=model_usage(),
                                 )

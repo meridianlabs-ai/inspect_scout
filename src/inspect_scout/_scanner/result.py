@@ -108,7 +108,7 @@ class ResultReport(BaseModel):
 
     error: Error | None
 
-    events: Sequence[Event]
+    events: Sequence[dict[str, Any]]
 
     model_usage: dict[str, ModelUsage]
 

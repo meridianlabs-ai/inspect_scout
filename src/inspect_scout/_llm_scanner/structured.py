@@ -43,11 +43,9 @@ async def structured_generate(
     model = get_model(model)
 
     # create a dynamic tool definition for the answer tool
-    async def answer(**kwargs: Any) -> str:
-        return ""
-
+    # use module-level function to ensure picklability
     answer_tooldef = ToolDef(
-        tool=answer,
+        tool=_answer_tool_impl,
         name=answer_tool,
         description="Use this tool to submit your final answer.",
         parameters=ToolParams(
@@ -405,3 +403,13 @@ def augment_type_with_explanation(type: Type[ST]) -> Type[ST]:
     )
 
     return augmented_type  # type: ignore
+
+
+# Module-level tool function for picklability in multiprocessing
+async def _answer_tool_impl(**kwargs: Any) -> str:
+    """Implementation of the answer tool for structured generation.
+
+    This is defined at module level rather than as a local function
+    to ensure it can be pickled when using multiprocessing.
+    """
+    return ""

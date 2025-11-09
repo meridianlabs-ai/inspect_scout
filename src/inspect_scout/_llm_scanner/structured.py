@@ -100,7 +100,6 @@ async def structured_generate(
             messages.extend(execute_messages)
             if execute_output is not None:
                 output = execute_output
-                output.completion = to_json_str_safe(answer_tool_call.arguments)
 
             # exit if there was a successful call of the answer tool
             if isinstance(messages[-1], ChatMessageTool):
@@ -108,6 +107,7 @@ async def structured_generate(
                 if tool_message.error is None:
                     # set the value to the object return by the model and break
                     value = answer_tool_call.arguments
+                    output.completion = to_json_str_safe(answer_tool_call.arguments)
                     break
 
         # keep going
@@ -181,7 +181,7 @@ def structured_result(
     # For single results, parse directly into the type
     # For result sets, we need to extract the list from the synthesized wrapper
     if answer.result_set is False:
-        parsed = answer.type.model_validate_json(output.completion)
+        parsed = answer.type.model_validate_json(output.completion, by_name=True)
     else:
         # Parse as a generic dict first to extract the list
         wrapper_data = json.loads(output.completion)
@@ -291,7 +291,7 @@ def structured_result(
     # Handle result set (multiple results)
     if answer.result_set is not False:
         # Parse each item in the list as an instance of answer.type
-        parsed_items = [answer.type.model_validate(item) for item in list_data]
+        parsed_items = [answer.type.model_validate(item, by_name=True) for item in list_data]
 
         # Create a Result for each parsed item
         results = [

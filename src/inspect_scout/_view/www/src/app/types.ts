@@ -13,6 +13,8 @@ export interface ScannerCore {
   uuid?: string;
   inputType: "transcript" | "message" | "messages" | "event" | "events";
   explanation?: string;
+  eventReferences: ScannerReference[];
+  messageReferences: ScannerReference[];
   validationResult: boolean | Record<string, boolean>;
   validationTarget: boolean | Record<string, boolean>;
   value: string | boolean | number | null | unknown[] | object;
@@ -43,9 +45,7 @@ export type MessageType =
 // Base interface with common properties
 interface ScannerDataBase extends ScannerCore {
   answer?: string;
-  eventReferences: ScannerReference[];
   inputIds: string[];
-  messageReferences: ScannerReference[];
   metadata: Record<string, JsonValue>;
   scanError?: string;
   scanErrorTraceback?: string;

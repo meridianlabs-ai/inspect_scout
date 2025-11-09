@@ -290,11 +290,19 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
       ) as Record<string, JsonValue>;
 
       const transcriptSourceId = r.transcript_source_id as string;
+      const eventReferences = JSON.parse(
+        r.event_references as string
+      ) as ScannerReference[];
+      const messageReferences = JSON.parse(
+        r.message_references as string
+      ) as ScannerReference[];
 
       return {
         uuid: r.uuid as string | undefined,
         label: r.label as string | undefined,
         explanation,
+        eventReferences,
+        messageReferences,
         inputType: r.input_type,
         validationResult,
         validationTarget,

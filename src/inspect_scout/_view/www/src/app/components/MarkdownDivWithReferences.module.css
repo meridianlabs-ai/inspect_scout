@@ -1,0 +1,10 @@
+.cite {
+  color: var(--bs-link-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cite:hover {
+  text-decoration-style: solid;
+  background-color: var(--bs-primary-bg-subtle);
+}

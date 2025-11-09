@@ -1,6 +1,6 @@
 import { FC, ReactNode } from "react";
 
-import { MarkdownDiv } from "../../components/MarkdownDiv";
+import { MarkdownDivWithReferences } from "../components/MarkdownDivWithReferences";
 import { ScannerCore } from "../types";
 
 interface ExplanationProps {
@@ -8,5 +8,10 @@ interface ExplanationProps {
 }
 
 export const Explanation: FC<ExplanationProps> = ({ result }): ReactNode => {
-  return <MarkdownDiv markdown={result.explanation || ""} />;
+  return (
+    <MarkdownDivWithReferences
+      markdown={result.explanation || ""}
+      references={[...result.messageReferences, ...result.eventReferences]}
+    />
+  );
 };

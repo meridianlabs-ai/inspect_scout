@@ -3872,6 +3872,16 @@ span.ap-marker-container:hover span.ap-marker {
 ._scanValue_1iupl_16 {
   padding-right: 0.5rem;
 }
+._cite_jz6ys_1 {
+  color: var(--bs-link-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+._cite_jz6ys_1:hover {
+  text-decoration-style: solid;
+  background-color: var(--bs-primary-bg-subtle);
+}
 ._header_ph0sv_1 {
   padding-left: 1rem;
   padding-right: 1rem;

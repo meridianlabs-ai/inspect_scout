@@ -11,6 +11,7 @@ import { ScannerData } from "../../types";
 import { Value } from "../../values/Value";
 
 import styles from "./ResultPanel.module.css";
+import { Explanation } from "../../values/Explanation";
 
 interface ResultPanelProps {
   result?: ScannerData;
@@ -38,10 +39,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
               Explanation
             </div>
             <div>
-              {" "}
-              <MarkdownDiv
-                markdown={result?.explanation || "No explanation provided."}
-              />
+              <Explanation result={result} />
             </div>
           </CardBody>
         </Card>

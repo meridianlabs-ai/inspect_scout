@@ -9,10 +9,11 @@ interface MarkdownDivProps {
   omitMedia?: boolean;
   style?: CSSProperties;
   className?: string | string[];
+  postProcess?: (html: string) => string;
 }
 
 export const MarkdownDiv = forwardRef<HTMLDivElement, MarkdownDivProps>(
-  ({ markdown, omitMedia, style, className }, ref) => {
+  ({ markdown, omitMedia, style, className, postProcess }, ref) => {
     // Protect backslashes in LaTeX expressions
     const protectedContent = protectBackslashesInLatex(markdown);
 
@@ -52,10 +53,15 @@ export const MarkdownDiv = forwardRef<HTMLDivElement, MarkdownDivProps>(
     const withCode = unescapeCodeHtmlEntities(unescaped);
 
     // For `sup` tags, reverse the escaping if we can
-    const withSup = unescapeSupHtmlEntities(withCode);
+    const finalContent = unescapeSupHtmlEntities(withCode);
+
+    // Apply post-processing if provided
+    const processedContent = postProcess
+      ? postProcess(finalContent)
+      : finalContent;
 
     // Return the rendered markdown
-    const markup = { __html: withSup };
+    const markup = { __html: processedContent };
 
     return (
       <div

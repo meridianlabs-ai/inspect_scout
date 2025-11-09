@@ -26,19 +26,19 @@ def structured_output(max_attempts: int = 3) -> Task:
 def structured_output_solver(max_attempts: int = 3) -> Solver:
     async def solve(state: TaskState, generate: Generate) -> TaskState:
         # structured generate
-        result = await structured_generate(
+        value, messages, output = await structured_generate(
             input=state.messages,
             schema=cast(JSONSchema, state.metadata["schema"]),
             max_attempts=max_attempts,
         )
 
         # update state
-        state.messages.extend(result.messages)
-        state.output = result.output
+        state.messages.extend(messages)
+        state.output = output
 
         # if we got a value then update completion for scoring
-        if result.value is not None:
-            state.output.completion = json.dumps(result.value)
+        if value is not None:
+            state.output.completion = json.dumps(value)
 
         return state
 

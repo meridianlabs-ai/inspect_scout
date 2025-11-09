@@ -34,7 +34,7 @@ async def structured_generate(
     answer_tool: str | None = "answer",
     model: str | Model | None = None,
     max_attempts: int = 3,
-) -> ModelOutput:
+) -> tuple[dict[str, Any] | None, list[ChatMessage], ModelOutput]:
     # resolve input
     input = [ChatMessageUser(content=input)] if isinstance(input, str) else input
 
@@ -57,6 +57,7 @@ async def structured_generate(
     )
 
     # setup initial values for messages and output (we will return these)
+    value: dict[str, Any] | None = None
     messages = input.copy()
     output: ModelOutput
 
@@ -89,20 +90,21 @@ async def structured_generate(
             messages.extend(execute_messages)
             if execute_output is not None:
                 output = execute_output
+                output.completion = to_json_str_safe(answer_tool_call.arguments)
 
             # exit if there was a successful call of the answer tool
             if isinstance(messages[-1], ChatMessageTool):
                 tool_message = messages[-1]
                 if tool_message.error is None:
-                    # set the the completion to the JSON returned by the model
-                    output.completion = to_json_str_safe(answer_tool_call.arguments)
+                    # set the value to the object return by the model and break
+                    value = answer_tool_call.arguments
                     break
 
         # keep going
         attempts += 1
 
     # return resultd
-    return output
+    return value, messages, output
 
 
 ST = TypeVar("ST", bound=BaseModel)

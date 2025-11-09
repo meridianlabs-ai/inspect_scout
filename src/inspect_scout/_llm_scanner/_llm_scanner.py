@@ -86,13 +86,17 @@ def llm_scanner(
 
         # do a structured generate if this is AnswerStructured
         if isinstance(answer, AnswerStructured):
-            model_output = await structured_generate(
+            value, _, model_output = await structured_generate(
                 input=resolved_prompt,
                 schema=structured_schema(answer.type, answer.result_set),
                 answer_tool=answer.answer_tool,
                 model=model,
                 max_attempts=answer.max_attempts,
             )
+            # if we failed to extract then return value=None
+            if value is None:
+                return Result(value=None, answer=model_output.completion)
+
         # otherwise do a normal generate
         else:
             model_output = await get_model(model).generate(resolved_prompt)

@@ -34,6 +34,8 @@ website:
           contents:
             - text: scout scan
               href: reference/scout_scan.qmd  
+            - text: scout view 
+              href: reference/scout_view.qmd  
             - text: scout trace 
               href: reference/scout_trace.qmd                     
 """)

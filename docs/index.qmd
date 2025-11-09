@@ -21,7 +21,7 @@ Install the `inspect_scout` package from GitHub as follows:
 pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ```
 
-Inspect Scout also depends on the development version of Inspect AI, which will be installed automatically when you install Scout.
+You should also be sure to install the [Inspect AI VS Code Extension](https://inspect.aisi.org.uk/vscode.html) which includes features for viewing and debugging Scout scans.
 
 ## Scout Basics
 
@@ -119,6 +119,29 @@ Then you could shorten the above command to:
 ```bash
 scout scan scanner.py 
 ```
+
+
+
+### LLM Scanner
+
+The example scanner above repeats several steps quite common to LLM-driven scanners (prompting, message history, answer extraction, etc.). There is a higher-level `llm_scanner()` function that includes these things automatically and provides several ways to configure its behavior. For example, we could re-write our scanner above as follows:
+
+```{.python filename="scanner.py"}
+from inspect_scout import Transcript, llm_scanner, scanner
+
+@scanner(messages="all")
+def ctf_environment() -> Scanner[Transcript]:
+    
+    return llm_scanner(
+        prompt = "In the transcript above do you detect any " +
+            "instances of environment misconfiguration " +
+            "preventing the agent from completing it's task?"
+        answer="boolean"
+    )
+```
+
+For additional details on using this scanner, see the [LLM Scanner](llm_scanner.qmd) article.
+
 ### Event Scanner
 
 Let's add another scanner that looks for uses of Java in tool calls:
@@ -145,27 +168,21 @@ If you add this scanner to the same source file as the `ctf_environment()` scann
 
 See the [Scanners](scanners.qmd) article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.
 
+## Scout View
 
-## LLM Scanner
+Scout includes a viewer application for looking at scan results in depth. Run the viewer with:
 
-The example scanner above repeats several steps quite common to LLM-driven scanners (prompting, message history, answer extraction, etc.). There is a higher-level `llm_scanner()` function that includes these things automatically and provides several ways to configure its behavior. For example, we could re-write our scanner above as follows:
-
-```{.python filename="scanner.py"}
-from inspect_scout import Transcript, llm_scanner, scanner
-
-@scanner(messages="all")
-def ctf_environment() -> Scanner[Transcript]:
-    
-    return llm_scanner(
-        prompt = "In the transcript above do you detect any " +
-            "instances of environment misconfiguration " +
-            "preventing the agent from completing it's task?"
-        answer="boolean"
-    )
+```bash
+scout view
 ```
 
-For additional details on using this scanner, see the [LLM Scanner](llm_scanner.qmd) article.
+By default this will view the scan results in the `./scans` directory of the current working directory (of the location pointed to the by the `SCOUT_SCAN_RESULTS` environment variable). Specify an alternate results location with:
 
+```bash
+scout view --results s3://my-scan-results
+```
+
+The Inspect AI VS Code Extension also includes integrated support for Scout view (e.g. viewing results by clicking links in the terminal, Scout activity bar, etc.).
 
 ## Scan Jobs
 

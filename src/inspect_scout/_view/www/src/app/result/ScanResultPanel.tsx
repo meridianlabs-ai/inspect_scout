@@ -76,6 +76,11 @@ export const ScanResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedResultTab]);
 
+  const clearScanState = useStore((state) => state.clearScanState);
+  useEffect(() => {
+    clearScanState();
+  }, [clearScanState]);
+
   const handleTabChange = (tabId: string) => {
     setSelectedResultTab(tabId);
     setSearchParams({ tab: tabId });

@@ -106,6 +106,7 @@ interface StoreState {
   setSelectedFilter: (filter: string) => void;
 
   clearScanState: () => void;
+  clearScansState: () => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -386,9 +387,13 @@ export const createStore = (api: ScanApi) =>
               state.selectedResults = undefined;
               state.selectedResultsTab = undefined;
               state.collapsedBuckets = {};
-              state.selectedScanner = undefined;
               state.transcriptCollapsedEvents = {};
               state.transcriptOutlineId = undefined;
+              state.selectedResultTab = undefined;
+            });
+          },
+          clearScansState: () => {
+            set((state) => {
               state.selectedResults = undefined;
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;

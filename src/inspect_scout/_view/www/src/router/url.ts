@@ -16,6 +16,8 @@ export const scanRoute = (
   searchParams?: URLSearchParams
 ) => {
   const route = `/scan/${relativePath}`;
+  searchParams.delete("tab");
+
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
     : route;

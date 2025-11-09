@@ -28,6 +28,13 @@ export const ScannerPanel: React.FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
+  const clearScansState = useStore((state) => state.clearScansState);
+  useEffect(() => {
+    return () => {
+      clearScansState();
+    };
+  }, [clearScansState]);
+
   return (
     <div className={clsx(styles.root)}>
       <Navbar />

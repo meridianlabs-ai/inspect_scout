@@ -25,7 +25,7 @@ from inspect_ai.util import JSONSchema
 from pydantic import BaseModel
 
 from inspect_scout._llm_scanner.types import AnswerStructured
-from inspect_scout._scanner.result import Reference, Result
+from inspect_scout._scanner.result import Reference, Result, result_set
 
 
 async def structured_generate(
@@ -133,16 +133,132 @@ def structured_result(
     output: ModelOutput,
     extract_references: Callable[[str], list[Reference]],
 ) -> Result:
-    # TODO: The model has completed a generation and produced raw JSON that
-    # conforms to our schema (this has been ensured via the tool calling layer).
-    # that validated JSON is available as a str in output.completion.
-    #
-    # We need to take that output and do the following:
-    #
-    #
-    #
+    """Convert structured model output to Result(s).
 
-    return Result(value=True)
+    Args:
+        answer: The AnswerStructured configuration.
+        output: The ModelOutput containing the validated JSON.
+        extract_references: Function to extract references from text.
+
+    Returns:
+        A Result object (or result_set if answer.result_set is True).
+    """
+    # Parse the validated JSON output into the Pydantic model
+    parsed = answer.type.model_validate_json(output.completion)
+
+    # Helper: Find field value by name or alias
+    def get_field_by_name_or_alias(
+        obj: BaseModel, target_name: str
+    ) -> tuple[str | None, Any]:
+        """Get field value by field name or alias.
+
+        Returns:
+            Tuple of (actual_field_name, field_value) or (None, None) if not found.
+        """
+        model_fields = type(obj).model_fields
+
+        # Check direct field name first
+        if target_name in model_fields:
+            return target_name, getattr(obj, target_name)
+
+        # Check for alias
+        for field_name, field_info in model_fields.items():
+            if field_info.alias == target_name:
+                return field_name, getattr(obj, field_name)
+
+        return None, None
+
+    # Helper: Create a Result from a parsed object
+    def create_result_from_parsed(obj: BaseModel, require_label: bool) -> Result:
+        """Create a Result from a parsed BaseModel object.
+
+        Args:
+            obj: The parsed BaseModel instance.
+            require_label: Whether to require a label field.
+
+        Returns:
+            A Result object.
+        """
+        # Extract explanation (required)
+        explanation_field, explanation_value = get_field_by_name_or_alias(
+            obj, "explanation"
+        )
+        if explanation_field is None:
+            raise ValueError("Missing required 'explanation' field")
+
+        # Extract label (required for result sets, optional otherwise)
+        label_field, label_value = get_field_by_name_or_alias(obj, "label")
+        if require_label and label_field is None:
+            raise ValueError("Missing required 'label' field for result set")
+
+        # Determine the value based on answer.result_value
+        exclude_from_metadata = {explanation_field}
+        if label_field:
+            exclude_from_metadata.add(label_field)
+
+        value: Any
+        if answer.result_value == "true":
+            value = True
+        elif answer.result_value == "object":
+            # Use the entire object minus explanation and label
+            value = obj.model_dump(exclude=exclude_from_metadata)
+        else:  # answer.result_value is None
+            # Look for field with alias="value"
+            value_field, value_field_value = get_field_by_name_or_alias(obj, "value")
+            if value_field:
+                value = value_field_value
+                exclude_from_metadata.add(value_field)
+            else:
+                value = True
+
+        # Collect metadata from remaining fields
+        all_fields = obj.model_dump()
+
+        # When result_value="object", the value already contains the non-special fields
+        # so we don't duplicate them in metadata
+        if answer.result_value == "object":
+            metadata = None
+        else:
+            metadata = {
+                k: v for k, v in all_fields.items() if k not in exclude_from_metadata
+            }
+
+        # Extract references from explanation
+        references = extract_references(explanation_value)
+
+        return Result(
+            value=value,
+            explanation=explanation_value,
+            label=label_value,
+            metadata=metadata if metadata else None,
+            references=references,
+        )
+
+    # Handle result set (multiple results)
+    if answer.result_set:
+        # Extract the single list field from the wrapper
+        fields = type(parsed).model_fields
+        if len(fields) != 1:
+            raise ValueError(
+                f"Result set wrapper must have exactly one field, got {len(fields)}"
+            )
+
+        list_field_name = list(fields.keys())[0]
+        list_value = getattr(parsed, list_field_name)
+
+        if not isinstance(list_value, list):
+            raise ValueError(f"Result set field '{list_field_name}' must be a list")
+
+        # Create a Result for each item in the list
+        results = [
+            create_result_from_parsed(item, require_label=True) for item in list_value
+        ]
+
+        # Return as a result set
+        return result_set(results)
+    else:
+        # Handle single result
+        return create_result_from_parsed(parsed, require_label=False)
 
 
 def get_target_type(type: Type[ST], result_set: bool) -> Type[BaseModel]:

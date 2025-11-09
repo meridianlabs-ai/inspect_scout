@@ -252,7 +252,7 @@ def structured_result(
         value: Any
         if answer.result_value == "true":
             value = True
-        elif answer.result_value == "object":
+        elif answer.result_value == "dict":
             # Use the entire object minus explanation and label
             value = obj.model_dump(exclude=exclude_from_metadata)
         else:  # answer.result_value is None
@@ -267,9 +267,9 @@ def structured_result(
         # Collect metadata from remaining fields
         all_fields = obj.model_dump()
 
-        # When result_value="object", the value already contains the non-special fields
+        # When result_value="dict", the value already contains the non-special fields
         # so we don't duplicate them in metadata
-        if answer.result_value == "object":
+        if answer.result_value == "dict":
             metadata = None
         else:
             metadata = {

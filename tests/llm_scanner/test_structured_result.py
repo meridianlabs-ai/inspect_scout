@@ -72,17 +72,17 @@ class TestSingleResultWithTrueValue:
 
 
 class TestSingleResultWithObjectValue:
-    """Tests for single results with result_value='object'."""
+    """Tests for single results with result_value='dcit'."""
 
     def test_single_result_object(self) -> None:
-        """Test single result with value as object."""
+        """Test single result with value as dcit."""
 
         class Analysis(BaseModel):
             explanation: str = Field(description="Analysis explanation")
             clarity: int = Field(description="Clarity rating")
             persuasiveness: int = Field(description="Persuasiveness rating")
 
-        answer = AnswerStructured(type=Analysis, result_value="object")
+        answer = AnswerStructured(type=Analysis, result_value="dict")
         output = ModelOutput(
             model="test",
             completion='{"explanation": "Good analysis", "clarity": 8, "persuasiveness": 7}',
@@ -102,7 +102,7 @@ class TestSingleResultWithObjectValue:
             explanation: str = Field(description="Explanation")
             score: int = Field(description="Score")
 
-        answer = AnswerStructured(type=Analysis, result_value="object")
+        answer = AnswerStructured(type=Analysis, result_value="dict")
         output = ModelOutput(
             model="test",
             completion='{"label": "positive", "explanation": "Good", "score": 9}',
@@ -246,7 +246,7 @@ class TestResultSets:
             explanation: str = Field(description="Explanation")
             line_number: int = Field(description="Line number")
 
-        answer = AnswerStructured(type=Issue, result_set=True, result_value="object")
+        answer = AnswerStructured(type=Issue, result_set=True, result_value="dict")
         output = ModelOutput(
             model="test",
             completion="""{
@@ -258,7 +258,7 @@ class TestResultSets:
 
         result = structured_result(answer, output, mock_extract_references)
 
-        # With result_value="object", each item's value should be the object minus label/explanation
+        # With result_value="dict", each item's value should be the object minus label/explanation
         value_list = cast(list[dict[str, Any]], result.value)
         assert value_list[0]["value"] == {"line_number": 42}
 

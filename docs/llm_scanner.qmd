@@ -247,7 +247,7 @@ Scanners produce results which ultimately carry a specific `value`. By default, 
         causes: str = Field(description="What were the most common causes of tool errors.") 
     ```
 
-2. For cases where you want to aggregate multiple fields into the value, you can include the `result_value="object"` to indicate that all fields in the `BaseModel` (save for explanation) should be collected up into an object value. For example, this will result in the `value` being a dict with fields `efficiency` and `persistence`:
+2. For cases where you want to aggregate multiple fields into the value, you can include the `result_value="dict"` to indicate that all fields in the `BaseModel` (save for explanation) should be collected up into a dict. For example, this will result in the `value` being a dict with fields `efficiency` and `persistence`:
 
     ```python
     class AgentRating(BaseModel):
@@ -257,7 +257,7 @@ Scanners produce results which ultimately carry a specific `value`. By default, 
 
     llm_scanner(
         question="...",
-        answer=AnswerStructured(type=AgentRating, result_value="object")
+        answer=AnswerStructured(type=AgentRating, result_value="dict")
     )
     ```
 

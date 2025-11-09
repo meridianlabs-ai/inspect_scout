@@ -2,7 +2,6 @@ import json
 from typing import Any, Literal, Sequence
 
 from inspect_ai._util.json import jsonable_python, to_json_str_safe
-from inspect_ai.event import Event
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from shortuuid import uuid

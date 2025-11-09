@@ -789,10 +789,10 @@ result = result_set([
 
 This is useful when a scanner is capable of making several types of
 observation. In this case it’s also important to indicate the origin of
-the result (i.e. which class of observation is is). Consequently, a
-`label` field is required for each `Result` passed to `result_set()`
-(note that `label` can repeat multiple times in a set, so e.g. you could
-have multiple results with `label="deception"`).
+the result (i.e. which class of observation is is), which you can do
+using the `label` field (note that `label` can repeat multiple times in
+a set, so e.g. you could have multiple results with
+`label="deception"`).
 
 By default, each individual result in the result set will yield its own
 row in the [results data frame](results.qmd#data-frames).
@@ -1003,18 +1003,22 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
 
 ## Overview
 
-The `llm_scanner()` provides a core implementation of an LLM-based
-`Transcript` scanner with the following features:
+The `llm_scanner()` provides a core “batteries included” implementation
+of an LLM-based `Transcript` scanner with the following features:.
 
-- Prompt templates with the ability to customize the core instructions,
-  explanation, and the type of answer provided by the scanner.
+- Support for a variety of model answer types including boolean, number,
+  string, classification (single or multi), and structured JSON output.
+- Textual presentation of message history including a numbering scheme
+  that enables models to create reference links to specific messages.
 - Filtering of message history to include or exclude system messages,
   tool calls, and reasoning traces.
-- Textual presentation of message history including a numbering scheme
-  that enables models to point out specific messages where they see a
-  behavior.
-- Answer extraction supporting a variety of types (boolean, number,
-  string, or labels)
+- Flexible prompt templates (using jinja2) that can use variables from
+  transcript metadata or from custom sources.
+
+The `llm_scanner()` is designed to be flexible enough to meet a variety
+of demanding requirements. For LLM scanning you should generally start
+here and only resort to writing a custom lower-level scanner if
+absolutely required.
 
 ## Basic Usage
 
@@ -1052,51 +1056,23 @@ def response_quality() -> Scanner[Transcript]:
 The section below provides more details on how prompts are constructed
 for `llm_scanner()`.
 
-## Dynamic Questions
-
-Instead of a static string, you can pass a function that takes a
-`Transcript` and returns a string. This enables you to dynamically
-generate questions based on the transcript content:
-
-``` python
-async def question_from_transcript(transcript: Transcript) -> str:
-    # Access transcript metadata
-    topic = transcript.variables.get("topic", "unknown")
-
-    # Access message count
-    num_messages = len(transcript.messages)
-
-    # Generate a dynamic question
-    return f"In this {num_messages}-message conversation about {topic}, did the assistant provide accurate information?"
-
-@scanner(messages="all")
-def contextual_accuracy() -> Scanner[Transcript]:
-    return llm_scanner(
-        question=question_from_transcript,
-        answer="boolean",
-    )
-```
-
-Dynamic questions are useful when:
-
-- The question depends on transcript metadata or variables
-- You need to reference specific aspects of the conversation in your
-  question
-- The same scanner needs to adapt its question based on context
-
 ## Answer Types
 
 The `answer` type determines how the LLM is prompted to answer, the way
 that answers are extracted, and the Python type of the scanner result
 value. There are several distinct `answer` types supported:
 
-| Type              | LLM Output        | Result Type |
-|-------------------|-------------------|-------------|
-| boolean           | ANSWER: yes       | `bool`      |
-| numeric           | ANSWER: 10        | `float`     |
-| string            | ANSWER: brown fox | `str`       |
-| label             | ANSWER: C         | `str`       |
-| labels (multiple) | ANSWER: C, D      | `list[str]` |
+| Type              | LLM Output        | Result Type           |
+|-------------------|-------------------|-----------------------|
+| boolean           | ANSWER: yes       | `bool`                |
+| numeric           | ANSWER: 10        | `float`               |
+| string            | ANSWER: brown fox | `str`                 |
+| label             | ANSWER: C         | `str`                 |
+| labels (multiple) | ANSWER: C, D      | `list[str]`           |
+| structured        | JSON object       | `dict[str,JsonValue]` |
+
+For details on JSON object answers, see the [Structured
+Answers](#structured-answers) section below.
 
 ## Prompt Template
 
@@ -1117,11 +1093,9 @@ Here is an LLM conversation between a user and an assistant:
 
 {{ question }}
 
-Your response should include an explanation of your assessment. It should include
-the message id's (e.g. '[M2]') to clarify which message(s) you are referring
-to.
+Your answer should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
 
-{{answer_format}}
+{{ answer_format }}
 ```
 
 You can provide your own `template` as an argument to `llm_scanner()`.
@@ -1174,7 +1148,7 @@ Answer the following yes or no question about the conversation above:
 
 Did the assistant refuse the user's request?
 
-Your response should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
+Your answer should include an explanation of your assessment. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to.
 
 The last line of your response should be of the following format:
 
@@ -1215,6 +1189,164 @@ exposes the following options:
 
 The default `MessagesPreprocessor` used by the LLM scanner removes
 system messages and leaves all other content alone.
+
+## Structured Answers
+
+Scanners can yield richer results and/or multiple results by prompting
+the scanner model to return JSON rather than a simple data type
+(“yes/no”, etc.).
+
+For example, here we prompt the model to look at a transcript and
+provide several pieces of data. To do this we create a Pydantic model
+that enumerates the fields, their types, and descriptions:
+
+``` python
+from pydantic import BaseModel, Field
+from inspect_scout import (
+    AnswerStructured, Scanner, llm_scanner, scanner
+)
+
+class CyberLint(BaseModel):
+    misconfiguration: bool = Field(description="Was the environment misconfigured in a way that prevented the assistant from succeeding.")
+    
+    tool_errors: int = Field(description="How many tool errors were encounted by the assistant?")
+
+    explanation: str = Field(description="Explain the reasons for reported misconfigurations or tool errors.")
+
+@scanner
+def cyberlint():
+    return llm_scanner(
+        question="Please report whether you discovered misconfiguration or tool errors in the conversation. Provide an explanation for your results.",
+        answer=AnswerStructured(type=CyberLint)
+    )
+```
+
+### Multiple Results
+
+When scanning for different categories cases it may be more natural for
+the scanner to return multiple results. To do this, add a `label` field
+and specify `result_set=True`. For example:
+
+``` python
+from pydantic import BaseModel, Field
+from textwrap import dedent
+from typing import Literal
+from inspect_scout import (
+    AnswerStructured, Scanner, llm_scanner, scanner
+)
+
+class CyberLint(BaseModel):
+    label: Literal["misconfiguration", "tool_error"] = Field(description="Issue observed.")
+
+    cause: str = Field(description="What was the cause of the observed issue?.")
+   
+    explanation: str = Field(description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
+
+@scanner
+def cyberlint():
+    return llm_scanner(
+        question=dedent("""Please report whether you found any of the following in the conversation (you may report multiple issues):
+
+        - **misconfiguration**: Was the environment misconfigured in a way that prevented the assistant from succeeding?
+
+        - **tool_errors**: Were there tool calling errors encountered?
+        
+        Please also provide an assessment of the cause and an explanation for each result.
+        """),
+        answer=AnswerStructured(type=CyberLint, result_set=True)
+    )
+```
+
+Note that we add a `label` field for distinguishing different
+observation types and pass `result_set=True` to indicate we want to
+prompt the model to generate multiple results.
+
+### Result Values
+
+Scanners produce results which ultimately carry a specific `value`. By
+default, structured scans produce a `value` of `True`. This is suitable
+for when scanners are simply detecting the presence or absence of
+something.
+
+1.  For cases where you want your scanner to yield a more specific
+    value, you can designate a field in your `BaseModel` as the value by
+    adding `alias="value"` to it. For example:
+
+    ``` python
+    class ToolErrors(BaseModel):
+        tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
+
+        causes: str = Field(description="What were the most common causes of tool errors.") 
+
+        explanation: str = Field(description="Explanation of identified tool errors.")
+    ```
+
+2.  For cases where you want to aggregate multiple fields into the
+    value, you can include the `result_value="object"` to indicate that
+    all fields in the `BaseModel` (save for explanation) should be
+    collected up into an object value. For example, this will result in
+    the `value` being a dict with fields `efficiency` and `persistence`:
+
+    ``` python
+    class AgentRating(BaseModel):
+        efficiency: int = Field(description="Rate the assistant's efficiency from 1-10.")
+
+        persistence: int = Field(description="Rate the assistant's perisitence from 1-10.")
+
+        explanation: str = Field(description="Explanation of the ratings given.")
+
+    llm_scanner(
+        question="...",
+        answer=AnswerStructured(type=AgentRating, result_value="object")
+    )
+    ```
+
+### Field Names
+
+We’ve demonstrated the use of the special `label` and `explanation`
+fields. If these field names don’t make sense in your domain you can use
+other names and alias them back to `label` and `explanation`. For
+example, here we alias the `category` and `reason` fields to `label` and
+`explanation` fields (respectively):
+
+``` python
+class CyberLint(BaseModel):
+    category: Literal["misconfiguration", "tool_error"] = Field(alias="label", description="Category of behavior observed.")
+   
+    reason: str = Field(alias="explanation", description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
+```
+
+## Dynamic Questions
+
+Instead of a static string, you can pass a function that takes a
+`Transcript` and returns a string. This enables you to dynamically
+generate questions based on the transcript content:
+
+``` python
+async def question_from_transcript(transcript: Transcript) -> str:
+    # Access transcript metadata
+    topic = transcript.variables.get("topic", "unknown")
+
+    # Access message count
+    num_messages = len(transcript.messages)
+
+    # Generate a dynamic question
+    return f"In this {num_messages}-message conversation about {topic}, did the assistant provide accurate information?"
+
+@scanner(messages="all")
+def contextual_accuracy() -> Scanner[Transcript]:
+    return llm_scanner(
+        question=question_from_transcript,
+        answer="boolean",
+    )
+```
+
+Dynamic questions are useful when:
+
+- The question depends on transcript metadata or variables
+- You need to reference specific aspects of the conversation in your
+  question
+- The same scanner needs to adapt its question based on context
 
 # Results
 
@@ -1337,9 +1469,9 @@ during the scan.
 
 Note that by default the results data frame will include an individual
 row for each result returned by a scanner. This means that if a scanner
-returned [multiple results](#0) there would be multiple rows all sharing
-the same `transcript_id`. You can customize this behavior via the `rows`
-option of the scan results functions:
+returned [multiple results](scanners.qmd#multiple-results) there would
+be multiple rows all sharing the same `transcript_id`. You can customize
+this behavior via the `rows` option of the scan results functions:
 
 |  |  |
 |----|----|

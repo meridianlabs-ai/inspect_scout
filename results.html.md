@@ -119,9 +119,9 @@ during the scan.
 
 Note that by default the results data frame will include an individual
 row for each result returned by a scanner. This means that if a scanner
-returned [multiple results](#0) there would be multiple rows all sharing
-the same `transcript_id`. You can customize this behavior via the `rows`
-option of the scan results functions:
+returned [multiple results](scanners.qmd#multiple-results) there would
+be multiple rows all sharing the same `transcript_id`. You can customize
+this behavior via the `rows` option of the scan results functions:
 
 |  |  |
 |----|----|

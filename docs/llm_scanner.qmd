@@ -4,12 +4,14 @@ title: "LLM Scanner"
 
 ## Overview
 
-The `llm_scanner()` provides a core implementation of an LLM-based `Transcript` scanner with the following features:
+The `llm_scanner()` provides a core "batteries included" implementation of an LLM-based `Transcript` scanner with the following features:.
 
--   Prompt templates with the ability to customize the core instructions, explanation, and the type of answer provided by the scanner.
+-   Support for a variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output.
+-   Textual presentation of message history including a numbering scheme that enables models to create reference links to specific messages.
 -   Filtering of message history to include or exclude system messages, tool calls, and reasoning traces.
--   Textual presentation of message history including a numbering scheme that enables models to point out specific messages where they see a behavior.
--   Answer extraction supporting a variety of types (boolean, number, string, or labels)
+-   Flexible prompt templates (using jinja2) that can use variables from transcript metadata or from custom sources.
+
+The `llm_scanner()` is designed to be flexible enough to meet a variety of demanding requirements. For LLM scanning you should generally start here and only resort to writing a custom lower-level scanner if absolutely required.
 
 ## Basic Usage
 
@@ -43,7 +45,6 @@ def response_quality() -> Scanner[Transcript]:
 ```
 
 The section below provides more details on how prompts are constructed for `llm_scanner()`.
-
 
 ## Answer Types
 
@@ -82,7 +83,7 @@ Your answer should include an explanation of your assessment. It should include 
 You can provide your own `template` as an argument to `llm_scanner()`. The following substitutable values are available for prompt templates:
 
 | Variable | Description |
-|-------------------------|-----------------------------------------------|
+|--------------------------|---------------------------------------------|
 | `{{{ messages }}}` | The message list formatted via `messages_to_str()` |
 | `{{{ question }}}` | Question about the transcript posed to the LLM (e.g. "Did the assistant refuse the user's request?") |
 | `{{{ answer_prompt }}}` | The prompt used by the current answer type (e.g. "Answer the following yes or no question:") |
@@ -156,7 +157,6 @@ The `Result` object returned from the scanner will consist of:
 
 : {tbl-colwidths=\[25,75\]}
 
-
 ## Message Filtering
 
 Transcript messages are included within the prompt template subject to a `MessagesPreprocessor` passed to `llm_scanner()`. The preprocessor exposes the following options:
@@ -173,7 +173,6 @@ Transcript messages are included within the prompt template subject to a `Messag
 The default `MessagesPreprocessor` used by the LLM scanner removes system messages and leaves all other content alone.
 
 ## Structured Answers
-
 
 ### Multiple Results
 
@@ -202,6 +201,6 @@ def contextual_accuracy() -> Scanner[Transcript]:
 
 Dynamic questions are useful when:
 
-- The question depends on transcript metadata or variables
-- You need to reference specific aspects of the conversation in your question
-- The same scanner needs to adapt its question based on context
+-   The question depends on transcript metadata or variables
+-   You need to reference specific aspects of the conversation in your question
+-   The same scanner needs to adapt its question based on context

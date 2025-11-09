@@ -1,7 +1,5 @@
 """Tests for structured_schema validation."""
 
-from typing import Any
-
 import pytest
 from inspect_ai._util.error import PrerequisiteError
 from inspect_scout._llm_scanner.structured import structured_schema
@@ -85,13 +83,12 @@ class TestMultipleResultsValid:
             explanation: str = Field(description="Finding explanation")
             severity: str = Field(description="Severity level")
 
-        class Findings(BaseModel):
-            findings: list[Finding] = Field(description="List of findings")
-
-        schema = structured_schema(Findings, True)
+        schema = structured_schema(Finding, True)
         assert schema is not None
         assert schema.properties is not None
-        assert "findings" in schema.properties
+        assert "results" in schema.properties
+        # Verify it's an array type
+        assert schema.properties["results"].type == "array"
 
     def test_multiple_results_with_aliases(self) -> None:
         """Test multiple results with aliased fields in inner type."""
@@ -100,11 +97,10 @@ class TestMultipleResultsValid:
             lbl: str = Field(alias="label", description="Issue type")
             exp: str = Field(alias="explanation", description="Issue details")
 
-        class Issues(BaseModel):
-            items: list[Issue] = Field(description="List of issues")
-
-        schema = structured_schema(Issues, True)
+        schema = structured_schema(Issue, True)
         assert schema is not None
+        assert schema.properties is not None
+        assert "results" in schema.properties
 
     def test_multiple_results_with_nested_objects(self) -> None:
         """Test multiple results with nested objects in items."""
@@ -118,11 +114,23 @@ class TestMultipleResultsValid:
             explanation: str = Field(description="Bug description")
             location: Location = Field(description="Bug location")
 
-        class Bugs(BaseModel):
-            bugs: list[Bug] = Field(description="List of bugs")
-
-        schema = structured_schema(Bugs, True)
+        schema = structured_schema(Bug, True)
         assert schema is not None
+        assert schema.properties is not None
+        assert "results" in schema.properties
+
+    def test_custom_field_name(self) -> None:
+        """Test that custom field name is used for result set."""
+
+        class Observation(BaseModel):
+            label: str = Field(description="Observation type")
+            explanation: str = Field(description="Observation details")
+
+        schema = structured_schema(Observation, "observations")
+        assert schema is not None
+        assert schema.properties is not None
+        assert "observations" in schema.properties
+        assert schema.properties["observations"].type == "array"
 
 
 class TestSingleResultInvalid:
@@ -179,42 +187,6 @@ class TestSingleResultInvalid:
 class TestMultipleResultsInvalid:
     """Tests for invalid multiple results schemas."""
 
-    def test_multiple_fields_in_wrapper(self) -> None:
-        """Test that multiple fields in wrapper raises error."""
-
-        class Finding(BaseModel):
-            label: str = Field(description="Finding label")
-            explanation: str = Field(description="Finding explanation")
-
-        class BadWrapper(BaseModel):
-            findings: list[Finding] = Field(description="List of findings")
-            metadata: dict[str, Any] = Field(default={}, description="Metadata")
-
-        with pytest.raises(PrerequisiteError, match="must have exactly one field"):
-            structured_schema(BadWrapper, True)
-
-    def test_not_a_list_field(self) -> None:
-        """Test that non-list field raises error."""
-
-        class Finding(BaseModel):
-            label: str = Field(description="Finding label")
-            explanation: str = Field(description="Finding explanation")
-
-        class NotAList(BaseModel):
-            finding: Finding = Field(description="Single finding")
-
-        with pytest.raises(PrerequisiteError, match="Could not extract BaseModel type"):
-            structured_schema(NotAList, True)
-
-    def test_list_of_non_objects(self) -> None:
-        """Test that list of non-objects raises error."""
-
-        class ListOfStrings(BaseModel):
-            items: list[str] = Field(description="List of strings")
-
-        with pytest.raises(PrerequisiteError, match="Could not extract BaseModel type"):
-            structured_schema(ListOfStrings, True)
-
     def test_missing_label_in_list_items(self) -> None:
         """Test that missing label in list items raises error."""
 
@@ -222,11 +194,8 @@ class TestMultipleResultsInvalid:
             explanation: str = Field(description="Finding explanation")
             severity: str = Field(description="Severity")
 
-        class Findings(BaseModel):
-            findings: list[FindingNoLabel] = Field(description="List of findings")
-
         with pytest.raises(PrerequisiteError, match="must have a required 'label'"):
-            structured_schema(Findings, True)
+            structured_schema(FindingNoLabel, True)
 
     def test_missing_explanation_in_list_items(self) -> None:
         """Test that missing explanation in list items raises error."""
@@ -235,13 +204,10 @@ class TestMultipleResultsInvalid:
             label: str = Field(description="Finding label")
             severity: str = Field(description="Severity")
 
-        class Findings(BaseModel):
-            findings: list[FindingNoExplanation] = Field(description="List of findings")
-
         with pytest.raises(
             PrerequisiteError, match="must have a required 'explanation'"
         ):
-            structured_schema(Findings, True)
+            structured_schema(FindingNoExplanation, True)
 
     def test_missing_description_in_list_items(self) -> None:
         """Test that missing description in list items raises error."""
@@ -251,13 +217,8 @@ class TestMultipleResultsInvalid:
             explanation: str = Field(description="Finding explanation")
             bad_field: str  # No description
 
-        class Findings(BaseModel):
-            findings: list[FindingBadDescription] = Field(
-                description="List of findings"
-            )
-
         with pytest.raises(PrerequisiteError, match="missing descriptions"):
-            structured_schema(Findings, True)
+            structured_schema(FindingBadDescription, True)
 
 
 class TestEdgeCases:
@@ -279,11 +240,10 @@ class TestEdgeCases:
             cat: str = Field(alias="label", description="Category")
             explanation: str = Field(description="Explanation")
 
-        class Findings(BaseModel):
-            findings: list[Finding] = Field(description="List of findings")
-
-        schema = structured_schema(Findings, True)
+        schema = structured_schema(Finding, True)
         assert schema is not None
+        assert schema.properties is not None
+        assert "results" in schema.properties
 
     def test_both_fields_via_alias_multiple(self) -> None:
         """Test that both required fields can be provided via alias for multiple results."""
@@ -292,11 +252,10 @@ class TestEdgeCases:
             cat: str = Field(alias="label", description="Category")
             reason: str = Field(alias="explanation", description="Reason")
 
-        class Findings(BaseModel):
-            findings: list[Finding] = Field(description="List of findings")
-
-        schema = structured_schema(Findings, True)
+        schema = structured_schema(Finding, True)
         assert schema is not None
+        assert schema.properties is not None
+        assert "results" in schema.properties
 
     def test_many_additional_fields(self) -> None:
         """Test schema with many additional fields beyond required ones."""

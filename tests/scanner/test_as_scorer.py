@@ -191,13 +191,13 @@ def test_resultset_empty() -> None:
 
 
 def test_resultset_unlabeled_result_raises_error() -> None:
-    """Test that a resultset with unlabeled results raises an error."""
+    """Test that a resultset with unlabeled results raises an error when used as a scorer."""
     task = Task(scorer=as_scorer(unlabeled_result_scanner()))
     log = eval(tasks=task, model="mockllm/model")[0]
     # The eval should complete but with an error status
     assert log.status == "error"
-    # The error should be about unlabeled result (caught in result_set())
+    # The error should be about unlabeled result
     assert log.samples is not None
     sample = log.samples[0]
     assert sample.error is not None
-    assert "must all have labels" in str(sample.error.message)
+    assert "must have labels" in str(sample.error.message)

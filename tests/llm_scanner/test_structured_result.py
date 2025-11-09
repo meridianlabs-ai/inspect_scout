@@ -208,14 +208,11 @@ class TestResultSets:
             explanation: str = Field(description="Explanation")
             severity: str = Field(description="Severity")
 
-        class Findings(BaseModel):
-            findings: list[Finding] = Field(description="List of findings")
-
-        answer = AnswerStructured(type=Findings, result_set=True)
+        answer = AnswerStructured(type=Finding, result_set=True)
         output = ModelOutput(
             model="test",
             completion="""{
-                "findings": [
+                "results": [
                     {"label": "bug", "explanation": "Found a bug", "severity": "high"},
                     {"label": "typo", "explanation": "Found a typo", "severity": "low"}
                 ]
@@ -249,14 +246,11 @@ class TestResultSets:
             explanation: str = Field(description="Explanation")
             line_number: int = Field(description="Line number")
 
-        class Issues(BaseModel):
-            issues: list[Issue] = Field(description="List of issues")
-
-        answer = AnswerStructured(type=Issues, result_set=True, result_value="object")
+        answer = AnswerStructured(type=Issue, result_set=True, result_value="object")
         output = ModelOutput(
             model="test",
             completion="""{
-                "issues": [
+                "results": [
                     {"label": "error", "explanation": "Syntax error", "line_number": 42}
                 ]
             }""",
@@ -277,10 +271,7 @@ class TestResultSets:
             )
             reason: str = Field(alias="explanation", description="Reason")
 
-        class Observations(BaseModel):
-            observations: list[Observation] = Field(description="Observations")
-
-        answer = AnswerStructured(type=Observations, result_set=True)
+        answer = AnswerStructured(type=Observation, result_set="observations")
         output = ModelOutput(
             model="test",
             completion="""{
@@ -320,53 +311,11 @@ class TestErrorCases:
         class BadFinding(BaseModel):
             explanation: str = Field(description="Explanation")
 
-        class BadFindings(BaseModel):
-            findings: list[BadFinding] = Field(description="Findings")
-
-        answer = AnswerStructured(type=BadFindings, result_set=True)
+        answer = AnswerStructured(type=BadFinding, result_set=True)
         output = ModelOutput(
             model="test",
-            completion='{"findings": [{"explanation": "Test"}]}',
+            completion='{"results": [{"explanation": "Test"}]}',
         )
 
         with pytest.raises(ValueError, match="Missing required 'label'"):
-            structured_result(answer, output, mock_extract_references)
-
-    def test_result_set_multiple_fields_raises(self) -> None:
-        """Test that result set with multiple wrapper fields raises ValueError."""
-
-        class Finding(BaseModel):
-            label: str = Field(description="Label")
-            explanation: str = Field(description="Explanation")
-
-        class BadWrapper(BaseModel):
-            findings: list[Finding] = Field(description="Findings")
-            metadata: dict[str, Any] = Field(default={}, description="Metadata")
-
-        answer = AnswerStructured(type=BadWrapper, result_set=True)
-        output = ModelOutput(
-            model="test",
-            completion='{"findings": [], "metadata": {}}',
-        )
-
-        with pytest.raises(ValueError, match="must have exactly one field"):
-            structured_result(answer, output, mock_extract_references)
-
-    def test_result_set_non_list_field_raises(self) -> None:
-        """Test that result set with non-list field raises ValueError."""
-
-        class Finding(BaseModel):
-            label: str = Field(description="Label")
-            explanation: str = Field(description="Explanation")
-
-        class BadWrapper(BaseModel):
-            finding: Finding = Field(description="Single finding")
-
-        answer = AnswerStructured(type=BadWrapper, result_set=True)
-        output = ModelOutput(
-            model="test",
-            completion='{"finding": {"label": "bug", "explanation": "Test"}}',
-        )
-
-        with pytest.raises(ValueError, match="must be a list"):
             structured_result(answer, output, mock_extract_references)

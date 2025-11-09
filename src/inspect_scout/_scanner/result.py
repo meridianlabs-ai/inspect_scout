@@ -57,26 +57,17 @@ class Result(BaseModel):
 def result_set(results: list[Result]) -> Result:
     """Create a result that aggregates a list of other results.
 
-    The passed `results` must each have a `label` field to distinguish
-    their source (normally this isn't required for results because their
-    scanner is their implicit source, however if a scanner returns multiple
-    results they benfit from additional identification).
+    The passed `results` can optionally use a `label` field to distinguish their source (normally this isn't required for results because their scanner is their implicit source, however if a scanner returns multiple results they may benefit from additional identification).
 
-    Note that labels can be repeated multiple times (e.g. if a scanner is
-    looking for instances of "deception" it might return multiple
-    `label="deception"` results).
+    Note that labels can be repeated multiple times (e.g. if a scanner is looking for instances of "deception" it might return multiple `label="deception"` results).
 
     Args:
-        results: List of results (each result must have a `label` field).
+        results: List of results.
 
     Returns:
         Result of type "resultset" which aggregates the passed results.
 
     """
-    # first ensure that the results all have labels
-    if not all([result.label is not None for result in results]):
-        raise ValueError("Results passed to `result_set()` must all have labels")
-
     # pack the results into the value
     return Result(value=jsonable_python(results), type="resultset")
 

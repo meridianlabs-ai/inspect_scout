@@ -151,7 +151,7 @@ result = result_set([
 ])
 ```
 
-This is useful when a scanner is capable of making several types of observation. In this case it's also important to indicate the origin of the result (i.e. which class of observation is is). Consequently, a `label` field is required for each `Result` passed to `result_set()` (note that `label` can repeat multiple times in a set, so e.g. you could have multiple results with `label="deception"`).
+This is useful when a scanner is capable of making several types of observation. In this case it's also important to indicate the origin of the result (i.e. which class of observation is is), which you can do using the `label` field (note that `label` can repeat multiple times in a set, so e.g. you could have multiple results with `label="deception"`).
 
 By default, each individual result in the result set will yield its own row in the [results data frame](results.qmd#data-frames). 
 

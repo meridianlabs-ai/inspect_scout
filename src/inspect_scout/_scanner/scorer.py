@@ -76,10 +76,12 @@ def as_scorer(
                 results_list = cast(list[dict[str, JsonValue]], result.value)
                 results_dict: dict[str, int | bool | float | str | None] = {}
                 for result_item in results_list:
-                    # get and validate label
+                    # get and validate label (required for scores)
                     label = result_item.get("label", None)
                     if label is None:
-                        raise RuntimeError("Unlabeled result.")
+                        raise RuntimeError(
+                            "Result sets used as scores must have labels for all items."
+                        )
                     # take first label only
                     if label not in results_dict:
                         # extract and setvalue (must be scalar)

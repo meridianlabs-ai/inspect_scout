@@ -34,8 +34,10 @@ class AnswerStructured(NamedTuple):
     The default is "true", unless there is a field in the object with alias="value" which will result in the value of that field being used as the value.
     """
 
-    result_set: bool = False
+    result_set: bool | str = False
     """Should the model yield multiple labeled results (a `result_set()`).
+
+    Provide a string to set the name of the results container in the model's response (e.g. "observations"). Defaults to "results".
 
     See the docs on [Multiple Results](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html#multiple-results) for details on prompting scanners to yield multiple results from a scan.
     """

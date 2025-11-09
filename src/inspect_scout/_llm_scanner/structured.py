@@ -1,4 +1,5 @@
 import inspect
+import json
 from typing import (
     Any,
     Callable,
@@ -72,6 +73,15 @@ async def structured_generate(
         )
         messages.append(output.message)
 
+        # if there we no tool calls then we need to insert a user message to
+        # tell the model to keep going
+        if len(output.message.tool_calls or []) == 0:
+            messages.append(
+                ChatMessageUser(
+                    content=f"Please use the {answer_tool}() tool to report your answer."
+                )
+            )
+
         # check for a call to the 'answer' tool
         answer_tool_call = next(
             (
@@ -110,24 +120,47 @@ async def structured_generate(
 ST = TypeVar("ST", bound=BaseModel)
 
 
-def structured_schema(type: Type[ST], result_set: bool) -> JSONSchema:
-    # get the target type for validation (either the type itself for single,
-    # or the inner type from the list field for multiple)
-    target_type = get_target_type(type, result_set)
-
-    # validate that the target type has required fields
-    # (note: these requirements only apply to the target type, not nested types)
-    validate_required_fields(target_type, result_set)
+def structured_schema(type: Type[ST], result_set: bool | str) -> JSONSchema:
+    # validate that the type has required fields
+    # (note: these requirements only apply to the type itself, not nested types)
+    validate_required_fields(type, result_set is not False)
 
     # validate descriptions on all fields including nested BaseModel types
     # we use validate_nested_models to handle nested BaseModel types properly
     # (Pydantic uses $ref for nested models which complicates JSON schema validation)
-    missing_descriptions = validate_nested_models(target_type)
+    missing_descriptions = validate_nested_models(type)
     if missing_descriptions:
         raise_missing_descriptions(missing_descriptions)
 
-    # return the schema for the original type (not the target type)
-    return JSONSchema.model_validate(type.model_json_schema(by_alias=False))
+    # For result sets, synthesize a wrapper schema with a single list field
+    if result_set is not False:
+        # Determine the field name for the results list
+        field_name = "results" if result_set is True else result_set
+
+        # Get the schema for the item type
+        item_schema = type.model_json_schema(by_alias=False)
+
+        # Create a wrapper schema with a single list field containing items of this type
+        wrapper_schema = {
+            "type": "object",
+            "properties": {
+                field_name: {
+                    "type": "array",
+                    "items": item_schema,
+                    "description": f"List of {type.__name__} items",
+                }
+            },
+            "required": [field_name],
+        }
+
+        # If the item schema has $defs, include them in the wrapper
+        if "$defs" in item_schema:
+            wrapper_schema["$defs"] = item_schema["$defs"]
+
+        return JSONSchema.model_validate(wrapper_schema)
+    else:
+        # For single results, return the schema as-is
+        return JSONSchema.model_validate(type.model_json_schema(by_alias=False))
 
 
 def structured_result(
@@ -145,8 +178,27 @@ def structured_result(
     Returns:
         A Result object (or result_set if answer.result_set is True).
     """
-    # Parse the validated JSON output into the Pydantic model
-    parsed = answer.type.model_validate_json(output.completion)
+    # For single results, parse directly into the type
+    # For result sets, we need to extract the list from the synthesized wrapper
+    if answer.result_set is False:
+        parsed = answer.type.model_validate_json(output.completion)
+    else:
+        # Parse as a generic dict first to extract the list
+        wrapper_data = json.loads(output.completion)
+
+        # Determine the field name
+        field_name = "results" if answer.result_set is True else answer.result_set
+
+        # Extract the list from the wrapper
+        if field_name not in wrapper_data:
+            raise ValueError(f"Expected field '{field_name}' in result set wrapper")
+
+        list_data = wrapper_data[field_name]
+        if not isinstance(list_data, list):
+            raise ValueError(f"Field '{field_name}' must be a list")
+
+        # We'll handle this list below, so set parsed to None for now
+        parsed = None
 
     # Helper: Find field value by name or alias
     def get_field_by_name_or_alias(
@@ -237,75 +289,21 @@ def structured_result(
         )
 
     # Handle result set (multiple results)
-    if answer.result_set:
-        # Extract the single list field from the wrapper
-        fields = type(parsed).model_fields
-        if len(fields) != 1:
-            raise ValueError(
-                f"Result set wrapper must have exactly one field, got {len(fields)}"
-            )
+    if answer.result_set is not False:
+        # Parse each item in the list as an instance of answer.type
+        parsed_items = [answer.type.model_validate(item) for item in list_data]
 
-        list_field_name = list(fields.keys())[0]
-        list_value = getattr(parsed, list_field_name)
-
-        if not isinstance(list_value, list):
-            raise ValueError(f"Result set field '{list_field_name}' must be a list")
-
-        # Create a Result for each item in the list
+        # Create a Result for each parsed item
         results = [
-            create_result_from_parsed(item, require_label=True) for item in list_value
+            create_result_from_parsed(item, require_label=True) for item in parsed_items
         ]
 
         # Return as a result set
         return result_set(results)
     else:
         # Handle single result
+        assert parsed is not None  # parsed is always set for single results
         return create_result_from_parsed(parsed, require_label=False)
-
-
-def get_target_type(type: Type[ST], result_set: bool) -> Type[BaseModel]:
-    """Get the target type for field validation.
-
-    For single results, returns the type itself.
-    For multiple results, extracts and returns the inner type from the list field.
-    """
-    if not result_set:
-        return type
-
-    # For multiple results, extract the inner type from the list field
-    fields = type.model_fields
-    if len(fields) != 1:
-        # This should have already been caught by get_validation_target
-        raise PrerequisiteError(
-            "For multiple results, the type must have exactly one field."
-        )
-
-    field_name = list(fields.keys())[0]
-    field_info = fields[field_name]
-
-    # Get the type annotation
-    annotation = field_info.annotation
-
-    # Check if it's a list type
-    origin = get_origin(annotation)
-    if origin is list:
-        args = get_args(annotation)
-        if args and len(args) == 1:
-            inner_type = args[0]
-            # Type narrowing: check if inner_type is a BaseModel subclass
-            # Use inspect.isclass() to handle classes with custom metaclasses like Pydantic
-            if inspect.isclass(inner_type):
-                try:
-                    if issubclass(inner_type, BaseModel):
-                        return inner_type
-                except TypeError:
-                    # issubclass() can fail for some types
-                    pass
-
-    raise PrerequisiteError(
-        f"Could not extract BaseModel type from list field '{field_name}'. "
-        f"Annotation: {annotation}, Origin: {origin}, Args: {get_args(annotation) if origin else 'N/A'}"
-    )
 
 
 def validate_nested_models(model_type: Type[BaseModel], path: str = "") -> list[str]:

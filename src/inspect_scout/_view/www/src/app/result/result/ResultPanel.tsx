@@ -28,14 +28,21 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
       <div className={clsx(styles.container, "text-size-base")}>
         <Card>
           <CardBody className={clsx(styles.explanation)}>
-            <LabeledValue label="Explanation">
+            <div className={clsx("text-style-label", "text-style-secondary")}>
+              Value
+            </div>
+            <div>
+              <Value result={result} />
+            </div>
+            <div className={clsx("text-style-label", "text-style-secondary")}>
+              Explanation
+            </div>
+            <div>
+              {" "}
               <MarkdownDiv
                 markdown={result?.explanation || "No explanation provided."}
               />
-            </LabeledValue>
-            <LabeledValue label="Value" className={clsx(styles.scanValue)}>
-              <Value result={result} />
-            </LabeledValue>
+            </div>
           </CardBody>
         </Card>
         {messages.length > 0 && (

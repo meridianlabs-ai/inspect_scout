@@ -567,14 +567,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    </span>
 <span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    tool_errors: <span class="bu">int</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"How many tool errors were encounted by the assistant?"</span>)</span>
 <span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    explanation: <span class="bu">str</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Explain the reasons for reported misconfigurations or tool errors."</span>)</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cyberlint():</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Please report whether you discovered misconfiguration or tool errors in the conversation. Provide an explanation for your results."</span>,</span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span>CyberLint)</span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cyberlint():</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Please report whether you discovered misconfiguration or tool errors in the conversation."</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span>CyberLint)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="multiple-results" class="level3">
 <h3 class="anchored" data-anchor-id="multiple-results">Multiple Results</h3>
 <p>When scanning for different categories cases it may be more natural for the scanner to return multiple results. To do this, add a <code>label</code> field and specify <code>result_set=True</code>. For example:</p>
@@ -589,22 +587,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    label: Literal[<span class="st">"misconfiguration"</span>, <span class="st">"tool_error"</span>] <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Issue observed."</span>)</span>
 <span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    cause: <span class="bu">str</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"What was the cause of the observed issue?."</span>)</span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>   </span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    explanation: <span class="bu">str</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Explain the reasons for the reported issue, citing specific message numbers where the issue was observed."</span>)</span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cyberlint():</span>
-<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span>dedent(<span class="st">"""Please report whether you found any of the following in the conversation (you may report multiple issues):</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cyberlint():</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span>dedent(<span class="st">"""Please report whether you found any of the following in the conversation (you may report multiple issues):</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="st">        - **misconfiguration**: Was the environment misconfigured in a way that prevented the assistant from succeeding?</span></span>
 <span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="st">        - **misconfiguration**: Was the environment misconfigured in a way that prevented the assistant from succeeding?</span></span>
-<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="st">        - **tool_errors**: Were there tool calling errors encountered?</span></span>
-<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="st">        </span></span>
-<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="st">        Please also provide an assessment of the cause and an explanation for each result.</span></span>
-<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a><span class="st">        """</span>),</span>
-<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span>CyberLint, result_set<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="st">        - **tool_errors**: Were there tool calling errors encountered?</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="st">        </span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="st">        Please also provide an assessment of the cause and an explanation for each result.</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="st">        """</span>),</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span>CyberLint, result_set<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Note that we add a <code>label</code> field for distinguishing different observation types and pass <code>result_set=True</code> to indicate we want to prompt the model to generate multiple results.</p>
 </section>
 <section id="result-values" class="level3">
@@ -615,26 +611,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ToolErrors(BaseModel):</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    tool_errors: <span class="bu">int</span> <span class="op">=</span> Field(alias<span class="op">=</span><span class="st">"value"</span>, description<span class="op">=</span><span class="st">"The number of tool errors encountered."</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    causes: <span class="bu">str</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"What were the most common causes of tool errors."</span>) </span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    explanation: <span class="bu">str</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Explanation of identified tool errors."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
-<li><p>For cases where you want to aggregate multiple fields into the value, you can include the <code>result_value="object"</code> to indicate that all fields in the <code>BaseModel</code> (save for explanation) should be collected up into an object value. For example, this will result in the <code>value</code> being a dict with fields <code>efficiency</code> and <code>persistence</code>:</p>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    causes: <span class="bu">str</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"What were the most common causes of tool errors."</span>) </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
+<li><p>For cases where you want to aggregate multiple fields into the value, you can include the <code>result_value="dict"</code> to indicate that all fields in the <code>BaseModel</code> (save for explanation) should be collected up into a dict. For example, this will result in the <code>value</code> being a dict with fields <code>efficiency</code> and <code>persistence</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AgentRating(BaseModel):</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    efficiency: <span class="bu">int</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Rate the assistant's efficiency from 1-10."</span>)</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    persistence: <span class="bu">int</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Rate the assistant's perisitence from 1-10."</span>)</span>
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    explanation: <span class="bu">str</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Explanation of the ratings given."</span>)</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>llm_scanner(</span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    question<span class="op">=</span><span class="st">"..."</span>,</span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span>AgentRating, result_value<span class="op">=</span><span class="st">"object"</span>)</span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>llm_scanner(</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    question<span class="op">=</span><span class="st">"..."</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span>AgentRating, result_value<span class="op">=</span><span class="st">"dict"</span>)</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
 </ol>
 </section>
 <section id="field-names" class="level3">
 <h3 class="anchored" data-anchor-id="field-names">Field Names</h3>
-<p>We’ve demonstrated the use of the special <code>label</code> and <code>explanation</code> fields. If these field names don’t make sense in your domain you can use other names and alias them back to <code>label</code> and <code>explanation</code>. For example, here we alias the <code>category</code> and <code>reason</code> fields to <code>label</code> and <code>explanation</code> fields (respectively):</p>
+<p>We’ve noted the special <code>label</code> field. There is also an an <code>explanation</code> fields automatically added for the model to provide an explanation with references. If these field names don’t make sense in your domain you can use other names and alias them back to <code>label</code> and <code>explanation</code>. For example, here we alias the <code>category</code> and <code>reason</code> fields to <code>label</code> and <code>explanation</code> fields (respectively):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> CyberLint(BaseModel):</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    category: Literal[<span class="st">"misconfiguration"</span>, <span class="st">"tool_error"</span>] <span class="op">=</span> Field(alias<span class="op">=</span><span class="st">"label"</span>, description<span class="op">=</span><span class="st">"Category of behavior observed."</span>)</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>   </span>

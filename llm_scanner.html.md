@@ -211,12 +211,10 @@ class CyberLint(BaseModel):
     
     tool_errors: int = Field(description="How many tool errors were encounted by the assistant?")
 
-    explanation: str = Field(description="Explain the reasons for reported misconfigurations or tool errors.")
-
 @scanner
 def cyberlint():
     return llm_scanner(
-        question="Please report whether you discovered misconfiguration or tool errors in the conversation. Provide an explanation for your results.",
+        question="Please report whether you discovered misconfiguration or tool errors in the conversation.",
         answer=AnswerStructured(type=CyberLint)
     )
 ```
@@ -239,8 +237,6 @@ class CyberLint(BaseModel):
     label: Literal["misconfiguration", "tool_error"] = Field(description="Issue observed.")
 
     cause: str = Field(description="What was the cause of the observed issue?.")
-   
-    explanation: str = Field(description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
 
 @scanner
 def cyberlint():
@@ -277,15 +273,13 @@ something.
         tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
 
         causes: str = Field(description="What were the most common causes of tool errors.") 
-
-        explanation: str = Field(description="Explanation of identified tool errors.")
     ```
 
 2.  For cases where you want to aggregate multiple fields into the
-    value, you can include the `result_value="object"` to indicate that
+    value, you can include the `result_value="dict"` to indicate that
     all fields in the `BaseModel` (save for explanation) should be
-    collected up into an object value. For example, this will result in
-    the `value` being a dict with fields `efficiency` and `persistence`:
+    collected up into a dict. For example, this will result in the
+    `value` being a dict with fields `efficiency` and `persistence`:
 
     ``` python
     class AgentRating(BaseModel):
@@ -293,19 +287,18 @@ something.
 
         persistence: int = Field(description="Rate the assistant's perisitence from 1-10.")
 
-        explanation: str = Field(description="Explanation of the ratings given.")
-
     llm_scanner(
         question="...",
-        answer=AnswerStructured(type=AgentRating, result_value="object")
+        answer=AnswerStructured(type=AgentRating, result_value="dict")
     )
     ```
 
 ### Field Names
 
-We’ve demonstrated the use of the special `label` and `explanation`
-fields. If these field names don’t make sense in your domain you can use
-other names and alias them back to `label` and `explanation`. For
+We’ve noted the special `label` field. There is also an an `explanation`
+fields automatically added for the model to provide an explanation with
+references. If these field names don’t make sense in your domain you can
+use other names and alias them back to `label` and `explanation`. For
 example, here we alias the `category` and `reason` fields to `label` and
 `explanation` fields (respectively):
 

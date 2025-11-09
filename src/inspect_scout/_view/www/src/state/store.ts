@@ -397,6 +397,7 @@ export const createStore = (api: ScanApi) =>
               state.selectedResults = undefined;
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;
+              state.selectedScanner = undefined;
             });
           },
         })),

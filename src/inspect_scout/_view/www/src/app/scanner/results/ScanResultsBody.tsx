@@ -4,13 +4,13 @@ import clsx from "clsx";
 import { FC, useMemo } from "react";
 
 import { DataframeView } from "../../../components/DataframeView";
+import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { useStore } from "../../../state/store";
 import { useSelectedScanner } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
 import styles from "./ScanResultsBody.module.css";
-import { NoContentsPanel } from "../../../components/NoContentsPanel";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);

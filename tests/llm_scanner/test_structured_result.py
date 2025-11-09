@@ -293,8 +293,8 @@ class TestResultSets:
 class TestErrorCases:
     """Tests for error conditions."""
 
-    def test_missing_explanation_raises(self) -> None:
-        """Test that missing explanation field raises ValueError."""
+    def test_missing_explanation_in_json_raises(self) -> None:
+        """Test that missing explanation in JSON raises ValidationError."""
 
         class BadModel(BaseModel):
             score: int = Field(description="Score")
@@ -302,20 +302,31 @@ class TestErrorCases:
         answer = AnswerStructured(type=BadModel)
         output = ModelOutput(model="test", completion='{"score": 5}')
 
-        with pytest.raises(ValueError, match="Missing required 'explanation'"):
+        # Since explanation is auto-added to the schema, Pydantic expects it in the JSON
+        with pytest.raises(Exception, match="explanation"):
             structured_result(answer, output, mock_extract_references)
 
-    def test_result_set_missing_label_raises(self) -> None:
-        """Test that result set without label raises ValueError."""
+    def test_result_set_without_label_succeeds(self) -> None:
+        """Test that result set without label field succeeds (label is optional)."""
 
-        class BadFinding(BaseModel):
+        class FindingNoLabel(BaseModel):
             explanation: str = Field(description="Explanation")
+            severity: str = Field(description="Severity level")
 
-        answer = AnswerStructured(type=BadFinding, result_set=True)
+        answer = AnswerStructured(type=FindingNoLabel, result_set=True)
         output = ModelOutput(
             model="test",
-            completion='{"results": [{"explanation": "Test"}]}',
+            completion='{"results": [{"explanation": "Test finding", "severity": "high"}]}',
         )
 
-        with pytest.raises(ValueError, match="Missing required 'label'"):
-            structured_result(answer, output, mock_extract_references)
+        result = structured_result(answer, output, mock_extract_references)
+
+        # Should succeed and create result set without label
+        assert result.type == "resultset"
+        assert isinstance(result.value, list)
+        value_list = cast(list[dict[str, Any]], result.value)
+        assert len(value_list) == 1
+        # Label is optional - either not present or None
+        assert value_list[0].get("label") is None
+        assert value_list[0]["explanation"] == "Test finding"
+        assert value_list[0]["metadata"] == {"severity": "high"}

@@ -23,7 +23,7 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolDef, ToolFunction, ToolParams
 from inspect_ai.util import JSONSchema
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, create_model
 
 from inspect_scout._llm_scanner.types import AnswerStructured
 from inspect_scout._scanner.result import Reference, Result, result_set
@@ -121,14 +121,13 @@ ST = TypeVar("ST", bound=BaseModel)
 
 
 def structured_schema(type: Type[ST], result_set: bool | str) -> JSONSchema:
-    # validate that the type has required fields
-    # (note: these requirements only apply to the type itself, not nested types)
-    validate_required_fields(type, result_set is not False)
+    # Augment the type with an explanation field if it doesn't have one
+    augmented_type = augment_type_with_explanation(type)
 
     # validate descriptions on all fields including nested BaseModel types
     # we use validate_nested_models to handle nested BaseModel types properly
     # (Pydantic uses $ref for nested models which complicates JSON schema validation)
-    missing_descriptions = validate_nested_models(type)
+    missing_descriptions = validate_nested_models(augmented_type)
     if missing_descriptions:
         raise_missing_descriptions(missing_descriptions)
 
@@ -138,7 +137,7 @@ def structured_schema(type: Type[ST], result_set: bool | str) -> JSONSchema:
         field_name = "results" if result_set is True else result_set
 
         # Get the schema for the item type
-        item_schema = type.model_json_schema(by_alias=False)
+        item_schema = augmented_type.model_json_schema(by_alias=False)
 
         # Create a wrapper schema with a single list field containing items of this type
         wrapper_schema = {
@@ -147,7 +146,7 @@ def structured_schema(type: Type[ST], result_set: bool | str) -> JSONSchema:
                 field_name: {
                     "type": "array",
                     "items": item_schema,
-                    "description": f"List of {type.__name__} items",
+                    "description": f"List of {augmented_type.__name__} items",
                 }
             },
             "required": [field_name],
@@ -160,7 +159,9 @@ def structured_schema(type: Type[ST], result_set: bool | str) -> JSONSchema:
         return JSONSchema.model_validate(wrapper_schema)
     else:
         # For single results, return the schema as-is
-        return JSONSchema.model_validate(type.model_json_schema(by_alias=False))
+        return JSONSchema.model_validate(
+            augmented_type.model_json_schema(by_alias=False)
+        )
 
 
 def structured_result(
@@ -178,10 +179,13 @@ def structured_result(
     Returns:
         A Result object (or result_set if answer.result_set is True).
     """
+    # Augment the type with an explanation field if it doesn't have one
+    augmented_type = augment_type_with_explanation(answer.type)
+
     # For single results, parse directly into the type
     # For result sets, we need to extract the list from the synthesized wrapper
     if answer.result_set is False:
-        parsed = answer.type.model_validate_json(output.completion, by_name=True)
+        parsed = augmented_type.model_validate_json(output.completion, by_name=True)
     else:
         # Parse as a generic dict first to extract the list
         wrapper_data = json.loads(output.completion)
@@ -223,12 +227,11 @@ def structured_result(
         return None, None
 
     # Helper: Create a Result from a parsed object
-    def create_result_from_parsed(obj: BaseModel, require_label: bool) -> Result:
+    def create_result_from_parsed(obj: BaseModel) -> Result:
         """Create a Result from a parsed BaseModel object.
 
         Args:
             obj: The parsed BaseModel instance.
-            require_label: Whether to require a label field.
 
         Returns:
             A Result object.
@@ -240,10 +243,8 @@ def structured_result(
         if explanation_field is None:
             raise ValueError("Missing required 'explanation' field")
 
-        # Extract label (required for result sets, optional otherwise)
+        # Extract label (optional - can be used to distinguish results in a result set)
         label_field, label_value = get_field_by_name_or_alias(obj, "label")
-        if require_label and label_field is None:
-            raise ValueError("Missing required 'label' field for result set")
 
         # Determine the value based on answer.result_value
         exclude_from_metadata = {explanation_field}
@@ -290,20 +291,20 @@ def structured_result(
 
     # Handle result set (multiple results)
     if answer.result_set is not False:
-        # Parse each item in the list as an instance of answer.type
-        parsed_items = [answer.type.model_validate(item, by_name=True) for item in list_data]
+        # Parse each item in the list as an instance of the augmented type
+        parsed_items = [
+            augmented_type.model_validate(item, by_name=True) for item in list_data
+        ]
 
         # Create a Result for each parsed item
-        results = [
-            create_result_from_parsed(item, require_label=True) for item in parsed_items
-        ]
+        results = [create_result_from_parsed(item) for item in parsed_items]
 
         # Return as a result set
         return result_set(results)
     else:
         # Handle single result
         assert parsed is not None  # parsed is always set for single results
-        return create_result_from_parsed(parsed, require_label=False)
+        return create_result_from_parsed(parsed)
 
 
 def validate_nested_models(model_type: Type[BaseModel], path: str = "") -> list[str]:
@@ -361,63 +362,46 @@ def raise_missing_descriptions(missing_descriptions: list[str]) -> NoReturn:
     raise PrerequisiteError(error_msg)
 
 
-def validate_required_fields(target_type: Type[BaseModel], result_set: bool) -> None:
-    """Validate that the target type has required fields.
+def augment_type_with_explanation(type: Type[ST]) -> Type[ST]:
+    """Augment a type with an explanation field if it doesn't already have one.
 
     Args:
-        target_type: The BaseModel type to validate.
-        result_set: Whether expecting single or multiple results.
+        type: The BaseModel type to check and potentially augment.
 
-    Raises:
-        PrerequisiteError: If required fields are missing.
-
-    Notes:
-        - 'explanation' field is always required (both single and multiple)
-        - 'label' field is only required for multiple results
+    Returns:
+        The original type if it has an explanation field, or a new type
+        with an explanation field added.
     """
-    fields = target_type.model_fields
-
-    # Helper to check if a field annotation is exactly str (required, not optional)
-    def is_str_required(annotation: Any) -> bool:
-        return annotation is str
-
-    # Check for label field (only required for multiple results)
-    if result_set:
-        has_label = False
-        if "label" in fields and is_str_required(fields["label"].annotation):
-            has_label = True
-        else:
-            # Check for field with alias="label"
-            for _field_name, field_info in fields.items():
-                if field_info.alias == "label" and is_str_required(
-                    field_info.annotation
-                ):
-                    has_label = True
-                    break
-
-        if not has_label:
-            raise PrerequisiteError(
-                f"The type '{target_type.__name__}' must have a required 'label' field of type str. "
-                "This can be achieved with a field named 'label' or a field with alias='label'. "
-                "The field cannot be Optional."
-            )
-
-    # Check for explanation field (always required)
+    # Check if the type already has an explanation field (by name or alias)
     has_explanation = False
-    if "explanation" in fields and is_str_required(fields["explanation"].annotation):
+    if "explanation" in type.model_fields:
         has_explanation = True
     else:
         # Check for field with alias="explanation"
-        for _field_name, field_info in fields.items():
-            if field_info.alias == "explanation" and is_str_required(
-                field_info.annotation
-            ):
+        for _, field_info in type.model_fields.items():
+            if field_info.alias == "explanation":
                 has_explanation = True
                 break
 
-    if not has_explanation:
-        raise PrerequisiteError(
-            f"The type '{target_type.__name__}' must have a required 'explanation' field of type str. "
-            "This can be achieved with a field named 'explanation' or a field with alias='explanation'. "
-            "The field cannot be Optional."
+    # If it already has explanation, return as-is
+    if has_explanation:
+        return type
+
+    # Create a new type that extends the original with an explanation field
+    new_fields = {
+        "explanation": (
+            str,
+            Field(
+                description="Please provide an explanation of the answer you have provided."
+            ),
         )
+    }
+
+    # Use create_model to dynamically create a new type
+    augmented_type = create_model(
+        f"{type.__name__}WithExplanation",
+        __base__=type,
+        **new_fields,  # type: ignore
+    )
+
+    return augmented_type  # type: ignore

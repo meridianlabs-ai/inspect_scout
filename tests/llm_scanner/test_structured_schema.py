@@ -136,29 +136,32 @@ class TestMultipleResultsValid:
 class TestSingleResultInvalid:
     """Tests for invalid single result schemas."""
 
-    def test_missing_explanation_field(self) -> None:
-        """Test that missing explanation field raises error."""
+    def test_auto_adds_explanation_field(self) -> None:
+        """Test that explanation field is automatically added if missing."""
 
         class NoExplanation(BaseModel):
             other: str = Field(description="Other field")
 
-        with pytest.raises(
-            PrerequisiteError, match="must have a required 'explanation'"
-        ):
-            structured_schema(NoExplanation, False)
+        # Should not raise - explanation is auto-added
+        schema = structured_schema(NoExplanation, False)
+        assert schema is not None
+        assert schema.properties is not None
+        # Verify explanation was added to the schema
+        assert "explanation" in schema.properties
 
     def test_optional_explanation_field(self) -> None:
-        """Test that optional explanation field raises error."""
+        """Test that optional explanation field is preserved."""
 
         class OptionalExplanation(BaseModel):
             explanation: str | None = Field(
                 default=None, description="Optional explanation"
             )
 
-        with pytest.raises(
-            PrerequisiteError, match="must have a required 'explanation'"
-        ):
-            structured_schema(OptionalExplanation, False)
+        # Should not raise - optional explanation is preserved as-is
+        schema = structured_schema(OptionalExplanation, False)
+        assert schema is not None
+        assert schema.properties is not None
+        assert "explanation" in schema.properties
 
     def test_missing_description_on_field(self) -> None:
         """Test that missing description raises error."""
@@ -188,26 +191,31 @@ class TestMultipleResultsInvalid:
     """Tests for invalid multiple results schemas."""
 
     def test_missing_label_in_list_items(self) -> None:
-        """Test that missing label in list items raises error."""
+        """Test that label is optional in result set items."""
 
         class FindingNoLabel(BaseModel):
             explanation: str = Field(description="Finding explanation")
             severity: str = Field(description="Severity")
 
-        with pytest.raises(PrerequisiteError, match="must have a required 'label'"):
-            structured_schema(FindingNoLabel, True)
+        # Should not raise - label is optional
+        schema = structured_schema(FindingNoLabel, True)
+        assert schema is not None
+        assert schema.properties is not None
+        assert "results" in schema.properties
 
-    def test_missing_explanation_in_list_items(self) -> None:
-        """Test that missing explanation in list items raises error."""
+    def test_auto_adds_explanation_in_list_items(self) -> None:
+        """Test that explanation is auto-added for result set items."""
 
         class FindingNoExplanation(BaseModel):
             label: str = Field(description="Finding label")
             severity: str = Field(description="Severity")
 
-        with pytest.raises(
-            PrerequisiteError, match="must have a required 'explanation'"
-        ):
-            structured_schema(FindingNoExplanation, True)
+        # Should not raise - explanation is auto-added
+        schema = structured_schema(FindingNoExplanation, True)
+        assert schema is not None
+        # Result sets have a wrapper, so check the items schema
+        assert schema.properties is not None
+        assert "results" in schema.properties
 
     def test_missing_description_in_list_items(self) -> None:
         """Test that missing description in list items raises error."""

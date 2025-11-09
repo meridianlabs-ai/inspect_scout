@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Async API – Inspect Scout</title>
+<title>scout view – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,41 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -65,8 +30,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/async.qmd#scan_async" rel="next">
-<link href="../reference/scanner.qmd#as_scorer" rel="prev">
+<link href="../reference/scout_trace.html" rel="next">
+<link href="../reference/scout_scan.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -187,7 +152,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scanning.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/async.html">async</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_view.html">scout view</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -570,13 +535,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/async.html" class="sidebar-item-text sidebar-link active">
+            <a href="../reference/async.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">async</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth2 show">  
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../reference/async.html#scan_async" class="sidebar-item-text sidebar-link">
@@ -640,7 +605,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">scout view</span></a>
   </div>
 </li>
@@ -657,27 +622,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
-    <h2 id="toc-title">On this page</h2>
-   
-  <ul>
-  <li><a href="#scan_async" id="toc-scan_async" class="nav-link active" data-scroll-target="#scan_async">scan_async</a></li>
-  <li><a href="#scan_resume_async" id="toc-scan_resume_async" class="nav-link" data-scroll-target="#scan_resume_async">scan_resume_async</a></li>
-  <li><a href="#scan_complete_async" id="toc-scan_complete_async" class="nav-link" data-scroll-target="#scan_complete_async">scan_complete_async</a></li>
-  <li><a href="#scan_list_async" id="toc-scan_list_async" class="nav-link" data-scroll-target="#scan_list_async">scan_list_async</a></li>
-  <li><a href="#scan_status_async" id="toc-scan_status_async" class="nav-link" data-scroll-target="#scan_status_async">scan_status_async</a></li>
-  <li><a href="#scan_results_db_async" id="toc-scan_results_db_async" class="nav-link" data-scroll-target="#scan_results_db_async">scan_results_db_async</a></li>
-  <li><a href="#scan_results_db_async-1" id="toc-scan_results_db_async-1" class="nav-link" data-scroll-target="#scan_results_db_async-1">scan_results_db_async</a></li>
-  </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+        
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scanning.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/async.html">async</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_view.html">scout view</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Async API</h1>
+<h1 class="title">scout view</h1>
 </div>
 
 
@@ -694,232 +647,91 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>The Async API is available for async programs that want to use <code>inspect_scout</code> as an embedded library.</p>
-<p>Normal usage of Scout (e.g.&nbsp;in a script or notebook) should prefer the corresponding sync functions (e.g.&nbsp;<span class="element-type-name ref-interlink"><a href="../reference/scanning.html#scan">scan()</a></span>, <code>scan_resume().</code>, etc.). This will provide optimal parallelism (sharing transcript parses across scanners, using multiple processes, etc.) compared to multiple concurrent calls to <span class="element-type-name ref-interlink"><a href="../reference/async.html#scan_async">scan_async()</a></span> (as in that case you would lose the pooled transcript parsing and create unwanted resource contention).</p>
-</div>
-</div>
-<section id="scan_async" class="level3">
-<h3 class="anchored" data-anchor-id="scan_async">scan_async</h3>
-<p>Scan transcripts.</p>
-<p>Scan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6a745c040d41a345f818f8e44adfc69c3b4fc2a7/src/inspect_scout/_scan.py#L154">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_async(</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    scanners: Sequence[Scanner[Any] <span class="op">|</span> <span class="bu">tuple</span>[<span class="bu">str</span>, Scanner[Any]]]</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, Scanner[Any]]</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> ScanJob</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> ScanJobConfig,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    transcripts: Transcripts <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    results: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    worklist: Sequence[ScannerWork] <span class="op">|</span> <span class="bu">str</span> <span class="op">|</span> Path <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    validation: ValidationSet <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, ValidationSet] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    model: <span class="bu">str</span> <span class="op">|</span> Model <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    model_config: GenerateConfig <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    model_base_url: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    model_args: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    model_roles: <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> Model] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    max_transcripts: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    max_processes: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    limit: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    shuffle: <span class="bu">bool</span> <span class="op">|</span> <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    tags: <span class="bu">list</span>[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    metadata: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scanners</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="../reference/scanner.html#scanner">Scanner</a></span>[<span class="element-type-name">Any</span>] | tuple[<span class="element-type-name">str</span>, <span class="element-type-name"><a href="../reference/scanner.html#scanner">Scanner</a></span>[<span class="element-type-name">Any</span>]]] | dict[<span class="element-type-name">str</span>, <span class="element-type-name"><a href="../reference/scanner.html#scanner">Scanner</a></span>[<span class="element-type-name">Any</span>]] | <span class="element-type-name"><a href="../reference/scanning.html#scanjob">ScanJob</a></span> | <span class="element-type-name"><a href="../reference/scanning.html#scanjobconfig">ScanJobConfig</a></span></span></dt>
-<dd>
-<p>Scanners to execute (list, dict with explicit names, or ScanJob). If a <span class="element-type-name ref-interlink"><a href="../reference/scanning.html#scanjob">ScanJob</a></span> or <span class="element-type-name ref-interlink"><a href="../reference/scanning.html#scanjobconfig">ScanJobConfig</a></span> is specified, then its options are used as the default options for the scan.</p>
-</dd>
-<dt><code class="ref-definition">transcripts</code> <span class="element-type"><span class="element-type-name"><a href="../reference/transcript.html#transcripts">Transcripts</a></span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Transcripts to scan.</p>
-</dd>
-<dt><code class="ref-definition">results</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Location to write results (filesystem or S3 bucket). Defaults to “./scans”.</p>
-</dd>
-<dt><code class="ref-definition">worklist</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="../reference/scanning.html#scannerwork">ScannerWork</a></span>] | <span class="element-type-name">str</span> | <span class="element-type-name">Path</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of <span class="element-type-name ref-interlink"><a href="../reference/scanning.html#scannerwork">ScannerWork</a></span> or a YAML or JSON file contianing the same.</p>
-</dd>
-<dt><code class="ref-definition">validation</code> <span class="element-type"><span class="element-type-name"><a href="../reference/results.html#validationset">ValidationSet</a></span> | dict[<span class="element-type-name">str</span>, <span class="element-type-name"><a href="../reference/results.html#validationset">ValidationSet</a></span>] | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Validation cases to apply for scanners.</p>
-</dd>
-<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">Model</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Model to use for scanning by default (individual scanners can always call <code>get_model()</code> to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.</p>
-</dd>
-<dt><code class="ref-definition">model_config</code> <span class="element-type"><span class="element-type-name">GenerateConfig</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p><code>GenerationConfig</code> for calls to the model.</p>
-</dd>
-<dt><code class="ref-definition">model_base_url</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Base URL for communicating with the model API.</p>
-</dd>
-<dt><code class="ref-definition">model_args</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Any</span>] | <span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Model creation args (as a dictionary or as a path to a JSON or YAML config file).</p>
-</dd>
-<dt><code class="ref-definition">model_roles</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">str</span> | <span class="element-type-name">Model</span>] | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Named roles for use in <code>get_model()</code>.</p>
-</dd>
-<dt><code class="ref-definition">max_transcripts</code> <span class="element-type"><span class="element-type-name">int</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>The maximum number of transcripts to process concurrently (this also serves as the default value for <code>max_connections</code>). Defaults to 25.</p>
-</dd>
-<dt><code class="ref-definition">max_processes</code> <span class="element-type"><span class="element-type-name">int</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>The maximum number of concurrent processes (for multiproccesing). Defaults to <code>multiprocessing.cpu_count()</code>.</p>
-</dd>
-<dt><code class="ref-definition">limit</code> <span class="element-type"><span class="element-type-name">int</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Limit the number of transcripts processed.</p>
-</dd>
-<dt><code class="ref-definition">shuffle</code> <span class="element-type"><span class="element-type-name">bool</span> | <span class="element-type-name">int</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Shuffle the order of transcripts (pass an <code>int</code> to set a seed for shuffling).</p>
-</dd>
-<dt><code class="ref-definition">tags</code> <span class="element-type">list[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>One or more tags for this scan.</p>
-</dd>
-<dt><code class="ref-definition">metadata</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Any</span>] | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Metadata for this scan.</p>
-</dd>
-<dt><code class="ref-definition">log_level</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Level for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)</p>
-</dd>
-</dl>
-</section>
-<section id="scan_resume_async" class="level3">
-<h3 class="anchored" data-anchor-id="scan_resume_async">scan_resume_async</h3>
-<p>Resume a previous scan.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6a745c040d41a345f818f8e44adfc69c3b4fc2a7/src/inspect_scout/_scan.py#L298">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_resume_async(scan_location: <span class="bu">str</span>, log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Scan location to resume from.</p>
-</dd>
-<dt><code class="ref-definition">log_level</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Level for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)</p>
-</dd>
-</dl>
-</section>
-<section id="scan_complete_async" class="level3">
-<h3 class="anchored" data-anchor-id="scan_complete_async">scan_complete_async</h3>
-<p>Complete a scan.</p>
-<p>This function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6a745c040d41a345f818f8e44adfc69c3b4fc2a7/src/inspect_scout/_scan.py#L362">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_complete_async(</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>, log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Scan location to complete.</p>
-</dd>
-<dt><code class="ref-definition">log_level</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
-<dd>
-<p>Level for logging to the console: “debug”, “http”, “sandbox”, “info”, “warning”, “error”, “critical”, or “notset” (defaults to “warning”)</p>
-</dd>
-</dl>
-</section>
-<section id="scan_list_async" class="level3">
-<h3 class="anchored" data-anchor-id="scan_list_async">scan_list_async</h3>
-<p>List completed and pending scans.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6a745c040d41a345f818f8e44adfc69c3b4fc2a7/src/inspect_scout/_scanlist.py#L19">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_list_async(scans_location: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[Status]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scans_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Location of scans to list.</p>
-</dd>
-</dl>
-</section>
-<section id="scan_status_async" class="level3">
-<h3 class="anchored" data-anchor-id="scan_status_async">scan_status_async</h3>
-<p>Status of scan.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6a745c040d41a345f818f8e44adfc69c3b4fc2a7/src/inspect_scout/_scanresults.py#L30">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_status_async(scan_location: <span class="bu">str</span>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Location to get status for (e.g.&nbsp;directory or s3 bucket)</p>
-</dd>
-</dl>
-</section>
-<section id="scan_results_db_async" class="level3">
-<h3 class="anchored" data-anchor-id="scan_results_db_async">scan_results_db_async</h3>
-<p>Scan results as DuckDB database.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6a745c040d41a345f818f8e44adfc69c3b4fc2a7/src/inspect_scout/_scanresults.py#L119">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_results_db_async(</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    rows: Literal[<span class="st">"results"</span>, <span class="st">"transcripts"</span>] <span class="op">=</span> <span class="st">"results"</span>,</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> ScanResultsDB</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Location of scan (e.g.&nbsp;directory or s3 bucket).</p>
-</dd>
-<dt><code class="ref-definition">rows</code> <span class="element-type"><span class="element-type-name">Literal</span>['results', 'transcripts']</span></dt>
-<dd>
-<p>Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results (if any) will be packed into the <code>value</code> field as a JSON list of <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>).</p>
-</dd>
-</dl>
-</section>
-<section id="scan_results_db_async-1" class="level3">
-<h3 class="anchored" data-anchor-id="scan_results_db_async-1">scan_results_db_async</h3>
-<p>Scan results as DuckDB database.</p>
-<div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6a745c040d41a345f818f8e44adfc69c3b4fc2a7/src/inspect_scout/_scanresults.py#L119">Source</a>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_results_db_async(</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    rows: Literal[<span class="st">"results"</span>, <span class="st">"transcripts"</span>] <span class="op">=</span> <span class="st">"results"</span>,</span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> ScanResultsDB</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<dl>
-<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
-<dd>
-<p>Location of scan (e.g.&nbsp;directory or s3 bucket).</p>
-</dd>
-<dt><code class="ref-definition">rows</code> <span class="element-type"><span class="element-type-name">Literal</span>['results', 'transcripts']</span></dt>
-<dd>
-<p>Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results (if any) will be packed into the <code>value</code> field as a JSON list of <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>).</p>
-</dd>
-</dl>
 
 
+<p>View scan results.</p>
+<section id="usage" class="level4">
+<h4 class="anchored" data-anchor-id="usage">Usage</h4>
+<pre class="text"><code>scout view [OPTIONS]</code></pre>
+</section>
+<section id="options" class="level4">
+<h4 class="anchored" data-anchor-id="options">Options</h4>
+<table class="table-sm table-borderless small caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 15%">
+<col style="width: 50%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--results</code></td>
+<td>text</td>
+<td>Location to read scan results from.</td>
+<td><code>./scans</code></td>
+</tr>
+<tr class="even">
+<td><code>--host</code></td>
+<td>text</td>
+<td>Tcp/Ip host</td>
+<td><code>127.0.0.1</code></td>
+</tr>
+<tr class="odd">
+<td><code>--port</code></td>
+<td>integer</td>
+<td>Port to use for the view server.</td>
+<td><code>7576</code></td>
+</tr>
+<tr class="even">
+<td><code>--display</code></td>
+<td>choice (<code>rich</code> | <code>plain</code> | <code>none</code>)</td>
+<td>Set the display type (defaults to ‘rich’)</td>
+<td><code>rich</code></td>
+</tr>
+<tr class="odd">
+<td><code>--log-level</code></td>
+<td>choice (<code>debug</code> | <code>trace</code> | <code>http</code> | <code>info</code> | <code>warning</code> | <code>error</code> | <code>critical</code> | <code>notset</code>)</td>
+<td>Set the log level (defaults to ‘warning’)</td>
+<td><code>warning</code></td>
+</tr>
+<tr class="even">
+<td><code>--debug</code></td>
+<td>boolean</td>
+<td>Wait to attach debugger</td>
+<td><code>False</code></td>
+</tr>
+<tr class="odd">
+<td><code>--debug-port</code></td>
+<td>integer</td>
+<td>Port number for debugger</td>
+<td><code>5678</code></td>
+</tr>
+<tr class="even">
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="subcommands" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands">Subcommands</h4>
+<table class="table-borderless caption-top">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
+
+</table>
 </section>
 
 </main> <!-- /main -->
@@ -1366,13 +1178,13 @@ Note
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/scanner.html#as_scorer" class="pagination-link" aria-label="as_scorer">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">as_scorer</span>
+      <a href="../reference/scout_scan.html" class="pagination-link" aria-label="Scout CLI">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Scout CLI</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/async.html#scan_async" class="pagination-link" aria-label="scan_async">
-        <span class="nav-page-text">scan_async</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/scout_trace.html" class="pagination-link" aria-label="scout trace">
+        <span class="nav-page-text">scout trace</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1406,7 +1218,7 @@ Note
 </a>
   </li>  
 </ul>
-    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
+    <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
     <div class="nav-footer-right">
       <ul class="footer-items list-unstyled">
     <li class="nav-item compact">

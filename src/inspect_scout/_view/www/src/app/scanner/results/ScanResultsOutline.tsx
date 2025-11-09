@@ -65,7 +65,16 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
         handleClick(entry.title);
       }}
     >
-      <div className={clsx("text-size-large", styles.title)}>{entry.title}</div>
+      <div className={clsx(styles.titleBlock)}>
+        <div className={clsx("text-size-large", styles.title)}>
+          {entry.title}
+        </div>
+        {entry.params.length > 0 && (
+          <div className={clsx("text-size-smallest", styles.subTitle)}>
+            {entry.params.join("")}
+          </div>
+        )}
+      </div>
 
       <LabeledValue
         label="Results"
@@ -106,6 +115,7 @@ interface ScanResultsOutlineEntry {
   scans: number;
   validations?: number;
   errors?: number;
+  params?: string[];
 }
 
 const toEntries = (results?: Results): ScanResultsOutlineEntry[] => {
@@ -114,7 +124,20 @@ const toEntries = (results?: Results): ScanResultsOutlineEntry[] => {
   }
   const entries: ScanResultsOutlineEntry[] = [];
   for (const scanner of Object.keys(results.summary.scanners)) {
+    // The summary
     const summary = results.summary.scanners[scanner];
+
+    // The configuration
+    const scanInfo = results.spec.scanners[scanner];
+
+    const formattedParams: string[] = [];
+    if (scanInfo) {
+      const params = scanInfo.params || {};
+      for (const [key, value] of Object.entries(params)) {
+        formattedParams.push(`${key}=${JSON.stringify(value)}`);
+      }
+    }
+
     entries.push({
       icon: ApplicationIcons.scorer,
       title: scanner,
@@ -122,6 +145,7 @@ const toEntries = (results?: Results): ScanResultsOutlineEntry[] => {
       scans: summary?.scans || 0,
       tokens: summary?.tokens,
       errors: summary?.errors,
+      params: formattedParams,
     });
   }
   return entries;

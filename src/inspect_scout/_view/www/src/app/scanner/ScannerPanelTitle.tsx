@@ -5,9 +5,9 @@ import { CopyButton } from "../../components/CopyButton";
 import { useStore } from "../../state/store";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
+import { prettyDirUri } from "../../utils/uri";
 
 import styles from "./ScannerPanelTitle.module.css";
-import { prettyDirUri } from "../../utils/uri";
 
 export const ScannerPanelTitle: FC = () => {
   const selectedResults = useStore((state) => state.selectedResults);

@@ -10,7 +10,21 @@
   background-color: var(--bs-secondary-bg);
 }
 
-.selected > .title {
+.titleBlock {
+  margin-bottom: 0.1rem;
+}
+
+.subTitle {
+  margin-top: -0.2rem;
+  max-height: 2rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* adjust based on your line-height */
+  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+}
+
+.selected .title {
   font-weight: 600;
 }
 

@@ -6,7 +6,11 @@ import { FC, useMemo } from "react";
 import { DataframeView } from "../../../components/DataframeView";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { useStore } from "../../../state/store";
-import { useSelectedResults, useSelectedScanner } from "../../hooks";
+import {
+  decodeArrowTable,
+  useSelectedResults,
+  useSelectedScanner,
+} from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
@@ -29,16 +33,7 @@ export const ScanResultsBody: FC = () => {
       return fromArrow(new ArrayBuffer(0));
     }
 
-    // Decode base64 string to Uint8Array
-    const binaryString = atob(scanner.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // Load Arrow data using Arquero
-    const table = fromArrow(bytes.buffer);
-    return table;
+    return decodeArrowTable(selectedScanner || "", scanner.data);
   }, [selectedScanner, selectedResults]);
 
   const hasScanner = columnTable.numRows() > 0;

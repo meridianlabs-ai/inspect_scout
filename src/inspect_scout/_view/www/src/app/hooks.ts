@@ -3,12 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
+import { resultsRef } from "../state/resultsRef";
 import { useApi, useStore } from "../state/store";
 import { EventType } from "../transcript/types";
 import { Transcript, ModelUsage, Results } from "../types";
 import { JsonValue, Events } from "../types/log";
+import { decodeArrowBase64 } from "../utils/arrow";
 import { asyncJsonParse } from "../utils/json-worker";
-import { join } from "../utils/uri";
 
 import {
   MessageType,
@@ -112,6 +113,26 @@ export const useServerScanner = () => {
   ]);
 };
 
+// Helper function to decode and cache Arrow table for a scanner
+export const decodeArrowTable = (
+  scannerName: string,
+  scannerData: string
+): ColumnTable => {
+  // Check cache first
+  const cached = resultsRef.getDecodedScanner(scannerName);
+  if (cached) {
+    return cached;
+  }
+
+  // Now decode the arrow table
+  const table = decodeArrowBase64(scannerData);
+
+  // Cache it
+  resultsRef.setDecodedScanner(scannerName, table);
+
+  return table;
+};
+
 export const useScannerResults = () => {
   const selectedScanner = useSelectedScanner();
   const getSelectedResults = useStore((state) => state.getSelectedResults);
@@ -127,16 +148,7 @@ export const useScannerResults = () => {
       return fromArrow(new ArrayBuffer(0));
     }
 
-    // Decode base64 string to Uint8Array
-    const binaryString = atob(scanner.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // Load Arrow data using Arquero
-    const table = fromArrow(bytes.buffer);
-    return table;
+    return decodeArrowTable(selectedScanner || "", scanner.data);
   }, [selectedScanner, getSelectedResults, selectedResultsIdentifier]);
   return columnTable;
 };

@@ -9,7 +9,6 @@ const kExternalizeThresholdMB = 10;
 interface ResultsCache {
   results?: Results;
   decodedScanners: Map<string, ColumnTable>;
-  parsedRows: Map<string, Map<string, unknown>>;
 }
 
 // Module-level ref to store large results objects outside of Zustand
@@ -17,7 +16,6 @@ interface ResultsCache {
 let resultsCache: ResultsCache = {
   results: undefined,
   decodedScanners: new Map(),
-  parsedRows: new Map(),
 };
 
 export const resultsRef = {
@@ -30,7 +28,6 @@ export const resultsRef = {
     resultsCache = {
       results,
       decodedScanners: new Map(),
-      parsedRows: new Map(),
     };
   },
 
@@ -38,7 +35,6 @@ export const resultsRef = {
     resultsCache = {
       results: undefined,
       decodedScanners: new Map(),
-      parsedRows: new Map(),
     };
   },
 
@@ -48,17 +44,6 @@ export const resultsRef = {
 
   setDecodedScanner: (scannerName: string, table: ColumnTable): void => {
     resultsCache.decodedScanners.set(scannerName, table);
-  },
-
-  getParsedRow: (scannerName: string, rowUuid: string): unknown | undefined => {
-    return resultsCache.parsedRows.get(scannerName)?.get(rowUuid);
-  },
-
-  setParsedRow: (scannerName: string, rowUuid: string, data: unknown): void => {
-    if (!resultsCache.parsedRows.has(scannerName)) {
-      resultsCache.parsedRows.set(scannerName, new Map());
-    }
-    resultsCache.parsedRows.get(scannerName).set(rowUuid, data);
   },
 
   // Get a lightweight identifier for triggering renders

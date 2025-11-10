@@ -296,6 +296,12 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
       const messageReferences = JSON.parse(
         r.message_references as string
       ) as ScannerReference[];
+      const input = JSON.parse(r.input as string) as
+        | Transcript
+        | MessageType
+        | MessageType[]
+        | EventType
+        | EventType[];
 
       return {
         uuid: r.uuid as string | undefined,
@@ -303,6 +309,7 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
         explanation,
         eventReferences,
         messageReferences,
+        input,
         inputType: r.input_type,
         validationResult,
         validationTarget,

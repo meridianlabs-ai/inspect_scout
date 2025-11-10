@@ -9,7 +9,14 @@ import {
   Events,
 } from "../types/log";
 
-export interface ScannerCore {
+export type ScannerCore =
+  | ScannerCoreTranscript
+  | ScannerCoreMessage
+  | ScannerCoreMessages
+  | ScannerCoreEvent
+  | ScannerCoreEvents;
+
+export interface ScannerCoreBase {
   uuid?: string;
   inputType: "transcript" | "message" | "messages" | "event" | "events";
   explanation?: string;
@@ -21,6 +28,31 @@ export interface ScannerCore {
   valueType: "string" | "number" | "boolean" | "null" | "array" | "object";
   transcriptMetadata: Record<string, JsonValue>;
   transcriptSourceId: string;
+}
+
+interface ScannerCoreTranscript extends ScannerCoreBase {
+  inputType: "transcript";
+  input: Transcript;
+}
+
+interface ScannerCoreMessage extends ScannerCoreBase {
+  inputType: "message";
+  input: MessageType;
+}
+
+interface ScannerCoreMessages extends ScannerCoreBase {
+  inputType: "messages";
+  input: MessageType[];
+}
+
+interface ScannerCoreEvent extends ScannerCoreBase {
+  inputType: "event";
+  input: EventType;
+}
+
+interface ScannerCoreEvents extends ScannerCoreBase {
+  inputType: "events";
+  input: EventType[];
 }
 
 export type ScannerData =
@@ -43,7 +75,7 @@ export type MessageType =
   | ChatMessageTool;
 
 // Base interface with common properties
-interface ScannerDataBase extends ScannerCore {
+interface ScannerDataBase extends ScannerCoreBase {
   answer?: string;
   inputIds: string[];
   metadata: Record<string, JsonValue>;

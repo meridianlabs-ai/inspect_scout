@@ -3872,6 +3872,18 @@ span.ap-marker-container:hover span.ap-marker {
 ._scanValue_1iupl_16 {
   padding-right: 0.5rem;
 }
+._panel_twp3v_1 {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+._container_twp3v_7 {
+  margin-top: 3em;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.3em;
+}
 ._cite_jz6ys_1 {
   color: var(--bs-link-color);
   text-decoration: none;
@@ -4008,18 +4020,6 @@ button._segment_19z32_10 {
 /* Set line height for grid cells */
 ._gridWrapper_yeano_1 .ag-cell {
   line-height: 1.1em;
-}
-._panel_twp3v_1 {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-._container_twp3v_7 {
-  margin-top: 3em;
-  display: grid;
-  grid-template-columns: max-content max-content;
-  column-gap: 0.3em;
 }
 ._header_1ce67_1 {
   padding-left: 1rem;

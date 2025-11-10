@@ -254,6 +254,9 @@ export const PopOver: React.FC<PopOverProps> = ({
     // Apply opacity transition to smooth the appearance
     opacity: state?.placement ? 1 : 0,
     transition: "opacity 0.1s",
+    maxWidth: "80%",
+    maxHeight: "50%",
+    overflowY: "hidden",
   };
 
   // Early return if not open or should not show due to hover delay

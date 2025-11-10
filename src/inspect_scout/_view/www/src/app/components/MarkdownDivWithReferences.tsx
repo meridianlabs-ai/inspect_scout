@@ -2,15 +2,21 @@ import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { MarkdownDiv } from "../../components/MarkdownDiv";
+import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { PopOver } from "../../components/PopOver";
 import { useStore } from "../../state/store";
-import { ScannerReference } from "../types";
 
 import styles from "./MarkdownDivWithReferences.module.css";
 
+export interface MarkdownReference {
+  id: string;
+  cite: string;
+  renderCitePreview: () => React.ReactNode;
+}
+
 interface MarkdownDivWithReferencesProps {
   markdown: string;
-  references: ScannerReference[];
+  references: MarkdownReference[];
   className?: string | string[];
 }
 
@@ -21,7 +27,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [positionEl, setPositionEl] = useState<HTMLElement | null>(null);
-  const [currentRef, setCurrentRef] = useState<ScannerReference | null>(null);
+  const [currentRef, setCurrentRef] = useState<MarkdownReference | null>(null);
 
   const showingRefPopover = useStore((state) => state.showingRefPopover);
   const setShowingRefPopover = useStore((state) => state.setShowingRefPopover);
@@ -43,7 +49,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
         const escapedCite = ref.cite.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(escapedCite, "g");
 
-        const replacement = `<a href="javascript:void(0)" class="${styles.cite}" data-ref-id="${ref.id}" data-ref-type="${ref.type}">${ref.cite}</a>`;
+        const replacement = `<a href="javascript:void(0)" class="${styles.cite}" data-ref-id="${ref.id}">${ref.cite}</a>`;
 
         processedHtml = processedHtml.replace(regex, replacement);
       });
@@ -124,14 +130,9 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
           offset={[0, 8]}
           showArrow={true}
         >
-          <div>
-            <div>
-              <strong>Type:</strong> {currentRef.type}
-            </div>
-            <div>
-              <strong>ID:</strong> {currentRef.id}
-            </div>
-          </div>
+          {currentRef.renderCitePreview() || (
+            <NoContentsPanel text="No preview available." />
+          )}
         </PopOver>
       )}
     </div>

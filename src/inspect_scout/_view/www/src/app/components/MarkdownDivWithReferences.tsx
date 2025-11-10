@@ -83,6 +83,11 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     const cleanup: Array<() => void> = [];
 
     const handleMouseEnter = (e: MouseEvent): void => {
+      // Clear any existing popover
+      setShowingRefPopover(undefined);
+      setCurrentRef(null);
+      setPositionEl(null);
+
       const el = e.currentTarget as HTMLElement;
       const id = el.getAttribute("data-ref-id");
 
@@ -93,11 +98,11 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
 
       setPositionEl(el);
       setCurrentRef(ref);
-      setShowingRefPopover(true);
+      setShowingRefPopover(popoverKey(ref));
     };
 
     const handleMouseLeave = (): void => {
-      setShowingRefPopover(false);
+      setShowingRefPopover(undefined);
       setCurrentRef(null);
       setPositionEl(null);
     };
@@ -123,17 +128,21 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     return () => {
       cleanup.forEach((fn) => fn());
     };
-  }, [markdown, refMap, styles.cite, setShowingRefPopover]);
+  }, [popoverKey, markdown, refMap, styles.cite, setShowingRefPopover]);
+
+  const key = currentRef ? popoverKey(currentRef) : null;
 
   return (
     <div className={clsx(className)} ref={containerRef}>
       {memoizedMarkdown}
       {positionEl && currentRef && (
         <PopOver
-          id={`markdown-ref-popover-${currentRef.id}`}
+          id={key}
           positionEl={positionEl}
-          isOpen={showingRefPopover}
-          setIsOpen={setShowingRefPopover}
+          isOpen={showingRefPopover === key}
+          setIsOpen={() => {
+            setShowingRefPopover(key);
+          }}
           placement="auto"
           hoverDelay={-1}
           showArrow={true}
@@ -146,3 +155,5 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     </div>
   );
 };
+
+const popoverKey = (ref: MarkdownReference) => `markdown-ref-popover-${ref.id}`;

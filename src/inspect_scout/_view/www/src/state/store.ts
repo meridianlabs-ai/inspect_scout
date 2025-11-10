@@ -36,7 +36,7 @@ interface StoreState {
   selectedScanner?: string;
   selectedResultsView?: string;
   selectedFilter?: string;
-  showingRefPopover?: boolean;
+  showingRefPopover?: string;
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -105,7 +105,7 @@ interface StoreState {
   setSelectedResultsView: (view: string) => void;
 
   setSelectedFilter: (filter: string) => void;
-  setShowingRefPopover: (showing: boolean) => void;
+  setShowingRefPopover: (popoverKey: string) => void;
 
   clearScanState: () => void;
   clearScansState: () => void;
@@ -384,9 +384,9 @@ export const createStore = (api: ScanApi) =>
               state.selectedFilter = filter;
             });
           },
-          setShowingRefPopover: (showing: boolean) => {
+          setShowingRefPopover: (popoverKey: string) => {
             set((state) => {
-              state.showingRefPopover = showing;
+              state.showingRefPopover = popoverKey;
             });
           },
           clearScanState: () => {

@@ -19,6 +19,7 @@ export const ScannerPanel: React.FC = () => {
   const loading = useStore((state) => state.loading);
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   const [searchParams] = useSearchParams();
+  const selectedResults = useStore((state) => state.selectedResults);
 
   // Sync URL query param with store state
   useEffect(() => {
@@ -39,10 +40,14 @@ export const ScannerPanel: React.FC = () => {
     <div className={clsx(styles.root)}>
       <Navbar />
       <ActivityBar animating={!!loading} />
-      <ScannerPanelTitle />
-      <ExtendedFindProvider>
-        <ScannerPanelBody />
-      </ExtendedFindProvider>
+      {selectedResults && (
+        <>
+          <ScannerPanelTitle />
+          <ExtendedFindProvider>
+            <ScannerPanelBody />
+          </ExtendedFindProvider>
+        </>
+      )}
     </div>
   );
 };

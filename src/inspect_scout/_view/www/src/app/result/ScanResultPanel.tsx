@@ -105,77 +105,81 @@ export const ScanResultPanel: FC = () => {
       <Navbar />
       <ActivityBar animating={!!loading} />
       <ScanResultHeader result={selectedResult} />
-      <ExtendedFindProvider>
-        <TabSet
-          id={"scan-result-tabs"}
-          type="pills"
-          tabPanelsClassName={clsx(styles.tabSet)}
-          tabControlsClassName={clsx(styles.tabControl)}
-          className={clsx(styles.tabs)}
-        >
-          <TabPanel
-            id={kTabIdResult}
-            selected={selectedTab === kTabIdResult || selectedTab === undefined}
-            title="Result"
-            onSelected={() => {
-              handleTabChange(kTabIdResult);
-            }}
+      {selectedResult && (
+        <ExtendedFindProvider>
+          <TabSet
+            id={"scan-result-tabs"}
+            type="pills"
+            tabPanelsClassName={clsx(styles.tabSet)}
+            tabControlsClassName={clsx(styles.tabControl)}
+            className={clsx(styles.tabs)}
           >
-            <ResultPanel result={selectedResult} />
-          </TabPanel>
-          <TabPanel
-            id={kTabIdInput}
-            selected={selectedTab === kTabIdInput}
-            title="Input"
-            onSelected={() => {
-              handleTabChange(kTabIdInput);
-            }}
-          >
-            <InputPanel result={selectedResult} />
-          </TabPanel>
-          {showEvents && (
             <TabPanel
-              id={kTabIdTranscript}
-              selected={selectedTab === kTabIdTranscript}
-              title="Events"
+              id={kTabIdResult}
+              selected={
+                selectedTab === kTabIdResult || selectedTab === undefined
+              }
+              title="Result"
               onSelected={() => {
-                handleTabChange(kTabIdTranscript);
+                handleTabChange(kTabIdResult);
               }}
             >
-              <TranscriptPanel
-                id="scan-transcript"
-                result={selectedResult}
-                nodeFilter={skipScanSpan}
+              <ResultPanel result={selectedResult} />
+            </TabPanel>
+            <TabPanel
+              id={kTabIdInput}
+              selected={selectedTab === kTabIdInput}
+              title="Input"
+              onSelected={() => {
+                handleTabChange(kTabIdInput);
+              }}
+            >
+              <InputPanel result={selectedResult} />
+            </TabPanel>
+            {showEvents && (
+              <TabPanel
+                id={kTabIdTranscript}
+                selected={selectedTab === kTabIdTranscript}
+                title="Events"
+                onSelected={() => {
+                  handleTabChange(kTabIdTranscript);
+                }}
+              >
+                <TranscriptPanel
+                  id="scan-transcript"
+                  result={selectedResult}
+                  nodeFilter={skipScanSpan}
+                />
+              </TabPanel>
+            )}
+            <TabPanel
+              id={kTabIdInfo}
+              selected={selectedTab === kTabIdInfo}
+              title="Info"
+              onSelected={() => {
+                handleTabChange(kTabIdInfo);
+              }}
+            >
+              <InfoPanel result={selectedResult} />
+            </TabPanel>
+            <TabPanel
+              id={kTabIdJson}
+              selected={selectedTab === kTabIdJson}
+              title="JSON"
+              onSelected={() => {
+                handleTabChange(kTabIdJson);
+              }}
+            >
+              <JSONPanel
+                id="scan-result-json-contents"
+                data={selectedResult}
+                simple={true}
+                className={styles.json}
               />
             </TabPanel>
-          )}
-          <TabPanel
-            id={kTabIdInfo}
-            selected={selectedTab === kTabIdInfo}
-            title="Info"
-            onSelected={() => {
-              handleTabChange(kTabIdInfo);
-            }}
-          >
-            <InfoPanel result={selectedResult} />
-          </TabPanel>
-          <TabPanel
-            id={kTabIdJson}
-            selected={selectedTab === kTabIdJson}
-            title="JSON"
-            onSelected={() => {
-              handleTabChange(kTabIdJson);
-            }}
-          >
-            <JSONPanel
-              id="scan-result-json-contents"
-              data={selectedResult}
-              simple={true}
-              className={styles.json}
-            />
-          </TabPanel>
-        </TabSet>
-      </ExtendedFindProvider>
+          </TabSet>
+        </ExtendedFindProvider>
+      )}
     </div>
   );
 };

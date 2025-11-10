@@ -33,13 +33,19 @@ export const useServerScans = () => {
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const resultsDir = useStore((state) => state.resultsDir);
+  const setLoading = useStore((state) => state.setLoading);
 
   useEffect(() => {
     const fetchScans = async () => {
-      const scansInfo = await api.getScans();
-      if (scansInfo) {
-        setResultsDir(scansInfo.results_dir);
-        setScans(scansInfo.scans);
+      setLoading(true);
+      try {
+        const scansInfo = await api.getScans();
+        if (scansInfo) {
+          setResultsDir(scansInfo.results_dir);
+          setScans(scansInfo.scans);
+        }
+      } finally {
+        setLoading(false);
       }
     };
     if (!resultsDir) {
@@ -55,17 +61,22 @@ export const useServerScanner = () => {
   const setSelectedScanLocation = useStore(
     (state) => state.setSelectedScanLocation
   );
-
+  const setLoading = useStore((state) => state.setLoading);
   const setSelectedResults = useStore((state) => state.setSelectedResults);
   const api = useApi();
 
   useEffect(() => {
     const fetchScan = async () => {
-      const scansInfo = await api.getScan(scanPath);
-      if (scansInfo) {
-        setSelectedResults(scansInfo);
+      setLoading(true);
+      try {
+        const scansInfo = await api.getScan(scanPath);
+        if (scansInfo) {
+          setSelectedResults(scansInfo);
+        }
+        setSelectedScanLocation(scanPath);
+      } finally {
+        setLoading(false);
       }
-      setSelectedScanLocation(scanPath);
     };
     void fetchScan();
   }, [relativePath, api, setSelectedResults, scanPath]);

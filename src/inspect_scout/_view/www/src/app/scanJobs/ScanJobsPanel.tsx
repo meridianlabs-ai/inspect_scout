@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 
 import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
@@ -9,9 +9,15 @@ import { Navbar } from "../navbar/Navbar";
 import { ScanJobGrid } from "./ScanJobGrid";
 
 export const ScanJobsPanel: FC = () => {
+  // Load scans data
+  useServerScans();
   const loading = useStore((state) => state.loading);
 
-  useServerScans();
+  // Clear scan state from store on mount
+  const clearScansState = useStore((state) => state.clearScansState);
+  useEffect(() => {
+    clearScansState();
+  }, []);
 
   return (
     <>

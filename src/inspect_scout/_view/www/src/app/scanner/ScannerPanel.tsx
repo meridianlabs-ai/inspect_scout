@@ -6,7 +6,7 @@ import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
-import { useServerScanner, useServerScans } from "../hooks";
+import { useSelectedResults, useServerScanner, useServerScans } from "../hooks";
 import { Navbar } from "../navbar/Navbar";
 
 import styles from "./ScannerPanel.module.css";
@@ -14,14 +14,20 @@ import { ScannerPanelBody } from "./ScannerPanelBody";
 import { ScannerPanelTitle } from "./ScannerPanelTitle";
 
 export const ScannerPanel: React.FC = () => {
+  // Load server data
   useServerScans();
   useServerScanner();
   const loading = useStore((state) => state.loading);
-  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
-  const [searchParams] = useSearchParams();
-  const selectedResults = useStore((state) => state.selectedResults);
+
+  // Clear scan state from the store on mount
+  const clearScanState = useStore((state) => state.clearScanState);
+  useEffect(() => {
+    clearScanState();
+  }, []);
 
   // Sync URL query param with store state
+  const [searchParams] = useSearchParams();
+  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   useEffect(() => {
     const scannerParam = getScannerParam(searchParams);
     if (scannerParam) {
@@ -29,12 +35,8 @@ export const ScannerPanel: React.FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  const clearScansState = useStore((state) => state.clearScansState);
-  useEffect(() => {
-    return () => {
-      clearScansState();
-    };
-  }, [clearScansState]);
+  // Render only if we have selected results
+  const selectedResults = useSelectedResults();
 
   return (
     <div className={clsx(styles.root)}>

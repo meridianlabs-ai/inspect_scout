@@ -56,7 +56,8 @@ export const ScanResultPanel: FC = () => {
 
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
-  const { data: selectedResult, isLoading: resultLoading } = useSelectedResultsRow(scanResultUuid);
+  const { data: selectedResult, isLoading: resultLoading } =
+    useSelectedResultsRow(scanResultUuid);
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -75,13 +76,6 @@ export const ScanResultPanel: FC = () => {
       }
     }
   }, [searchParams, setSelectedResultTab]);
-
-  const clearScanState = useStore((state) => state.clearScanState);
-  useEffect(() => {
-    return () => {
-      clearScanState();
-    };
-  }, [clearScanState]);
 
   const handleTabChange = (tabId: string) => {
     setSelectedResultTab(tabId);

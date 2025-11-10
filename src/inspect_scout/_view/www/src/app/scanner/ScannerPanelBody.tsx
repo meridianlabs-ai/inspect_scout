@@ -7,6 +7,7 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 import { ApplicationIcons } from "../appearance/icons";
+import { useSelectedResults } from "../hooks";
 
 import { ScanInfo } from "./info/ScanInfo";
 import { ScanResultsFilter } from "./results/ScanResultsFilter";
@@ -26,7 +27,7 @@ export const ScannerPanelBody: React.FC = () => {
   const setSelectedResultsTab = useStore(
     (state) => state.setSelectedResultsTab
   );
-  const selectedResults = useStore((state) => state.selectedResults);
+  const selectedResults = useSelectedResults();
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {

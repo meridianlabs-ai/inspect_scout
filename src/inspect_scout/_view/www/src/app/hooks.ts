@@ -5,9 +5,10 @@ import { useParams } from "react-router-dom";
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
 import { useApi, useStore } from "../state/store";
 import { EventType } from "../transcript/types";
-import { Transcript, ModelUsage } from "../types";
+import { Transcript, ModelUsage, Results } from "../types";
 import { JsonValue, Events } from "../types/log";
 import { asyncJsonParse } from "../utils/json-worker";
+import { join } from "../utils/uri";
 
 import {
   MessageType,
@@ -16,15 +17,32 @@ import {
   ScannerReference,
 } from "./types";
 
+export const useSelectedResults = (): Results | undefined => {
+  const getSelectedResults = useStore((state) => state.getSelectedResults);
+  const selectedResultsIdentifier = useStore(
+    (state) => state.selectedResultsIdentifier
+  );
+
+  // Dependency on selectedResultsIdentifier ensures re-render when data changes
+  return useMemo(() => {
+    return getSelectedResults();
+  }, [getSelectedResults, selectedResultsIdentifier]);
+};
+
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
-  const selectedResults = useStore((state) => state.selectedResults);
+  const getSelectedResults = useStore((state) => state.getSelectedResults);
+  const selectedResultsIdentifier = useStore(
+    (state) => state.selectedResultsIdentifier
+  );
+
   const defaultScanner = useMemo(() => {
+    const selectedResults = getSelectedResults();
     if (selectedResults) {
       const scanners = Object.keys(selectedResults.summary.scanners);
       return scanners.length > 0 ? scanners[0] : undefined;
     }
-  }, [selectedResults]);
+  }, [getSelectedResults, selectedResultsIdentifier]);
 
   return selectedScanner || defaultScanner;
 };
@@ -65,6 +83,8 @@ export const useServerScanner = () => {
   const setLoading = useStore((state) => state.setLoading);
   const setSelectedResults = useStore((state) => state.setSelectedResults);
   const api = useApi();
+  const resultsDir = useStore((state) => state.resultsDir);
+  const selectedResults = useSelectedResults();
 
   useEffect(() => {
     const fetchScan = async () => {
@@ -79,15 +99,30 @@ export const useServerScanner = () => {
         setLoading(false);
       }
     };
-    void fetchScan();
-  }, [relativePath, api, setSelectedResults, scanPath]);
+    if (scanPath && !selectedResults) {
+      void fetchScan();
+    }
+  }, [
+    relativePath,
+    api,
+    setSelectedResults,
+    scanPath,
+    selectedResults,
+    resultsDir,
+  ]);
 };
 
 export const useScannerResults = () => {
   const selectedScanner = useSelectedScanner();
-  const selectedResults = useStore((state) => state.selectedResults);
-  const scanner = selectedResults?.scanners[selectedScanner || ""];
+  const getSelectedResults = useStore((state) => state.getSelectedResults);
+  const selectedResultsIdentifier = useStore(
+    (state) => state.selectedResultsIdentifier
+  );
+
   const columnTable = useMemo(() => {
+    const selectedResults = getSelectedResults();
+    const scanner = selectedResults?.scanners[selectedScanner || ""];
+
     if (!scanner || !scanner.data) {
       return fromArrow(new ArrayBuffer(0));
     }
@@ -102,13 +137,16 @@ export const useScannerResults = () => {
     // Load Arrow data using Arquero
     const table = fromArrow(bytes.buffer);
     return table;
-  }, [scanner]);
+  }, [selectedScanner, getSelectedResults, selectedResultsIdentifier]);
   return columnTable;
 };
 
 export const useScannerResult = (scanResultUuid: string) => {
   const scannerResults = useScannerResults();
-  const { data: scanData, isLoading } = useScannerData(scannerResults, scanResultUuid);
+  const { data: scanData, isLoading } = useScannerData(
+    scannerResults,
+    scanResultUuid
+  );
   return { data: scanData, isLoading };
 };
 
@@ -331,7 +369,10 @@ export const useScannerData = (
 
 export const useSelectedResultsRow = (scanResultUuid: string) => {
   const scannerResults = useScannerResults();
-  const { data: scanData, isLoading } = useScannerData(scannerResults, scanResultUuid);
+  const { data: scanData, isLoading } = useScannerData(
+    scannerResults,
+    scanResultUuid
+  );
   return { data: scanData, isLoading };
 };
 
@@ -410,7 +451,10 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
                 | Record<string, boolean>,
               value,
               valueType,
-              transcriptMetadata: transcriptMetadata as Record<string, JsonValue>,
+              transcriptMetadata: transcriptMetadata as Record<
+                string,
+                JsonValue
+              >,
               transcriptSourceId,
             };
 

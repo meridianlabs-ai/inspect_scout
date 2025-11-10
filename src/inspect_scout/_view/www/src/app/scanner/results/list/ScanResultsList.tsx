@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { FC, useCallback, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
+import { ActivityBar } from "../../../../components/ActivityBar";
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
 import { useStore } from "../../../../state/store";
@@ -13,7 +14,6 @@ import { kFilterPositiveResults } from "../ScanResultsFilter";
 import { ScanResultsHeader } from "./ScanHeader";
 import styles from "./ScanResultsList.module.css";
 import { ScanResultsRow } from "./ScanResultsRow";
-import { ActivityBar } from "../../../../components/ActivityBar";
 
 interface ScanResultsListProps {
   id: string;

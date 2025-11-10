@@ -10,9 +10,18 @@ import { ScanApi } from "../api/api";
 import { Results, Status } from "../types";
 import { debounce } from "../utils/sync";
 
+import { isLargeResults, resultsRef } from "./resultsRef";
+
 interface StoreState {
   scans: Status[];
   selectedResults?: Results;
+  // Lightweight identifier to track which results are loaded (for triggering renders)
+  selectedResultsIdentifier?: {
+    location: string;
+    complete: boolean;
+  };
+  // Flag indicating whether results are stored in ref (true) or state (false)
+  resultsStoredInRef: boolean;
   selectedScanLocation?: string;
 
   selectedScanResult?: string;
@@ -44,6 +53,8 @@ interface StoreState {
 
   setScans: (scans: Status[]) => void;
   setSelectedResults: (results: Results) => void;
+  getSelectedResults: () => Results | undefined;
+  clearSelectedResults: () => void;
   setSelectedScanLocation: (location: string) => void;
   setSelectedScanResult: (result: string) => void;
   setSelectedScanResultData: (data: ColumnTable) => void;
@@ -136,6 +147,7 @@ export const createStore = (api: ScanApi) =>
         immer((set, get) => ({
           // Initial state
           scans: [],
+          resultsStoredInRef: false,
           properties: {},
           scrollPositions: {},
           listPositions: {},
@@ -150,10 +162,46 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.scans = scans;
             }),
-          setSelectedResults: (results: Results) =>
+          setSelectedResults: (results: Results) => {
+            const isLarge = isLargeResults(results);
+
             set((state) => {
-              state.selectedResults = results;
-            }),
+              state.selectedResultsIdentifier = {
+                location: results.location,
+                complete: results.complete,
+              };
+              state.resultsStoredInRef = isLarge;
+
+              if (isLarge) {
+                // Store in ref for large results to avoid Immer proxy overhead
+                state.selectedResults = undefined;
+              } else {
+                // Store small results in state as usual
+                state.selectedResults = results;
+              }
+            });
+
+            if (isLarge) {
+              resultsRef.setResults(results);
+            } else {
+              // Clear ref if using state
+              resultsRef.clearResults();
+            }
+          },
+          getSelectedResults: (): Results | undefined => {
+            const state = get();
+            return state.resultsStoredInRef
+              ? resultsRef.getResults()
+              : state.selectedResults;
+          },
+          clearSelectedResults: () => {
+            resultsRef.clearResults();
+            set((state) => {
+              state.selectedResults = undefined;
+              state.selectedResultsIdentifier = undefined;
+              state.resultsStoredInRef = false;
+            });
+          },
           setSelectedScanLocation: (location: string) =>
             set((state) => {
               state.selectedScanLocation = location;
@@ -391,7 +439,6 @@ export const createStore = (api: ScanApi) =>
           },
           clearScanState: () => {
             set((state) => {
-              state.selectedResults = undefined;
               state.selectedResultsTab = undefined;
               state.collapsedBuckets = {};
               state.transcriptCollapsedEvents = {};
@@ -401,6 +448,7 @@ export const createStore = (api: ScanApi) =>
           },
           clearScansState: () => {
             set((state) => {
+              state.clearSelectedResults();
               state.selectedResults = undefined;
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;
@@ -421,6 +469,9 @@ export const createStore = (api: ScanApi) =>
               selectedScanResultData,
               // Contains large base64 data - reload from source
               selectedResults,
+              // Don't persist the identifier or flag - will be recalculated on load
+              selectedResultsIdentifier,
+              resultsStoredInRef,
               ...persistedState
             } = state;
             return persistedState;

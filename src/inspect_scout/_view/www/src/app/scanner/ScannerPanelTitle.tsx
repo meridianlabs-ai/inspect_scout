@@ -6,11 +6,12 @@ import { useStore } from "../../state/store";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";
+import { useSelectedResults } from "../hooks";
 
 import styles from "./ScannerPanelTitle.module.css";
 
 export const ScannerPanelTitle: FC = () => {
-  const selectedResults = useStore((state) => state.selectedResults);
+  const selectedResults = useSelectedResults();
   const resultsDir = useStore((state) => state.resultsDir);
   const errorCount = selectedResults?.errors.length || 0;
   const status =

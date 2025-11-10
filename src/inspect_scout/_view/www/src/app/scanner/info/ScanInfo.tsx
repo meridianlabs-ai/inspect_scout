@@ -4,33 +4,47 @@ import { FC } from "react";
 import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
-import { useStore } from "../../../state/store";
+import { Results } from "../../../types";
 import { formatDateTime } from "../../../utils/format";
+import { useSelectedResults } from "../../hooks";
 
 import styles from "./ScanInfo.module.css";
 
 export const ScanInfo: FC = () => {
-  const selectedResults = useStore((state) => state.selectedResults);
-
+  const selectedResults = useSelectedResults();
   if (!selectedResults) {
     return null;
   }
   return (
     <>
-      <ScanInfoCard className={clsx(styles.container)} />
-      <ScanMetadataCard className={clsx(styles.container)} />
-      <ScannerInfoCard className={clsx(styles.container)} />
-      <TranscriptsInfoCard className={clsx(styles.container)} />
+      <ScanInfoCard
+        className={clsx(styles.container)}
+        selectedResults={selectedResults}
+      />
+      <ScanMetadataCard
+        className={clsx(styles.container)}
+        selectedResults={selectedResults}
+      />
+      <ScannerInfoCard
+        className={clsx(styles.container)}
+        selectedResults={selectedResults}
+      />
+      <TranscriptsInfoCard
+        className={clsx(styles.container)}
+        selectedResults={selectedResults}
+      />
     </>
   );
 };
 
 interface ScanInfoCardProps {
+  selectedResults: Results;
   className?: string | string[];
 }
-const ScanInfoCard: FC<ScanInfoCardProps> = ({ className }) => {
-  const selectedResults = useStore((state) => state.selectedResults);
-
+const ScanInfoCard: FC<ScanInfoCardProps> = ({
+  selectedResults,
+  className,
+}) => {
   return (
     <InfoCard
       title={`Scan: ${selectedResults.spec.scan_name}`}
@@ -57,10 +71,13 @@ const ScanInfoCard: FC<ScanInfoCardProps> = ({ className }) => {
 };
 
 interface ScanMetadataCardProps {
+  selectedResults: Results;
   className?: string | string[];
 }
-const ScanMetadataCard: FC<ScanMetadataCardProps> = ({ className }) => {
-  const selectedResults = useStore((state) => state.selectedResults);
+const ScanMetadataCard: FC<ScanMetadataCardProps> = ({
+  selectedResults,
+  className,
+}) => {
   if (Object.keys(selectedResults.spec.metadata).length === 0) {
     return null;
   }
@@ -73,11 +90,14 @@ const ScanMetadataCard: FC<ScanMetadataCardProps> = ({ className }) => {
 };
 
 interface TranscriptsInfoCardProps {
+  selectedResults: Results;
   className?: string | string[];
 }
 
-const TranscriptsInfoCard: FC<TranscriptsInfoCardProps> = ({ className }) => {
-  const selectedResults = useStore((state) => state.selectedResults);
+const TranscriptsInfoCard: FC<TranscriptsInfoCardProps> = ({
+  selectedResults,
+  className,
+}) => {
   const fieldsDict = selectedResults.spec.transcripts.fields.reduce(
     (acc, curr) => {
       acc[curr["name"]] = curr["type"];
@@ -101,12 +121,14 @@ const TranscriptsInfoCard: FC<TranscriptsInfoCardProps> = ({ className }) => {
 };
 
 interface ScannerInfoCardProps {
+  selectedResults: Results;
   className?: string | string[];
 }
 
-const ScannerInfoCard: FC<ScannerInfoCardProps> = ({ className }) => {
-  const selectedResults = useStore((state) => state.selectedResults);
-
+const ScannerInfoCard: FC<ScannerInfoCardProps> = ({
+  selectedResults,
+  className,
+}) => {
   return (
     <InfoCard title={"Scanners"} className={className}>
       <MetaDataGrid

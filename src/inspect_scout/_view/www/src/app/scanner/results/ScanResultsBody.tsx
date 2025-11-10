@@ -6,7 +6,7 @@ import { FC, useMemo } from "react";
 import { DataframeView } from "../../../components/DataframeView";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { useStore } from "../../../state/store";
-import { useSelectedScanner } from "../../hooks";
+import { useSelectedResults, useSelectedScanner } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
@@ -17,13 +17,14 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 export const ScanResultsBody: FC = () => {
   const selectedScanner = useSelectedScanner();
-  const selectedResults = useStore((state) => state.selectedResults);
-  const scanner = selectedResults?.scanners[selectedScanner || ""];
+  const selectedResults = useSelectedResults();
 
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
 
   const columnTable = useMemo(() => {
+    const scanner = selectedResults?.scanners[selectedScanner || ""];
+
     if (!scanner || !scanner.data) {
       return fromArrow(new ArrayBuffer(0));
     }
@@ -38,11 +39,13 @@ export const ScanResultsBody: FC = () => {
     // Load Arrow data using Arquero
     const table = fromArrow(bytes.buffer);
     return table;
-  }, [scanner]);
+  }, [selectedScanner, selectedResults]);
+
+  const hasScanner = columnTable.numRows() > 0;
 
   return (
     <div className={clsx(styles.scrollContainer)}>
-      {scanner && (
+      {hasScanner && (
         <div style={{ height: "100%", width: "100%" }}>
           {selectedResultsView === kSegmentList && (
             <ScanResultsList
@@ -55,7 +58,7 @@ export const ScanResultsBody: FC = () => {
           )}
         </div>
       )}
-      {!scanner && <NoContentsPanel text="No scanner data available." />}
+      {!hasScanner && <NoContentsPanel text="No scanner data available." />}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 .cite {
-  color: var(--bs-link-color);
-  text-decoration: none;
+  color: var(--bs-primary-text-emphasis);
+  text-decoration: underline;
+  text-decoration-style: dashed;
   cursor: pointer;
 }
 

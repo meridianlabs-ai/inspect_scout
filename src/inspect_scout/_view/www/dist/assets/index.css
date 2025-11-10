@@ -3866,13 +3866,14 @@ span.ap-marker-container:hover span.ap-marker {
   grid-template-columns: max-content max-content;
   column-gap: 0.3em;
 }
-._cite_jz6ys_1 {
-  color: var(--bs-link-color);
-  text-decoration: none;
+._cite_1t1bm_1 {
+  color: var(--bs-primary-text-emphasis);
+  text-decoration: underline;
+  text-decoration-style: dashed;
   cursor: pointer;
 }
 
-._cite_jz6ys_1:hover {
+._cite_1t1bm_1:hover {
   text-decoration-style: solid;
   background-color: var(--bs-primary-bg-subtle);
 }

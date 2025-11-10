@@ -102,13 +102,20 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
       setPositionEl(null);
     };
 
+    const handleClick = (e: MouseEvent): void => {
+      // Stop propagation to prevent parent Link components from handling the click
+      e.stopPropagation();
+    };
+
     citeLinks.forEach((link) => {
       link.addEventListener("mouseenter", handleMouseEnter);
       link.addEventListener("mouseleave", handleMouseLeave);
+      link.addEventListener("click", handleClick);
 
       cleanup.push(() => {
         link.removeEventListener("mouseenter", handleMouseEnter);
         link.removeEventListener("mouseleave", handleMouseLeave);
+        link.removeEventListener("click", handleClick);
       });
     });
 

@@ -12,6 +12,7 @@ export interface MarkdownReference {
   id: string;
   cite: string;
   renderCitePreview: () => React.ReactNode;
+  url?: string;
 }
 
 interface MarkdownDivWithReferencesProps {
@@ -49,7 +50,8 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
         const escapedCite = ref.cite.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(escapedCite, "g");
 
-        const replacement = `<a href="javascript:void(0)" class="${styles.cite}" data-ref-id="${ref.id}">${ref.cite}</a>`;
+        const href = ref.url || "javascript:void(0)";
+        const replacement = `<a href="${href}" class="${styles.cite}" data-ref-id="${ref.id}">${ref.cite}</a>`;
 
         processedHtml = processedHtml.replace(regex, replacement);
       });

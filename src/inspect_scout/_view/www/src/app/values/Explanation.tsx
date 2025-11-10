@@ -1,6 +1,12 @@
-import { FC, ReactNode } from "react";
+import { FC, ReactNode, useMemo } from "react";
+import { useParams } from "react-router-dom";
 
 import { ChatView } from "../../chat/ChatView";
+import {
+  getRelativePathFromParams,
+  parseScanResultPath,
+  scanResultRoute,
+} from "../../router/url";
 import { TranscriptView } from "../../transcript/TranscriptView";
 import {
   MarkdownDivWithReferences,
@@ -13,7 +19,24 @@ interface ExplanationProps {
 }
 
 export const Explanation: FC<ExplanationProps> = ({ result }): ReactNode => {
+  const params = useParams<{ "*": string }>();
   const refLookup = referenceTable(result);
+
+  // Build URL to the scan result with the appropriate query parameters
+  const buildUrl = useMemo(() => {
+    if (!result?.uuid) {
+      return (queryParams: string) => `?${queryParams}`;
+    }
+
+    // Get the scan path from the current URL params
+    const relativePath = getRelativePathFromParams(params);
+    const { scanPath } = parseScanResultPath(relativePath);
+
+    return (queryParams: string) => {
+      const searchParams = new URLSearchParams(queryParams);
+      return `#${scanResultRoute(scanPath, result.uuid, searchParams)}`;
+    };
+  }, [result?.uuid, params]);
 
   const refs: MarkdownReference[] = [];
   for (const ref of result.messageReferences) {
@@ -21,6 +44,7 @@ export const Explanation: FC<ExplanationProps> = ({ result }): ReactNode => {
       id: ref.id,
       cite: ref.cite,
       renderCitePreview: refLookup[ref.id],
+      url: buildUrl(`tab=Input&message=${encodeURIComponent(ref.id)}`),
     });
   }
 
@@ -29,6 +53,7 @@ export const Explanation: FC<ExplanationProps> = ({ result }): ReactNode => {
       id: ref.id,
       cite: ref.cite,
       renderCitePreview: refLookup[ref.id],
+      url: buildUrl(`tab=Input&event=${encodeURIComponent(ref.id)}`),
     });
   }
 

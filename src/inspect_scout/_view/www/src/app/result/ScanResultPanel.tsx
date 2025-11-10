@@ -56,7 +56,7 @@ export const ScanResultPanel: FC = () => {
 
   const selectedTab = useStore((state) => state.selectedResultTab);
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
-  const selectedResult = useSelectedResultsRow(scanResultUuid);
+  const { data: selectedResult, isLoading: resultLoading } = useSelectedResultsRow(scanResultUuid);
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -103,7 +103,7 @@ export const ScanResultPanel: FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <Navbar />
-      <ActivityBar animating={!!loading} />
+      <ActivityBar animating={!!loading || resultLoading} />
       <ScanResultHeader result={selectedResult} />
       {selectedResult && (
         <ExtendedFindProvider>

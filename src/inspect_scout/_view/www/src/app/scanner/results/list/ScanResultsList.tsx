@@ -13,6 +13,7 @@ import { kFilterPositiveResults } from "../ScanResultsFilter";
 import { ScanResultsHeader } from "./ScanHeader";
 import styles from "./ScanResultsList.module.css";
 import { ScanResultsRow } from "./ScanResultsRow";
+import { ActivityBar } from "../../../../components/ActivityBar";
 
 interface ScanResultsListProps {
   id: string;
@@ -25,7 +26,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   id,
   columnTable,
 }) => {
-  const scannerSummaries = useScannerPreviews(columnTable);
+  const { data: scannerSummaries, isLoading } = useScannerPreviews(columnTable);
   const selectedFilter = useStore((state) => state.selectedFilter);
   const listHandle = useRef<VirtuosoHandle | null>(null);
   const hasExplanation = useMemo(() => {
@@ -59,10 +60,11 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   return (
     <div className={clsx(styles.container)}>
       <ScanResultsHeader hasExplanation={hasExplanation} />
-      {filteredScanners.length === 0 && (
+      <ActivityBar animating={isLoading} />
+      {!isLoading && filteredScanners.length === 0 && (
         <NoContentsPanel text="No scan results to display." />
       )}
-      {filteredScanners.length > 0 && (
+      {!isLoading && filteredScanners.length > 0 && (
         <LiveVirtualList<ScannerCore>
           id={id}
           listHandle={listHandle}

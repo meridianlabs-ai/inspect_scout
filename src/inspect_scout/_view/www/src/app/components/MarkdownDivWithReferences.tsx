@@ -94,7 +94,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
       setShowingRefPopover(true);
     };
 
-    const handleMouseLeave = (e: MouseEvent): void => {
+    const handleMouseLeave = (): void => {
       setShowingRefPopover(false);
       setCurrentRef(null);
       setPositionEl(null);

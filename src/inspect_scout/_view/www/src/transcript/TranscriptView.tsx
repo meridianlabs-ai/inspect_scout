@@ -15,6 +15,7 @@ interface TranscriptViewProps {
   events?: Events;
   nodeFilter?: (node: EventNode<EventType>[]) => EventNode<EventType>[];
   scrollRef?: React.RefObject<HTMLDivElement | null>;
+  initialEventId?: string | null;
 }
 
 export const TranscriptView: FC<TranscriptViewProps> = ({
@@ -22,6 +23,7 @@ export const TranscriptView: FC<TranscriptViewProps> = ({
   events,
   nodeFilter,
   scrollRef,
+  initialEventId,
 }) => {
   const listHandle = useRef<VirtuosoHandle | null>(null);
 
@@ -47,7 +49,7 @@ export const TranscriptView: FC<TranscriptViewProps> = ({
       scrollRef={scrollRef}
       offsetTop={10}
       className={styles.listContainer}
-      initialEventId={undefined}
+      initialEventId={initialEventId}
     />
   );
 };

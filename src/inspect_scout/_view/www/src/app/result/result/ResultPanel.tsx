@@ -5,13 +5,12 @@ import { ChatView } from "../../../chat/ChatView";
 import { messagesFromEvents } from "../../../chat/messages";
 import { Card, CardBody } from "../../../components/Card";
 import { LabeledValue } from "../../../components/LabeledValue";
-import { MarkdownDiv } from "../../../components/MarkdownDiv";
 import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
+import { Explanation } from "../../values/Explanation";
 import { Value } from "../../values/Value";
 
 import styles from "./ResultPanel.module.css";
-import { Explanation } from "../../values/Explanation";
 
 interface ResultPanelProps {
   result?: ScannerData;

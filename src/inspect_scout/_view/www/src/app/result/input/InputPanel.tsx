@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { FC, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../../chat/ChatViewVirtualList";
 import { TranscriptView } from "../../../transcript/TranscriptView";
@@ -13,9 +14,20 @@ export interface InputPanelProps {
 
 export const InputPanel: FC<InputPanelProps> = ({ result }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [searchParams] = useSearchParams();
+
+  // Get message or event ID from query params
+  const initialMessageId = searchParams.get("message");
+  const initialEventId = searchParams.get("event");
+
   return (
     <div ref={scrollRef} className={clsx(styles.container)}>
-      <InputRenderer result={result} scrollRef={scrollRef} />
+      <InputRenderer
+        result={result}
+        scrollRef={scrollRef}
+        initialMessageId={initialMessageId}
+        initialEventId={initialEventId}
+      />
     </div>
   );
 };
@@ -24,12 +36,16 @@ interface InputRendererProps {
   className?: string | string[];
   result?: ScannerData;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
+  initialMessageId?: string | null;
+  initialEventId?: string | null;
 }
 
 const InputRenderer: FC<InputRendererProps> = ({
   result,
   className,
   scrollRef,
+  initialMessageId,
+  initialEventId,
 }) => {
   switch (result?.inputType) {
     case "transcript": {
@@ -43,6 +59,7 @@ const InputRenderer: FC<InputRendererProps> = ({
             indented={true}
             className={className}
             scrollRef={scrollRef}
+            initialMessageId={initialMessageId}
           />
         );
       } else if (result.input.events.length > 0) {
@@ -51,6 +68,7 @@ const InputRenderer: FC<InputRendererProps> = ({
             id={"scan-input-transcript"}
             events={result.input.events}
             scrollRef={scrollRef}
+            initialEventId={initialEventId}
           />
         );
       } else {
@@ -67,6 +85,7 @@ const InputRenderer: FC<InputRendererProps> = ({
           indented={true}
           className={className}
           scrollRef={scrollRef}
+          initialMessageId={initialMessageId}
         />
       );
     }
@@ -80,6 +99,7 @@ const InputRenderer: FC<InputRendererProps> = ({
           indented={true}
           className={className}
           scrollRef={scrollRef}
+          initialMessageId={initialMessageId}
         />
       );
     }
@@ -89,6 +109,7 @@ const InputRenderer: FC<InputRendererProps> = ({
           id={"scan-input-transcript"}
           events={result.input}
           scrollRef={scrollRef}
+          initialEventId={initialEventId}
         />
       );
     }
@@ -98,6 +119,7 @@ const InputRenderer: FC<InputRendererProps> = ({
           id={"scan-input-transcript"}
           events={[result.input]}
           scrollRef={scrollRef}
+          initialEventId={initialEventId}
         />
       );
     }

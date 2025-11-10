@@ -415,8 +415,14 @@ export const createStore = (api: ScanApi) =>
           ),
           version: 1,
           partialize: (state) => {
-            // Exclude runtime-only flags from persistence
-            const { hasInitializedRouting, ...persistedState } = state;
+            const {
+              hasInitializedRouting,
+              // Large ColumnTable - reload from source
+              selectedScanResultData,
+              // Contains large base64 data - reload from source
+              selectedResults,
+              ...persistedState
+            } = state;
             return persistedState;
           },
         }

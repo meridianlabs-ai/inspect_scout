@@ -93,7 +93,7 @@ const AppLayout = () => {
       currentPath === "/" || currentPath === "/scans" || currentPath === "";
 
     // If we're on a default route and have persisted state, navigate to the appropriate view
-    if (isDefaultRoute && selectedScanner && selectedScanLocation) {
+    if (isDefaultRoute && selectedScanLocation) {
       if (selectedScanResult) {
         // Navigate to scan result view
         void navigate(`/scan/${selectedScanLocation}/${selectedScanResult}`, {

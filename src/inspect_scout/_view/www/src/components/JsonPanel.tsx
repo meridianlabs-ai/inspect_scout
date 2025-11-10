@@ -72,7 +72,7 @@ const resolveBase64 = (value: unknown): unknown => {
     if (resolvedValue.startsWith(prefix)) {
       resolvedValue = "[base64 image]";
     } else if (resolvedValue.length > kMaxStringValueDisplay) {
-      resolvedValue = "[long string data]";
+      resolvedValue = "[long data]";
     } else if (maybeBase64(resolvedValue)) {
       resolvedValue = "[base64 data]";
     }

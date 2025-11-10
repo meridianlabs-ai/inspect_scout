@@ -173,6 +173,7 @@ body[class^="vscode-"] {
   --bs-border-radius-lg: 0;
   --bs-body-bg: var(--vscode-editor-background);
   --bs-secondary-bg-subtle: var(--vscode-editorHoverWidget-background);
+  --bs-primary-text-emphasis: var(--vscode-editorLink-activeForeground);
   --bs-card-bg: var(--vscode-editor-background);
   --bs-table-bg: var(--vscode-editor-background);
   --bs-light-bg-subtle: var(--vscode-sideBar-background);
@@ -187,6 +188,7 @@ body[class^="vscode-"] {
   --bs-light: var(--vscode-sideBar-background);
   --bs-btn-bg: var(--vscode-peekViewTitle-background);
   --bs-primary: var(--vscode-banner-iconForeground);
+  --bs-primary-bg-subtle: var(--vscode-editor-selectionHighlightBackground);
   --bs-nav-pills-link-active-bg: var(--vscode-banner-iconForeground);
   --bs-link-color: var(--vscode-textLink-foreground);
   --bs-link-hover-color: var(--vscode-textLink-activeForeground);

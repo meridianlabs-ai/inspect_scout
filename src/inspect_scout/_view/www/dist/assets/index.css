@@ -3877,6 +3877,28 @@ span.ap-marker-container:hover span.ap-marker {
   text-decoration-style: solid;
   background-color: var(--bs-primary-bg-subtle);
 }
+._boolean_1xtw1_1 {
+  font-family: "Consola Regular";
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  padding: 8px;
+  width: 2.5rem;
+  height: 1rem;
+}
+
+._true_1xtw1_12 {
+  background-color: var(--bs-success);
+  border-color: var(--bs-success);
+  color: var(--bs-body-bg);
+}
+
+._false_1xtw1_18 {
+  background-color: var(--bs-danger);
+  border-color: var(--bs-danger);
+  color: var(--bs-body-bg);
+}
 ._container_1iupl_1 {
   padding: 1rem;
 }

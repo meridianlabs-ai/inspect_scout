@@ -141,3 +141,40 @@ export function isEventData(data: ScannerData): data is ScannerDataEvent {
 export function isEventsData(data: ScannerData): data is ScannerDataEvents {
   return data.inputType === "events";
 }
+
+// Type guard functions for value types
+export function isStringValue(
+  result: ScannerCore
+): result is ScannerCore & { valueType: "string"; value: string } {
+  return result.valueType === "string";
+}
+
+export function isNumberValue(
+  result: ScannerCore
+): result is ScannerCore & { valueType: "number"; value: number } {
+  return result.valueType === "number";
+}
+
+export function isBooleanValue(
+  result: ScannerCore
+): result is ScannerCore & { valueType: "boolean"; value: boolean } {
+  return result.valueType === "boolean";
+}
+
+export function isNullValue(
+  result: ScannerCore
+): result is ScannerCore & { valueType: "null"; value: null } {
+  return result.valueType === "null";
+}
+
+export function isArrayValue(
+  result: ScannerCore
+): result is ScannerCore & { valueType: "array"; value: unknown[] } {
+  return result.valueType === "array";
+}
+
+export function isObjectValue(
+  result: ScannerCore
+): result is ScannerCore & { valueType: "object"; value: object } {
+  return result.valueType === "object";
+}

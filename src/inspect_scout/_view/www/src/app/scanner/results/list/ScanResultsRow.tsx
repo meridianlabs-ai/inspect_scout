@@ -10,7 +10,7 @@ import { useStore } from "../../../../state/store";
 import { ScannerCore } from "../../../types";
 import { Explanation } from "../../../values/Explanation";
 import { Identifier } from "../../../values/Identifier";
-import { Value } from "../../../values/Value";
+import { ValueInline } from "../../../values/ValueInline";
 
 import styles from "./ScanResultsRow.module.css";
 
@@ -60,7 +60,7 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({
         </div>
       )}
       <div className={clsx(styles.value, "text-size-smaller")}>
-        <Value result={entry} />
+        <ValueInline result={entry} />
       </div>
     </div>
   );

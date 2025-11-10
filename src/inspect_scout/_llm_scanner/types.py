@@ -46,7 +46,7 @@ class AnswerStructured(NamedTuple):
     """Customize the name of the answer tool provided to the model."""
 
     answer_prompt: str = (
-        "Use the {{ answer_tool }}() to respond to the following question:"
+        "Use the {{ answer_tool }}() tool to respond to the following request:"
     )
     """Template for prompt that precedes the question posed to the scanner (use the {{ answer_tool }} variable to refer to the name of the answer tool)."""
 

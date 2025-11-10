@@ -78,7 +78,9 @@ export const ScanResultPanel: FC = () => {
 
   const clearScanState = useStore((state) => state.clearScanState);
   useEffect(() => {
-    clearScanState();
+    return () => {
+      clearScanState();
+    };
   }, [clearScanState]);
 
   const handleTabChange = (tabId: string) => {

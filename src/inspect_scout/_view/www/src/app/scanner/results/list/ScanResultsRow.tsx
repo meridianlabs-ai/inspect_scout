@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, memo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import {
@@ -20,7 +20,7 @@ interface ScanResultsRowProps {
   hasExplanation: boolean;
 }
 
-export const ScanResultsRow: FC<ScanResultsRowProps> = ({
+const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   entry,
   hasExplanation,
 }) => {
@@ -73,3 +73,5 @@ export const ScanResultsRow: FC<ScanResultsRowProps> = ({
     grid
   );
 };
+
+export const ScanResultsRow = memo(ScanResultsRowComponent);

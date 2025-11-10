@@ -37,11 +37,11 @@ export const ValueInline: FC<ValueInlineProps> = ({ result }): ReactNode => {
       </div>
     );
   } else if (isNullValue(result)) {
-    return "null";
+    return <code>null</code>;
   } else if (isArrayValue(result)) {
-    return `[Array of length ${result.value.length}]`;
+    return <code>[Array of length ${result.value.length}]</code>;
   } else if (isObjectValue(result)) {
-    return `{Object with keys: ${Object.keys(result.value).join(", ")}}`;
+    return <code>[Object object]</code>;
   } else {
     return "Unknown value type";
   }

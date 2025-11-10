@@ -134,9 +134,8 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
           positionEl={positionEl}
           isOpen={showingRefPopover}
           setIsOpen={setShowingRefPopover}
-          placement="top"
+          placement="auto"
           hoverDelay={-1}
-          offset={[0, 8]}
           showArrow={true}
         >
           {currentRef.renderCitePreview() || (

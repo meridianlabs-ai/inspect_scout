@@ -15,6 +15,8 @@ interface JSONPanelProps {
   className?: string | string[];
 }
 
+const kMaxStringValueDisplay = 1048576;
+
 export const JSONPanel: FC<JSONPanelProps> = ({
   id,
   json,
@@ -69,6 +71,8 @@ const resolveBase64 = (value: unknown): unknown => {
     let resolvedValue = value;
     if (resolvedValue.startsWith(prefix)) {
       resolvedValue = "[base64 image]";
+    } else if (resolvedValue.length > kMaxStringValueDisplay) {
+      resolvedValue = "[long string data]";
     } else if (maybeBase64(resolvedValue)) {
       resolvedValue = "[base64 data]";
     }

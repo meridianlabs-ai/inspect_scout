@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, useCallback, useMemo, useRef } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { ActivityBar } from "../../../../components/ActivityBar";
@@ -43,6 +43,19 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       return scannerSummaries;
     }
   }, [scannerSummaries, selectedFilter]);
+  const selectedScanResult = useStore((state) => state.selectedScanResult);
+
+  const initialTopMostItemIndex = useMemo(() => {
+    if (selectedScanResult) {
+      const selectedIndex = filteredScanners.findIndex(
+        (s) => s.uuid === selectedScanResult
+      );
+      if (selectedIndex >= 0) {
+        return selectedIndex;
+      }
+    }
+    return undefined;
+  }, [selectedScanResult, filteredScanners]);
 
   const renderRow = useCallback(
     (index: number, entry: ScannerCore) => {
@@ -71,6 +84,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
           data={filteredScanners}
           renderRow={renderRow}
           className={clsx(styles.list)}
+          initialTopMostItemIndex={initialTopMostItemIndex}
         />
       )}
     </div>

@@ -7,6 +7,7 @@ with multiprocess coordination via marker files.
 import hashlib
 import os
 import shutil
+import sys
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -86,12 +87,14 @@ class LocalFilesCache:
                     stream = await fs.read_file_bytes(uri, 0, file_size)
                     async for chunk in stream:
                         f.write(chunk)
-                    marker_file.rename(cache_file)
-                    return cache_file.as_posix()
 
                 except Exception:
                     marker_file.unlink(missing_ok=True)
                     raise
+
+            # Rename after file is closed
+            marker_file.rename(cache_file)
+            return cache_file.as_posix()
 
     def cleanup(self) -> None:
         """Delete the cache directory and all its contents."""
@@ -108,7 +111,8 @@ def _try_create_marker(marker_file: Path) -> Iterator[IO[bytes] | None]:
     """
     try:
         fd = os.open(marker_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        f = os.fdopen(fd, "wb")
+        os.close(fd)
+        f = open(marker_file, "wb")
         try:
             yield f
         finally:

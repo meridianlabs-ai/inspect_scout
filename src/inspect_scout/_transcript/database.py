@@ -4,15 +4,13 @@ import json
 import sqlite3
 from datetime import datetime
 from functools import reduce
-from os import PathLike
 from types import TracebackType
 from typing import (
     Any,
     AsyncIterator,
     Final,
-    Sequence,
     Type,
-    TypeAlias,
+    cast,
 )
 
 import pandas as pd
@@ -34,12 +32,11 @@ from inspect_ai.analysis._dataframe.samples.extract import (
     sample_input_as_str,
     sample_total_tokens,
 )
-from inspect_ai.analysis._dataframe.samples.table import samples_df
+from inspect_ai.analysis._dataframe.samples.table import (
+    _read_samples_df_serial,
+)
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
-)
-from inspect_ai.log._file import (
-    EvalLogInfo,
 )
 from pydantic import JsonValue
 from typing_extensions import override
@@ -48,16 +45,13 @@ from inspect_scout._util.async_zip import AsyncZipReader
 
 from .._scanspec import ScanTranscripts, TranscriptField
 from .._transcript.transcripts import Transcripts
+from .caching import samples_df_with_caching
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
-from .types import Transcript, TranscriptContent, TranscriptInfo
+from .types import LogPaths, Transcript, TranscriptContent, TranscriptInfo
 
 TRANSCRIPTS = "transcripts"
-
-LogPaths: TypeAlias = (
-    PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
-)
 
 
 class EvalLogTranscripts(Transcripts):
@@ -189,7 +183,23 @@ class EvalLogTranscriptsDB:
 
         # resolve logs or df to transcript_df (sample per row)
         if not isinstance(logs, pd.DataFrame):
-            self._transcripts_df = samples_df(logs, TranscriptColumns, parallel=False)
+
+            def read_samples(path: str) -> pd.DataFrame:
+                # This cast is wonky, but the public function, samples_df, uses overloads
+                # to make the return type be a DataFrame when strict=True. Since we're
+                # calling the helper method, we'll just have to cast it.
+                return cast(
+                    pd.DataFrame,
+                    _read_samples_df_serial(
+                        [path],
+                        TranscriptColumns,
+                        full=False,
+                        strict=True,
+                        progress=False,
+                    ),
+                )
+
+            self._transcripts_df = samples_df_with_caching(read_samples, logs)
         else:
             self._transcripts_df = logs
 

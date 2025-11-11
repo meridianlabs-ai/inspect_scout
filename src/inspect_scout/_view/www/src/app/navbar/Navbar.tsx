@@ -37,8 +37,10 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
   // Check if we're on a scan result page and calculate the appropriate back URL
   const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
   const backUrl = scanResultUuid
-    ? scanRoute(scanPath, searchParams) // Go back to the scan from scan result, preserving query params
-    : scansRoute(dirname(currentPath || "")); // Go back to parent directory
+    ? scanRoute(scanPath, searchParams)
+    : !singleFileMode
+      ? scansRoute(dirname(currentPath || ""))
+      : undefined;
 
   const segments = useMemo(() => {
     const pathSegments = currentPath ? currentPath.split("/") : [];
@@ -82,18 +84,22 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
       data-unsearchable={true}
     >
       <div className={clsx(styles.left)}>
-        <Link to={backUrl} className={clsx(styles.toolbarButton)}>
-          <i className={clsx(ApplicationIcons.navbar.back)} />
-        </Link>
-        <Link
-          to={scansRoute()}
-          className={clsx(styles.toolbarButton)}
-          onClick={() => {
-            //setPage(0);
-          }}
-        >
-          <i className={clsx(ApplicationIcons.navbar.home)} />
-        </Link>
+        {backUrl && (
+          <Link to={backUrl} className={clsx(styles.toolbarButton)}>
+            <i className={clsx(ApplicationIcons.navbar.back)} />
+          </Link>
+        )}
+        {!singleFileMode && (
+          <Link
+            to={scansRoute()}
+            className={clsx(styles.toolbarButton)}
+            onClick={() => {
+              //setPage(0);
+            }}
+          >
+            <i className={clsx(ApplicationIcons.navbar.home)} />
+          </Link>
+        )}
         <div className={clsx(styles.pathContainer)} ref={pathContainerRef}>
           {resultsDir ? (
             <ol className={clsx("breadcrumb", styles.breadcrumbs)}>

@@ -80,9 +80,8 @@ class LocalFilesCache:
 
             # We own the marker now - download
             try:
-                # The streaming approach is somehow leaking something that causes
-                # aiobotocore to try to raise errors on shutdown. Though harmless,
-                # it's disconcerting.
+                # The streaming approach is leaking something that causes aiobotocore
+                # to raise errors on shutdown. Though harmless, it's disconcerting.
                 #
                 # file_size = await fs.get_size(uri)
                 # async with await fs.read_file_bytes(uri, 0, file_size) as stream:

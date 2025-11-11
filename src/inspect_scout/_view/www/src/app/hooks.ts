@@ -208,6 +208,31 @@ export const useScannerData = (
 
     const parseData = async () => {
       try {
+        const valueType = filtered.get("value_type", 0) as
+          | "string"
+          | "number"
+          | "boolean"
+          | "null"
+          | "array"
+          | "object";
+
+        const simpleValue = (
+          val: unknown,
+          valueType:
+            | "string"
+            | "number"
+            | "boolean"
+            | "null"
+            | "array"
+            | "object"
+        ): Promise<string | number | boolean | null | unknown[] | object> => {
+          if (valueType === "object" || valueType === "array") {
+            return asyncJsonParse<object | unknown[]>(val as string);
+          } else {
+            return Promise.resolve(val as string | number | boolean | null);
+          }
+        };
+
         const [
           eventReferences,
           input,
@@ -222,6 +247,7 @@ export const useScannerData = (
           transcriptMetadata,
           validationResult,
           validationTarget,
+          value,
         ] = await Promise.all([
           asyncJsonParse(filtered.get("event_references", 0) as string),
           asyncJsonParse(filtered.get("input", 0) as string),
@@ -236,6 +262,7 @@ export const useScannerData = (
           asyncJsonParse(filtered.get("transcript_metadata", 0) as string),
           asyncJsonParse(filtered.get("validation_result", 0) as string),
           asyncJsonParse(filtered.get("validation_target", 0) as string),
+          simpleValue(filtered.get("value", 0), valueType),
         ]);
 
         if (cancelled) return;
@@ -269,20 +296,6 @@ export const useScannerData = (
           "transcript_source_uri",
           0
         ) as string;
-        const value = filtered.get("value", 0) as
-          | string
-          | boolean
-          | number
-          | null
-          | unknown[]
-          | object;
-        const valueType = filtered.get("value_type", 0) as
-          | "string"
-          | "number"
-          | "boolean"
-          | "null"
-          | "array"
-          | "object";
 
         const baseData = {
           uuid,
@@ -410,30 +423,7 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
           rowData.map(async (row) => {
             const r = row as Record<string, unknown>;
 
-            const [
-              validationResult,
-              validationTarget,
-              transcriptMetadata,
-              eventReferences,
-              messageReferences,
-              input,
-            ] = await Promise.all([
-              asyncJsonParse(r.validation_result as string),
-              asyncJsonParse(r.validation_target as string),
-              asyncJsonParse(r.transcript_metadata as string),
-              asyncJsonParse(r.event_references as string),
-              asyncJsonParse(r.message_references as string),
-              asyncJsonParse(r.input as string),
-            ]);
-
-            const explanation = r.explanation as string;
-            const value = r.value as
-              | string
-              | boolean
-              | number
-              | null
-              | unknown[]
-              | object;
+            // Determine the value type
             const valueType = r.value_type as
               | "string"
               | "number"
@@ -441,6 +431,46 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
               | "null"
               | "array"
               | "object";
+
+            const simpleValue = (
+              val: unknown,
+              valueType:
+                | "string"
+                | "number"
+                | "boolean"
+                | "null"
+                | "array"
+                | "object"
+            ): Promise<
+              string | number | boolean | null | unknown[] | object
+            > => {
+              if (valueType === "object" || valueType === "array") {
+                return asyncJsonParse<object | unknown[]>(val as string);
+              } else {
+                return Promise.resolve(val as string | number | boolean | null);
+              }
+            };
+            const [
+              validationResult,
+              validationTarget,
+              transcriptMetadata,
+              eventReferences,
+              messageReferences,
+              input,
+              value,
+            ] = await Promise.all([
+              asyncJsonParse(r.validation_result as string),
+              asyncJsonParse(r.validation_target as string),
+              asyncJsonParse<Record<string, unknown>>(
+                r.transcript_metadata as string
+              ),
+              asyncJsonParse(r.event_references as string),
+              asyncJsonParse(r.message_references as string),
+              asyncJsonParse(r.input as string),
+              simpleValue(r.value, valueType),
+            ]);
+
+            const explanation = r.explanation as string;
             const transcriptSourceId = r.transcript_source_id as string;
             const inputType = r.input_type as
               | "transcript"
@@ -463,10 +493,7 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
                 | Record<string, boolean>,
               value,
               valueType,
-              transcriptMetadata: transcriptMetadata as Record<
-                string,
-                JsonValue
-              >,
+              transcriptMetadata,
               transcriptSourceId,
             };
 

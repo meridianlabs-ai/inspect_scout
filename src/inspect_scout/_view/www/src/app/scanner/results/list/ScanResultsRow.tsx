@@ -10,18 +10,20 @@ import { useStore } from "../../../../state/store";
 import { ScannerCore } from "../../../types";
 import { Explanation } from "../../../values/Explanation";
 import { Identifier } from "../../../values/Identifier";
-import { ValueInline } from "../../../values/ValueInline";
+import { Value } from "../../../values/Value";
 
 import styles from "./ScanResultsRow.module.css";
 
 interface ScanResultsRowProps {
   index: number;
   entry: ScannerCore;
+  gridTemplateColumns: string;
   hasExplanation: boolean;
 }
 
 const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   entry,
+  gridTemplateColumns,
   hasExplanation,
 }) => {
   const params = useParams<{ "*": string }>();
@@ -41,6 +43,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
 
   const grid = (
     <div
+      style={{ gridTemplateColumns }}
       className={clsx(
         styles.row,
         !isNavigable ? styles.disabled : "",
@@ -60,7 +63,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
         </div>
       )}
       <div className={clsx(styles.value, "text-size-smaller")}>
-        <ValueInline result={entry} />
+        <Value result={entry} style="inline" />
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 .row {
   display: grid;
-  grid-template-columns: 1fr 10fr 1fr;
   column-gap: 0.5rem;
   border-bottom: solid 1px var(--bs-border-color);
   padding: 0.5rem 1rem;
@@ -8,7 +7,6 @@
 }
 
 .row.noExplanation {
-  grid-template-columns: 1fr 1fr;
   height: 40px;
 }
 

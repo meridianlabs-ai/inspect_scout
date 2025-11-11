@@ -8,7 +8,7 @@ import { LabeledValue } from "../../../components/LabeledValue";
 import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
 import { Explanation } from "../../values/Explanation";
-import { ValueInline } from "../../values/ValueInline";
+import { Value } from "../../values/Value";
 
 import styles from "./ResultPanel.module.css";
 
@@ -32,7 +32,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
               Value
             </div>
             <div>
-              <ValueInline result={result} />
+              <Value result={result} style="block" />
             </div>
             <div className={clsx("text-style-label", "text-style-secondary")}>
               Explanation

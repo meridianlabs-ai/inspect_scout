@@ -5,11 +5,14 @@ import styles from "./ScanHeader.module.css";
 
 interface ScanResultsHeaderProps {
   hasExplanation: boolean;
+  gridTemplateColumns: string;
 }
 export const ScanResultsHeader: FC<ScanResultsHeaderProps> = ({
+  gridTemplateColumns,
   hasExplanation,
 }) => (
   <div
+    style={{ gridTemplateColumns }}
     className={clsx(
       styles.header,
       "text-size-smallestest",

@@ -6,12 +6,7 @@
   padding-top: 0.3rem;
   border-bottom: solid var(--bs-light-border-subtle) 1px;
   display: grid;
-  grid-template-columns: 1fr 10fr 1fr;
   column-gap: 0.5rem;
-}
-
-.header.noExplanation {
-  grid-template-columns: 1fr 1fr;
 }
 
 .center {

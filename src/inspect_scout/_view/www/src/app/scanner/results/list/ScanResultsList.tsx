@@ -33,7 +33,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     return scannerSummaries.some((s) => !!s.explanation);
   }, [scannerSummaries]);
 
-  const filteredScanners = useMemo(() => {
+  const filteredSummaries = useMemo(() => {
     if (
       selectedFilter === kFilterPositiveResults ||
       selectedFilter === undefined
@@ -47,7 +47,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   const initialTopMostItemIndex = useMemo(() => {
     if (selectedScanResult) {
-      const selectedIndex = filteredScanners.findIndex(
+      const selectedIndex = filteredSummaries.findIndex(
         (s) => s.uuid === selectedScanResult
       );
       if (selectedIndex >= 0) {
@@ -55,7 +55,16 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       }
     }
     return undefined;
-  }, [selectedScanResult, filteredScanners]);
+  }, [selectedScanResult, filteredSummaries]);
+
+  const gridTemplateColumns = useMemo(() => {
+    const complexValue = filteredSummaries.some(
+      (s) => s.valueType === "object" || s.valueType === "array"
+    );
+    const valueColumn = complexValue ? "7fr" : "2fr";
+
+    return hasExplanation ? `1fr 10fr ${valueColumn}` : `1fr ${valueColumn}`;
+  }, [hasExplanation, filteredSummaries]);
 
   const renderRow = useCallback(
     (index: number, entry: ScannerCore) => {
@@ -64,6 +73,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
           index={index}
           entry={entry}
           hasExplanation={hasExplanation}
+          gridTemplateColumns={gridTemplateColumns}
         />
       );
     },
@@ -72,16 +82,19 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   return (
     <div className={clsx(styles.container)}>
-      <ScanResultsHeader hasExplanation={hasExplanation} />
+      <ScanResultsHeader
+        gridTemplateColumns={gridTemplateColumns}
+        hasExplanation={hasExplanation}
+      />
       <ActivityBar animating={isLoading} />
-      {!isLoading && filteredScanners.length === 0 && (
+      {!isLoading && filteredSummaries.length === 0 && (
         <NoContentsPanel text="No scan results to display." />
       )}
-      {!isLoading && filteredScanners.length > 0 && (
+      {!isLoading && filteredSummaries.length > 0 && (
         <LiveVirtualList<ScannerCore>
           id={id}
           listHandle={listHandle}
-          data={filteredScanners}
+          data={filteredSummaries}
           renderRow={renderRow}
           className={clsx(styles.list)}
           initialTopMostItemIndex={initialTopMostItemIndex}

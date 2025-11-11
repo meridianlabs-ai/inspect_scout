@@ -7,6 +7,7 @@ stored locally or remotely (e.g., S3) using async range requests.
 import struct
 import zlib
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 import anyio
@@ -326,8 +327,9 @@ class AsyncZipReader:
     Example:
         async with AsyncFilesystem() as fs:
             reader = AsyncZipReader(fs, "s3://bucket/large-archive.zip")
-            async for chunk in reader.open_member("trajectory_001.json"):
-                process(chunk)
+            async with reader.open_member("trajectory_001.json") as stream:
+                async for chunk in stream:
+                    process(chunk)
     """
 
     def __init__(
@@ -356,24 +358,38 @@ class AsyncZipReader:
             raise KeyError(member_name)
         return entry
 
-    async def open_member(self, member: str | ZipEntry) -> AsyncIterator[bytes]:
+    @asynccontextmanager
+    async def open_member(
+        self, member: str | ZipEntry
+    ) -> AsyncIterator[_DecompressStream]:
         """Open a ZIP member and stream its decompressed contents.
+
+        Must be used as an async context manager to ensure proper cleanup.
 
         Args:
             member: Name or ZipEntry of the member file within the archive
 
-        Returns:
+        Yields:
             AsyncIterator of decompressed data chunks
 
         Raises:
             KeyError: If member_name not found in archive
             NotImplementedError: If compression method is not supported
+
+        Example:
+            async with zip_reader.open_member("file.json") as stream:
+                async for chunk in stream:
+                    process(chunk)
         """
         offset, end, method = await self._get_member_range_and_method(member)
-        return _DecompressStream(
+        stream = _DecompressStream(
             await self._filesystem.read_file_bytes(self._filename, offset, end),
             method,
         )
+        try:
+            yield stream
+        finally:
+            await stream.aclose()
 
     async def _get_member_range_and_method(
         self, member: str | ZipEntry

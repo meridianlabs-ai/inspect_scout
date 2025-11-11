@@ -459,12 +459,13 @@ async def test_s3_eval_assistant_tool_filter() -> None:
 
     async with AsyncFilesystem() as fs:
         start = time.time()
-        result = await load_filtered_transcript(
-            await AsyncZipReader(fs, s3_path).open_member(member_name),
-            info,
-            ["assistant", "tool"],  # Filter for assistant and tool messages
-            None,
-        )
+        async with AsyncZipReader(fs, s3_path).open_member(member_name) as stream:
+            result = await load_filtered_transcript(
+                stream,
+                info,
+                ["assistant", "tool"],  # Filter for assistant and tool messages
+                None,
+            )
         duration = time.time() - start
         print(f"Parse took {duration:.3f}s")
 

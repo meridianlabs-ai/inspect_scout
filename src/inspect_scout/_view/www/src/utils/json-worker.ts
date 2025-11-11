@@ -71,7 +71,7 @@ class JsonWorkerPool {
           scriptContent: kJson5ScriptBase64,
           encodedText,
         },
-        [encodedText.buffer],
+        [encodedText.buffer]
       );
     });
   }
@@ -89,7 +89,7 @@ class JsonWorkerPool {
 
 const workerPool = new JsonWorkerPool();
 
-export const asyncJsonParse = async (text: string): Promise<any> => {
+export const asyncJsonParse = async <T>(text: string): Promise<T> => {
   return workerPool.parse(text);
 };
 

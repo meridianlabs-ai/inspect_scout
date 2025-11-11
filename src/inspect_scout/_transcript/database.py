@@ -336,13 +336,13 @@ class EvalLogTranscriptsDB:
             self._fs,
             await self._files_cache.resolve_remote_uri_to_local(self._fs, t.source_uri),
         )
-        json_iterator = await zip_reader.open_member(sample_file_name)
-        return await load_filtered_transcript(
-            json_iterator,
-            t,
-            content.messages,
-            content.events,
-        )
+        async with zip_reader.open_member(sample_file_name) as json_iterator:
+            return await load_filtered_transcript(
+                json_iterator,
+                t,
+                content.messages,
+                content.events,
+            )
 
     async def disconnect(self) -> None:
         if self._conn is not None:

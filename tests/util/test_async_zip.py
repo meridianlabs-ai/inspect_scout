@@ -31,8 +31,9 @@ async def test_read_local_zip_member(test_zip_file: Path) -> None:
 
         # Read the test.json member
         chunks = []
-        async for chunk in await reader.open_member("test.json"):
-            chunks.append(chunk)
+        async with reader.open_member("test.json") as stream:
+            async for chunk in stream:
+                chunks.append(chunk)
 
         # Verify content
         data = b"".join(chunks)
@@ -50,8 +51,9 @@ async def test_read_nested_member(test_zip_file: Path) -> None:
 
         # Read the nested member
         chunks = []
-        async for chunk in await reader.open_member("nested/data.txt"):
-            chunks.append(chunk)
+        async with reader.open_member("nested/data.txt") as stream:
+            async for chunk in stream:
+                chunks.append(chunk)
 
         data = b"".join(chunks)
         assert data == b"This is nested data"
@@ -66,8 +68,9 @@ async def test_member_not_found(test_zip_file: Path) -> None:
         reader = AsyncZipReader(fs, zip_path)
 
         with pytest.raises(KeyError):
-            async for _ in await reader.open_member("nonexistent.txt"):
-                pass
+            async with reader.open_member("nonexistent.txt") as stream:
+                async for _ in stream:
+                    pass
 
 
 @pytest.mark.asyncio
@@ -83,8 +86,9 @@ async def test_read_s3_zip_member() -> None:
 
         # Read the member and collect all chunks
         chunks: list[bytes] = []
-        async for chunk in await reader.open_member(member_name):
-            chunks.append(chunk)
+        async with reader.open_member(member_name) as stream:
+            async for chunk in stream:
+                chunks.append(chunk)
 
         # Verify we got data
         _the_json = json.loads(b"".join(chunks).decode("utf-8"))

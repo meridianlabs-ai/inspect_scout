@@ -9,7 +9,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Final
+from typing import Final, Literal
 
 import anyio
 from inspect_ai._util.asyncfiles import AsyncFilesystem
@@ -80,11 +80,7 @@ class LocalFilesCache:
 
             # We own the marker now - download
             try:
-                file_size = await fs.get_size(uri)
-                stream = await fs.read_file_bytes(uri, 0, file_size)
-                with open(cache_file, "wb") as f:
-                    async for chunk in stream:
-                        f.write(chunk)
+                await _copy_file(fs, uri, cache_file)
                 marker_file.unlink()
                 return cache_file.as_posix()
 
@@ -96,6 +92,14 @@ class LocalFilesCache:
         """Delete the cache directory and all its contents."""
         if self._cache_dir.exists():
             shutil.rmtree(self._cache_dir)
+
+
+async def _copy_file(async_fs: AsyncFilesystem, src: str, dest: Path) -> None:
+    file_size = await async_fs.get_size(src)
+    async with await async_fs.read_file_bytes(src, 0, file_size) as stream:
+        with open(dest, "wb") as f:
+            async for chunk in stream:
+                f.write(chunk)
 
 
 def _try_create_marker(marker_file: Path) -> bool:

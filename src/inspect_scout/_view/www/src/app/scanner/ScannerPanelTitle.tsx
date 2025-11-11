@@ -6,43 +6,42 @@ import { useStore } from "../../state/store";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";
-import { useSelectedResults } from "../hooks";
 
 import styles from "./ScannerPanelTitle.module.css";
 
 export const ScannerPanelTitle: FC = () => {
-  const selectedResults = useSelectedResults();
+  const selectedStatus = useStore((state) => state.selectedScanStatus);
   const resultsDir = useStore((state) => state.resultsDir);
-  const errorCount = selectedResults?.errors.length || 0;
+  const errorCount = selectedStatus?.errors.length || 0;
   const status =
-    selectedResults === undefined
+    selectedStatus === undefined
       ? ""
-      : selectedResults.complete
+      : selectedStatus.complete
         ? "Complete"
         : "Incomplete";
   const scanJobName =
-    selectedResults?.spec.scan_name === "job"
+    selectedStatus?.spec.scan_name === "job"
       ? "scan"
-      : selectedResults?.spec.scan_name;
+      : selectedStatus?.spec.scan_name;
 
-  const transcriptCount = selectedResults?.spec.transcripts.count || 0;
+  const transcriptCount = selectedStatus?.spec.transcripts.count || 0;
   return (
     <div className={clsx(styles.scanTitleView)}>
       <div className={clsx(styles.leftColumn)}>
         <h1>{scanJobName}:</h1>
         <div className={clsx(styles.secondaryRow)}>
-          <h2>{toRelativePath(selectedResults?.location || "", resultsDir)}</h2>
-          {selectedResults?.location && (
+          <h2>{toRelativePath(selectedStatus?.location || "", resultsDir)}</h2>
+          {selectedStatus?.location && (
             <CopyButton
               className={clsx("text-size-small")}
-              value={prettyDirUri(selectedResults?.location)}
+              value={prettyDirUri(selectedStatus?.location)}
             />
           )}
         </div>
         <div></div>
         <h3 className={clsx(styles.subtitle, "text-style-secondary")}>
-          {selectedResults?.spec.timestamp
-            ? formatDateTime(new Date(selectedResults?.spec.timestamp))
+          {selectedStatus?.spec.timestamp
+            ? formatDateTime(new Date(selectedStatus?.spec.timestamp))
             : ""}
         </h3>
       </div>

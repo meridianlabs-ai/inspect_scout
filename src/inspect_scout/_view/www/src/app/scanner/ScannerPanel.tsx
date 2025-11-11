@@ -6,7 +6,11 @@ import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
-import { useSelectedResults, useServerScanner, useServerScans } from "../hooks";
+import {
+  useServerScanner,
+  useServerScannerDataframe,
+  useServerScans,
+} from "../hooks";
 import { Navbar } from "../navbar/Navbar";
 
 import styles from "./ScannerPanel.module.css";
@@ -17,6 +21,7 @@ export const ScannerPanel: React.FC = () => {
   // Load server data
   useServerScans();
   useServerScanner();
+  useServerScannerDataframe();
   const loading = useStore((state) => state.loading);
 
   // Clear scan state from the store on mount
@@ -36,13 +41,12 @@ export const ScannerPanel: React.FC = () => {
   }, [searchParams, setSelectedScanner]);
 
   // Render only if we have selected results
-  const selectedResults = useSelectedResults();
-
+  const selectedStatus = useStore((state) => state.selectedScanStatus);
   return (
     <div className={clsx(styles.root)}>
       <Navbar />
       <ActivityBar animating={!!loading} />
-      {selectedResults && (
+      {selectedStatus && (
         <>
           <ScannerPanelTitle />
           <ExtendedFindProvider>

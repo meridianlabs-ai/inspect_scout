@@ -24,10 +24,6 @@ export interface Status {
   errors: Error[];
 }
 
-export interface Results extends Status {
-  scanners: Record<string, IPCDataframe>;
-}
-
 export interface IPCDataframe {
   format: "arrow.feather";
   version: number;

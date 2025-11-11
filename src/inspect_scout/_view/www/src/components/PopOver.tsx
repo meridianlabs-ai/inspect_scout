@@ -252,7 +252,12 @@ export const PopOver: React.FC<PopOverProps> = ({
   // and use that to block dismissal while hovering over the popover
   useEffect(() => {
     // Wait for both the popover to be visible AND Popper to have calculated positioning
-    if (!popperRef.current || !isOpen || !shouldShowPopover || !state?.placement) {
+    if (
+      !popperRef.current ||
+      !isOpen ||
+      !shouldShowPopover ||
+      !state?.placement
+    ) {
       return;
     }
 

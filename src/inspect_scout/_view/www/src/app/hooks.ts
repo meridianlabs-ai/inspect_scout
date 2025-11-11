@@ -1,15 +1,15 @@
-import { ColumnTable, fromArrow } from "arquero";
+import { ColumnTable } from "arquero";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
-import { resultsRef } from "../state/resultsRef";
 import { useApi, useStore } from "../state/store";
 import { EventType } from "../transcript/types";
-import { Transcript, ModelUsage, Results } from "../types";
+import { Transcript, ModelUsage } from "../types";
 import { JsonValue, Events } from "../types/log";
-import { decodeArrowBase64 } from "../utils/arrow";
+import { decodeArrowBytes } from "../utils/arrow";
 import { asyncJsonParse } from "../utils/json-worker";
+import { join } from "../utils/uri";
 
 import {
   MessageType,
@@ -18,32 +18,15 @@ import {
   ScannerReference,
 } from "./types";
 
-export const useSelectedResults = (): Results | undefined => {
-  const getSelectedResults = useStore((state) => state.getSelectedResults);
-  const selectedResultsIdentifier = useStore(
-    (state) => state.selectedResultsIdentifier
-  );
-
-  // Dependency on selectedResultsIdentifier ensures re-render when data changes
-  return useMemo(() => {
-    return getSelectedResults();
-  }, [getSelectedResults, selectedResultsIdentifier]);
-};
-
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
-  const getSelectedResults = useStore((state) => state.getSelectedResults);
-  const selectedResultsIdentifier = useStore(
-    (state) => state.selectedResultsIdentifier
-  );
-
+  const selectedStatus = useStore((state) => state.selectedScanStatus);
   const defaultScanner = useMemo(() => {
-    const selectedResults = getSelectedResults();
-    if (selectedResults) {
-      const scanners = Object.keys(selectedResults.summary.scanners);
+    if (selectedStatus) {
+      const scanners = Object.keys(selectedStatus.summary.scanners);
       return scanners.length > 0 ? scanners[0] : undefined;
     }
-  }, [getSelectedResults, selectedResultsIdentifier]);
+  }, [selectedStatus, selectedStatus?.summary.scanners]);
 
   return selectedScanner || defaultScanner;
 };
@@ -74,6 +57,57 @@ export const useServerScans = () => {
   }, [api, resultsDir, setScans, setResultsDir]);
 };
 
+export const useServerScannerDataframe = () => {
+  const params = useParams<{ "*": string }>();
+  const relativePath = getRelativePathFromParams(params);
+  const selectedScanner = useSelectedScanner();
+  const { scanPath } = parseScanResultPath(relativePath);
+  const setLoadingData = useStore((state) => state.setLoadingData);
+  const setSelectedScanResultData = useStore(
+    (state) => state.setSelectedScanResultData
+  );
+  const resultsDir = useStore((state) => state.resultsDir);
+  const singleFileMode = useStore((state) => state.singleFileMode);
+  const selectedScanResultData = useStore(
+    (state) => state.selectedScanResultData
+  );
+
+  const api = useApi();
+  useEffect(() => {
+    const fetchScannerDataframe = async () => {
+      if (!scanPath || !selectedScanner || selectedScanResultData) {
+        return;
+      }
+      setLoadingData(true);
+      try {
+        let location = scanPath;
+        if (singleFileMode) {
+          location = join(scanPath, resultsDir);
+        }
+        const arrayBuffer = await api.getScannerDataframe(
+          location,
+          selectedScanner
+        );
+
+        const table = decodeArrowBytes(arrayBuffer);
+
+        setSelectedScanResultData(table);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    void fetchScannerDataframe();
+  }, [
+    api,
+    scanPath,
+    selectedScanner,
+    resultsDir,
+    singleFileMode,
+    setLoadingData,
+    setSelectedScanResultData,
+  ]);
+};
+
 export const useServerScanner = () => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
@@ -81,85 +115,40 @@ export const useServerScanner = () => {
   const setSelectedScanLocation = useStore(
     (state) => state.setSelectedScanLocation
   );
-  const setLoading = useStore((state) => state.setLoading);
-  const setSelectedResults = useStore((state) => state.setSelectedResults);
+  const setSelectedScanStatus = useStore(
+    (state) => state.setSelectedScanStatus
+  );
   const api = useApi();
   const resultsDir = useStore((state) => state.resultsDir);
-  const selectedResults = useSelectedResults();
+  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  const scans = useStore((state) => state.scans);
 
   useEffect(() => {
-    const fetchScan = async () => {
-      setLoading(true);
-      try {
-        const scansInfo = await api.getScan(scanPath);
-        if (scansInfo) {
-          setSelectedResults(scansInfo);
-        }
-        setSelectedScanLocation(scanPath);
-      } finally {
-        setLoading(false);
+    if (scanPath && !selectedStatus) {
+      // Check the list of scans that are already loaded
+      const location = join(scanPath, resultsDir);
+      const scansInfo = scans.find((s) => s.location === location);
+      if (scansInfo) {
+        setSelectedScanStatus(scansInfo);
+      } else {
+        // Fetch from server if not in store
+        const fetchScan = async () => {
+          const status = await api.getScan(location);
+          setSelectedScanStatus(status);
+        };
+        void fetchScan();
       }
-    };
-    if (scanPath && !selectedResults) {
-      void fetchScan();
+      setSelectedScanLocation(scanPath);
     }
   }, [
     relativePath,
     api,
-    setSelectedResults,
+    setSelectedScanStatus,
     scanPath,
-    selectedResults,
+    selectedStatus,
+    scans,
     resultsDir,
   ]);
-};
-
-// Helper function to decode and cache Arrow table for a scanner
-export const decodeArrowTable = (
-  scannerName: string,
-  scannerData: string
-): ColumnTable => {
-  // Check cache first
-  const cached = resultsRef.getDecodedScanner(scannerName);
-  if (cached) {
-    return cached;
-  }
-
-  // Now decode the arrow table
-  const table = decodeArrowBase64(scannerData);
-
-  // Cache it
-  resultsRef.setDecodedScanner(scannerName, table);
-
-  return table;
-};
-
-export const useScannerResults = () => {
-  const selectedScanner = useSelectedScanner();
-  const getSelectedResults = useStore((state) => state.getSelectedResults);
-  const selectedResultsIdentifier = useStore(
-    (state) => state.selectedResultsIdentifier
-  );
-
-  const columnTable = useMemo(() => {
-    const selectedResults = getSelectedResults();
-    const scanner = selectedResults?.scanners[selectedScanner || ""];
-
-    if (!scanner || !scanner.data) {
-      return fromArrow(new ArrayBuffer(0));
-    }
-
-    return decodeArrowTable(selectedScanner || "", scanner.data);
-  }, [selectedScanner, getSelectedResults, selectedResultsIdentifier]);
-  return columnTable;
-};
-
-export const useScannerResult = (scanResultUuid: string) => {
-  const scannerResults = useScannerResults();
-  const { data: scanData, isLoading } = useScannerData(
-    scannerResults,
-    scanResultUuid
-  );
-  return { data: scanData, isLoading };
 };
 
 export const useScannerData = (
@@ -173,7 +162,7 @@ export const useScannerData = (
 
   const filtered = useMemo(() => {
     // Not a valid index
-    if (!scanResultUuid) {
+    if (!scanResultUuid || !columnTable) {
       return undefined;
     }
 
@@ -393,9 +382,11 @@ export const useScannerData = (
 };
 
 export const useSelectedResultsRow = (scanResultUuid: string) => {
-  const scannerResults = useScannerResults();
+  const selectedScanResultData = useStore(
+    (state) => state.selectedScanResultData
+  );
   const { data: scanData, isLoading } = useScannerData(
-    scannerResults,
+    selectedScanResultData,
     scanResultUuid
   );
   return { data: scanData, isLoading };

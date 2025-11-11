@@ -7,15 +7,15 @@ import { LabeledValue } from "../../../components/LabeledValue";
 import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
-import { Results } from "../../../types";
+import { Status } from "../../../types";
 import { ApplicationIcons } from "../../appearance/icons";
-import { useSelectedResults, useSelectedScanner } from "../../hooks";
+import { useSelectedScanner } from "../../hooks";
 
 import styles from "./ScanResultsOutline.module.css";
 
 export const ScanResultsOutline: FC = () => {
-  const results = useSelectedResults();
-  const entries = toEntries(results);
+  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  const entries = toEntries(selectedStatus);
 
   const scanListHandle = useRef<VirtuosoHandle | null>(null);
   const renderRow = useCallback(
@@ -118,17 +118,17 @@ interface ScanResultsOutlineEntry {
   params?: string[];
 }
 
-const toEntries = (results?: Results): ScanResultsOutlineEntry[] => {
-  if (!results) {
+const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
+  if (!status) {
     return [];
   }
   const entries: ScanResultsOutlineEntry[] = [];
-  for (const scanner of Object.keys(results.summary.scanners)) {
+  for (const scanner of Object.keys(status.summary.scanners)) {
     // The summary
-    const summary = results.summary.scanners[scanner];
+    const summary = status.summary.scanners[scanner];
 
     // The configuration
-    const scanInfo = results.spec.scanners[scanner];
+    const scanInfo = status.spec.scanners[scanner];
 
     const formattedParams: string[] = [];
     if (scanInfo) {

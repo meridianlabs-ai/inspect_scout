@@ -16,6 +16,7 @@ import { EventNode, EventType } from "../../transcript/types";
 import {
   useServerScans,
   useServerScanner,
+  useServerScannerDataframe,
   useSelectedResultsRow,
 } from "../hooks";
 import { Navbar } from "../navbar/Navbar";
@@ -36,6 +37,7 @@ const kTabIdTranscript = "transcript";
 export const ScanResultPanel: FC = () => {
   useServerScans();
   useServerScanner();
+  useServerScannerDataframe();
 
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   const [searchParams, setSearchParams] = useSearchParams();

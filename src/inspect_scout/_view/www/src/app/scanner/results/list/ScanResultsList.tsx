@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo, useRef } from "react";
+import { FC, useCallback, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { ActivityBar } from "../../../../components/ActivityBar";
@@ -28,6 +28,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 }) => {
   const { data: scannerSummaries, isLoading } = useScannerPreviews(columnTable);
   const selectedFilter = useStore((state) => state.selectedFilter);
+  const isLoadingData = useStore((state) => state.loadingData);
+  const busy = isLoading || isLoadingData;
   const listHandle = useRef<VirtuosoHandle | null>(null);
   const hasExplanation = useMemo(() => {
     return scannerSummaries.some((s) => !!s.explanation);
@@ -87,10 +89,10 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
         hasExplanation={hasExplanation}
       />
       <ActivityBar animating={isLoading} />
-      {!isLoading && filteredSummaries.length === 0 && (
+      {!busy && filteredSummaries.length === 0 && (
         <NoContentsPanel text="No scan results to display." />
       )}
-      {!isLoading && filteredSummaries.length > 0 && (
+      {!busy && filteredSummaries.length > 0 && (
         <LiveVirtualList<ScannerCore>
           id={id}
           listHandle={listHandle}

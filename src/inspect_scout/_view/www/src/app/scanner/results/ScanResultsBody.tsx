@@ -1,16 +1,11 @@
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
-import { fromArrow } from "arquero";
 import clsx from "clsx";
-import { FC, useMemo } from "react";
+import { FC } from "react";
 
 import { DataframeView } from "../../../components/DataframeView";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { useStore } from "../../../state/store";
-import {
-  decodeArrowTable,
-  useSelectedResults,
-  useSelectedScanner,
-} from "../../hooks";
+import { useSelectedScanner } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
@@ -21,22 +16,13 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 export const ScanResultsBody: FC = () => {
   const selectedScanner = useSelectedScanner();
-  const selectedResults = useSelectedResults();
-
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
+  const columnTable = useStore((state) => state.selectedScanResultData);
 
-  const columnTable = useMemo(() => {
-    const scanner = selectedResults?.scanners[selectedScanner || ""];
-
-    if (!scanner || !scanner.data) {
-      return fromArrow(new ArrayBuffer(0));
-    }
-
-    return decodeArrowTable(selectedScanner || "", scanner.data);
-  }, [selectedScanner, selectedResults]);
-
-  const hasScanner = columnTable.numRows() > 0;
+  const isLoadingData = useStore((state) => state.loadingData);
+  const isLoading = useStore((state) => state.loading);
+  const hasScanner = columnTable?.numRows() > 0;
 
   return (
     <div className={clsx(styles.scrollContainer)}>
@@ -53,7 +39,9 @@ export const ScanResultsBody: FC = () => {
           )}
         </div>
       )}
-      {!hasScanner && <NoContentsPanel text="No scanner data available." />}
+      {!hasScanner && !isLoadingData && !isLoading && (
+        <NoContentsPanel text="No scanner data available." />
+      )}
     </div>
   );
 };

@@ -20,7 +20,12 @@ from inspect_ai._view.fastapi_server import (
     OnlyDirAccessPolicy,
 )
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 from typing_extensions import override
 from upath import UPath
 
@@ -213,8 +218,18 @@ def view_server_app(
             media_type="application/json",
         )
 
-    @app.get("/scan/{scan:path}")
-    async def scan(request: Request, scan: str) -> Response:
+    @app.get("/scanner_df/{scan:path}")
+    async def scan_df(
+        request: Request,
+        scan: str,
+        query_scanner: str | None = Query(None, alias="scanner"),
+    ) -> Response:
+        if query_scanner is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="scanner query parameter is required",
+            )
+
         # convert to absolute path
         scan_path = UPath(scan)
         if not scan_path.is_absolute():
@@ -231,12 +246,51 @@ def view_server_app(
         result = await scan_results_df_async(str(scan_path), rows="transcripts")
 
         # convert the dataframes to their serializable form
-        serializable_scanners: dict[str, IPCDataFrame] = {}
-        for scanner in result.scanners:
-            df = result.scanners[scanner]
-            serializable_scanners[scanner] = df_to_ipc(df)
+        df = result.scanners[query_scanner]
+        if df is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scanner '{query_scanner}' not found in scan results",
+            )
 
-        # delete the transcript data
+        # Convert dataframe to Arrow IPC format
+        table = pa.Table.from_pandas(df, preserve_index=False)
+        buf = io.BytesIO()
+        with pa_ipc.new_stream(buf, table.schema) as writer:
+            writer.write_table(table)
+
+        return Response(content=buf.getvalue(), media_type="application/octet-stream")
+
+    @app.get("/scan/{scan:path}")
+    async def scan(
+        request: Request,
+        scan: str,
+        status_only: bool | None = Query(None, alias="status_only"),
+    ) -> Response:
+        # convert to absolute path
+        scan_path = UPath(scan)
+        if not scan_path.is_absolute():
+            validated_results_dir = _ensure_not_none(
+                results_dir, "results_dir is required"
+            )
+            results_path = UPath(validated_results_dir)
+            scan_path = results_path / scan_path
+
+        # validate
+        await _validate_read(request, scan_path)
+
+        # read the results and return
+        result = await scan_results_df_async(str(scan_path), rows="transcripts")
+
+        # convert the dataframes to their serializable form (omit
+        # if status_only is true)
+        serializable_scanners: dict[str, IPCDataFrame] = {}
+        if not status_only:
+            for scanner in result.scanners:
+                df = result.scanners[scanner]
+                serializable_scanners[scanner] = df_to_ipc(df)
+
+        # clear the transcript data
         result.spec.transcripts = result.spec.transcripts.model_copy(
             update={"data": None}
         )

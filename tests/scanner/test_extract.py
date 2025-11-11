@@ -41,7 +41,7 @@ from inspect_scout._scanner.result import Reference
         # Basic tool message
         (
             ChatMessageTool(content="Operation successful", function="write_file"),
-            "tool:\nOperation successful",
+            "tool:\nOperation successful\n",
         ),
         # Message with whitespace gets stripped
         (
@@ -69,21 +69,21 @@ def test_simple_messages(message: ChatMessage, expected: str) -> None:
             "Error occurred",
             "get_weather",
             "Connection timeout",
-            "tool:\nError occurred\n\nError in tool call 'get_weather':\nConnection timeout\n",
+            "tool:\nError occurred\n\nError in tool call 'get_weather':\nConnection timeout\n\n",
         ),
         # Tool error without function name
         (
             "Something went wrong",
             None,
             "Unknown error",
-            "tool:\nSomething went wrong\n\nError in tool call 'unknown':\nUnknown error\n",
+            "tool:\nSomething went wrong\n\nError in tool call 'unknown':\nUnknown error\n\n",
         ),
         # Tool error with empty content
         (
             "",
             "read_file",
             "Access denied",
-            "tool:\n\n\nError in tool call 'read_file':\nAccess denied\n",
+            "tool:\n\n\nError in tool call 'read_file':\nAccess denied\n\n",
         ),
     ],
 )
@@ -117,7 +117,7 @@ def test_tool_messages_with_errors(
             ),
             "assistant:\nLet me check the weather.\n\n"
             "Tool Call: get_weather\nArguments:\n"
-            "location: San Francisco\nunits: celsius",
+            "location: San Francisco\nunits: celsius\n",
         ),
         # Multiple tool calls
         (
@@ -137,8 +137,8 @@ def test_tool_messages_with_errors(
                 ],
             ),
             "assistant:\nLet me check both.\n\n"
-            "Tool Call: get_weather\nArguments:\nlocation: San Francisco\n"
-            "Tool Call: get_time\nArguments:\ntimezone: PST",
+            "Tool Call: get_weather\nArguments:\nlocation: San Francisco\n\n"
+            "Tool Call: get_time\nArguments:\ntimezone: PST\n",
         ),
         # Tool call with empty arguments
         (
@@ -148,7 +148,7 @@ def test_tool_messages_with_errors(
                     ToolCall(id="call_1", function="no_args_function", arguments={})
                 ],
             ),
-            "assistant:\nCalling with no args.\n\nTool Call: no_args_function\nArguments:\n",
+            "assistant:\nCalling with no args.\n\nTool Call: no_args_function\nArguments:\n\n",
         ),
         # Tool call with empty content
         (
@@ -160,7 +160,7 @@ def test_tool_messages_with_errors(
                     )
                 ],
             ),
-            "assistant:\n\n\nTool Call: search\nArguments:\nquery: test",
+            "assistant:\n\n\nTool Call: search\nArguments:\nquery: test\n",
         ),
         # Tool call with nested arguments
         (
@@ -180,7 +180,7 @@ def test_tool_messages_with_errors(
             "assistant:\nRunning complex call.\n\n"
             "Tool Call: complex_function\nArguments:\n"
             "config: {'retry': True, 'timeout': 30}\n"
-            "items: ['item1', 'item2']",
+            "items: ['item1', 'item2']\n",
         ),
     ],
 )
@@ -263,7 +263,7 @@ def test_assistant_messages_with_tool_calls(
                 ],
                 function="analyze",
             ),
-            "tool:\nTool result\n<image />",
+            "tool:\nTool result\n<image />\n",
         ),
         # Assistant with list content and tool calls
         (
@@ -280,7 +280,7 @@ def test_assistant_messages_with_tool_calls(
                 ],
             ),
             "assistant:\nLet me search\n<image />\nfor that\n\n"
-            "Tool Call: search\nArguments:\nquery: test",
+            "Tool Call: search\nArguments:\nquery: test\n",
         ),
         # Tool message with list content and error
         (
@@ -292,7 +292,7 @@ def test_assistant_messages_with_tool_calls(
                 function="slow_operation",
                 error=ToolCallError(type="timeout", message="Operation timed out"),
             ),
-            "tool:\nAttempted operation\n<data />\n\nError in tool call 'slow_operation':\nOperation timed out\n",
+            "tool:\nAttempted operation\n<data />\n\nError in tool call 'slow_operation':\nOperation timed out\n\n",
         ),
     ],
 )
@@ -344,7 +344,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "assistant:\nUsing tools.\n\nTool Call: search\nArguments:\nq: test",
+            "assistant:\nUsing tools.\n\nTool Call: search\nArguments:\nq: test\n",
         ),
         # Tool calls only: excluded with empty content
         (
@@ -466,7 +466,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             False,
             False,
             "assistant:\n\n<think>Let me think</think>\nAnswer\n\n"
-            "Tool Call: search\nArguments:\nq: test",
+            "Tool Call: search\nArguments:\nq: test\n",
         ),
         # Combined: only reasoning included (tool calls excluded)
         (
@@ -492,7 +492,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             True,
-            "assistant:\nDone\n\nTool Call: act\nArguments:\n",
+            "assistant:\nDone\n\nTool Call: act\nArguments:\n\n",
         ),
         # Combined: both excluded, only reasoning and tool calls in content
         (

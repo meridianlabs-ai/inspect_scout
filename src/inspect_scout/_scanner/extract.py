@@ -138,9 +138,9 @@ def message_as_str(
 
             if isinstance(args, dict):
                 args_text = "\n".join(f"{k}: {v}" for k, v in args.items())
-                entry += f"\nTool Call: {func_name}\nArguments:\n{args_text}"
+                entry += f"\nTool Call: {func_name}\nArguments:\n{args_text}\n"
             else:
-                entry += f"\nTool Call: {func_name}\nArguments: {args}"
+                entry += f"\nTool Call: {func_name}\nArguments: {args}\n"
 
         return entry
 
@@ -153,7 +153,7 @@ def message_as_str(
             if message.error
             else ""
         )
-        return f"{message.role}:\n{content}{error_part}"
+        return f"{message.role}:\n{content}{error_part}\n"
 
     else:
         return f"{message.role}:\n{content}\n"

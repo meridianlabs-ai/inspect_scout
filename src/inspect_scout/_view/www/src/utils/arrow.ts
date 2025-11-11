@@ -12,3 +12,9 @@ export const decodeArrowBase64 = (base64: string) => {
   const table = fromArrow(bytes.buffer);
   return table;
 };
+
+export const decodeArrowBytes = (bytes: ArrayBuffer | Uint8Array) => {
+  // Load Arrow data using Arquero
+  const table = fromArrow(bytes);
+  return table;
+};

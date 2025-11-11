@@ -164,153 +164,6 @@ export const createStore = (api: ScanApi) =>
           transcriptCollapsedEvents: {},
 
           // Actions
-          setScans: (scans: Status[]) =>
-            set((state) => {
-              state.scans = scans;
-            }),
-          setSelectedScanStatus: (status: Status) => {
-            set((state) => {
-              state.selectedScanStatus = status;
-            });
-          },
-          clearSelectedScanScatus: () => {
-            set((state) => {
-              state.selectedScanStatus = undefined;
-            });
-          },
-          setSelectedScanLocation: (location: string) =>
-            set((state) => {
-              state.selectedScanLocation = location;
-            }),
-          setSelectedScanResult: (result: string) =>
-            set((state) => {
-              state.selectedScanResult = result;
-            }),
-          setSelectedScanResultData: (data: ColumnTable) =>
-            set((state) => {
-              state.selectedScanResultData = data;
-            }),
-          setResultsDir: (dir: string) =>
-            set((state) => {
-              state.resultsDir = dir;
-            }),
-
-          setPropertyValue<T>(id: string, propertyName: string, value: T) {
-            set((state) => {
-              if (!state.properties[id]) {
-                state.properties[id] = {};
-              }
-              state.properties[id][propertyName] = value;
-            });
-          },
-
-          getPropertyValue<T>(
-            id: string,
-            propertyName: string,
-            defaultValue: T
-          ): T | undefined {
-            const value = get().properties[id]?.[propertyName];
-            return value !== undefined ? (value as T) : defaultValue;
-          },
-
-          removePropertyValue(id: string, propertyName: string) {
-            set((state) => {
-              const propertyGroup = state.properties[id];
-
-              // No property, go ahead and return
-              if (!propertyGroup || !propertyGroup[propertyName]) {
-                return;
-              }
-
-              // Destructure to remove the property
-              const { [propertyName]: _removed, ...remainingProperties } =
-                propertyGroup;
-
-              // If no remaining properties, remove the entire group
-              if (Object.keys(remainingProperties).length === 0) {
-                const { [id]: _removedGroup, ...remainingGroups } =
-                  state.properties;
-                state.properties = remainingGroups;
-                return;
-              }
-
-              // Update to the delete properties
-              state.properties[id] = remainingProperties;
-            });
-          },
-          getScrollPosition(path) {
-            const state = get();
-            return state.scrollPositions[path];
-          },
-          setScrollPosition(path, position) {
-            set((state) => {
-              state.scrollPositions[path] = position;
-            });
-          },
-          setListPosition: (name: string, position: StateSnapshot) => {
-            set((state) => {
-              state.listPositions[name] = position;
-            });
-          },
-          clearListPosition: (name: string) => {
-            set((state) => {
-              // Remove the key
-              const newListPositions = { ...state.listPositions };
-              // TODO: Revisit
-
-              delete newListPositions[name];
-
-              return {
-                app: {
-                  ...state,
-                  listPositions: newListPositions,
-                },
-              };
-            });
-          },
-          getVisibleRange: (name: string) => {
-            return get().visibleRanges[name] ?? { startIndex: 0, endIndex: 0 };
-          },
-          setVisibleRange: (
-            name: string,
-            value: { startIndex: number; endIndex: number }
-          ) => {
-            set((state) => {
-              state.visibleRanges[name] = value;
-            });
-          },
-          clearVisibleRange: (name: string) => {
-            set((state) => {
-              // Remove the key
-              const newVisibleRanges = { ...state.visibleRanges };
-              // TODO: Revisit
-
-              delete newVisibleRanges[name];
-
-              return {
-                ...state,
-                visibleRanges: newVisibleRanges,
-              };
-            });
-          },
-          setGridState: (name: string, gridState: GridState) => {
-            set((state) => {
-              state.gridStates[name] = gridState;
-            });
-          },
-          clearGridState: (name: string) => {
-            set((state) => {
-              const newGridStates = { ...state.gridStates };
-              // TODO: Revisit
-
-              delete newGridStates[name];
-
-              return {
-                ...state,
-                gridStates: newGridStates,
-              };
-            });
-          },
           setSingleFileMode: (enabled: boolean) => {
             set((state) => {
               state.singleFileMode = enabled;
@@ -346,14 +199,99 @@ export const createStore = (api: ScanApi) =>
               }
             });
           },
-          setSelectedResultsTab: (tab: string) => {
+          setResultsDir: (dir: string) =>
             set((state) => {
-              state.selectedResultsTab = tab;
+              state.resultsDir = dir;
+            }),
+          setScans: (scans: Status[]) =>
+            set((state) => {
+              state.scans = scans;
+            }),
+          setSelectedScanLocation: (location: string) =>
+            set((state) => {
+              state.selectedScanLocation = location;
+            }),
+          setSelectedScanStatus: (status: Status) => {
+            set((state) => {
+              state.selectedScanStatus = status;
             });
           },
-          setSelectedResultTab: (tab: string) => {
+          clearSelectedScanScatus: () => {
             set((state) => {
-              state.selectedResultTab = tab;
+              state.selectedScanStatus = undefined;
+            });
+          },
+          setSelectedScanner: (scanner: string) => {
+            set((state) => {
+              state.selectedScanner = scanner;
+            });
+          },
+          setSelectedScanResult: (result: string) =>
+            set((state) => {
+              state.selectedScanResult = result;
+            }),
+          setSelectedScanResultData: (data: ColumnTable) =>
+            set((state) => {
+              state.selectedScanResultData = data;
+            }),
+          clearScanState: () => {
+            set((state) => {
+              state.selectedResultsTab = undefined;
+              state.collapsedBuckets = {};
+              state.transcriptCollapsedEvents = {};
+              state.transcriptOutlineId = undefined;
+              state.selectedResultTab = undefined;
+            });
+          },
+          clearScansState: () => {
+            set((state) => {
+              state.clearSelectedScanScatus();
+              state.selectedScanStatus = undefined;
+              state.selectedResultsView = undefined;
+              state.selectedFilter = undefined;
+              state.selectedScanner = undefined;
+            });
+          },
+
+          setPropertyValue<T>(id: string, propertyName: string, value: T) {
+            set((state) => {
+              if (!state.properties[id]) {
+                state.properties[id] = {};
+              }
+              state.properties[id][propertyName] = value;
+            });
+          },
+          getPropertyValue<T>(
+            id: string,
+            propertyName: string,
+            defaultValue: T
+          ): T | undefined {
+            const value = get().properties[id]?.[propertyName];
+            return value !== undefined ? (value as T) : defaultValue;
+          },
+          removePropertyValue(id: string, propertyName: string) {
+            set((state) => {
+              const propertyGroup = state.properties[id];
+
+              // No property, go ahead and return
+              if (!propertyGroup || !propertyGroup[propertyName]) {
+                return;
+              }
+
+              // Destructure to remove the property
+              const { [propertyName]: _removed, ...remainingProperties } =
+                propertyGroup;
+
+              // If no remaining properties, remove the entire group
+              if (Object.keys(remainingProperties).length === 0) {
+                const { [id]: _removedGroup, ...remainingGroups } =
+                  state.properties;
+                state.properties = remainingGroups;
+                return;
+              }
+
+              // Update to the delete properties
+              state.properties[id] = remainingProperties;
             });
           },
           setCollapsed: (bucket: string, key: string, value: boolean) => {
@@ -368,9 +306,87 @@ export const createStore = (api: ScanApi) =>
               state.collapsedBuckets[bucket] = {};
             });
           },
-          setSelectedScanner: (scanner: string) => {
+          getScrollPosition(path) {
+            const state = get();
+            return state.scrollPositions[path];
+          },
+          setScrollPosition(path, position) {
             set((state) => {
-              state.selectedScanner = scanner;
+              state.scrollPositions[path] = position;
+            });
+          },
+          setListPosition: (name: string, position: StateSnapshot) => {
+            set((state) => {
+              state.listPositions[name] = position;
+            });
+          },
+          clearListPosition: (name: string) => {
+            set((state) => {
+              // Remove the key
+              const newListPositions = { ...state.listPositions };
+              // TODO: Revisit
+
+              delete newListPositions[name];
+
+              return {
+                app: {
+                  ...state,
+                  listPositions: newListPositions,
+                },
+              };
+            });
+          },
+          setGridState: (name: string, gridState: GridState) => {
+            set((state) => {
+              state.gridStates[name] = gridState;
+            });
+          },
+          clearGridState: (name: string) => {
+            set((state) => {
+              const newGridStates = { ...state.gridStates };
+              // TODO: Revisit
+
+              delete newGridStates[name];
+
+              return {
+                ...state,
+                gridStates: newGridStates,
+              };
+            });
+          },
+          getVisibleRange: (name: string) => {
+            return get().visibleRanges[name] ?? { startIndex: 0, endIndex: 0 };
+          },
+          setVisibleRange: (
+            name: string,
+            value: { startIndex: number; endIndex: number }
+          ) => {
+            set((state) => {
+              state.visibleRanges[name] = value;
+            });
+          },
+          clearVisibleRange: (name: string) => {
+            set((state) => {
+              // Remove the key
+              const newVisibleRanges = { ...state.visibleRanges };
+              // TODO: Revisit
+
+              delete newVisibleRanges[name];
+
+              return {
+                ...state,
+                visibleRanges: newVisibleRanges,
+              };
+            });
+          },
+          setSelectedResultsTab: (tab: string) => {
+            set((state) => {
+              state.selectedResultsTab = tab;
+            });
+          },
+          setSelectedResultTab: (tab: string) => {
+            set((state) => {
+              state.selectedResultTab = tab;
             });
           },
           setTranscriptOutlineId: (id: string) => {
@@ -421,24 +437,6 @@ export const createStore = (api: ScanApi) =>
           setShowingRefPopover: (popoverKey: string) => {
             set((state) => {
               state.showingRefPopover = popoverKey;
-            });
-          },
-          clearScanState: () => {
-            set((state) => {
-              state.selectedResultsTab = undefined;
-              state.collapsedBuckets = {};
-              state.transcriptCollapsedEvents = {};
-              state.transcriptOutlineId = undefined;
-              state.selectedResultTab = undefined;
-            });
-          },
-          clearScansState: () => {
-            set((state) => {
-              state.clearSelectedScanScatus();
-              state.selectedScanStatus = undefined;
-              state.selectedResultsView = undefined;
-              state.selectedFilter = undefined;
-              state.selectedScanner = undefined;
             });
           },
         })),

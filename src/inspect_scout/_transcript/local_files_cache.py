@@ -80,11 +80,20 @@ class LocalFilesCache:
 
             # We own the marker now - download
             try:
-                file_size = await fs.get_size(uri)
-                async with await fs.read_file_bytes(uri, 0, file_size) as stream:
-                    with open(cache_file, "wb") as f:
-                        async for chunk in stream:
-                            f.write(chunk)
+                # The streaming approach is somehow leaking something that causes
+                # aiobotocore to try to raise errors on shutdown. Though harmless,
+                # it's disconcerting.
+                #
+                # file_size = await fs.get_size(uri)
+                # async with await fs.read_file_bytes(uri, 0, file_size) as stream:
+                #     with open(cache_file, "wb") as f:
+                #         async for chunk in stream:
+                #             f.write(chunk)
+                #
+                # TODO: We'll continue trying to get to the bottom of it, but we'll
+                # revert to fsspec for now.
+                fs2 = filesystem(uri)
+                fs2.get_file(uri, cache_file.as_posix())
                 marker_file.unlink()
                 return cache_file.as_posix()
 

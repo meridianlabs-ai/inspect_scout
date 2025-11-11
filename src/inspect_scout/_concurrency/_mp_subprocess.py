@@ -84,6 +84,9 @@ def subprocess_main(
     ctx = _mp_common.ipc_context
 
     def _log_in_parent(record: logging.LogRecord) -> None:
+        # Strip exc_info from record to avoid pickling traceback objects since it
+        # cannot be serialized across process boundaries
+        record.exc_info = None
         ctx.upstream_queue.put(LoggingItem(record))
 
     patch_inspect_log_handler(_log_in_parent)

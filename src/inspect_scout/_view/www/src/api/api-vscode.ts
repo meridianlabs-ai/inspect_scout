@@ -1,22 +1,27 @@
 import JSON5 from "json5";
 
-import { Results, Scans } from "../types";
+import { Scans, Status } from "../types";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
-import { kMethodGetScan, kMethodGetScans } from "./jsonrpc";
+import {
+  kMethodGetScan,
+  kMethodGetScannerDataframe,
+  kMethodGetScans,
+} from "./jsonrpc";
 
 export const apiVscode = (
   vscodeApi: VSCodeApi,
   rpcClient: (method: string, params?: unknown) => Promise<unknown>
 ): ScanApi => {
   return {
-    getScan: async (scanLocation: string): Promise<Results> => {
+    getScan: async (scanLocation: string): Promise<Status> => {
       const response = (await rpcClient(kMethodGetScan, [
         scanLocation,
       ])) as string;
+
       if (response) {
-        return JSON5.parse<Results>(response);
+        return JSON5.parse<Status>(response);
       } else {
         throw new Error(
           `Invalid response for getScan for scan: ${scanLocation}`
@@ -29,6 +34,22 @@ export const apiVscode = (
         return JSON5.parse<Scans>(response);
       } else {
         throw new Error("Invalid response for getScans");
+      }
+    },
+    getScannerDataframe: async (
+      scanLocation: string,
+      scanner: string
+    ): Promise<Uint8Array> => {
+      const response = await rpcClient(kMethodGetScannerDataframe, [
+        scanLocation,
+        scanner,
+      ]);
+      if (response && response instanceof Uint8Array) {
+        return response;
+      } else {
+        throw new Error(
+          `Invalid response for getScannerDataframe for scan: ${scanLocation}, scanner: ${scanner}`
+        );
       }
     },
     storage: createVSCodeStore(vscodeApi),

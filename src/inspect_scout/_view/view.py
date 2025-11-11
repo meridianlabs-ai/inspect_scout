@@ -24,7 +24,7 @@ def view(
     top_level_async_init(log_level)
 
     # acquire the port
-    view_acquire_port(scout_data_dir("view"), DEFAULT_VIEW_PORT)
+    view_acquire_port(scout_data_dir("view"), port)
 
     # start the server
     view_server(

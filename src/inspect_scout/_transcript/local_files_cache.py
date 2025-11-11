@@ -8,8 +8,9 @@ import hashlib
 import os
 import shutil
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Final
+from typing import IO, Final, Iterator
 
 import anyio
 from inspect_ai._util.asyncfiles import AsyncFilesystem
@@ -71,26 +72,26 @@ class LocalFilesCache:
         marker_file = cache_file.with_suffix(".downloading")
 
         while True:
-            if cache_file.exists() and not marker_file.exists():
+            if cache_file.exists():
                 return cache_file.as_posix()
 
-            if not _try_create_marker(marker_file):
-                await anyio.sleep(1)
-                continue
+            with _try_create_marker(marker_file) as f:
+                if f is None:
+                    await anyio.sleep(1)
+                    continue
 
-            # We own the marker now - download
-            try:
-                file_size = await fs.get_size(uri)
-                stream = await fs.read_file_bytes(uri, 0, file_size)
-                with open(cache_file, "wb") as f:
+                # We own the marker - download to it
+                try:
+                    file_size = await fs.get_size(uri)
+                    stream = await fs.read_file_bytes(uri, 0, file_size)
                     async for chunk in stream:
                         f.write(chunk)
-                marker_file.unlink()
-                return cache_file.as_posix()
+                    marker_file.rename(cache_file)
+                    return cache_file.as_posix()
 
-            except Exception:
-                marker_file.unlink(missing_ok=True)
-                raise
+                except Exception:
+                    marker_file.unlink(missing_ok=True)
+                    raise
 
     def cleanup(self) -> None:
         """Delete the cache directory and all its contents."""
@@ -98,14 +99,25 @@ class LocalFilesCache:
             shutil.rmtree(self._cache_dir)
 
 
-def _try_create_marker(marker_file: Path) -> bool:
-    """Atomically create marker file if it doesn't exist."""
+@contextmanager
+def _try_create_marker(marker_file: Path) -> Iterator[IO[bytes] | None]:
+    """Context manager that atomically creates and opens marker file.
+
+    Yields opened file handle if created successfully, None if already exists.
+    Ensures file is closed and cleaned up on error.
+    """
     try:
-        marker_fd = os.open(marker_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.close(marker_fd)
-        return True
+        fd = os.open(marker_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        f = os.fdopen(fd, "wb")
+        try:
+            yield f
+        finally:
+            f.close()
     except FileExistsError:
-        return False
+        yield None
+    except Exception:
+        marker_file.unlink(missing_ok=True)
+        raise
 
 
 def create_temp_cache() -> LocalFilesCache:

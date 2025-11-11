@@ -18,7 +18,12 @@ export const ScanResultsBody: FC = () => {
   const selectedScanner = useSelectedScanner();
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
-  const columnTable = useStore((state) => state.selectedScanResultData);
+  const getSelectedScanResultData = useStore(
+    (state) => state.getSelectedScanResultData
+  );
+  // Get the column table for the selected scanner
+  const scanResultIdentifier = useStore((state) => state.scanResultIdentifier);
+  const columnTable = getSelectedScanResultData(scanResultIdentifier);
 
   const isLoadingData = useStore((state) => state.loadingData);
   const isLoading = useStore((state) => state.loading);

@@ -10,6 +10,16 @@ import { ScanApi } from "../api/api";
 import { Status } from "../types";
 import { debounce } from "../utils/sync";
 
+// Holds the currently selected scan result data in a ref
+// Keeping it out of the zustand state to avoid serialization and performance issues
+const selectedScanResultDataRef: {
+  data: ColumnTable | undefined;
+  identifier: string | undefined;
+} = {
+  data: undefined,
+  identifier: undefined,
+};
+
 interface StoreState {
   // App status
   singleFileMode?: boolean;
@@ -27,6 +37,7 @@ interface StoreState {
   // Dataframes
   selectedScanResult?: string;
   selectedScanResultData?: ColumnTable;
+  scanResultIdentifier?: string;
 
   // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -72,6 +83,7 @@ interface StoreState {
   setSelectedScanner: (scanner: string) => void;
   setSelectedScanResult: (result: string) => void;
   setSelectedScanResultData: (data: ColumnTable) => void;
+  getSelectedScanResultData: (identifier?: string) => ColumnTable | undefined;
 
   // Clearing state
   clearScanState: () => void;
@@ -153,6 +165,7 @@ export const createStore = (api: ScanApi) =>
           // Initial state
           scans: [],
           resultsStoredInRef: false,
+          resultDataInState: false,
           properties: {},
           scrollPositions: {},
           listPositions: {},
@@ -230,10 +243,37 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.selectedScanResult = result;
             }),
-          setSelectedScanResultData: (data: ColumnTable) =>
+          setSelectedScanResultData: (data: ColumnTable) => {
             set((state) => {
-              state.selectedScanResultData = data;
-            }),
+              // Generate a unique identifier for this data (for triggering re-renders)
+              const identifier = `${Date.now()}-${data.numRows()}-${data.numCols()}`;
+              state.scanResultIdentifier = identifier;
+
+              // Use ref for large objects with identifier
+              state.selectedScanResultData = undefined;
+              selectedScanResultDataRef.data = data;
+              selectedScanResultDataRef.identifier = identifier;
+            });
+          },
+          getSelectedScanResultData: (identifier?: string) => {
+            const state = get();
+            // If an identifier is provided and doesn't match, return undefined
+            if (
+              identifier !== undefined &&
+              identifier !== state.scanResultIdentifier
+            ) {
+              return undefined;
+            }
+            // Return from state if stored there, otherwise from ref
+            // Double-check the identifier matches when retrieving from ref
+            if (
+              selectedScanResultDataRef.identifier ===
+              state.scanResultIdentifier
+            ) {
+              return selectedScanResultDataRef.data;
+            }
+            return undefined;
+          },
           clearScanState: () => {
             set((state) => {
               state.selectedResultsTab = undefined;
@@ -241,15 +281,21 @@ export const createStore = (api: ScanApi) =>
               state.transcriptCollapsedEvents = {};
               state.transcriptOutlineId = undefined;
               state.selectedResultTab = undefined;
+              state.selectedScanResultData = undefined;
             });
           },
           clearScansState: () => {
+            // Clear the ref
+            selectedScanResultDataRef.data = undefined;
+            selectedScanResultDataRef.identifier = undefined;
             set((state) => {
               state.clearSelectedScanScatus();
               state.selectedScanStatus = undefined;
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;
+              state.selectedScanResultData = undefined;
+              state.scanResultIdentifier = undefined;
             });
           },
 

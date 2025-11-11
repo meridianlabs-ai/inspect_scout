@@ -66,16 +66,18 @@ export const useServerScannerDataframe = () => {
   const setSelectedScanResultData = useStore(
     (state) => state.setSelectedScanResultData
   );
+  const getSelectedScanResultData = useStore(
+    (state) => state.getSelectedScanResultData
+  );
   const resultsDir = useStore((state) => state.resultsDir);
   const singleFileMode = useStore((state) => state.singleFileMode);
-  const selectedScanResultData = useStore(
-    (state) => state.selectedScanResultData
-  );
+  const scanResultIdentifier = useStore((state) => state.scanResultIdentifier);
 
   const api = useApi();
   useEffect(() => {
     const fetchScannerDataframe = async () => {
-      if (!scanPath || !selectedScanner || selectedScanResultData) {
+      const existingData = getSelectedScanResultData(scanResultIdentifier);
+      if (!scanPath || !selectedScanner || existingData) {
         return;
       }
       setLoadingData(true);
@@ -105,6 +107,8 @@ export const useServerScannerDataframe = () => {
     singleFileMode,
     setLoadingData,
     setSelectedScanResultData,
+    getSelectedScanResultData,
+    scanResultIdentifier,
   ]);
 };
 
@@ -382,9 +386,14 @@ export const useScannerData = (
 };
 
 export const useSelectedResultsRow = (scanResultUuid: string) => {
-  const selectedScanResultData = useStore(
-    (state) => state.selectedScanResultData
+  const getSelectedScanResultData = useStore(
+    (state) => state.getSelectedScanResultData
   );
+  // Get the column data for the selected scanner
+  const scanResultIdentifier = useStore((state) => state.scanResultIdentifier);
+  const selectedScanResultData =
+    getSelectedScanResultData(scanResultIdentifier);
+
   const { data: scanData, isLoading } = useScannerData(
     selectedScanResultData,
     scanResultUuid

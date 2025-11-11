@@ -7,6 +7,7 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
+import { ScannerCore } from "../app/types";
 import { Status } from "../types";
 import { debounce } from "../utils/sync";
 
@@ -15,9 +16,11 @@ import { debounce } from "../utils/sync";
 const selectedScanResultDataRef: {
   data: ColumnTable | undefined;
   scanner: string | undefined;
+  previews: ScannerCore[] | undefined;
 } = {
   data: undefined,
   scanner: undefined,
+  previews: undefined,
 };
 
 interface StoreState {
@@ -36,7 +39,6 @@ interface StoreState {
 
   // Dataframes
   selectedScanResult?: string;
-  selectedScanResultData?: ColumnTable;
 
   // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -83,6 +85,13 @@ interface StoreState {
   setSelectedScanResult: (result: string) => void;
   setSelectedScanResultData: (scanner: string, data: ColumnTable) => void;
   getSelectedScanResultData: (scanner?: string) => ColumnTable | undefined;
+  setSelectedScanResultPreviews: (
+    scanner?: string,
+    previews?: ScannerCore[]
+  ) => void;
+  getSelectedScanResultPreviews: (
+    scanner?: string
+  ) => ScannerCore[] | undefined;
 
   // Clearing state
   clearScanState: () => void;
@@ -243,17 +252,36 @@ export const createStore = (api: ScanApi) =>
               state.selectedScanResult = result;
             }),
           setSelectedScanResultData: (scanner: string, data: ColumnTable) => {
-            set((state) => {
-              // Use ref for large objects with identifier
-              state.selectedScanResultData = undefined;
-              selectedScanResultDataRef.data = data;
-              selectedScanResultDataRef.scanner = scanner;
-            });
+            // Use ref for large objects with identifier
+            selectedScanResultDataRef.data = data;
+            selectedScanResultDataRef.scanner = scanner;
+            selectedScanResultDataRef.previews = undefined;
           },
           getSelectedScanResultData: (scanner?: string) => {
             // Only return data that mathches the requested scanner
             if (selectedScanResultDataRef.scanner === scanner) {
               return selectedScanResultDataRef.data;
+            }
+            return undefined;
+          },
+          setSelectedScanResultPreviews: (
+            scanner?: string,
+            previews?: ScannerCore[]
+          ) => {
+            if (selectedScanResultDataRef.scanner === scanner) {
+              selectedScanResultDataRef.previews = previews;
+            } else {
+              throw new Error(
+                "Attempting to store previews for unmatched scanner"
+              );
+            }
+          },
+          getSelectedScanResultPreviews: (
+            scanner?: string
+          ): ScannerCore[] | undefined => {
+            // Only return data that matches the requested scanner
+            if (selectedScanResultDataRef.scanner === scanner) {
+              return selectedScanResultDataRef.previews;
             }
             return undefined;
           },
@@ -264,7 +292,6 @@ export const createStore = (api: ScanApi) =>
               state.transcriptCollapsedEvents = {};
               state.transcriptOutlineId = undefined;
               state.selectedResultTab = undefined;
-              state.selectedScanResultData = undefined;
             });
           },
           clearScansState: () => {
@@ -277,7 +304,6 @@ export const createStore = (api: ScanApi) =>
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;
-              state.selectedScanResultData = undefined;
             });
           },
 
@@ -475,12 +501,7 @@ export const createStore = (api: ScanApi) =>
           ),
           version: 1,
           partialize: (state) => {
-            const {
-              hasInitializedRouting,
-              // Large ColumnTable - reload from source
-              selectedScanResultData,
-              ...persistedState
-            } = state;
+            const { hasInitializedRouting, ...persistedState } = state;
             return persistedState;
           },
         }

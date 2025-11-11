@@ -400,14 +400,33 @@ export const useSelectedResultsRow = (scanResultUuid: string) => {
 };
 
 export const useScannerPreviews = (columnTable: ColumnTable) => {
+  // First see if we've already decoded these
+  const selectedScanner = useSelectedScanner();
+  const getSelectedScanResultPreviews = useStore(
+    (state) => state.getSelectedScanResultPreviews
+  );
+  const setSelectedScanResultPreviews = useStore(
+    (state) => state.setSelectedScanResultPreviews
+  );
+
   const [scannerPreviews, setScannerPreviews] = useState<ScannerCore[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const rowData = useMemo(() => columnTable.objects(), [columnTable]);
 
   useEffect(() => {
+    // If empty, set empty and return
     if (rowData.length === 0) {
       setScannerPreviews([]);
+      setSelectedScanResultPreviews(selectedScanner, []);
+      setIsLoading(false);
+      return;
+    }
+
+    // Use the existing previews if available
+    const existingPreviews = getSelectedScanResultPreviews(selectedScanner);
+    if (existingPreviews) {
+      setScannerPreviews(existingPreviews);
       setIsLoading(false);
       return;
     }
@@ -541,12 +560,14 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
 
         if (!cancelled) {
           setScannerPreviews(parsedPreviews);
+          setSelectedScanResultPreviews(selectedScanner, parsedPreviews);
           setIsLoading(false);
         }
       } catch (error) {
         if (!cancelled) {
           console.error("Error parsing scanner previews:", error);
           setScannerPreviews([]);
+          setSelectedScanResultPreviews(selectedScanner, []);
           setIsLoading(false);
         }
       }
@@ -557,7 +578,12 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
     return () => {
       cancelled = true;
     };
-  }, [rowData]);
+  }, [
+    rowData,
+    selectedScanner,
+    getSelectedScanResultPreviews,
+    setSelectedScanResultPreviews,
+  ]);
 
   return { data: scannerPreviews, isLoading };
 };

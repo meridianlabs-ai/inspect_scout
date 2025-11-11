@@ -9,7 +9,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Final, Literal
+from typing import Final
 
 import anyio
 from inspect_ai._util.asyncfiles import AsyncFilesystem

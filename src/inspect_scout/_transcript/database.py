@@ -4,7 +4,6 @@ import json
 import sqlite3
 from datetime import datetime
 from functools import reduce
-from os import PathLike
 from types import TracebackType
 from typing import (
     Any,
@@ -12,7 +11,6 @@ from typing import (
     Iterator,
     Sequence,
     Type,
-    TypeAlias,
 )
 
 import pandas as pd
@@ -34,12 +32,11 @@ from inspect_ai.analysis._dataframe.samples.extract import (
     sample_input_as_str,
     sample_total_tokens,
 )
-from inspect_ai.analysis._dataframe.samples.table import samples_df
+from inspect_ai.analysis._dataframe.samples.table import (
+    _read_samples_df_serial,
+)
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
-)
-from inspect_ai.log._file import (
-    EvalLogInfo,
 )
 from pydantic import JsonValue
 from typing_extensions import override
@@ -51,13 +48,10 @@ from .._transcript.transcripts import Transcripts
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
-from .types import Transcript, TranscriptContent, TranscriptInfo
+from .s3_log_cache import with_s3_caching
+from .types import LogPaths, Transcript, TranscriptContent, TranscriptInfo
 
 TRANSCRIPTS = "transcripts"
-
-LogPaths: TypeAlias = (
-    PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
-)
 
 
 class EvalLogTranscripts(Transcripts):
@@ -189,7 +183,7 @@ class EvalLogTranscriptsDB:
 
         # resolve logs or df to transcript_df (sample per row)
         if not isinstance(logs, pd.DataFrame):
-            self._transcripts_df = samples_df(logs, TranscriptColumns, parallel=False)
+            self._transcripts_df = self._build_transcripts_df(logs)
         else:
             self._transcripts_df = logs
 
@@ -201,6 +195,29 @@ class EvalLogTranscriptsDB:
 
         # LocalFilesCache (starts out none)
         self._files_cache: LocalFilesCache | None = None
+
+    def _build_transcripts_df(self, logs: LogPaths) -> pd.DataFrame:
+        """Build transcripts DataFrame from logs, using S3 cache when available.
+
+        Args:
+            logs: Log paths to process
+
+        Returns:
+            DataFrame with one row per transcript/sample
+        """
+
+        def read_samples(paths: Sequence[str]) -> pd.DataFrame:
+            result = _read_samples_df_serial(
+                list(paths),
+                TranscriptColumns,
+                full=False,
+                strict=True,
+                progress=False,
+            )
+            assert isinstance(result, pd.DataFrame)
+            return result
+
+        return with_s3_caching(read_samples)(logs)
 
     async def connect(self) -> None:
         # Skip if already connected

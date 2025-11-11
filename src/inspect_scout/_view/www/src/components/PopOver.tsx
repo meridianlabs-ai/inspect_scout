@@ -56,6 +56,8 @@ export const PopOver: React.FC<PopOverProps> = ({
   const [shouldShowPopover, setShouldShowPopover] = useState(false);
   const hoverTimerRef = useRef<number | null>(null);
   const isMouseMovingRef = useRef(false);
+  const isOverPopoverRef = useRef(false);
+  const dismissalTimerRef = useRef<number | null>(null);
 
   // Setup hover timer and mouse movement detection
   useEffect(() => {
@@ -81,7 +83,17 @@ export const PopOver: React.FC<PopOverProps> = ({
         window.clearTimeout(hoverTimerRef.current);
       }
       isMouseMovingRef.current = false;
-      setShouldShowPopover(false);
+
+      // Add a delay before dismissing to allow user to move mouse to popover
+      if (dismissalTimerRef.current !== null) {
+        window.clearTimeout(dismissalTimerRef.current);
+      }
+      dismissalTimerRef.current = window.setTimeout(() => {
+        if (!isOverPopoverRef.current) {
+          setShouldShowPopover(false);
+          setIsOpen(false);
+        }
+      }, 150);
     };
 
     const handleMouseDown = (event: MouseEvent) => {
@@ -98,6 +110,28 @@ export const PopOver: React.FC<PopOverProps> = ({
       }
     };
 
+    const handlePopoverMouseEnter = () => {
+      isOverPopoverRef.current = true;
+      // Cancel any pending dismissal when mouse enters popover
+      if (dismissalTimerRef.current !== null) {
+        window.clearTimeout(dismissalTimerRef.current);
+        dismissalTimerRef.current = null;
+      }
+      // Also cancel the hover delay timer
+      if (hoverTimerRef.current !== null) {
+        window.clearTimeout(hoverTimerRef.current);
+      }
+      // Ensure popover stays visible
+      setShouldShowPopover(true);
+    };
+
+    const handlePopoverMouseLeave = () => {
+      isOverPopoverRef.current = false;
+      // Dismiss when leaving the popover
+      setShouldShowPopover(false);
+      setIsOpen(false);
+    };
+
     if (!isOpen || hoverDelay <= 0) {
       setShouldShowPopover(isOpen);
       const listener = (event: MouseEvent) => {
@@ -111,8 +145,27 @@ export const PopOver: React.FC<PopOverProps> = ({
       };
       document.addEventListener("mousedown", listener);
 
+      // Add popover hover tracking even when hoverDelay <= 0
+      // This allows the popover to stay open when user hovers over it
+      if (popperRef.current && isOpen) {
+        popperRef.current.addEventListener("mouseenter", handlePopoverMouseEnter);
+        popperRef.current.addEventListener("mouseleave", handlePopoverMouseLeave);
+      }
+
       return () => {
         document.removeEventListener("mousedown", listener);
+
+        // Clean up popover listeners
+        if (popperRef.current) {
+          popperRef.current.removeEventListener("mouseenter", handlePopoverMouseEnter);
+          popperRef.current.removeEventListener("mouseleave", handlePopoverMouseLeave);
+        }
+
+        // Clean up timers
+        if (dismissalTimerRef.current !== null) {
+          window.clearTimeout(dismissalTimerRef.current);
+          dismissalTimerRef.current = null;
+        }
       };
     }
 
@@ -130,17 +183,35 @@ export const PopOver: React.FC<PopOverProps> = ({
       setShouldShowPopover(false);
     }
 
+    // Add event listeners to the popover element itself
+    if (popperRef.current && isOpen) {
+      popperRef.current.addEventListener("mouseenter", handlePopoverMouseEnter);
+      popperRef.current.addEventListener("mouseleave", handlePopoverMouseLeave);
+    }
+
     return () => {
       if (positionEl) {
         positionEl.removeEventListener("mousemove", handleMouseMove);
         positionEl.removeEventListener("mouseleave", handleMouseLeave);
       }
 
+      // Clean up popover element listeners
+      if (popperRef.current) {
+        popperRef.current.removeEventListener("mouseenter", handlePopoverMouseEnter);
+        popperRef.current.removeEventListener("mouseleave", handlePopoverMouseLeave);
+      }
+
       // Clean up the document mousedown listener
       document.removeEventListener("mousedown", handleMouseDown);
 
+      // Clean up all timers to prevent leaks
       if (hoverTimerRef.current !== null) {
         window.clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+      if (dismissalTimerRef.current !== null) {
+        window.clearTimeout(dismissalTimerRef.current);
+        dismissalTimerRef.current = null;
       }
     };
   }, [isOpen, positionEl, hoverDelay]);

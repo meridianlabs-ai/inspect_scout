@@ -7,36 +7,33 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
-import { Results, Status } from "../types";
+import { Status } from "../types";
 import { debounce } from "../utils/sync";
 
-import { isLargeResults, resultsRef } from "./resultsRef";
-
 interface StoreState {
-  scans: Status[];
-  selectedResults?: Results;
-  // Lightweight identifier to track which results are loaded (for triggering renders)
-  selectedResultsIdentifier?: {
-    location: string;
-    complete: boolean;
-  };
-  // Flag indicating whether results are stored in ref (true) or state (false)
-  resultsStoredInRef: boolean;
-  selectedScanLocation?: string;
+  // App status
+  singleFileMode?: boolean;
+  hasInitializedEmbeddedData?: boolean;
+  hasInitializedRouting?: boolean;
+  loading: number;
+  loadingData: number;
 
+  // Scans
+  resultsDir?: string;
+  scans: Status[];
+  selectedScanLocation?: string;
+  selectedScanStatus?: Status;
+
+  // Dataframes
   selectedScanResult?: string;
   selectedScanResultData?: ColumnTable;
 
-  resultsDir?: string;
+  // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
   scrollPositions: Record<string, number>;
   listPositions: Record<string, StateSnapshot>;
   visibleRanges: Record<string, { startIndex: number; endIndex: number }>;
   gridStates: Record<string, GridState>;
-  singleFileMode?: boolean;
-  hasInitializedEmbeddedData?: boolean;
-  hasInitializedRouting?: boolean;
-  loading: number;
 
   // Scan specific properties (clear when switching scans)
   selectedResultsTab?: string;
@@ -51,15 +48,34 @@ interface StoreState {
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
 
+  // App initialization
+  setSingleFileMode: (enabled: boolean) => void;
+  setHasInitializedEmbeddedData: (initialized: boolean) => void;
+  setHasInitializedRouting: (initialized: boolean) => void;
+
+  // Global app behavior
+  setLoading: (loading: boolean) => void;
+  setLoadingData: (loading: boolean) => void;
+
+  // Scan directory for this viewer instance
+  setResultsDir: (dir: string) => void;
+
+  // List of scans
   setScans: (scans: Status[]) => void;
-  setSelectedResults: (results: Results) => void;
-  getSelectedResults: () => Results | undefined;
-  clearSelectedResults: () => void;
+
+  // Selected scan status (heading information)
   setSelectedScanLocation: (location: string) => void;
+  setSelectedScanStatus: (status: Status) => void;
+  clearSelectedScanScatus: () => void;
+
+  // Track the select result and data
+  setSelectedScanner: (scanner: string) => void;
   setSelectedScanResult: (result: string) => void;
   setSelectedScanResultData: (data: ColumnTable) => void;
 
-  setResultsDir: (dir: string) => void;
+  // Clearing state
+  clearScanState: () => void;
+  clearScansState: () => void;
 
   setPropertyValue: <T>(id: string, propertyName: string, value: T) => void;
   getPropertyValue: <T>(
@@ -88,16 +104,8 @@ interface StoreState {
   ) => void;
   clearVisibleRange: (name: string) => void;
 
-  setSingleFileMode: (enabled: boolean) => void;
-  setHasInitializedEmbeddedData: (initialized: boolean) => void;
-  setHasInitializedRouting: (initialized: boolean) => void;
-
-  setLoading: (loading: boolean) => void;
-
   setSelectedResultsTab: (tab: string) => void;
   setSelectedResultTab: (tab: string) => void;
-
-  setSelectedScanner: (scanner: string) => void;
 
   setTranscriptOutlineId: (id: string) => void;
   clearTranscriptOutlineId: () => void;
@@ -117,9 +125,6 @@ interface StoreState {
 
   setSelectedFilter: (filter: string) => void;
   setShowingRefPopover: (popoverKey: string) => void;
-
-  clearScanState: () => void;
-  clearScansState: () => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -154,6 +159,7 @@ export const createStore = (api: ScanApi) =>
           visibleRanges: {},
           gridStates: {},
           loading: 0,
+          loadingData: 0,
           collapsedBuckets: {},
           transcriptCollapsedEvents: {},
 
@@ -162,44 +168,14 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.scans = scans;
             }),
-          setSelectedResults: (results: Results) => {
-            const isLarge = isLargeResults(results);
-
+          setSelectedScanStatus: (status: Status) => {
             set((state) => {
-              state.selectedResultsIdentifier = {
-                location: results.location,
-                complete: results.complete,
-              };
-              state.resultsStoredInRef = isLarge;
-
-              if (isLarge) {
-                // Store in ref for large results to avoid Immer proxy overhead
-                state.selectedResults = undefined;
-              } else {
-                // Store small results in state as usual
-                state.selectedResults = results;
-              }
+              state.selectedScanStatus = status;
             });
-
-            if (isLarge) {
-              resultsRef.setResults(results);
-            } else {
-              // Clear ref if using state
-              resultsRef.clearResults();
-            }
           },
-          getSelectedResults: (): Results | undefined => {
-            const state = get();
-            return state.resultsStoredInRef
-              ? resultsRef.getResults()
-              : state.selectedResults;
-          },
-          clearSelectedResults: () => {
-            resultsRef.clearResults();
+          clearSelectedScanScatus: () => {
             set((state) => {
-              state.selectedResults = undefined;
-              state.selectedResultsIdentifier = undefined;
-              state.resultsStoredInRef = false;
+              state.selectedScanStatus = undefined;
             });
           },
           setSelectedScanLocation: (location: string) =>
@@ -360,6 +336,16 @@ export const createStore = (api: ScanApi) =>
               }
             });
           },
+          setLoadingData: (loading: boolean) => {
+            set((state) => {
+              // increment or decrement loading counter
+              if (loading) {
+                state.loading += 1;
+              } else {
+                state.loading = Math.max(0, state.loading - 1);
+              }
+            });
+          },
           setSelectedResultsTab: (tab: string) => {
             set((state) => {
               state.selectedResultsTab = tab;
@@ -448,8 +434,8 @@ export const createStore = (api: ScanApi) =>
           },
           clearScansState: () => {
             set((state) => {
-              state.clearSelectedResults();
-              state.selectedResults = undefined;
+              state.clearSelectedScanScatus();
+              state.selectedScanStatus = undefined;
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;
@@ -467,11 +453,6 @@ export const createStore = (api: ScanApi) =>
               hasInitializedRouting,
               // Large ColumnTable - reload from source
               selectedScanResultData,
-              // Contains large base64 data - reload from source
-              selectedResults,
-              // Don't persist the identifier or flag - will be recalculated on load
-              selectedResultsIdentifier,
-              resultsStoredInRef,
               ...persistedState
             } = state;
             return persistedState;

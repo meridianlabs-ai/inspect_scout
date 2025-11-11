@@ -22,8 +22,7 @@ export const ScanResultsBody: FC = () => {
     (state) => state.getSelectedScanResultData
   );
   // Get the column table for the selected scanner
-  const scanResultIdentifier = useStore((state) => state.scanResultIdentifier);
-  const columnTable = getSelectedScanResultData(scanResultIdentifier);
+  const columnTable = getSelectedScanResultData(selectedScanner);
 
   const isLoadingData = useStore((state) => state.loadingData);
   const isLoading = useStore((state) => state.loading);

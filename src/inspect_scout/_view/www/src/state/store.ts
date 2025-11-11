@@ -14,10 +14,10 @@ import { debounce } from "../utils/sync";
 // Keeping it out of the zustand state to avoid serialization and performance issues
 const selectedScanResultDataRef: {
   data: ColumnTable | undefined;
-  identifier: string | undefined;
+  scanner: string | undefined;
 } = {
   data: undefined,
-  identifier: undefined,
+  scanner: undefined,
 };
 
 interface StoreState {
@@ -37,7 +37,6 @@ interface StoreState {
   // Dataframes
   selectedScanResult?: string;
   selectedScanResultData?: ColumnTable;
-  scanResultIdentifier?: string;
 
   // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -82,8 +81,8 @@ interface StoreState {
   // Track the select result and data
   setSelectedScanner: (scanner: string) => void;
   setSelectedScanResult: (result: string) => void;
-  setSelectedScanResultData: (data: ColumnTable) => void;
-  getSelectedScanResultData: (identifier?: string) => ColumnTable | undefined;
+  setSelectedScanResultData: (scanner: string, data: ColumnTable) => void;
+  getSelectedScanResultData: (scanner?: string) => ColumnTable | undefined;
 
   // Clearing state
   clearScanState: () => void;
@@ -243,33 +242,17 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.selectedScanResult = result;
             }),
-          setSelectedScanResultData: (data: ColumnTable) => {
+          setSelectedScanResultData: (scanner: string, data: ColumnTable) => {
             set((state) => {
-              // Generate a unique identifier for this data (for triggering re-renders)
-              const identifier = `${Date.now()}-${data.numRows()}-${data.numCols()}`;
-              state.scanResultIdentifier = identifier;
-
               // Use ref for large objects with identifier
               state.selectedScanResultData = undefined;
               selectedScanResultDataRef.data = data;
-              selectedScanResultDataRef.identifier = identifier;
+              selectedScanResultDataRef.scanner = scanner;
             });
           },
-          getSelectedScanResultData: (identifier?: string) => {
-            const state = get();
-            // If an identifier is provided and doesn't match, return undefined
-            if (
-              identifier !== undefined &&
-              identifier !== state.scanResultIdentifier
-            ) {
-              return undefined;
-            }
-            // Return from state if stored there, otherwise from ref
-            // Double-check the identifier matches when retrieving from ref
-            if (
-              selectedScanResultDataRef.identifier ===
-              state.scanResultIdentifier
-            ) {
+          getSelectedScanResultData: (scanner?: string) => {
+            // Only return data that mathches the requested scanner
+            if (selectedScanResultDataRef.scanner === scanner) {
               return selectedScanResultDataRef.data;
             }
             return undefined;
@@ -287,7 +270,7 @@ export const createStore = (api: ScanApi) =>
           clearScansState: () => {
             // Clear the ref
             selectedScanResultDataRef.data = undefined;
-            selectedScanResultDataRef.identifier = undefined;
+            selectedScanResultDataRef.scanner = undefined;
             set((state) => {
               state.clearSelectedScanScatus();
               state.selectedScanStatus = undefined;
@@ -295,7 +278,6 @@ export const createStore = (api: ScanApi) =>
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;
               state.selectedScanResultData = undefined;
-              state.scanResultIdentifier = undefined;
             });
           },
 

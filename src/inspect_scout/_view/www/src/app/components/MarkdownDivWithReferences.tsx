@@ -29,26 +29,9 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [positionEl, setPositionEl] = useState<HTMLElement | null>(null);
   const [currentRef, setCurrentRef] = useState<MarkdownReference | null>(null);
-  const isScrollingRef = useRef(false);
-  const scrollTimeoutRef = useRef<number | null>(null);
 
   const showingRefPopover = useStore((state) => state.showingRefPopover);
   const setShowingRefPopover = useStore((state) => state.setShowingRefPopover);
-
-  const clearPopover = useCallback(() => {
-    setShowingRefPopover(undefined);
-    setCurrentRef(null);
-    setPositionEl(null);
-  }, [setShowingRefPopover, setCurrentRef, setPositionEl]);
-
-  const showPopover = useCallback(
-    (ref: MarkdownReference, el: HTMLElement) => {
-      setPositionEl(el);
-      setCurrentRef(ref);
-      setShowingRefPopover(popoverKey(ref));
-    },
-    [setShowingRefPopover, setPositionEl, setCurrentRef]
-  );
 
   // Create a map for quick lookup of references by ID
   const refMap = useMemo(
@@ -85,39 +68,6 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     [markdown, postProcess]
   );
 
-  // Detect scrolling to disable popovers while scrolling
-  useEffect(() => {
-    const handleScroll = (): void => {
-      // Mark as scrolling
-      isScrollingRef.current = true;
-
-      // Close any open popover
-      if (showingRefPopover) {
-        clearPopover();
-      }
-
-      // Clear existing timeout
-      if (scrollTimeoutRef.current !== null) {
-        window.clearTimeout(scrollTimeoutRef.current);
-      }
-
-      // Set a timeout to mark scrolling as finished
-      scrollTimeoutRef.current = window.setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 150); // Wait 150ms after scroll stops
-    };
-
-    // Listen for scroll events on the window (with capture to catch all scrolls)
-    window.addEventListener("scroll", handleScroll, true);
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      if (scrollTimeoutRef.current !== null) {
-        window.clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [showingRefPopover, setShowingRefPopover]);
-
   // Attach event handlers to reference links after render
   useEffect(() => {
     const container = containerRef.current;
@@ -131,14 +81,6 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     );
 
     const handleMouseEnter = (e: MouseEvent): void => {
-      // Don't show popover if we're currently scrolling
-      if (isScrollingRef.current) {
-        return;
-      }
-
-      // Clear any existing popover
-      clearPopover();
-
       // Identify the ref
       const el = e.currentTarget as HTMLElement;
       const id = el.getAttribute("data-ref-id");
@@ -147,12 +89,11 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
         return;
       }
 
-      // Show the popover
-      showPopover(ref, el);
-    };
-
-    const handleMouseLeave = (): void => {
-      clearPopover();
+      // Just set which cite we're tracking
+      // PopOver will handle all show/hide logic including hover delays
+      setPositionEl(el);
+      setCurrentRef(ref);
+      setShowingRefPopover(popoverKey(ref));
     };
 
     const handleClick = (e: MouseEvent): void => {
@@ -164,12 +105,10 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     const cleanup: Array<() => void> = [];
     citeLinks.forEach((link) => {
       link.addEventListener("mouseenter", handleMouseEnter);
-      link.addEventListener("mouseleave", handleMouseLeave);
       link.addEventListener("click", handleClick);
 
       cleanup.push(() => {
         link.removeEventListener("mouseenter", handleMouseEnter);
-        link.removeEventListener("mouseleave", handleMouseLeave);
         link.removeEventListener("click", handleClick);
       });
     });
@@ -178,7 +117,14 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     return () => {
       cleanup.forEach((fn) => fn());
     };
-  }, [markdown, refMap, styles.cite, showPopover, clearPopover]);
+  }, [
+    markdown,
+    refMap,
+    styles.cite,
+    setPositionEl,
+    setCurrentRef,
+    setShowingRefPopover,
+  ]);
 
   const key = currentRef ? popoverKey(currentRef) : null;
 
@@ -190,11 +136,15 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
           id={key}
           positionEl={positionEl}
           isOpen={showingRefPopover === key}
-          setIsOpen={() => {
-            setShowingRefPopover(key);
+          setIsOpen={(isOpen) => {
+            if (!isOpen) {
+              setShowingRefPopover(undefined);
+              setCurrentRef(null);
+              setPositionEl(null);
+            }
           }}
           placement="auto"
-          hoverDelay={-1}
+          hoverDelay={200}
           showArrow={true}
         >
           {currentRef.renderCitePreview() || (

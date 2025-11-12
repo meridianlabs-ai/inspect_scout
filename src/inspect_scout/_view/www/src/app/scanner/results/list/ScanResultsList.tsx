@@ -9,6 +9,7 @@ import { NoContentsPanel } from "../../../../components/NoContentsPanel";
 import { useStore } from "../../../../state/store";
 import { useScannerPreviews } from "../../../hooks";
 import { ScannerCore } from "../../../types";
+import { resultIdentifier } from "../../../utils/results";
 import { kFilterPositiveResults } from "../ScanResultsFilter";
 
 import { ScanResultsHeader } from "./ScanHeader";
@@ -40,7 +41,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       selectedFilter === kFilterPositiveResults ||
       selectedFilter === undefined
     ) {
-      return scannerSummaries.filter((s) => !!s.value);
+      return scannerSummaries.filter((s) => !!s.value).sort(sortByIdentifier);
     } else {
       return scannerSummaries;
     }
@@ -104,4 +105,29 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       )}
     </div>
   );
+};
+
+const sortByIdentifier = (a: ScannerCore, b: ScannerCore): number => {
+  // Sort first by id
+  const identifierA = resultIdentifier(a);
+  const identifierB = resultIdentifier(b);
+  const idComparison = identifierA.id.localeCompare(identifierB.id);
+
+  if (idComparison !== 0) {
+    return idComparison;
+  }
+
+  // then by epoch
+  if (identifierA.epoch && identifierB.epoch) {
+    return identifierA.epoch.localeCompare(identifierB.epoch);
+  }
+
+  if (identifierA.epoch) {
+    return -1;
+  }
+  if (identifierB.epoch) {
+    return 1;
+  }
+
+  return 0;
 };

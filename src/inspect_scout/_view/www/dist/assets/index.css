@@ -4095,6 +4095,11 @@ button._segment_19z32_10 {
   height: 100%;
   width: 100%;
 }
+._id_1a3zo_1 {
+  display: grid;
+  grid-template-rows: auto auto;
+  row-gap: 0;
+}
 ._row_xbmqo_1 {
   display: grid;
   column-gap: 0.5rem;

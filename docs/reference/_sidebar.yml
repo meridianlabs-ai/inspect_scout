@@ -96,8 +96,6 @@ website:
           href: reference/scanner.qmd#scannerinput
         - text: Result
           href: reference/scanner.qmd#result
-        - text: result_set
-          href: reference/scanner.qmd#result_set
         - text: Reference
           href: reference/scanner.qmd#reference
         - text: Error

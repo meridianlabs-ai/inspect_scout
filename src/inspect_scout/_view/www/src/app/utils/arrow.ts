@@ -101,10 +101,11 @@ export function expandResultsetRows(columnTable: ColumnTable): ColumnTable {
         expandedRow.message_references = maybeSerializeValue(messageRefs);
         expandedRow.event_references = maybeSerializeValue(eventRefs);
 
-        // clear out scan execution fields to avoid incorrect aggregation
+        // don't clear out scan execution fields to avoid incorrect aggregation
         // (these represent the scan execution, not individual results)
-        expandedRow.scan_total_tokens = null;
-        expandedRow.scan_model_usage = null;
+        // (since these aren't for computation, we're keeping them for display)
+        // expandedRow.scan_total_tokens = null;
+        // expandedRow.scan_model_usage = null;
 
         explodedResultsetRows.push(expandedRow);
       }

@@ -8,7 +8,7 @@ import { ChatViewToolCallStyle } from "./types";
 
 interface ChatMessageRowProps {
   parentName: string;
-  number?: number;
+  label?: string;
   resolvedMessage: ResolvedMessage;
   toolCallStyle: ChatViewToolCallStyle;
   indented?: boolean;
@@ -22,14 +22,14 @@ interface ChatMessageRowProps {
  */
 export const ChatMessageRow: FC<ChatMessageRowProps> = ({
   parentName,
-  number,
+  label,
   resolvedMessage,
   toolCallStyle,
   indented,
   highlightUserMessage,
   allowLinking = true,
 }) => {
-  if (number) {
+  if (label) {
     return (
       <>
         <div
@@ -48,7 +48,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
               styles.number
             )}
           >
-            {number}
+            {label}
           </div>
           <ChatMessage
             id={`${parentName}-chat-messages`}

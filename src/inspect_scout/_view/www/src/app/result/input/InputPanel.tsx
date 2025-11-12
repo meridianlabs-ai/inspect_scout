@@ -50,6 +50,16 @@ const InputRenderer: FC<InputRendererProps> = ({
   switch (result?.inputType) {
     case "transcript": {
       if (result.input.messages.length > 0) {
+        const labels = result?.messageReferences.reduce(
+          (acc, ref) => {
+            acc[ref.id] = ref.cite;
+            return acc;
+          },
+          {} as Record<string, string>
+        );
+
+        // TODO: We need to support a mode where tool messages get numbered
+        // as links to tool calls in the chat don't display a label, so this is disabled for now
         return (
           <ChatViewVirtualList
             messages={result.input.messages}
@@ -60,6 +70,8 @@ const InputRenderer: FC<InputRendererProps> = ({
             className={className}
             scrollRef={scrollRef}
             initialMessageId={initialMessageId}
+            labeled={false}
+            messageLabels={labels}
           />
         );
       } else if (result.input.events.length > 0) {

@@ -23,6 +23,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
     }
     return [];
   }, [result?.scanEvents]);
+
   return (
     result && (
       <div className={clsx(styles.container, "text-size-base")}>
@@ -47,7 +48,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
             <CardBody>
               <LabeledValue label="Scanner">
                 <ChatView
-                  numbered={false}
+                  labeled={false}
                   messages={messages}
                   id={`scan-result-chat`}
                   toolCallStyle={"compact"}

@@ -32,6 +32,8 @@ interface ChatViewVirtualListProps {
   running?: boolean;
   getMessageUrl?: (id: string) => string | undefined;
   allowLinking?: boolean;
+  labeled?: boolean;
+  messageLabels?: Record<string, string>;
 }
 
 interface ChatViewVirtualListComponentProps extends ChatViewVirtualListProps {
@@ -47,10 +49,11 @@ export const ChatViewVirtualList: FC<ChatViewVirtualListProps> = memo(
     className,
     toolCallStyle,
     indented,
-    numbered = true,
+    labeled = true,
     scrollRef,
     running,
     allowLinking = true,
+    messageLabels,
   }) => {
     const listHandle = useRef<VirtuosoHandle>(null);
 
@@ -105,9 +108,10 @@ export const ChatViewVirtualList: FC<ChatViewVirtualListProps> = memo(
         topOffset={topOffset}
         toolCallStyle={toolCallStyle}
         indented={indented}
-        numbered={numbered}
+        labeled={labeled}
         running={running}
         allowLinking={allowLinking}
+        messageLabels={messageLabels}
       />
     );
   }
@@ -127,10 +131,11 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
       className,
       toolCallStyle,
       indented,
-      numbered = true,
+      labeled = true,
       scrollRef,
       running,
       allowLinking = true,
+      messageLabels,
     }) => {
       const collapsedMessages = useMemo(() => {
         return resolveMessages(messages);
@@ -157,11 +162,22 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
       const renderRow = useCallback(
         (index: number, item: ResolvedMessage): ReactNode => {
           const number =
-            collapsedMessages.length > 1 && numbered ? index + 1 : undefined;
+            collapsedMessages.length > 1 && labeled ? index + 1 : undefined;
+
+          const maxlabelLen = messageLabels
+            ? Object.values(messageLabels).reduce((curr, r) => {
+                return Math.max(r.length, curr);
+              }, 0)
+            : 0;
+
+          const label = messageLabels
+            ? messageLabels[item.message.id] || "\u00A0".repeat(maxlabelLen * 2)
+            : number || undefined;
+
           return (
             <ChatMessageRow
               parentName={id || "chat-virtual-list"}
-              number={number}
+              label={label ? String(label) : undefined}
               resolvedMessage={item}
               indented={indented}
               toolCallStyle={toolCallStyle}
@@ -170,7 +186,7 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
             />
           );
         },
-        [id, numbered, indented, toolCallStyle, collapsedMessages]
+        [id, labeled, indented, toolCallStyle, collapsedMessages]
       );
 
       const Item = ({

@@ -201,7 +201,7 @@ def cyberlint():
 
 ### Multiple Results
 
-When scanning for different categories cases it may be more natural for the scanner to return multiple results. To do this, add a `label` field and specify `result_set=True`. For example:
+In some cases it may be more natural for scanners to return multiple results. To do this, just specity `list[T]` as the `type`. For example:
 
 ```python
 from pydantic import BaseModel, Field
@@ -231,7 +231,7 @@ def cyberlint():
     )
 ```
 
-Note that we add a `label` field for distinguishing different observation types and pass `result_set=True` to indicate we want to prompt the model to generate multiple results.
+Note that we add a `label` field for distinguishing different observation types.
 
 ### Result Values
 

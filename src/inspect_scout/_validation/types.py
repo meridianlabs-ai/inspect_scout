@@ -30,7 +30,7 @@ class ValidationCase(BaseModel):
     """Label-specific target values for resultset validation.
 
     Maps result labels to their expected values. Used when validating
-    scanners that return result_set() with multiple results per transcript.
+    scanners that return multiple labeled results per transcript.
     """
 
     def model_post_init(self, __context: Any) -> None:

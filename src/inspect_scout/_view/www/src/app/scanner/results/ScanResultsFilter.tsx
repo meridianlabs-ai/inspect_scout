@@ -39,6 +39,7 @@ export const ScanResultsFilter: FC = () => {
         Filter:
       </span>
       <select
+        id={"scan-result-filter"}
         className={clsx("form-select", "form-select-sm", "text-size-smaller")}
         aria-label=".sort-filter-label"
         value={selectedFilter}

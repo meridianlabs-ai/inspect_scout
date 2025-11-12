@@ -23,6 +23,7 @@ export const ScanResultHeader: FC<ScanResultHeaderProps> = ({ result }) => {
       {columns.map((col) => {
         return (
           <div
+            key={`header-label-${col.label}`}
             className={clsx(
               "text-size-smallest",
               "text-style-label",
@@ -38,7 +39,10 @@ export const ScanResultHeader: FC<ScanResultHeaderProps> = ({ result }) => {
 
       {columns.map((col) => {
         return (
-          <div className={clsx("text-size-small", styles.value, col.className)}>
+          <div
+            key={`header-val-${col.label}`}
+            className={clsx("text-size-small", styles.value, col.className)}
+          >
             {col.value}
           </div>
         );

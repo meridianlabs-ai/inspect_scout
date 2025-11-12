@@ -55,11 +55,12 @@ export const ScannerPanelBody: React.FC = () => {
   const tools: ReactNode[] = [];
   if (selectedTab === kTabIdScans || selectedTab === undefined) {
     if (selectedResultsView === kSegmentList) {
-      tools.push(<ScanResultsFilter />);
+      tools.push(<ScanResultsFilter key={"scan-results-filtering"} />);
     }
 
     tools.push(
       <SegmentedControl
+        key={"scan-results-view-segmented-control"}
         selectedId={selectedResultsView}
         segments={[
           {

@@ -11,12 +11,14 @@ export interface Segment {
 }
 
 export interface SegmentedControlProps {
+  id?: string;
   segments: Segment[];
   selectedId: string;
   onSegmentChange: (segmentId: string, index: number) => void;
 }
 
 export const SegmentedControl: FC<SegmentedControlProps> = ({
+  id,
   segments,
   onSegmentChange,
   selectedId,
@@ -33,7 +35,7 @@ export const SegmentedControl: FC<SegmentedControlProps> = ({
   }
 
   return (
-    <div className={clsx(styles.rootControl)}>
+    <div id={id} className={clsx(styles.rootControl)}>
       {segments.map((segment, index) => (
         <button
           key={segment.id}

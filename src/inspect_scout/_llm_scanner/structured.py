@@ -261,32 +261,26 @@ def structured_result(
         # Extract label (optional - can be used to distinguish results in a result set)
         label_field, label_value = get_field_by_name_or_alias(obj, "label")
 
-        # Determine the value based on answer.result_value
+        # Determine the value
         exclude_from_metadata = {explanation_field}
         if label_field:
             exclude_from_metadata.add(label_field)
 
+        # Look for field with alias="value"
         value: Any
-        if answer.result_value == "true":
-            value = True
-        elif answer.result_value == "dict":
-            # Use the entire object minus explanation and label
+        value_field, value_field_value = get_field_by_name_or_alias(obj, "value")
+        if value_field:
+            value = value_field_value
+            exclude_from_metadata.add(value_field)
+        # otherwise use the whole object
+        else:
             value = obj.model_dump(exclude=exclude_from_metadata)
-        else:  # answer.result_value is None
-            # Look for field with alias="value"
-            value_field, value_field_value = get_field_by_name_or_alias(obj, "value")
-            if value_field:
-                value = value_field_value
-                exclude_from_metadata.add(value_field)
-            else:
-                value = True
 
         # Collect metadata from remaining fields
         all_fields = obj.model_dump()
 
-        # When result_value="dict", the value already contains the non-special fields
-        # so we don't duplicate them in metadata
-        if answer.result_value == "dict":
+        # When the value already has the whole object we don't need metadata
+        if value_field is None:
             metadata = None
         else:
             metadata = {

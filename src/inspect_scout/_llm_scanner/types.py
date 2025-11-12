@@ -1,4 +1,4 @@
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
 from pydantic import BaseModel
 
@@ -27,15 +27,6 @@ class AnswerStructured(NamedTuple):
     See the docs on [Structured Answers](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html#structured-answers) for more details on defining types.
 
     See the docs on [Multiple Results](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html#multiple-results) for details on prompting scanners to yield multiple results from a scan.
-    """
-
-    result_value: Literal["true", "dict"] | None = None
-    """How should the result value be extracted from the answer?
-
-    - "true": always sets a value of `True` for the result value.
-    - "dict": collects all of the fields returned (save for label and explanation) into a dict as the result value.
-
-    The default is "true", unless there is a field in the object with alias="value" which will result in the value of that field being used as the value.
     """
 
     answer_tool: str = "answer"

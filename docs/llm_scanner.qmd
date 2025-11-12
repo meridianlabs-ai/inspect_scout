@@ -235,18 +235,9 @@ Note that we add a `label` field for distinguishing different observation types.
 
 ### Result Values
 
-Scanners produce results which ultimately carry a specific `value`. By default, structured scans produce a `value` of `True`. This is suitable for when scanners are simply detecting the presence or absence of something.
+Scanners produce results which ultimately carry a specific `value`. There are two types of `value` supported by the LLM scanner:
 
-1.  For cases where you want your scanner to yield a more specific value, you can designate a field in your `BaseModel` as the value by adding `alias="value"` to it. For example:
-
-    ```python
-    class ToolErrors(BaseModel):
-        tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
-
-        causes: str = Field(description="What were the most common causes of tool errors.") 
-    ```
-
-2. For cases where you want to aggregate multiple fields into the value, you can include the `result_value="dict"` to indicate that all fields in the `BaseModel` (save for explanation) should be collected up into a dict. For example, this will result in the `value` being a dict with fields `efficiency` and `persistence`:
+1. The default behavior is to yield a `dict` for the value, where the fields correpsond to the fields in your Pydantic model. For example, this will result in the `value` being a dict with fields `efficiency` and `persistence`:
 
     ```python
     class AgentRating(BaseModel):
@@ -256,8 +247,17 @@ Scanners produce results which ultimately carry a specific `value`. By default, 
 
     llm_scanner(
         question="...",
-        answer=AnswerStructured(type=AgentRating, result_value="dict")
+        answer=AnswerStructured(type=AgentRating)
     )
+    ```
+
+2.  For cases where you want your scanner to yield a more specific value, you can designate a field in your `BaseModel` as the value by adding `alias="value"` to it. For example:
+
+    ```python
+    class ToolErrors(BaseModel):
+        tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
+
+        causes: str = Field(description="What were the most common causes of tool errors.") 
     ```
 
 ### Field Names

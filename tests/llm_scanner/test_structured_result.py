@@ -28,34 +28,13 @@ def mock_extract_references(text: str) -> list[Reference]:
 class TestSingleResultWithTrueValue:
     """Tests for single results with result_value='true'."""
 
-    def test_basic_single_result_true(self) -> None:
-        """Test single result with value=True."""
-
-        class Analysis(BaseModel):
-            explanation: str = Field(description="Analysis explanation")
-            confidence: float = Field(description="Confidence score")
-
-        answer = AnswerStructured(type=Analysis, result_value="true")
-        output = ModelOutput(
-            model="test",
-            completion='{"explanation": "Test explanation", "confidence": 0.9}',
-        )
-
-        result = structured_result(answer, output, mock_extract_references)
-
-        assert result.value is True
-        assert result.explanation == "Test explanation"
-        assert result.label is None
-        assert result.metadata == {"confidence": 0.9}
-        assert result.references == []
-
     def test_single_result_with_references(self) -> None:
         """Test that references are extracted from explanation."""
 
         class Analysis(BaseModel):
             explanation: str = Field(description="Analysis explanation")
 
-        answer = AnswerStructured(type=Analysis, result_value="true")
+        answer = AnswerStructured(type=Analysis)
         output = ModelOutput(
             model="test",
             completion='{"explanation": "See [M1] and [E2] for details"}',
@@ -63,7 +42,6 @@ class TestSingleResultWithTrueValue:
 
         result = structured_result(answer, output, mock_extract_references)
 
-        assert result.value is True
         assert len(result.references) == 2
         assert result.references[0].type == "message"
         assert result.references[0].cite == "[M1]"
@@ -72,7 +50,7 @@ class TestSingleResultWithTrueValue:
 
 
 class TestSingleResultWithObjectValue:
-    """Tests for single results with result_value='dcit'."""
+    """Tests for single results with result_value='dict'."""
 
     def test_single_result_object(self) -> None:
         """Test single result with value as dcit."""
@@ -82,7 +60,7 @@ class TestSingleResultWithObjectValue:
             clarity: int = Field(description="Clarity rating")
             persuasiveness: int = Field(description="Persuasiveness rating")
 
-        answer = AnswerStructured(type=Analysis, result_value="dict")
+        answer = AnswerStructured(type=Analysis)
         output = ModelOutput(
             model="test",
             completion='{"explanation": "Good analysis", "clarity": 8, "persuasiveness": 7}',
@@ -102,7 +80,7 @@ class TestSingleResultWithObjectValue:
             explanation: str = Field(description="Explanation")
             score: int = Field(description="Score")
 
-        answer = AnswerStructured(type=Analysis, result_value="dict")
+        answer = AnswerStructured(type=Analysis)
         output = ModelOutput(
             model="test",
             completion='{"label": "positive", "explanation": "Good", "score": 9}',
@@ -126,7 +104,7 @@ class TestSingleResultWithValueAlias:
             explanation: str = Field(description="Explanation")
             confidence: float = Field(description="Confidence")
 
-        answer = AnswerStructured(type=Classification)  # result_value=None
+        answer = AnswerStructured(type=Classification)
         output = ModelOutput(
             model="test",
             completion='{"value": "spam", "explanation": "Looks like spam", "confidence": 0.95}',
@@ -137,23 +115,6 @@ class TestSingleResultWithValueAlias:
         assert result.value == "spam"
         assert result.explanation == "Looks like spam"
         assert result.metadata == {"confidence": 0.95}
-
-    def test_single_result_no_value_alias_defaults_true(self) -> None:
-        """Test that without value alias, value defaults to True."""
-
-        class Analysis(BaseModel):
-            explanation: str = Field(description="Explanation")
-            score: int = Field(description="Score")
-
-        answer = AnswerStructured(type=Analysis)  # result_value=None
-        output = ModelOutput(
-            model="test", completion='{"explanation": "Good", "score": 8}'
-        )
-
-        result = structured_result(answer, output, mock_extract_references)
-
-        assert result.value is True
-        assert result.metadata == {"score": 8}
 
 
 class TestFieldAliases:
@@ -166,7 +127,7 @@ class TestFieldAliases:
             reason: str = Field(alias="explanation", description="The reason")
             score: int = Field(description="Score")
 
-        answer = AnswerStructured(type=Analysis, result_value="true")
+        answer = AnswerStructured(type=Analysis)
         output = ModelOutput(
             model="test", completion='{"explanation": "Because reasons", "score": 7}'
         )
@@ -174,7 +135,7 @@ class TestFieldAliases:
         result = structured_result(answer, output, mock_extract_references)
 
         assert result.explanation == "Because reasons"
-        assert result.metadata == {"score": 7}
+        assert result.value == {"score": 7}
 
     def test_label_via_alias(self) -> None:
         """Test label field can be provided via alias."""
@@ -231,12 +192,12 @@ class TestResultSets:
         # Check first item
         assert value_list[0]["label"] == "bug"
         assert value_list[0]["explanation"] == "Found a bug"
-        assert value_list[0]["metadata"] == {"severity": "high"}
+        assert value_list[0]["value"] == {"severity": "high"}
 
         # Check second item
         assert value_list[1]["label"] == "typo"
         assert value_list[1]["explanation"] == "Found a typo"
-        assert value_list[1]["metadata"] == {"severity": "low"}
+        assert value_list[1]["value"] == {"severity": "low"}
 
     def test_result_set_with_value_determination(self) -> None:
         """Test result set with result_value setting."""
@@ -246,7 +207,7 @@ class TestResultSets:
             explanation: str = Field(description="Explanation")
             line_number: int = Field(description="Line number")
 
-        answer = AnswerStructured(type=list[Issue], result_value="dict")
+        answer = AnswerStructured(type=list[Issue])
         output = ModelOutput(
             model="test",
             completion="""{
@@ -329,4 +290,4 @@ class TestErrorCases:
         # Label is optional - either not present or None
         assert value_list[0].get("label") is None
         assert value_list[0]["explanation"] == "Test finding"
-        assert value_list[0]["metadata"] == {"severity": "high"}
+        assert value_list[0]["value"] == {"severity": "high"}

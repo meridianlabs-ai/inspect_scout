@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, ReactNode, useMemo } from "react";
+import { FC, Fragment, ReactNode, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
 import {
@@ -101,7 +101,7 @@ const ValueTable: FC<{
           buildUrl
         );
         return (
-          <>
+          <Fragment key={`value-table-row-${key}`}>
             <div
               className={clsx(
                 styles.valueKey,
@@ -113,7 +113,7 @@ const ValueTable: FC<{
               {key}
             </div>
             <div className={clsx(styles.valueValue)}>{displayValue}</div>
-          </>
+          </Fragment>
         );
       })}
     </div>

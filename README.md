@@ -1,5 +1,9 @@
 Welcome to Inspect Scout.
 
+To get started with Inspect Scout, please see the [documentation](https://meridianlabs-ai.github.io/inspect_scout/).
+
+***
+
 ## Installation
 
 Latest development version:

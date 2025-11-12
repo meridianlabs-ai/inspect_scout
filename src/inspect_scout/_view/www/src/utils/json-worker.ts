@@ -117,8 +117,14 @@ self.onmessage = function (e) {
     const decoder = new TextDecoder();
     const text = decoder.decode(encodedText);
 
-    // Parse with JSON5
-    const result = JSON5.parse(text);
+    // Parse with JSON/JSON5
+    let result = undefined;
+    try {
+      // Optimistically, try a regular JSON parse first (this is much faster)
+      result = JSON.parse(text);
+    } catch {
+      result = JSON5.parse(text);
+    }
 
     if (result && typeof result === 'object' &&
         (Array.isArray(result) ? result.length > 10000 : Object.keys(result).length > 10000)) {

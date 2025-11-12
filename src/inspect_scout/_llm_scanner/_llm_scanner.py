@@ -1,6 +1,7 @@
 from typing import Any, Awaitable, Callable, Literal
 
 from inspect_ai.model import (
+    GenerateConfig,
     Model,
     get_model,
 )
@@ -99,7 +100,9 @@ def llm_scanner(
 
         # otherwise do a normal generate
         else:
-            model_output = await get_model(model).generate(resolved_prompt)
+            model_output = await get_model(model).generate(
+                resolved_prompt, config=GenerateConfig(parallel_tool_calls=False)
+            )
 
         # resolve answer
         return resolved_answer.result_for_answer(model_output, extract_references)

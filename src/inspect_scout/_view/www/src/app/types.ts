@@ -28,6 +28,7 @@ export interface ScannerCoreBase {
   uuid?: string;
   inputType: "transcript" | "message" | "messages" | "event" | "events";
   explanation?: string;
+  label?: string;
   eventReferences: ScannerReference[];
   messageReferences: ScannerReference[];
   validationResult: boolean | Record<string, boolean>;

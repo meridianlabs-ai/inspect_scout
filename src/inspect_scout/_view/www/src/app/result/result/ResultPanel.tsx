@@ -5,6 +5,7 @@ import { ChatView } from "../../../chat/ChatView";
 import { messagesFromEvents } from "../../../chat/messages";
 import { Card, CardBody } from "../../../components/Card";
 import { LabeledValue } from "../../../components/LabeledValue";
+import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
 import { Explanation } from "../../values/Explanation";
@@ -29,6 +30,16 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
       <div className={clsx(styles.container, "text-size-base")}>
         <Card>
           <CardBody className={clsx(styles.explanation)}>
+            {result.label && (
+              <>
+                <div
+                  className={clsx("text-style-label", "text-style-secondary")}
+                >
+                  Label
+                </div>
+                <div>{result.label}</div>
+              </>
+            )}
             <div className={clsx("text-style-label", "text-style-secondary")}>
               Value
             </div>
@@ -41,6 +52,18 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
             <div>
               <Explanation result={result} />
             </div>
+            {result.metadata && Object.keys(result.metadata).length > 0 && (
+              <>
+                <div
+                  className={clsx("text-style-label", "text-style-secondary")}
+                >
+                  Metadata
+                </div>
+                <div>
+                  <MetaDataGrid entries={result.metadata} />
+                </div>
+              </>
+            )}
           </CardBody>
         </Card>
         {messages.length > 0 && (

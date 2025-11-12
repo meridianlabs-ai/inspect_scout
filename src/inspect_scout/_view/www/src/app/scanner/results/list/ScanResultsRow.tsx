@@ -19,12 +19,14 @@ interface ScanResultsRowProps {
   entry: ScannerCore;
   gridTemplateColumns: string;
   hasExplanation: boolean;
+  hasLabel: boolean;
 }
 
 const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   entry,
   gridTemplateColumns,
   hasExplanation,
+  hasLabel,
 }) => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
@@ -62,6 +64,14 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
           <Explanation result={entry} />
         </div>
       )}
+      {hasLabel && (
+        <div className={clsx(styles.label, "text-size-smallest")}>
+          {entry.label || (
+            <span className={clsx("text-style-secondary")}>—</span>
+          )}
+        </div>
+      )}
+
       <div className={clsx(styles.value, "text-size-smaller")}>
         <Value result={entry} style="inline" />
       </div>

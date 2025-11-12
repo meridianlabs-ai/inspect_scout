@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, useCallback, useMemo, useRef } from "react";
+import { FC, use, useCallback, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { ActivityBar } from "../../../../components/ActivityBar";
@@ -35,6 +35,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const hasExplanation = useMemo(() => {
     return scannerSummaries.some((s) => !!s.explanation);
   }, [scannerSummaries]);
+  const hasLabel = useMemo(() => {
+    return scannerSummaries.some((s) => !!s.label);
+  }, [scannerSummaries]);
 
   const filteredSummaries = useMemo(() => {
     if (
@@ -64,9 +67,12 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     const complexValue = filteredSummaries.some(
       (s) => s.valueType === "object" || s.valueType === "array"
     );
-    const valueColumn = complexValue ? "7fr" : "2fr";
+    const valueColumn = complexValue ? "250px" : "150px";
+    const labelColumn = hasLabel ? "150px" : "";
 
-    return hasExplanation ? `1fr 10fr ${valueColumn}` : `1fr ${valueColumn}`;
+    return hasExplanation
+      ? `140px 10fr ${labelColumn} ${valueColumn}`
+      : `140px ${labelColumn} ${valueColumn}`;
   }, [hasExplanation, filteredSummaries]);
 
   const renderRow = useCallback(
@@ -76,6 +82,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
           index={index}
           entry={entry}
           hasExplanation={hasExplanation}
+          hasLabel={hasLabel}
           gridTemplateColumns={gridTemplateColumns}
         />
       );
@@ -88,6 +95,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       <ScanResultsHeader
         gridTemplateColumns={gridTemplateColumns}
         hasExplanation={hasExplanation}
+        hasLabel={hasLabel}
       />
       <ActivityBar animating={isLoading} />
       {!busy && filteredSummaries.length === 0 && (

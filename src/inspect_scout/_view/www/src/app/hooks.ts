@@ -17,7 +17,7 @@ import {
   ScannerCore,
   ScannerReference,
 } from "./types";
-import { expandResultsetRows, expandResultsetRowsFast } from "./utils/arrow";
+import { expandResultsetRows } from "./utils/arrow";
 
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
@@ -267,6 +267,9 @@ export const useScannerData = (
 
         const uuid = filtered.get("uuid", 0) as string | undefined;
         const answer = filtered.get("answer", 0) as string | undefined;
+        const label = filtered.columnNames().includes("label")
+          ? (filtered.get("label", 0) as string | undefined)
+          : undefined;
         const explanation = filtered.get("explanation", 0) as
           | string
           | undefined;
@@ -298,6 +301,7 @@ export const useScannerData = (
         const baseData = {
           uuid,
           answer,
+          label,
           eventReferences: eventReferences as ScannerReference[],
           explanation,
           inputIds: inputIds as string[],

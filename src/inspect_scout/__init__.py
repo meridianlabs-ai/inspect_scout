@@ -2,7 +2,6 @@ from inspect_ai._util.deprecation import relocated_module_attribute
 
 from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
 from ._recorder.recorder import (
-    ScanResultsDB,
     ScanResultsDF,
     Status,
 )
@@ -21,7 +20,6 @@ from ._scanner.scanner import Scanner, scanner
 from ._scanner.scorer import as_scorer
 from ._scanner.types import ScannerInput
 from ._scanresults import (
-    scan_results_db,
     scan_results_df,
     scan_status,
 )
@@ -76,10 +74,8 @@ __all__ = [
     "scan_list",
     "scan_status",
     "scan_results_df",
-    "scan_results_db",
     "Status",
     "ScanResultsDF",
-    "ScanResultsDB",
     "Summary",
     # transcript
     "transcripts_from_logs",

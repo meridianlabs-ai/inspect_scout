@@ -11,8 +11,6 @@ reference: inspect_scout
 ### Summary
 ### scan_results_df
 ### ScanResultsDF
-### scan_results_db
-### ScanResultsDB
 
 ## Validation
 

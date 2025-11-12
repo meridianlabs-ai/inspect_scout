@@ -52,10 +52,6 @@ website:
           href: reference/results.qmd#scan_results_df
         - text: ScanResultsDF
           href: reference/results.qmd#scanresultsdf
-        - text: scan_results_db
-          href: reference/results.qmd#scan_results_db
-        - text: ScanResultsDB
-          href: reference/results.qmd#scanresultsdb
         - text: validation_set
           href: reference/results.qmd#validation_set
         - text: ValidationSet
@@ -133,10 +129,8 @@ website:
           href: reference/async.qmd#scan_list_async
         - text: scan_status_async
           href: reference/async.qmd#scan_status_async
-        - text: scan_results_db_async
-          href: reference/async.qmd#scan_results_db_async
-        - text: scan_results_db_async
-          href: reference/async.qmd#scan_results_db_async
+        - text: scan_results_df_async
+          href: reference/async.qmd#scan_results_df_async
     - section: Scout CLI
       href: reference/scout_scan.qmd
       contents:

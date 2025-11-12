@@ -14,7 +14,6 @@ from typing_extensions import Literal, NotRequired, Required, TypedDict
 from inspect_scout._validation.types import ValidationSet
 
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
-from ._util.process import default_max_processes
 
 
 class ScannerSpec(BaseModel):
@@ -49,7 +48,7 @@ class ScanOptions(BaseModel):
     max_transcripts: int = Field(default=DEFAULT_MAX_TRANSCRIPTS)
     """Maximum number of concurrent transcripts (defaults to 25)."""
 
-    max_processes: int = Field(default_factory=default_max_processes)
+    max_processes: int | None = Field(default=None)
     """Number of worker processes. Defaults to `multiprocessing.cpu_count()`."""
 
     limit: int | None = Field(default=None)

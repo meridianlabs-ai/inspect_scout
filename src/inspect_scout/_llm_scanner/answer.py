@@ -56,22 +56,21 @@ def answer_from_argument(
     | AnswerMultiLabel
     | AnswerStructured,
 ) -> Answer:
-    if isinstance(answer, str):
-        match answer:
-            case "boolean":
-                return _BoolAnswer()
-            case "numeric":
-                return _NumberAnswer()
-            case "string":
-                return _StrAnswer()
-            case _:
-                raise ValueError(f"Invalid answer type: {answer}")
-    elif isinstance(answer, list):
-        return _LabelsAnswer(labels=answer)
-    elif isinstance(answer, AnswerMultiLabel):
-        return _LabelsAnswer(labels=answer.labels, multi_classification=True)
-    else:
-        return _StructuredAnswer(answer)
+    match answer:
+        case "boolean":
+            return _BoolAnswer()
+        case "numeric":
+            return _NumberAnswer()
+        case "string":
+            return _StrAnswer()
+        case list():
+            return _LabelsAnswer(labels=answer)
+        case AnswerMultiLabel():
+            return _LabelsAnswer(labels=answer.labels, multi_classification=True)
+        case AnswerStructured():
+            return _StructuredAnswer(answer)
+        case _:
+            raise ValueError(f"Invalid answer type: {answer}")
 
 
 class _BoolAnswer(Answer):

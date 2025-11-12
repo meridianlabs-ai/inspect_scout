@@ -55,6 +55,8 @@ from .common import (
     sum_metrics,
 )
 
+MAX_PROCESS = 8
+
 # Sentinel value to signal collectors to shut down during Ctrl-C.
 #
 # MUST be a sentinel: During Ctrl-C shutdown, workers are terminated before they can
@@ -70,7 +72,8 @@ _SHUTDOWN_SENTINEL = ShutdownSentinel()
 
 def multi_process_strategy(
     *,
-    process_count: int,
+    total_scans: int,
+    max_processes: int | None,
     task_count: int,
     prefetch_multiple: float | None = None,
     diagnostics: bool = False,
@@ -82,16 +85,20 @@ def multi_process_strategy(
     The ParseJob queue is unbounded since ParseJobs are lightweight metadata objects.
 
     Args:
-        process_count: Number of worker processes.
+        total_scans: The total number of scan invocations for this job.
+        max_processes: Max number of worker processes. If provided, it must be > 1
         task_count: Target total task concurrency across all processes
         prefetch_multiple: Buffer size multiple passed to each worker's
             single-process strategy
         diagnostics: Whether to print diagnostic information
     """
-    if process_count <= 1:
+    if isinstance(max_processes, int) and max_processes <= 1:
         raise ValueError(
-            f"processes must be >= 1 when specified as int, got {process_count}"
+            f"processes must be >= 1 when specified as int, got {max_processes}"
         )
+
+    if max_processes is None:
+        max_processes = min(MAX_PROCESS, multiprocessing.cpu_count(), total_scans)
 
     async def the_func(
         *,
@@ -128,8 +135,8 @@ def multi_process_strategy(
         try:
             # Distribute tasks evenly: some processes get base+1, others get base
             # This ensures we use exactly task_count total tasks
-            base_tasks = task_count // process_count
-            remainder_tasks = task_count % process_count
+            base_tasks = task_count // max_processes
+            remainder_tasks = task_count % max_processes
             # Initialize shared IPC context that will be inherited by forked workers
             _mp_common.ipc_context = IPCContext(
                 parse_function=parse_function,
@@ -152,7 +159,7 @@ def multi_process_strategy(
 
             print_diagnostics(
                 "Setup",
-                f"Multi-process strategy: {process_count} processes with "
+                f"Multi-process strategy: {max_processes} processes with "
                 f"{task_count} total concurrency",
             )
 
@@ -185,25 +192,25 @@ def multi_process_strategy(
                 items_processed = 0
                 workers_finished = 0
 
-                while workers_finished < process_count:
+                while workers_finished < max_processes:
                     # Thread sleeps in kernel until data arrives or shutdown sentinel injected
                     item = await run_sync_on_thread(upstream_queue.get)
 
                     match item:
                         case _mp_common.WorkerReady(worker_id):
                             # Should only receive these during startup phase
-                            assert workers_ready_count < process_count, (
-                                f"Received WorkerReady from worker {worker_id} but already got {workers_ready_count}/{process_count}"
+                            assert workers_ready_count < max_processes, (
+                                f"Received WorkerReady from worker {worker_id} but already got {workers_ready_count}/{max_processes}"
                             )
 
                             workers_ready_count += 1
                             print_diagnostics(
                                 "MP Collector",
-                                f"P{worker_id} ready. {workers_ready_count}/{process_count}",
+                                f"P{worker_id} ready. {workers_ready_count}/{max_processes}",
                             )
 
                             # When all workers are ready, release them to start consuming
-                            if workers_ready_count == process_count:
+                            if workers_ready_count == max_processes:
                                 print_diagnostics(
                                     "MP Collector",
                                     "All workers ready - releasing workers to consume parse jobs",
@@ -242,7 +249,7 @@ def multi_process_strategy(
                         case ShutdownSentinel():
                             print_diagnostics(
                                 "MP Collector",
-                                f"Received shutdown sentinel (got {workers_finished}/{process_count} worker completions)",
+                                f"Received shutdown sentinel (got {workers_finished}/{max_processes} worker completions)",
                             )
                             break
 
@@ -250,7 +257,7 @@ def multi_process_strategy(
                             workers_finished += 1
                             print_diagnostics(
                                 "MP Collector",
-                                f"Worker finished ({workers_finished}/{process_count})",
+                                f"Worker finished ({workers_finished}/{max_processes})",
                             )
 
                         case Exception():
@@ -261,7 +268,7 @@ def multi_process_strategy(
             # Start worker processes directly
             ctx = multiprocessing.get_context("fork")
             processes: list[ForkProcess] = []
-            for worker_id in range(process_count):
+            for worker_id in range(max_processes):
                 task_count_for_worker = base_tasks + (
                     1 if worker_id < remainder_tasks else 0
                 )

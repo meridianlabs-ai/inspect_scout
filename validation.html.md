@@ -140,11 +140,11 @@ message pairs) we can also include multiple IDs:
 
 ### Result Set Validation
 
-When a scanner returns multiple results using `result_set()` (see
-[Multiple Results](scanners.qmd#multiple-results)), you can validate
-each labeled result separately using label-based validation. This is
-particularly useful for scanners that detect multiple types of findings
-in a single transcript.
+When a scanner returns a list of multiple resulsts (see [Multiple
+Results](scanners.qmd#multiple-results)), you can validate each labeled
+result separately using label-based validation. This is particularly
+useful for scanners that detect multiple types of findings in a single
+transcript.
 
 #### Format
 

@@ -505,14 +505,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="multiple-results" class="level2">
 <h2 class="anchored" data-anchor-id="multiple-results">Multiple Results</h2>
-<p>It is possible for scanners to return multiple results using the <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result_set">result_set()</a></span> function. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> result_set([</span>
+<p>Scanners can return multiple resulsts as a list. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="cf">return</span> [</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    Result(label<span class="op">=</span><span class="st">"deception"</span>, value<span class="op">=</span><span class="va">True</span>, explanation<span class="op">=</span><span class="st">"..."</span>),</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    Result(label<span class="op">=</span><span class="st">"misconfiguration"</span>, value<span class="op">=</span><span class="va">True</span>, explanation<span class="op">=</span><span class="st">"..."</span>)</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This is useful when a scanner is capable of making several types of observation. In this case it’s also important to indicate the origin of the result (i.e.&nbsp;which class of observation is is), which you can do using the <code>label</code> field (note that <code>label</code> can repeat multiple times in a set, so e.g.&nbsp;you could have multiple results with <code>label="deception"</code>).</p>
-<p>By default, each individual result in the result set will yield its own row in the <a href="./results.html#data-frames">results data frame</a>.</p>
-<p>When validating scanners that return result sets, you can use <a href="./validation.html#result-set-validation">result set validation</a> to specify expected values for each label independently.</p>
+<p>When a list is returned, each individual result will yield its own row in the <a href="./results.html#data-frames">results data frame</a>.</p>
+<p>When validating scanners that return lists of results, you can use <a href="./validation.html#result-set-validation">result set validation</a> to specify expected values for each label independently.</p>
 </section>
 <section id="events" class="level2">
 <h2 class="anchored" data-anchor-id="events">Event Scanners</h2>

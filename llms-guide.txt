@@ -800,14 +800,13 @@ from the list. See `MessagesPreprocessor` for other available options.
 
 ## Multiple Results
 
-It is possible for scanners to return multiple results using the
-`result_set()` function. For example:
+Scanners can return multiple resulsts as a list. For example:
 
 ``` python
-result = result_set([
+return [
     Result(label="deception", value=True, explanation="..."),
     Result(label="misconfiguration", value=True, explanation="...")
-])
+]
 ```
 
 This is useful when a scanner is capable of making several types of
@@ -817,11 +816,11 @@ using the `label` field (note that `label` can repeat multiple times in
 a set, so e.g. you could have multiple results with
 `label="deception"`).
 
-By default, each individual result in the result set will yield its own
-row in the [results data frame](results.qmd#data-frames).
+When a list is returned, each individual result will yield its own row
+in the [results data frame](results.qmd#data-frames).
 
-When validating scanners that return result sets, you can use [result
-set validation](validation.qmd#result-set-validation) to specify
+When validating scanners that return lists of results, you can use
+[result set validation](validation.qmd#result-set-validation) to specify
 expected values for each label independently.
 
 ## Event Scanners
@@ -1243,9 +1242,8 @@ def cyberlint():
 
 ### Multiple Results
 
-When scanning for different categories cases it may be more natural for
-the scanner to return multiple results. To do this, add a `label` field
-and specify `result_set=True`. For example:
+In some cases it may be more natural for scanners to return multiple
+results. To do this, just specity `list[T]` as the `type`. For example:
 
 ``` python
 from pydantic import BaseModel, Field
@@ -1271,37 +1269,22 @@ def cyberlint():
         
         Please also provide an assessment of the cause and an explanation for each result.
         """),
-        answer=AnswerStructured(type=CyberLint, result_set=True)
+        answer=AnswerStructured(type=list[CyberLint])
     )
 ```
 
 Note that we add a `label` field for distinguishing different
-observation types and pass `result_set=True` to indicate we want to
-prompt the model to generate multiple results.
+observation types.
 
 ### Result Values
 
-Scanners produce results which ultimately carry a specific `value`. By
-default, structured scans produce a `value` of `True`. This is suitable
-for when scanners are simply detecting the presence or absence of
-something.
+Scanners produce results which ultimately carry a specific `value`.
+There are two types of `value` supported by the LLM scanner:
 
-1.  For cases where you want your scanner to yield a more specific
-    value, you can designate a field in your `BaseModel` as the value by
-    adding `alias="value"` to it. For example:
-
-    ``` python
-    class ToolErrors(BaseModel):
-        tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
-
-        causes: str = Field(description="What were the most common causes of tool errors.") 
-    ```
-
-2.  For cases where you want to aggregate multiple fields into the
-    value, you can include the `result_value="dict"` to indicate that
-    all fields in the `BaseModel` (save for explanation) should be
-    collected up into a dict. For example, this will result in the
-    `value` being a dict with fields `efficiency` and `persistence`:
+1.  The default behavior is to yield a `dict` for the value, where the
+    fields correpsond to the fields in your Pydantic model. For example,
+    this will result in the `value` being a dict with fields
+    `efficiency` and `persistence`:
 
     ``` python
     class AgentRating(BaseModel):
@@ -1311,8 +1294,19 @@ something.
 
     llm_scanner(
         question="...",
-        answer=AnswerStructured(type=AgentRating, result_value="dict")
+        answer=AnswerStructured(type=AgentRating)
     )
+    ```
+
+2.  For cases where you want your scanner to yield a more specific
+    value, you can designate a field in your `BaseModel` as the value by
+    adding `alias="value"` to it. For example:
+
+    ``` python
+    class ToolErrors(BaseModel):
+        tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
+
+        causes: str = Field(description="What were the most common causes of tool errors.") 
     ```
 
 ### Field Names
@@ -1686,11 +1680,11 @@ message pairs) we can also include multiple IDs:
 
 ### Result Set Validation
 
-When a scanner returns multiple results using `result_set()` (see
-[Multiple Results](scanners.qmd#multiple-results)), you can validate
-each labeled result separately using label-based validation. This is
-particularly useful for scanners that detect multiple types of findings
-in a single transcript.
+When a scanner returns a list of multiple resulsts (see [Multiple
+Results](scanners.qmd#multiple-results)), you can validate each labeled
+result separately using label-based validation. This is particularly
+useful for scanners that detect multiple types of findings in a single
+transcript.
 
 #### Format
 

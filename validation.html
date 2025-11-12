@@ -408,7 +408,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <section id="result-set-validation" class="level3">
 <h3 class="anchored" data-anchor-id="result-set-validation">Result Set Validation</h3>
-<p>When a scanner returns multiple results using <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result_set">result_set()</a></span> (see <a href="./scanners.html#multiple-results">Multiple Results</a>), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.</p>
+<p>When a scanner returns a list of multiple resulsts (see <a href="./scanners.html#multiple-results">Multiple Results</a>), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.</p>
 <section id="format" class="level4">
 <h4 class="anchored" data-anchor-id="format">Format</h4>
 <p>For CSV files, use <code>label_*</code> columns instead of <code>target_*</code> columns:</p>

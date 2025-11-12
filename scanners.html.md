@@ -210,14 +210,13 @@ from the list. See `MessagesPreprocessor` for other available options.
 
 ## Multiple Results
 
-It is possible for scanners to return multiple results using the
-`result_set()` function. For example:
+Scanners can return multiple resulsts as a list. For example:
 
 ``` python
-result = result_set([
+return [
     Result(label="deception", value=True, explanation="..."),
     Result(label="misconfiguration", value=True, explanation="...")
-])
+]
 ```
 
 This is useful when a scanner is capable of making several types of
@@ -227,11 +226,11 @@ using the `label` field (note that `label` can repeat multiple times in
 a set, so e.g. you could have multiple results with
 `label="deception"`).
 
-By default, each individual result in the result set will yield its own
-row in the [results data frame](results.qmd#data-frames).
+When a list is returned, each individual result will yield its own row
+in the [results data frame](results.qmd#data-frames).
 
-When validating scanners that return result sets, you can use [result
-set validation](validation.qmd#result-set-validation) to specify
+When validating scanners that return lists of results, you can use
+[result set validation](validation.qmd#result-set-validation) to specify
 expected values for each label independently.
 
 ## Event Scanners

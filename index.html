@@ -534,20 +534,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="scan-results" class="level2">
 <h2 class="anchored" data-anchor-id="scan-results">Scan Results</h2>
 <p>By default, the results of scans are written into the <code>./scans</code> directory. You can override this using the <code>--results</code> option—both file paths and S3 buckets are supported.</p>
-<p>Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results either as a dict of Pandas data frames or as a DuckDB database (there will be a table for each scanner).</p>
+<p>Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results as a dict of Pandas data frames using the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> function:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># results as pandas data frames</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_df(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="co"># results as duckdb database </span></span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_db(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> results:</span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># run queries to read data frames</span></span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> results.conn.execute(<span class="st">"SELECT ..."</span>).fetch_df()</span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="./results.html">Results</a> article for more details on the columns available in the data frames returned by <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span>.</p>
 </section>
 <section id="validation" class="level2">

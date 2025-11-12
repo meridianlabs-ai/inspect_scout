@@ -18,8 +18,8 @@ Scan results include the following:
   during the last scan.
 
 - A set of [Parquet](https://parquet.apache.org/docs/) files with scan
-  results (one for each scanner). There are functions available to
-  interface with these files as Pandas data frames or DuckDB databases.
+  results (one for each scanner). Functions are available to interface
+  with these files as Pandas data frames.
 
 ## Workflow
 
@@ -66,22 +66,6 @@ if status.complete:
     results = scan_results_df(status.location)
     deception_df = results.scanners["deception"]
     tool_errors_df = results.scanners["tool_errors"]
-```
-
-### DuckDB
-
-The above examples demonstrated reading scanner output as Pandas data
-frames. If you prefer, you can also read scanner data from a DuckDB
-database as follows:
-
-``` python
-results = scan_results_db("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
-with results:
-    # run queries to read data frames
-    df = results.conn.execute("SELECT ...").fetch_df()
-
-    # export entire database as file
-    results.to_file("results.duckdb")
 ```
 
 ## Results Data

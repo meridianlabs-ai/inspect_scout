@@ -297,24 +297,14 @@ paths and S3 buckets are supported.
 
 Each scan is stored in its own directory and has both metadata about the
 scan (configuration, errors, summary of results) as well as parquet
-files that contain the results. You can read the results either as a
-dict of Pandas data frames or as a DuckDB database (there will be a
-table for each scanner).
+files that contain the results. You can read the results as a dict of
+Pandas data frames using the `scan_results_df()` function:
 
 ``` python
 # results as pandas data frames
 results = scan_results_df("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
 deception_df = results.scanners["deception"]
 tool_errors_df = results.scanners["tool_errors"]
-
-# results as duckdb database 
-results = scan_results_db("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
-with results:
-    # run queries to read data frames
-    df = results.conn.execute("SELECT ...").fetch_df()
-
-    # export entire database as file
-    results.to_file("results.duckdb")
 ```
 
 See the [Results](results.qmd) article for more details on the columns

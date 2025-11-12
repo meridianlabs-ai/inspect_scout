@@ -297,24 +297,14 @@ paths and S3 buckets are supported.
 
 Each scan is stored in its own directory and has both metadata about the
 scan (configuration, errors, summary of results) as well as parquet
-files that contain the results. You can read the results either as a
-dict of Pandas data frames or as a DuckDB database (there will be a
-table for each scanner).
+files that contain the results. You can read the results as a dict of
+Pandas data frames using the `scan_results_df()` function:
 
 ``` python
 # results as pandas data frames
 results = scan_results_df("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
 deception_df = results.scanners["deception"]
 tool_errors_df = results.scanners["tool_errors"]
-
-# results as duckdb database 
-results = scan_results_db("scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs")
-with results:
-    # run queries to read data frames
-    df = results.conn.execute("SELECT ...").fetch_df()
-
-    # export entire database as file
-    results.to_file("results.duckdb")
 ```
 
 See the [Results](results.qmd) article for more details on the columns
@@ -1377,8 +1367,8 @@ Scan results include the following:
   during the last scan.
 
 - A set of [Parquet](https://parquet.apache.org/docs/) files with scan
-  results (one for each scanner). There are functions available to
-  interface with these files as Pandas data frames or DuckDB databases.
+  results (one for each scanner). Functions are available to interface
+  with these files as Pandas data frames.
 
 ## Workflow
 
@@ -1425,22 +1415,6 @@ if status.complete:
     results = scan_results_df(status.location)
     deception_df = results.scanners["deception"]
     tool_errors_df = results.scanners["tool_errors"]
-```
-
-### DuckDB
-
-The above examples demonstrated reading scanner output as Pandas data
-frames. If you prefer, you can also read scanner data from a DuckDB
-database as follows:
-
-``` python
-results = scan_results_db("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
-with results:
-    # run queries to read data frames
-    df = results.conn.execute("SELECT ...").fetch_df()
-
-    # export entire database as file
-    results.to_file("results.duckdb")
 ```
 
 ## Results Data

@@ -288,7 +288,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#scout-cli" id="toc-scout-cli" class="nav-link" data-scroll-target="#scout-cli">Scout CLI</a></li>
   <li><a href="#python-api" id="toc-python-api" class="nav-link" data-scroll-target="#python-api">Python API</a></li>
-  <li><a href="#duckdb" id="toc-duckdb" class="nav-link" data-scroll-target="#duckdb">DuckDB</a></li>
   </ul></li>
   <li><a href="#results-data" id="toc-results-data" class="nav-link" data-scroll-target="#results-data">Results Data</a>
   <ul class="collapse">
@@ -326,7 +325,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li><p>Scan configuration (e.g.&nbsp;options passed to <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> or to <code>scout scan</code>).</p></li>
 <li><p>Transcripts scanned and scanners executed and errors which occurred during the last scan.</p></li>
-<li><p>A set of <a href="https://parquet.apache.org/docs/">Parquet</a> files with scan results (one for each scanner). There are functions available to interface with these files as Pandas data frames or DuckDB databases.</p></li>
+<li><p>A set of <a href="https://parquet.apache.org/docs/">Parquet</a> files with scan results (one for each scanner). Functions are available to interface with these files as Pandas data frames.</p></li>
 </ul>
 </section>
 <section id="workflow" class="level2">
@@ -360,17 +359,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    results <span class="op">=</span> scan_results_df(status.location)</span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    tool_errors_df <span class="op">=</span> results.scanners[<span class="st">"tool_errors"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="duckdb" class="level3">
-<h3 class="anchored" data-anchor-id="duckdb">DuckDB</h3>
-<p>The above examples demonstrated reading scanner output as Pandas data frames. If you prefer, you can also read scanner data from a DuckDB database as follows:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_db(<span class="st">"scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8"</span>)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> results:</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># run queries to read data frames</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> results.conn.execute(<span class="st">"SELECT ..."</span>).fetch_df()</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># export entire database as file</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    results.to_file(<span class="st">"results.duckdb"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="results-data" class="level2">

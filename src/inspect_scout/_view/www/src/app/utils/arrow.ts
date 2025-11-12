@@ -22,6 +22,11 @@ interface Result {
 // 2. Explodes each list element into its own row using Arquero's unroll()
 // 3. Normalizes the Result fields into columns (uuid, label, value, etc.)
 // 4. Applies type casting to the expanded value column
+//
+// I tested an alternative approach to this using Arquero's unroll() function
+// directly in a derive() expression, but it wasn't faster (was actually a
+// touch slower anecdotally) and was a much more complex set of operations.
+// I omit that function and instead just operate on the rows directly.
 export function expandResultsetRows(columnTable: ColumnTable): ColumnTable {
   // Check if we have any resultset rows
   const colNames = columnTable.columnNames();

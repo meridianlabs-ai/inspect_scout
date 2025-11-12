@@ -17,7 +17,7 @@ import {
   ScannerCore,
   ScannerReference,
 } from "./types";
-import { expandResultsetRows } from "./utils/arrow";
+import { expandResultsetRows, expandResultsetRowsFast } from "./utils/arrow";
 
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
@@ -82,20 +82,23 @@ export const useServerScannerDataframe = () => {
       }
       setLoadingData(true);
       try {
+        // In single file mode, send an absolute path
         let location = scanPath;
         if (singleFileMode) {
           location = join(scanPath, resultsDir);
         }
+
+        // Request the raw data from the server
         const arrayBuffer = await api.getScannerDataframe(
           location,
           selectedScanner
         );
 
-        const table = decodeArrowBytes(arrayBuffer);
-
         // Pre-process result set rows to explode the results
+        const table = decodeArrowBytes(arrayBuffer);
         const expandedTable = expandResultsetRows(table);
 
+        // Store in state
         setSelectedScanResultData(selectedScanner, expandedTable);
       } finally {
         setLoadingData(false);

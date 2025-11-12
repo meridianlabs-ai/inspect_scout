@@ -22,7 +22,7 @@ from .types import AnswerMultiLabel, AnswerStructured
 @scanner(messages="all")
 def llm_scanner(
     *,
-    question: str | Callable[[Transcript], Awaitable[str]],
+    question: str | Callable[[Transcript], Awaitable[str]] | None = None,
     answer: Literal["boolean", "numeric", "string"]
     | list[str]
     | AnswerMultiLabel
@@ -41,7 +41,7 @@ def llm_scanner(
 
     Args:
         question: Question for the scanner to answer.
-            Can be a static string (e.g., "Did the assistant refuse the request?") or a function that takes a Transcript and returns an string for dynamic questions based on transcript content.
+            Can be a static string (e.g., "Did the assistant refuse the request?") or a function that takes a Transcript and returns an string for dynamic questions based on transcript content. Can be omitted if you provide a custom template.
         answer: Specification of the answer format.
             Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]` for a set of labels; or pass `MultiLabels` for multi-classification.
         template: Overall template for scanner prompt.
@@ -122,7 +122,7 @@ async def render_scanner_prompt(
     | None = None,
     transcript: Transcript,
     messages: str,
-    question: str | Callable[[Transcript], Awaitable[str]],
+    question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
 ) -> str:
     """Render a scanner prompt template with the provided variables.
@@ -150,7 +150,7 @@ async def render_scanner_prompt(
         .render(
             messages=messages,
             question=question
-            if isinstance(question, str)
+            if isinstance(question, str | None)
             else await question(transcript),
             answer_prompt=answer.prompt,
             answer_format=answer.format,

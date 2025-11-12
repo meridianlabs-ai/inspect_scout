@@ -401,7 +401,7 @@ def augment_type_with_explanation(type: Type[ST]) -> Type[ST]:
         "explanation": (
             str,
             Field(
-                description="Please provide an explanation of the answer you have provided."
+                description="Please provide an explanation of the answer you have provided. It should include the message id's (e.g. '[M2]') to clarify which message(s) you are referring to."
             ),
         )
     }

@@ -1,12 +1,6 @@
 .header {
-  padding-left: 1rem;
-  padding-right: 1rem;
-  display: grid;
-  padding-bottom: 0.3rem;
-  padding-top: 0.3rem;
   border-bottom: solid var(--bs-light-border-subtle) 1px;
-  display: grid;
-  column-gap: 0.5rem;
+  padding: 0.3rem 1rem;
 }
 
 .center {
@@ -19,8 +13,4 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.value {
-  justify-self: end;
 }

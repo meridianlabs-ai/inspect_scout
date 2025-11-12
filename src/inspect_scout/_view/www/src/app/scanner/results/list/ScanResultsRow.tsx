@@ -12,21 +12,18 @@ import { Explanation } from "../../../values/Explanation";
 import { Identifier } from "../../../values/Identifier";
 import { Value } from "../../../values/Value";
 
+import { GridDescriptor } from "./ScanResultsList";
 import styles from "./ScanResultsRow.module.css";
 
 interface ScanResultsRowProps {
   index: number;
   entry: ScannerCore;
-  gridTemplateColumns: string;
-  hasExplanation: boolean;
-  hasLabel: boolean;
+  gridDescriptor: GridDescriptor;
 }
 
 const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   entry,
-  gridTemplateColumns,
-  hasExplanation,
-  hasLabel,
+  gridDescriptor,
 }) => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
@@ -42,10 +39,12 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const scanResultUrl = isNavigable
     ? scanResultRoute(relativePath, entry.uuid, searchParams)
     : "";
+  const hasExplanation = gridDescriptor.columns.includes("explanation");
+  const hasLabel = gridDescriptor.columns.includes("label");
 
   const grid = (
     <div
-      style={{ gridTemplateColumns }}
+      style={gridDescriptor.gridStyle}
       className={clsx(
         styles.row,
         !isNavigable ? styles.disabled : "",

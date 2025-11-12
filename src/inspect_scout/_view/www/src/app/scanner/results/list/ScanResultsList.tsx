@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, use, useCallback, useMemo, useRef } from "react";
+import { FC, useCallback, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { ActivityBar } from "../../../../components/ActivityBar";
@@ -15,6 +15,11 @@ import { kFilterPositiveResults } from "../ScanResultsFilter";
 import { ScanResultsHeader } from "./ScanHeader";
 import styles from "./ScanResultsList.module.css";
 import { ScanResultsRow } from "./ScanResultsRow";
+
+export interface GridDescriptor {
+  gridStyle: Record<string, string>;
+  columns: string[];
+}
 
 interface ScanResultsListProps {
   id: string;
@@ -32,11 +37,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const isLoadingData = useStore((state) => state.loadingData);
   const busy = isLoading || isLoadingData;
   const listHandle = useRef<VirtuosoHandle | null>(null);
-  const hasExplanation = useMemo(() => {
-    return scannerSummaries.some((s) => !!s.explanation);
-  }, [scannerSummaries]);
-  const hasLabel = useMemo(() => {
-    return scannerSummaries.some((s) => !!s.label);
+  const gridDescriptor = useMemo(() => {
+    return optimalColumnLayout(scannerSummaries);
   }, [scannerSummaries]);
 
   const filteredSummaries = useMemo(() => {
@@ -63,40 +65,22 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     return undefined;
   }, [selectedScanResult, filteredSummaries]);
 
-  const gridTemplateColumns = useMemo(() => {
-    const complexValue = filteredSummaries.some(
-      (s) => s.valueType === "object" || s.valueType === "array"
-    );
-    const valueColumn = complexValue ? "250px" : "150px";
-    const labelColumn = hasLabel ? "150px" : "";
-
-    return hasExplanation
-      ? `140px 10fr ${labelColumn} ${valueColumn}`
-      : `140px ${labelColumn} ${valueColumn}`;
-  }, [hasExplanation, filteredSummaries]);
-
   const renderRow = useCallback(
     (index: number, entry: ScannerCore) => {
       return (
         <ScanResultsRow
           index={index}
           entry={entry}
-          hasExplanation={hasExplanation}
-          hasLabel={hasLabel}
-          gridTemplateColumns={gridTemplateColumns}
+          gridDescriptor={gridDescriptor}
         />
       );
     },
-    [hasExplanation]
+    [gridDescriptor]
   );
 
   return (
     <div className={clsx(styles.container)}>
-      <ScanResultsHeader
-        gridTemplateColumns={gridTemplateColumns}
-        hasExplanation={hasExplanation}
-        hasLabel={hasLabel}
-      />
+      <ScanResultsHeader gridDescriptor={gridDescriptor} />
       <ActivityBar animating={isLoading} />
       {!busy && filteredSummaries.length === 0 && (
         <NoContentsPanel text="No scan results to display." />
@@ -138,4 +122,73 @@ const sortByIdentifier = (a: ScannerCore, b: ScannerCore): number => {
   }
 
   return 0;
+};
+
+const optimalColumnLayout = (
+  scannerSummaries: ScannerCore[]
+): GridDescriptor => {
+  const columns = [];
+  const gridColParts: string[] = [];
+
+  // The id column
+  columns.push("id");
+  const maxIdLen = scannerSummaries.reduce((max, s) => {
+    return Math.max(max, resultIdentifier(s).id.length);
+  }, 0);
+  gridColParts.push(`${Math.min(Math.max(maxIdLen * 8, 50), 250)}px`);
+
+  // The explanation column, if any explanations exist
+  const hasExplanation = scannerSummaries.some((s) => !!s.explanation);
+  if (hasExplanation) {
+    columns.push("explanation");
+    gridColParts.push("10fr");
+  }
+
+  // The label column, if any labels exist
+  const hasLabel = scannerSummaries.some((s) => !!s.label);
+  if (hasLabel) {
+    columns.push("label");
+
+    const maxlabelLen = scannerSummaries.reduce((max, s) => {
+      return Math.max(max, resultIdentifier(s).id.length);
+    }, 0);
+    gridColParts.push(`${Math.min(Math.max(maxlabelLen * 4, 50), 250)}px`);
+  }
+
+  // The value column
+  columns.push("value");
+  const hasValueObjs = scannerSummaries.some((s) => s.valueType === "object");
+  if (hasValueObjs) {
+    gridColParts.push("5fr");
+  } else {
+    const maxValueLen = scannerSummaries.reduce((max: number, s) => {
+      if (s.valueType === "array") {
+        const len = (s.value as unknown[]).reduce<number>((prev, val) => {
+          const valStr = val !== undefined && val !== null ? String(val) : "";
+          return Math.max(prev, valStr.length);
+        }, 0);
+        return Math.max(max, len);
+      } else {
+        const valStr =
+          s.value !== undefined && s.value !== null ? String(s.value) : "";
+        return Math.max(max, valStr.length);
+      }
+    }, 0);
+    gridColParts.push(`${Math.min(Math.max(maxValueLen * 4, 50), 300)}px`);
+  }
+
+  // Special case - if there is only an id and value column, divide space evenly
+  if (columns.length === 2 && columns[0] === "id" && columns[1] === "value") {
+    gridColParts[0] = "1fr";
+    gridColParts[1] = "1fr";
+  }
+
+  return {
+    gridStyle: {
+      gridTemplateColumns: gridColParts.join(" "),
+      display: "grid",
+      columnGap: "0.5rem",
+    },
+    columns,
+  };
 };

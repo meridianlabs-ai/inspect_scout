@@ -12,7 +12,7 @@ Scan results include the following:
 
 -   Transcripts scanned and scanners executed and errors which occurred during the last scan.
 
--   A set of [Parquet](https://parquet.apache.org/docs/) files with scan results (one for each scanner). There are functions available to interface with these files as Pandas data frames or DuckDB databases.
+-   A set of [Parquet](https://parquet.apache.org/docs/) files with scan results (one for each scanner). Functions are available to interface with these files as Pandas data frames.
 
 ## Workflow
 

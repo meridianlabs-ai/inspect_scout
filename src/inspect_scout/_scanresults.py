@@ -467,7 +467,7 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
     all_columns = list(set().union(*[set(df.columns) for df in all_rows]))
 
     # For each column, determine the appropriate dtype from non-NA values
-    column_dtypes = {}
+    column_dtypes: dict[str, Any] = {}
     for col in all_columns:
         # Find a DataFrame where this column has non-NA values
         for df in all_rows:
@@ -476,7 +476,7 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
                 break
         # If column is all-NA everywhere, use object dtype
         if col not in column_dtypes:
-            column_dtypes[col] = "object"
+            column_dtypes[col] = pd.Series(dtype="object").dtype
 
     # Align all DataFrames to have the same columns with consistent dtypes
     aligned_rows = []

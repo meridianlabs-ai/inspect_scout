@@ -326,7 +326,31 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
 
     # Normalize the Result objects into columns
     # Each Result has: uuid, label, value, type, answer, explanation, metadata
-    result_fields = pd.json_normalize(expanded["value"].tolist())
+    # Use max_level=1 to prevent deep flattening of nested structures within value
+    result_fields = pd.json_normalize(expanded["value"].tolist(), max_level=1)
+
+    # Handle case where value field is an object/dict that got flattened
+    # Even with max_level=1, pd.json_normalize flattens first-level dicts,
+    # creating columns like value.confidence, value.message_numbers
+    # We need to reconstruct the value column from these flattened columns
+    value_cols = [col for col in result_fields.columns if col.startswith("value.")]
+    if value_cols and "value" not in result_fields.columns:
+        # Reconstruct value column as a dict from the flattened columns
+        def reconstruct_value(row: pd.Series) -> dict:
+            """Reconstruct the value dict from flattened value.* columns."""
+            value_dict = {}
+            for col in value_cols:
+                # Remove 'value.' prefix to get the field name
+                field_name = col.replace("value.", "")
+                val = row[col]
+                # Only include non-NA values (handles mixed schemas)
+                if not (isinstance(val, float) and pd.isna(val)):
+                    value_dict[field_name] = val
+            return value_dict
+
+        result_fields["value"] = result_fields.apply(reconstruct_value, axis=1)
+        # Drop the flattened columns now that we've reconstructed value
+        result_fields = result_fields.drop(columns=value_cols)
 
     # Drop the old result-related columns from expanded dataframe
     columns_to_drop = [

@@ -271,11 +271,11 @@ class TestResultSets:
             )
             reason: str = Field(alias="explanation", description="Reason")
 
-        answer = AnswerStructured(type=Observation, result_set="observations")
+        answer = AnswerStructured(type=list[Observation])
         output = ModelOutput(
             model="test",
             completion="""{
-                "observations": [
+                "results": [
                     {"label": "humor", "explanation": "Funny"},
                     {"label": "verbosity", "explanation": "Too wordy"}
                 ]

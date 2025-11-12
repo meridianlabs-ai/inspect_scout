@@ -3,6 +3,7 @@
 import pytest
 from inspect_ai._util.error import PrerequisiteError
 from inspect_scout._llm_scanner.structured import structured_schema
+from inspect_scout._llm_scanner.types import AnswerStructured
 from pydantic import BaseModel, Field
 
 
@@ -16,7 +17,7 @@ class TestSingleResultValid:
             explanation: str = Field(description="Explanation of the classification")
             confidence: float = Field(description="Confidence score")
 
-        schema = structured_schema(BasicAnswer, False)
+        schema = structured_schema(AnswerStructured(type=BasicAnswer))
         assert schema is not None
         assert schema.properties is not None
         assert "explanation" in schema.properties
@@ -30,7 +31,7 @@ class TestSingleResultValid:
             explanation: str = Field(description="Explanation of the classification")
             confidence: float = Field(description="Confidence score")
 
-        schema = structured_schema(AnswerWithLabel, False)
+        schema = structured_schema(AnswerStructured(type=AnswerWithLabel))
         assert schema is not None
         assert schema.properties is not None
         assert "label" in schema.properties
@@ -44,7 +45,7 @@ class TestSingleResultValid:
             exp: str = Field(alias="explanation", description="The explanation")
             other: int = Field(description="Other field")
 
-        schema = structured_schema(AliasedAnswer, False)
+        schema = structured_schema(AnswerStructured(type=AliasedAnswer))
         assert schema is not None
 
     def test_single_result_with_nested_object(self) -> None:
@@ -58,7 +59,7 @@ class TestSingleResultValid:
             explanation: str = Field(description="The explanation")
             info: NestedInfo = Field(description="Nested information")
 
-        schema = structured_schema(NestedAnswer, False)
+        schema = structured_schema(AnswerStructured(type=NestedAnswer))
         assert schema is not None
 
     def test_single_result_with_array_field(self) -> None:
@@ -68,7 +69,7 @@ class TestSingleResultValid:
             explanation: str = Field(description="The explanation")
             tags: list[str] = Field(description="List of tags")
 
-        schema = structured_schema(ArrayAnswer, False)
+        schema = structured_schema(AnswerStructured(type=ArrayAnswer))
         assert schema is not None
 
 
@@ -83,7 +84,7 @@ class TestMultipleResultsValid:
             explanation: str = Field(description="Finding explanation")
             severity: str = Field(description="Severity level")
 
-        schema = structured_schema(Finding, True)
+        schema = structured_schema(AnswerStructured(type=list[Finding]))
         assert schema is not None
         assert schema.properties is not None
         assert "results" in schema.properties
@@ -97,7 +98,7 @@ class TestMultipleResultsValid:
             lbl: str = Field(alias="label", description="Issue type")
             exp: str = Field(alias="explanation", description="Issue details")
 
-        schema = structured_schema(Issue, True)
+        schema = structured_schema(AnswerStructured(type=list[Issue]))
         assert schema is not None
         assert schema.properties is not None
         assert "results" in schema.properties
@@ -114,23 +115,10 @@ class TestMultipleResultsValid:
             explanation: str = Field(description="Bug description")
             location: Location = Field(description="Bug location")
 
-        schema = structured_schema(Bug, True)
+        schema = structured_schema(AnswerStructured(type=list[Bug]))
         assert schema is not None
         assert schema.properties is not None
         assert "results" in schema.properties
-
-    def test_custom_field_name(self) -> None:
-        """Test that custom field name is used for result set."""
-
-        class Observation(BaseModel):
-            label: str = Field(description="Observation type")
-            explanation: str = Field(description="Observation details")
-
-        schema = structured_schema(Observation, "observations")
-        assert schema is not None
-        assert schema.properties is not None
-        assert "observations" in schema.properties
-        assert schema.properties["observations"].type == "array"
 
 
 class TestSingleResultInvalid:
@@ -143,7 +131,7 @@ class TestSingleResultInvalid:
             other: str = Field(description="Other field")
 
         # Should not raise - explanation is auto-added
-        schema = structured_schema(NoExplanation, False)
+        schema = structured_schema(AnswerStructured(type=NoExplanation))
         assert schema is not None
         assert schema.properties is not None
         # Verify explanation was added to the schema
@@ -158,7 +146,7 @@ class TestSingleResultInvalid:
             )
 
         # Should not raise - optional explanation is preserved as-is
-        schema = structured_schema(OptionalExplanation, False)
+        schema = structured_schema(AnswerStructured(type=OptionalExplanation))
         assert schema is not None
         assert schema.properties is not None
         assert "explanation" in schema.properties
@@ -171,7 +159,7 @@ class TestSingleResultInvalid:
             bad_field: str  # No description
 
         with pytest.raises(PrerequisiteError, match="missing descriptions"):
-            structured_schema(MissingDescription, False)
+            structured_schema(AnswerStructured(type=MissingDescription))
 
     def test_missing_description_on_nested_field(self) -> None:
         """Test that missing description on nested field raises error."""
@@ -184,24 +172,11 @@ class TestSingleResultInvalid:
             nested: NestedBad = Field(description="Nested object")
 
         with pytest.raises(PrerequisiteError, match="missing descriptions"):
-            structured_schema(WithBadNested, False)
+            structured_schema(AnswerStructured(WithBadNested))
 
 
 class TestMultipleResultsInvalid:
     """Tests for invalid multiple results schemas."""
-
-    def test_missing_label_in_list_items(self) -> None:
-        """Test that label is optional in result set items."""
-
-        class FindingNoLabel(BaseModel):
-            explanation: str = Field(description="Finding explanation")
-            severity: str = Field(description="Severity")
-
-        # Should not raise - label is optional
-        schema = structured_schema(FindingNoLabel, True)
-        assert schema is not None
-        assert schema.properties is not None
-        assert "results" in schema.properties
 
     def test_auto_adds_explanation_in_list_items(self) -> None:
         """Test that explanation is auto-added for result set items."""
@@ -211,7 +186,7 @@ class TestMultipleResultsInvalid:
             severity: str = Field(description="Severity")
 
         # Should not raise - explanation is auto-added
-        schema = structured_schema(FindingNoExplanation, True)
+        schema = structured_schema(AnswerStructured(type=list[FindingNoExplanation]))
         assert schema is not None
         # Result sets have a wrapper, so check the items schema
         assert schema.properties is not None
@@ -226,7 +201,7 @@ class TestMultipleResultsInvalid:
             bad_field: str  # No description
 
         with pytest.raises(PrerequisiteError, match="missing descriptions"):
-            structured_schema(FindingBadDescription, True)
+            structured_schema(AnswerStructured(type=list[FindingBadDescription]))
 
 
 class TestEdgeCases:
@@ -238,7 +213,7 @@ class TestEdgeCases:
         class ViaAlias(BaseModel):
             reason: str = Field(alias="explanation", description="Reason (explanation)")
 
-        schema = structured_schema(ViaAlias, False)
+        schema = structured_schema(AnswerStructured(type=ViaAlias))
         assert schema is not None
 
     def test_label_via_alias_in_multiple(self) -> None:
@@ -248,7 +223,7 @@ class TestEdgeCases:
             cat: str = Field(alias="label", description="Category")
             explanation: str = Field(description="Explanation")
 
-        schema = structured_schema(Finding, True)
+        schema = structured_schema(AnswerStructured(type=list[Finding]))
         assert schema is not None
         assert schema.properties is not None
         assert "results" in schema.properties
@@ -260,7 +235,7 @@ class TestEdgeCases:
             cat: str = Field(alias="label", description="Category")
             reason: str = Field(alias="explanation", description="Reason")
 
-        schema = structured_schema(Finding, True)
+        schema = structured_schema(AnswerStructured(type=list[Finding]))
         assert schema is not None
         assert schema.properties is not None
         assert "results" in schema.properties
@@ -276,7 +251,7 @@ class TestEdgeCases:
             field4: bool = Field(description="Field 4")
             field5: list[str] = Field(description="Field 5")
 
-        schema = structured_schema(ManyFields, False)
+        schema = structured_schema(AnswerStructured(type=ManyFields))
         assert schema is not None
         assert schema.properties is not None
         assert len(schema.properties) == 6

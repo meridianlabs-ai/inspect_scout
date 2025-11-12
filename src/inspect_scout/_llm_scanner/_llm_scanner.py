@@ -88,7 +88,7 @@ def llm_scanner(
         if isinstance(answer, AnswerStructured):
             value, _, model_output = await structured_generate(
                 input=resolved_prompt,
-                schema=structured_schema(answer.type, answer.result_set),
+                schema=structured_schema(answer),
                 answer_tool=answer.answer_tool,
                 model=model,
                 max_attempts=answer.max_attempts,

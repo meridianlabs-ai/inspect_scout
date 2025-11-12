@@ -118,9 +118,10 @@ async def structured_generate(
 ST = TypeVar("ST", bound=BaseModel)
 
 
-def structured_schema(type: Type[ST], result_set: bool | str) -> JSONSchema:
+def structured_schema(answer: AnswerStructured) -> JSONSchema:
     # Augment the type with an explanation field if it doesn't have one
-    augmented_type = augment_type_with_explanation(type)
+    answer_type, result_set = structured_answer_type(answer)
+    augmented_type = augment_type_with_explanation(answer_type)
 
     # validate descriptions on all fields including nested BaseModel types
     # we use validate_nested_models to handle nested BaseModel types properly
@@ -162,6 +163,19 @@ def structured_schema(type: Type[ST], result_set: bool | str) -> JSONSchema:
         )
 
 
+def structured_answer_type(answer: AnswerStructured) -> tuple[type[BaseModel], bool]:
+    if get_origin(answer.type) is list:
+        args = get_args(answer.type)
+        if not args or not issubclass(args[0], BaseModel):
+            raise ValueError("List must be parameterized with BaseModel subclass")
+        answer_type = args[0]
+        result_set = True
+    else:
+        answer_type = answer.type
+        result_set = False
+    return answer_type, result_set
+
+
 def structured_result(
     answer: AnswerStructured,
     output: ModelOutput,
@@ -175,21 +189,24 @@ def structured_result(
         extract_references: Function to extract references from text.
 
     Returns:
-        A Result object (or result_set if answer.result_set is True).
+        A Result object
     """
+    # parse out type info
+    answer_type, result_set = structured_answer_type(answer)
+
     # Augment the type with an explanation field if it doesn't have one
-    augmented_type = augment_type_with_explanation(answer.type)
+    augmented_type = augment_type_with_explanation(answer_type)
 
     # For single results, parse directly into the type
     # For result sets, we need to extract the list from the synthesized wrapper
-    if answer.result_set is False:
+    if result_set is False:
         parsed = augmented_type.model_validate_json(output.completion, by_name=True)
     else:
         # Parse as a generic dict first to extract the list
         wrapper_data = json.loads(output.completion)
 
         # Determine the field name
-        field_name = "results" if answer.result_set is True else answer.result_set
+        field_name = "results" if result_set is True else result_set
 
         # Extract the list from the wrapper
         if field_name not in wrapper_data:
@@ -288,7 +305,7 @@ def structured_result(
         )
 
     # Handle result set (multiple results)
-    if answer.result_set is not False:
+    if result_set is not False:
         # Parse each item in the list as an instance of the augmented type
         parsed_items = [
             augmented_type.model_validate(item, by_name=True) for item in list_data

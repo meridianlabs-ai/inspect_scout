@@ -1,5 +1,5 @@
 import json
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 from inspect_ai._util._async import run_coroutine
@@ -336,7 +336,7 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
     value_cols = [col for col in result_fields.columns if col.startswith("value.")]
     if value_cols and "value" not in result_fields.columns:
         # Reconstruct value column as a dict from the flattened columns
-        def reconstruct_value(row: pd.Series) -> dict:
+        def reconstruct_value(row: pd.Series) -> dict[str, Any]:
             """Reconstruct the value dict from flattened value.* columns."""
             value_dict = {}
             for col in value_cols:
@@ -446,9 +446,53 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
     expanded, synthetic_rows = _handle_label_validation(expanded, resultset_rows)
 
     # Combine with other rows (including synthetic rows)
-    all_rows = [other_rows, expanded]
-    if not synthetic_rows.empty:
-        all_rows.append(synthetic_rows)
-    result_df = pd.concat(all_rows, ignore_index=True)
+    # Filter out empty DataFrames
+    all_rows = [df for df in [other_rows, expanded, synthetic_rows] if not df.empty]
+
+    if not all_rows:
+        # All dataframes are empty, return an empty dataframe with the right structure
+        return pd.DataFrame()
+
+    if len(all_rows) == 1:
+        # Only one dataframe, no concatenation needed
+        return all_rows[0].reset_index(drop=True)
+
+    # To avoid FutureWarning about all-NA columns affecting dtype inference:
+    # The warning occurs when some DataFrames have all-NA values in a column while
+    # others have actual values. We need to ensure dtype consistency by inferring
+    # the dtype from DataFrames that have values, then explicitly setting that dtype
+    # in DataFrames where the column is all-NA.
+
+    # Get union of all columns
+    all_columns = list(set().union(*[set(df.columns) for df in all_rows]))
+
+    # For each column, determine the appropriate dtype from non-NA values
+    column_dtypes = {}
+    for col in all_columns:
+        # Find a DataFrame where this column has non-NA values
+        for df in all_rows:
+            if col in df.columns and df[col].notna().any():
+                column_dtypes[col] = df[col].dtype
+                break
+        # If column is all-NA everywhere, use object dtype
+        if col not in column_dtypes:
+            column_dtypes[col] = "object"
+
+    # Align all DataFrames to have the same columns with consistent dtypes
+    aligned_rows = []
+    for df in all_rows:
+        df_aligned = df.copy()
+        # Add missing columns with the appropriate dtype
+        for col in all_columns:
+            if col not in df_aligned.columns:
+                # Add column with correct dtype
+                df_aligned[col] = pd.Series(dtype=column_dtypes[col])
+            elif df_aligned[col].isna().all() and col in column_dtypes:
+                # Column exists but is all-NA - ensure it has the right dtype
+                df_aligned[col] = df_aligned[col].astype(column_dtypes[col])
+
+        aligned_rows.append(df_aligned)
+
+    result_df = pd.concat(aligned_rows, ignore_index=True)
 
     return result_df

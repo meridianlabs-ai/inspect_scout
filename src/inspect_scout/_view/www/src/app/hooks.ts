@@ -17,6 +17,7 @@ import {
   ScannerCore,
   ScannerReference,
 } from "./types";
+import { expandResultsetRows } from "./utils/arrow";
 
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
@@ -92,7 +93,10 @@ export const useServerScannerDataframe = () => {
 
         const table = decodeArrowBytes(arrayBuffer);
 
-        setSelectedScanResultData(selectedScanner, table);
+        // Pre-process result set rows to explode the results
+        const expandedTable = expandResultsetRows(table);
+
+        setSelectedScanResultData(selectedScanner, expandedTable);
       } finally {
         setLoadingData(false);
       }

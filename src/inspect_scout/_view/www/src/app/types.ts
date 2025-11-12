@@ -16,6 +16,14 @@ export type ScannerCore =
   | ScannerCoreEvent
   | ScannerCoreEvents;
 
+export type ValueType =
+  | "boolean"
+  | "number"
+  | "string"
+  | "array"
+  | "object"
+  | "null";
+
 export interface ScannerCoreBase {
   uuid?: string;
   inputType: "transcript" | "message" | "messages" | "event" | "events";
@@ -25,7 +33,7 @@ export interface ScannerCoreBase {
   validationResult: boolean | Record<string, boolean>;
   validationTarget: boolean | Record<string, boolean>;
   value: string | boolean | number | null | unknown[] | object;
-  valueType: "string" | "number" | "boolean" | "null" | "array" | "object";
+  valueType: ValueType;
   transcriptMetadata: Record<string, JsonValue>;
   transcriptSourceId: string;
 }

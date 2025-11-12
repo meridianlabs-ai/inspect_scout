@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from inspect_scout import Result, Scanner, result_set, scan, scanner
+from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_db, scan_results_df
 from inspect_scout._transcript.database import transcripts_from_logs
 from inspect_scout._transcript.types import Transcript
@@ -16,7 +16,7 @@ LOGS_DIR = Path(__file__).parent.parent / "examples" / "scanner" / "logs"
 def resultset_scanner_factory() -> Scanner[Transcript]:
     """Scanner that returns a resultset with multiple labeled results."""
 
-    async def scan_transcript(transcript: Transcript) -> Result:
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
         # Create a resultset with multiple results
         results = [
             Result(
@@ -38,7 +38,7 @@ def resultset_scanner_factory() -> Scanner[Transcript]:
                 explanation="Configuration issue detected",
             ),
         ]
-        return result_set(results)
+        return results
 
     return scan_transcript
 
@@ -60,8 +60,8 @@ def simple_scanner_factory() -> Scanner[Transcript]:
 def empty_resultset_scanner_factory() -> Scanner[Transcript]:
     """Scanner that returns an empty resultset."""
 
-    async def scan_transcript(transcript: Transcript) -> Result:
-        return result_set([])
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
+        return []
 
     return scan_transcript
 
@@ -579,7 +579,7 @@ def resultset_with_references_scanner_factory() -> Scanner[Transcript]:
     """Scanner that returns a resultset with Results containing references."""
     from inspect_scout._scanner.result import Reference
 
-    async def scan_transcript(transcript: Transcript) -> Result:
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
         # Create results with different reference types
         results = [
             Result(
@@ -610,7 +610,7 @@ def resultset_with_references_scanner_factory() -> Scanner[Transcript]:
                 ],
             ),
         ]
-        return result_set(results)
+        return results
 
     return scan_transcript
 

@@ -53,7 +53,7 @@ from ._recorder.recorder import ScanRecorder, Status
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import ScanJob, ScanJobConfig
 from ._scanner.loader import config_for_loader
-from ._scanner.result import Error, Result, ResultReport, ResultValidation
+from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScannerWork, ScanSpec
@@ -544,7 +544,7 @@ async def _scan_async_inner(
                     loader = scanner_config.loader
 
                     async for loader_result in loader(job.union_transcript):
-                        result: Result | None = None
+                        result: Result | list[Result] | None = None
                         error: Error | None = None
                         try:
                             type_and_ids = get_input_type_and_ids(loader_result)
@@ -555,12 +555,19 @@ async def _scan_async_inner(
                             async with span("scan"):
                                 result = await job.scanner(loader_result)
 
+                            # handle lists
+                            final_result = (
+                                as_resultset(result)
+                                if isinstance(result, list)
+                                else result
+                            )
+
                             # do validation if we have one for this scanner/id
                             if scan.validation and job.scanner_name in scan.validation:
                                 validation = await _validate_scan(
                                     scan.validation[job.scanner_name],
                                     type_and_ids[1],
-                                    result,
+                                    final_result,
                                 )
 
                         # Special case for errors that should bring down the scan
@@ -584,7 +591,7 @@ async def _scan_async_inner(
                                     input_type=type_and_ids[0],
                                     input_ids=type_and_ids[1],
                                     input=loader_result,
-                                    result=result,
+                                    result=final_result,
                                     validation=validation,
                                     error=error,
                                     events=jsonable_python(

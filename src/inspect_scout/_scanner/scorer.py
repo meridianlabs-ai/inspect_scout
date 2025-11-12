@@ -16,7 +16,7 @@ from inspect_ai.scorer import (
 from inspect_ai.solver import TaskState
 from pydantic import JsonValue
 
-from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.result import Result, as_resultset
 from inspect_scout._scanner.scanner import Scanner, metrics_for_scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -66,6 +66,8 @@ def as_scorer(
 
             # call scanner
             result = await scanner(transcript)
+            if isinstance(result, list):
+                result = as_resultset(result)
 
             # None means no score
             if result.value is None:

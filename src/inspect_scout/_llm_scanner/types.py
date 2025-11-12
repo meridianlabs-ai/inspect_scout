@@ -1,4 +1,4 @@
-from typing import Literal, NamedTuple, Type
+from typing import Literal, NamedTuple
 
 from pydantic import BaseModel
 
@@ -19,10 +19,14 @@ class AnswerStructured(NamedTuple):
     Structured answers are objects that conform to a JSON Schema.
     """
 
-    type: Type[BaseModel]
+    type: type[BaseModel] | type[list]  # type: ignore[type-arg]
     """Pydantic BaseModel that defines the type of the answer.
 
+    Can be a single Pydantic model result or a list of results.
+
     See the docs on [Structured Answers](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html#structured-answers) for more details on defining types.
+
+    See the docs on [Multiple Results](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html#multiple-results) for details on prompting scanners to yield multiple results from a scan.
     """
 
     result_value: Literal["true", "dict"] | None = None
@@ -32,14 +36,6 @@ class AnswerStructured(NamedTuple):
     - "dict": collects all of the fields returned (save for label and explanation) into a dict as the result value.
 
     The default is "true", unless there is a field in the object with alias="value" which will result in the value of that field being used as the value.
-    """
-
-    result_set: bool | str = False
-    """Should the model yield multiple labeled results (a `result_set()`).
-
-    Provide a string to set the name of the results container in the model's response (e.g. "observations"). Defaults to "results".
-
-    See the docs on [Multiple Results](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html#multiple-results) for details on prompting scanners to yield multiple results from a scan.
     """
 
     answer_tool: str = "answer"

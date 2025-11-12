@@ -26,7 +26,7 @@ from inspect_ai.util import JSONSchema
 from pydantic import BaseModel, Field, create_model
 
 from inspect_scout._llm_scanner.types import AnswerStructured
-from inspect_scout._scanner.result import Reference, Result, result_set
+from inspect_scout._scanner.result import Reference, Result, as_resultset
 
 
 async def structured_generate(
@@ -298,7 +298,7 @@ def structured_result(
         results = [create_result_from_parsed(item) for item in parsed_items]
 
         # Return as a result set
-        return result_set(results)
+        return as_resultset(results)
     else:
         # Handle single result
         assert parsed is not None  # parsed is always set for single results

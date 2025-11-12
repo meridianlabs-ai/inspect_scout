@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 from inspect_ai.model import ChatMessageUser
-from inspect_scout import Result, Scanner, result_set, scanner
+from inspect_scout import Result, Scanner, scanner
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation.validation import validation_set
 
@@ -34,32 +34,24 @@ def create_test_transcript() -> Transcript:
 def multi_finding_scanner_factory() -> Scanner[Transcript]:
     """Scanner that returns multiple findings per transcript."""
 
-    async def scan_transcript(transcript: Transcript) -> Result:
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
         # Return different findings based on transcript ID
         if len(transcript.id) % 3 == 0:
             # Return deception and jailbreak
-            return result_set(
-                [
-                    Result(
-                        label="deception", value=True, explanation="Found deception"
-                    ),
-                    Result(
-                        label="jailbreak", value=True, explanation="Found jailbreak"
-                    ),
-                ]
-            )
+            return [
+                Result(label="deception", value=True, explanation="Found deception"),
+                Result(label="jailbreak", value=True, explanation="Found jailbreak"),
+            ]
+
         elif len(transcript.id) % 3 == 1:
             # Return only deception
-            return result_set(
-                [
-                    Result(
-                        label="deception", value=True, explanation="Found deception"
-                    ),
-                ]
-            )
+            return [
+                Result(label="deception", value=True, explanation="Found deception"),
+            ]
+
         else:
             # Return no findings (all false/absent)
-            return result_set([])
+            return []
 
     return scan_transcript
 

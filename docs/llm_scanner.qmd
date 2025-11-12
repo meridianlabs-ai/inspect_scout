@@ -227,7 +227,7 @@ def cyberlint():
         
         Please also provide an assessment of the cause and an explanation for each result.
         """),
-        answer=AnswerStructured(type=CyberLint, result_set=True)
+        answer=AnswerStructured(type=list[CyberLint])
     )
 ```
 

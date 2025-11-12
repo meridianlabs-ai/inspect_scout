@@ -208,7 +208,7 @@ class TestResultSets:
             explanation: str = Field(description="Explanation")
             severity: str = Field(description="Severity")
 
-        answer = AnswerStructured(type=Finding, result_set=True)
+        answer = AnswerStructured(type=list[Finding])
         output = ModelOutput(
             model="test",
             completion="""{
@@ -246,7 +246,7 @@ class TestResultSets:
             explanation: str = Field(description="Explanation")
             line_number: int = Field(description="Line number")
 
-        answer = AnswerStructured(type=Issue, result_set=True, result_value="dict")
+        answer = AnswerStructured(type=list[Issue], result_value="dict")
         output = ModelOutput(
             model="test",
             completion="""{
@@ -313,7 +313,7 @@ class TestErrorCases:
             explanation: str = Field(description="Explanation")
             severity: str = Field(description="Severity level")
 
-        answer = AnswerStructured(type=FindingNoLabel, result_set=True)
+        answer = AnswerStructured(type=list[FindingNoLabel])
         output = ModelOutput(
             model="test",
             completion='{"results": [{"explanation": "Test finding", "severity": "high"}]}',

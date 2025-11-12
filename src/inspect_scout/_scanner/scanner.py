@@ -73,7 +73,7 @@ TScan = TypeVar("TScan", bound=ScannerInput)
 class Scanner(Protocol[T]):
     """Scanner protocol."""
 
-    def __call__(self, input: T, /) -> Awaitable[Result]:
+    def __call__(self, input: T, /) -> Awaitable[Result | list[Result]]:
         """Scan transcript content.
 
         Args:

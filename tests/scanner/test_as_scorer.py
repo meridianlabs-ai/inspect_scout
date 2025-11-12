@@ -1,5 +1,5 @@
 from inspect_ai import Task, eval
-from inspect_scout._scanner.result import Result, result_set
+from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, scanner
 from inspect_scout._scanner.scorer import as_scorer
 from inspect_scout._transcript.types import Transcript
@@ -32,8 +32,8 @@ def test_scanner_as_scorer_implicit() -> None:
 def single_result_scanner() -> Scanner[Transcript]:
     """Scanner that returns a resultset with a single result."""
 
-    async def scan(_transcript: Transcript) -> Result:
-        return result_set([Result(label="finding", value=True)])
+    async def scan(_transcript: Transcript) -> list[Result]:
+        return [Result(label="finding", value=True)]
 
     return scan
 
@@ -42,14 +42,12 @@ def single_result_scanner() -> Scanner[Transcript]:
 def multiple_unique_labels_scanner() -> Scanner[Transcript]:
     """Scanner that returns a resultset with multiple unique labels."""
 
-    async def scan(_transcript: Transcript) -> Result:
-        return result_set(
-            [
-                Result(label="deception", value=True),
-                Result(label="jailbreak", value=False),
-                Result(label="misconfig", value=True),
-            ]
-        )
+    async def scan(_transcript: Transcript) -> list[Result]:
+        return [
+            Result(label="deception", value=True),
+            Result(label="jailbreak", value=False),
+            Result(label="misconfig", value=True),
+        ]
 
     return scan
 
@@ -58,14 +56,12 @@ def multiple_unique_labels_scanner() -> Scanner[Transcript]:
 def duplicate_labels_scanner() -> Scanner[Transcript]:
     """Scanner that returns a resultset with duplicate labels (takes first)."""
 
-    async def scan(_transcript: Transcript) -> Result:
-        return result_set(
-            [
-                Result(label="deception", value=True, explanation="First finding"),
-                Result(label="jailbreak", value=False),
-                Result(label="deception", value=False, explanation="Second finding"),
-            ]
-        )
+    async def scan(_transcript: Transcript) -> list[Result]:
+        return [
+            Result(label="deception", value=True, explanation="First finding"),
+            Result(label="jailbreak", value=False),
+            Result(label="deception", value=False, explanation="Second finding"),
+        ]
 
     return scan
 
@@ -74,14 +70,12 @@ def duplicate_labels_scanner() -> Scanner[Transcript]:
 def complex_values_scanner() -> Scanner[Transcript]:
     """Scanner that returns a resultset with complex values (lists, dicts)."""
 
-    async def scan(_transcript: Transcript) -> Result:
-        return result_set(
-            [
-                Result(label="items", value=["a", "b", "c"]),
-                Result(label="config", value={"key": "value", "count": 42}),
-                Result(label="simple", value=True),
-            ]
-        )
+    async def scan(_transcript: Transcript) -> list[Result]:
+        return [
+            Result(label="items", value=["a", "b", "c"]),
+            Result(label="config", value={"key": "value", "count": 42}),
+            Result(label="simple", value=True),
+        ]
 
     return scan
 
@@ -90,8 +84,8 @@ def complex_values_scanner() -> Scanner[Transcript]:
 def empty_resultset_scanner() -> Scanner[Transcript]:
     """Scanner that returns an empty resultset."""
 
-    async def scan(_transcript: Transcript) -> Result:
-        return result_set([])
+    async def scan(_transcript: Transcript) -> list[Result]:
+        return []
 
     return scan
 
@@ -100,12 +94,10 @@ def empty_resultset_scanner() -> Scanner[Transcript]:
 def unlabeled_result_scanner() -> Scanner[Transcript]:
     """Scanner that returns a resultset with missing label (should error)."""
 
-    async def scan(_transcript: Transcript) -> Result:
-        return result_set(
-            [
-                Result(value=True),  # No label
-            ]
-        )
+    async def scan(_transcript: Transcript) -> list[Result]:
+        return [
+            Result(value=True),  # No label
+        ]
 
     return scan
 

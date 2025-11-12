@@ -16,7 +16,7 @@ from ._scanjob import ScanJob, ScanJobConfig, scanjob
 from ._scanlist import scan_list
 from ._scanner.extract import MessagesPreprocessor, messages_as_str
 from ._scanner.loader import Loader, loader
-from ._scanner.result import Error, Reference, Result, result_set
+from ._scanner.result import Error, Reference, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanner.scorer import as_scorer
 from ._scanner.types import ScannerInput
@@ -98,7 +98,6 @@ __all__ = [
     "ScannerInput",
     "Result",
     "Reference",
-    "result_set",
     "scanner",
     "Loader",
     "loader",

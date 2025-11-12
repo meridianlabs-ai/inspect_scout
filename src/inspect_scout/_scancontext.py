@@ -21,7 +21,6 @@ from inspect_ai.model._model_config import (
 )
 
 from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
-from inspect_scout._util.process import default_max_processes
 from inspect_scout._validation.types import ValidationSet
 
 from ._recorder.factory import scan_recorder_type_for_location
@@ -76,7 +75,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
     # create options
     options = ScanOptions(
         max_transcripts=scanjob.max_transcripts or DEFAULT_MAX_TRANSCRIPTS,
-        max_processes=scanjob.max_processes or default_max_processes(),
+        max_processes=scanjob.max_processes,
         limit=scanjob.limit,
         shuffle=scanjob.shuffle,
     )

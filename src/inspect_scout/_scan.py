@@ -66,7 +66,6 @@ from ._transcript.types import (
 from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.log import init_log
-from ._util.process import default_max_processes
 
 logger = getLogger(__name__)
 
@@ -238,9 +237,7 @@ async def scan_async(
     scanjob._max_transcripts = (
         max_transcripts or scanjob._max_transcripts or DEFAULT_MAX_TRANSCRIPTS
     )
-    scanjob._max_processes = (
-        max_processes or scanjob._max_processes or default_max_processes()
-    )
+    scanjob._max_processes = max_processes or scanjob._max_processes
     scanjob._limit = limit or scanjob._limit
     scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
 
@@ -612,9 +609,12 @@ async def _scan_async_inner(
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if scan.spec.options.max_processes == 1 or os.name == "nt"
+                    if total_scans == 1
+                    or scan.spec.options.max_processes == 1
+                    or os.name == "nt"
                     else multi_process_strategy(
-                        process_count=scan.spec.options.max_processes,
+                        total_scans=total_scans,
+                        max_processes=scan.spec.options.max_processes,
                         task_count=max_tasks,
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,

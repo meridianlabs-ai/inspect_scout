@@ -128,6 +128,7 @@ included embedded JSON data, these are all noted below):
 | `scan_metadata` | dictJSON | Additional scan metadata. |
 | `scanner_key` | str | Unique key for scan within scan job (defaults to `scanner_name`). |
 | `scanner_name` | str | Scanner name. |
+| `scanner_version` | int | Scanner version. |
 | `scanner_file` | str | Source file for scanner. |
 | `scanner_params` | dictJSON | Params used to create scanner. |
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |

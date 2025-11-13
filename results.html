@@ -505,106 +505,111 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Scanner name.</td>
 </tr>
 <tr class="even">
+<td><code>scanner_version</code></td>
+<td>int</td>
+<td>Scanner version.</td>
+</tr>
+<tr class="odd">
 <td><code>scanner_file</code></td>
 <td>str</td>
 <td>Source file for scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_params</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Params used to create scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>input_type</code></td>
 <td>transcript | message | messages | event | events</td>
 <td>Input type received by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input_ids</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Unique ids of scanner input.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>input</code></td>
 <td>ScannerInput<br><small>JSON</small></td>
 <td>Scanner input value.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>uuid</code></td>
 <td>str</td>
 <td>Globally unique id for scan result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>label</code></td>
 <td>str</td>
 <td>Label for the origin of the result (optional).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>value</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value returned by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>value_type</code></td>
 <td>string | boolean | number | array | object | null</td>
 <td>Type of value returned by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>answer</code></td>
 <td>str</td>
 <td>Answer extracted from scanner generation.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>explanation</code></td>
 <td>str</td>
 <td>Explanation for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Metadata for scan result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>message_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Messages referenced by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>event_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Events referenced by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>validation_target</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Target value from validation set.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>validation_result</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_error</code></td>
 <td>str</td>
 <td>Error which occurred during scan.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error_traceback</code></td>
 <td>str</td>
 <td>Traceback for error (if any)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
 <td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_total_tokens</code></td>
 <td>number</td>
 <td>Total tokens used by scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_model_usage</code></td>
 <td>dict [str, ModelUsage]<br><small>JSON</small></td>
 <td>Token usage by model for scan (only included when <code>rows = "transcripts"</code>).</td>

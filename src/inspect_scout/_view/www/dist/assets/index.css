@@ -3879,7 +3879,7 @@ span.ap-marker-container:hover span.ap-marker {
   text-decoration-style: solid;
   background-color: var(--bs-primary-bg-subtle);
 }
-._boolean_4auu6_1 {
+._boolean_xgip4_1 {
   font-family: "Consola Regular";
   display: inline-flex;
   justify-content: center;
@@ -3890,35 +3890,39 @@ span.ap-marker-container:hover span.ap-marker {
   height: 1rem;
 }
 
-._true_4auu6_12 {
+._true_xgip4_12 {
   background-color: var(--bs-success);
   border-color: var(--bs-success);
   color: var(--bs-body-bg);
 }
 
-._false_4auu6_18 {
+._false_xgip4_18 {
   background-color: var(--bs-danger);
   border-color: var(--bs-danger);
   color: var(--bs-body-bg);
 }
 
-._valueTable_4auu6_24 {
+._valueTable_xgip4_24 {
   display: grid;
   grid-template-columns: auto auto;
   column-gap: 1rem;
   row-gap: 0rem;
 }
 
-._inline_4auu6_31 ._valueValue_4auu6_31 {
+._inline_xgip4_31 ._valueValue_xgip4_31 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-._inline_4auu6_31 ._valueValue_4auu6_31 p {
+._inline_xgip4_31 ._valueValue_xgip4_31 p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+pre._value_xgip4_24 {
+  margin: 0;
 }
 ._container_1cyb4_1 {
   padding: 1rem;

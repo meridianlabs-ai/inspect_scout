@@ -7,7 +7,9 @@ import {
   parseScanResultPath,
   scanResultRoute,
 } from "../../router/url";
+import { printArray } from "../../utils/array";
 import { formatPrettyDecimal } from "../../utils/format";
+import { printObject } from "../../utils/object";
 import { MarkdownDivWithReferences } from "../components/MarkdownDivWithReferences";
 import {
   ScannerCore,
@@ -147,11 +149,11 @@ const renderValue = (
       </div>
     );
   } else if (val === null) {
-    return <code>null</code>;
+    return <pre className={clsx(styles.value)}>null</pre>;
   } else if (Array.isArray(val)) {
-    return <code>[Array({val.length})]</code>;
+    return printArray(val, 25);
   } else if (typeof val === "object") {
-    return <code>[Object]</code>;
+    return printObject(val, 35);
   } else {
     return "Unknown value type";
   }

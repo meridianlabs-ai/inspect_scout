@@ -25,20 +25,24 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   entry,
   gridDescriptor,
 }) => {
+  // Path information
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const [searchParams] = useSearchParams();
 
+  // selected scan result
+  const selectedScanResult = useStore((state) => state.selectedScanResult);
   const setSelectedScanResult = useStore(
     (state) => state.setSelectedScanResult
   );
-  const selectedScanResult = useStore((state) => state.selectedScanResult);
 
   // Generate the route to the scan result using the current scan path and the entry's uuid
   const isNavigable = entry.uuid !== undefined;
   const scanResultUrl = isNavigable
     ? scanResultRoute(relativePath, entry.uuid, searchParams)
     : "";
+
+  // Information about the row
   const hasExplanation = gridDescriptor.columns.includes("explanation");
   const hasLabel = gridDescriptor.columns.includes("label");
 
@@ -86,4 +90,5 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   );
 };
 
+// memoize the component to avoid unnecessary re-renders (esp of things which may involve markdown rendering)
 export const ScanResultsRow = memo(ScanResultsRowComponent);

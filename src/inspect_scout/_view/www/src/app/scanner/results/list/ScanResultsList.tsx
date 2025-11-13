@@ -26,8 +26,6 @@ interface ScanResultsListProps {
   columnTable: ColumnTable;
 }
 // TODO: Keyboard navigation
-// TODO: Ensure selected item is scrolled into view
-
 export const ScanResultsList: FC<ScanResultsListProps> = ({
   id,
   columnTable,

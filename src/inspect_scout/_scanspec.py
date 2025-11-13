@@ -22,6 +22,9 @@ class ScannerSpec(BaseModel):
     name: str
     """Scanner name."""
 
+    version: int = Field(default=0)
+    """Scanner version."""
+
     file: str | None = Field(default=None)
     """Scanner source file (if not in a package)."""
 

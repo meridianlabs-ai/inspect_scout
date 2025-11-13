@@ -111,6 +111,7 @@ The data frame includes the following fields (note that some fields included emb
 | `scan_metadata` | dict<br/><small>JSON</small> | Additional scan metadata. |
 | `scanner_key` | str | Unique key for scan within scan job (defaults to `scanner_name`). |
 | `scanner_name` | str | Scanner name. |
+| `scanner_version` | int | Scanner version. |
 | `scanner_file` | str | Source file for scanner. |
 | `scanner_params` | dict<br/><small>JSON</small> | Params used to create scanner. |
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |

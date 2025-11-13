@@ -54,6 +54,7 @@ from .validate import infer_filters_from_type, validate_scanner_signature
 
 SCANNER_CONFIG = "scanner_config"
 SCANNER_METRICS = "scanner_metrics"
+SCANNER_VERSION = "scanner_version"
 
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
@@ -104,6 +105,7 @@ def scanner(
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -115,6 +117,7 @@ def scanner(
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -126,6 +129,7 @@ def scanner(
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -137,6 +141,7 @@ def scanner(
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -151,6 +156,7 @@ def scanner(
     events: None = ...,
     loader: Loader[list[ChatMessage]] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -162,6 +168,7 @@ def scanner(
     messages: None = ...,
     loader: Loader[list[Event]] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -176,6 +183,7 @@ def scanner(
     events: None = ...,
     loader: Loader[ChatMessage] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -187,6 +195,7 @@ def scanner(
     messages: None = ...,
     loader: Loader[Event] | None = ...,
     name: str | None = ...,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -206,6 +215,7 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -219,6 +229,7 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
+    version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = None,
@@ -237,6 +248,7 @@ def scanner(
        messages: Message types to scan.
        events: Event types to scan.
        name: Scanner name (defaults to function name).
+       version: Scanner version (defaults to 0).
        metrics: One or more metrics to calculate over the values
            (only used if scanner is converted to a scorer via `as_scorer()`).
 
@@ -328,7 +340,11 @@ def scanner(
                 RegistryInfo(
                     type="scanner",
                     name=scanner_name,
-                    metadata={SCANNER_CONFIG: scanner_config, SCANNER_METRICS: metrics},
+                    metadata={
+                        SCANNER_CONFIG: scanner_config,
+                        SCANNER_METRICS: metrics,
+                        SCANNER_VERSION: version,
+                    },
                 ),
                 *args,
                 **kwargs,
@@ -348,12 +364,18 @@ def scanner(
         registry_add(
             scanner_factory_wrapper,
             RegistryInfo(
-                type="scanner", name=scanner_name, metadata={SCANNER_METRICS: metrics}
+                type="scanner",
+                name=scanner_name,
+                metadata={SCANNER_METRICS: metrics, SCANNER_VERSION: version},
             ),
         )
         return scanner_factory_wrapper
 
     return decorate
+
+
+def scanner_version(scanner: Scanner[Any]) -> int:
+    return int(registry_info(scanner).metadata.get(SCANNER_VERSION, 0))
 
 
 def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:

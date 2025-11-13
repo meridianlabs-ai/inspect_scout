@@ -25,7 +25,12 @@ from inspect_scout._validation.types import ValidationSet
 
 from ._recorder.factory import scan_recorder_type_for_location
 from ._scanjob import SCANJOB_FILE_ATTR, ScanJob
-from ._scanner.scanner import SCANNER_FILE_ATTR, Scanner, scanner_create
+from ._scanner.scanner import (
+    SCANNER_FILE_ATTR,
+    Scanner,
+    scanner_create,
+    scanner_version,
+)
 from ._scanspec import (
     ScannerSpec,
     ScannerWork,
@@ -158,7 +163,10 @@ def _spec_scanners(
 ) -> dict[str, ScannerSpec]:
     return {
         k: ScannerSpec(
-            name=registry_log_name(v), file=scanner_file(v), params=registry_params(v)
+            name=registry_log_name(v),
+            version=scanner_version(v),
+            file=scanner_file(v),
+            params=registry_params(v),
         )
         for k, v in scanners.items()
     }

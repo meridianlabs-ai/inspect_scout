@@ -4312,10 +4312,15 @@ button._segment_19z32_10 {
   color: var(--bs-link-hover-color);
   cursor: pointer;
 }
-._container_3iyps_1 {
+._container_1db6h_1 {
   display: grid;
   grid-template-columns: 200px 1fr;
+  grid-template-rows: 1fr max-content;
   height: 100%;
+}
+
+._footer_1db6h_8 {
+  grid-column: 1 / -1;
 }
 ._tabSet_10t9t_1 {
   overflow-y: hidden;

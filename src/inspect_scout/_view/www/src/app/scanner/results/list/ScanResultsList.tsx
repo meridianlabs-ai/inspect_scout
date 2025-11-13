@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, useCallback, useMemo, useRef } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { ActivityBar } from "../../../../components/ActivityBar";
@@ -36,6 +36,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const selectedFilter = useStore((state) => state.selectedFilter);
   const isLoadingData = useStore((state) => state.loadingData);
   const busy = isLoading || isLoadingData;
+  const setVisibleScannerResultCount = useStore(
+    (state) => state.setVisibleScannerResultCount
+  );
   const listHandle = useRef<VirtuosoHandle | null>(null);
   const gridDescriptor = useMemo(() => {
     return optimalColumnLayout(scannerSummaries);
@@ -52,6 +55,10 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     }
   }, [scannerSummaries, selectedFilter]);
   const selectedScanResult = useStore((state) => state.selectedScanResult);
+
+  useEffect(() => {
+    setVisibleScannerResultCount(filteredSummaries.length);
+  }, [filteredSummaries, setVisibleScannerResultCount]);
 
   const initialTopMostItemIndex = useMemo(() => {
     if (selectedScanResult) {

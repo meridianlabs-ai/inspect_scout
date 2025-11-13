@@ -6,6 +6,7 @@ import { LogPager } from "./Pager";
 
 interface FooterProps {
   id: string;
+  className?: string | string[];
 
   // Items
   itemCount: number;
@@ -20,10 +21,17 @@ interface FooterProps {
   pagesize?: number;
   page?: number;
   itemsPerPage?: number;
+
+  // labels
+  labels?: {
+    singular: string;
+    plural: string;
+  };
 }
 
 export const Footer: FC<FooterProps> = ({
   id,
+  className,
   itemCount,
   paginated,
   filteredCount,
@@ -31,6 +39,10 @@ export const Footer: FC<FooterProps> = ({
   progressBar,
   page,
   itemsPerPage,
+  labels = {
+    singular: "item",
+    plural: "items",
+  },
 }) => {
   // Get filtered count from the store
   const effectiveItemCount = filteredCount ?? itemCount;
@@ -45,7 +57,10 @@ export const Footer: FC<FooterProps> = ({
   const endItem = startItem + pageItemCount - 1;
 
   return (
-    <div id={id} className={clsx("text-size-smaller", styles.footer)}>
+    <div
+      id={id}
+      className={clsx("text-size-smaller", styles.footer, className)}
+    >
       <div className={clsx(styles.left)}>
         {progressText ? (
           <div className={clsx(styles.spinnerContainer)}>
@@ -75,8 +90,10 @@ export const Footer: FC<FooterProps> = ({
                 ? `${startItem} - ${endItem} / ${effectiveItemCount} (${itemCount} total)`
                 : `${startItem} - ${endItem} / ${effectiveItemCount}`}
           </div>
+        ) : effectiveItemCount === 1 ? (
+          `${effectiveItemCount} ${labels.singular}`
         ) : (
-          `${effectiveItemCount} items`
+          `${effectiveItemCount} ${labels.plural}`
         )}
       </div>
     </div>

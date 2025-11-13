@@ -41,6 +41,7 @@ interface StoreState {
 
   // Dataframes
   selectedScanResult?: string;
+  visibleScannerResultCount?: number;
 
   // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -97,6 +98,7 @@ interface StoreState {
   getSelectedScanResultPreviews: (
     scanner?: string
   ) => ScannerCore[] | undefined;
+  setVisibleScannerResultCount: (count: number) => void;
 
   // Clearing state
   clearScanState: () => void;
@@ -283,6 +285,11 @@ export const createStore = (api: ScanApi) =>
               return selectedScanResultDataRef.data;
             }
             return undefined;
+          },
+          setVisibleScannerResultCount: (count: number) => {
+            set((state) => {
+              state.visibleScannerResultCount = count;
+            });
           },
           setSelectedScanResultPreviews: (
             scanner?: string,

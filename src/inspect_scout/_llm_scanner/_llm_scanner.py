@@ -1,4 +1,4 @@
-from typing import Any, Awaitable, Callable, Literal
+from typing import Any, Awaitable, Callable, Literal, overload
 
 from inspect_ai.model import (
     GenerateConfig,
@@ -17,6 +17,42 @@ from .._transcript.types import Transcript
 from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
 from .types import AnswerMultiLabel, AnswerStructured
+
+
+@overload
+def llm_scanner(
+    *,
+    question: str | Callable[[Transcript], Awaitable[str]],
+    answer: Literal["boolean", "numeric", "string"]
+    | list[str]
+    | AnswerMultiLabel
+    | AnswerStructured,
+    template: str | None = None,
+    template_variables: dict[str, Any]
+    | Callable[[Transcript], dict[str, Any]]
+    | None = None,
+    preprocessor: MessagesPreprocessor | None = None,
+    model: str | Model | None = None,
+    name: str | None = None,
+) -> Scanner[Transcript]: ...
+
+
+@overload
+def llm_scanner(
+    *,
+    question: None = None,
+    answer: Literal["boolean", "numeric", "string"]
+    | list[str]
+    | AnswerMultiLabel
+    | AnswerStructured,
+    template: str,
+    template_variables: dict[str, Any]
+    | Callable[[Transcript], dict[str, Any]]
+    | None = None,
+    preprocessor: MessagesPreprocessor | None = None,
+    model: str | Model | None = None,
+    name: str | None = None,
+) -> Scanner[Transcript]: ...
 
 
 @scanner(messages="all")

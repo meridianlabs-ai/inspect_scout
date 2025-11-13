@@ -25,6 +25,7 @@ import { InfoPanel } from "./info/InfoPanel";
 import { InputPanel } from "./input/InputPanel";
 import { ResultPanel } from "./result/ResultPanel";
 import { ScanResultHeader } from "./ScanResultHeader";
+import { ScanResultNav } from "./ScanResultNav";
 import styles from "./ScanResultPanel.module.css";
 import { TranscriptPanel } from "./transcript/TranscriptPanel";
 
@@ -35,14 +36,19 @@ const kTabIdJson = "JSON";
 const kTabIdTranscript = "transcript";
 
 export const ScanResultPanel: FC = () => {
+  // Url data
+  const params = useParams<{ "*": string }>();
+  const relativePath = getRelativePathFromParams(params);
+  const { scanResultUuid } = parseScanResultPath(relativePath);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Required server data
   useServerScans();
   useServerScanner();
   useServerScannerDataframe();
 
-  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
-  const [searchParams, setSearchParams] = useSearchParams();
-
   // Sync URL query param with store state
+  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   useEffect(() => {
     const scannerParam = getScannerParam(searchParams);
     if (scannerParam) {
@@ -50,13 +56,12 @@ export const ScanResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  const params = useParams<{ "*": string }>();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanResultUuid } = parseScanResultPath(relativePath);
-
   const loading = useStore((state) => state.loading);
-
   const selectedTab = useStore((state) => state.selectedResultTab);
+  const visibleScannerResults = useStore(
+    (state) => state.visibleScannerResults
+  );
+
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
   const { data: selectedResult, isLoading: resultLoading } =
     useSelectedResultsRow(scanResultUuid);
@@ -98,7 +103,7 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <Navbar />
+      <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
       <ActivityBar animating={!!loading || resultLoading} />
       <ScanResultHeader result={selectedResult} />
       {selectedResult && (

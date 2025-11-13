@@ -1,5 +1,5 @@
 import { ColumnTable } from "arquero";
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
@@ -95,6 +95,9 @@ export const useServerScannerDataframe = () => {
   const setSelectedScanResultData = useStore(
     (state) => state.setSelectedScanResultData
   );
+  const setSelectedScanResult = useStore(
+    (state) => state.setSelectedScanResult
+  );
   const getSelectedScanResultData = useStore(
     (state) => state.getSelectedScanResultData
   );
@@ -133,6 +136,7 @@ export const useServerScannerDataframe = () => {
 
         // Store in state
         setSelectedScanResultData(selectedScanner, expandedTable);
+        setSelectedScanResult(expandedTable.get("uuid", 0) as string);
       } catch (e) {
         // Notify app of error
         setError("dataframe", e.toString());

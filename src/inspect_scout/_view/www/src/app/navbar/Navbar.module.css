@@ -58,3 +58,9 @@
 .pathContainer {
   overflow-x: hidden;
 }
+
+.hasChildren {
+  border-left: solid var(--bs-border-color) 1px;
+  padding-left: 0.5rem;
+  margin-left: 0.5rem;
+}

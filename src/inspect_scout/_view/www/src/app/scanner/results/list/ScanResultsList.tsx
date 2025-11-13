@@ -34,8 +34,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const selectedFilter = useStore((state) => state.selectedFilter);
   const isLoadingData = useStore((state) => state.loadingData);
   const busy = isLoading || isLoadingData;
-  const setVisibleScannerResultCount = useStore(
-    (state) => state.setVisibleScannerResultCount
+  const setVisibleScannerResults = useStore(
+    (state) => state.setVisibleScannerResults
   );
   const listHandle = useRef<VirtuosoHandle | null>(null);
   const gridDescriptor = useMemo(() => {
@@ -55,8 +55,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const selectedScanResult = useStore((state) => state.selectedScanResult);
 
   useEffect(() => {
-    setVisibleScannerResultCount(filteredSummaries.length);
-  }, [filteredSummaries, setVisibleScannerResultCount]);
+    setVisibleScannerResults(filteredSummaries);
+  }, [filteredSummaries, setVisibleScannerResults]);
 
   const initialTopMostItemIndex = useMemo(() => {
     if (selectedScanResult) {

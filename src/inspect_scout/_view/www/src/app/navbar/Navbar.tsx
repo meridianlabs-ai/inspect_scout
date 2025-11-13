@@ -139,7 +139,14 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
           )}
         </div>
       </div>
-      <div className={clsx(styles.right)}>{children}</div>
+      <div
+        className={clsx(
+          styles.right,
+          children ? styles.hasChildren : undefined
+        )}
+      >
+        {children}
+      </div>
     </nav>
   );
 };

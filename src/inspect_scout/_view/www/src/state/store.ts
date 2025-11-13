@@ -39,9 +39,11 @@ interface StoreState {
   selectedScanLocation?: string;
   selectedScanStatus?: Status;
 
+  // Scanner
+  visibleScannerResults: ScannerCore[];
+
   // Dataframes
   selectedScanResult?: string;
-  visibleScannerResultCount?: number;
 
   // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -98,7 +100,7 @@ interface StoreState {
   getSelectedScanResultPreviews: (
     scanner?: string
   ) => ScannerCore[] | undefined;
-  setVisibleScannerResultCount: (count: number) => void;
+  setVisibleScannerResults: (results: ScannerCore[]) => void;
 
   // Clearing state
   clearScanState: () => void;
@@ -191,6 +193,7 @@ export const createStore = (api: ScanApi) =>
           collapsedBuckets: {},
           transcriptCollapsedEvents: {},
           scopedErrors: {} as Record<ErrorScope, string>,
+          visibleScannerResults: [],
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -286,9 +289,9 @@ export const createStore = (api: ScanApi) =>
             }
             return undefined;
           },
-          setVisibleScannerResultCount: (count: number) => {
+          setVisibleScannerResults: (results: ScannerCore[]) => {
             set((state) => {
-              state.visibleScannerResultCount = count;
+              state.visibleScannerResults = results;
             });
           },
           setSelectedScanResultPreviews: (

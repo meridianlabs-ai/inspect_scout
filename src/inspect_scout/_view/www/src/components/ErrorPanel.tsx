@@ -28,7 +28,7 @@ export const ErrorPanel: FC<ErrorPanelProps> = ({ title, error }) => {
       </div>
       <div className={"error-panel-body"}>
         <div>
-          Error: {message || ""}
+          {message || ""}
           {stack && error.displayStack !== false && (
             <pre className={"error-panel-stack"}>
               <code>at {stack}</code>

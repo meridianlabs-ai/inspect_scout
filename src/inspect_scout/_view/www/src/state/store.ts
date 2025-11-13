@@ -7,7 +7,7 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
-import { ScannerCore } from "../app/types";
+import { ErrorScope, ScannerCore } from "../app/types";
 import { Status } from "../types";
 import { debounce } from "../utils/sync";
 
@@ -30,6 +30,7 @@ interface StoreState {
   hasInitializedRouting?: boolean;
   loading: number;
   loadingData: number;
+  scopedErrors: Record<ErrorScope, string>;
 
   // Scans
   resultsDir?: string;
@@ -64,6 +65,8 @@ interface StoreState {
   setSingleFileMode: (enabled: boolean) => void;
   setHasInitializedEmbeddedData: (initialized: boolean) => void;
   setHasInitializedRouting: (initialized: boolean) => void;
+  setError: (scope: ErrorScope, error: string | undefined) => void;
+  clearError: (scope: ErrorScope) => void;
 
   // Global app behavior
   setLoading: (loading: boolean) => void;
@@ -183,6 +186,7 @@ export const createStore = (api: ScanApi) =>
           loadingData: 0,
           collapsedBuckets: {},
           transcriptCollapsedEvents: {},
+          scopedErrors: {} as Record<ErrorScope, string>,
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -198,6 +202,16 @@ export const createStore = (api: ScanApi) =>
           setHasInitializedRouting: (initialized: boolean) => {
             set((state) => {
               state.hasInitializedRouting = initialized;
+            });
+          },
+          setError: (scope: ErrorScope, error: string | undefined) => {
+            set((state) => {
+              state.scopedErrors[scope] = error;
+            });
+          },
+          clearError: (scope: ErrorScope) => {
+            set((state) => {
+              state.scopedErrors[scope] = undefined;
             });
           },
           setLoading: (loading: boolean) => {

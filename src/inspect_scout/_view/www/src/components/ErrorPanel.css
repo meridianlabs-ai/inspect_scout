@@ -3,7 +3,7 @@
   min-height: 10rem;
   margin-top: 4rem;
   margin-bottom: 4em;
-  width: 100vw;
+  width: 100%;
 }
 .error-panel-heading {
   font-size: var(--inspect-font-size-larger);

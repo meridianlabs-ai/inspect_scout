@@ -4069,6 +4069,43 @@ button._segment_19z32_10 {
 ._gridWrapper_yeano_1 .ag-cell {
   line-height: 1.1em;
 }
+.error-panel {
+  flex-direction: column;
+  min-height: 10rem;
+  margin-top: 4rem;
+  margin-bottom: 4em;
+  width: 100%;
+}
+.error-panel-heading {
+  font-size: var(--inspect-font-size-larger);
+}
+
+.error-panel-body {
+  display: inline-block;
+  font-size: var(--inspect-font-size-smaller);
+  margin-top: 1rem;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  padding: 1em;
+  max-width: 80%;
+}
+
+.error-panel-stack {
+  font-size: var(--inspect-font-size-smaller);
+  white-space: prewrap;
+}
+
+.centered-flex {
+  display: flex;
+  flex: 0 0 content;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-icon {
+  margin-right: 0.5rem;
+  color: var(--bs-red);
+}
 ._header_cpxb8_1 {
   border-bottom: solid var(--bs-light-border-subtle) 1px;
   padding: 0.3rem 1rem;
@@ -4250,43 +4287,6 @@ button._segment_19z32_10 {
 
 ._subtitle_1vka4_47 {
   grid-column: 1 / -1;
-}
-.error-panel {
-  flex-direction: column;
-  min-height: 10rem;
-  margin-top: 4rem;
-  margin-bottom: 4em;
-  width: 100vw;
-}
-.error-panel-heading {
-  font-size: var(--inspect-font-size-larger);
-}
-
-.error-panel-body {
-  display: inline-block;
-  font-size: var(--inspect-font-size-smaller);
-  margin-top: 1rem;
-  border: solid 1px var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  padding: 1em;
-  max-width: 80%;
-}
-
-.error-panel-stack {
-  font-size: var(--inspect-font-size-smaller);
-  white-space: prewrap;
-}
-
-.centered-flex {
-  display: flex;
-  flex: 0 0 content;
-  align-items: center;
-  justify-content: center;
-}
-
-.error-icon {
-  margin-right: 0.5rem;
-  color: var(--bs-red);
 }
 /**
  * prism.js default theme for JavaScript, CSS and HTML

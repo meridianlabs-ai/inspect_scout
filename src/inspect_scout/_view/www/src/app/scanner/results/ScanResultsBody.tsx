@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { DataframeView } from "../../../components/DataframeView";
+import { ErrorPanel } from "../../../components/ErrorPanel";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { useStore } from "../../../state/store";
 import { useSelectedScanner } from "../../hooks";
@@ -27,6 +28,7 @@ export const ScanResultsBody: FC = () => {
   const isLoadingData = useStore((state) => state.loadingData);
   const isLoading = useStore((state) => state.loading);
   const hasScanner = columnTable?.numRows() > 0;
+  const error = useStore((state) => state.scopedErrors["dataframe"]);
 
   return (
     <div className={clsx(styles.scrollContainer)}>
@@ -43,8 +45,14 @@ export const ScanResultsBody: FC = () => {
           )}
         </div>
       )}
-      {!hasScanner && !isLoadingData && !isLoading && (
+      {!hasScanner && !isLoadingData && !isLoading && !error && (
         <NoContentsPanel text="No scanner data available." />
+      )}
+      {error && (
+        <ErrorPanel
+          title="Error Loading Dataframe"
+          error={{ message: error }}
+        />
       )}
     </div>
   );

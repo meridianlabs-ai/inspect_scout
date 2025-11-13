@@ -59,10 +59,15 @@ export const useServerScans = () => {
 };
 
 export const useServerScannerDataframe = () => {
+  // Path information
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
-  const selectedScanner = useSelectedScanner();
   const { scanPath } = parseScanResultPath(relativePath);
+
+  const singleFileMode = useStore((state) => state.singleFileMode);
+  const resultsDir = useStore((state) => state.resultsDir);
+  const selectedScanner = useSelectedScanner();
+
   const setLoadingData = useStore((state) => state.setLoadingData);
   const setSelectedScanResultData = useStore(
     (state) => state.setSelectedScanResultData
@@ -70,12 +75,13 @@ export const useServerScannerDataframe = () => {
   const getSelectedScanResultData = useStore(
     (state) => state.getSelectedScanResultData
   );
-  const resultsDir = useStore((state) => state.resultsDir);
-  const singleFileMode = useStore((state) => state.singleFileMode);
+  const setError = useStore((state) => state.setError);
+  const clearError = useStore((state) => state.clearError);
 
   const api = useApi();
   useEffect(() => {
     const fetchScannerDataframe = async () => {
+      clearError("dataframe");
       const existingData = getSelectedScanResultData(selectedScanner);
       if (!scanPath || !selectedScanner || existingData) {
         return;
@@ -100,6 +106,8 @@ export const useServerScannerDataframe = () => {
 
         // Store in state
         setSelectedScanResultData(selectedScanner, expandedTable);
+      } catch (e) {
+        setError("dataframe", e.toString());
       } finally {
         setLoadingData(false);
       }

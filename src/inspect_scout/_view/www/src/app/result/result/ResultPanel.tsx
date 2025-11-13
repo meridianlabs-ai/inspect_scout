@@ -44,7 +44,13 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
               Value
             </div>
             <div>
-              <Value result={result} style="block" />
+              {result.valueType === "object" ? (
+                <MetaDataGrid
+                  entries={result.value as Record<string, unknown>}
+                />
+              ) : (
+                <Value result={result} style="block" />
+              )}
             </div>
             <div className={clsx("text-style-label", "text-style-secondary")}>
               Explanation

@@ -33,25 +33,43 @@ export const useSelectedScanner = () => {
 };
 
 export const useServerScans = () => {
+  // api
   const api = useApi();
+
+  // state
+  const resultsDir = useStore((state) => state.resultsDir);
+
+  // setters
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
-  const resultsDir = useStore((state) => state.resultsDir);
   const setLoading = useStore((state) => state.setLoading);
+  const setError = useStore((state) => state.setError);
+  const clearError = useStore((state) => state.clearError);
 
   useEffect(() => {
     const fetchScans = async () => {
+      // Update loading and error state
+      clearError("scanjobs");
       setLoading(true);
+
       try {
+        // Fetch the data
         const scansInfo = await api.getScans();
         if (scansInfo) {
+          // Update state
           setResultsDir(scansInfo.results_dir);
           setScans(scansInfo.scans);
         }
+      } catch (e) {
+        // Notify app of error
+        setError("scanjobs", e.toString());
       } finally {
+        // Stop loading
         setLoading(false);
       }
     };
+
+    // Only fetch if we don't already have data retrieved
     if (!resultsDir) {
       void fetchScans();
     }
@@ -59,15 +77,20 @@ export const useServerScans = () => {
 };
 
 export const useServerScannerDataframe = () => {
+  // api
+  const api = useApi();
+
   // Path information
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const { scanPath } = parseScanResultPath(relativePath);
 
+  // State
   const singleFileMode = useStore((state) => state.singleFileMode);
   const resultsDir = useStore((state) => state.resultsDir);
   const selectedScanner = useSelectedScanner();
 
+  // Setters
   const setLoadingData = useStore((state) => state.setLoadingData);
   const setSelectedScanResultData = useStore(
     (state) => state.setSelectedScanResultData
@@ -78,14 +101,18 @@ export const useServerScannerDataframe = () => {
   const setError = useStore((state) => state.setError);
   const clearError = useStore((state) => state.clearError);
 
-  const api = useApi();
   useEffect(() => {
     const fetchScannerDataframe = async () => {
+      // Clear any existing errors
       clearError("dataframe");
+
+      // See if we already have data
       const existingData = getSelectedScanResultData(selectedScanner);
       if (!scanPath || !selectedScanner || existingData) {
         return;
       }
+
+      // Start loading (since we are going to fetch)
       setLoadingData(true);
       try {
         // In single file mode, send an absolute path
@@ -107,8 +134,10 @@ export const useServerScannerDataframe = () => {
         // Store in state
         setSelectedScanResultData(selectedScanner, expandedTable);
       } catch (e) {
+        // Notify app of error
         setError("dataframe", e.toString());
       } finally {
+        // Stop progress
         setLoadingData(false);
       }
     };
@@ -126,35 +155,58 @@ export const useServerScannerDataframe = () => {
 };
 
 export const useServerScanner = () => {
+  // api
+  const api = useApi();
+
+  // Path information
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const { scanPath } = parseScanResultPath(relativePath);
+
+  // State
+  const resultsDir = useStore((state) => state.resultsDir);
+  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  const scans = useStore((state) => state.scans);
+
+  // Setters
   const setSelectedScanLocation = useStore(
     (state) => state.setSelectedScanLocation
   );
   const setSelectedScanStatus = useStore(
     (state) => state.setSelectedScanStatus
   );
-  const api = useApi();
-  const resultsDir = useStore((state) => state.resultsDir);
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
-  const scans = useStore((state) => state.scans);
+  const setLoading = useStore((state) => state.setLoading);
+  const setError = useStore((state) => state.setError);
+  const clearError = useStore((state) => state.clearError);
 
   useEffect(() => {
     if (scanPath && !selectedStatus) {
+      // Clear any existing errors
+      clearError("scanner");
+
       // Check the list of scans that are already loaded
       const location = join(scanPath, resultsDir);
       const scansInfo = scans.find((s) => s.location === location);
       if (scansInfo) {
+        // Already in store, use it
         setSelectedScanStatus(scansInfo);
       } else {
         // Fetch from server if not in store
         const fetchScan = async () => {
-          const status = await api.getScan(location);
-          setSelectedScanStatus(status);
+          setLoading(true);
+          try {
+            const status = await api.getScan(location);
+            setSelectedScanStatus(status);
+          } catch (e) {
+            setError("scanner", e.toString());
+          } finally {
+            setLoading(false);
+          }
         };
         void fetchScan();
       }
+
+      // Select this scan
       setSelectedScanLocation(scanPath);
     }
   }, [

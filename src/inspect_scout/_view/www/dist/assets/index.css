@@ -4033,6 +4033,90 @@ pre._value_xgip4_24 {
   margin-right: 0.5rem;
   color: var(--bs-red);
 }
+._footer_14uod_1 {
+  border-top: solid var(--bs-light-border-subtle) 1px;
+  background: var(--bs-light-bg-subtle);
+  display: grid;
+  grid-template-columns: 0.5fr 1fr 0.5fr;
+  justify-content: space-between;
+
+  padding: 0.2em 1em;
+}
+
+._spinnerContainer_14uod_11 {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.3em;
+  padding-top: 0.2em;
+}
+
+._spinner_14uod_11 {
+  height: 11px;
+  width: 11px;
+  color: var(--bs-secondary);
+  border-width: 1px;
+}
+
+._label_14uod_25 {
+  margin-left: 0.1em;
+  margin-top: -3px;
+}
+
+._right_14uod_30 {
+  display: grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  justify-content: end;
+  align-items: center;
+  column-gap: 0.5em;
+}
+
+._left_14uod_39 {
+  display: grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  justify-content: start;
+  align-items: center;
+  column-gap: 0.5em;
+}
+
+._center_14uod_48 {
+  display: grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  justify-content: center;
+  align-items: center;
+  column-gap: 0.5em;
+}
+._pager_jzegk_1 {
+  --bs-pagination-padding-x: 0.5em;
+  --bs-pagination-padding-y: 0.15em;
+  --bs-pagination-font-size: 0.8rem;
+  --bs-pagination-padding-x: 0.5em;
+  --bs-pagination-padding-y: 0;
+  --bs-pagination-border-radius: var(--bs-border-radius);
+  margin-bottom: 0;
+}
+
+._item_jzegk_11:not(.disabled) {
+  cursor: pointer;
+}
+
+._item_jzegk_11 {
+  margin-left: 0.2em;
+  margin-right: 0.2em;
+}
+
+._item_jzegk_11:first-child,
+._item_jzegk_11:last-child {
+  --bs-pagination-padding-x: 0.3em;
+}
+
+._item_jzegk_11:first-child .ii:before,
+._item_jzegk_11:last-child .ii:before {
+  margin-top: -2px;
+  font-size: 0.8em;
+}
 ._gridWrapper_1o0hu_1 {
   height: 100%;
   border-top: solid 1px var(--bs-border-color);
@@ -4045,6 +4129,12 @@ pre._value_xgip4_24 {
 
 ._row_1o0hu_11 {
   cursor: pointer;
+}
+._container_18ufx_1 {
+  display: grid;
+  grid-template-rows: max-content max-content 1fr max-content;
+  height: 100%;
+  row-gap: 0;
 }
 ._root_ke0e7_1 {
   height: 100vh;

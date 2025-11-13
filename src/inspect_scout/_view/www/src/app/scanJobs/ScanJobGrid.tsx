@@ -1,5 +1,6 @@
 import type {
   ColDef,
+  FilterChangedEvent,
   RowClickedEvent,
   StateUpdatedEvent,
 } from "ag-grid-community";
@@ -9,7 +10,7 @@ import {
   themeBalham,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { FC, useCallback, useMemo, useRef } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { getRelativePathFromParams } from "../../router/url";
@@ -46,6 +47,10 @@ export const ScanJobGrid: FC = () => {
 
   const gridStates = useStore((state) => state.gridStates);
   const setGridState = useStore((state) => state.setGridState);
+
+  const setVisibleScanJobCount = useStore(
+    (state) => state.setVisibleScanJobCount
+  );
 
   const resultsDir = useStore((state) => state.resultsDir);
 
@@ -119,6 +124,10 @@ export const ScanJobGrid: FC = () => {
     return rows;
   }, [scans, resultsDir, paramsRelativePath]);
 
+  useEffect(() => {
+    setVisibleScanJobCount(data.length);
+  }, [data.length, setVisibleScanJobCount]);
+
   // Create column definitions
   const columnDefs = useMemo((): ColDef<ScanJobSummary>[] => {
     const baseColumns: ColDef<ScanJobSummary>[] = [
@@ -149,11 +158,13 @@ export const ScanJobGrid: FC = () => {
         headerName: "Scanners",
         initialWidth: 120,
         minWidth: 120,
-        sortable: false,
-        filter: false,
+        sortable: true,
+        filter: true,
         resizable: true,
-        valueFormatter: (params: { value: unknown[] }) =>
-          params.value.join(", "),
+        valueGetter: (params) => {
+          const scanners = params.data?.scanners;
+          return Array.isArray(scanners) ? scanners.join(", ") : "";
+        },
       },
 
       {
@@ -197,6 +208,14 @@ export const ScanJobGrid: FC = () => {
     []
   );
 
+  const onFilterChanged = useCallback(
+    (event: FilterChangedEvent<ScanJobSummary>) => {
+      const displayedRowCount = event.api.getDisplayedRowCount();
+      setVisibleScanJobCount(displayedRowCount);
+    },
+    [setVisibleScanJobCount]
+  );
+
   return (
     <div className={styles.gridWrapper}>
       <AgGridReact<ScanJobSummary>
@@ -225,6 +244,7 @@ export const ScanJobGrid: FC = () => {
           }
         }}
         onGridSizeChanged={resizeGridColumns}
+        onFilterChanged={onFilterChanged}
       />
     </div>
   );

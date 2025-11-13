@@ -35,6 +35,7 @@ interface StoreState {
   // Scans
   resultsDir?: string;
   scans: Status[];
+  visibleScanJobCount?: number;
   selectedScanLocation?: string;
   selectedScanStatus?: Status;
 
@@ -77,6 +78,7 @@ interface StoreState {
 
   // List of scans
   setScans: (scans: Status[]) => void;
+  setVisibleScanJobCount: (count: number) => void;
 
   // Selected scan status (heading information)
   setSelectedScanLocation: (location: string) => void;
@@ -241,6 +243,10 @@ export const createStore = (api: ScanApi) =>
           setScans: (scans: Status[]) =>
             set((state) => {
               state.scans = scans;
+            }),
+          setVisibleScanJobCount: (count: number) =>
+            set((state) => {
+              state.visibleScanJobCount = count;
             }),
           setSelectedScanLocation: (location: string) =>
             set((state) => {

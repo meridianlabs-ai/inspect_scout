@@ -1,0 +1,6 @@
+.container {
+  display: grid;
+  grid-template-rows: max-content max-content 1fr max-content;
+  height: 100%;
+  row-gap: 0;
+}

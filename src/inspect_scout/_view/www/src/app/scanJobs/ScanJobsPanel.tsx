@@ -1,19 +1,23 @@
+import { clsx } from "clsx";
 import { FC, useEffect } from "react";
 
 import { ActivityBar } from "../../components/ActivityBar";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { useStore } from "../../state/store";
+import { Footer } from "../components/Footer";
 import { useServerScans } from "../hooks";
 import { Navbar } from "../navbar/Navbar";
 
 import { ScanJobGrid } from "./ScanJobGrid";
+import styles from "./ScanJobsPanel.module.css";
 
 export const ScanJobsPanel: FC = () => {
   // Load scans data
   useServerScans();
   const loading = useStore((state) => state.loading);
   const error = useStore((state) => state.scopedErrors["scanjobs"]);
+  const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);
@@ -22,7 +26,7 @@ export const ScanJobsPanel: FC = () => {
   }, []);
 
   return (
-    <>
+    <div className={clsx(styles.container)}>
       <Navbar bordered={false} />
       <ActivityBar animating={!!loading} />
       <ExtendedFindProvider>
@@ -30,7 +34,12 @@ export const ScanJobsPanel: FC = () => {
           <ErrorPanel title="Error Loading Scans" error={{ message: error }} />
         )}
         {!error && <ScanJobGrid />}
+        <Footer
+          id={"scan-job-footer"}
+          itemCount={visibleScanJobCount}
+          paginated={false}
+        />
       </ExtendedFindProvider>
-    </>
+    </div>
   );
 };

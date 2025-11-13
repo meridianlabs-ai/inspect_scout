@@ -49,7 +49,13 @@ class Summary(BaseModel):
         # aggregate over all results
         agg_results = ScannerSummary()
         for result in results:
-            agg_results.results += 1 if result.result and result.result.value else 0
+            if result.result and result.result.value:
+                if result.result.type == "resultset" and isinstance(
+                    result.result.value, list
+                ):
+                    agg_results.results += len(result.result.value)
+                else:
+                    agg_results.results += 1
             if result.validation is not None:
                 agg_results.validations.append(result.validation.valid)
             agg_results.errors += 1 if result.error is not None else 0

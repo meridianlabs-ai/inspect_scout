@@ -184,7 +184,23 @@ class EvalLogTranscriptsDB:
 
         # resolve logs or df to transcript_df (sample per row)
         if not isinstance(logs, pd.DataFrame):
-            self._transcripts_df = self._build_transcripts_df(logs)
+
+            def read_samples(paths: Sequence[str]) -> pd.DataFrame:
+                # This case is wonky, but the public function, samples_df, uses overloads
+                # to make the return type be a DataFrame when strict=True. Since we're
+                # calling the helper method, we'll just have to cast it.
+                return cast(
+                    pd.DataFrame,
+                    _read_samples_df_serial(
+                        list(paths),
+                        TranscriptColumns,
+                        full=False,
+                        strict=True,
+                        progress=False,
+                    ),
+                )
+
+            self._transcripts_df = with_transcript_caching(read_samples)(logs)
         else:
             self._transcripts_df = logs
 
@@ -196,24 +212,6 @@ class EvalLogTranscriptsDB:
 
         # LocalFilesCache (starts out none)
         self._files_cache: LocalFilesCache | None = None
-
-    def _build_transcripts_df(self, logs: LogPaths) -> pd.DataFrame:
-        def read_samples(paths: Sequence[str]) -> pd.DataFrame:
-            # This case is wonky, but the public function, samples_df, uses overloads
-            # to make the return type be a DataFrame when strict=True. Since we're
-            # calling the helper method, we'll just have to cast it.
-            return cast(
-                pd.DataFrame,
-                _read_samples_df_serial(
-                    list(paths),
-                    TranscriptColumns,
-                    full=False,
-                    strict=True,
-                    progress=False,
-                ),
-            )
-
-        return with_transcript_caching(read_samples)(logs)
 
     async def connect(self) -> None:
         # Skip if already connected

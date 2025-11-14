@@ -7,6 +7,7 @@ from inspect_ai.model import (
 )
 from jinja2 import Environment
 
+from inspect_scout._llm_scanner.generate import generate_retry_refusals
 from inspect_scout._llm_scanner.structured import structured_generate, structured_schema
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
@@ -33,6 +34,7 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor | None = None,
     model: str | Model | None = None,
+    retry_refusals: bool | int = 3,
     name: str | None = None,
 ) -> Scanner[Transcript]: ...
 
@@ -51,6 +53,7 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor | None = None,
     model: str | Model | None = None,
+    retry_refusals: bool | int = 3,
     name: str | None = None,
 ) -> Scanner[Transcript]: ...
 
@@ -69,6 +72,7 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor | None = None,
     model: str | Model | None = None,
+    retry_refusals: bool | int = 3,
     name: str | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
@@ -95,6 +99,7 @@ def llm_scanner(
             Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to removing system messages.
         model: Optional model specification.
             Can be a model name string or `Mode`l instance. If None, uses the default model
+        retry_refusals: Retry model refusals. Pass an `int` for number of retries (defaults to 3). Pass `False` to not retry refusals. If the limit of refusals is exceeded then a `RuntimeError` is raised.
         name: Scanner name.
             Use this to assign a name when passing `llm_scanner()` directly to `scan()` rather than delegating to it from another scanner.
 
@@ -104,6 +109,15 @@ def llm_scanner(
     if template is None:
         template = DEFAULT_SCANNER_TEMPLATE
     resolved_answer = answer_from_argument(answer)
+
+    # resolve retry_refusals
+    retry_refusals = (
+        retry_refusals
+        if isinstance(retry_refusals, int)
+        else 3
+        if retry_refusals is True
+        else 0
+    )
 
     async def scan(transcript: Transcript) -> Result:
         messages_str, extract_references = await messages_as_str(
@@ -129,6 +143,7 @@ def llm_scanner(
                 answer_tool=answer.answer_tool,
                 model=model,
                 max_attempts=answer.max_attempts,
+                retry_refusals=retry_refusals,
             )
             # if we failed to extract then return value=None
             if value is None:
@@ -136,8 +151,13 @@ def llm_scanner(
 
         # otherwise do a normal generate
         else:
-            model_output = await get_model(model).generate(
-                resolved_prompt, config=GenerateConfig(parallel_tool_calls=False)
+            model_output = await generate_retry_refusals(
+                get_model(model),
+                resolved_prompt,
+                tools=[],
+                tool_choice=None,
+                config=GenerateConfig(parallel_tool_calls=False),
+                retry_refusals=retry_refusals,
             )
 
         # resolve answer

@@ -86,7 +86,6 @@ export const ScannerPanelBody: React.FC = () => {
         .map((summary) => resultIdentifierStr(summary))
         .filter((id): id is string => id !== undefined);
       const hasRepeatedIds = idStrs.length !== new Set(idStrs).size;
-      console.log(idStrs, hasRepeatedIds);
 
       const options: Array<"label" | "source" | "id" | "none"> = [];
       if (hasLabel) {

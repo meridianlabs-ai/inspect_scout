@@ -25,7 +25,6 @@ from inspect_ai.tool import ToolDef, ToolFunction, ToolParams
 from inspect_ai.util import JSONSchema
 from pydantic import BaseModel, Field, create_model
 
-from inspect_scout._llm_scanner.generate import generate_retry_refusals
 from inspect_scout._llm_scanner.types import AnswerStructured
 from inspect_scout._scanner.result import Reference, Result, as_resultset
 
@@ -36,7 +35,6 @@ async def structured_generate(
     answer_tool: str | None = "answer",
     model: str | Model | None = None,
     max_attempts: int = 3,
-    retry_refusals: int = 3,
 ) -> tuple[dict[str, Any] | None, list[ChatMessage], ModelOutput]:
     # resolve input
     input = [ChatMessageUser(content=input)] if isinstance(input, str) else input
@@ -66,13 +64,10 @@ async def structured_generate(
     # anwser tool is made
     attempts = 0
     while attempts < max_attempts:
-        output = await generate_retry_refusals(
-            model,
+        output = await model.generate(
             input=messages,
             tools=[answer_tooldef],
             tool_choice=ToolFunction(answer_tooldef.name),
-            config=None,
-            retry_refusals=retry_refusals,
         )
         messages.append(output.message)
 

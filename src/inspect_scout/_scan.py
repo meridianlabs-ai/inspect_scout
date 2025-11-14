@@ -542,7 +542,6 @@ async def _scan_async_inner(
 
                     async for loader_result in loader(job.union_transcript):
                         result: Result | list[Result] | None = None
-                        final_result: Result | None = None
                         error: Error | None = None
                         try:
                             type_and_ids = get_input_type_and_ids(loader_result)

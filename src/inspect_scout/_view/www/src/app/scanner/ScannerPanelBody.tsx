@@ -7,13 +7,14 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 import { ApplicationIcons } from "../appearance/icons";
-import { resultLog } from "../utils/results";
+import { resultIdentifierStr, resultLog } from "../utils/results";
 
 import { ScanInfo } from "./info/ScanInfo";
 import { ScanResultsFilter } from "./results/ScanResultsFilter";
 import { ScanResultsGroup } from "./results/ScanResultsGroup";
 import { ScanResultsPanel } from "./results/ScanResultsPanel";
 import styles from "./ScannerPanelBody.module.css";
+import { has } from "markdown-it/lib/common/utils.mjs";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -60,35 +61,45 @@ export const ScannerPanelBody: React.FC = () => {
   );
 
   // Figure out whether grouping should be shown
-  const groupOptions = useMemo(() => {
-    if (!visibleScannerResults || visibleScannerResults.length === 0) {
-      return [];
-    }
-
-    const hasLabel = visibleScannerResults.some(
-      (summary) => summary.label !== undefined && summary.label !== null
-    );
-
-    const logCount = visibleScannerResults.reduce((logs, summary) => {
-      const log = resultLog(summary);
-      if (log) {
-        logs.add(log);
-        return logs;
-      } else {
-        return logs;
+  const groupOptions: Array<"label" | "source" | "id" | "none"> =
+    useMemo(() => {
+      if (!visibleScannerResults || visibleScannerResults.length === 0) {
+        return [];
       }
-    }, new Set<string>()).size;
-    const hasManyLogs = logCount > 1;
 
-    const options: string[] = [];
-    if (hasLabel) {
-      options.push("label");
-    }
-    if (hasManyLogs) {
-      options.push("source");
-    }
-    return options;
-  }, [selectedScanner, visibleScannerResults]);
+      const hasLabel = visibleScannerResults.some(
+        (summary) => summary.label !== undefined && summary.label !== null
+      );
+
+      const logCount = visibleScannerResults.reduce((logs, summary) => {
+        const log = resultLog(summary);
+        if (log) {
+          logs.add(log);
+          return logs;
+        } else {
+          return logs;
+        }
+      }, new Set<string>()).size;
+      const hasManyLogs = logCount > 1;
+
+      const idStrs = visibleScannerResults
+        .map((summary) => resultIdentifierStr(summary))
+        .filter((id): id is string => id !== undefined);
+      const hasRepeatedIds = idStrs.length !== new Set(idStrs).size;
+      console.log(idStrs, hasRepeatedIds);
+
+      const options: Array<"label" | "source" | "id" | "none"> = [];
+      if (hasLabel) {
+        options.push("label");
+      }
+      if (hasManyLogs) {
+        options.push("source");
+      }
+      if (hasRepeatedIds) {
+        options.push("id");
+      }
+      return options;
+    }, [selectedScanner, visibleScannerResults]);
 
   const tools: ReactNode[] = [];
   if (selectedTab === kTabIdScans || selectedTab === undefined) {

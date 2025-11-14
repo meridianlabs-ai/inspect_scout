@@ -16,7 +16,11 @@ import { useStore } from "../../../../state/store";
 import { basename } from "../../../../utils/path";
 import { useScannerPreviews } from "../../../hooks";
 import { ScannerCore } from "../../../types";
-import { resultIdentifier, resultLog } from "../../../utils/results";
+import {
+  resultIdentifier,
+  resultIdentifierStr,
+  resultLog,
+} from "../../../utils/results";
 import { kFilterPositiveResults } from "../ScanResultsFilter";
 
 import { ScanResultsHeader } from "./ScanHeader";
@@ -104,7 +108,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       const groupKey =
         groupResultsBy === "source"
           ? basename(resultLog(item) || "") || "Unknown"
-          : item.label || "Unlabeled";
+          : groupResultsBy === "label"
+            ? item.label || "Unlabeled"
+            : resultIdentifierStr(item) || "Unknown";
 
       // Insert group header when group changes
       if (!groups.has(groupKey)) {

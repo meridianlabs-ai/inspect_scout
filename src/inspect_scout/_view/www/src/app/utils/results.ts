@@ -6,6 +6,25 @@ export interface IdentifierInfo {
   epoch?: string;
 }
 
+export const resultIdentifierStr = (
+  scannerCore?: ScannerCore
+): string | undefined => {
+  const identifier = resultIdentifier(scannerCore);
+  if (!identifier) {
+    return undefined;
+  }
+  if (identifier.secondaryId && identifier.epoch) {
+    const result: string[] = [identifier.id];
+    if (identifier.secondaryId) {
+      result.push(identifier.secondaryId);
+    }
+    if (identifier.epoch) {
+      result.push(identifier.epoch);
+    }
+    return result.join(" ");
+  }
+};
+
 export const resultIdentifier = (scannerCore?: ScannerCore): IdentifierInfo => {
   if (!scannerCore) {
     return {

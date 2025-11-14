@@ -6,11 +6,11 @@ import { useStore } from "../../../state/store";
 import styles from "./ScanResultsGroup.module.css";
 
 interface ScanResultsGroupProps {
-  options: string[];
+  options: Array<"source" | "label" | "id" | "none">;
 }
 
 export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
-  options = ["source", "label"],
+  options = ["source", "label", "id"],
 }) => {
   const setGroupResultsBy = useStore((state) => state.setGroupResultsBy);
   const groupResultsBy = useStore((state) => state.groupResultsBy);
@@ -26,7 +26,8 @@ export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
   const groupByOpts = [
     { label: "Source", value: "source" },
     { label: "Label", value: "label" },
-  ].filter((opt) => options.includes(opt.value));
+    { label: "Id", value: "id" },
+  ].filter((opt) => options.includes(toVal(opt.value)));
   if (groupByOpts.length === 0) {
     return null;
   }
@@ -62,4 +63,16 @@ export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
       </select>
     </div>
   );
+};
+
+const toVal = (v: string | null): "source" | "label" | "id" | "none" => {
+  if (v === "source") {
+    return "source";
+  } else if (v === "label") {
+    return "label";
+  } else if (v === "id") {
+    return "id";
+  } else {
+    return "none";
+  }
 };

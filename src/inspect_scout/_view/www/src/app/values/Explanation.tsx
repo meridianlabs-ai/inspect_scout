@@ -36,20 +36,19 @@ export const Explanation: FC<ExplanationProps> = ({ result }): ReactNode => {
     };
   }, [result?.uuid, params]);
 
-  const refs: MarkdownReference[] = toMarkdownRefs(
-    result,
-    (refId: string, type: "message" | "event") => {
-      if (type === "message") {
-        return buildUrl(`tab=Input&message=${encodeURIComponent(refId)}`);
-      } else {
-        return buildUrl(`tab=Input&event=${encodeURIComponent(refId)}`);
-      }
-    }
-  );
+  const refs: MarkdownReference[] = result
+    ? toMarkdownRefs(result, (refId: string, type: "message" | "event") => {
+        if (type === "message") {
+          return buildUrl(`tab=Input&message=${encodeURIComponent(refId)}`);
+        } else {
+          return buildUrl(`tab=Input&event=${encodeURIComponent(refId)}`);
+        }
+      })
+    : [];
 
   return (
     <MarkdownDivWithReferences
-      markdown={result.explanation || ""}
+      markdown={result?.explanation || ""}
       references={refs}
     />
   );

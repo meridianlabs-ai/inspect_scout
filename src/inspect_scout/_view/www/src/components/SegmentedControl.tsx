@@ -21,7 +21,7 @@ export const SegmentedControl: FC<SegmentedControlProps> = ({
   id,
   segments,
   onSegmentChange,
-  selectedId,
+  selectedId: selectedIdProp,
 }) => {
   const handleSegmentClick = useCallback(
     (segmentId: string, index: number) => {
@@ -30,9 +30,7 @@ export const SegmentedControl: FC<SegmentedControlProps> = ({
     [onSegmentChange]
   );
 
-  if (selectedId === undefined) {
-    selectedId = segments[0]?.id || "";
-  }
+  const selectedId = selectedIdProp ?? segments[0]?.id ?? "";
 
   return (
     <div id={id} className={clsx(styles.rootControl)}>
@@ -41,9 +39,7 @@ export const SegmentedControl: FC<SegmentedControlProps> = ({
           key={segment.id}
           className={clsx(
             styles.segment,
-            {
-              [styles.selected]: selectedId === segment.id,
-            },
+            selectedId === segment.id && styles.selected,
             "text-size-smallest",
             selectedId === segment.id ? undefined : "text-style-secondary"
           )}

@@ -65,7 +65,7 @@ class JsonWorkerPool {
 
       // Use round-robin to distribute work
       const worker = this.workers[requestId % this.workers.length];
-      worker.postMessage(
+      worker?.postMessage(
         {
           requestId,
           scriptContent: kJson5ScriptBase64,

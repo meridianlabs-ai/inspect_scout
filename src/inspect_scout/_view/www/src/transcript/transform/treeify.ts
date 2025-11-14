@@ -191,8 +191,8 @@ const injectScorersSpan = (events: Events): Events => {
         span_id: kScorersSpanId,
         event: SPAN_BEGIN,
         type: TYPE_SCORERS,
-        timestamp: collectedScorerEvents[0].timestamp,
-        working_start: collectedScorerEvents[0].working_start,
+        timestamp: collectedScorerEvents[0]?.timestamp || "",
+        working_start: collectedScorerEvents[0]?.working_start || 0,
         pending: false,
         parent_id: null,
         uuid: null,
@@ -217,9 +217,11 @@ const injectScorersSpan = (events: Events): Events => {
         event: SPAN_END,
         pending: false,
         working_start:
-          collectedScorerEvents[collectedScorerEvents.length - 1].working_start,
+          collectedScorerEvents[collectedScorerEvents.length - 1]
+            ?.working_start || 0,
         timestamp:
-          collectedScorerEvents[collectedScorerEvents.length - 1].timestamp,
+          collectedScorerEvents[collectedScorerEvents.length - 1]?.timestamp ||
+          "",
         uuid: null,
         metadata: null,
       };

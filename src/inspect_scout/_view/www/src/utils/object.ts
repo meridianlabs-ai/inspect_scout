@@ -4,7 +4,8 @@ export const printObject = (val: object, size: number = 50): string => {
   const separator = ", ";
   const kvSeparator = ": ";
 
-  let remainingSize = size - envelope[0].length - envelope[1].length;
+  let remainingSize =
+    size - (envelope[0]?.length || 0) - (envelope[1]?.length || 0);
 
   const entries = Object.entries(val);
   const headItems: string[] = [];
@@ -14,8 +15,8 @@ export const printObject = (val: object, size: number = 50): string => {
   let tailIdx = entries.length - 1;
 
   while (headIdx <= tailIdx) {
-    const headPair = `${entries[headIdx][0]}${kvSeparator}${String(entries[headIdx][1])}`;
-    const tailPair = `${entries[tailIdx][0]}${kvSeparator}${String(entries[tailIdx][1])}`;
+    const headPair = `${entries[headIdx]?.[0]}${kvSeparator}${String(entries[headIdx]?.[1])}`;
+    const tailPair = `${entries[tailIdx]?.[0]}${kvSeparator}${String(entries[tailIdx]?.[1])}`;
 
     // If we're at the same entry (middle of odd-length object)
     if (headIdx === tailIdx) {
@@ -53,7 +54,7 @@ export const printObject = (val: object, size: number = 50): string => {
 
   // If the first entry is too large, middle truncate it
   if (headItems.length === 0 && entries.length > 0) {
-    const firstPair = `${entries[0][0]}${kvSeparator}${String(entries[0][1])}`;
+    const firstPair = `${entries[0]?.[0]}${kvSeparator}${String(entries[0]?.[1])}`;
     const truncateSize = remainingSize - ellipsis.length - separator.length;
     if (truncateSize > 0) {
       headItems.push(firstPair.slice(0, truncateSize) + ellipsis);

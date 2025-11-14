@@ -76,7 +76,7 @@ export type ScannerData =
 export interface ScannerReference {
   type: "message" | "event";
   id: string;
-  cite: string;
+  cite?: string;
 }
 
 export type MessageType =

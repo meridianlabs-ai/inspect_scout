@@ -4,7 +4,10 @@ export const printArray = (arr: unknown[], size: number = 50): string => {
   const ellipsis = "…";
   const separator = ", ";
   let remainingSize =
-    size - envelope[0].length - envelope[1].length - separator.length;
+    size -
+    (envelope[0]?.length || 0) -
+    (envelope[1]?.length || 0) -
+    separator.length;
 
   // Iterate from the outside in, building the list of items to display
   const headItems: string[] = [];

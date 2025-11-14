@@ -170,9 +170,11 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
               }, 0)
             : 0;
 
-          const label = messageLabels
-            ? messageLabels[item.message.id] || "\u00A0".repeat(maxlabelLen * 2)
-            : number || undefined;
+          const label =
+            messageLabels && item.message.id
+              ? messageLabels[item.message.id] ||
+                "\u00A0".repeat(maxlabelLen * 2)
+              : number || undefined;
 
           return (
             <ChatMessageRow

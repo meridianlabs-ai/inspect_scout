@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import JSONPanel from "../../components/JsonPanel";
@@ -7,9 +7,11 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 import { ApplicationIcons } from "../appearance/icons";
+import { resultLog } from "../utils/results";
 
 import { ScanInfo } from "./info/ScanInfo";
 import { ScanResultsFilter } from "./results/ScanResultsFilter";
+import { ScanResultsGroup } from "./results/ScanResultsGroup";
 import { ScanResultsPanel } from "./results/ScanResultsPanel";
 import styles from "./ScannerPanelBody.module.css";
 
@@ -27,6 +29,11 @@ export const ScannerPanelBody: React.FC = () => {
     (state) => state.setSelectedResultsTab
   );
   const selectedStatus = useStore((state) => state.selectedScanStatus);
+
+  const selectedScanner = useStore((state) => state.selectedScanner);
+  const visibleScannerResults = useStore(
+    (state) => state.visibleScannerResults
+  );
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -52,10 +59,50 @@ export const ScannerPanelBody: React.FC = () => {
     (state) => state.setSelectedResultsView
   );
 
+  // Figure out whether grouping should be shown
+  const groupOptions = useMemo(() => {
+    if (!visibleScannerResults || visibleScannerResults.length === 0) {
+      return [];
+    }
+
+    const hasLabel = visibleScannerResults.some(
+      (summary) => summary.label !== undefined && summary.label !== null
+    );
+
+    const logCount = visibleScannerResults.reduce((logs, summary) => {
+      const log = resultLog(summary);
+      if (log) {
+        logs.add(log);
+        return logs;
+      } else {
+        return logs;
+      }
+    }, new Set<string>()).size;
+    const hasManyLogs = logCount > 1;
+
+    const options: string[] = [];
+    if (hasLabel) {
+      options.push("label");
+    }
+    if (hasManyLogs) {
+      options.push("source");
+    }
+    return options;
+  }, [selectedScanner, visibleScannerResults]);
+
   const tools: ReactNode[] = [];
   if (selectedTab === kTabIdScans || selectedTab === undefined) {
     if (selectedResultsView === kSegmentList) {
       tools.push(<ScanResultsFilter key={"scan-results-filtering"} />);
+    }
+
+    if (selectedResultsView === kSegmentList && groupOptions.length > 0) {
+      tools.push(
+        <ScanResultsGroup
+          key={"scan-results-grouping"}
+          options={groupOptions}
+        />
+      );
     }
 
     tools.push(

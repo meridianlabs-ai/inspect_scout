@@ -56,7 +56,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
         hasExplanation ? "" : styles.noExplanation
       )}
       onClick={() => {
-        setSelectedScanResult(entry.uuid);
+        if (entry.uuid) {
+          setSelectedScanResult(entry.uuid);
+        }
       }}
     >
       <div className={clsx(styles.id, "text-size-smaller")}>

@@ -12,11 +12,11 @@ interface PagerProps {
   itemsPerPage?: number;
 }
 
-export const LogPager: FC<PagerProps> = ({
+export const Pager: FC<PagerProps> = ({
   itemCount,
   page,
   setPage,
-  itemsPerPage,
+  itemsPerPage = 20,
 }) => {
   const pageCount = Math.ceil(itemCount / itemsPerPage);
   if (pageCount <= 1) {
@@ -82,7 +82,7 @@ export const LogPager: FC<PagerProps> = ({
           <a
             className={clsx("page-link")}
             onClick={() => {
-              if (currentPage > 0) {
+              if (currentPage > 0 && setPage) {
                 setPage(currentPage - 1);
               }
             }}
@@ -105,12 +105,16 @@ export const LogPager: FC<PagerProps> = ({
             <a
               className={clsx("page-link")}
               onClick={() => {
-                if (segment.type === "page" && segment.page !== undefined) {
+                if (
+                  segment.type === "page" &&
+                  segment.page !== undefined &&
+                  setPage
+                ) {
                   setPage(segment.page);
                 }
               }}
             >
-              {segment.type === "page" ? segment.page + 1 : "..."}
+              {segment.type === "page" ? (segment.page || 0) + 1 : "..."}
             </a>
           </li>
         ))}
@@ -123,7 +127,7 @@ export const LogPager: FC<PagerProps> = ({
           <a
             className={clsx("page-link")}
             onClick={() => {
-              if (currentPage < pageCount) {
+              if (currentPage < pageCount && setPage) {
                 setPage(currentPage + 1);
               }
             }}

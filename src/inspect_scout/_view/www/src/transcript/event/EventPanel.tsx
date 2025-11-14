@@ -84,7 +84,7 @@ export const EventPanel: FC<EventPanelProps> = ({
     }
   );
 
-  const gridColumns = [];
+  const gridColumns: string[] = [];
 
   // chevron
   if (isCollapsible && !useBottomDongle) {

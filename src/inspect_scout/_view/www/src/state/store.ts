@@ -30,7 +30,7 @@ interface StoreState {
   hasInitializedRouting?: boolean;
   loading: number;
   loadingData: number;
-  scopedErrors: Record<ErrorScope, string>;
+  scopedErrors: Record<ErrorScope, string | undefined>;
 
   // Scans
   resultsDir?: string;
@@ -60,6 +60,7 @@ interface StoreState {
   selectedResultsView?: string;
   selectedFilter?: string;
   showingRefPopover?: string;
+  groupResultsBy?: "source" | "label" | "none";
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -86,7 +87,7 @@ interface StoreState {
   // Selected scan status (heading information)
   setSelectedScanLocation: (location: string) => void;
   setSelectedScanStatus: (status: Status) => void;
-  clearSelectedScanScatus: () => void;
+  clearSelectedScanStatus: () => void;
 
   // Track the select result and data
   setSelectedScanner: (scanner: string) => void;
@@ -154,12 +155,18 @@ interface StoreState {
 
   setSelectedFilter: (filter: string) => void;
   setShowingRefPopover: (popoverKey: string) => void;
+  clearShowingRefPopover: () => void;
+  setGroupResultsBy: (groupBy: "source" | "label" | "none") => void;
 }
 
 const createDebouncedPersistStorage = (
   storage: ReturnType<typeof createJSONStorage>,
   delay = 2000
 ) => {
+  if (!storage) {
+    throw new Error("Storage is required");
+  }
+
   type StorageValue = Parameters<typeof storage.setItem>[1];
 
   const debouncedSetItem = debounce((key: string, value: StorageValue) => {
@@ -262,7 +269,7 @@ export const createStore = (api: ScanApi) =>
               state.selectedScanStatus = status;
             });
           },
-          clearSelectedScanScatus: () => {
+          clearSelectedScanStatus: () => {
             set((state) => {
               state.selectedScanStatus = undefined;
             });
@@ -322,6 +329,7 @@ export const createStore = (api: ScanApi) =>
               state.transcriptCollapsedEvents = {};
               state.transcriptOutlineId = undefined;
               state.selectedResultTab = undefined;
+              state.groupResultsBy = undefined;
             });
           },
           clearScansState: () => {
@@ -329,7 +337,7 @@ export const createStore = (api: ScanApi) =>
             selectedScanResultDataRef.data = undefined;
             selectedScanResultDataRef.scanner = undefined;
             set((state) => {
-              state.clearSelectedScanScatus();
+              state.clearSelectedScanStatus();
               state.selectedScanStatus = undefined;
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;
@@ -522,6 +530,16 @@ export const createStore = (api: ScanApi) =>
           setShowingRefPopover: (popoverKey: string) => {
             set((state) => {
               state.showingRefPopover = popoverKey;
+            });
+          },
+          clearShowingRefPopover: () => {
+            set((state) => {
+              state.showingRefPopover = undefined;
+            });
+          },
+          setGroupResultsBy: (groupBy: "source" | "label" | "none") => {
+            set((state) => {
+              state.groupResultsBy = groupBy;
             });
           },
         })),

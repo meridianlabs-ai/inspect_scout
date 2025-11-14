@@ -44,7 +44,7 @@ interface TranscriptVirtualListProps {
   id: string;
   eventNodes: EventNode[];
   listHandle: RefObject<VirtuosoHandle | null>;
-  initialEventId: string | null;
+  initialEventId?: string | null;
   offsetTop?: number;
   scrollRef?: RefObject<HTMLDivElement | null>;
   running?: boolean;

@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import styles from "./Footer.module.css";
-import { LogPager } from "./Pager";
+import { Pager } from "./Pager";
 
 interface FooterProps {
   id: string;
@@ -21,6 +21,7 @@ interface FooterProps {
   pagesize?: number;
   page?: number;
   itemsPerPage?: number;
+  setPage?: (page: number) => void;
 
   // labels
   labels?: {
@@ -38,7 +39,8 @@ export const Footer: FC<FooterProps> = ({
   progressText,
   progressBar,
   page,
-  itemsPerPage,
+  setPage,
+  itemsPerPage = -1,
   labels = {
     singular: "item",
     plural: "items",
@@ -77,7 +79,14 @@ export const Footer: FC<FooterProps> = ({
         ) : undefined}
       </div>
       <div className={clsx(styles.center)}>
-        {paginated && <LogPager itemCount={effectiveItemCount} />}
+        {paginated && (
+          <Pager
+            itemCount={effectiveItemCount}
+            itemsPerPage={itemsPerPage}
+            page={page}
+            setPage={setPage}
+          />
+        )}
       </div>
       <div className={clsx(styles.right)}>
         {progressBar ? (

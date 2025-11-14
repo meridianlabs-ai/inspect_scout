@@ -69,7 +69,7 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
         <div className={clsx("text-size-large", styles.title)}>
           {entry.title}
         </div>
-        {entry.params.length > 0 && (
+        {entry.params && entry.params.length > 0 && (
           <div className={clsx("text-size-smallest", styles.subTitle)}>
             {entry.params.join("")}
           </div>

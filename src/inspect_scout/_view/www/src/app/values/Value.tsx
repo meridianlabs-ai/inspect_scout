@@ -70,19 +70,25 @@ export const Value: FC<ValueProps> = ({ result, style }): ReactNode => {
   } else if (isArrayValue(result)) {
     return <code>[Array(${result.value.length})]</code>;
   } else if (isObjectValue(result)) {
-    return <ValueTable result={result} buildUrl={buildUrl} style={style} />;
+    return (
+      <ValueTable
+        value={result.value}
+        result={result}
+        buildUrl={buildUrl}
+        style={style}
+      />
+    );
   } else {
     return "Unknown value type";
   }
 };
 
 const ValueTable: FC<{
+  value: object;
   result: ScannerCore;
   buildUrl: (query: string) => string | undefined;
   style: "inline" | "block";
-}> = ({ result, buildUrl, style }) => {
-  const value = result.value;
-
+}> = ({ value, result, buildUrl, style }) => {
   // Display only 5 rows
   const maxRows = 5;
   const keys = Object.keys(value);
@@ -126,7 +132,7 @@ const ValueTable: FC<{
 const renderValue = (
   val: unknown,
   result: ScannerCore,
-  buildUrl: (query: string) => string
+  buildUrl: (query: string) => string | undefined
 ): ReactNode => {
   if (typeof val === "string") {
     const refs = toMarkdownRefs(

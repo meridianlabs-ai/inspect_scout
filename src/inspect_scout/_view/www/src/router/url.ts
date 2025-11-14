@@ -16,7 +16,7 @@ export const scanRoute = (
   searchParams?: URLSearchParams
 ) => {
   const route = `/scan/${relativePath}`;
-  searchParams.delete("tab");
+  searchParams?.delete("tab");
 
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
@@ -35,7 +35,7 @@ export const scansRoute = (
 
 export const scanResultRoute = (
   scanRelativePath: string,
-  scanResultId: string,
+  scanResultId?: string,
   searchParams?: URLSearchParams
 ) => {
   const route = `/scan/${scanRelativePath}/${scanResultId}`;

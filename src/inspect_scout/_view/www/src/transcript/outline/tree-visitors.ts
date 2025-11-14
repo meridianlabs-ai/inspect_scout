@@ -127,6 +127,9 @@ export const collapseTurns = (eventNodes: EventNode[]): EventNode[] => {
     if (collecting.length > 0) {
       const numberOfTurns = collecting.length;
       const firstTurn = collecting[0];
+      if (!firstTurn) {
+        return;
+      }
       const turnNode = new EventNode(
         firstTurn.id,
         {
@@ -144,7 +147,7 @@ export const collapseTurns = (eventNodes: EventNode[]): EventNode[] => {
   for (const node of eventNodes) {
     if (node.event.event === "span_begin" && node.event.type === kTurnType) {
       // Check depth to ensure we are collecting turns at the same level
-      if (collecting.length > 0 && collecting[0].depth !== node.depth) {
+      if (collecting.length > 0 && collecting[0]?.depth !== node.depth) {
         collect();
       }
 
@@ -165,6 +168,9 @@ export const collapseScoring = (eventNodes: EventNode[]): EventNode[] => {
   const collect = () => {
     if (collecting.length > 0) {
       const firstScore = collecting[0];
+      if (!firstScore) {
+        return;
+      }
       const turnNode = new EventNode(
         firstScore.id,
         {

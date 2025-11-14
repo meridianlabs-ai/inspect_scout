@@ -97,7 +97,12 @@ const TranscriptsInfoCard: FC<TranscriptsInfoCardProps> = ({
 }) => {
   const fieldsDict = selectedStatus.spec.transcripts.fields.reduce(
     (acc, curr) => {
-      acc[curr["name"]] = curr["type"];
+      const name = curr["name"];
+      const type = curr["type"];
+      if (name && type) {
+        acc[name] = type;
+      }
+
       return acc;
     },
     {} as Record<string, string>

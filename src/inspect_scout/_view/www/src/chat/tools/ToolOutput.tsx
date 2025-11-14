@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, ReactNode } from "react";
 
 import { ContentImage, ContentText } from "../../types/log";
 import { isJson } from "../../utils/json";
@@ -22,7 +22,7 @@ export const ToolOutput: FC<ToolOutputProps> = ({ output, className }) => {
   }
 
   // First process an array or object into a string
-  const outputs = [];
+  const outputs: ReactNode[] = [];
   if (Array.isArray(output)) {
     output.forEach((out, idx) => {
       const key = `tool-output-${idx}`;

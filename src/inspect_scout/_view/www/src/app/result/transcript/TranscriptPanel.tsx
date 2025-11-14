@@ -24,7 +24,7 @@ export const TranscriptPanel: FC<TranscriptPanelProps> = ({
     <div ref={scrollRef} className={clsx(styles.container)}>
       <TranscriptView
         id={id}
-        events={result.scanEvents || []}
+        events={result?.scanEvents || []}
         scrollRef={scrollRef}
         nodeFilter={nodeFilter}
       />

@@ -18,21 +18,27 @@ export const toMarkdownRefs = (
 
   const refs: MarkdownReference[] = [];
   for (const ref of core.messageReferences) {
-    refs.push({
-      id: ref.id,
-      cite: ref.cite,
-      renderCitePreview: refLookup[ref.id],
-      url: makeReferenceUrl(ref.id, "message"),
-    });
+    const renderPreview = refLookup[ref.id];
+    if (ref.cite && renderPreview) {
+      refs.push({
+        id: ref.id,
+        cite: ref.cite,
+        renderCitePreview: renderPreview,
+        url: makeReferenceUrl(ref.id, "message"),
+      });
+    }
   }
 
   for (const ref of core.eventReferences) {
-    refs.push({
-      id: ref.id,
-      cite: ref.cite,
-      renderCitePreview: refLookup[ref.id],
-      url: makeReferenceUrl(ref.id, "event"),
-    });
+    const renderPreview = refLookup[ref.id];
+    if (ref.cite && renderPreview) {
+      refs.push({
+        id: ref.id,
+        cite: ref.cite,
+        renderCitePreview: renderPreview,
+        url: makeReferenceUrl(ref.id, "event"),
+      });
+    }
   }
   return refs;
 };
@@ -49,6 +55,9 @@ const referenceTable = (
   }
 
   if (result.inputType === "message") {
+    if (!result.input.id) {
+      return {};
+    }
     return {
       [result.input.id]: () => {
         return (
@@ -61,17 +70,23 @@ const referenceTable = (
     };
   } else if (result.inputType === "messages") {
     return result.input.reduce<Record<string, () => ReactNode>>((acc, msg) => {
-      acc[msg.id] = () => {
-        return (
-          <ChatView
-            messages={[msg]}
-            resolveToolCallsIntoPreviousMessage={false}
-          />
-        );
-      };
+      if (msg.id) {
+        acc[msg.id] = () => {
+          return (
+            <ChatView
+              messages={[msg]}
+              resolveToolCallsIntoPreviousMessage={false}
+            />
+          );
+        };
+      }
       return acc;
     }, {});
   } else if (result.inputType === "event") {
+    if (!result.input.uuid) {
+      return {};
+    }
+
     return {
       [result.input.uuid]: () => {
         return (
@@ -82,14 +97,16 @@ const referenceTable = (
   } else if (result.inputType === "events") {
     return result.input.reduce<Record<string, () => ReactNode>>(
       (acc, event, index) => {
-        acc[event.uuid] = () => {
-          return (
-            <TranscriptView
-              id={`input-event-preview-${index}`}
-              events={result.input}
-            />
-          );
-        };
+        if (event.uuid) {
+          acc[event.uuid] = () => {
+            return (
+              <TranscriptView
+                id={`input-event-preview-${index}`}
+                events={result.input}
+              />
+            );
+          };
+        }
         return acc;
       },
       {}
@@ -98,23 +115,27 @@ const referenceTable = (
     const eventRefs = result.input.events.reduce<
       Record<string, () => ReactNode>
     >((acc, event) => {
-      acc[event.uuid] = () => {
-        return <TranscriptView id={"input-event-preview"} events={[event]} />;
-      };
+      if (event.uuid) {
+        acc[event.uuid] = () => {
+          return <TranscriptView id={"input-event-preview"} events={[event]} />;
+        };
+      }
       return acc;
     }, {});
 
     const messageRefs = result.input.messages.reduce<
       Record<string, () => ReactNode>
     >((acc, msg) => {
-      acc[msg.id] = () => {
-        return (
-          <ChatView
-            messages={[msg]}
-            resolveToolCallsIntoPreviousMessage={false}
-          />
-        );
-      };
+      if (msg.id) {
+        acc[msg.id] = () => {
+          return (
+            <ChatView
+              messages={[msg]}
+              resolveToolCallsIntoPreviousMessage={false}
+            />
+          );
+        };
+      }
       return acc;
     }, {});
     return { ...eventRefs, ...messageRefs };

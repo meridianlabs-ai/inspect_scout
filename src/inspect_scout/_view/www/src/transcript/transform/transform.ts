@@ -51,7 +51,9 @@ export const transformTree = (roots: EventNode[]): EventNode[] => {
     }
 
     // Return all processed nodes
-    return currentNodes.length === 1 ? currentNodes[0] : currentNodes;
+    return currentNodes && currentNodes.length === 1 && currentNodes[0]
+      ? currentNodes[0]
+      : currentNodes;
   };
 
   // Process all nodes first
@@ -91,9 +93,9 @@ const transformers = () => {
         node.event.event === SPAN_BEGIN &&
         node.event["type"] === TYPE_SOLVER &&
         node.children.length === 2 &&
-        node.children[0].event.event === SPAN_BEGIN &&
-        node.children[0].event.type === TYPE_AGENT &&
-        node.children[1].event.event === STATE,
+        node.children[0]?.event.event === SPAN_BEGIN &&
+        node.children[0]?.event.type === TYPE_AGENT &&
+        node.children[1]?.event.event === STATE,
 
       process: (node) => skipFirstChildNode(node),
     },
@@ -103,10 +105,10 @@ const transformers = () => {
         node.event.event === SPAN_BEGIN &&
         node.event["type"] === TYPE_SOLVER &&
         node.children.length === 3 &&
-        node.children[0].event.event === SPAN_BEGIN &&
-        node.children[0].event.type === TYPE_AGENT &&
-        node.children[1].event.event === STATE &&
-        node.children[2].event.event === STORE,
+        node.children[0]?.event.event === SPAN_BEGIN &&
+        node.children[0]?.event.type === TYPE_AGENT &&
+        node.children[1]?.event.event === STATE &&
+        node.children[2]?.event.event === STORE,
       process: (node) => skipFirstChildNode(node),
     },
     {
@@ -122,17 +124,17 @@ const transformers = () => {
 
         if (node.children.length === 1) {
           return (
-            node.children[0].event.event === TOOL &&
-            !!node.children[0].event.agent
+            node.children[0]?.event.event === TOOL &&
+            !!node.children[0]?.event.agent
           );
         } else {
           return (
             node.children.length === 2 &&
-            node.children[0].event.event === TOOL &&
-            node.children[1].event.event === STORE &&
-            node.children[0].children.length === 2 &&
-            node.children[0].children[0].event.event === SPAN_BEGIN &&
-            node.children[0].children[0].event.type === TYPE_AGENT
+            node.children[0]?.event.event === TOOL &&
+            node.children[1]?.event.event === STORE &&
+            node.children[0]?.children.length === 2 &&
+            node.children[0]?.children[0]?.event.event === SPAN_BEGIN &&
+            node.children[0]?.children[0]?.event.type === TYPE_AGENT
           );
         }
       },

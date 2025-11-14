@@ -13,12 +13,14 @@ import {
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
+import { basename } from "../../../../utils/path";
 import { useScannerPreviews } from "../../../hooks";
 import { ScannerCore } from "../../../types";
-import { resultIdentifier } from "../../../utils/results";
+import { resultIdentifier, resultLog } from "../../../utils/results";
 import { kFilterPositiveResults } from "../ScanResultsFilter";
 
 import { ScanResultsHeader } from "./ScanHeader";
+import { ScanResultGroup } from "./ScanResultsGroup";
 import styles from "./ScanResultsList.module.css";
 import { ScanResultsRow } from "./ScanResultsRow";
 
@@ -29,34 +31,41 @@ export interface GridDescriptor {
 
 interface ScanResultsListProps {
   id: string;
-  columnTable: ColumnTable;
+  columnTable?: ColumnTable;
 }
-// TODO: Keyboard navigation
 export const ScanResultsList: FC<ScanResultsListProps> = ({
   id,
   columnTable,
 }) => {
+  // Url data
   const navigate = useNavigate();
   const params = useParams<{ "*": string }>();
   const [searchParams] = useSearchParams();
   const relativePath = getRelativePathFromParams(params);
   const { scanPath } = parseScanResultPath(relativePath);
 
+  // Data
   const { data: scannerSummaries, isLoading } = useScannerPreviews(columnTable);
-  const selectedFilter = useStore((state) => state.selectedFilter);
   const isLoadingData = useStore((state) => state.loadingData);
   const busy = isLoading || isLoadingData;
+
+  // Options / State
+  const listHandle = useRef<VirtuosoHandle | null>(null);
+  const selectedFilter = useStore((state) => state.selectedFilter);
+  const groupResultsBy = useStore((state) => state.groupResultsBy);
+
+  // Setters
   const setVisibleScannerResults = useStore(
     (state) => state.setVisibleScannerResults
   );
-  const listHandle = useRef<VirtuosoHandle | null>(null);
-  const gridDescriptor = useMemo(() => {
-    return optimalColumnLayout(scannerSummaries);
-  }, [scannerSummaries]);
-
   const setSelectedScanResult = useStore(
     (state) => state.setSelectedScanResult
   );
+
+  // Compute the optimal column layout based on the current data
+  const gridDescriptor = useMemo(() => {
+    return optimalColumnLayout(scannerSummaries);
+  }, [scannerSummaries]);
 
   const filteredSummaries = useMemo(() => {
     if (
@@ -70,6 +79,52 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   }, [scannerSummaries, selectedFilter]);
   const selectedScanResult = useStore((state) => state.selectedScanResult);
 
+  interface ResultGroup {
+    type: "group";
+    label: string;
+  }
+
+  // Type guard to check if entry is a ResultGroup
+  const isResultGroup = (
+    entry: ResultGroup | ScannerCore
+  ): entry is ResultGroup => {
+    return "type" in entry && entry.type === "group";
+  };
+
+  const rows: Array<ResultGroup | ScannerCore> = useMemo(() => {
+    // No grouping
+    if (!groupResultsBy || groupResultsBy === "none") {
+      return filteredSummaries;
+    }
+
+    const groups = new Map<string, ScannerCore[]>();
+
+    for (const item of filteredSummaries) {
+      // Insert group header when group changes
+      const groupKey =
+        groupResultsBy === "source"
+          ? basename(resultLog(item) || "") || "Unknown"
+          : item.label || "Unlabeled";
+
+      // Insert group header when group changes
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, []);
+      }
+      groups.get(groupKey)?.push(item);
+    }
+
+    // Sort group keys alphabetically and emit
+    const sortedGroupKeys = Array.from(groups.keys()).sort();
+    const result: Array<ResultGroup | ScannerCore> = [];
+
+    for (const groupKey of sortedGroupKeys) {
+      result.push({ type: "group", label: groupKey });
+      result.push(...(groups.get(groupKey) || []));
+    }
+
+    return result;
+  }, [filteredSummaries, groupResultsBy]);
+
   const currentIndex = useMemo(() => {
     if (selectedScanResult) {
       return filteredSummaries.findIndex((s) => s.uuid === selectedScanResult);
@@ -80,14 +135,18 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const handleNext = useCallback(() => {
     if (currentIndex >= 0 && currentIndex < filteredSummaries.length - 1) {
       const nextResult = filteredSummaries[currentIndex + 1];
-      setSelectedScanResult(nextResult.uuid);
+      if (nextResult?.uuid) {
+        setSelectedScanResult(nextResult.uuid);
+      }
     }
   }, [currentIndex, filteredSummaries, setSelectedScanResult]);
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
       const previousResult = filteredSummaries[currentIndex - 1];
-      setSelectedScanResult(previousResult.uuid);
+      if (previousResult?.uuid) {
+        setSelectedScanResult(previousResult.uuid);
+      }
     }
   }, [currentIndex, filteredSummaries, setSelectedScanResult]);
 
@@ -96,7 +155,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       const selectedResult = filteredSummaries[currentIndex];
       const route = scanResultRoute(
         scanPath,
-        selectedResult.uuid,
+        selectedResult?.uuid,
         searchParams
       );
       if (newWindow) {
@@ -128,7 +187,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
         if (e.key === "ArrowUp") {
           if (e.metaKey || e.ctrlKey) {
             // Cmd/Ctrl+ArrowUp: Go to first item
-            if (filteredSummaries.length > 0) {
+            if (filteredSummaries.length > 0 && filteredSummaries[0]?.uuid) {
               e.preventDefault();
               setSelectedScanResult(filteredSummaries[0].uuid);
             }
@@ -141,9 +200,11 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
             // Cmd/Ctrl+ArrowDown: Go to last item
             if (filteredSummaries.length > 0) {
               e.preventDefault();
-              setSelectedScanResult(
-                filteredSummaries[filteredSummaries.length - 1].uuid
-              );
+              const uuid =
+                filteredSummaries[filteredSummaries.length - 1]?.uuid;
+              if (uuid) {
+                setSelectedScanResult(uuid);
+              }
             }
           } else if (hasNext) {
             e.preventDefault();
@@ -174,7 +235,11 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   useEffect(() => {
     // Only set if nothing is selected and we have results
-    if (!selectedScanResult && filteredSummaries.length > 0) {
+    if (
+      !selectedScanResult &&
+      filteredSummaries.length > 0 &&
+      filteredSummaries[0]?.uuid
+    ) {
       setSelectedScanResult(filteredSummaries[0].uuid);
     }
   }, [filteredSummaries, selectedScanResult, setSelectedScanResult]);
@@ -206,7 +271,12 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   }, [selectedItemIndex]);
 
   const renderRow = useCallback(
-    (index: number, entry: ScannerCore) => {
+    (index: number, entry: ScannerCore | ResultGroup) => {
+      if (isResultGroup(entry)) {
+        return <ScanResultGroup group={entry.label} />;
+      }
+
+      // TypeScript now knows entry is ScannerCore here
       return (
         <ScanResultsRow
           index={index}
@@ -215,7 +285,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
         />
       );
     },
-    [gridDescriptor]
+    [gridDescriptor, isResultGroup]
   );
 
   return (
@@ -226,10 +296,10 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
         <NoContentsPanel text="No scan results to display." />
       )}
       {!busy && filteredSummaries.length > 0 && (
-        <LiveVirtualList<ScannerCore>
+        <LiveVirtualList<ScannerCore | ResultGroup>
           id={id}
           listHandle={listHandle}
-          data={filteredSummaries}
+          data={rows}
           renderRow={renderRow}
           className={clsx(styles.list)}
           animation={false}
@@ -267,7 +337,7 @@ const sortByIdentifier = (a: ScannerCore, b: ScannerCore): number => {
 const optimalColumnLayout = (
   scannerSummaries: ScannerCore[]
 ): GridDescriptor => {
-  const columns = [];
+  const columns: string[] = [];
   const gridColParts: string[] = [];
 
   // The id column

@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, ReactNode, useEffect } from "react";
 
 import { formatDateTime, formatTime } from "../utils/format";
 
@@ -34,7 +34,7 @@ export const HumanBaselineView: FC<HumanBaselineViewProps> = ({
   running,
   sessionLogs,
 }) => {
-  const player_fns = [];
+  const player_fns: Array<{ label: string; render: () => ReactNode }> = [];
 
   // handle creation and revoking of these URLs
   const revokableUrls: string[] = [];

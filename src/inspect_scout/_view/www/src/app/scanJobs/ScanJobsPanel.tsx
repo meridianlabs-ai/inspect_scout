@@ -36,7 +36,7 @@ export const ScanJobsPanel: FC = () => {
         {!error && <ScanJobGrid />}
         <Footer
           id={"scan-job-footer"}
-          itemCount={visibleScanJobCount}
+          itemCount={visibleScanJobCount || 0}
           paginated={false}
         />
       </ExtendedFindProvider>

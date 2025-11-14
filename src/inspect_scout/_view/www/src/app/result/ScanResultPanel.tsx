@@ -137,7 +137,7 @@ export const ScanResultPanel: FC = () => {
             >
               <InputPanel result={selectedResult} />
             </TabPanel>
-            {showEvents && (
+            {showEvents ? (
               <TabPanel
                 id={kTabIdTranscript}
                 selected={selectedTab === kTabIdTranscript}
@@ -152,7 +152,7 @@ export const ScanResultPanel: FC = () => {
                   nodeFilter={skipScanSpan}
                 />
               </TabPanel>
-            )}
+            ) : undefined}
             <TabPanel
               id={kTabIdInfo}
               selected={selectedTab === kTabIdInfo}
@@ -188,7 +188,7 @@ export const ScanResultPanel: FC = () => {
 const skipScanSpan = (
   nodes: EventNode<EventType>[]
 ): EventNode<EventType>[] => {
-  if (nodes.length === 1 && nodes[0].event.event === "span_begin") {
+  if (nodes.length === 1 && nodes[0]?.event.event === "span_begin") {
     return nodes[0].children;
   }
   return nodes;

@@ -27,7 +27,7 @@ export const ScanResultsBody: FC = () => {
 
   const isLoadingData = useStore((state) => state.loadingData);
   const isLoading = useStore((state) => state.loading);
-  const hasScanner = columnTable?.numRows() > 0;
+  const hasScanner = (columnTable?.numRows() || 0) > 0;
   const error = useStore((state) => state.scopedErrors["dataframe"]);
 
   return (

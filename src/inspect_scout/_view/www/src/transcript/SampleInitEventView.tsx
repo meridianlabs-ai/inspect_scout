@@ -1,6 +1,6 @@
 // @ts-check
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, ReactNode } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
 import { ChatView } from "../chat/ChatView";
@@ -29,7 +29,7 @@ export const SampleInitEventView: FC<SampleInitEventViewProps> = ({
   const event = eventNode.event;
   const stateObj = event.state as Record<string, unknown>;
 
-  const sections = [];
+  const sections: ReactNode[] = [];
 
   if (event.sample.files && Object.keys(event.sample.files).length > 0) {
     sections.push(

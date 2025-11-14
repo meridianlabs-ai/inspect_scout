@@ -174,8 +174,11 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
 
       // Search backwards from target position (inclusive)
       for (let i = targetIndex; i >= 0; i--) {
-        if (allNodesList[i] && outlineIds.has(allNodesList[i].id)) {
-          return allNodesList[i];
+        const node = allNodesList[i];
+        if (node !== undefined && node.id) {
+          if (outlineIds.has(node.id)) {
+            return node;
+          }
         }
       }
 

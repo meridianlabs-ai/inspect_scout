@@ -13,7 +13,7 @@ export const formatTitle = (
   total_tokens?: number,
   working_start?: number | null
 ) => {
-  const subItems = [];
+  const subItems: string[] = [];
   if (total_tokens) {
     subItems.push(`${formatNumber(total_tokens)} tokens`);
   }

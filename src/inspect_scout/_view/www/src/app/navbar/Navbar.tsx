@@ -45,7 +45,7 @@ export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
   const segments = useMemo(() => {
     const pathSegments = currentPath ? currentPath.split("/") : [];
     const dirSegments: Array<{ text: string; url: string }> = [];
-    const currentSegment = [];
+    const currentSegment: string[] = [];
     for (const pathSegment of pathSegments) {
       currentSegment.push(pathSegment);
       const fullSegmentPath = currentSegment.join("/");

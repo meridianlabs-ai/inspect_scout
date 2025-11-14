@@ -17,7 +17,7 @@ interface Column {
 }
 
 export const ScanResultHeader: FC<ScanResultHeaderProps> = ({ result }) => {
-  const columns = colsForResult(result);
+  const columns = colsForResult(result) || [];
   return (
     <div className={clsx(styles.header, classForCols(columns.length))}>
       {columns.map((col) => {

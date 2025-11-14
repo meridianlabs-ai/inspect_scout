@@ -1,5 +1,5 @@
 import { ColumnTable } from "arquero";
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
@@ -62,7 +62,7 @@ export const useServerScans = () => {
         }
       } catch (e) {
         // Notify app of error
-        setError("scanjobs", e.toString());
+        setError("scanjobs", e?.toString());
       } finally {
         // Stop loading
         setLoading(false);
@@ -135,7 +135,7 @@ export const useServerScannerDataframe = () => {
         setSelectedScanResultData(selectedScanner, expandedTable);
       } catch (e) {
         // Notify app of error
-        setError("dataframe", e.toString());
+        setError("dataframe", e?.toString());
       } finally {
         // Stop progress
         setLoadingData(false);
@@ -198,7 +198,7 @@ export const useServerScanner = () => {
             const status = await api.getScan(location);
             setSelectedScanStatus(status);
           } catch (e) {
-            setError("scanner", e.toString());
+            setError("scanner", e?.toString());
           } finally {
             setLoading(false);
           }
@@ -221,7 +221,7 @@ export const useServerScanner = () => {
 };
 
 export const useScannerData = (
-  columnTable: ColumnTable,
+  columnTable?: ColumnTable,
   scanResultUuid?: string
 ) => {
   const [scannerData, setScannerData] = useState<ScannerData | undefined>(
@@ -454,7 +454,7 @@ export const useScannerData = (
   return { data: scannerData, isLoading };
 };
 
-export const useSelectedResultsRow = (scanResultUuid: string) => {
+export const useSelectedResultsRow = (scanResultUuid?: string) => {
   const getSelectedScanResultData = useStore(
     (state) => state.getSelectedScanResultData
   );
@@ -470,7 +470,7 @@ export const useSelectedResultsRow = (scanResultUuid: string) => {
   return { data: scanData, isLoading };
 };
 
-export const useScannerPreviews = (columnTable: ColumnTable) => {
+export const useScannerPreviews = (columnTable?: ColumnTable) => {
   // First see if we've already decoded these
   const selectedScanner = useSelectedScanner();
   const getSelectedScanResultPreviews = useStore(
@@ -483,11 +483,11 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
   const [scannerPreviews, setScannerPreviews] = useState<ScannerCore[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const rowData = useMemo(() => columnTable.objects(), [columnTable]);
+  const rowData = useMemo(() => columnTable?.objects(), [columnTable]);
 
   useEffect(() => {
     // If empty, set empty and return
-    if (rowData.length === 0) {
+    if (rowData?.length === 0) {
       setScannerPreviews([]);
       setSelectedScanResultPreviews(selectedScanner, []);
       setIsLoading(false);
@@ -508,7 +508,7 @@ export const useScannerPreviews = (columnTable: ColumnTable) => {
     const parsePreviews = async () => {
       try {
         const parsedPreviews = await Promise.all(
-          rowData.map(async (row) => {
+          (rowData || []).map(async (row) => {
             const r = row as Record<string, unknown>;
 
             // Determine the value type

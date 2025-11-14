@@ -32,6 +32,9 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
 
   const showingRefPopover = useStore((state) => state.showingRefPopover);
   const setShowingRefPopover = useStore((state) => state.setShowingRefPopover);
+  const clearShowingRefPopover = useStore(
+    (state) => state.clearShowingRefPopover
+  );
 
   // Create a map for quick lookup of references by ID
   const refMap = useMemo(
@@ -84,6 +87,9 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
       // Identify the ref
       const el = e.currentTarget as HTMLElement;
       const id = el.getAttribute("data-ref-id");
+      if (!id) {
+        return;
+      }
       const ref = refMap.get(id);
       if (!ref) {
         return;
@@ -126,7 +132,9 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
     setShowingRefPopover,
   ]);
 
-  const key = currentRef ? popoverKey(currentRef) : null;
+  const key = currentRef
+    ? popoverKey(currentRef)
+    : "unknown-markdown-ref-popover";
 
   return (
     <div className={clsx(className)} ref={containerRef}>
@@ -138,7 +146,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
           isOpen={showingRefPopover === key}
           setIsOpen={(isOpen) => {
             if (!isOpen) {
-              setShowingRefPopover(undefined);
+              clearShowingRefPopover();
               setCurrentRef(null);
               setPositionEl(null);
             }

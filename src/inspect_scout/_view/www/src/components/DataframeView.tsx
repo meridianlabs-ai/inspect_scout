@@ -20,7 +20,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const GRID_STATE_NAME = "DataframeView";
 
 interface DataframeViewProps {
-  columnTable: ColumnTable;
+  columnTable?: ColumnTable;
 }
 
 export const DataframeView: FC<DataframeViewProps> = ({ columnTable }) => {
@@ -34,24 +34,26 @@ export const DataframeView: FC<DataframeViewProps> = ({ columnTable }) => {
 
   const { columnDefs, rowData } = useMemo(() => {
     // Create column definitions for ag-grid
-    const columnDefs: ColDef[] = columnTable.columnNames().map((name) => {
-      const col = columnTable.column(name);
-      const sampleValue = col.at(0);
+    const columnDefs: ColDef[] = columnTable
+      ? columnTable.columnNames().map((name) => {
+          const col = columnTable.column(name);
+          const sampleValue = col?.at(0);
 
-      return {
-        field: name,
-        headerName: name,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        tooltipField: name,
-        maxWidth: 400,
-        cellDataType: typeof sampleValue === "boolean" ? false : undefined,
-      };
-    });
+          return {
+            field: name,
+            headerName: name,
+            sortable: true,
+            filter: true,
+            resizable: true,
+            tooltipField: name,
+            maxWidth: 400,
+            cellDataType: typeof sampleValue === "boolean" ? false : undefined,
+          };
+        })
+      : [];
 
     // Convert table to array of objects for ag-grid
-    const rowData = columnTable.objects();
+    const rowData = columnTable?.objects();
 
     return { columnDefs, rowData };
   }, [columnTable]);

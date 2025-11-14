@@ -29,7 +29,10 @@ export const TranscriptView: FC<TranscriptViewProps> = ({
 
   // The list of events that have been collapsed
   const collapsedEvents = useStore((state) => state.transcriptCollapsedEvents);
-  const { eventNodes, defaultCollapsedIds } = useEventNodes(events, false);
+  const { eventNodes, defaultCollapsedIds } = useEventNodes(
+    events || [],
+    false
+  );
 
   const flattenedNodes = useMemo(() => {
     // flattten the event tree

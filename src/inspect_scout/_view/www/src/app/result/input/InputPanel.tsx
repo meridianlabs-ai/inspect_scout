@@ -52,7 +52,9 @@ const InputRenderer: FC<InputRendererProps> = ({
       if (result.input.messages.length > 0) {
         const labels = result?.messageReferences.reduce(
           (acc, ref) => {
-            acc[ref.id] = ref.cite;
+            if (ref.cite) {
+              acc[ref.id] = ref.cite;
+            }
             return acc;
           },
           {} as Record<string, string>

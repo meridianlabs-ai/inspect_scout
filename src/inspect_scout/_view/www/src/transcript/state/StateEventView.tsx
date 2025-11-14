@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useEffect, useMemo } from "react";
+import { FC, ReactNode, useEffect, useMemo } from "react";
 
 import { useStore } from "../../state/store";
 import {
@@ -103,7 +103,7 @@ const generatePreview = (
   resolvedState: Record<string, unknown>,
   isStore: boolean
 ) => {
-  const results = [];
+  const results: ReactNode[] = [];
   for (const changeType of [
     ...RenderableChangeTypes,
     ...(isStore ? StoreSpecificRenderableTypes : []),

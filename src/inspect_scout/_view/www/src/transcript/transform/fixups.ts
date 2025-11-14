@@ -46,8 +46,8 @@ const processPendingEvents = (events: Events, filter: boolean): Events => {
           const lastIndex = acc.length - 1;
           if (
             lastIndex >= 0 &&
-            acc[lastIndex].pending &&
-            acc[lastIndex].event === event.event
+            acc[lastIndex]?.pending &&
+            acc[lastIndex]?.event === event.event
           ) {
             // Replace previous pending with current one (if they're of the same type)
             acc[lastIndex] = event;
@@ -125,7 +125,7 @@ const groupSandboxEvents = (events: Events): Events => {
 
   const pushPendingSandboxEvents = () => {
     const timestamp =
-      pendingSandboxEvents[pendingSandboxEvents.length - 1].timestamp;
+      pendingSandboxEvents[pendingSandboxEvents.length - 1]?.timestamp || "";
     if (useSpans) {
       result.push(createSpanBegin(kSandboxSignalName, timestamp, null));
     } else {

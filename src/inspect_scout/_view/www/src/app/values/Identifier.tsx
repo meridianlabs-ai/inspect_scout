@@ -19,7 +19,8 @@ export const Identifier: FC<IndentifierProps> = ({ result }): ReactNode => {
       <div className={clsx(styles.id)}>
         <div>{id}</div>
         <div className={clsx("text-size-smallest", "text-style-secondary")}>
-          epoch {epoch}
+          {identifier.secondaryId ? `${identifier.secondaryId} ` : ""}epoch{" "}
+          {epoch}
         </div>
       </div>
     );

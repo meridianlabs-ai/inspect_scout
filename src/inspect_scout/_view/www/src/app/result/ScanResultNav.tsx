@@ -43,7 +43,7 @@ export const ScanResultNav: FC = () => {
       return;
     }
     const previousResult = visibleScannerResults[currentIndex - 1];
-    const route = scanResultRoute(scanPath, previousResult.uuid, searchParams);
+    const route = scanResultRoute(scanPath, previousResult?.uuid, searchParams);
     void navigate(route);
   };
 
@@ -52,7 +52,7 @@ export const ScanResultNav: FC = () => {
       return;
     }
     const nextResult = visibleScannerResults[currentIndex + 1];
-    const route = scanResultRoute(scanPath, nextResult.uuid, searchParams);
+    const route = scanResultRoute(scanPath, nextResult?.uuid, searchParams);
     void navigate(route);
   };
 
@@ -119,7 +119,7 @@ export const ScanResultNav: FC = () => {
       </div>
       <div className={clsx(styles.sampleInfo, "text-size-smallest")}>
         {visibleScannerResults && currentIndex !== -1
-          ? printIdentifier(resultIdentifier(result), result.label)
+          ? printIdentifier(resultIdentifier(result), result?.label)
           : undefined}
       </div>
       <div

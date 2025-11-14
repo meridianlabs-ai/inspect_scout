@@ -48,7 +48,8 @@ export const ChatView: FC<ChatViewProps> = ({
         const number =
           collapsedMessages.length > 1 && labeled ? index + 1 : undefined;
 
-        const msgLabel = messageLabels ? messageLabels[msg.message.id] : "";
+        const msgLabel =
+          messageLabels && msg.message.id ? messageLabels[msg.message.id] : "";
         const label = msgLabel || number;
 
         return (

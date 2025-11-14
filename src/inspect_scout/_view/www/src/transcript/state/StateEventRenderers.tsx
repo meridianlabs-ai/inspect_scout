@@ -184,7 +184,7 @@ const renderTools = (
   const toolIndexes: string[] = [];
   for (const change of changes) {
     const match = change.path.match(kToolPattern);
-    if (match) {
+    if (match && match[1]) {
       toolIndexes.push(match[1]);
     }
   }
@@ -258,7 +258,11 @@ const createMessageRenderer = (name: string, role: string): ChangeType => {
     match: (changes: JsonChange[]) => {
       if (changes.length === 1) {
         const change = changes[0];
-        if (change.op === "add" && change.path.match(/\/messages\/\d+/)) {
+        if (
+          change &&
+          change.op === "add" &&
+          change.path.match(/\/messages\/\d+/)
+        ) {
           return change.value["role"] === role;
         }
       }

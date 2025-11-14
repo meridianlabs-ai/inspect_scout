@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, ReactNode } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
 import { JSONPanel } from "../components/JsonPanel";
@@ -24,7 +24,7 @@ export const InfoEventView: FC<InfoEventViewProps> = ({
   className,
 }) => {
   const event = eventNode.event;
-  const panels = [];
+  const panels: ReactNode[] = [];
   if (typeof event.data === "string") {
     panels.push(
       <RenderedText

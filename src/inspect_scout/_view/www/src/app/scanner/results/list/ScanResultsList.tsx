@@ -74,7 +74,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     ) {
       return scannerSummaries.filter((s) => !!s.value).sort(sortByIdentifier);
     } else {
-      return scannerSummaries.sort(sortByIdentifier);
+      return [...scannerSummaries].sort(sortByIdentifier);
     }
   }, [scannerSummaries, selectedFilter]);
   const selectedScanResult = useStore((state) => state.selectedScanResult);

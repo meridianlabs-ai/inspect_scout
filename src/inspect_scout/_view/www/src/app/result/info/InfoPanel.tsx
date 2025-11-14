@@ -62,10 +62,16 @@ export const ScannerInfoPanel: FC<InfoPanelProps> = ({ result }) => {
     <div className={clsx("text-size-small")}>
       <div className={clsx(styles.scanInfo)}>
         <LabeledValue label="Name">{result?.scannerName}</LabeledValue>
-        <LabeledValue label="File">{result?.scannerFile}</LabeledValue>
-        <LabeledValue label="Tokens">
-          {result?.scanTotalTokens ? formatNumber(result.scanTotalTokens) : ""}
-        </LabeledValue>
+        {result?.scannerFile && result.scannerFile !== null && (
+          <LabeledValue label="File">{result?.scannerFile}</LabeledValue>
+        )}
+        {(result?.scanTotalTokens || 0) > 0 && (
+          <LabeledValue label="Tokens">
+            {result?.scanTotalTokens
+              ? formatNumber(result.scanTotalTokens)
+              : ""}
+          </LabeledValue>
+        )}
       </div>
       {result?.scanTags && result.scanTags.length > 0 && (
         <LabeledValue label="Tags">

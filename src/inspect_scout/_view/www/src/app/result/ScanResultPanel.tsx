@@ -86,7 +86,9 @@ export const ScanResultPanel: FC = () => {
 
   const handleTabChange = (tabId: string) => {
     setSelectedResultTab(tabId);
-    setSearchParams({ tab: tabId });
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("tab", tabId);
+    setSearchParams(newParams);
   };
 
   const showEvents = useMemo(() => {

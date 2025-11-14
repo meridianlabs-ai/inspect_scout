@@ -95,9 +95,6 @@ export const useServerScannerDataframe = () => {
   const setSelectedScanResultData = useStore(
     (state) => state.setSelectedScanResultData
   );
-  const setSelectedScanResult = useStore(
-    (state) => state.setSelectedScanResult
-  );
   const getSelectedScanResultData = useStore(
     (state) => state.getSelectedScanResultData
   );
@@ -136,7 +133,6 @@ export const useServerScannerDataframe = () => {
 
         // Store in state
         setSelectedScanResultData(selectedScanner, expandedTable);
-        setSelectedScanResult(expandedTable.get("uuid", 0) as string);
       } catch (e) {
         // Notify app of error
         setError("dataframe", e.toString());

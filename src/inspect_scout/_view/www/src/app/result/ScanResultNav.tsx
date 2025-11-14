@@ -70,11 +70,23 @@ export const ScanResultNav: FC = () => {
       if (!isInputFocused) {
         // Navigation shortcuts (only when not in an input field)
         if (e.key === "ArrowLeft") {
-          if (hasPrevious) {
+          if (
+            hasPrevious &&
+            !e.metaKey &&
+            !e.ctrlKey &&
+            !e.shiftKey &&
+            !e.altKey
+          ) {
             e.preventDefault();
             handlePrevious();
           }
-        } else if (e.key === "ArrowRight") {
+        } else if (
+          e.key === "ArrowRight" &&
+          !e.metaKey &&
+          !e.ctrlKey &&
+          !e.shiftKey &&
+          !e.altKey
+        ) {
           if (hasNext) {
             e.preventDefault();
             handleNext();

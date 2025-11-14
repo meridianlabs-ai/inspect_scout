@@ -48,6 +48,8 @@ interface LiveVirtualListProps<T> {
   // Optional function to search within data items for text
   // If not provided, will use JSON.stringify as fallback
   searchInItem?: (item: T, searchTerm: string) => boolean;
+
+  animation?: boolean;
 }
 
 /**
@@ -66,6 +68,7 @@ export const LiveVirtualList = <T,>({
   offsetTop,
   components,
   searchInItem,
+  animation = true,
 }: LiveVirtualListProps<T>) => {
   // The list handle and list state management
   const { getRestoreState, isScrolling, visibleRange, setVisibleRange } =
@@ -262,7 +265,11 @@ export const LiveVirtualList = <T,>({
         listHandle.current?.scrollToIndex({
           index: initialTopMostItemIndex,
           align: "start",
-          behavior: !hasScrolled.current ? "auto" : "smooth",
+          behavior: !animation
+            ? "auto"
+            : !hasScrolled.current
+              ? "auto"
+              : "smooth",
           offset: offsetTop ? -offsetTop : undefined,
         });
         hasScrolled.current = true;

@@ -1,11 +1,17 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { ActivityBar } from "../../../../components/ActivityBar";
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
+import {
+  getRelativePathFromParams,
+  parseScanResultPath,
+  scanResultRoute,
+} from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { useScannerPreviews } from "../../../hooks";
 import { ScannerCore } from "../../../types";
@@ -30,6 +36,12 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   id,
   columnTable,
 }) => {
+  const navigate = useNavigate();
+  const params = useParams<{ "*": string }>();
+  const [searchParams] = useSearchParams();
+  const relativePath = getRelativePathFromParams(params);
+  const { scanPath } = parseScanResultPath(relativePath);
+
   const { data: scannerSummaries, isLoading } = useScannerPreviews(columnTable);
   const selectedFilter = useStore((state) => state.selectedFilter);
   const isLoadingData = useStore((state) => state.loadingData);
@@ -42,6 +54,10 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     return optimalColumnLayout(scannerSummaries);
   }, [scannerSummaries]);
 
+  const setSelectedScanResult = useStore(
+    (state) => state.setSelectedScanResult
+  );
+
   const filteredSummaries = useMemo(() => {
     if (
       selectedFilter === kFilterPositiveResults ||
@@ -49,16 +65,125 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     ) {
       return scannerSummaries.filter((s) => !!s.value).sort(sortByIdentifier);
     } else {
-      return scannerSummaries;
+      return scannerSummaries.sort(sortByIdentifier);
     }
   }, [scannerSummaries, selectedFilter]);
   const selectedScanResult = useStore((state) => state.selectedScanResult);
+
+  const currentIndex = useMemo(() => {
+    if (selectedScanResult) {
+      return filteredSummaries.findIndex((s) => s.uuid === selectedScanResult);
+    }
+    return -1;
+  }, [selectedScanResult, filteredSummaries]);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex >= 0 && currentIndex < filteredSummaries.length - 1) {
+      const nextResult = filteredSummaries[currentIndex + 1];
+      setSelectedScanResult(nextResult.uuid);
+    }
+  }, [currentIndex, filteredSummaries, setSelectedScanResult]);
+
+  const handlePrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      const previousResult = filteredSummaries[currentIndex - 1];
+      setSelectedScanResult(previousResult.uuid);
+    }
+  }, [currentIndex, filteredSummaries, setSelectedScanResult]);
+
+  const handleEnter = useCallback(
+    (newWindow?: boolean) => {
+      const selectedResult = filteredSummaries[currentIndex];
+      const route = scanResultRoute(
+        scanPath,
+        selectedResult.uuid,
+        searchParams
+      );
+      if (newWindow) {
+        window.open(route, "_blank");
+      } else {
+        void navigate(route);
+      }
+    },
+    [currentIndex, filteredSummaries, navigate, scanPath, searchParams]
+  );
+
+  const hasPrevious = currentIndex > 0;
+  const hasNext =
+    currentIndex >= 0 && currentIndex < filteredSummaries.length - 1;
+
+  // Global keydown handler for keyboard shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      // Don't handle keyboard events if focus is on an input, textarea, or select element
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA" ||
+          activeElement.tagName === "SELECT");
+
+      if (!isInputFocused) {
+        // Navigation shortcuts (only when not in an input field)
+        if (e.key === "ArrowUp") {
+          if (e.metaKey || e.ctrlKey) {
+            // Cmd/Ctrl+ArrowUp: Go to first item
+            if (filteredSummaries.length > 0) {
+              e.preventDefault();
+              setSelectedScanResult(filteredSummaries[0].uuid);
+            }
+          } else if (hasPrevious) {
+            e.preventDefault();
+            handlePrevious();
+          }
+        } else if (e.key === "ArrowDown") {
+          if (e.metaKey || e.ctrlKey) {
+            // Cmd/Ctrl+ArrowDown: Go to last item
+            if (filteredSummaries.length > 0) {
+              e.preventDefault();
+              setSelectedScanResult(
+                filteredSummaries[filteredSummaries.length - 1].uuid
+              );
+            }
+          } else if (hasNext) {
+            e.preventDefault();
+            handleNext();
+          }
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          handleEnter(e.metaKey || e.ctrlKey);
+        }
+      }
+    };
+
+    // Use capture phase to catch event before it reaches other handlers
+    document.addEventListener("keydown", handleGlobalKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleGlobalKeyDown, true);
+    };
+  }, [
+    hasPrevious,
+    hasNext,
+    handlePrevious,
+    handleNext,
+    handleEnter,
+    filteredSummaries,
+    setSelectedScanResult,
+  ]);
+
+  useEffect(() => {
+    // Only set if nothing is selected and we have results
+    if (!selectedScanResult && filteredSummaries.length > 0) {
+      setSelectedScanResult(filteredSummaries[0].uuid);
+    }
+  }, [filteredSummaries, selectedScanResult, setSelectedScanResult]);
 
   useEffect(() => {
     setVisibleScannerResults(filteredSummaries);
   }, [filteredSummaries, setVisibleScannerResults]);
 
-  const initialTopMostItemIndex = useMemo(() => {
+  const selectedItemIndex = useMemo(() => {
     if (selectedScanResult) {
       const selectedIndex = filteredSummaries.findIndex(
         (s) => s.uuid === selectedScanResult
@@ -69,6 +194,16 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     }
     return undefined;
   }, [selectedScanResult, filteredSummaries]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      listHandle.current?.scrollToIndex({
+        index: selectedItemIndex ?? 0,
+        align: "center",
+        behavior: "auto",
+      });
+    }, 5);
+  }, [selectedItemIndex]);
 
   const renderRow = useCallback(
     (index: number, entry: ScannerCore) => {
@@ -97,7 +232,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
           data={filteredSummaries}
           renderRow={renderRow}
           className={clsx(styles.list)}
-          initialTopMostItemIndex={initialTopMostItemIndex}
+          animation={false}
         />
       )}
     </div>

@@ -10,11 +10,13 @@ import pytest
 from inspect_ai._util.file import FileInfo
 from inspect_ai._util.kvstore import KVStore
 from inspect_ai.log._file import EvalLogInfo
+from inspect_scout._transcript.caching import (
+    with_transcript_caching,
+)
 from inspect_scout._transcript.s3_log_cache import (
     get_cached_df,
     put_cached_df,
     resolve_logs_with_etag,
-    with_s3_caching,
 )
 
 
@@ -80,7 +82,7 @@ def mock_kvstore() -> Iterator[Mock]:
         yield shared_store
 
     with patch(
-        "inspect_scout._transcript.s3_log_cache.inspect_kvstore",
+        "inspect_scout._transcript.caching.inspect_kvstore",
         side_effect=mock_inspect_kvstore,
     ) as mock:
         yield mock
@@ -147,7 +149,7 @@ def mock_filesystem() -> Iterator[Mock]:
             side_effect=mock_log_files_from_ls,
         ),
         patch(
-            "inspect_scout._transcript.s3_log_cache.is_s3_filename",
+            "inspect_scout._transcript.caching.is_s3_filename",
             side_effect=mock_is_s3_filename,
         ),
     ):
@@ -402,14 +404,14 @@ def test_put_cached_df_handles_write_errors(sample_df: pd.DataFrame) -> None:
     put_cached_df(kvstore, "s3://bucket/log.json", "etag123", sample_df)
 
 
-# Tests for with_s3_caching
+# Tests for with_transcript_caching
 
 
-def test_with_s3_caching_s3_cache_miss_then_hit(
+def test_with_transcript_caching_s3_cache_miss_then_hit(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """First call reads S3 and caches, second call uses cache."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
 
     # First call - cache miss
     result1 = cached_reader("s3://bucket/log.json")
@@ -424,11 +426,11 @@ def test_with_s3_caching_s3_cache_miss_then_hit(
     pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
 
 
-def test_with_s3_caching_s3_etag_changed(
+def test_with_transcript_caching_s3_etag_changed(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """Etag change invalidates cache and re-reads."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
 
     # First call
     _ = cached_reader("s3://bucket/log.json")
@@ -455,11 +457,11 @@ def test_with_s3_caching_s3_etag_changed(
         assert mock_reader.call_count == 2
 
 
-def test_with_s3_caching_local_files_bypass_cache(
+def test_with_transcript_caching_local_files_bypass_cache(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """Local files bypass caching entirely."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
 
     # Call with local file
     _ = cached_reader("/local/log.json")
@@ -468,11 +470,11 @@ def test_with_s3_caching_local_files_bypass_cache(
     mock_reader.assert_called_once_with(["/local/log.json"])
 
 
-def test_with_s3_caching_mixed_s3_and_local(
+def test_with_transcript_caching_mixed_s3_and_local(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """Mixed S3 and local files handled correctly."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
 
     result = cached_reader(["s3://bucket/log.json", "/local/log.json"])
 
@@ -482,11 +484,11 @@ def test_with_s3_caching_mixed_s3_and_local(
     assert len(result) == 2
 
 
-def test_with_s3_caching_empty_input(
+def test_with_transcript_caching_empty_input(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """Empty input returns empty DataFrame from reader."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
 
     result = cached_reader([])
     assert mock_reader.call_count == 1
@@ -494,7 +496,7 @@ def test_with_s3_caching_empty_input(
     assert len(result) == 0
 
 
-def test_with_s3_caching_error_fallback(
+def test_with_transcript_caching_error_fallback(
     mock_kvstore: Mock, mock_filesystem: Mock
 ) -> None:
     """Caching error falls back to direct reader call."""
@@ -509,7 +511,7 @@ def test_with_s3_caching_error_fallback(
         "inspect_scout._transcript.s3_log_cache.filesystem",
         side_effect=RuntimeError("Filesystem failed"),
     ):
-        cached_reader = with_s3_caching(reader_mock)
+        cached_reader = with_transcript_caching(reader_mock)
         result = cached_reader("s3://bucket/log.json")
 
         # Should fall back to reader
@@ -517,11 +519,11 @@ def test_with_s3_caching_error_fallback(
         assert len(result) == 1
 
 
-def test_with_s3_caching_concat_multiple_s3_files(
+def test_with_transcript_caching_concat_multiple_s3_files(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """Multiple S3 files concatenated into single DataFrame."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
 
     result = cached_reader(["s3://bucket/log1.json", "s3://bucket/log2.json"])
 
@@ -537,11 +539,11 @@ def test_with_s3_caching_concat_multiple_s3_files(
 # Tests for EvalLogInfo handling
 
 
-def test_with_s3_caching_single_evalloginfo(
+def test_with_transcript_caching_single_evalloginfo(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """Single EvalLogInfo object handled correctly."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
     eval_log_info = create_evalloginfo("s3://bucket/log.json")
 
     result = cached_reader(eval_log_info)
@@ -549,11 +551,11 @@ def test_with_s3_caching_single_evalloginfo(
     assert len(result) == 1
 
 
-def test_with_s3_caching_list_of_evalloginfo(
+def test_with_transcript_caching_list_of_evalloginfo(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """List of EvalLogInfo objects handled correctly."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
     logs = [
         create_evalloginfo("s3://bucket/log1.json"),
         create_evalloginfo("s3://bucket/log2.json"),
@@ -564,11 +566,11 @@ def test_with_s3_caching_list_of_evalloginfo(
     assert len(result) == 2
 
 
-def test_with_s3_caching_mixed_evalloginfo_and_str(
+def test_with_transcript_caching_mixed_evalloginfo_and_str(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
     """Mixed EvalLogInfo and string paths handled correctly."""
-    cached_reader = with_s3_caching(mock_reader)
+    cached_reader = with_transcript_caching(mock_reader)
     logs: list[EvalLogInfo | str] = [
         create_evalloginfo("s3://bucket/log1.json"),
         "s3://bucket/log2.json",

@@ -11,6 +11,7 @@ from typing import (
     Iterator,
     Sequence,
     Type,
+    cast,
 )
 
 import pandas as pd
@@ -45,10 +46,10 @@ from inspect_scout._util.async_zip import AsyncZipReader
 
 from .._scanspec import ScanTranscripts, TranscriptField
 from .._transcript.transcripts import Transcripts
+from .caching import with_transcript_caching
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
-from .s3_log_cache import with_s3_caching
 from .types import LogPaths, Transcript, TranscriptContent, TranscriptInfo
 
 TRANSCRIPTS = "transcripts"
@@ -214,10 +215,12 @@ class EvalLogTranscriptsDB:
                 strict=True,
                 progress=False,
             )
-            assert isinstance(result, pd.DataFrame)
-            return result
+            # This is slightly wonky, but the public function, samples_df, uses
+            # overloads to make the return type be a DataFrame when strict=True
+            # Since we're calling the helper method, we'll just have to cast it
+            return cast(pd.DataFrame, result)
 
-        return with_s3_caching(read_samples)(logs)
+        return with_transcript_caching(read_samples)(logs)
 
     async def connect(self) -> None:
         # Skip if already connected

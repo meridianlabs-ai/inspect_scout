@@ -186,7 +186,7 @@ class EvalLogTranscriptsDB:
         if not isinstance(logs, pd.DataFrame):
 
             def read_samples(paths: Sequence[str]) -> pd.DataFrame:
-                # This case is wonky, but the public function, samples_df, uses overloads
+                # This cast is wonky, but the public function, samples_df, uses overloads
                 # to make the return type be a DataFrame when strict=True. Since we're
                 # calling the helper method, we'll just have to cast it.
                 return cast(

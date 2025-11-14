@@ -7,9 +7,9 @@ from inspect_ai.model import (
 )
 from jinja2 import Environment
 
-from inspect_scout._llm_scanner.generate import generate_retry_refusals
 from inspect_scout._llm_scanner.structured import structured_generate, structured_schema
 from inspect_scout._util.jinja import StrictOnUseUndefined
+from inspect_scout._util.refusal import generate_retry_refusals
 
 from .._scanner.extract import MessagesPreprocessor, messages_as_str
 from .._scanner.result import Result

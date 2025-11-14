@@ -4,6 +4,10 @@ from inspect_ai.model import ChatMessage, GenerateConfig, Model, ModelOutput
 from inspect_ai.tool import Tool, ToolChoice, ToolDef, ToolInfo, ToolSource
 
 
+class RefusalError(RuntimeError):
+    pass
+
+
 async def generate_retry_refusals(
     model: Model,
     input: str | list[ChatMessage],
@@ -27,7 +31,7 @@ async def generate_retry_refusals(
             if refusals < retry_refusals:
                 refusals += 1
             else:
-                raise RuntimeError(
+                raise RefusalError(
                     f"Scanner request refused by content filter: {output.completion}"
                 )
         else:

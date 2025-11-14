@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
+from inspect_scout._util.refusal import RefusalError
 
 logger = getLogger(__name__)
 
@@ -93,6 +94,8 @@ class ResultReport(BaseModel):
     result: Result | None
 
     validation: ResultValidation | None
+
+    refusal: RefusalError | None
 
     error: Error | None
 

@@ -32,6 +32,7 @@ from pydantic import TypeAdapter
 from rich.console import RenderableType
 
 from inspect_scout._util.attachments import resolve_event_attachments
+from inspect_scout._util.refusal import RefusalError
 from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
@@ -543,6 +544,7 @@ async def _scan_async_inner(
                     async for loader_result in loader(job.union_transcript):
                         result: Result | list[Result] | None = None
                         final_result: Result | None = None
+                        refusal: RefusalError | None = None
                         error: Error | None = None
                         try:
                             type_and_ids = get_input_type_and_ids(loader_result)
@@ -591,6 +593,7 @@ async def _scan_async_inner(
                                     input=loader_result,
                                     result=final_result,
                                     validation=validation,
+                                    refusal=refusal,
                                     error=error,
                                     events=jsonable_python(
                                         resolve_event_attachments(inspect_transcript)
@@ -820,6 +823,7 @@ def _reports_for_parse_error(
             input=placeholder_transcript,
             result=None,
             validation=None,
+            refusal=None,
             error=Error(
                 transcript_id=job.transcript_info.id,
                 scanner=scanner_names[idx],

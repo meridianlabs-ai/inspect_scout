@@ -198,27 +198,20 @@ class EvalLogTranscriptsDB:
         self._files_cache: LocalFilesCache | None = None
 
     def _build_transcripts_df(self, logs: LogPaths) -> pd.DataFrame:
-        """Build transcripts DataFrame from logs, using S3 cache when available.
-
-        Args:
-            logs: Log paths to process
-
-        Returns:
-            DataFrame with one row per transcript/sample
-        """
-
         def read_samples(paths: Sequence[str]) -> pd.DataFrame:
-            result = _read_samples_df_serial(
-                list(paths),
-                TranscriptColumns,
-                full=False,
-                strict=True,
-                progress=False,
+            # This case is wonky, but the public function, samples_df, uses overloads
+            # to make the return type be a DataFrame when strict=True. Since we're
+            # calling the helper method, we'll just have to cast it.
+            return cast(
+                pd.DataFrame,
+                _read_samples_df_serial(
+                    list(paths),
+                    TranscriptColumns,
+                    full=False,
+                    strict=True,
+                    progress=False,
+                ),
             )
-            # This is slightly wonky, but the public function, samples_df, uses
-            # overloads to make the return type be a DataFrame when strict=True
-            # Since we're calling the helper method, we'll just have to cast it
-            return cast(pd.DataFrame, result)
 
         return with_transcript_caching(read_samples)(logs)
 

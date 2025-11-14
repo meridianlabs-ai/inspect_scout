@@ -21,8 +21,8 @@ export const ScanResultsFilter: FC = () => {
   );
 
   const options = [
-    { label: "Positive Results", val: kFilterPositiveResults },
-    { label: "All Results", val: kFilterAllResults },
+    { label: "Positive", val: kFilterPositiveResults },
+    { label: "All", val: kFilterAllResults },
   ];
 
   return (
@@ -36,7 +36,7 @@ export const ScanResultsFilter: FC = () => {
           styles.label
         )}
       >
-        Filter:
+        Results:
       </span>
       <select
         id={"scan-result-filter"}

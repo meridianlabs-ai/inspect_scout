@@ -313,12 +313,12 @@ def scan_command(
 
     Pass a FILE which is either a Python script that contains @scanner or @scanjob decorated functions or a config file (YAML or JSON) that adheres to the `ScanJobConfig` schema.
     """
-    # Process common options
-    process_common_options(common)
-
     # if this was a subcommand then allow it to execute
     if ctx.invoked_subcommand is not None:
         return
+
+    # Process common options
+    process_common_options(common)
 
     # Get the file argument from extra args
     if not ctx.args or len(ctx.args) == 0:

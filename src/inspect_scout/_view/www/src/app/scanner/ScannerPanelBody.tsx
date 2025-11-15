@@ -13,8 +13,8 @@ import { ScanInfo } from "./info/ScanInfo";
 import { ScanResultsFilter } from "./results/ScanResultsFilter";
 import { ScanResultsGroup } from "./results/ScanResultsGroup";
 import { ScanResultsPanel } from "./results/ScanResultsPanel";
+import { ScanResultsSearch } from "./results/ScanResultsSearch";
 import styles from "./ScannerPanelBody.module.css";
-import { has } from "markdown-it/lib/common/utils.mjs";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -102,6 +102,10 @@ export const ScannerPanelBody: React.FC = () => {
 
   const tools: ReactNode[] = [];
   if (selectedTab === kTabIdScans || selectedTab === undefined) {
+    if (selectedResultsView === kSegmentList) {
+      tools.push(<ScanResultsSearch key={"scan-results-search"} />);
+    }
+
     if (selectedResultsView === kSegmentList) {
       tools.push(<ScanResultsFilter key={"scan-results-filtering"} />);
     }

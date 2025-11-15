@@ -61,6 +61,7 @@ interface StoreState {
   selectedFilter?: string;
   showingRefPopover?: string;
   groupResultsBy?: "source" | "label" | "none";
+  scansSearchText?: string;
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -157,6 +158,7 @@ interface StoreState {
   setShowingRefPopover: (popoverKey: string) => void;
   clearShowingRefPopover: () => void;
   setGroupResultsBy: (groupBy: "source" | "label" | "none") => void;
+  setScansSearchText: (text: string) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -540,6 +542,11 @@ export const createStore = (api: ScanApi) =>
           setGroupResultsBy: (groupBy: "source" | "label" | "none") => {
             set((state) => {
               state.groupResultsBy = groupBy;
+            });
+          },
+          setScansSearchText: (text: string) => {
+            set((state) => {
+              state.scansSearchText = text;
             });
           },
         })),

@@ -57,6 +57,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const listHandle = useRef<VirtuosoHandle | null>(null);
   const selectedFilter = useStore((state) => state.selectedFilter);
   const groupResultsBy = useStore((state) => state.groupResultsBy);
+  const scansSearchText = useStore((state) => state.scansSearchText);
 
   // Setters
   const setVisibleScannerResults = useStore(
@@ -72,15 +73,31 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   }, [scannerSummaries]);
 
   const filteredSummaries = useMemo(() => {
+    let textFiltered = scannerSummaries;
+    if (scansSearchText && scansSearchText.length > 0) {
+      const lowerSearch = scansSearchText.toLowerCase();
+      textFiltered = scannerSummaries.filter((s) => {
+        const idStr = resultIdentifierStr(s) || "";
+        const logStr = resultLog(s) || "";
+        const labelStr = s.label || "";
+        return (
+          idStr.toLowerCase().includes(lowerSearch) ||
+          logStr.toLowerCase().includes(lowerSearch) ||
+          labelStr.toLowerCase().includes(lowerSearch)
+        );
+      });
+    }
+
     if (
       selectedFilter === kFilterPositiveResults ||
       selectedFilter === undefined
     ) {
-      return scannerSummaries.filter((s) => !!s.value).sort(sortByIdentifier);
+      return textFiltered.filter((s) => !!s.value).sort(sortByIdentifier);
     } else {
-      return [...scannerSummaries].sort(sortByIdentifier);
+      return [...textFiltered].sort(sortByIdentifier);
     }
-  }, [scannerSummaries, selectedFilter]);
+  }, [scannerSummaries, selectedFilter, scansSearchText]);
+
   const selectedScanResult = useStore((state) => state.selectedScanResult);
 
   interface ResultGroup {

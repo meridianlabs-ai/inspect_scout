@@ -133,29 +133,13 @@ async def resume_scan(scan_location: str) -> ScanContext:
     spec = status.spec
     transcripts = await transcripts_from_snapshot(spec.transcripts)
     scanners = _scanners_from_spec(spec.scanners)
-    worklist = (
-        spec.worklist
-        if spec.worklist is not None
-        else await _default_worklist(transcripts, list(scanners.keys()))
-    )
     return ScanContext(
         spec=spec,
         transcripts=transcripts,
         scanners=scanners,
-        worklist=worklist,
+        worklist=spec.worklist,
         validation=spec.validation,
     )
-
-
-async def _default_worklist(
-    transcripts: Transcripts, scanners: Sequence[str]
-) -> Sequence[ScannerWork]:
-    async with transcripts:
-        transcript_ids = [tr.id for tr in await transcripts.index()]
-        return [
-            ScannerWork(scanner=scanner, transcripts=transcript_ids)
-            for scanner in scanners
-        ]
 
 
 def _spec_scanners(

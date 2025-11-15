@@ -8,8 +8,8 @@ from os import PathLike
 from types import TracebackType
 from typing import (
     Any,
+    AsyncIterator,
     Final,
-    Iterator,
     Sequence,
     Type,
     TypeAlias,
@@ -91,8 +91,8 @@ class EvalLogTranscripts(Transcripts):
         return await self.db.count(self._where, self._limit)
 
     @override
-    async def index(self) -> Iterator[TranscriptInfo]:
-        return await self.db.query(self._where, self._limit, self._shuffle)
+    def index(self) -> AsyncIterator[TranscriptInfo]:
+        return self.db.query(self._where, self._limit, self._shuffle)
 
     @override
     async def _read(
@@ -104,7 +104,7 @@ class EvalLogTranscripts(Transcripts):
     async def snapshot(self) -> ScanTranscripts:
         # get the subset of the transcripts df that matches our current query
         df = self.db._transcripts_df
-        sample_ids = [item.id for item in await self.index()]
+        sample_ids = [item.id async for item in self.index()]
         df = df[df["sample_id"].isin(sample_ids)]
 
         # get fields
@@ -202,6 +202,29 @@ class EvalLogTranscriptsDB:
         # LocalFilesCache (starts out none)
         self._files_cache: LocalFilesCache | None = None
 
+        # Track current shuffle seed for UDF registration
+        self._current_shuffle_seed: int | None = None
+
+    def _register_shuffle_function(self, seed: int) -> None:
+        """Register SQLite UDF for deterministic shuffling with given seed.
+
+        Args:
+            seed: Random seed for deterministic shuffling.
+        """
+        assert self._conn is not None
+
+        # Only re-register if seed changed
+        if self._current_shuffle_seed == seed:
+            return
+
+        def shuffle_hash(sample_id: str) -> str:
+            """Compute deterministic hash for shuffling."""
+            content = f"{sample_id}:{seed}"
+            return hashlib.sha256(content.encode()).hexdigest()
+
+        self._conn.create_function("shuffle_hash", 1, shuffle_hash)
+        self._current_shuffle_seed = seed
+
     async def connect(self) -> None:
         # Skip if already connected
         if self._conn is not None:
@@ -240,21 +263,33 @@ class EvalLogTranscriptsDB:
         where: list[Condition],
         limit: int | None = None,
         shuffle: bool | int = False,
-    ) -> Iterator[TranscriptInfo]:
+    ) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
 
         # build sql with where clause
         where_clause, where_params = self._build_where_clause(where)
         sql = f"SELECT * FROM {TRANSCRIPTS}{where_clause}"
 
+        # add ORDER BY if shuffle is enabled
+        if shuffle:
+            # If shuffle is True, use a default seed of 0; otherwise use the provided seed
+            seed = 0 if shuffle is True else shuffle
+            self._register_shuffle_function(seed)
+            sql += " ORDER BY shuffle_hash(sample_id)"
+
+        # add LIMIT to SQL if specified
+        sql_params = where_params.copy()
+        if limit is not None:
+            sql += " LIMIT ?"
+            sql_params.append(limit)
+
         # execute the query
-        cursor = self._conn.execute(sql, where_params)
+        cursor = self._conn.execute(sql, sql_params)
 
         # get column names
         column_names = [desc[0] for desc in cursor.description]
 
-        # collect all results
-        results = []
+        # process and yield results
         for row in cursor:
             # create a dict of column name to value
             row_dict = dict(zip(column_names, row, strict=True))
@@ -290,35 +325,15 @@ class EvalLogTranscriptsDB:
             # everything else goes into metadata
             metadata = {k: v for k, v in row_dict.items() if v is not None}
 
-            results.append(
-                TranscriptInfo(
-                    id=transcript_id,
-                    source_id=transcript_source_id,
-                    source_uri=transcript_source_uri,
-                    score=score,
-                    scores=scores,
-                    variables=variables,
-                    metadata=metadata,
-                )
+            yield TranscriptInfo(
+                id=transcript_id,
+                source_id=transcript_source_id,
+                source_uri=transcript_source_uri,
+                score=score,
+                scores=scores,
+                variables=variables,
+                metadata=metadata,
             )
-
-        # shuffle if specified
-        if shuffle:
-            # If shuffle is True, use a default seed of 0; otherwise use the provided seed
-            seed = 0 if shuffle is True else shuffle
-
-            def hash_key(info: TranscriptInfo) -> str:
-                # Create a deterministic hash based on id and seed
-                content = f"{info.id}:{seed}"
-                return hashlib.sha256(content.encode()).hexdigest()
-
-            results.sort(key=hash_key)
-
-        # apply limit if specified
-        if limit is not None:
-            results = results[:limit]
-
-        return iter(results)
 
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         id_, epoch = self._transcripts_df[
@@ -348,6 +363,7 @@ class EvalLogTranscriptsDB:
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+            self._current_shuffle_seed = None
 
         if self._fs is not None:
             await self._fs.close()

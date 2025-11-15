@@ -2,7 +2,7 @@ import abc
 from copy import deepcopy
 from types import TracebackType
 from typing import (
-    Iterator,
+    AsyncIterator,
 )
 
 from inspect_scout._validation.types import ValidationCase, ValidationSet
@@ -155,7 +155,7 @@ class Transcripts(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def index(self) -> Iterator[TranscriptInfo]:
+    def index(self) -> AsyncIterator[TranscriptInfo]:
         """Index of `TranscriptInfo` for the collection."""
         ...
 

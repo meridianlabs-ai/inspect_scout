@@ -579,7 +579,7 @@ async def test_connect_disconnect() -> None:
 @pytest.mark.asyncio
 async def test_query_all(db: EvalLogTranscriptsDB) -> None:
     """Test querying all records."""
-    results = list(await db.query(where=[]))
+    results = [item async for item in db.query(where=[])]
     assert len(results) == 20
 
     # Check that each result is a TranscriptInfo
@@ -594,12 +594,12 @@ async def test_query_all(db: EvalLogTranscriptsDB) -> None:
 async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
     """Test querying with filters."""
     # Filter by model
-    results = list(await db.query(where=[m.model == "gpt-4"]))
+    results = [item async for item in db.query(where=[m.model == "gpt-4"])]
     for result in results:
         assert result.metadata["model"] == "gpt-4"
 
     # Filter by score range
-    results = list(await db.query(where=[m.score > 0.7]))
+    results = [item async for item in db.query(where=[m.score > 0.7])]
     for result in results:
         assert cast(float, result.metadata["score"]) > 0.7
 
@@ -608,7 +608,7 @@ async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
 async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
     """Test querying with multiple conditions."""
     conditions = [m.model == "gpt-4", m.score > 0.6]
-    results = list(await db.query(where=conditions))
+    results = [item async for item in db.query(where=conditions)]
 
     for result in results:
         assert result.metadata["model"] == "gpt-4"
@@ -618,11 +618,11 @@ async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
 @pytest.mark.asyncio
 async def test_query_with_limit(db: EvalLogTranscriptsDB) -> None:
     """Test querying with limit."""
-    results = list(await db.query(where=[], limit=5))
+    results = [item async for item in db.query(where=[], limit=5)]
     assert len(results) == 5
 
     # With filter and limit
-    results = list(await db.query(where=[m.model == "gpt-4"], limit=2))
+    results = [item async for item in db.query(where=[m.model == "gpt-4"], limit=2)]
     assert len(results) <= 2
 
 
@@ -630,18 +630,18 @@ async def test_query_with_limit(db: EvalLogTranscriptsDB) -> None:
 async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
     """Test querying with shuffle."""
     # Get results without shuffle
-    results1 = list(await db.query(where=[], limit=10))
+    results1 = [item async for item in db.query(where=[], limit=10)]
     ids1 = [r.id for r in results1]
 
     # Get results with shuffle (seed=42)
-    results2 = list(await db.query(where=[], limit=10, shuffle=42))
+    results2 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
     ids2 = [r.id for r in results2]
 
     # Results should be different order (very unlikely to be same)
     assert ids1 != ids2
 
     # Get results with same seed - should be same order
-    results3 = list(await db.query(where=[], limit=10, shuffle=42))
+    results3 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
     ids3 = [r.id for r in results3]
     assert ids2 == ids3
 
@@ -661,7 +661,7 @@ async def test_count_with_filter(db: EvalLogTranscriptsDB) -> None:
     assert count > 0
 
     # Verify count matches query
-    results = list(await db.query(where=[m.model == "gpt-4"]))
+    results = [item async for item in db.query(where=[m.model == "gpt-4"])]
     assert count == len(results)
 
 
@@ -686,7 +686,7 @@ async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
         m.error_message.is_null(),
     ]
 
-    results = list(await db.query(where=conditions))
+    results = [item async for item in db.query(where=conditions)]
     for result in results:
         assert result.metadata["model"] in ["gpt-4", "claude"]
         assert cast(float, result.metadata["score"]) > 0.6
@@ -696,7 +696,7 @@ async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
 @pytest.mark.asyncio
 async def test_metadata_extraction(db: EvalLogTranscriptsDB) -> None:
     """Test that metadata is properly extracted."""
-    results = list(await db.query(where=[], limit=1))
+    results = [item async for item in db.query(where=[], limit=1)]
     assert len(results) == 1
 
     result = results[0]
@@ -713,13 +713,17 @@ async def test_metadata_extraction(db: EvalLogTranscriptsDB) -> None:
 async def test_none_comparison_in_db(db: EvalLogTranscriptsDB) -> None:
     """Test that == None and != None work correctly in database queries."""
     # Using == None (should behave same as is_null())
-    results_eq_none = list(await db.query(where=[m.error_message == None]))  # noqa: E711
-    results_is_null = list(await db.query(where=[m.error_message.is_null()]))
+    results_eq_none = [item async for item in db.query(where=[m.error_message == None])]  # noqa: E711
+    results_is_null = [
+        item async for item in db.query(where=[m.error_message.is_null()])
+    ]
     assert len(results_eq_none) == len(results_is_null)
 
     # Using != None (should behave same as is_not_null())
-    results_ne_none = list(await db.query(where=[m.error_message != None]))  # noqa: E711
-    results_is_not_null = list(await db.query(where=[m.error_message.is_not_null()]))
+    results_ne_none = [item async for item in db.query(where=[m.error_message != None])]  # noqa: E711
+    results_is_not_null = [
+        item async for item in db.query(where=[m.error_message.is_not_null()])
+    ]
     assert len(results_ne_none) == len(results_is_not_null)
 
     # Verify they partition all records
@@ -730,7 +734,7 @@ async def test_none_comparison_in_db(db: EvalLogTranscriptsDB) -> None:
 async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
     """Test handling of NULL values in metadata."""
     # Query for null error_message
-    results = list(await db.query(where=[m.error_message.is_null()]))
+    results = [item async for item in db.query(where=[m.error_message.is_null()])]
 
     for result in results:
         # NULL values should not appear in metadata dict
@@ -740,7 +744,7 @@ async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
         )
 
     # Query for non-null error_message
-    results = list(await db.query(where=[m.error_message.is_not_null()]))
+    results = [item async for item in db.query(where=[m.error_message.is_not_null()])]
 
     for result in results:
         assert result.metadata.get("error_message") is not None
@@ -763,7 +767,7 @@ async def test_empty_dataframe() -> None:
     db = EvalLogTranscriptsDB(df)
     await db.connect()
 
-    results = list(await db.query(where=[]))
+    results = [item async for item in db.query(where=[])]
     assert len(results) == 0
 
     count = await db.count(where=[])
@@ -792,7 +796,7 @@ async def test_missing_required_columns() -> None:
 
     # Should raise error when trying to query
     with pytest.raises(ValueError, match="Missing required fields"):
-        list(await db.query(where=[]))
+        [item async for item in db.query(where=[])]
 
     await db.disconnect()
 
@@ -801,24 +805,25 @@ async def test_missing_required_columns() -> None:
 async def test_empty_in_clause_in_db(db: Any) -> None:
     """Test that empty IN/NOT IN work correctly in actual queries."""
     # Empty IN should return no results
-    results = list(await db.query(where=[m.model.in_([])]))
+    results = [item async for item in db.query(where=[m.model.in_([])])]
     assert len(results) == 0  # Always false, no results
 
     # Empty NOT IN should return all results
-    results = list(await db.query(where=[m.model.not_in([])]))
+    results = [item async for item in db.query(where=[m.model.not_in([])])]
     assert len(results) == 20  # Always true, all results
 
     # Combined with other conditions
-    results = list(
-        await db.query(
+    results = [
+        item
+        async for item in db.query(
             where=[
                 m.score > 0.5,
                 m.status.not_in([]),  # This is always true, shouldn't affect results
             ]
         )
-    )
+    ]
     # Should be same as just m.score > 0.5
-    results_without = list(await db.query(where=[m.score > 0.5]))
+    results_without = [item async for item in db.query(where=[m.score > 0.5])]
     assert len(results) == len(results_without)
 
 
@@ -833,7 +838,7 @@ async def test_large_in_clause() -> None:
     large_list = [f"model_{i}" for i in range(50)]
     large_list.append("gpt-4")  # Include one that exists
 
-    results = list(await db.query(where=[m.model.in_(large_list)]))
+    results = [item async for item in db.query(where=[m.model.in_(large_list)])]
 
     # Should find some results
     assert len(results) > 0

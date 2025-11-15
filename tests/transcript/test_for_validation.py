@@ -20,8 +20,12 @@ class MockTranscripts(Transcripts):
     async def count(self) -> int:
         return 0
 
-    async def index(self) -> Any:
-        return iter([])
+    def index(self) -> Any:
+        async def empty_generator() -> Any:
+            if False:
+                yield
+
+        return empty_generator()
 
     async def _read(self, transcript: Any, content: Any) -> Any:
         raise NotImplementedError()

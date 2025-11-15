@@ -448,18 +448,15 @@ def test_mixing_log_and_base_metadata() -> None:
 async def test_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     """Test database queries using typed properties."""
     # Filter by model
-    results = await db.query(where=[lm.model == "gpt-4"])
-    for result in results:
+    async for result in db.query(where=[lm.model == "gpt-4"]):
         assert result.metadata["model"] == "gpt-4"
 
     # Filter by epoch
-    results = await db.query(where=[lm.epoch > 1])
-    for result in results:
+    async for result in db.query(where=[lm.epoch > 1]):
         assert cast(int, result.metadata["epoch"]) > 1
 
     # Filter by total tokens range
-    results = await db.query(where=[lm.total_tokens.between(150, 300)])
-    for result in results:
+    async for result in db.query(where=[lm.total_tokens.between(150, 300)]):
         assert 150 <= cast(int, result.metadata["total_tokens"]) <= 300
 
 
@@ -472,7 +469,7 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
         lm.solver == "cot",
     ]
 
-    results = list(await db.query(where=conditions))
+    results = [item async for item in db.query(where=conditions)]
     for result in results:
         assert result.metadata["model"] in ["gpt-4", "claude-3"]
         assert cast(int, result.metadata["epoch"]) > 1
@@ -486,7 +483,7 @@ async def test_count_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     count = await db.count(where=[lm.model == "gpt-4"])
 
     # Verify count matches query
-    results = list(await db.query(where=[lm.model == "gpt-4"]))
+    results = [item async for item in db.query(where=[lm.model == "gpt-4"])]
     assert count == len(results)
 
     # Count with complex condition
@@ -520,7 +517,7 @@ async def test_transcripts_with_log_metadata() -> None:
         ]
 
         # Collect and verify results
-        results = list(await db.query(conditions))
+        results = [item async for item in db.query(conditions)]
         for result in results:
             assert result.metadata["model"] == "gpt-4"
             assert cast(int, result.metadata["epoch"]) > 1
@@ -549,7 +546,7 @@ async def test_transcripts_complex_filtering() -> None:
         assert count >= 0
 
         # Verify results match conditions
-        results = list(await db.query(conditions, limit=10))
+        results = [item async for item in db.query(conditions, limit=10)]
         for result in results:
             meta = result.metadata
 
@@ -579,7 +576,7 @@ async def test_transcripts_with_shuffle_and_limit() -> None:
         conditions = [lm.model == "gpt-4"]
 
         # Query with shuffle and limit
-        results = list(await db.query(conditions, limit=5, shuffle=42))
+        results = [item async for item in db.query(conditions, limit=5, shuffle=42)]
 
         for result in results:
             assert result.metadata["model"] == "gpt-4"
@@ -599,17 +596,17 @@ async def test_query_json_metadata_fields() -> None:
     try:
         # Query by nested eval_metadata field
         conditions = [lm["eval_metadata.version"] == "1.0"]
-        results = list(await db.query(conditions))
+        results = [item async for item in db.query(conditions)]
 
         # Query by nested sample_metadata field
         conditions = [lm["sample_metadata.custom"].like("value_%")]
-        results = list(await db.query(conditions))
+        results = [item async for item in db.query(conditions)]
 
         # Complex query combining regular and JSON fields
         conditions = [
             (lm.model == "gpt-4") & (lm["eval_metadata.experiment"].like("exp_%"))
         ]
-        results = list(await db.query(conditions))
+        results = [item async for item in db.query(conditions)]
 
         for result in results:
             assert result.metadata["model"] == "gpt-4"
@@ -688,7 +685,7 @@ async def test_empty_dataframe_with_log_metadata() -> None:
     await db.connect()
 
     # Query with typed properties on empty DB
-    results = list(await db.query(where=[lm.model == "gpt-4"]))
+    results = [item async for item in db.query(where=[lm.model == "gpt-4"])]
     assert len(results) == 0
 
     count = await db.count(where=[lm.epoch > 1])

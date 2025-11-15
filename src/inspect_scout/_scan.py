@@ -465,7 +465,7 @@ async def _scan_async_inner(
             scanner_names_list = list(scan.scanners.keys())
             total_scans = 0
             skipped_scans = 0
-            for transcript_info in await transcripts.index():
+            async for transcript_info in transcripts.index():
                 for name in scanner_names_list:
                     if await recorder.is_recorded(transcript_info, name):
                         skipped_scans += 1
@@ -756,7 +756,7 @@ async def _parse_jobs(
     else:
         scanner_to_transcript_ids = None
 
-    for transcript_info in await transcripts.index():
+    async for transcript_info in transcripts.index():
         scanner_indices_for_transcript: list[int] = []
         for name in scanner_names:
             # if its not in the worklist then move on

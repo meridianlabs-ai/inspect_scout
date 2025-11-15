@@ -9,7 +9,6 @@ from typing import (
     Any,
     Final,
     Iterator,
-    Sequence,
     Type,
     cast,
 )
@@ -46,7 +45,7 @@ from inspect_scout._util.async_zip import AsyncZipReader
 
 from .._scanspec import ScanTranscripts, TranscriptField
 from .._transcript.transcripts import Transcripts
-from .caching import with_transcript_caching
+from .caching import samples_df_with_caching
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
@@ -185,14 +184,14 @@ class EvalLogTranscriptsDB:
         # resolve logs or df to transcript_df (sample per row)
         if not isinstance(logs, pd.DataFrame):
 
-            def read_samples(paths: Sequence[str]) -> pd.DataFrame:
+            def read_samples(path: str) -> pd.DataFrame:
                 # This cast is wonky, but the public function, samples_df, uses overloads
                 # to make the return type be a DataFrame when strict=True. Since we're
                 # calling the helper method, we'll just have to cast it.
                 return cast(
                     pd.DataFrame,
                     _read_samples_df_serial(
-                        list(paths),
+                        [path],
                         TranscriptColumns,
                         full=False,
                         strict=True,
@@ -200,7 +199,7 @@ class EvalLogTranscriptsDB:
                     ),
                 )
 
-            self._transcripts_df = with_transcript_caching(read_samples)(logs)
+            self._transcripts_df = samples_df_with_caching(read_samples, logs)
         else:
             self._transcripts_df = logs
 

@@ -55,9 +55,6 @@ class FileRecorder(ScanRecorder):
     @override
     async def resume(self, scan_location: str) -> ScanSpec:
         self._scan_dir = UPath(scan_location)
-        self._scanners_completed = [
-            scanner.as_posix() for scanner in self._scan_dir.glob("*.parquet")
-        ]
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = _read_scan_spec(self._scan_dir)
         self._scan_buffer = RecorderBuffer(self._scan_dir.as_posix(), self.scan_spec)
@@ -69,12 +66,7 @@ class FileRecorder(ScanRecorder):
 
     @override
     async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
-        # if we either already have a final scanner file or this transcript
-        # is in the buffer without errors then the scan is recorded
-        if _scanner_parquet_file(self.scan_dir, scanner) in self._scanners_completed:
-            return True
-        else:
-            return await self._scan_buffer.is_recorded(transcript, scanner)
+        return await self._scan_buffer.is_recorded(transcript, scanner)
 
     @override
     async def record(

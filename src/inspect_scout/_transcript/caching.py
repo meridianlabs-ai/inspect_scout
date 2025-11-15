@@ -30,9 +30,10 @@ def _get_cached_dfs(
         path_etag: tuple[str, str],
     ) -> tuple[list[pd.DataFrame], list[tuple[str, str]]]:
         hits, misses = acc
+        cached = _get_cached_df(kvstore, path_etag[0], path_etag[1])
         return (
             (hits + [cached], misses)
-            if (cached := _get_cached_df(kvstore, path_etag[0], path_etag[1]))
+            if cached is not None
             else (hits, misses + [path_etag])
         )
 

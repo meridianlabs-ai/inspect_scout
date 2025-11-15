@@ -727,17 +727,9 @@ def init_scan_model_context(
 async def handle_scan_interrupted(
     message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
-    status = Status(
-        complete=False,
-        spec=spec,
-        location=await recorder.location(),
-        summary=await recorder.summary(),
-        errors=await recorder.errors(),
-    )
-
-    display().scan_interrupted(message, status)
-
-    return status
+    scan_status = await recorder.sync(await recorder.location(), complete=False)
+    display().scan_interrupted(message, scan_status)
+    return scan_status
 
 
 async def _parse_jobs(

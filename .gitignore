@@ -222,3 +222,6 @@ src/inspect_scout/_version.py
 
 # node
 /src/inspect_scout/_view/www/node_modules
+
+# dist builds
+/src/inspect_scout/_view/www/*.tgz

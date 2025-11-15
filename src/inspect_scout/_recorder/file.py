@@ -112,18 +112,7 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def sync_status(scan_location: str) -> None:
-        # get state
-        scan_dir = UPath(scan_location)
-        scan_spec = _read_scan_spec(scan_dir)
-        scan_buffer_dir = RecorderBuffer.buffer_dir(scan_location)
-
-        # sync summary and errors
-        _sync_status_files(scan_dir, scan_buffer_dir, scan_spec)
-
-    @override
-    @staticmethod
-    async def complete(scan_location: str) -> Status:
+    async def sync(scan_location: str, complete: bool) -> Status:
         # get state
         scan_dir = UPath(scan_location)
         scan_spec = _read_scan_spec(scan_dir)
@@ -141,11 +130,12 @@ class FileRecorder(ScanRecorder):
         # sync summary and errors
         _sync_status_files(scan_dir, scan_buffer_dir, scan_spec)
 
-        # cleanup scan buffer
-        cleanup_buffer_dir(scan_buffer_dir)
+        # cleanup scan buffer if we are complete
+        if complete:
+            cleanup_buffer_dir(scan_buffer_dir)
 
         return Status(
-            complete=True,
+            complete=complete,
             spec=scan_spec,
             location=scan_dir.as_posix(),
             summary=read_scan_summary(scan_dir, scan_spec),

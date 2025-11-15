@@ -26,6 +26,7 @@ reference: "inspect_scout"
 
 ### MessageType
 ### EventType
+### RefusalError
 
 ## Registration
 

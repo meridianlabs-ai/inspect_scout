@@ -5,6 +5,8 @@ from inspect_ai.tool import Tool, ToolChoice, ToolDef, ToolInfo, ToolSource
 
 
 class RefusalError(RuntimeError):
+    """Error indicating that the model refused a scan request."""
+
     pass
 
 

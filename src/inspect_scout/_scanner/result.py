@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
-from inspect_scout._util.refusal import RefusalError
 
 logger = getLogger(__name__)
 
@@ -76,6 +75,9 @@ class Error(BaseModel):
     traceback: str
     """Error traceback."""
 
+    refusal: bool
+    """Was this error a refusal."""
+
 
 class ResultValidation(BaseModel):
     target: JsonValue
@@ -94,8 +96,6 @@ class ResultReport(BaseModel):
     result: Result | None
 
     validation: ResultValidation | None
-
-    refusal: RefusalError | None
 
     error: Error | None
 
@@ -148,9 +148,10 @@ class ResultReport(BaseModel):
             columns["message_references"] = references_json("message")
             columns["event_references"] = references_json("event")
 
-            # error
+            # error/refusal
             columns["scan_error"] = None
             columns["scan_error_traceback"] = None
+            columns["scan_error_refusal"] = None
         elif self.error is not None:
             columns["uuid"] = uuid()
             columns["label"] = None
@@ -163,9 +164,10 @@ class ResultReport(BaseModel):
             columns["event_references"] = to_json_str_safe([])
             columns["scan_error"] = self.error.error
             columns["scan_error_traceback"] = self.error.traceback
+            columns["scan_error_refusal"] = self.error.refusal
         else:
             raise ValueError(
-                "A scan result must have either a 'result' or 'error' field."
+                "A scan result must have either a 'result', 'refusal, or 'error' field."
             )
 
         # report validation

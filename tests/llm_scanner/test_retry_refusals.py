@@ -3,6 +3,7 @@
 import tempfile
 from pathlib import Path
 
+import pandas as pd
 from inspect_ai.model import ModelOutput
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
@@ -129,6 +130,7 @@ def test_retry_exceed_limit() -> None:
         assert "Refusal 3" in error.error  # Last completion text
         assert error.transcript_id
         assert error.traceback
+        assert error.refusal is True  # Verify this is a refusal error
 
         # Check summary error count
         assert status.summary.scanners["exceed_retry"].errors == 1
@@ -136,6 +138,13 @@ def test_retry_exceed_limit() -> None:
         assert (
             status.summary.scanners["exceed_retry"].results == 0
         )  # No successful result
+
+        # Verify DataFrame has scan_refusal column populated (not scan_error)
+        results = scan_results_df(status.location, scanner="exceed_retry")
+        df = results.scanners["exceed_retry"]
+        assert len(df) == 1
+        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert "content filter" in df["scan_error"].iloc[0]
 
 
 def test_no_retries_needed() -> None:
@@ -220,11 +229,19 @@ def test_retry_limit_zero_no_retries() -> None:
         assert "Scanner request refused by content filter" in status.errors[0].error
         assert status.errors[0].transcript_id
         assert status.errors[0].traceback
+        assert status.errors[0].refusal is True  # Verify this is a refusal error
 
         # Check summary
         assert status.summary.scanners["no_retries_allowed"].errors == 1
         assert status.summary.scanners["no_retries_allowed"].scans == 1
         assert status.summary.scanners["no_retries_allowed"].results == 0
+
+        # Verify DataFrame has scan_refusal column populated
+        results = scan_results_df(status.location, scanner="no_retries_allowed")
+        df = results.scanners["no_retries_allowed"]
+        assert len(df) == 1
+        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert "content filter" in df["scan_error"].iloc[0]
 
 
 def test_retry_limit_one() -> None:
@@ -314,11 +331,19 @@ def test_retry_limit_one_exceeded() -> None:
         assert "Refusal 2" in status.errors[0].error  # Last completion text
         assert status.errors[0].transcript_id
         assert status.errors[0].traceback
+        assert status.errors[0].refusal is True  # Verify this is a refusal error
 
         # Check summary
         assert status.summary.scanners["one_retry_exceeded"].errors == 1
         assert status.summary.scanners["one_retry_exceeded"].scans == 1
         assert status.summary.scanners["one_retry_exceeded"].results == 0
+
+        # Verify DataFrame has scan_refusal column populated
+        results = scan_results_df(status.location, scanner="one_retry_exceeded")
+        df = results.scanners["one_retry_exceeded"]
+        assert len(df) == 1
+        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert "content filter" in df["scan_error"].iloc[0]
 
 
 def test_retry_limit_false_means_no_retries() -> None:
@@ -361,11 +386,19 @@ def test_retry_limit_false_means_no_retries() -> None:
         assert "Scanner request refused by content filter" in status.errors[0].error
         assert status.errors[0].transcript_id
         assert status.errors[0].traceback
+        assert status.errors[0].refusal is True  # Verify this is a refusal error
 
         # Check summary
         assert status.summary.scanners["false_retries"].errors == 1
         assert status.summary.scanners["false_retries"].scans == 1
         assert status.summary.scanners["false_retries"].results == 0
+
+        # Verify DataFrame has scan_refusal column populated
+        results = scan_results_df(status.location, scanner="false_retries")
+        df = results.scanners["false_retries"]
+        assert len(df) == 1
+        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert "content filter" in df["scan_error"].iloc[0]
 
 
 def test_multiple_transcripts_mixed_results() -> None:
@@ -431,10 +464,28 @@ def test_multiple_transcripts_mixed_results() -> None:
         assert status.errors[0].scanner == "mixed_results"
         assert "Scanner request refused by content filter" in status.errors[0].error
         assert status.errors[0].transcript_id  # Has a transcript ID
+        assert status.errors[0].refusal is True  # Verify this is a refusal error
 
         # Summary should show one scan succeeded, one had error
         assert status.summary.scanners["mixed_results"].errors == 1
         assert status.summary.scanners["mixed_results"].results == 1  # One succeeded
+
+        # Verify DataFrame contains both transcripts with correct columns
+        results = scan_results_df(status.location, scanner="mixed_results")
+        df = results.scanners["mixed_results"]
+        assert len(df) == 2  # Both transcripts recorded
+
+        # Check successful transcript (has value, no refusal)
+        successful_rows = df[df["value"].notna()]
+        assert len(successful_rows) == 1
+        assert pd.isna(successful_rows["scan_error_refusal"].iloc[0])
+        assert pd.isna(successful_rows["scan_error"].iloc[0])
+
+        # Check failed transcript (has refusal, no value)
+        failed_rows = df[df["scan_error_refusal"].notna()]
+        assert len(failed_rows) == 1
+        assert pd.isna(failed_rows["value"].iloc[0])
+        assert "content filter" in failed_rows["scan_error"].iloc[0]
 
 
 def test_retry_with_string_answer_type() -> None:
@@ -527,3 +578,122 @@ def test_retry_with_numeric_answer_type() -> None:
         numeric_df = results.scanners["numeric_answer"]
         assert len(numeric_df) == 1
         assert numeric_df["value"].iloc[0] == 5
+
+
+def test_refusal_flag_is_true_for_refusal_errors() -> None:
+    """Test that error.refusal flag is True for RefusalError and False for other errors."""
+
+    @scanner(name="refusal_scanner", messages="all")
+    def refusal_scanner() -> Scanner[Transcript]:
+        return llm_scanner(
+            question="Will this be refused?",
+            answer="boolean",
+            retry_refusals=0,  # No retries, so first refusal becomes error
+        )
+
+    @scanner(name="regular_error_scanner", messages="all")
+    def regular_error_scanner() -> Scanner[Transcript]:
+        # This scanner will fail with a regular error (not a refusal)
+        async def scan_fn(_transcript: Transcript) -> bool:
+            raise RuntimeError("This is a regular error, not a refusal")
+
+        return scan_fn  # type: ignore[return-value]
+
+    # Prime refusal response
+    mock_responses = [
+        ModelOutput.from_content(
+            model="mockllm",
+            content="I cannot answer that.",
+            stop_reason="content_filter",
+        ),
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[refusal_scanner(), regular_error_scanner()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,
+            max_processes=1,
+            model="mockllm/model",
+            model_args={"custom_outputs": mock_responses},
+        )
+
+        # Verify scan did not complete due to errors
+        assert not status.complete
+        assert len(status.errors) == 2
+
+        # Find the refusal error and regular error
+        refusal_error = next(e for e in status.errors if e.scanner == "refusal_scanner")
+        regular_error = next(
+            e for e in status.errors if e.scanner == "regular_error_scanner"
+        )
+
+        # Verify refusal error has refusal flag set to True
+        assert refusal_error.refusal is True
+        assert "content filter" in refusal_error.error
+
+        # Verify regular error has refusal flag set to False
+        assert regular_error.refusal is False
+        assert "regular error" in regular_error.error
+
+
+def test_scan_refusal_column_populated() -> None:
+    """Test that scan_refusal column is populated for refusals, scan_error for regular errors."""
+
+    @scanner(name="refusal_scanner", messages="all")
+    def refusal_scanner() -> Scanner[Transcript]:
+        return llm_scanner(
+            question="Will this be refused?",
+            answer="boolean",
+            retry_refusals=0,
+        )
+
+    @scanner(name="regular_error_scanner", messages="all")
+    def regular_error_scanner() -> Scanner[Transcript]:
+        async def scan_fn(_transcript: Transcript) -> bool:
+            raise RuntimeError("Regular error occurred")
+
+        return scan_fn  # type: ignore[return-value]
+
+    # Prime refusal response
+    mock_responses = [
+        ModelOutput.from_content(
+            model="mockllm",
+            content="Cannot answer.",
+            stop_reason="content_filter",
+        ),
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[refusal_scanner(), regular_error_scanner()],
+            transcripts=transcripts_from_logs(LOGS_DIR),
+            results=tmpdir,
+            limit=1,
+            max_processes=1,
+            model="mockllm/model",
+            model_args={"custom_outputs": mock_responses},
+        )
+
+        # Verify scan did not complete
+        assert not status.complete
+
+        # Check refusal scanner DataFrame - should have scan_refusal populated
+        refusal_results = scan_results_df(status.location, scanner="refusal_scanner")
+        refusal_df = refusal_results.scanners["refusal_scanner"]
+        assert len(refusal_df) == 1
+        assert pd.notna(refusal_df["scan_error_refusal"].iloc[0])
+        assert "content filter" in refusal_df["scan_error"].iloc[0]
+        assert pd.isna(refusal_df["value"].iloc[0])
+
+        # Check regular error scanner DataFrame - should have scan_error populated
+        error_results = scan_results_df(
+            status.location, scanner="regular_error_scanner"
+        )
+        error_df = error_results.scanners["regular_error_scanner"]
+        assert len(error_df) == 1
+        assert pd.notna(error_df["scan_error"].iloc[0])
+        assert pd.notna(error_df["scan_error_traceback"].iloc[0])
+        assert "Regular error occurred" in error_df["scan_error"].iloc[0]
+        assert pd.isna(error_df["value"].iloc[0])

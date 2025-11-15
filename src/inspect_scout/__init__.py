@@ -42,6 +42,7 @@ from ._transcript.types import (
     Transcript,
     TranscriptInfo,
 )
+from ._util.refusal import RefusalError
 from ._validation import (
     ValidationCase,
     ValidationPredicate,
@@ -102,6 +103,7 @@ __all__ = [
     "as_scorer",
     "messages_as_str",
     "MessagesPreprocessor",
+    "RefusalError",
     # llm_scanner
     "llm_scanner",
     "AnswerMultiLabel",

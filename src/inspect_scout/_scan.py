@@ -385,7 +385,7 @@ async def scan_complete_async(
         )
 
     # complete the scan
-    status = await recorder_type.complete(scan_location)
+    status = await recorder_type.sync(scan_location, complete=True)
     display().scan_complete(status)
     return status
 
@@ -544,7 +544,6 @@ async def _scan_async_inner(
                     async for loader_result in loader(job.union_transcript):
                         result: Result | list[Result] | None = None
                         final_result: Result | None = None
-                        refusal: RefusalError | None = None
                         error: Error | None = None
                         try:
                             type_and_ids = get_input_type_and_ids(loader_result)
@@ -580,6 +579,7 @@ async def _scan_async_inner(
                                 scanner=job.scanner_name,
                                 error=str(ex),
                                 traceback=traceback.format_exc(),
+                                refusal=isinstance(ex, RefusalError),
                             )
 
                         # Always append a result (success or error) if we have type_and_ids
@@ -593,7 +593,6 @@ async def _scan_async_inner(
                                     input=loader_result,
                                     result=final_result,
                                     validation=validation,
-                                    refusal=refusal,
                                     error=error,
                                     events=jsonable_python(
                                         resolve_event_attachments(inspect_transcript)
@@ -651,17 +650,9 @@ async def _scan_async_inner(
 
                 # report status
                 errors = await recorder.errors()
-                if len(errors) > 0:
-                    await recorder.sync_status(await recorder.location())
-                    scan_status = Status(
-                        complete=False,
-                        spec=scan.spec,
-                        location=await recorder.location(),
-                        summary=await recorder.summary(),
-                        errors=errors,
-                    )
-                else:
-                    scan_status = await recorder.complete(await recorder.location())
+                scan_status = await recorder.sync(
+                    await recorder.location(), complete=len(errors) == 0
+                )
 
         # report scan complete
         display().scan_complete(scan_status)
@@ -823,12 +814,12 @@ def _reports_for_parse_error(
             input=placeholder_transcript,
             result=None,
             validation=None,
-            refusal=None,
             error=Error(
                 transcript_id=job.transcript_info.id,
                 scanner=scanner_names[idx],
                 error=str(exception),
                 traceback=traceback.format_exc(),
+                refusal=False,
             ),
             events=[],
             model_usage={},

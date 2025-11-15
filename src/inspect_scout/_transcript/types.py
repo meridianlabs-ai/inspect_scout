@@ -1,11 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Iterator, Literal, Protocol, Sequence, TypeAlias
+from typing import Literal, Sequence, TypeAlias
 
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, Field, JsonValue
-
-from .metadata import Condition
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
@@ -66,22 +64,3 @@ class Transcript(TranscriptInfo):
 
     events: list[Event] = Field(default_factory=list)
     """Events from transcript."""
-
-
-class TranscriptDB(Protocol):
-    async def connect(self) -> None: ...
-    async def count(
-        self,
-        where: list[Condition],
-        limit: int | None = None,
-    ) -> int: ...
-    async def query(
-        self,
-        where: list[Condition],
-        limit: int | None = None,
-        shuffle: bool | int = False,
-    ) -> Iterator[TranscriptInfo]: ...
-    async def read(
-        self, t: TranscriptInfo, content: TranscriptContent
-    ) -> Transcript: ...
-    async def disconnect(self) -> None: ...

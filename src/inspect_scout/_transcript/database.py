@@ -95,7 +95,7 @@ class EvalLogTranscripts(Transcripts):
         return self.db.query(self._where, self._limit, self._shuffle)
 
     @override
-    async def _read(
+    async def read(
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> Transcript:
         return await self.db.read(transcript, content)

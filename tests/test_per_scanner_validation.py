@@ -37,7 +37,7 @@ class MockTranscripts(Transcripts):
 
         return empty_generator()
 
-    async def _read(self, transcript: Any, content: Any) -> Any:  # noqa: ARG002
+    async def read(self, transcript: Any, content: Any) -> Any:  # noqa: ARG002
         raise NotImplementedError()
 
     async def snapshot(self) -> Any:

@@ -160,7 +160,7 @@ class Transcripts(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def _read(
+    async def read(
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> Transcript:
         """Read transcript content.

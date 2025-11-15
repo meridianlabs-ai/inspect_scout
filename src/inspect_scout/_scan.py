@@ -494,7 +494,7 @@ async def _scan_async_inner(
 
                 async def _parse_function(job: ParseJob) -> ParseFunctionResult:
                     try:
-                        union_transcript = await transcripts._read(  # pylint: disable=protected-access
+                        union_transcript = await transcripts.read(
                             job.transcript_info, union_content
                         )
                         return (

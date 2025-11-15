@@ -27,7 +27,7 @@ class MockTranscripts(Transcripts):
 
         return empty_generator()
 
-    async def _read(self, transcript: Any, content: Any) -> Any:
+    async def read(self, transcript: Any, content: Any) -> Any:
         raise NotImplementedError()
 
     async def snapshot(self) -> Any:

@@ -13,7 +13,7 @@ from inspect_ai._util.config import resolve_args
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai.log._file import list_eval_logs
-from inspect_ai.model import BatchConfig, GenerateConfig
+from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig
 from typing_extensions import Unpack
 
 from inspect_scout._validation import validation_set
@@ -24,7 +24,11 @@ from .._scan import scan
 from .._scanjob import ScanJob, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
 from .._transcript.database import transcripts_from_logs as transcripts_from
-from .._util.constants import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TRANSCRIPTS
+from .._util.constants import (
+    DEFAULT_BATCH_SIZE,
+    DEFAULT_CACHE_DAYS,
+    DEFAULT_MAX_TRANSCRIPTS,
+)
 from .common import CommonOptions, common_options, process_common_options
 
 
@@ -195,6 +199,15 @@ class ScanGroup(click.Group):
     envvar="SCOUT_SCAN_METADATA",
 )
 @click.option(
+    "--cache",
+    is_flag=False,
+    flag_value="true",
+    default=None,
+    callback=int_bool_or_str_flag_callback(DEFAULT_CACHE_DAYS, None),
+    help="Policy for caching of model generations. Specify --cache to cache with 7 day expiration (7D). Specify an explicit duration (e.g. 1h, 3d, 6M) to set the expiration explicitly (durations can be expressed as s, m, h, D, W, M, or Y). Alternatively, pass the file path to a YAML or JSON config file with a full `CachePolicy` configuration.",
+    envvar="SCOUT_SCAN_CACHE",
+)
+@click.option(
     "--batch",
     is_flag=False,
     flag_value="true",
@@ -295,6 +308,7 @@ def scan_command(
     shuffle: int | None,
     tags: str | None,
     metadata: tuple[str, ...] | None,
+    cache: int | str | None,
     batch: int | str | None,
     max_retries: int | None,
     timeout: int | None,
@@ -379,11 +393,22 @@ def scan_command(
     else:
         batch_config = batch
 
+    # resolve cache
+    if isinstance(cache, str):
+        cache_policy: CachePolicy | None = CachePolicy.from_string(cache)
+        if cache_policy is None:
+            cache_policy = CachePolicy.model_validate(resolve_args(cache))
+    elif isinstance(cache, int):
+        cache_policy = CachePolicy(expiry=f"{cache}D")
+    else:
+        cache_policy = None
+
     # resolve model config
     scan_model_config = GenerateConfig(
         max_retries=max_retries,
         timeout=timeout,
         max_connections=max_connections,
+        cache=cache_policy,
         batch=batch_config,
         max_tokens=max_tokens,
         temperature=temperature,

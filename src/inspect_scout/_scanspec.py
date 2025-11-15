@@ -75,7 +75,7 @@ class TranscriptField(TypedDict, total=False):
 
 
 class ScanTranscripts(BaseModel):
-    """Transcripts target by a scan."""
+    """Transcripts targeted by a scan."""
 
     type: str
     """Transcripts backing store type (currently only 'eval_log')."""

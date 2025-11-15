@@ -332,6 +332,7 @@ export const createStore = (api: ScanApi) =>
               state.transcriptOutlineId = undefined;
               state.selectedResultTab = undefined;
               state.groupResultsBy = undefined;
+              state.scansSearchText = undefined;
             });
           },
           clearScansState: () => {

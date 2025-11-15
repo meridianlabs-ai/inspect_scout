@@ -4358,6 +4358,51 @@ button._segment_19z32_10 {
 ._footer_1db6h_8 {
   grid-column: 1 / -1;
 }
+._container_e1pcq_1 {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.3em;
+  border: solid var(--bs-border-color) 1px;
+  border-radius: var(--bs-border-radius);
+  background-color: var(--inspect-input-background);
+  align-items: center;
+}
+
+._container_e1pcq_1:focus-within {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+._input_e1pcq_16 {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--bs-body-color);
+}
+
+._withIcon_e1pcq_23 {
+  grid-template-columns: max-content max-content max-content;
+}
+
+._icon_e1pcq_27 {
+  margin-left: 0.3em;
+}
+
+._clearText_e1pcq_31 {
+  opacity: 0.6;
+  margin-right: 0.3em;
+}
+
+._clearText_e1pcq_31:hover {
+  cursor: pointer;
+}
+
+._clearText_e1pcq_31._hidden_e1pcq_40:hover {
+  cursor: default !important;
+}
+._hidden_e1pcq_40 {
+  opacity: 0 !important;
+}
 ._tabSet_10t9t_1 {
   overflow-y: hidden;
 }

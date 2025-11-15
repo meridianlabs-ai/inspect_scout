@@ -13,7 +13,7 @@ export const resultIdentifierStr = (
   if (!identifier) {
     return undefined;
   }
-  if (identifier.secondaryId && identifier.epoch) {
+  if (identifier.secondaryId || identifier.epoch) {
     const result: string[] = [identifier.id];
     if (identifier.secondaryId) {
       result.push(identifier.secondaryId);

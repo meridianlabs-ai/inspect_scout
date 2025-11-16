@@ -68,7 +68,7 @@ def mock_kvstore() -> Iterator[Mock]:
     shared_store = MockKVStore()
 
     @contextmanager
-    def mock_inspect_kvstore(name: str) -> Iterator[MockKVStore]:
+    def mock_inspect_kvstore(name: str, **kwargs: Any) -> Iterator[MockKVStore]:
         yield shared_store
 
     with patch(

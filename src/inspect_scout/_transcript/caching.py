@@ -10,6 +10,8 @@ from inspect_ai.log._file import EvalLogInfo, log_files_from_ls
 
 from .types import LogPaths
 
+MAX_CACHE_ENTRIES = 5000
+
 
 def _get_cached_dfs(
     kvstore: KVStore, paths_and_etags: list[tuple[str, str]]
@@ -62,30 +64,21 @@ def samples_df_with_caching(
     Returns:
         DataFrame with transcript data
     """
-    # 1. Resolve logs to (path, etag) tuples
+    # Resolve logs to a list of (path, etag) tuples
     if not (paths_and_etags := _resolve_logs(logs)):
         return pd.DataFrame()
 
-    # 2. Process all logs with caching
-    # Get DataFrames from cache where possible. For cache misses, call reader
-    # once per miss and add to cache. Concatenate all DataFrames.
-
-    with inspect_kvstore(cache_store) as kvstore:
-        # First pass: get all cache hits and identify misses
+    with inspect_kvstore(cache_store, max_entries=MAX_CACHE_ENTRIES) as kvstore:
         cache_hits, cache_misses = _get_cached_dfs(kvstore, paths_and_etags)
 
-        # Second pass: read cache misses
-        # It may seem silly to call the reader once for each path, but doing that
-        # allows us to avoid concat'ing multiple times
+        # Read the dataframes for all of the cache misses. It may seem silly to
+        # call the reader once for each path, but doing that allows us to avoid
+        # concat'ing multiple times
         miss_dfs = [reader(path) for path, _ in cache_misses]
-
-        # Cache the results
         for (path, etag), df in zip(cache_misses, miss_dfs, strict=True):
             _put_cached_df(kvstore, path, etag, df)
 
-        # Combine cache hits and fresh reads
-        all_dfs = cache_hits + miss_dfs
-        return pd.concat(all_dfs, ignore_index=True) if all_dfs else pd.DataFrame()
+    return pd.concat(cache_hits + miss_dfs, ignore_index=True)
 
 
 def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:

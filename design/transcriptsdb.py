@@ -1,5 +1,5 @@
 from types import TracebackType
-from typing import AsyncIterator, Iterable, Type, overload
+from typing import AsyncIterator, Iterable, Protocol, Type, overload
 
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.metadata import Condition
@@ -9,6 +9,10 @@ from inspect_scout._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
+
+
+class TranscriptSource(Protocol):
+    def __call__(self) -> AsyncIterator[Transcript]: ...
 
 
 class TranscriptDB:
@@ -64,7 +68,7 @@ class TranscriptDB:
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         return Transcript(id=t.id, source_id=t.source_id, source_uri=t.source_uri)
 
-    async def insert(self, transcripts: Iterable[Transcript] | Transcripts) -> None:
+    async def insert(self, transcripts: AsyncIterator[Transcript]) -> None:
         pass
 
     async def update(self, transcripts: Iterable[tuple[str, Transcript]]) -> None:

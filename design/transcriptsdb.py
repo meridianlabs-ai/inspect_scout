@@ -1,5 +1,5 @@
 from types import TracebackType
-from typing import AsyncIterator, Iterable, Protocol, Type, override
+from typing import AsyncIterator, Iterable, Type, override
 
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.metadata import Condition

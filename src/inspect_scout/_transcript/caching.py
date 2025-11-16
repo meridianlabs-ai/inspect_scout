@@ -71,9 +71,7 @@ def samples_df_with_caching(
     with inspect_kvstore(cache_store, max_entries=MAX_CACHE_ENTRIES) as kvstore:
         cache_hits, cache_misses = _get_cached_dfs(kvstore, paths_and_etags)
 
-        # Read the dataframes for all of the cache misses. It may seem silly to
-        # call the reader once for each path, but doing that allows us to avoid
-        # concat'ing multiple times
+        # Read and cache the dataframes for all of the cache misses.
         miss_dfs = [reader(path) for path, _ in cache_misses]
         for (path, etag), df in zip(cache_misses, miss_dfs, strict=True):
             _put_cached_df(kvstore, path, etag, df)

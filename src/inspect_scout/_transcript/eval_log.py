@@ -407,14 +407,6 @@ def transcripts_from_logs(logs: LogPaths) -> Transcripts:
     return EvalLogTranscripts(logs)
 
 
-async def transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
-    match snapshot.type:
-        case "eval_log":
-            return EvalLogTranscripts(snapshot)
-        case _:
-            raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
-
-
 async def transcripts_df_from_snapshot(snapshot: ScanTranscripts) -> pd.DataFrame:
     """Get a DataFrame from a transcript snapshot (internal use with original column names)."""
     match snapshot.type:

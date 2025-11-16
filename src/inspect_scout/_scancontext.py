@@ -20,6 +20,9 @@ from inspect_ai.model._model_config import (
     model_roles_to_model_roles_config,
 )
 
+from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.database.transcripts import TranscriptsDBTranscripts
+from inspect_scout._transcript.eval_log import EvalLogTranscripts
 from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
 from inspect_scout._validation.types import ValidationSet
 
@@ -38,7 +41,6 @@ from ._scanspec import (
     ScanRevision,
     ScanSpec,
 )
-from ._transcript.eval_log import transcripts_from_snapshot
 from ._transcript.transcripts import Transcripts
 
 
@@ -131,7 +133,7 @@ async def resume_scan(scan_location: str) -> ScanContext:
         raise PrerequisiteError(f"Scan at '{scan_location}' is already complete.")
 
     spec = status.spec
-    transcripts = await transcripts_from_snapshot(spec.transcripts)
+    transcripts = await _transcripts_from_snapshot(spec.transcripts)
     scanners = _scanners_from_spec(spec.scanners)
     return ScanContext(
         spec=spec,
@@ -200,3 +202,13 @@ def job_args(scanjob: ScanJob) -> dict[str, Any] | None:
         return dict(registry_params(scanjob))
     else:
         return None
+
+
+async def _transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+    match snapshot.type:
+        case "eval_log":
+            return EvalLogTranscripts(snapshot)
+        case "database":
+            return TranscriptsDBTranscripts(snapshot)
+        case _:
+            raise ValueError(f"Unrecognized transcript type '{snapshot.type}")

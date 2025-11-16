@@ -15,10 +15,6 @@ from inspect_scout._transcript.types import (
 )
 
 
-class TranscriptSource(Protocol):
-    def __call__(self) -> AsyncIterator[Transcript]: ...
-
-
 class TranscriptDB:
     def __init__(self, location: str) -> None:
         self._location: str | None = location
@@ -42,7 +38,9 @@ class TranscriptDB:
         await self.disconnect()
         return None
 
-    async def insert(self, transcripts: AsyncIterator[Transcript]) -> None:
+    async def insert(
+        self, transcripts: Iterable[Transcript] | AsyncIterator[Transcript]
+    ) -> None:
         pass
 
     async def update(self, transcripts: Iterable[tuple[str, Transcript]]) -> None:

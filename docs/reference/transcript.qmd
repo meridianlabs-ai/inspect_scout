@@ -5,23 +5,22 @@ reference: "inspect_scout"
 
 ## Database
 
-### transcripts_db (returns TranscriptsDB)
+### transcripts_db
 ### TranscriptsDB
 
-### TranscriptsSource (used to insert into db)
-
-### EvalLogTranscripts
-### WeaveTranscripts
-### LangSmithTranscripts
-### AgentsSDKTranscripts
-### LogfireTranscripts
+### import_eval_logs()
+### import_weave()
+### import_langsmith()
+### import_agentsdk()
+### import_logfire()
+### import_otel()
 
 ## Reading
 
 ### Transcripts
 ### TranscriptsReader
-### TranscriptsQuery
-### transcripts_from
+### transcripts_from_db
+### trasncripts_from_logs
 
 
 ## Filtering

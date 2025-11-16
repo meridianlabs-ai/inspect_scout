@@ -56,7 +56,7 @@ class TranscriptDB:
     ) -> int:
         return 0
 
-    async def query(
+    async def select(
         self,
         where: list[Condition],
         limit: int | None = None,
@@ -107,7 +107,9 @@ class TranscriptsDBReader(TranscriptsReader):
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
         """Index of `TranscriptInfo` for the collection."""
-        return self._db.query(self._query.where, self._query.limit, self._query.shuffle)
+        return self._db.select(
+            self._query.where, self._query.limit, self._query.shuffle
+        )
 
     @override
     async def read(

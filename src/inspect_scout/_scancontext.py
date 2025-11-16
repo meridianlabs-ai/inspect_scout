@@ -38,7 +38,7 @@ from ._scanspec import (
     ScanRevision,
     ScanSpec,
 )
-from ._transcript.database import transcripts_from_snapshot
+from ._transcript.eval_log import transcripts_from_snapshot
 from ._transcript.transcripts import Transcripts
 
 

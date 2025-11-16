@@ -28,7 +28,7 @@ from jsonschema import Draft7Validator
 from pydantic import BaseModel, ConfigDict, Field
 
 from inspect_scout._scanspec import ScannerSpec, ScannerWork
-from inspect_scout._transcript.database import transcripts_from_logs
+from inspect_scout._transcript.eval_log import transcripts_from_logs
 from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
 

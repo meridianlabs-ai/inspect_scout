@@ -6,7 +6,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 import pytest_asyncio
-from inspect_scout._transcript.database import EvalLogTranscriptsDB
+from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB
 from inspect_scout._transcript.metadata import metadata as m
 from inspect_scout._transcript.types import TranscriptInfo
 

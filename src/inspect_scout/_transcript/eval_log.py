@@ -47,10 +47,10 @@ from typing_extensions import override
 from inspect_scout._util.async_zip import AsyncZipReader
 
 from .._scanspec import ScanTranscripts, TranscriptField
-from .._transcript.transcripts import Transcripts, TranscriptsReader
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
+from .transcripts import Transcripts, TranscriptsReader
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
 TRANSCRIPTS = "transcripts"

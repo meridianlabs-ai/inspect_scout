@@ -19,7 +19,7 @@ from inspect_scout import (
 )
 from inspect_scout._scanner.loader import Loader
 from inspect_scout._scanresults import scan_results_db, scan_results_df
-from inspect_scout._transcript.database import transcripts_from_logs
+from inspect_scout._transcript.eval_log import transcripts_from_logs
 from inspect_scout._transcript.types import Transcript
 from pydantic import JsonValue
 

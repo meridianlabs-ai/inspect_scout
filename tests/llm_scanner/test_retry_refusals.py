@@ -7,7 +7,7 @@ import pandas as pd
 from inspect_ai.model import ModelOutput
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
-from inspect_scout._transcript.database import transcripts_from_logs
+from inspect_scout._transcript.eval_log import transcripts_from_logs
 from inspect_scout._transcript.types import Transcript
 
 # Test data location

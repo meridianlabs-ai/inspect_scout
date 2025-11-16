@@ -1,9 +1,13 @@
 from types import TracebackType
-from typing import AsyncIterator, Iterable, Protocol, Type, overload
+from typing import AsyncIterator, Iterable, Protocol, Type, override
 
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.metadata import Condition
-from inspect_scout._transcript.transcripts import Transcripts
+from inspect_scout._transcript.transcripts import (
+    Transcripts,
+    TranscriptsQuery,
+    TranscriptsReader,
+)
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -16,19 +20,8 @@ class TranscriptSource(Protocol):
 
 
 class TranscriptDB:
-    @overload
-    def __init__(self, transcripts: str) -> None: ...
-
-    @overload
-    def __init__(self, transcripts: ScanTranscripts) -> None: ...
-
-    def __init__(self, transcripts: str | ScanTranscripts) -> None:
-        if isinstance(transcripts, str):
-            self._location: str | None = transcripts
-            self._snapshot: ScanTranscripts | None = None
-        else:
-            self._location = None
-            self._snapshot = None
+    def __init__(self, location: str) -> None:
+        self._location: str | None = location
 
     async def connect(self) -> None:
         pass
@@ -49,6 +42,15 @@ class TranscriptDB:
         await self.disconnect()
         return None
 
+    async def insert(self, transcripts: AsyncIterator[Transcript]) -> None:
+        pass
+
+    async def update(self, transcripts: Iterable[tuple[str, Transcript]]) -> None:
+        pass
+
+    async def delete(self, transcripts: Iterable[str]) -> None:
+        pass
+
     async def count(
         self,
         where: list[Condition],
@@ -68,18 +70,67 @@ class TranscriptDB:
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         return Transcript(id=t.id, source_id=t.source_id, source_uri=t.source_uri)
 
-    async def insert(self, transcripts: AsyncIterator[Transcript]) -> None:
-        pass
 
-    async def update(self, transcripts: Iterable[tuple[str, Transcript]]) -> None:
-        pass
+class TranscriptsDBTranscripts(Transcripts):
+    def __init__(self, db: TranscriptDB) -> None:
+        self._db = db
 
-    async def delete(self, transcripts: Iterable[str]) -> None:
-        pass
+    @override
+    def reader(self) -> TranscriptsReader:
+        return TranscriptsDBReader(self._db, self._query)
 
+
+class TranscriptsDBReader(TranscriptsReader):
+    def __init__(self, db: TranscriptDB, query: TranscriptsQuery) -> None:
+        self._db = db
+        self._query = query
+
+    @override
+    async def __aenter__(self) -> "TranscriptsReader":
+        """Enter the async context manager."""
+        await self._db.connect()
+        return self
+
+    @override
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool | None:
+        await self._db.disconnect()
+        return None
+
+    @override
+    async def count(self) -> int:
+        """Number of transcripts in collection."""
+        return await self._db.count(self._query.where, self._query.limit)
+
+    @override
+    def index(self) -> AsyncIterator[TranscriptInfo]:
+        """Index of `TranscriptInfo` for the collection."""
+        return self._db.query(self._query.where, self._query.limit, self._query.shuffle)
+
+    @override
+    async def read(
+        self, transcript: TranscriptInfo, content: TranscriptContent
+    ) -> Transcript:
+        """Read transcript content.
+
+        Args:
+            transcript: Transcript to read.
+            content: Content to read (e.g. specific message types, etc.)
+
+        Returns:
+            Transcript: Transcript with content.
+        """
+        return await self._db.read(transcript, content)
+
+    @override
     async def snapshot(self) -> ScanTranscripts:
-        # this will be the current index
         return ScanTranscripts(type="foo", fields=[], count=0, data="")
 
-    # restoring the snapshot will amount to creating a hard-coded where
-    # whery on the entire thing
+
+def transcripts_from(location: str) -> Transcripts:
+    db = TranscriptDB(location)
+    return TranscriptsDBTranscripts(db)

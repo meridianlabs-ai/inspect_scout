@@ -89,13 +89,13 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
     model = scanjob.model or None
 
     # create scan spec
-    async with scanjob.transcripts:
+    async with scanjob.transcripts.reader() as tr:
         spec = ScanSpec(
             scan_file=job_file(scanjob),
             scan_name=scanjob.name,
             scan_args=job_args(scanjob),
             options=options or ScanOptions(),
-            transcripts=await scanjob.transcripts.snapshot(),
+            transcripts=await tr.snapshot(),
             scanners=_spec_scanners(scanjob.scanners),
             worklist=list(scanjob.worklist) if scanjob.worklist else None,
             validation=scanjob.validation,

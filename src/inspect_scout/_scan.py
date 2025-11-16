@@ -58,7 +58,7 @@ from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_r
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScannerWork, ScanSpec
-from ._transcript.transcripts import Transcripts
+from ._transcript.transcripts import Transcripts, TranscriptsReader
 from ._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -460,12 +460,12 @@ async def _scan_async_inner(
                 else None
             )
 
-        async with transcripts:
+        async with transcripts.reader() as tr:
             # Count already-completed scans to initialize progress
             scanner_names_list = list(scan.scanners.keys())
             total_scans = 0
             skipped_scans = 0
-            async for transcript_info in transcripts.index():
+            async for transcript_info in tr.index():
                 for name in scanner_names_list:
                     if await recorder.is_recorded(transcript_info, name):
                         skipped_scans += 1
@@ -494,7 +494,7 @@ async def _scan_async_inner(
 
                 async def _parse_function(job: ParseJob) -> ParseFunctionResult:
                     try:
-                        union_transcript = await transcripts.read(
+                        union_transcript = await tr.read(
                             job.transcript_info, union_content
                         )
                         return (
@@ -641,7 +641,7 @@ async def _scan_async_inner(
                     scan_display.results(transcript, scanner, results)
 
                 await strategy(
-                    parse_jobs=_parse_jobs(scan, recorder, transcripts),
+                    parse_jobs=_parse_jobs(scan, recorder, tr),
                     parse_function=_parse_function,
                     scan_function=_scan_function,
                     record_results=record_results,
@@ -735,7 +735,7 @@ async def handle_scan_interrupted(
 async def _parse_jobs(
     context: ScanContext,
     recorder: ScanRecorder,
-    transcripts: Transcripts,
+    transcripts: TranscriptsReader,
 ) -> AsyncIterator[ParseJob]:
     """Yield `ParseJob` objects for transcripts needing scanning.
 

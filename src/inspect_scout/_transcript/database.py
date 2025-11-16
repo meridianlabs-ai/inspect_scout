@@ -47,7 +47,7 @@ from typing_extensions import override
 from inspect_scout._util.async_zip import AsyncZipReader
 
 from .._scanspec import ScanTranscripts, TranscriptField
-from .._transcript.transcripts import Transcripts
+from .._transcript.transcripts import Transcripts, TranscriptsReader
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
@@ -60,7 +60,7 @@ LogPaths: TypeAlias = (
 )
 
 
-class EvalLogTranscripts(Transcripts):
+class EvalLogTranscripts(Transcripts, TranscriptsReader):
     """Collection of transcripts for scanning."""
 
     def __init__(self, logs: LogPaths | ScanTranscripts) -> None:
@@ -72,7 +72,11 @@ class EvalLogTranscripts(Transcripts):
         self._db: EvalLogTranscriptsDB | None = None
 
     @override
-    async def __aenter__(self) -> "Transcripts":
+    def reader(self) -> TranscriptsReader:
+        return self
+
+    @override
+    async def __aenter__(self) -> "TranscriptsReader":
         await self.db.connect()
         return self
 
@@ -88,11 +92,11 @@ class EvalLogTranscripts(Transcripts):
 
     @override
     async def count(self) -> int:
-        return await self.db.count(self._where, self._limit)
+        return await self.db.count(self._query.where, self._query.limit)
 
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        return self.db.query(self._where, self._limit, self._shuffle)
+        return self.db.query(self._query.where, self._query.limit, self._query.shuffle)
 
     @override
     async def read(

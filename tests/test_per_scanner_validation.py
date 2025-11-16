@@ -8,13 +8,16 @@ from inspect_scout._scan import _resolve_validation
 from inspect_scout._scanjob import ScanJob
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, scanner
-from inspect_scout._transcript.transcripts import Transcripts
+from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
 from inspect_scout._validation import ValidationCase, ValidationSet
 
 
 # Mock Transcripts for testing
-class MockTranscripts(Transcripts):
+class MockTranscripts(Transcripts, TranscriptsReader):
     """Mock implementation of Transcripts for testing."""
+
+    def reader(self) -> TranscriptsReader:
+        return self
 
     async def __aenter__(self) -> "MockTranscripts":
         return self
@@ -221,9 +224,9 @@ def test_for_validation_dict_single_scanner() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation_dict)
 
-    assert len(filtered._where) == 1
+    assert len(filtered._query.where) == 1
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     assert sql == '"sample_id" IN (?, ?)'
@@ -250,7 +253,7 @@ def test_for_validation_dict_multiple_scanners() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation_dict)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Should merge all IDs from both scanners
@@ -278,7 +281,7 @@ def test_for_validation_dict_overlapping_ids() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation_dict)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Should deduplicate id2
@@ -304,7 +307,7 @@ def test_for_validation_dict_with_list_ids() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation_dict)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     assert sql == '"sample_id" IN (?, ?, ?)'
@@ -321,7 +324,7 @@ def test_for_validation_dict_empty_validation_sets() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation_dict)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Should result in empty IN clause
@@ -349,7 +352,7 @@ def test_for_validation_preserves_order_across_scanners() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation_dict)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     _sql, params = condition.to_sql("sqlite")
 
     # Should have all unique IDs in order of first appearance

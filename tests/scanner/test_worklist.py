@@ -21,9 +21,9 @@ LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 async def get_n_transcript_ids(n: int) -> list[str]:
     """Get first n transcript IDs from test logs."""
     transcripts = transcripts_from_logs(LOGS_DIR)
-    async with transcripts:
-        index_list = [tr async for tr in transcripts.index()]
-        return [tr.id for tr in index_list[:n]]
+    async with transcripts.reader() as tr:
+        index_list = [info async for info in tr.index()]
+        return [info.id for info in index_list[:n]]
 
 
 # Define scanner factories that can be used in tests

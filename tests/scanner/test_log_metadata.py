@@ -356,9 +356,9 @@ def test_nested_json_fields() -> None:
     assert sql == "json_extract(\"config\", '$.nested.value') > ?"
     assert params == [10]
 
-    # DuckDB - uses json_extract with type casting
+    # DuckDB - uses json_extract_string with type casting
     sql, params = condition.to_sql("duckdb")
-    assert sql == "(json_extract(\"config\", '$.nested.value'))::BIGINT > ?"
+    assert sql == "(json_extract_string(\"config\", '$.nested.value'))::BIGINT > ?"
     assert params == [10]
 
 

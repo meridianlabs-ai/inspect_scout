@@ -226,12 +226,12 @@ def test_ilike_operator() -> None:
     assert sql == """LOWER(json_extract("metadata", '$.message')) LIKE LOWER(?)"""
     assert params == ["%Error%"]
 
-    # DuckDB with JSON path - now uses json_extract with VARCHAR cast
+    # DuckDB with JSON path - now uses json_extract_string with VARCHAR cast
     condition = m["metadata.message"].ilike("%Error%")
     sql, params = condition.to_sql("duckdb")
     assert (
         sql
-        == """LOWER(CAST(json_extract("metadata", '$.message') AS VARCHAR)) LIKE LOWER(?)"""
+        == """LOWER(CAST(json_extract_string("metadata", '$.message') AS VARCHAR)) LIKE LOWER(?)"""
     )
     assert params == ["%Error%"]
 
@@ -333,9 +333,11 @@ def test_nested_json_paths() -> None:
     assert sql == "json_extract(\"metadata\", '$.config.temperature') > ?"
     assert params == [0.7]
 
-    # DuckDB - now uses json_extract with type casting
+    # DuckDB - now uses json_extract_string with type casting
     sql, params = condition.to_sql("duckdb")
-    assert sql == "(json_extract(\"metadata\", '$.config.temperature'))::DOUBLE > ?"
+    assert (
+        sql == "(json_extract_string(\"metadata\", '$.config.temperature'))::DOUBLE > ?"
+    )
     assert params == [0.7]
 
     # PostgreSQL - should use ->> for last element AND cast from text for numeric comparison
@@ -360,9 +362,9 @@ def test_column_name_escaping() -> None:
     assert sql == """json_extract("metadata", '$."key''with''quotes"') = ?"""
     assert params == ["value"]
 
-    # DuckDB - uses json_extract
+    # DuckDB - uses json_extract_string
     sql, params = condition.to_sql("duckdb")
-    assert sql == """json_extract("metadata", '$.key''with''quotes') = ?"""
+    assert sql == """json_extract_string("metadata", '$.key''with''quotes') = ?"""
     assert params == ["value"]
 
 
@@ -487,11 +489,11 @@ def test_deep_nested_paths() -> None:
     assert sql == "json_extract(\"metadata\", '$.level1.level2.level3.value') > ?"
     assert params == [10]
 
-    # DuckDB - uses json_extract with type casting
+    # DuckDB - uses json_extract_string with type casting
     sql, params = condition.to_sql("duckdb")
     assert (
         sql
-        == "(json_extract(\"metadata\", '$.level1.level2.level3.value'))::BIGINT > ?"
+        == "(json_extract_string(\"metadata\", '$.level1.level2.level3.value'))::BIGINT > ?"
     )
     assert params == [10]
 

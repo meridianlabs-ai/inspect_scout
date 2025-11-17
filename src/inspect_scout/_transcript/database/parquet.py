@@ -30,6 +30,13 @@ from ..metadata import Condition
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
+# TODO: Click and docs
+# TODO: source_type
+# TODO: insert/update semantics
+# TODO: ScanTranscritps and recovery
+# TODO: split events and messages out into their own field
+# TODO: what do we actually pass to the prompt templates (transcript?)
+
 # Reserved column names that cannot be used as metadata keys
 # These are actual Parquet columns, so metadata keys cannot use these names
 RESERVED_COLUMNS = {"id", "source_id", "source_uri", "content"}

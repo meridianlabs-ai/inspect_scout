@@ -31,11 +31,10 @@ from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
 # TODO: Click and docs
-# TODO: source_type
-# TODO: insert/update semantics
+# TODO: source_type - yes
 # TODO: ScanTranscritps and recovery
-# TODO: split events and messages out into their own field
-# TODO: what do we actually pass to the prompt templates (transcript?)
+# TODO: split events and messages out into their own fields
+# TODO: read_table could read directly into temp file
 
 # Reserved column names that cannot be used as metadata keys
 # These are actual Parquet columns, so metadata keys cannot use these names
@@ -151,49 +150,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 batch = []
         if batch:
             await self._write_parquet_batch(batch)
-
-    @override
-    async def update(
-        self,
-        transcripts: Iterable[tuple[str, Transcript]]
-        | AsyncIterator[tuple[str, Transcript]],
-    ) -> None:
-        """Update transcripts by ID using read-filter-rewrite strategy.
-
-        Args:
-            transcripts: Tuples of (id, updated_transcript) to update.
-        """
-        assert self._conn is not None
-
-        # Collect updates into dict
-        updates_dict: dict[str, Transcript] = {}
-        if isinstance(transcripts, AsyncIterator):
-            async for id_, transcript in transcripts:
-                updates_dict[id_] = transcript
-        else:
-            updates_dict = dict(transcripts)
-
-        if not updates_dict:
-            return
-
-        # Call rewrite with update map
-        await self._rewrite_parquet(update_map=updates_dict)
-
-    @override
-    async def delete(self, transcript_ids: Iterable[str]) -> None:
-        """Delete transcripts by ID using read-filter-rewrite strategy.
-
-        Args:
-            transcript_ids: IDs of transcripts to delete.
-        """
-        assert self._conn is not None
-
-        id_set = set(transcript_ids)
-        if not id_set:
-            return
-
-        # Call rewrite with delete filter
-        await self._rewrite_parquet(delete_ids=id_set)
 
     @override
     async def count(
@@ -355,6 +311,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     content_file,
                     columns=["id", "content"],
                     filters=[("id", "==", t.id)],
+                    use_threads=False,
                 )
 
                 if table.num_rows == 0:

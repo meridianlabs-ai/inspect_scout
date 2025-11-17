@@ -23,6 +23,7 @@ from inspect_scout._scanner.extract import (
     messages_as_str,
 )
 from inspect_scout._scanner.result import Reference
+from inspect_scout._transcript.types import Transcript
 
 
 @pytest.mark.parametrize(
@@ -613,8 +614,9 @@ async def test_messages_as_str_with_preprocessor() -> None:
     """Test messages_as_str with async message preprocessor."""
 
     async def keep_only_user_messages(
-        messages: list[ChatMessage],
+        input: Transcript | list[ChatMessage],
     ) -> list[ChatMessage]:
+        messages = input if isinstance(input, list) else input.messages
         return [m for m in messages if m.role == "user"]
 
     messages: list[ChatMessage] = [
@@ -636,6 +638,76 @@ async def test_messages_as_str_with_preprocessor() -> None:
 
     # Test the extract_references function
     refs = extract_references("See [M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg3"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_with_transcript() -> None:
+    """Test messages_as_str accepts Transcript objects."""
+    transcript = Transcript(
+        id="test-123",
+        source_id="eval-456",
+        source_uri="file:///test.log",
+        messages=[
+            ChatMessageUser(content="Hello", id="msg1"),
+            ChatMessageAssistant(content="Hi there", id="msg2"),
+        ],
+    )
+
+    # Without IDs
+    result = await messages_as_str(transcript)
+    assert result == "user:\nHello\n\nassistant:\nHi there\n"
+
+    # With IDs
+    result_with_ids, extract_references = await messages_as_str(
+        transcript, include_ids=True
+    )
+    assert result_with_ids == "[M1] user:\nHello\n\n[M2] assistant:\nHi there\n"
+
+    # Test extract_references
+    refs = extract_references("[M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg2"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_with_transcript_and_preprocessor() -> None:
+    """Test messages_as_str with Transcript and preprocessor."""
+
+    async def keep_only_user_messages(
+        input: Transcript | list[ChatMessage],
+    ) -> list[ChatMessage]:
+        messages = input if isinstance(input, list) else input.messages
+        return [m for m in messages if m.role == "user"]
+
+    transcript = Transcript(
+        id="test-789",
+        source_id="eval-abc",
+        source_uri="file:///test2.log",
+        messages=[
+            ChatMessageUser(content="First user", id="msg1"),
+            ChatMessageAssistant(content="First assistant", id="msg2"),
+            ChatMessageUser(content="Second user", id="msg3"),
+            ChatMessageAssistant(content="Second assistant", id="msg4"),
+        ],
+    )
+
+    result, extract_references = await messages_as_str(
+        transcript,
+        preprocessor=MessagesPreprocessor(transform=keep_only_user_messages),
+        include_ids=True,
+    )
+
+    # Only user messages should be present
+    assert "[M1] user:\nFirst user\n" in result
+    assert "[M2] user:\nSecond user\n" in result
+    assert "assistant" not in result
+
+    # Test extract_references
+    refs = extract_references("[M1] [M2]")
     assert len(refs) == 2
     assert refs[0].id == "msg1"
     assert refs[1].id == "msg3"

@@ -54,11 +54,11 @@ def ctf_environment() -> Scanner[Transcript]:
             "Here is a transcript of an LLM agent " +
             "solving a cybersecurity challenge:\n\n" +
             "===================================" + # <3>
-            messages_as_str(transcript.messages) +  # <3>
+            await messages_as_str(transcript) +  # <3>
             "===================================\n\n" + # <3>
             "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
-            "preventing the agent from completing it's " + 
+            "preventing the agent from completing its " +
             "task? If no, simply respond with 'No'. " +
             "If yes, respond with 'Yes' followed by an " +
             "explanation."
@@ -85,7 +85,7 @@ def ctf_environment() -> Scanner[Transcript]:
 
 2.  Scanners frequently use models to perform scanning. Calling `get_model()` utilizes the default model for the scan job (which can be specified in the top level call to scan).
 
-3.  Convert the message history into a string for presentation to the model. The `messages_as_str()` function will by default remove system messages from the list. See `MessagesPreprocessor` for other available options.
+3.  Convert the message history into a string for presentation to the model. The `messages_as_str()` function takes a `Transcript | list[Messages]` and will by default remove system messages from the message list. See `MessagesPreprocessor` for other available options.
 
 4.  As with scorers, results also include additional context (here the extracted answer and full model completion).
 

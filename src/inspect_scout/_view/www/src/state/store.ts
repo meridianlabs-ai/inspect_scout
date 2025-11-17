@@ -425,10 +425,7 @@ export const createStore = (api: ScanApi) =>
               delete newListPositions[name];
 
               return {
-                app: {
-                  ...state,
-                  listPositions: newListPositions,
-                },
+                listPositions: newListPositions,
               };
             });
           },

@@ -109,6 +109,7 @@ def multi_process_strategy(
         parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
+        scan_completed: Callable[[], Awaitable[None]],
     ) -> None:
         all_metrics: dict[int, ScanMetrics] = {}
 
@@ -141,6 +142,7 @@ def multi_process_strategy(
             _mp_common.ipc_context = IPCContext(
                 parse_function=parse_function,
                 scan_function=scan_function,
+                scan_completed=scan_completed,
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),

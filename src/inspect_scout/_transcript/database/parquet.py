@@ -35,22 +35,6 @@ _chat_message_adapter: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
 _event_adapter: TypeAdapter[Event] = TypeAdapter(Event)
 
 
-def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
-    """Ensure metadata doesn't use reserved column names.
-
-    Args:
-        metadata: Metadata dict to validate.
-
-    Raises:
-        ValueError: If metadata contains reserved column names.
-    """
-    conflicts = RESERVED_COLUMNS & metadata.keys()
-    if conflicts:
-        raise ValueError(
-            f"Metadata keys conflict with reserved column names: {sorted(conflicts)}"
-        )
-
-
 class ParquetTranscriptDB(TranscriptDB):
     """DuckDB-based transcript database using Parquet file storage.
 
@@ -896,3 +880,19 @@ def transcripts_from_parquet(
         memory_limit=memory_limit,
         cache_dir=cache_dir,
     )
+
+
+def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
+    """Ensure metadata doesn't use reserved column names.
+
+    Args:
+        metadata: Metadata dict to validate.
+
+    Raises:
+        ValueError: If metadata contains reserved column names.
+    """
+    conflicts = RESERVED_COLUMNS & metadata.keys()
+    if conflicts:
+        raise ValueError(
+            f"Metadata keys conflict with reserved column names: {sorted(conflicts)}"
+        )

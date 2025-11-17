@@ -54,7 +54,6 @@ def as_scorer(
                 id=state.uuid,
                 source_id="",
                 source_uri="",
-                variables=state.metadata,
                 metadata={
                     "id": state.sample_id,
                     "epoch": state.epoch,

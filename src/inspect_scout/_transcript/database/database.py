@@ -1,3 +1,4 @@
+import abc
 from types import TracebackType
 from typing import AsyncIterator, Iterable, Type
 
@@ -9,15 +10,15 @@ from ..types import (
 )
 
 
-class TranscriptDB:
+class TranscriptDB(abc.ABC):
     def __init__(self, location: str) -> None:
         self._location: str | None = location
 
-    async def connect(self) -> None:
-        pass
+    @abc.abstractmethod
+    async def connect(self) -> None: ...
 
-    async def disconnect(self) -> None:
-        pass
+    @abc.abstractmethod
+    async def disconnect(self) -> None: ...
 
     async def __aenter__(self) -> "TranscriptDB":
         await self.connect()
@@ -32,36 +33,37 @@ class TranscriptDB:
         await self.disconnect()
         return None
 
+    @abc.abstractmethod
     async def insert(
         self, transcripts: Iterable[Transcript] | AsyncIterator[Transcript]
-    ) -> None:
-        pass
+    ) -> None: ...
 
+    @abc.abstractmethod
     async def update(
         self,
         transcripts: Iterable[tuple[str, Transcript]]
         | AsyncIterator[tuple[str, Transcript]],
-    ) -> None:
-        pass
+    ) -> None: ...
 
-    async def delete(self, transcripts: Iterable[str]) -> None:
-        pass
+    @abc.abstractmethod
+    async def delete(self, transcripts: Iterable[str]) -> None: ...
 
+    @abc.abstractmethod
     async def count(
         self,
         where: list[Condition],
         limit: int | None = None,
-    ) -> int:
-        return 0
+    ) -> int: ...
 
-    async def select(
+    @abc.abstractmethod
+    def select(
         self,
         where: list[Condition],
         limit: int | None = None,
         shuffle: bool | int = False,
-    ) -> AsyncIterator[TranscriptInfo]:
-        # when we are restored from a snapshot this is hard coded
-        yield TranscriptInfo(id="id", source_id="source_id", source_uri="source_uri")
+    ) -> AsyncIterator[TranscriptInfo]: ...
 
-    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
-        return Transcript(id=t.id, source_id=t.source_id, source_uri=t.source_uri)
+    @abc.abstractmethod
+    async def read(
+        self, t: TranscriptInfo, content: TranscriptContent
+    ) -> Transcript: ...

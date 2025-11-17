@@ -21,7 +21,6 @@ from inspect_ai.model._model_config import (
 )
 
 from inspect_scout._scanspec import ScanTranscripts
-from inspect_scout._transcript.database.transcripts import TranscriptsDBTranscripts
 from inspect_scout._transcript.eval_log import EvalLogTranscripts
 from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
 from inspect_scout._validation.types import ValidationSet
@@ -208,7 +207,5 @@ async def _transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
     match snapshot.type:
         case "eval_log":
             return EvalLogTranscripts(snapshot)
-        case "database":
-            return TranscriptsDBTranscripts(snapshot)
         case _:
             raise ValueError(f"Unrecognized transcript type '{snapshot.type}")

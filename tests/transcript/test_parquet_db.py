@@ -7,10 +7,12 @@ import pytest
 import pytest_asyncio
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
-from inspect_scout._transcript.database.parquet import ParquetTranscriptDB
+from inspect_scout._transcript.database.parquet import (
+    ParquetTranscriptDB,
+    transcripts_from_parquet,
+)
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
 from inspect_scout._transcript.metadata import metadata as m
-from inspect_scout._transcript.parquet_transcripts import transcripts_from_parquet
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -251,17 +253,11 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptDB) -> None:
 async def test_metadata_dsl_queries(populated_db: ParquetTranscriptDB) -> None:
     """Test various Condition operators."""
     # Greater than
-    results = [
-        info
-        async for info in populated_db.select([m.index > 15], None, False)
-    ]
+    results = [info async for info in populated_db.select([m.index > 15], None, False)]
     assert len(results) == 4  # indices 16, 17, 18, 19
 
     # Less than or equal
-    results = [
-        info
-        async for info in populated_db.select([m.index <= 5], None, False)
-    ]
+    results = [info async for info in populated_db.select([m.index <= 5], None, False)]
     assert len(results) == 6  # indices 0-5
 
     # IN operator
@@ -279,10 +275,7 @@ async def test_json_path_queries(populated_db: ParquetTranscriptDB) -> None:
     """Test querying metadata fields."""
     # Query by temperature value
     results = [
-        info
-        async for info in populated_db.select(
-            [m.temperature > 0.7], None, False
-        )
+        info async for info in populated_db.select([m.temperature > 0.7], None, False)
     ]
     assert len(results) > 0
 
@@ -467,9 +460,7 @@ async def test_arbitrary_metadata(parquet_db: ParquetTranscriptDB) -> None:
     # Query with nested metadata (use JSON path for nested dicts)
     results = [
         info
-        async for info in parquet_db.select(
-            [m["nested.deep.value"] == 42], None, False
-        )
+        async for info in parquet_db.select([m["nested.deep.value"] == 42], None, False)
     ]
     assert len(results) == 1
     assert results[0].id == "complex-1"
@@ -641,12 +632,15 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptDB) -
     await parquet_db.insert(transcripts)
 
     # Query by direct field
-    results = [info async for info in parquet_db.select([m.model == "gpt-4"], None, False)]
+    results = [
+        info async for info in parquet_db.select([m.model == "gpt-4"], None, False)
+    ]
     assert len(results) == 1
 
     # Query by nested field (JSON path into config column)
     results = [
-        info async for info in parquet_db.select(
+        info
+        async for info in parquet_db.select(
             [m["config.temperature"] > 0.6], None, False
         )
     ]
@@ -678,7 +672,9 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptDB) -> No
 
 
 @pytest.mark.asyncio
-async def test_schema_evolution(parquet_db: ParquetTranscriptDB, test_location: Path) -> None:
+async def test_schema_evolution(
+    parquet_db: ParquetTranscriptDB, test_location: Path
+) -> None:
     """Test that different metadata fields across batches work correctly."""
     # First batch: model, task
     batch1 = [

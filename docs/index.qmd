@@ -276,9 +276,17 @@ If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime er
 scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
 ```
 
-If errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
+By default, if errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
 
 ![](images/scan-resume.png)
+
+If you prefer to fail immediately when an error occurs rather than capturing errors in results, use the `--fail-on-error` flag:
+
+```bash
+scout scan scanner.py -T ./logs --fail-on-error
+```
+
+With this flag, any exception will cause the entire scan to terminate immediately. This can be valuable when developing a scanner.
 
 
 

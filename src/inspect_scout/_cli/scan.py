@@ -182,6 +182,14 @@ class ScanGroup(click.Group):
     envvar=["SCOUT_SCAN_SHUFFLE"],
 )
 @click.option(
+    "--fail-on-error",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Re-raise exceptions instead of capturing them in results",
+    envvar="SCOUT_SCAN_FAIL_ON_ERROR",
+)
+@click.option(
     "--tags",
     type=str,
     help="Tags to associate with this scan job (comma separated)",
@@ -293,6 +301,7 @@ def scan_command(
     max_processes: int | None,
     limit: int | None,
     shuffle: int | None,
+    fail_on_error: bool,
     tags: str | None,
     metadata: tuple[str, ...] | None,
     batch: int | str | None,
@@ -413,6 +422,7 @@ def scan_command(
         shuffle=scan_suffle,
         tags=scan_tags,
         metadata=scan_metadata,
+        fail_on_error=fail_on_error,
     )
 
 

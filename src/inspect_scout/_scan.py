@@ -93,6 +93,7 @@ def scan(
     metadata: dict[str, Any] | None = None,
     display: DisplayType | None = None,
     log_level: str | None = None,
+    fail_on_error: bool = False,
 ) -> Status:
     """Scan transcripts.
 
@@ -123,6 +124,7 @@ def scan(
         display: Display type: "rich", "plain", or "none" (defaults to "rich").
         log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+        fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
 
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -148,6 +150,7 @@ def scan(
             tags=tags,
             metadata=metadata,
             log_level=log_level,
+            fail_on_error=fail_on_error,
         )
     )
 
@@ -173,6 +176,7 @@ async def scan_async(
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
+    fail_on_error: bool = False,
 ) -> Status:
     """Scan transcripts.
 
@@ -202,6 +206,7 @@ async def scan_async(
         metadata: Metadata for this scan.
         log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+        fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
 
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -271,7 +276,7 @@ async def scan_async(
     await recorder.init(scan.spec, scanjob._results)
 
     # run the scan
-    return await _scan_async(scan=scan, recorder=recorder)
+    return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
 
 
 def scan_resume(
@@ -393,13 +398,17 @@ async def scan_complete_async(
 _scan_async_running = False
 
 
-async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> Status:
+async def _scan_async(
+    *, scan: ScanContext, recorder: ScanRecorder, fail_on_error: bool = False
+) -> Status:
     result: Status | None = None
 
     async def run(tg: TaskGroup) -> None:
         try:
             nonlocal result
-            result = await _scan_async_inner(scan=scan, recorder=recorder, tg=tg)
+            result = await _scan_async_inner(
+                scan=scan, recorder=recorder, tg=tg, fail_on_error=fail_on_error
+            )
         finally:
             tg.cancel_scope.cancel()
 
@@ -427,7 +436,7 @@ async def _scan_async(*, scan: ScanContext, recorder: ScanRecorder) -> Status:
 
 
 async def _scan_async_inner(
-    *, scan: ScanContext, recorder: ScanRecorder, tg: TaskGroup
+    *, scan: ScanContext, recorder: ScanRecorder, tg: TaskGroup, fail_on_error: bool = False
 ) -> Status:
     """Execute a scan by orchestrating concurrent scanner execution across transcripts.
 
@@ -441,6 +450,7 @@ async def _scan_async_inner(
         scan: The scan context containing scanners, transcripts, and configuration
         recorder: The scan recorder for tracking completed work and persisting results
         tg: Task group we are running within
+        fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
 
     Returns:
         ScanStatus indicating completion status, spec, and location for resumption
@@ -574,6 +584,8 @@ async def _scan_async_inner(
                             raise
 
                         except Exception as ex:  # pylint: disable=W0718
+                            if fail_on_error:
+                                raise
                             error = Error(
                                 transcript_id=job.union_transcript.id,
                                 scanner=job.scanner_name,

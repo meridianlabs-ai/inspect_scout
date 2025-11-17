@@ -44,6 +44,7 @@ from inspect_ai.log._file import (
 from typing_extensions import override
 
 from inspect_scout._util.async_zip import AsyncZipReader
+from inspect_scout._util.constants import TRANSCRIPT_SOURCE_INSPECT_LOG
 
 from .._scanspec import ScanTranscripts, TranscriptField
 from .json.load_filtered import load_filtered_transcript
@@ -121,7 +122,7 @@ class EvalLogTranscripts(Transcripts, TranscriptsReader):
         data = buffer.getvalue()
 
         return ScanTranscripts(
-            type="eval_log",
+            type=TRANSCRIPT_SOURCE_INSPECT_LOG,
             fields=fields,
             count=len(df),
             data=data,
@@ -322,6 +323,7 @@ class EvalLogTranscriptsDB:
 
             yield TranscriptInfo(
                 id=transcript_id,
+                source_type=TRANSCRIPT_SOURCE_INSPECT_LOG,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
                 metadata=metadata,
@@ -393,38 +395,6 @@ def transcripts_from_logs(logs: LogPaths) -> Transcripts:
         Transcripts: Collection of transcripts for scanning.
     """
     return EvalLogTranscripts(logs)
-
-
-async def transcripts_df_from_snapshot(snapshot: ScanTranscripts) -> pd.DataFrame:
-    """Get a DataFrame from a transcript snapshot (internal use with original column names)."""
-    match snapshot.type:
-        case "eval_log":
-            return EvalLogTranscripts._logs_df_from_snapshot(snapshot)
-        case _:
-            raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
-
-
-async def transcripts_df_for_results(snapshot: ScanTranscripts) -> pd.DataFrame:
-    """Get a DataFrame from a transcript snapshot with renamed columns.
-
-    Renames columns to match scanner table naming for easier joins:
-    - sample_id => id (matches scanner's transcript_id)
-    - eval_id => source_id (matches scanner's transcript_source_id)
-    - log => source_uri (matches scanner's transcript_source_uri)
-    """
-    match snapshot.type:
-        case "eval_log":
-            df = EvalLogTranscripts._logs_df_from_snapshot(snapshot)
-
-            # Rename columns for consistency with scanner tables
-            rename_map = {
-                "sample_id": "id",
-                "eval_id": "source_id",
-                "log": "source_uri",
-            }
-            return df.rename(columns=rename_map)
-        case _:
-            raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
 
 
 TranscriptColumns: list[Column] = (

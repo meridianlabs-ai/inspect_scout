@@ -30,15 +30,13 @@ from ..metadata import Condition
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
-# TODO: Click and docs
-# TODO: source_type - yes
 # TODO: ScanTranscritps and recovery
 # TODO: split events and messages out into their own fields
 # TODO: read_table could read directly into temp file
 
 # Reserved column names that cannot be used as metadata keys
 # These are actual Parquet columns, so metadata keys cannot use these names
-RESERVED_COLUMNS = {"id", "source_id", "source_uri", "content"}
+RESERVED_COLUMNS = {"id", "source_type", "source_id", "source_uri", "content"}
 
 # Type adapters for parsing Union types
 _chat_message_adapter: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
@@ -224,6 +222,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Extract reserved fields
             transcript_id = row_dict["id"]
+            transcript_source_type = row_dict["source_type"]
             transcript_source_id = row_dict["source_id"]
             transcript_source_uri = row_dict["source_uri"]
 
@@ -245,6 +244,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             yield TranscriptInfo(
                 id=transcript_id,
+                source_type=transcript_source_type,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
                 metadata=metadata,
@@ -275,6 +275,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Return transcript with no content
             return Transcript(
                 id=t.id,
+                source_type=t.source_type,
                 source_id=t.source_id,
                 source_uri=t.source_uri,
                 metadata=t.metadata,
@@ -296,6 +297,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Transcript not found in any file
             return Transcript(
                 id=t.id,
+                source_type=t.source_type,
                 source_id=t.source_id,
                 source_uri=t.source_uri,
                 metadata=t.metadata,
@@ -405,6 +407,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Start with reserved fields
         row: dict[str, Any] = {
             "id": transcript.id,
+            "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
             "content": json.dumps(content_dict),
@@ -441,6 +444,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Reserved columns with fixed types
         fields: list[tuple[str, pa.DataType]] = [
             ("id", pa.string()),
+            ("source_type", pa.string()),
             ("source_id", pa.string()),
             ("source_uri", pa.string()),
             ("content", pa.string()),
@@ -626,6 +630,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             transcript = Transcript(
                 id=row_dict["id"],
+                source_type=row_dict["source_type"],
                 source_id=row_dict["source_id"],
                 source_uri=row_dict["source_uri"],
                 metadata=metadata,
@@ -733,6 +738,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 CREATE VIEW transcripts AS
                 SELECT
                     ''::VARCHAR AS id,
+                    ''::VARCHAR AS source_type,
                     ''::VARCHAR AS source_id,
                     ''::VARCHAR AS source_uri,
                     ''::VARCHAR AS content

@@ -41,6 +41,7 @@ def _create_transcript(
     """Helper to create test transcripts with required fields."""
     return Transcript(
         id="test-id",
+        source_type="test",
         source_id="test-source",
         source_uri="test://uri",
         messages=messages or [],

@@ -21,6 +21,7 @@ def create_test_transcript() -> Transcript:
     """Create a simple test transcript with a known ID."""
     return Transcript(
         id=TEST_TRANSCRIPT_ID,
+        source_type="test",
         source_id="test-source",
         source_uri="test://source",
         messages=[

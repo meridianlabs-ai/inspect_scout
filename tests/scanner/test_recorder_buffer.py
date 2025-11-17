@@ -18,7 +18,7 @@ def recorder_buffer() -> Generator[RecorderBuffer]:
         spec = ScanSpec(
             scan_name="myscan",
             transcripts=ScanTranscripts(
-                type="eval_log",
+                type="inspect_log",
                 fields=[],
                 count=0,
                 data="",
@@ -40,6 +40,7 @@ def sample_transcript() -> TranscriptInfo:
     """Create a sample TranscriptInfo for testing."""
     return TranscriptInfo(
         id="test-transcript-123",
+        source_type="test",
         source_id="source-42",
         source_uri="/path/to/source.log",
         metadata={"model": "gpt-4", "temperature": 0.7},
@@ -120,7 +121,10 @@ async def test_is_recorded(
 
     # Check with different transcript ID
     other_transcript = TranscriptInfo(
-        id="other-transcript-456", source_id="42", source_uri="/other/source.log"
+        id="other-transcript-456",
+        source_type="test",
+        source_id="42",
+        source_uri="/other/source.log",
     )
     is_recorded = await recorder_buffer.is_recorded(other_transcript, scanner_name)
     assert is_recorded is False

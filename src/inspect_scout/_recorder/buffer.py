@@ -74,6 +74,7 @@ class RecorderBuffer:
                 dict[str, str | bool | int | float | None],
                 {
                     "transcript_id": transcript.id,
+                    "transcript_source_type": transcript.source_type,
                     "transcript_source_id": transcript.source_id,
                     "transcript_source_uri": transcript.source_uri,
                     "transcript_metadata": transcript.metadata,

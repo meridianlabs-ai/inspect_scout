@@ -32,6 +32,7 @@ def create_sample_transcript(
     """Create a test transcript with customizable fields."""
     return Transcript(
         id=id,
+        source_type="test",
         source_id=source_id,
         source_uri=source_uri,
         metadata=metadata or {},
@@ -521,6 +522,7 @@ async def test_read_nonexistent_transcript(populated_db: ParquetTranscriptsDB) -
     # Create a non-existent TranscriptInfo
     fake_info = TranscriptInfo(
         id="non-existent-id",
+        source_type="test",
         source_id="fake",
         source_uri="fake://uri",
     )

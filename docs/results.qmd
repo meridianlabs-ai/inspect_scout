@@ -103,6 +103,7 @@ The data frame includes the following fields (note that some fields included emb
 | Field | Type | Description |
 |-------------------|-------------------|----------------------------------|
 | `transcript_id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log or `sample_id` in Inspect analysis data frames). |
+| `transcript_source_type` | str | Type of transcript source (e.g. "inspect_log"). |
 | `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to \`eval_id\` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `transcript_metadata` | dict </br><small>JSON</small> | Eval configuration metadata (e.g. task, model, scores, etc.). |

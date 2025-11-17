@@ -810,6 +810,7 @@ def _reports_for_parse_error(
     # Create placeholder transcript since parse failed
     placeholder_transcript = Transcript(
         id=job.transcript_info.id,
+        source_type=job.transcript_info.source_type,
         source_id=job.transcript_info.source_id,
         source_uri=job.transcript_info.source_uri,
         metadata=job.transcript_info.metadata,

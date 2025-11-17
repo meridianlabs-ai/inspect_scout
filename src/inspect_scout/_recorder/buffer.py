@@ -15,6 +15,7 @@ from inspect_ai._util.hash import mm3_hash
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
+from inspect_scout._util.path import normalize_for_hashing
 
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
@@ -40,10 +41,8 @@ class RecorderBuffer:
 
     @staticmethod
     def buffer_dir(scan_location: str) -> UPath:
-        scan_path = UPath(scan_location).resolve()
-        return UPath(
-            inspect_data_dir("scout_scanbuffer") / f"{mm3_hash(scan_path.as_posix())}"
-        )
+        normalized = normalize_for_hashing(scan_location)
+        return UPath(inspect_data_dir("scout_scanbuffer") / f"{mm3_hash(normalized)}")
 
     def __init__(self, scan_location: str, spec: ScanSpec):
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)

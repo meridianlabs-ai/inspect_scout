@@ -90,8 +90,8 @@ def llm_scanner(
                 - {{ messages }} (transcript message history as string)
                 - {{ answer_prompt }} (prompt for a specific type of answer).
                 - {{ answer_format }} (instructions on how to format the answer)
-            In addition, scanner templates can bind to any data with the
-            `Transcript` being processes (e.g. {{ transcript.score }})
+            In addition, scanner templates can bind to any data within
+            `Transcript.metadata` (e.g. {{ metadata.score }})
         template_variables: Additional variables to make available in the template.
             Optionally takes a function which receives the current `Transcript` which
             can return variables.
@@ -210,7 +210,7 @@ async def render_scanner_prompt(
             else await question(transcript),
             answer_prompt=answer.prompt,
             answer_format=answer.format,
-            transcript=transcript,
+            metadata=transcript.metadata,
             **template_variables,
         )
     )

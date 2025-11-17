@@ -29,8 +29,8 @@ from .database import TranscriptDB
 RESERVED_COLUMNS = {"id", "source_id", "source_uri", "content", "messages", "events"}
 
 # Type adapters for parsing Union types
-_chat_message_adapter = TypeAdapter(ChatMessage)
-_event_adapter = TypeAdapter(Event)
+_chat_message_adapter: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
+_event_adapter: TypeAdapter[Event] = TypeAdapter(Event)
 
 
 def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
@@ -527,23 +527,44 @@ class ParquetTranscriptDB(TranscriptDB):
         file_uuid = uuid.uuid4().hex[:8]
         filename = f"transcripts_{timestamp}_{file_uuid}.parquet"
 
-        # Determine output path
+        # Determine output path and write Parquet file
         assert self._location is not None
         if self._location.startswith("s3://"):
-            # For S3, write locally first then upload
-            # TODO: Implement S3 upload
-            raise NotImplementedError("S3 write not yet implemented")
+            # For S3, write to temp file then upload
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(
+                suffix=".parquet", delete=False
+            ) as tmp_file:
+                tmp_path = tmp_file.name
+
+            try:
+                # Write to temporary file
+                pq.write_table(
+                    table,
+                    tmp_path,
+                    compression="zstd",
+                    use_dictionary=True,
+                )
+
+                # Upload to S3
+                s3_path = f"{self._location.rstrip('/')}/{filename}"
+                assert self._fs is not None
+                await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
+            finally:
+                # Clean up temp file
+                Path(tmp_path).unlink(missing_ok=True)
         else:
+            # Local file system
             output_path = Path(self._location) / filename
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write Parquet file
-        pq.write_table(
-            table,
-            output_path.as_posix(),
-            compression="zstd",
-            use_dictionary=True,
-        )
+            pq.write_table(
+                table,
+                output_path.as_posix(),
+                compression="zstd",
+                use_dictionary=True,
+            )
 
         # Refresh view to include new file
         await self._create_transcripts_view()
@@ -561,9 +582,6 @@ class ParquetTranscriptDB(TranscriptDB):
         """
         assert self._conn is not None
         assert self._location is not None
-
-        if self._location.startswith("s3://"):
-            raise NotImplementedError("S3 rewrite not yet implemented")
 
         # Read all existing data and reconstruct transcripts
         cursor = self._conn.execute("SELECT * FROM transcripts")
@@ -620,12 +638,11 @@ class ParquetTranscriptDB(TranscriptDB):
             )
             kept_transcripts.append(transcript)
 
-        # Delete all existing Parquet files
-        location_path = Path(self._location)
-        for file in location_path.glob("transcripts_*.parquet"):
-            file.unlink()
+        # Get list of old files before writing new ones
+        old_file_paths = await self._discover_parquet_files()
 
-        # Write new files in batches using inferred schema
+        # Write new files FIRST (before deleting old ones to prevent data loss)
+        new_file_paths: list[str] = []
         if kept_transcripts:
             for i in range(0, len(kept_transcripts), self.BATCH_SIZE):
                 batch = kept_transcripts[i : i + self.BATCH_SIZE]
@@ -636,7 +653,7 @@ class ParquetTranscriptDB(TranscriptDB):
                 # Infer schema from actual data
                 schema = self._infer_schema(rows)
 
-                # Create table and write
+                # Create table
                 df = pd.DataFrame(rows)
                 table = pa.Table.from_pandas(df, schema=schema)
 
@@ -644,14 +661,62 @@ class ParquetTranscriptDB(TranscriptDB):
                 timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
                 file_uuid = uuid.uuid4().hex[:8]
                 filename = f"transcripts_{timestamp}_{file_uuid}.parquet"
-                output_path = location_path / filename
 
-                pq.write_table(
-                    table,
-                    output_path.as_posix(),
-                    compression="zstd",
-                    use_dictionary=True,
-                )
+                # Write based on storage type
+                if self._location.startswith("s3://"):
+                    # For S3, write to temp file then upload
+                    import tempfile
+
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".parquet", delete=False
+                    ) as tmp_file:
+                        tmp_path = tmp_file.name
+
+                    try:
+                        # Write to temporary file
+                        pq.write_table(
+                            table,
+                            tmp_path,
+                            compression="zstd",
+                            use_dictionary=True,
+                        )
+
+                        # Upload to S3
+                        s3_path = f"{self._location.rstrip('/')}/{filename}"
+                        assert self._fs is not None
+                        await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
+                        new_file_paths.append(s3_path)
+                    finally:
+                        # Clean up temp file
+                        Path(tmp_path).unlink(missing_ok=True)
+                else:
+                    # Local file system
+                    location_path = Path(self._location)
+                    output_path = location_path / filename
+
+                    pq.write_table(
+                        table,
+                        output_path.as_posix(),
+                        compression="zstd",
+                        use_dictionary=True,
+                    )
+                    new_file_paths.append(output_path.as_posix())
+
+        # Only delete old files AFTER new files are successfully written
+        if self._location.startswith("s3://"):
+            # Delete old S3 files
+            assert self._fs is not None
+            for s3_path in old_file_paths:
+                if s3_path.startswith("s3://") and s3_path not in new_file_paths:
+                    # This is an old S3 URI, delete it
+                    fs = filesystem(s3_path)
+                    fs.rm(s3_path)
+        else:
+            # Delete old local files
+            location_path = Path(self._location)
+            for file_path in old_file_paths:
+                if file_path not in new_file_paths:
+                    Path(file_path).unlink(missing_ok=True)
 
         # Refresh view
         await self._create_transcripts_view()

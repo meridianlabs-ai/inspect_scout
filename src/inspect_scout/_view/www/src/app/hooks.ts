@@ -115,9 +115,9 @@ export const useServerScannerDataframe = () => {
       // Start loading (since we are going to fetch)
       setLoadingData(true);
       try {
-        // In single file mode, send an absolute path
+        // If resultsDir is used, send an absolute path
         let location = scanPath;
-        if (singleFileMode) {
+        if (resultsDir) {
           location = join(scanPath, resultsDir);
         }
 

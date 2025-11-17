@@ -31,12 +31,18 @@ from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
 # TODO: ScanTranscritps and recovery
-# TODO: split events and messages out into their own fields
 # TODO: read_table could read directly into temp file
 
 # Reserved column names that cannot be used as metadata keys
 # These are actual Parquet columns, so metadata keys cannot use these names
-RESERVED_COLUMNS = {"id", "source_type", "source_id", "source_uri", "content"}
+RESERVED_COLUMNS = {
+    "id",
+    "source_type",
+    "source_id",
+    "source_uri",
+    "messages",
+    "events",
+}
 
 # Type adapters for parsing Union types
 _chat_message_adapter: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
@@ -256,7 +262,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Uses a hybrid approach:
         1. DuckDB to find which Parquet file contains the transcript
-        2. PyArrow to stream the content bytes from that file
+        2. PyArrow to stream the content bytes from separate columns
 
         Args:
             t: TranscriptInfo identifying the transcript.
@@ -266,6 +272,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
             Full Transcript with filtered content.
         """
         assert self._conn is not None
+
+        # Determine which columns we need to read
+        need_messages = content.messages is not None
+        need_events = content.events is not None
+
+        if not need_messages and not need_events:
+            # No content needed
+            return Transcript(
+                id=t.id,
+                source_type=t.source_type,
+                source_id=t.source_id,
+                source_uri=t.source_uri,
+                metadata=t.metadata,
+            )
 
         # Step 1: Find which Parquet file contains this transcript
         # We need to check each file since DuckDB creates a union view
@@ -303,37 +323,65 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 metadata=t.metadata,
             )
 
-        # Step 3: Stream content from the file using PyArrow
+        # Step 3: Stream combined JSON from separate columns
+        # To minimize memory usage for large content (events can be >1GB),
+        # we read and stream each column separately
         async def stream_content_bytes() -> AsyncIterator[bytes]:
-            # Read the Parquet file in a thread to avoid blocking the event loop
-            # PyArrow has no async primitives, so we use anyio.to_thread
-            def read_content() -> str | None:
+            """Stream construction of combined JSON object."""
+
+            # Helper to read a single column
+            def read_column(column_name: str) -> str | None:
                 """Blocking read operation run in thread pool."""
                 table = pq.read_table(
                     content_file,
-                    columns=["id", "content"],
+                    columns=["id", column_name],
                     filters=[("id", "==", t.id)],
                     use_threads=False,
                 )
-
                 if table.num_rows == 0:
                     return None
+                value: str | None = table.column(column_name)[0].as_py()
+                return value
 
-                content: str | None = table.column("content")[0].as_py()
-                return content
+            # Start the combined JSON object
+            yield b"{"
 
-            # Run blocking PyArrow read in thread pool
-            content_value = await to_thread.run_sync(read_content)
+            # Stream messages column if needed
+            if need_messages:
+                messages_json = await to_thread.run_sync(
+                    lambda: read_column("messages")
+                )
+                if messages_json:
+                    # Strip outer braces from {"messages": [...]} to get "messages": [...]
+                    messages_bytes = messages_json.encode("utf-8")
+                    if messages_bytes.startswith(b"{") and messages_bytes.endswith(
+                        b"}"
+                    ):
+                        inner = messages_bytes[1:-1]  # Remove { and }
+                        # Stream in 64KB chunks
+                        chunk_size = 64 * 1024
+                        for i in range(0, len(inner), chunk_size):
+                            yield inner[i : i + chunk_size]
 
-            if not content_value:
-                return
+            # Add separator if we have both columns
+            if need_messages and need_events:
+                yield b", "
 
-            # Stream in 64KB chunks for large content
-            content_bytes = content_value.encode("utf-8")
-            chunk_size = 64 * 1024
+            # Stream events column if needed
+            if need_events:
+                events_json = await to_thread.run_sync(lambda: read_column("events"))
+                if events_json:
+                    # Strip outer braces from {"events": [...]} to get "events": [...]
+                    events_bytes = events_json.encode("utf-8")
+                    if events_bytes.startswith(b"{") and events_bytes.endswith(b"}"):
+                        inner = events_bytes[1:-1]  # Remove { and }
+                        # Stream in 64KB chunks
+                        chunk_size = 64 * 1024
+                        for i in range(0, len(inner), chunk_size):
+                            yield inner[i : i + chunk_size]
 
-            for i in range(0, len(content_bytes), chunk_size):
-                yield content_bytes[i : i + chunk_size]
+            # Close the combined JSON object
+            yield b"}"
 
         # Use existing streaming JSON parser with filtering
         return await load_filtered_transcript(
@@ -398,11 +446,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Validate metadata keys don't conflict with reserved names
         _validate_metadata_keys(transcript.metadata)
 
-        # Serialize messages and events to JSON string
-        content_dict = {
-            "messages": [msg.model_dump() for msg in transcript.messages],
-            "events": [event.model_dump() for event in transcript.events],
-        }
+        # Serialize messages and events to separate JSON strings
+        messages_dict = {"messages": [msg.model_dump() for msg in transcript.messages]}
+        events_dict = {"events": [event.model_dump() for event in transcript.events]}
 
         # Start with reserved fields
         row: dict[str, Any] = {
@@ -410,7 +456,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
-            "content": json.dumps(content_dict),
+            "messages": json.dumps(messages_dict),
+            "events": json.dumps(events_dict),
         }
 
         # Flatten metadata: add each key as a column
@@ -447,7 +494,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             ("source_type", pa.string()),
             ("source_id", pa.string()),
             ("source_uri", pa.string()),
-            ("content", pa.string()),
+            ("messages", pa.string()),
+            ("events", pa.string()),
         ]
 
         # Discover all metadata keys across all rows
@@ -585,7 +633,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     ''::VARCHAR AS source_type,
                     ''::VARCHAR AS source_id,
                     ''::VARCHAR AS source_uri,
-                    ''::VARCHAR AS content
+                    ''::VARCHAR AS messages,
+                    ''::VARCHAR AS events
                 WHERE FALSE
             """)
             return

@@ -596,15 +596,17 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> N
         _validate_metadata_keys({"id": "bad"})
 
     with pytest.raises(ValueError, match="reserved"):
-        _validate_metadata_keys({"content": "bad"})
-
-    with pytest.raises(ValueError, match="reserved"):
         _validate_metadata_keys({"source_id": "bad"})
 
-    # Should be fine for non-reserved keys, including "messages" and "events"
-    # (these are not actual columns - they're stored inside "content")
+    with pytest.raises(ValueError, match="reserved"):
+        _validate_metadata_keys({"messages": "bad"})
+
+    with pytest.raises(ValueError, match="reserved"):
+        _validate_metadata_keys({"events": "bad"})
+
+    # Should be fine for non-reserved keys
     _validate_metadata_keys({"model": "gpt-4", "task": "math"})  # No error
-    _validate_metadata_keys({"messages": "custom", "events": "custom"})  # Also ok
+    _validate_metadata_keys({"content": "custom"})  # "content" is no longer reserved
 
 
 @pytest.mark.asyncio

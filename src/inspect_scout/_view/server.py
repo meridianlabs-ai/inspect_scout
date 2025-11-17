@@ -17,7 +17,6 @@ from inspect_ai._util.json import to_json_safe
 from inspect_ai._view.fastapi_server import (
     AccessPolicy,
     FileMappingPolicy,
-    InspectJsonResponse,
     OnlyDirAccessPolicy,
 )
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint

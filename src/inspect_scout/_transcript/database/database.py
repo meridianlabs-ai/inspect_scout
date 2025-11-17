@@ -10,17 +10,29 @@ from ..types import (
 )
 
 
-class TranscriptDB(abc.ABC):
+class TranscriptsDB(abc.ABC):
+    """Database of transcripts."""
+
     def __init__(self, location: str) -> None:
+        """Create a transcripts database.
+
+        Args:
+            location: Database location (e.g. local or S3 file path)
+        """
         self._location: str | None = location
 
     @abc.abstractmethod
-    async def connect(self) -> None: ...
+    async def connect(self) -> None:
+        """Connect to transcripts database."""
+        ...
 
     @abc.abstractmethod
-    async def disconnect(self) -> None: ...
+    async def disconnect(self) -> None:
+        """Disconnect to transcripts database."""
+        ...
 
-    async def __aenter__(self) -> "TranscriptDB":
+    async def __aenter__(self) -> "TranscriptsDB":
+        """Connect to transcripts database."""
         await self.connect()
         return self
 
@@ -30,30 +42,56 @@ class TranscriptDB(abc.ABC):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> bool | None:
+        """Disconnect from transcripts database."""
         await self.disconnect()
         return None
 
     @abc.abstractmethod
     async def insert(
         self, transcripts: Iterable[Transcript] | AsyncIterator[Transcript]
-    ) -> None: ...
+    ) -> None:
+        """Insert transcripts into database.
+
+        Args:
+           transcripts: Transcripts to insert as iterable or async iterator.
+        """
+        ...
 
     @abc.abstractmethod
     async def update(
         self,
         transcripts: Iterable[tuple[str, Transcript]]
         | AsyncIterator[tuple[str, Transcript]],
-    ) -> None: ...
+    ) -> None:
+        """Update transcripts in database.
+
+        Args:
+           transcripts: id/transcript pairs to update as iterable or async iterator.
+        """
+        ...
 
     @abc.abstractmethod
-    async def delete(self, transcripts: Iterable[str]) -> None: ...
+    async def delete(self, transcripts: Iterable[str]) -> None:
+        """Delete transcripts.
+
+        Args:
+           transcripts: IDs to delete.
+        """
+        ...
 
     @abc.abstractmethod
     async def count(
         self,
         where: list[Condition],
         limit: int | None = None,
-    ) -> int: ...
+    ) -> int:
+        """Count transcripts matching a condition.
+
+        Args:
+           where: Condition(s) to count.
+           limit: Maximum number to count.
+        """
+        ...
 
     @abc.abstractmethod
     def select(
@@ -61,9 +99,22 @@ class TranscriptDB(abc.ABC):
         where: list[Condition],
         limit: int | None = None,
         shuffle: bool | int = False,
-    ) -> AsyncIterator[TranscriptInfo]: ...
+    ) -> AsyncIterator[TranscriptInfo]:
+        """Select transcripts matching a condition.
+
+        Args:
+            where: Condition(s) to select for.
+            limit: Maximum number to select.
+            shuffle: Randomly shuffle transcripts selected (pass `int` for reproducible seed).
+        """
+        ...
 
     @abc.abstractmethod
-    async def read(
-        self, t: TranscriptInfo, content: TranscriptContent
-    ) -> Transcript: ...
+    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
+        """Read transcript content.
+
+        Args:
+            t: Transcript to read.
+            content: Content to read (messages, events, etc.)
+        """
+        ...

@@ -8,21 +8,12 @@ reference: "inspect_scout"
 ### transcripts_db
 ### TranscriptsDB
 
-### import_inspect()
-### import_weave()
-### import_langsmith()
-### import_agentsdk()
-### import_logfire()
-### import_otel()
-
 ## Reading
 
+### transcripts_from_db
+### transcripts_from_logs
 ### Transcripts
 ### TranscriptsReader
-### transcripts_from_db
-### trasncripts_from_logs
-### transcripts_from_df
-
 
 ## Filtering
 

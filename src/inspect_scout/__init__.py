@@ -32,10 +32,12 @@ from ._scanspec import (
     ScanTranscripts,
     TranscriptField,
 )
+from ._transcript.database.database import TranscriptsDB
+from ._transcript.database.factory import transcripts_db, transcripts_from_db
 from ._transcript.eval_log import transcripts_from_logs
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
-from ._transcript.transcripts import Transcripts
+from ._transcript.transcripts import Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
     MessageType,
@@ -78,8 +80,12 @@ __all__ = [
     "ScanResultsDF",
     "Summary",
     # transcript
+    "transcripts_db",
+    "TranscriptsDB",
+    "transcripts_from_db",
     "transcripts_from_logs",
     "Transcripts",
+    "TranscriptsReader",
     "Transcript",
     "TranscriptInfo",
     "Column",

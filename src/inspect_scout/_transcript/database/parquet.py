@@ -18,16 +18,17 @@ from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
-from inspect_scout._transcript.database.reader import TranscriptsDBReader
-from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
 from pydantic import TypeAdapter
 from typing_extensions import override
+
+from inspect_scout._transcript.database.reader import TranscriptsDBReader
+from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
 
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import LocalFilesCache, create_temp_cache
 from ..metadata import Condition
 from ..types import Transcript, TranscriptContent, TranscriptInfo
-from .database import TranscriptDB
+from .database import TranscriptsDB
 
 # Reserved column names that cannot be used as metadata keys
 # These are actual Parquet columns, so metadata keys cannot use these names
@@ -38,7 +39,7 @@ _chat_message_adapter: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
 _event_adapter: TypeAdapter[Event] = TypeAdapter(Event)
 
 
-class ParquetTranscriptDB(TranscriptDB):
+class ParquetTranscriptsDB(TranscriptsDB):
     """DuckDB-based transcript database using Parquet file storage.
 
     Stores transcript metadata in Parquet files for efficient querying,
@@ -885,7 +886,7 @@ class ParquetTranscripts(Transcripts):
         self._location = location
         self._memory_limit = memory_limit
         self._cache_dir = cache_dir
-        self._db: ParquetTranscriptDB | None = None
+        self._db: ParquetTranscriptsDB | None = None
 
     @override
     def reader(self) -> TranscriptsReader:
@@ -895,49 +896,12 @@ class ParquetTranscripts(Transcripts):
             TranscriptsReader configured with current query parameters.
         """
         if self._db is None:
-            self._db = ParquetTranscriptDB(
+            self._db = ParquetTranscriptsDB(
                 self._location,
                 memory_limit=self._memory_limit,
                 cache_dir=self._cache_dir,
             )
         return TranscriptsDBReader(self._db, None, self._query)
-
-
-def transcripts_from_parquet(
-    location: str,
-    memory_limit: str = "4GB",
-    cache_dir: Path | None = None,
-) -> Transcripts:
-    """Create transcript collection from Parquet files.
-
-    Args:
-        location: Directory path (local or S3) containing Parquet files.
-        memory_limit: DuckDB memory limit (e.g., '4GB', '8GB'). Defaults to '4GB'.
-        cache_dir: Optional cache directory for S3 files. If None, creates temp cache.
-
-    Returns:
-        Transcripts collection for querying and scanning.
-
-    Example:
-        ```python
-        from inspect_scout import transcripts_from_parquet, metadata as m
-
-        # Load from local directory
-        transcripts = transcripts_from_parquet("./transcript_db")
-
-        # Load from S3
-        transcripts = transcripts_from_parquet("s3://bucket/transcript_db")
-
-        # Filter by metadata
-        transcripts = transcripts.where(m.model == "gpt-4")
-        transcripts = transcripts.limit(100)
-        ```
-    """
-    return ParquetTranscripts(
-        location=location,
-        memory_limit=memory_limit,
-        cache_dir=cache_dir,
-    )
 
 
 def _validate_metadata_keys(metadata: dict[str, Any]) -> None:

@@ -7,9 +7,9 @@ import pytest
 import pytest_asyncio
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
+from inspect_scout._transcript.database.factory import transcripts_from_db
 from inspect_scout._transcript.database.parquet import (
-    ParquetTranscriptDB,
-    transcripts_from_parquet,
+    ParquetTranscriptsDB,
 )
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
 from inspect_scout._transcript.metadata import metadata as m
@@ -99,9 +99,9 @@ def sample_transcripts() -> list[Transcript]:
 
 
 @pytest_asyncio.fixture
-async def parquet_db(test_location: Path) -> AsyncIterator[ParquetTranscriptDB]:
+async def parquet_db(test_location: Path) -> AsyncIterator[ParquetTranscriptsDB]:
     """Create and connect to a ParquetTranscriptDB."""
-    db = ParquetTranscriptDB(str(test_location))
+    db = ParquetTranscriptsDB(str(test_location))
     await db.connect()
     yield db
     await db.disconnect()
@@ -109,8 +109,8 @@ async def parquet_db(test_location: Path) -> AsyncIterator[ParquetTranscriptDB]:
 
 @pytest_asyncio.fixture
 async def populated_db(
-    parquet_db: ParquetTranscriptDB, sample_transcripts: list[Transcript]
-) -> ParquetTranscriptDB:
+    parquet_db: ParquetTranscriptsDB, sample_transcripts: list[Transcript]
+) -> ParquetTranscriptsDB:
     """Create a database with pre-inserted test data."""
     await parquet_db.insert(sample_transcripts)
     return parquet_db
@@ -120,7 +120,7 @@ async def populated_db(
 @pytest.mark.asyncio
 async def test_connect_disconnect(test_location: Path) -> None:
     """Test database connection lifecycle."""
-    db = ParquetTranscriptDB(str(test_location))
+    db = ParquetTranscriptsDB(str(test_location))
 
     # Initially not connected
     assert db._conn is None
@@ -136,7 +136,7 @@ async def test_connect_disconnect(test_location: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_insert_single_batch(
-    parquet_db: ParquetTranscriptDB, test_location: Path
+    parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
     """Test inserting a small batch of transcripts."""
     transcripts = create_test_transcripts(5)
@@ -153,7 +153,7 @@ async def test_insert_single_batch(
 
 @pytest.mark.asyncio
 async def test_insert_multiple_batches(
-    parquet_db: ParquetTranscriptDB, test_location: Path
+    parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
     """Test inserting large batch that spans multiple Parquet files."""
     # Insert 2500 transcripts (> 2 * BATCH_SIZE of 1000)
@@ -171,7 +171,7 @@ async def test_insert_multiple_batches(
 
 @pytest.mark.asyncio
 async def test_insert_async_iterator(
-    parquet_db: ParquetTranscriptDB, test_location: Path
+    parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
     """Test inserting from async iterator."""
     await parquet_db.insert(async_transcript_generator(15))
@@ -182,14 +182,14 @@ async def test_insert_async_iterator(
 
 
 @pytest.mark.asyncio
-async def test_count_all(populated_db: ParquetTranscriptDB) -> None:
+async def test_count_all(populated_db: ParquetTranscriptsDB) -> None:
     """Test counting all transcripts."""
     count = await populated_db.count([], None)
     assert count == 20
 
 
 @pytest.mark.asyncio
-async def test_count_with_limit(populated_db: ParquetTranscriptDB) -> None:
+async def test_count_with_limit(populated_db: ParquetTranscriptsDB) -> None:
     """Test counting with limit parameter."""
     count = await populated_db.count([], limit=5)
     assert count == 5
@@ -197,7 +197,7 @@ async def test_count_with_limit(populated_db: ParquetTranscriptDB) -> None:
 
 # Query & Filtering Tests
 @pytest.mark.asyncio
-async def test_select_all(populated_db: ParquetTranscriptDB) -> None:
+async def test_select_all(populated_db: ParquetTranscriptsDB) -> None:
     """Test selecting all transcripts."""
     results = [info async for info in populated_db.select([], None, False)]
     assert len(results) == 20
@@ -211,7 +211,7 @@ async def test_select_all(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_select_with_where(populated_db: ParquetTranscriptDB) -> None:
+async def test_select_with_where(populated_db: ParquetTranscriptsDB) -> None:
     """Test filtering by metadata conditions."""
     # Filter by model (now a direct column, not nested in metadata JSON)
     condition = m.model == "gpt-4"
@@ -226,14 +226,14 @@ async def test_select_with_where(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_select_with_limit(populated_db: ParquetTranscriptDB) -> None:
+async def test_select_with_limit(populated_db: ParquetTranscriptsDB) -> None:
     """Test limiting results."""
     results = [info async for info in populated_db.select([], limit=5, shuffle=False)]
     assert len(results) == 5
 
 
 @pytest.mark.asyncio
-async def test_select_with_shuffle(populated_db: ParquetTranscriptDB) -> None:
+async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
     """Test shuffle with deterministic seed."""
     # Get results with same seed twice
     results1 = [info.id async for info in populated_db.select([], None, shuffle=42)]
@@ -250,7 +250,7 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_metadata_dsl_queries(populated_db: ParquetTranscriptDB) -> None:
+async def test_metadata_dsl_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test various Condition operators."""
     # Greater than
     results = [info async for info in populated_db.select([m.index > 15], None, False)]
@@ -271,7 +271,7 @@ async def test_metadata_dsl_queries(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_json_path_queries(populated_db: ParquetTranscriptDB) -> None:
+async def test_json_path_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test querying metadata fields."""
     # Query by temperature value
     results = [
@@ -286,7 +286,7 @@ async def test_json_path_queries(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_complex_conditions(populated_db: ParquetTranscriptDB) -> None:
+async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     """Test combining conditions with & and |."""
     # AND condition
     condition = (m.model == "gpt-4") & (m.index < 10)
@@ -305,7 +305,7 @@ async def test_complex_conditions(populated_db: ParquetTranscriptDB) -> None:
 
 # Content Loading Tests
 @pytest.mark.asyncio
-async def test_read_full_content(populated_db: ParquetTranscriptDB) -> None:
+async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
     """Test loading full transcript content."""
     # Get a transcript info
     infos = [info async for info in populated_db.select([], limit=1, shuffle=False)]
@@ -323,7 +323,7 @@ async def test_read_full_content(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_read_filtered_messages(populated_db: ParquetTranscriptDB) -> None:
+async def test_read_filtered_messages(populated_db: ParquetTranscriptsDB) -> None:
     """Test filtering messages by type."""
     infos = [info async for info in populated_db.select([], limit=1, shuffle=False)]
 
@@ -339,7 +339,7 @@ async def test_read_filtered_messages(populated_db: ParquetTranscriptDB) -> None
 
 
 @pytest.mark.asyncio
-async def test_read_no_content(populated_db: ParquetTranscriptDB) -> None:
+async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
     """Test loading metadata only (no content)."""
     infos = [info async for info in populated_db.select([], limit=1, shuffle=False)]
 
@@ -357,7 +357,7 @@ async def test_read_no_content(populated_db: ParquetTranscriptDB) -> None:
 
 # Update & Delete Tests
 @pytest.mark.asyncio
-async def test_update_single(populated_db: ParquetTranscriptDB) -> None:
+async def test_update_single(populated_db: ParquetTranscriptsDB) -> None:
     """Test updating a single transcript."""
     # Get original
     infos = [info async for info in populated_db.select([], limit=1, shuffle=False)]
@@ -383,7 +383,7 @@ async def test_update_single(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_single(populated_db: ParquetTranscriptDB) -> None:
+async def test_delete_single(populated_db: ParquetTranscriptsDB) -> None:
     """Test deleting a single transcript."""
     # Get original count
     original_count = await populated_db.count([], None)
@@ -407,7 +407,7 @@ async def test_delete_single(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_multiple(populated_db: ParquetTranscriptDB) -> None:
+async def test_delete_multiple(populated_db: ParquetTranscriptsDB) -> None:
     """Test deleting multiple transcripts."""
     original_count = await populated_db.count([], None)
 
@@ -425,7 +425,7 @@ async def test_delete_multiple(populated_db: ParquetTranscriptDB) -> None:
 
 # Schema & File Management Tests
 @pytest.mark.asyncio
-async def test_empty_database(parquet_db: ParquetTranscriptDB) -> None:
+async def test_empty_database(parquet_db: ParquetTranscriptsDB) -> None:
     """Test querying empty database."""
     count = await parquet_db.count([], None)
     assert count == 0
@@ -435,7 +435,7 @@ async def test_empty_database(parquet_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_arbitrary_metadata(parquet_db: ParquetTranscriptDB) -> None:
+async def test_arbitrary_metadata(parquet_db: ParquetTranscriptsDB) -> None:
     """Test with various metadata structures."""
     transcripts = [
         create_sample_transcript(
@@ -467,7 +467,7 @@ async def test_arbitrary_metadata(parquet_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_null_handling(parquet_db: ParquetTranscriptDB) -> None:
+async def test_null_handling(parquet_db: ParquetTranscriptsDB) -> None:
     """Test nullable metadata fields."""
     transcripts = [
         create_sample_transcript(
@@ -490,7 +490,7 @@ async def test_null_handling(parquet_db: ParquetTranscriptDB) -> None:
 @pytest.mark.asyncio
 async def test_factory_function(test_location: Path) -> None:
     """Test transcripts_from_parquet factory function."""
-    transcripts = transcripts_from_parquet(str(test_location))
+    transcripts = transcripts_from_db(str(test_location))
     assert transcripts is not None
 
     # Insert some data
@@ -508,7 +508,7 @@ async def test_factory_function(test_location: Path) -> None:
 async def test_where_filtering(test_location: Path) -> None:
     """Test .where() method on ParquetTranscripts."""
     # Create and populate
-    transcripts_obj = transcripts_from_parquet(str(test_location))
+    transcripts_obj = transcripts_from_db(str(test_location))
     async with transcripts_obj.reader() as reader:
         if isinstance(reader, TranscriptsDBReader):
             await reader._db.insert(create_test_transcripts(20))
@@ -525,7 +525,7 @@ async def test_where_filtering(test_location: Path) -> None:
 @pytest.mark.asyncio
 async def test_limit_method(test_location: Path) -> None:
     """Test .limit() method."""
-    transcripts_obj = transcripts_from_parquet(str(test_location))
+    transcripts_obj = transcripts_from_db(str(test_location))
     async with transcripts_obj.reader() as reader:
         if isinstance(reader, TranscriptsDBReader):
             await reader._db.insert(create_test_transcripts(20))
@@ -541,7 +541,7 @@ async def test_limit_method(test_location: Path) -> None:
 @pytest.mark.asyncio
 async def test_shuffle_method(test_location: Path) -> None:
     """Test .shuffle() method."""
-    transcripts_obj = transcripts_from_parquet(str(test_location))
+    transcripts_obj = transcripts_from_db(str(test_location))
     async with transcripts_obj.reader() as reader:
         if isinstance(reader, TranscriptsDBReader):
             await reader._db.insert(create_test_transcripts(10))
@@ -562,7 +562,7 @@ async def test_shuffle_method(test_location: Path) -> None:
 
 # Edge Cases & Error Handling
 @pytest.mark.asyncio
-async def test_insert_empty_list(parquet_db: ParquetTranscriptDB) -> None:
+async def test_insert_empty_list(parquet_db: ParquetTranscriptsDB) -> None:
     """Test inserting empty iterable."""
     await parquet_db.insert([])
 
@@ -571,7 +571,7 @@ async def test_insert_empty_list(parquet_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_no_matches(populated_db: ParquetTranscriptDB) -> None:
+async def test_query_no_matches(populated_db: ParquetTranscriptsDB) -> None:
     """Test query with no matching results."""
     # Query for non-existent value
     results = [
@@ -584,7 +584,7 @@ async def test_query_no_matches(populated_db: ParquetTranscriptDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_read_nonexistent_transcript(populated_db: ParquetTranscriptDB) -> None:
+async def test_read_nonexistent_transcript(populated_db: ParquetTranscriptsDB) -> None:
     """Test reading missing transcript."""
     # Create a non-existent TranscriptInfo
     fake_info = TranscriptInfo(
@@ -604,7 +604,7 @@ async def test_read_nonexistent_transcript(populated_db: ParquetTranscriptDB) ->
 
 # New tests for flattened metadata implementation
 @pytest.mark.asyncio
-async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptDB) -> None:
+async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) -> None:
     """Test that nested dicts/arrays are stored as JSON and queryable."""
     transcripts = [
         create_sample_transcript(
@@ -653,7 +653,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptDB) -
 
 
 @pytest.mark.asyncio
-async def test_reserved_column_validation(parquet_db: ParquetTranscriptDB) -> None:
+async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> None:
     """Test that reserved column names in metadata raise error."""
     from inspect_scout._transcript.database.parquet import _validate_metadata_keys
 
@@ -675,7 +675,7 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptDB) -> No
 
 @pytest.mark.asyncio
 async def test_schema_evolution(
-    parquet_db: ParquetTranscriptDB, test_location: Path
+    parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
     """Test that different metadata fields across batches work correctly."""
     # First batch: model, task

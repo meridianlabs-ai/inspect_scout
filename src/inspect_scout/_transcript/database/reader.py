@@ -3,12 +3,13 @@
 from types import TracebackType
 from typing import AsyncIterator
 
-from inspect_scout._scanspec import ScanTranscripts, TranscriptField
 from typing_extensions import override
+
+from inspect_scout._scanspec import ScanTranscripts, TranscriptField
 
 from ..transcripts import TranscriptsQuery, TranscriptsReader
 from ..types import Transcript, TranscriptContent, TranscriptInfo
-from .database import TranscriptDB
+from .database import TranscriptsDB
 
 
 class TranscriptsDBReader(TranscriptsReader):
@@ -16,8 +17,8 @@ class TranscriptsDBReader(TranscriptsReader):
 
     def __init__(
         self,
-        db: TranscriptDB,
-        content_db: TranscriptDB | None,
+        db: TranscriptsDB,
+        content_db: TranscriptsDB | None,
         query: TranscriptsQuery,
     ) -> None:
         self._db = db

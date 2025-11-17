@@ -1,12 +1,13 @@
 """DuckDB/Parquet-backed transcript database implementation."""
 
+import glob
 import hashlib
 import json
 import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterable
+from typing import Any, AsyncIterator, Iterable, cast
 
 import duckdb
 import pandas as pd
@@ -28,7 +29,8 @@ from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptDB
 
 # Reserved column names that cannot be used as metadata keys
-RESERVED_COLUMNS = {"id", "source_id", "source_uri", "content", "messages", "events"}
+# These are actual Parquet columns, so metadata keys cannot use these names
+RESERVED_COLUMNS = {"id", "source_id", "source_uri", "content"}
 
 # Type adapters for parsing Union types
 _chat_message_adapter: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
@@ -132,24 +134,14 @@ class ParquetTranscriptDB(TranscriptDB):
         Args:
             transcripts: Transcripts to insert (iterable or async iterator).
         """
-        if isinstance(transcripts, AsyncIterator):
-            batch: list[Transcript] = []
-            async for transcript in transcripts:
-                batch.append(transcript)
-                if len(batch) >= self.BATCH_SIZE:
-                    await self._write_parquet_batch(batch)
-                    batch = []
-            if batch:
+        batch: list[Transcript] = []
+        async for transcript in self._as_async_iterator(transcripts):
+            batch.append(transcript)
+            if len(batch) >= self.BATCH_SIZE:
                 await self._write_parquet_batch(batch)
-        else:
-            batch = []
-            for transcript in transcripts:
-                batch.append(transcript)
-                if len(batch) >= self.BATCH_SIZE:
-                    await self._write_parquet_batch(batch)
-                    batch = []
-            if batch:
-                await self._write_parquet_batch(batch)
+                batch = []
+        if batch:
+            await self._write_parquet_batch(batch)
 
     @override
     async def update(
@@ -275,12 +267,13 @@ class ParquetTranscriptDB(TranscriptDB):
             for col, value in row_dict.items():
                 if col not in RESERVED_COLUMNS and value is not None:
                     # Try to deserialize JSON strings back to objects/arrays
-                    if isinstance(value, str):
+                    # Only attempt parsing if string starts with JSON markers
+                    if isinstance(value, str) and value and value[0] in ("{", "["):
                         try:
                             parsed = json.loads(value)
                             metadata[col] = parsed
                         except (json.JSONDecodeError, ValueError):
-                            # Not JSON, keep as string
+                            # Not valid JSON, keep as string
                             metadata[col] = value
                     else:
                         metadata[col] = value
@@ -294,7 +287,11 @@ class ParquetTranscriptDB(TranscriptDB):
 
     @override
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
-        """Load full transcript content from Parquet.
+        """Load full transcript content from Parquet using streaming.
+
+        Uses a hybrid approach:
+        1. DuckDB to find which Parquet file contains the transcript
+        2. PyArrow to stream the content bytes from that file
 
         Args:
             t: TranscriptInfo identifying the transcript.
@@ -305,13 +302,11 @@ class ParquetTranscriptDB(TranscriptDB):
         """
         assert self._conn is not None
 
-        # Query for content JSON string
-        result = self._conn.execute(
-            "SELECT content FROM transcripts WHERE id = ?",
-            [t.id],
-        ).fetchone()
+        # Step 1: Find which Parquet file contains this transcript
+        # We need to check each file since DuckDB creates a union view
+        file_paths = await self._discover_parquet_files()
 
-        if not result or not result[0]:
+        if not file_paths:
             # Return transcript with no content
             return Transcript(
                 id=t.id,
@@ -320,15 +315,63 @@ class ParquetTranscriptDB(TranscriptDB):
                 metadata=t.metadata,
             )
 
-        content_json_str = result[0]
+        # Step 2: Find the file containing this transcript ID
+        content_file = None
+        for file_path in file_paths:
+            # Quick check if this file contains the ID
+            result = self._conn.execute(
+                "SELECT 1 FROM read_parquet(?) WHERE id = ? LIMIT 1",
+                [file_path, t.id],
+            ).fetchone()
+            if result:
+                content_file = file_path
+                break
 
-        # Create async iterator from JSON bytes
-        async def json_iterator() -> AsyncIterator[bytes]:
-            yield content_json_str.encode("utf-8")
+        if not content_file:
+            # Transcript not found in any file
+            return Transcript(
+                id=t.id,
+                source_id=t.source_id,
+                source_uri=t.source_uri,
+                metadata=t.metadata,
+            )
 
-        # Use existing streaming parser with filtering
+        # Step 3: Stream content from the file using PyArrow
+        async def stream_content_bytes() -> AsyncIterator[bytes]:
+            # Read the Parquet file in a thread to avoid blocking the event loop
+            # PyArrow has no async primitives, so we use anyio.to_thread
+            from anyio import to_thread
+
+            def read_content() -> str | None:
+                """Blocking read operation run in thread pool."""
+                table = pq.read_table(
+                    content_file,
+                    columns=["id", "content"],
+                    filters=[("id", "==", t.id)],
+                )
+
+                if table.num_rows == 0:
+                    return None
+
+                content: str | None = table.column("content")[0].as_py()
+                return content
+
+            # Run blocking PyArrow read in thread pool
+            content_value = await to_thread.run_sync(read_content)
+
+            if not content_value:
+                return
+
+            # Stream in 64KB chunks for large content
+            content_bytes = content_value.encode("utf-8")
+            chunk_size = 64 * 1024
+
+            for i in range(0, len(content_bytes), chunk_size):
+                yield content_bytes[i : i + chunk_size]
+
+        # Use existing streaming JSON parser with filtering
         return await load_filtered_transcript(
-            json_iterator(),
+            stream_content_bytes(),
             t,
             content.messages,
             content.events,
@@ -757,29 +800,24 @@ class ParquetTranscriptDB(TranscriptDB):
             assert self._fs is not None
             assert self._cache is not None
 
-            # List S3 files using filesystem.ls
+            # List all files in directory (returns list of paths as strings)
             fs = filesystem(self._location)
-            try:
-                # List all files in directory (returns list of paths as strings)
-                all_files = fs.ls(self._location)
-                # Filter for transcript parquet files
-                files = [
-                    f["name"] if isinstance(f, dict) else str(f)
-                    for f in all_files
-                    if (
-                        isinstance(f, dict)
-                        and f.get("name", "").endswith(".parquet")
-                        and "transcripts_" in f.get("name", "")
-                    )
-                    or (
-                        isinstance(f, str)
-                        and f.endswith(".parquet")
-                        and "transcripts_" in f
-                    )
-                ]
-            except Exception:
-                # If listing fails, return empty list
-                files = []
+            all_files = fs.ls(self._location)
+            # Filter for transcript parquet files
+            files = [
+                f["name"] if isinstance(f, dict) else str(f)
+                for f in all_files
+                if (
+                    isinstance(f, dict)
+                    and f.get("name", "").endswith(".parquet")
+                    and "transcripts_" in f.get("name", "")
+                )
+                or (
+                    isinstance(f, str)
+                    and f.endswith(".parquet")
+                    and "transcripts_" in f
+                )
+            ]
 
             # Try to cache files, but if cache is full, use S3 URIs directly
             file_paths = []
@@ -792,15 +830,36 @@ class ParquetTranscriptDB(TranscriptDB):
 
             return file_paths
         else:
-            # Local files
-            import glob
-
             location_path = Path(self._location)
             if not location_path.exists():
                 location_path.mkdir(parents=True, exist_ok=True)
                 return []
 
             return list(glob.glob(str(location_path / "transcripts_*.parquet")))
+
+    def _as_async_iterator(
+        self, transcripts: Iterable[Transcript] | AsyncIterator[Transcript]
+    ) -> AsyncIterator[Transcript]:
+        """Convert iterable or async iterator to async iterator.
+
+        Args:
+            transcripts: Either a regular iterable or async iterator.
+
+        Returns:
+            AsyncIterator over transcripts. If input is already async, returns it
+            directly. Otherwise, wraps the iterable in an async generator.
+        """
+        if hasattr(transcripts, "__anext__"):
+            # Already an async iterator - return it directly
+            return cast(AsyncIterator[Transcript], transcripts)
+        else:
+            # Convert regular iterable to async iterator
+
+            async def _iter() -> AsyncIterator[Transcript]:
+                for transcript in transcripts:
+                    yield transcript
+
+            return _iter()
 
 
 class ParquetTranscripts(Transcripts):

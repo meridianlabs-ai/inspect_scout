@@ -21,6 +21,7 @@ reference: "inspect_scout"
 ### TranscriptsReader
 ### transcripts_from_db
 ### trasncripts_from_logs
+### transcripts_from_df
 
 
 ## Filtering

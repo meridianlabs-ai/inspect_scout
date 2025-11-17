@@ -657,7 +657,7 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptDB) -> No
     """Test that reserved column names in metadata raise error."""
     from inspect_scout._transcript.database.parquet import _validate_metadata_keys
 
-    # Should raise error for reserved keys
+    # Should raise error for reserved keys (actual Parquet columns)
     with pytest.raises(ValueError, match="reserved"):
         _validate_metadata_keys({"id": "bad"})
 
@@ -665,10 +665,12 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptDB) -> No
         _validate_metadata_keys({"content": "bad"})
 
     with pytest.raises(ValueError, match="reserved"):
-        _validate_metadata_keys({"messages": "bad"})
+        _validate_metadata_keys({"source_id": "bad"})
 
-    # Should be fine for non-reserved keys
+    # Should be fine for non-reserved keys, including "messages" and "events"
+    # (these are not actual columns - they're stored inside "content")
     _validate_metadata_keys({"model": "gpt-4", "task": "math"})  # No error
+    _validate_metadata_keys({"messages": "custom", "events": "custom"})  # Also ok
 
 
 @pytest.mark.asyncio

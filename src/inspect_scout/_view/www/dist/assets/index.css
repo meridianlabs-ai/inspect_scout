@@ -4139,18 +4139,34 @@ pre._value_xgip4_24 {
   margin-top: -2px;
   font-size: 0.8em;
 }
-._gridWrapper_1o0hu_1 {
+._gridWrapper_1jp8e_1 {
   height: 100%;
   border-top: solid 1px var(--bs-border-color);
 }
 
 /* Hide sort index numbers in multi-column sort */
-._gridWrapper_1o0hu_1 .ag-header-cell .ag-sort-order {
+._gridWrapper_1jp8e_1 .ag-header-cell .ag-sort-order {
   display: none;
 }
 
-._row_1o0hu_11 {
+._row_1jp8e_11 {
   cursor: pointer;
+}
+
+._green_1jp8e_15 {
+  color: var(--bs-success);
+}
+
+._red_1jp8e_19 {
+  color: var(--bs-danger);
+}
+
+._yellow_1jp8e_23 {
+  color: var(--bs-warning);
+}
+
+._blue_1jp8e_27 {
+  color: var(--bs-info);
 }
 ._container_18ufx_1 {
   display: grid;

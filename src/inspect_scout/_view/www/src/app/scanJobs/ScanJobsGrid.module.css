@@ -11,3 +11,19 @@
 .row {
   cursor: pointer;
 }
+
+.green {
+  color: var(--bs-success);
+}
+
+.red {
+  color: var(--bs-danger);
+}
+
+.yellow {
+  color: var(--bs-warning);
+}
+
+.blue {
+  color: var(--bs-info);
+}

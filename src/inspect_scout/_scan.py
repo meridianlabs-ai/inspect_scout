@@ -436,7 +436,11 @@ async def _scan_async(
 
 
 async def _scan_async_inner(
-    *, scan: ScanContext, recorder: ScanRecorder, tg: TaskGroup, fail_on_error: bool = False
+    *,
+    scan: ScanContext,
+    recorder: ScanRecorder,
+    tg: TaskGroup,
+    fail_on_error: bool = False,
 ) -> Status:
     """Execute a scan by orchestrating concurrent scanner execution across transcripts.
 

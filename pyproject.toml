@@ -62,6 +62,7 @@ doc = [
     "markdown",
     "griffe",
     "pyyaml",
+    "types-Markdown",
 ]
 dist = ["twine", "build"]
 

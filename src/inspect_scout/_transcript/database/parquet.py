@@ -13,6 +13,7 @@ import duckdb
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from anyio import to_thread
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai.event._event import Event
@@ -340,8 +341,6 @@ class ParquetTranscriptDB(TranscriptDB):
         async def stream_content_bytes() -> AsyncIterator[bytes]:
             # Read the Parquet file in a thread to avoid blocking the event loop
             # PyArrow has no async primitives, so we use anyio.to_thread
-            from anyio import to_thread
-
             def read_content() -> str | None:
                 """Blocking read operation run in thread pool."""
                 table = pq.read_table(

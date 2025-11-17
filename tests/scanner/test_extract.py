@@ -23,6 +23,7 @@ from inspect_scout._scanner.extract import (
     messages_as_str,
 )
 from inspect_scout._scanner.result import Reference
+from inspect_scout._transcript.types import Transcript
 
 
 @pytest.mark.parametrize(
@@ -613,8 +614,9 @@ async def test_messages_as_str_with_preprocessor() -> None:
     """Test messages_as_str with async message preprocessor."""
 
     async def keep_only_user_messages(
-        messages: list[ChatMessage],
+        input: Transcript | list[ChatMessage],
     ) -> list[ChatMessage]:
+        messages = input if isinstance(input, list) else input.messages
         return [m for m in messages if m.role == "user"]
 
     messages: list[ChatMessage] = [

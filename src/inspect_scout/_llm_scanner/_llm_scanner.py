@@ -121,7 +121,7 @@ def llm_scanner(
 
     async def scan(transcript: Transcript) -> Result:
         messages_str, extract_references = await messages_as_str(
-            transcript.messages,
+            transcript,
             preprocessor=preprocessor,
             include_ids=True,
         )

@@ -10,6 +10,7 @@ from inspect_ai.model import (
 )
 
 from inspect_scout._scanner.result import Reference
+from inspect_scout._transcript.types import Transcript
 
 from .util import _message_id
 
@@ -19,13 +20,15 @@ class MessagesPreprocessor(NamedTuple):
 
     Provide a `transform` function for fully custom transformations.
     Use the higher-level options (e.g. `exclude_system`) to
-    perform varioius common content removal transformations.
+    perform various common content removal transformations.
 
     The default `MessagesPreprocessor` will exclude system
     messages and do no other transformations.
     """
 
-    transform: Callable[[list[ChatMessage]], Awaitable[list[ChatMessage]]] | None = None
+    transform: (
+        Callable[[Transcript | list[ChatMessage]], Awaitable[list[ChatMessage]]] | None
+    ) = None
     """Transform the list of messages."""
 
     exclude_system: bool = True
@@ -40,7 +43,7 @@ class MessagesPreprocessor(NamedTuple):
 
 @overload
 async def messages_as_str(
-    messages: list[ChatMessage],
+    input: Transcript | list[ChatMessage],
     *,
     preprocessor: MessagesPreprocessor | None = None,
 ) -> str: ...
@@ -48,7 +51,7 @@ async def messages_as_str(
 
 @overload
 async def messages_as_str(
-    messages: list[ChatMessage],
+    input: Transcript | list[ChatMessage],
     *,
     preprocessor: MessagesPreprocessor | None = None,
     include_ids: Literal[True],
@@ -56,7 +59,7 @@ async def messages_as_str(
 
 
 async def messages_as_str(
-    messages: list[ChatMessage],
+    input: Transcript | list[ChatMessage],
     *,
     preprocessor: MessagesPreprocessor | None = None,
     include_ids: Literal[True] | None = None,
@@ -64,7 +67,7 @@ async def messages_as_str(
     """Concatenate list of chat messages into a string.
 
     Args:
-       messages: List of chat messages.
+       input: The Transcript with the messages or a list of messages.
        preprocessor: Content filter for messages.
        include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
           to each message and return a function to extract references from text.
@@ -76,8 +79,13 @@ async def messages_as_str(
           prefixes, function that takes text and returns list of Reference objects
           for any [M1], [M2], etc. references found in the text).
     """
-    if preprocessor is not None and preprocessor.transform is not None:
-        messages = await preprocessor.transform(messages)
+    messages = (
+        await preprocessor.transform(input)
+        if preprocessor is not None and preprocessor.transform is not None
+        else input.messages
+        if isinstance(input, Transcript)
+        else input
+    )
 
     if not include_ids:
         return "\n".join([message_as_str(m, preprocessor) or "" for m in messages])

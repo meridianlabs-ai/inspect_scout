@@ -205,15 +205,6 @@ def view_server_app(
             )
         return value
 
-    @app.get("/hello")
-    async def hello(
-        request: Request,
-        header_only: str | None = Query(None, alias="header-only"),
-    ) -> Response:
-        return InspectJsonResponse(
-            content={"hello": "world"}, media_type="application/json"
-        )
-
     @app.get("/scans")
     async def scans(
         request: Request,

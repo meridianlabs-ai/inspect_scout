@@ -80,37 +80,37 @@ async def test_render_basic_prompt() -> None:
     [
         # Metadata from transcript (accessed via transcript object)
         (
-            "Name: {{ transcript.metadata.name }}, Age: {{ transcript.metadata.age }}",
+            "Name: {{ metadata.name }}, Age: {{ metadata.age }}",
             {"metadata": {"name": "Alice", "age": 30}},
             ["Name: Alice", "Age: 30"],
         ),
         # Special characters
         (
-            "Text: {{ transcript.metadata.text }}",
+            "Text: {{ metadata.text }}",
             {"metadata": {"text": 'Hello "world" & <tag>'}},
             ['Text: Hello "world" & <tag>'],
         ),
         # Score (present)
         (
-            "Score: {{ transcript.metadata.score }}",
+            "Score: {{ metadata.score }}",
             {"metadata": {"score": 0.85}},
             ["Score: 0.85"],
         ),
         # Score (absent - None)
         (
-            "Score: {% if transcript.metadata.score %}{{ transcript.metadata.score }}{% else %}N/A{% endif %}",
+            "Score: {% if metadata.score %}{{ metadata.score }}{% else %}N/A{% endif %}",
             {},
             ["Score: N/A"],
         ),
         # Named scores
         (
-            "Accuracy: {{ transcript.metadata.scores.accuracy }}, Fluency: {{ transcript.metadata.scores.fluency }}",
+            "Accuracy: {{ metadata.scores.accuracy }}, Fluency: {{ metadata.scores.fluency }}",
             {"metadata": {"scores": {"accuracy": 0.9, "fluency": 0.8}}},
             ["Accuracy: 0.9", "Fluency: 0.8"],
         ),
         # Mixed: metadata fields including score and named scores
         (
-            "Model: {{ transcript.metadata.model }}, Score: {{ transcript.metadata.score }}, Help: {{ transcript.metadata.scores.helpfulness }}",
+            "Model: {{ metadata.model }}, Score: {{ metadata.score }}, Help: {{ metadata.scores.helpfulness }}",
             {
                 "metadata": {
                     "model": "gpt-4",

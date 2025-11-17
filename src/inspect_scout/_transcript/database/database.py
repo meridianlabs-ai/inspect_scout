@@ -58,28 +58,6 @@ class TranscriptsDB(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def update(
-        self,
-        transcripts: Iterable[tuple[str, Transcript]]
-        | AsyncIterator[tuple[str, Transcript]],
-    ) -> None:
-        """Update transcripts in database.
-
-        Args:
-           transcripts: id/transcript pairs to update as iterable or async iterator.
-        """
-        ...
-
-    @abc.abstractmethod
-    async def delete(self, transcripts: Iterable[str]) -> None:
-        """Delete transcripts.
-
-        Args:
-           transcripts: IDs to delete.
-        """
-        ...
-
-    @abc.abstractmethod
     async def count(
         self,
         where: list[Condition],

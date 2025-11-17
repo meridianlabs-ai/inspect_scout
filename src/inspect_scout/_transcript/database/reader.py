@@ -1,17 +1,19 @@
-from types import TracebackType
-from typing import AsyncIterator, override
+"""TranscriptsReader implementation for TranscriptDB backends."""
 
-from inspect_scout._scanspec import ScanTranscripts
-from inspect_scout._transcript.database.database import TranscriptDB
-from inspect_scout._transcript.transcripts import TranscriptsQuery, TranscriptsReader
-from inspect_scout._transcript.types import (
-    Transcript,
-    TranscriptContent,
-    TranscriptInfo,
-)
+from types import TracebackType
+from typing import AsyncIterator
+
+from inspect_scout._scanspec import ScanTranscripts, TranscriptField
+from typing_extensions import override
+
+from ..transcripts import TranscriptsQuery, TranscriptsReader
+from ..types import Transcript, TranscriptContent, TranscriptInfo
+from .database import TranscriptDB
 
 
 class TranscriptsDBReader(TranscriptsReader):
+    """TranscriptsReader that delegates to a TranscriptDB backend."""
+
     def __init__(
         self,
         db: TranscriptDB,
@@ -23,8 +25,8 @@ class TranscriptsDBReader(TranscriptsReader):
         self._query = query
 
     @override
-    async def __aenter__(self) -> "TranscriptsReader":
-        """Enter the async context manager."""
+    async def __aenter__(self) -> "TranscriptsDBReader":
+        """Enter async context - connect to database."""
         await self._db.connect()
         return self
 
@@ -35,36 +37,77 @@ class TranscriptsDBReader(TranscriptsReader):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> bool | None:
+        """Exit async context - disconnect from database."""
         await self._db.disconnect()
         return None
 
     @override
     async def count(self) -> int:
-        """Number of transcripts in collection."""
+        """Count transcripts matching the query.
+
+        Returns:
+            Number of matching transcripts.
+        """
         return await self._db.count(self._query.where, self._query.limit)
 
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        """Index of `TranscriptInfo` for the collection."""
+        """Get index of transcripts matching the query.
+
+        Returns:
+            Async iterator of TranscriptInfo (metadata only).
+        """
         return self._db.select(
-            self._query.where, self._query.limit, self._query.shuffle
+            self._query.where,
+            self._query.limit,
+            self._query.shuffle,
         )
 
     @override
     async def read(
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> Transcript:
-        """Read transcript content.
+        """Read full transcript content.
 
         Args:
-            transcript: Transcript to read.
-            content: Content to read (e.g. specific message types, etc.)
+            transcript: TranscriptInfo identifying the transcript.
+            content: Filter for which messages/events to load.
 
         Returns:
-            Transcript: Transcript with content.
+            Full Transcript with content.
         """
         return await self._content_db.read(transcript, content)
 
     @override
     async def snapshot(self) -> ScanTranscripts:
-        return ScanTranscripts(type="database", fields=[], count=0, data="")
+        """Create snapshot of current query results.
+
+        Returns:
+            ScanTranscripts snapshot for serialization.
+        """
+        # Collect all matching transcript IDs
+        sample_ids = [info.id async for info in self.index()]
+
+        # For now, create a simple snapshot
+        # TODO: Implement proper Parquet-based snapshot
+        import io
+
+        import pandas as pd
+
+        # Create minimal DataFrame with IDs
+        df = pd.DataFrame({"id": sample_ids})
+
+        # Convert to CSV
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False)
+        data = buffer.getvalue()
+
+        # Create field definitions
+        fields: list[TranscriptField] = [{"name": "id", "type": "string"}]
+
+        return ScanTranscripts(
+            type="parquet",
+            fields=fields,
+            count=len(sample_ids),
+            data=data,
+        )

@@ -8,7 +8,7 @@ reference: "inspect_scout"
 ### transcripts_db
 ### TranscriptsDB
 
-### import_eval_logs()
+### import_inspect()
 ### import_weave()
 ### import_langsmith()
 ### import_agentsdk()

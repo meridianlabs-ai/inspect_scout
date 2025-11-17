@@ -461,7 +461,7 @@ class Condition:
                 return f"json_extract(\"{self._esc_double(base)}\", '{self._esc_single(json_path)}')"
 
             elif dialect == SQLDialect.DUCKDB:
-                # Use json_extract for better compatibility with VARCHAR columns
+                # Use json_extract_string to extract as VARCHAR for direct comparison
                 json_path_parts = []
                 for segment, is_index in path_parts:
                     if is_index:
@@ -472,7 +472,7 @@ class Condition:
                     else:
                         json_path_parts.append(f".{segment}")
                 json_path = "$" + "".join(json_path_parts)
-                return f"json_extract(\"{self._esc_double(base)}\", '{self._esc_single(json_path)}')"
+                return f"json_extract_string(\"{self._esc_double(base)}\", '{self._esc_single(json_path)}')"
 
             elif dialect == SQLDialect.POSTGRES:
                 result = f'"{self._esc_double(base)}"'

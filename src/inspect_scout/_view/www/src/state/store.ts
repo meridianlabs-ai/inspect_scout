@@ -555,7 +555,11 @@ export const createStore = (api: ScanApi) =>
           ),
           version: 1,
           partialize: (state) => {
-            const { hasInitializedRouting, ...persistedState } = state;
+            const {
+              hasInitializedRouting,
+              visibleScannerResults,
+              ...persistedState
+            } = state;
             return persistedState;
           },
         }

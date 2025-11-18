@@ -21,6 +21,9 @@ def transcripts_db(location: str) -> TranscriptsDB:
     Returns:
         Transcripts database for writing and reading.
     """
+    from inspect_scout._scan import init_environment
+
+    init_environment()
     return ParquetTranscriptsDB(location)
 
 

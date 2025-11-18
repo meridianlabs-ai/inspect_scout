@@ -22,6 +22,9 @@ def transcripts_from(location: str | Logs) -> Transcripts:
     Returns:
         Transcripts: Collection of transcripts for scanning.
     """
+    from inspect_scout._scan import init_environment
+
+    init_environment()
     locations = (
         [location] if isinstance(location, str | PathLike | EvalLogInfo) else location
     )

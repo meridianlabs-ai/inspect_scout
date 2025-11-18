@@ -33,6 +33,7 @@ from ._scanspec import (
     TranscriptField,
 )
 from ._transcript.database.database import TranscriptsDB
+from ._transcript.database.factory import transcripts_db
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata

@@ -69,7 +69,10 @@ export function expandResultsetRows(columnTable: ColumnTable): ColumnTable {
       // If the row has an empty result set, just leave it
       // intact
       if (!results || results.length === 0) {
-        explodedResultsetRows.push(row);
+        const expandedRow = { ...row };
+        expandedRow.value = null;
+        expandedRow.value_type = "null";
+        explodedResultsetRows.push(expandedRow);
         continue;
       }
 

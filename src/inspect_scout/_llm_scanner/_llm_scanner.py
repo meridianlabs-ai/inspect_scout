@@ -32,7 +32,7 @@ def llm_scanner(
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
     | None = None,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
@@ -51,7 +51,7 @@ def llm_scanner(
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
     | None = None,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
@@ -70,7 +70,7 @@ def llm_scanner(
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
     | None = None,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,

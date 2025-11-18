@@ -586,7 +586,7 @@ def test_exclude_parameters(
 @pytest.mark.asyncio
 async def test_messages_as_str(
     messages: list[ChatMessage],
-    filter: MessagesPreprocessor | None,
+    filter: MessagesPreprocessor[list[ChatMessage]] | None,
     include_ids: bool,
     expected_result: str,
     expected_ids: dict[str, str] | None,
@@ -614,9 +614,8 @@ async def test_messages_as_str_with_preprocessor() -> None:
     """Test messages_as_str with async message preprocessor."""
 
     async def keep_only_user_messages(
-        input: Transcript | list[ChatMessage],
+        messages: list[ChatMessage],
     ) -> list[ChatMessage]:
-        messages = input if isinstance(input, list) else input.messages
         return [m for m in messages if m.role == "user"]
 
     messages: list[ChatMessage] = [
@@ -678,10 +677,9 @@ async def test_messages_as_str_with_transcript_and_preprocessor() -> None:
     """Test messages_as_str with Transcript and preprocessor."""
 
     async def keep_only_user_messages(
-        input: Transcript | list[ChatMessage],
+        transcript: Transcript,
     ) -> list[ChatMessage]:
-        messages = input if isinstance(input, list) else input.messages
-        return [m for m in messages if m.role == "user"]
+        return [m for m in transcript.messages if m.role == "user"]
 
     transcript = Transcript(
         id="test-789",

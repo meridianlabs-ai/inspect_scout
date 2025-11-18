@@ -1,6 +1,6 @@
 import re
 from functools import reduce
-from typing import Awaitable, Callable, Literal, NamedTuple, overload
+from typing import Awaitable, Callable, Generic, Literal, NamedTuple, TypeVar, overload
 
 from inspect_ai.model import (
     ChatMessage,
@@ -14,8 +14,10 @@ from inspect_scout._transcript.types import Transcript
 
 from .util import _message_id
 
+T = TypeVar("T", Transcript, list[ChatMessage])
 
-class MessagesPreprocessor(NamedTuple):
+
+class MessagesPreprocessor(NamedTuple, Generic[T]):
     """ChatMessage preprocessing transformations.
 
     Provide a `transform` function for fully custom transformations.
@@ -26,9 +28,7 @@ class MessagesPreprocessor(NamedTuple):
     messages and do no other transformations.
     """
 
-    transform: (
-        Callable[[Transcript | list[ChatMessage]], Awaitable[list[ChatMessage]]] | None
-    ) = None
+    transform: Callable[[T], Awaitable[list[ChatMessage]]] | None = None
     """Transform the list of messages."""
 
     exclude_system: bool = True
@@ -43,25 +43,25 @@ class MessagesPreprocessor(NamedTuple):
 
 @overload
 async def messages_as_str(
-    input: Transcript | list[ChatMessage],
+    input: T,
     *,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[T] | None = None,
 ) -> str: ...
 
 
 @overload
 async def messages_as_str(
-    input: Transcript | list[ChatMessage],
+    input: T,
     *,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
 ) -> tuple[str, Callable[[str], list[Reference]]]: ...
 
 
 async def messages_as_str(
-    input: Transcript | list[ChatMessage],
+    input: T,
     *,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True] | None = None,
 ) -> str | tuple[str, Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
@@ -111,7 +111,10 @@ async def messages_as_str(
 
 
 def message_as_str(
-    message: ChatMessage, preprocessor: MessagesPreprocessor | None = None
+    message: ChatMessage,
+    preprocessor: MessagesPreprocessor[Transcript]
+    | MessagesPreprocessor[list[ChatMessage]]
+    | None = None,
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 

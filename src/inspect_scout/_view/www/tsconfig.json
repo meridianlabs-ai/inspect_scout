@@ -23,9 +23,6 @@
     "useUnknownInCatchVariables": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "./lib",
     "plugins": [
       {
         "name": "typescript-plugin-css-modules"

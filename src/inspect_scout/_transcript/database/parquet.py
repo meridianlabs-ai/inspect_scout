@@ -89,6 +89,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if os.getenv("AWS_REGION"):
             self._conn.execute(f"SET s3_region='{os.getenv('AWS_REGION')}'")
 
+        # Enable DuckDB's HTTP/S3 caching features for better performance
+        self._conn.execute("SET enable_http_metadata_cache=true")
+        self._conn.execute("SET http_keep_alive=true")
+        self._conn.execute("SET http_timeout=30000")  # 30 seconds
+
         # Initialize filesystem and cache
         assert self._location is not None
         if self._location.startswith("s3://"):

@@ -51,9 +51,28 @@ def transcripts_from(location: str | Logs) -> Transcripts:
 
 
 def _location_type(location: str | PathLike[str]) -> Literal["inspect_log", "database"]:
+    """Determine the type of location based on its contents.
+
+    Args:
+        location: Path to location (local or S3 URI)
+
+    Returns:
+        "database" if location contains parquet files or is empty,
+        "inspect_log" otherwise
+    """
     location_path = UPath(location)
+
+    # Check for parquet files with the database naming convention
     parquet_files = list(location_path.glob(PARQUET_TRANSCRIPTS_GLOB))
     if parquet_files:
         return "database"
-    else:
-        return "inspect_log"
+
+    # Check if directory is empty
+    if location_path.is_dir():
+        # Check if there are any files or subdirectories (efficiently, without materializing the full list)
+        if next(location_path.iterdir(), None) is None:
+            # Empty directory - treat as database location
+            return "database"
+
+    # Non-empty directory without parquet files - assume inspect_log
+    return "inspect_log"

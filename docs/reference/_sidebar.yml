@@ -104,12 +104,16 @@ website:
           href: reference/scanner.qmd#answermultilabel
         - text: messages_as_str
           href: reference/scanner.qmd#messages_as_str
+        - text: MessageFormatOptions
+          href: reference/scanner.qmd#messageformatoptions
         - text: MessagesPreprocessor
           href: reference/scanner.qmd#messagespreprocessor
         - text: MessageType
           href: reference/scanner.qmd#messagetype
         - text: EventType
           href: reference/scanner.qmd#eventtype
+        - text: RefusalError
+          href: reference/scanner.qmd#refusalerror
         - text: scanner
           href: reference/scanner.qmd#scanner
         - text: loader

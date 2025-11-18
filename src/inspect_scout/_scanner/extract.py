@@ -19,7 +19,25 @@ T = TypeVar("T", Transcript, list[ChatMessage])
 
 
 @dataclass(frozen=True)
-class MessagesPreprocessor(Generic[T]):
+class MessageFormatOptions:
+    """Message formatting options for controlling message content display.
+
+    These options control which parts of messages are included when
+    formatting messages to strings.
+    """
+
+    exclude_system: bool = True
+    """Exclude system messages (defaults to `True`)"""
+
+    exclude_reasoning: bool = False
+    """Exclude reasoning content (defaults to `False`)."""
+
+    exclude_tool_usage: bool = False
+    """Exclude tool usage (defaults to `False`)"""
+
+
+@dataclass(frozen=True)
+class MessagesPreprocessor(MessageFormatOptions, Generic[T]):
     """ChatMessage preprocessing transformations.
 
     Provide a `transform` function for fully custom transformations.
@@ -32,15 +50,6 @@ class MessagesPreprocessor(Generic[T]):
 
     transform: Callable[[T], Awaitable[list[ChatMessage]]] | None = None
     """Transform the list of messages."""
-
-    exclude_system: bool = True
-    """Exclude system messages (defaults to `True`)"""
-
-    exclude_reasoning: bool = False
-    """Exclude reasoning content (defaults to `False`)."""
-
-    exclude_tool_usage: bool = False
-    """Exclude tool usage (defaults to `False`)"""
 
 
 @overload
@@ -114,9 +123,7 @@ async def messages_as_str(
 
 def message_as_str(
     message: ChatMessage,
-    preprocessor: MessagesPreprocessor[Transcript]
-    | MessagesPreprocessor[list[ChatMessage]]
-    | None = None,
+    preprocessor: MessageFormatOptions | None = None,
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
@@ -128,7 +135,7 @@ def message_as_str(
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
     """
-    preprocessor = preprocessor or MessagesPreprocessor()
+    preprocessor = preprocessor or MessageFormatOptions()
 
     if preprocessor.exclude_system and message.role == "system":
         return None

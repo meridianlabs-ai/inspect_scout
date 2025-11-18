@@ -128,7 +128,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     @override
     async def insert(
-        self, transcripts: Iterable[Transcript] | AsyncIterator[Transcript]
+        self,
+        transcripts: Iterable[Transcript] | AsyncIterator[Transcript] | Transcripts,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
@@ -656,7 +657,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return list(glob.glob(str(location_path / "transcripts_*.parquet")))
 
     def _as_async_iterator(
-        self, transcripts: Iterable[Transcript] | AsyncIterator[Transcript]
+        self,
+        transcripts: Iterable[Transcript] | AsyncIterator[Transcript] | Transcripts,
     ) -> AsyncIterator[Transcript]:
         """Convert iterable or async iterator to async iterator.
 
@@ -667,11 +669,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
             AsyncIterator over transcripts. If input is already async, returns it
             directly. Otherwise, wraps the iterable in an async generator.
         """
+        # Already an async iterator - return it directly
         if hasattr(transcripts, "__anext__"):
-            # Already an async iterator - return it directly
             return cast(AsyncIterator[Transcript], transcripts)
+
+        # Transcripts, yield an iterator that reads them fully
+        elif isinstance(transcripts, Transcripts):
+
+            async def _iter() -> AsyncIterator[Transcript]:
+                async with transcripts.reader() as tr:
+                    async for t in tr.index():
+                        yield await tr.read(
+                            t, content=TranscriptContent(messages="all", events="all")
+                        )
+
+            return _iter()
+
+        # ordinary iterator
         else:
-            # Convert regular iterable to async iterator
 
             async def _iter() -> AsyncIterator[Transcript]:
                 for transcript in transcripts:

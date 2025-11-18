@@ -1,9 +1,14 @@
+import io
+
+import pandas as pd
+
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.database import TranscriptsDB
 from inspect_scout._transcript.database.parquet import (
     ParquetTranscripts,
     ParquetTranscriptsDB,
 )
+from inspect_scout._transcript.metadata import Column
 from inspect_scout._transcript.transcripts import Transcripts
 
 
@@ -55,8 +60,13 @@ def transcripts_from_db_snapshot(snapshot: ScanTranscripts) -> Transcripts:
         raise ValueError("Snapshot does not have a 'location' so cannot be restored.")
 
     # create transcripts
-    transcripts = ParquetTranscripts(snapshot.location)
+    transcripts: Transcripts = ParquetTranscripts(snapshot.location)
 
-    # TODO: apply where clause to constrain to the IDs in the snapshot
+    # parse IDs from snapshot CSV
+    df = pd.read_csv(io.StringIO(snapshot.data))
+    sample_ids = df["id"].tolist()
+
+    # filter to only the transcripts in the snapshot
+    transcripts = transcripts.where(Column("id").in_(sample_ids))
 
     return transcripts

@@ -26,8 +26,6 @@ from ..metadata import Condition
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
-# TODO: ScanTranscritps and recovery
-
 # Reserved column names that cannot be used as metadata keys
 # These are actual Parquet columns, so metadata keys cannot use these names
 RESERVED_COLUMNS = {

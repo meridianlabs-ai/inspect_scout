@@ -1,4 +1,5 @@
 import { Scans, Status } from "../types";
+import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
 import { serverRequestApi } from "./request.ts";
@@ -16,13 +17,13 @@ export const apiScoutServer = (
   const requestApi = serverRequestApi(apiBaseUrl || "/api", headerProvider);
   return {
     getScan: async (scanLocation: string): Promise<Status> => {
-      return (
-        await requestApi.fetchType<Status>(
-          "GET",
-          `/scan/${encodeURIComponent(scanLocation)}`
-        )
-      ).parsed;
+      const result = await requestApi.fetchString(
+        "GET",
+        `/scan/${encodeURIComponent(scanLocation)}?status_only=true`
+      );
+      return asyncJsonParse<Status>(result.raw);
     },
+
     getScans: async (): Promise<Scans> => {
       let query = "/scans?status_only=true";
       if (resultsDir) {

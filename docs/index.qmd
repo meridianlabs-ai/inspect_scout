@@ -43,6 +43,7 @@ from inspect_scout import (
 )
 
 from inspect_ai.model import get_model
+import re
 
 @scanner(messages="all") # <1>
 def ctf_environment() -> Scanner[Transcript]:

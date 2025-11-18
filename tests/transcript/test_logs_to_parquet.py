@@ -166,7 +166,7 @@ async def test_query_simple_inequality(
     parquet_ids = await get_transcript_ids(parquet_filtered)
 
     assert len(log_ids) > 0, "Should find non-popularity transcripts"
-    assert log_ids == parquet_ids, "Should return same IDs in same order"
+    assert set(log_ids) == set(parquet_ids), "Should return same IDs"
 
 
 @pytest.mark.asyncio
@@ -180,7 +180,7 @@ async def test_query_greater_equal(
     log_ids = await get_transcript_ids(log_filtered)
     parquet_ids = await get_transcript_ids(parquet_filtered)
 
-    assert log_ids == parquet_ids, "Should return same IDs in same order"
+    assert set(log_ids) == set(parquet_ids), "Should return same IDs"
 
 
 @pytest.mark.asyncio
@@ -257,14 +257,18 @@ async def test_query_not_operator(
     parquet_ids = await get_transcript_ids(parquet_filtered)
 
     assert len(log_ids) > 0, "Should find non-popularity transcripts"
-    assert log_ids == parquet_ids, "Should return same IDs in same order"
+    assert set(log_ids) == set(parquet_ids), "Should return same IDs"
 
 
 @pytest.mark.asyncio
 async def test_query_limit(
     log_transcripts: Transcripts, parquet_transcripts: Transcripts
 ) -> None:
-    """Test limit works the same on both sources."""
+    """Test limit works on both sources.
+
+    Note: Without explicit ordering, the two sources may return different
+    transcripts, so we only verify that the limit is respected.
+    """
     log_filtered = log_transcripts.limit(2)
     parquet_filtered = parquet_transcripts.limit(2)
 
@@ -273,7 +277,6 @@ async def test_query_limit(
 
     assert len(log_ids) == 2, "Should limit to 2 transcripts"
     assert len(parquet_ids) == 2, "Should limit to 2 transcripts"
-    assert log_ids == parquet_ids, "Should return same IDs in same order"
 
 
 @pytest.mark.asyncio

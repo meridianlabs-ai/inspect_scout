@@ -157,18 +157,49 @@ async def test_insert_single_batch(
 async def test_insert_multiple_batches(
     parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
-    """Test inserting large batch that spans multiple Parquet files."""
-    # Insert 2500 transcripts (> 2 * BATCH_SIZE of 1000)
-    transcripts = create_test_transcripts(2500)
+    """Test inserting large batch with source_id grouping and batch_size splitting.
+
+    With the new logic:
+    - Transcripts are grouped by source_id (one or more files per source_id)
+    - Each file is capped at batch_size=100 transcripts
+    - We use larger source_id groups to properly test both behaviors
+    """
+    # Create 500 transcripts with source_id groups of 250
+    # This will create 2 source_ids: eval-00 (transcripts 0-249), eval-01 (transcripts 250-499)
+    transcripts = []
+    for i in range(500):
+        transcripts.append(
+            create_sample_transcript(
+                id=f"sample-{i:03d}",
+                source_id=f"eval-{i // 250:02d}",  # Groups of 250 to test batch splitting
+                source_uri=f"test://log-{i:03d}.json",
+                metadata={
+                    "model": ["gpt-4", "gpt-3.5-turbo", "claude-3-opus"][i % 3],
+                    "task": ["math", "coding", "qa"][i % 3],
+                    "temperature": 0.5 + (i % 5) * 0.1,
+                    "index": i,
+                    "score": 0.5 + (i % 10) * 0.05,
+                    "accuracy": 0.8,
+                    "completeness": 0.9,
+                    "var_a": i,
+                    "var_b": f"value_{i}",
+                },
+            )
+        )
+
     await parquet_db.insert(transcripts)
 
-    # Verify multiple Parquet files were created
+    # Expected file count:
+    # - 2 source_ids (eval-00, eval-01)
+    # - Each has 250 transcripts
+    # - With batch_size=100: each splits into 100 + 100 + 50 = 3 files
+    # - Total: 2 × 3 = 6 parquet files
     parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
-    assert len(parquet_files) == 3  # 1000 + 1000 + 500
+    assert len(parquet_files) == 6
 
     # Verify count
     count = await parquet_db.count([], None)
-    assert count == 2500
+    assert count == 500
 
 
 @pytest.mark.asyncio

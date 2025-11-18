@@ -108,7 +108,6 @@ allow-direct-references = true
 
 [tool.uv]
 managed = true
-default-groups = ["dev"]
 
 [tool.ruff]
 extend-exclude = ["docs"]

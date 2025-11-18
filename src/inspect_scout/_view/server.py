@@ -257,10 +257,18 @@ def view_server_app(
                 detail=f"Scanner '{query_scanner}' not found in scan results",
             )
 
-        # Convert dataframe to Arrow IPC format
+        # Convert dataframe to Arrow IPC format with LZ4 compression
+        # LZ4 provides good compression with fast decompression and
+        # has native js codecs for the client
+        #
+        # Note that it was _much_ faster to compress vs gzip
+        # with only a moderate loss in compression ratio
+        # (e.g. 40% larger in exchange for ~20x faster compression)
         table = pa.Table.from_pandas(df, preserve_index=False)
         buf = io.BytesIO()
-        with pa_ipc.new_stream(buf, table.schema) as writer:
+        with pa_ipc.new_stream(
+            buf, table.schema, options=pa_ipc.IpcWriteOptions(compression="lz4")
+        ) as writer:
             writer.write_table(table)
 
         return Response(content=buf.getvalue(), media_type="application/octet-stream")

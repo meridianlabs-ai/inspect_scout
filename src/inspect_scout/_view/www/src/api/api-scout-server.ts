@@ -1,46 +1,45 @@
 import { Scans, Status } from "../types";
 
 import { NoPersistence, ScanApi } from "./api";
+import { serverRequestApi } from "./request.ts";
 
-export const apiScoutServer = (): ScanApi => {
+export type HeaderProvider = () => Promise<Record<string, string>>;
+
+export const apiScoutServer = (
+  options: {
+    apiBaseUrl?: string;
+    headerProvider?: HeaderProvider;
+    resultsDir?: string;
+  } = {}
+): ScanApi => {
+  const { apiBaseUrl, headerProvider, resultsDir } = options;
+  const requestApi = serverRequestApi(apiBaseUrl || "/api", headerProvider);
   return {
     getScan: async (scanLocation: string): Promise<Status> => {
-      const response = await fetch(
-        `/api/scan/${encodeURIComponent(scanLocation)}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch scan: ${response.statusText}`);
-      }
-      const responsObj = (await response.json()) as Status;
-      return responsObj;
+      return (
+        await requestApi.fetchType<Status>(
+          "GET",
+          `/scan/${encodeURIComponent(scanLocation)}`
+        )
+      ).parsed;
     },
     getScans: async (): Promise<Scans> => {
-      const response = await fetch("/api/scans?status_only=true");
-      if (!response.ok) {
-        throw new Error(`Failed to fetch scans: ${response.statusText}`);
+      let query = "/scans?status_only=true";
+      if (resultsDir) {
+        query += `&results_dir=${encodeURIComponent(resultsDir)}`;
       }
-      const responseObj = (await response.json()) as Scans;
-
-      return responseObj;
+      return (await requestApi.fetchType<Scans>("GET", query)).parsed;
     },
     getScannerDataframe: async (
       scanLocation: string,
       scanner: string
     ): Promise<ArrayBuffer> => {
-      const response = await fetch(
-        `/api/scanner_df/${encodeURIComponent(
+      return await requestApi.fetchBytes(
+        "GET",
+        `/scanner_df/${encodeURIComponent(
           scanLocation
         )}?scanner=${encodeURIComponent(scanner)}`
       );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch scanner dataframe: ${response.statusText}`
-        );
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      return arrayBuffer;
     },
     storage: NoPersistence,
   };

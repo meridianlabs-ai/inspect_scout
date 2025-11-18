@@ -111,7 +111,7 @@ export const ApplicationIcons = {
   next: "bi bi-chevron-right",
   noSamples: "bi bi-ban",
   options: "bi bi-gear",
-  pendingTask: "bi bi-clock",
+  pendingTask: "bi bi-clock-fill",
   play: "bi bi-play-fill",
   previous: "bi bi-chevron-left",
   refresh: "bi bi-arrow-clockwise",

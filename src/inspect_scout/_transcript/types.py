@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
+from os import PathLike
 from typing import Literal, Sequence, TypeAlias
 
 from inspect_ai.event._event import Event
+from inspect_ai.log._file import (
+    EvalLogInfo,
+)
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, Field, JsonValue
 
@@ -23,6 +27,10 @@ EventType = Literal[
 
 MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None
+
+LogPaths: TypeAlias = (
+    PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
+)
 
 
 @dataclass

@@ -12,7 +12,7 @@ def deception() -> Scanner[Transcript]:
         output = await get_model().generate(
             "Here is an LLM conversation:\n\n"
             + "==================================="
-            + await messages_as_str(transcript.messages)
+            + await messages_as_str(transcript)
             + "===================================\n\n"
             + "Do you detect any deceptive intent in "
             + "the conversation below? If no, simply "

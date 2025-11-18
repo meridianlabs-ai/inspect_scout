@@ -16,7 +16,7 @@ from inspect_ai._util.file import FileSystem, filesystem
 from inspect_ai._util.json import to_json_safe
 from inspect_ai._view.fastapi_server import (
     AccessPolicy,
-    InspectJsonResponse,
+    FileMappingPolicy,
     OnlyDirAccessPolicy,
 )
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -160,11 +160,22 @@ def view_server(
 
 
 def view_server_app(
+    mapping_policy: FileMappingPolicy | None = None,
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
 ) -> "FastAPI":
     app = FastAPI()
+
+    async def _map_file(request: Request, file: str) -> str:
+        if mapping_policy is not None:
+            return await mapping_policy.map(request, file)
+        return file
+
+    async def _unmap_file(request: Request, file: str) -> str:
+        if mapping_policy is not None:
+            return await mapping_policy.unmap(request, file)
+        return file
 
     async def _validate_read(request: Request, file: str | UPath) -> None:
         if access_policy is not None:
@@ -193,15 +204,6 @@ def view_server_app(
             )
         return value
 
-    @app.get("/hello")
-    async def hello(
-        request: Request,
-        header_only: str | None = Query(None, alias="header-only"),
-    ) -> Response:
-        return InspectJsonResponse(
-            content={"hello": "world"}, media_type="application/json"
-        )
-
     @app.get("/scans")
     async def scans(
         request: Request,
@@ -211,7 +213,9 @@ def view_server_app(
             query_results_dir or results_dir, "results_dir is required"
         )
         await _validate_list(request, validated_results_dir)
-        scans = await scan_list_async(validated_results_dir)
+        scans = await scan_list_async(await _map_file(request, validated_results_dir))
+        for scan in scans:
+            scan.location = await _unmap_file(request, scan.location)
 
         return InspectPydanticJSONResponse(
             content={"results_dir": validated_results_dir, "scans": scans},
@@ -231,7 +235,7 @@ def view_server_app(
             )
 
         # convert to absolute path
-        scan_path = UPath(scan)
+        scan_path = UPath(await _map_file(request, scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -246,17 +250,25 @@ def view_server_app(
         result = await scan_results_df_async(str(scan_path), rows="transcripts")
 
         # convert the dataframes to their serializable form
-        df = result.scanners[query_scanner]
+        df = result.scanners.get(query_scanner)
         if df is None:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail=f"Scanner '{query_scanner}' not found in scan results",
             )
 
-        # Convert dataframe to Arrow IPC format
+        # Convert dataframe to Arrow IPC format with LZ4 compression
+        # LZ4 provides good compression with fast decompression and
+        # has native js codecs for the client
+        #
+        # Note that it was _much_ faster to compress vs gzip
+        # with only a moderate loss in compression ratio
+        # (e.g. 40% larger in exchange for ~20x faster compression)
         table = pa.Table.from_pandas(df, preserve_index=False)
         buf = io.BytesIO()
-        with pa_ipc.new_stream(buf, table.schema) as writer:
+        with pa_ipc.new_stream(
+            buf, table.schema, options=pa_ipc.IpcWriteOptions(compression="lz4")
+        ) as writer:
             writer.write_table(table)
 
         return Response(content=buf.getvalue(), media_type="application/octet-stream")
@@ -268,7 +280,7 @@ def view_server_app(
         status_only: bool | None = Query(None, alias="status_only"),
     ) -> Response:
         # convert to absolute path
-        scan_path = UPath(scan)
+        scan_path = UPath(await _map_file(request, scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -299,7 +311,7 @@ def view_server_app(
         serializable_result = IPCSerializableResults(
             complete=result.complete,
             spec=result.spec,
-            location=result.location,
+            location=await _unmap_file(request, result.location),
             summary=result.summary,
             errors=result.errors,
             scanners=serializable_scanners,
@@ -312,7 +324,7 @@ def view_server_app(
     @app.get("/scan-delete/{scan:path}")
     async def scan_delete(request: Request, scan: str) -> Response:
         # convert to absolute path
-        scan_path = UPath(scan)
+        scan_path = UPath(await _map_file(request, scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"

@@ -10,6 +10,7 @@ import {
   themeBalham,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
+import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -28,6 +29,8 @@ const GRID_STATE_NAME = "ScanJobsGrid";
 
 interface ScanJobSummary {
   status: "incomplete" | "complete" | "error";
+  color: "green" | "yellow" | "red" | "blue";
+  type: "file" | "directory";
   icon: string;
   model: string;
   timestamp: string;
@@ -57,11 +60,11 @@ export const ScanJobGrid: FC = () => {
   const gridState = useMemo(() => {
     const savedState = gridStates[GRID_STATE_NAME];
     // If no saved state, apply default sorting
-    if (!savedState) {
+    if (!savedState?.sort) {
       return {
         sort: {
           sortModel: [
-            { colId: "icon", sort: "asc" as const },
+            { colId: "type", sort: "asc" as const },
             { colId: "timestamp", sort: "desc" as const },
           ],
         },
@@ -77,16 +80,23 @@ export const ScanJobGrid: FC = () => {
 
     scans.forEach((scan) => {
       const relativeLocation = toRelativePath(scan.location, resultsDir || "");
+      const icon = scan.complete
+        ? ApplicationIcons.success
+        : scan.errors.length > 0
+          ? ApplicationIcons.error
+          : ApplicationIcons.pendingTask;
+      const color = scan.complete
+        ? "green"
+        : scan.errors.length > 0
+          ? "red"
+          : "yellow";
 
       const dir = dirname(relativeLocation);
       if (dir === paramsRelativePath) {
         const row: ScanJobSummary = {
-          icon:
-            scan.errors.length > 1
-              ? ApplicationIcons.error
-              : scan.complete
-                ? ApplicationIcons.success
-                : ApplicationIcons.pendingTask,
+          icon,
+          color,
+          type: "file",
           timestamp: scan.spec.timestamp,
           location: scan.location,
           relativeLocation: relativeLocation,
@@ -110,6 +120,8 @@ export const ScanJobGrid: FC = () => {
           timestamp: "",
           location: "",
           icon: ApplicationIcons.folder,
+          type: "directory",
+          color: "blue",
           relativeLocation: dir,
           scanId: "",
           scanName: dir,
@@ -140,8 +152,14 @@ export const ScanJobGrid: FC = () => {
         sortable: true,
         filter: true,
         resizable: true,
-        cellRenderer: (params: { value: string }) => {
-          return <i className={params.value}></i>;
+        cellRenderer: (params: {
+          value: string;
+          data: Record<string, unknown>;
+        }) => {
+          const color = params.data.color as string;
+          return (
+            <i className={clsx(params.value, classNameForColor(color))}></i>
+          );
         },
       },
       {
@@ -193,6 +211,10 @@ export const ScanJobGrid: FC = () => {
         sortable: true,
         filter: true,
         resizable: true,
+        valueGetter: (params) => {
+          const timestamp = params.data?.timestamp;
+          return timestamp ? new Date(timestamp).toLocaleString() : "";
+        },
       },
     ];
 
@@ -248,4 +270,19 @@ export const ScanJobGrid: FC = () => {
       />
     </div>
   );
+};
+
+const classNameForColor = (color: string): string | undefined => {
+  switch (color) {
+    case "green":
+      return styles.green;
+    case "yellow":
+      return styles.yellow;
+    case "red":
+      return styles.red;
+    case "blue":
+      return styles.blue;
+    default:
+      return "";
+  }
 };

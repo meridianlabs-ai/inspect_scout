@@ -1,6 +1,7 @@
 import re
+from dataclasses import dataclass
 from functools import reduce
-from typing import Awaitable, Callable, Literal, NamedTuple, overload
+from typing import Awaitable, Callable, Generic, Literal, TypeVar, overload
 
 from inspect_ai.model import (
     ChatMessage,
@@ -10,23 +11,20 @@ from inspect_ai.model import (
 )
 
 from inspect_scout._scanner.result import Reference
+from inspect_scout._transcript.types import Transcript
 
 from .util import _message_id
 
+T = TypeVar("T", Transcript, list[ChatMessage])
 
-class MessagesPreprocessor(NamedTuple):
-    """ChatMessage preprocessing transformations.
 
-    Provide a `transform` function for fully custom transformations.
-    Use the higher-level options (e.g. `exclude_system`) to
-    perform varioius common content removal transformations.
+@dataclass(frozen=True)
+class MessageFormatOptions:
+    """Message formatting options for controlling message content display.
 
-    The default `MessagesPreprocessor` will exclude system
-    messages and do no other transformations.
+    These options control which parts of messages are included when
+    formatting messages to strings.
     """
-
-    transform: Callable[[list[ChatMessage]], Awaitable[list[ChatMessage]]] | None = None
-    """Transform the list of messages."""
 
     exclude_system: bool = True
     """Exclude system messages (defaults to `True`)"""
@@ -38,33 +36,49 @@ class MessagesPreprocessor(NamedTuple):
     """Exclude tool usage (defaults to `False`)"""
 
 
+@dataclass(frozen=True)
+class MessagesPreprocessor(MessageFormatOptions, Generic[T]):
+    """ChatMessage preprocessing transformations.
+
+    Provide a `transform` function for fully custom transformations.
+    Use the higher-level options (e.g. `exclude_system`) to
+    perform various common content removal transformations.
+
+    The default `MessagesPreprocessor` will exclude system
+    messages and do no other transformations.
+    """
+
+    transform: Callable[[T], Awaitable[list[ChatMessage]]] | None = None
+    """Transform the list of messages."""
+
+
 @overload
 async def messages_as_str(
-    messages: list[ChatMessage],
+    input: T,
     *,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[T] | None = None,
 ) -> str: ...
 
 
 @overload
 async def messages_as_str(
-    messages: list[ChatMessage],
+    input: T,
     *,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
 ) -> tuple[str, Callable[[str], list[Reference]]]: ...
 
 
 async def messages_as_str(
-    messages: list[ChatMessage],
+    input: T,
     *,
-    preprocessor: MessagesPreprocessor | None = None,
+    preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True] | None = None,
 ) -> str | tuple[str, Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
 
     Args:
-       messages: List of chat messages.
+       input: The Transcript with the messages or a list of messages.
        preprocessor: Content filter for messages.
        include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
           to each message and return a function to extract references from text.
@@ -76,8 +90,13 @@ async def messages_as_str(
           prefixes, function that takes text and returns list of Reference objects
           for any [M1], [M2], etc. references found in the text).
     """
-    if preprocessor is not None and preprocessor.transform is not None:
-        messages = await preprocessor.transform(messages)
+    messages = (
+        await preprocessor.transform(input)
+        if preprocessor is not None and preprocessor.transform is not None
+        else input.messages
+        if isinstance(input, Transcript)
+        else input
+    )
 
     if not include_ids:
         return "\n".join([message_as_str(m, preprocessor) or "" for m in messages])
@@ -103,7 +122,8 @@ async def messages_as_str(
 
 
 def message_as_str(
-    message: ChatMessage, preprocessor: MessagesPreprocessor | None = None
+    message: ChatMessage,
+    preprocessor: MessageFormatOptions | None = None,
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
@@ -115,18 +135,17 @@ def message_as_str(
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
     """
-    preprocessor = preprocessor or MessagesPreprocessor()
-    _, exclude_system, exclude_reasoning, exclude_tool_usage = preprocessor
+    preprocessor = preprocessor or MessageFormatOptions()
 
-    if exclude_system and message.role == "system":
+    if preprocessor.exclude_system and message.role == "system":
         return None
 
     content = _better_content_text(
-        message.content, exclude_tool_usage, exclude_reasoning
+        message.content, preprocessor.exclude_tool_usage, preprocessor.exclude_reasoning
     )
 
     if (
-        not exclude_tool_usage
+        not preprocessor.exclude_tool_usage
         and isinstance(message, ChatMessageAssistant)
         and message.tool_calls
     ):
@@ -145,7 +164,7 @@ def message_as_str(
         return entry
 
     elif isinstance(message, ChatMessageTool):
-        if exclude_tool_usage:
+        if preprocessor.exclude_tool_usage:
             return None
         func_name = message.function or "unknown"
         error_part = (

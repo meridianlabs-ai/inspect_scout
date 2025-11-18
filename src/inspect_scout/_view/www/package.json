@@ -4,12 +4,28 @@
   "description": "Inspect Scout viewer for evaluation logs.",
   "license": "MIT",
   "type": "module",
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "files": [
+    "lib",
+    "lib/styles",
+    "lib/assets"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/meridianlabs-ai/inspect_scout",
+    "directory": "src/inspect_scout/_view/www"
+  },
   "packageManager": "pnpm@10.20.0",
   "scripts": {
-    "build": "vite build",
+    "build": "npm run build:app",
+    "build:lib": "vite build --mode library",
+    "build:app": "vite build --mode development",
     "watch": "vite build --watch",
     "watch:dev": "NODE_ENV=development vite build --watch --mode development",
     "dev": "vite",
+    "prepublishOnly": "npm version from-git --no-git-tag-version --allow-same-version && pnpm build:lib",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",
@@ -18,12 +34,25 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm lint:fix && pnpm format && pnpm typecheck"
   },
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
+    },
+    "./styles/index.css": "./lib/styles/index.css"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
     "@types/bootstrap": "^5.2.10",
     "@types/css-modules": "^1.0.5",
     "@types/eslint__js": "^9.14.0",
     "@types/json5": "^2.2.0",
+    "@types/lz4js": "^0.2.2",
     "@types/markdown-it": "^14.1.2",
     "@types/prismjs": "^1.26.5",
     "@types/react": "^19.0.7",
@@ -38,17 +67,22 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "postcss-url": "^10.1.3",
     "prettier": "^3.6.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.4",
     "typed-css-modules": "^0.9.1",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.46.2",
     "typescript-plugin-css-modules": "^5.2.0",
-    "vite": "^7.1.5"
+    "vite": "^7.1.5",
+    "vite-plugin-dts": "^4.3.0"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
     "ag-grid-community": "^34.3.0",
     "ag-grid-react": "^34.3.0",
     "ansi-output": "^0.0.9",
+    "apache-arrow": "^21.1.0",
     "arquero": "^8.0.3",
     "asciinema-player": "^3.12.1",
     "bootstrap": "^5.3.8",
@@ -57,14 +91,12 @@
     "immer": "^10.1.3",
     "json5": "^2.2.3",
     "jsondiffpatch": "^0.7.3",
+    "lz4js": "^0.2.0",
     "markdown-it": "^14.1.0",
     "markdown-it-mathjax3": "^5.2.0",
     "mathjax-full": "^3.2.2",
     "prismjs": "^1.30.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.1.1",
     "react-popper": "^2.3.0",
-    "react-router-dom": "^7.9.4",
     "react-virtuoso": "^4.14.1",
     "zustand": "^5.0.8"
   },

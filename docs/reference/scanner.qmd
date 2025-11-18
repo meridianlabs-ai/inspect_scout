@@ -20,6 +20,7 @@ reference: "inspect_scout"
 ## Utils
 
 ### messages_as_str
+### MessageFormatOptions
 ### MessagesPreprocessor
 
 ## Types

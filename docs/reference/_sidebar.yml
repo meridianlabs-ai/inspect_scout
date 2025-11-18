@@ -1,148 +1,148 @@
 website:
   sidebar:
-    - title: Reference
-      style: docked
-      collapse-level: 2
+  - title: Reference
+    style: docked
+    collapse-level: 2
+    contents:
+    - reference/index.qmd
+    - section: Python API
+      href: reference/scanning.qmd
       contents:
-        - reference/index.qmd
-        - section: Python API
-          href: reference/scanning.qmd
-          contents:
-            - section: scanning
-              href: reference/scanning.qmd
-              contents:
-                - text: scan
-                  href: reference/scanning.qmd#scan
-                - text: scan_resume
-                  href: reference/scanning.qmd#scan_resume
-                - text: scan_complete
-                  href: reference/scanning.qmd#scan_complete
-                - text: scanjob
-                  href: reference/scanning.qmd#scanjob
-                - text: ScanJob
-                  href: reference/scanning.qmd#scanjob
-                - text: ScanJobConfig
-                  href: reference/scanning.qmd#scanjobconfig
-                - text: ScannerSpec
-                  href: reference/scanning.qmd#scannerspec
-                - text: ScannerWork
-                  href: reference/scanning.qmd#scannerwork
-                - text: Status
-                  href: reference/scanning.qmd#status
-                - text: ScanOptions
-                  href: reference/scanning.qmd#scanoptions
-                - text: ScanRevision
-                  href: reference/scanning.qmd#scanrevision
-                - text: ScanTranscripts
-                  href: reference/scanning.qmd#scantranscripts
-                - text: TranscriptField
-                  href: reference/scanning.qmd#transcriptfield
-            - section: results
-              href: reference/results.qmd
-              contents:
-                - text: scan_list
-                  href: reference/results.qmd#scan_list
-                - text: scan_status
-                  href: reference/results.qmd#scan_status
-                - text: Status
-                  href: reference/results.qmd#status
-                - text: Summary
-                  href: reference/results.qmd#summary
-                - text: scan_results_df
-                  href: reference/results.qmd#scan_results_df
-                - text: ScanResultsDF
-                  href: reference/results.qmd#scanresultsdf
-                - text: validation_set
-                  href: reference/results.qmd#validation_set
-                - text: ValidationSet
-                  href: reference/results.qmd#validationset
-                - text: ValidationCase
-                  href: reference/results.qmd#validationcase
-                - text: ValidationPredicate
-                  href: reference/results.qmd#validationpredicate
-            - section: transcript
-              href: reference/transcript.qmd
-              contents:
-                - text: transcripts_db
-                  href: reference/transcript.qmd#transcripts_db
-                - text: TranscriptsDB
-                  href: reference/transcript.qmd#transcriptsdb
-                - text: transcripts_from_db
-                  href: reference/transcript.qmd#transcripts_from_db
-                - text: transcripts_from
-                  href: reference/transcript.qmd#transcripts_from
-                - text: Transcripts
-                  href: reference/transcript.qmd#transcripts
-                - text: TranscriptsReader
-                  href: reference/transcript.qmd#transcriptsreader
-                - text: Column
-                  href: reference/transcript.qmd#column
-                - text: Condition
-                  href: reference/transcript.qmd#condition
-                - text: Metadata
-                  href: reference/transcript.qmd#metadata
-                - text: metadata
-                  href: reference/transcript.qmd#metadata
-                - text: LogMetadata
-                  href: reference/transcript.qmd#logmetadata
-                - text: log_metadata
-                  href: reference/transcript.qmd#log_metadata
-            - section: scanner
-              href: reference/scanner.qmd
-              contents:
-                - text: Scanner
-                  href: reference/scanner.qmd#scanner
-                - text: ScannerInput
-                  href: reference/scanner.qmd#scannerinput
-                - text: Result
-                  href: reference/scanner.qmd#result
-                - text: Reference
-                  href: reference/scanner.qmd#reference
-                - text: Error
-                  href: reference/scanner.qmd#error
-                - text: Loader
-                  href: reference/scanner.qmd#loader
-                - text: llm_scanner
-                  href: reference/scanner.qmd#llm_scanner
-                - text: AnswerMultiLabel
-                  href: reference/scanner.qmd#answermultilabel
-                - text: messages_as_str
-                  href: reference/scanner.qmd#messages_as_str
-                - text: MessagesPreprocessor
-                  href: reference/scanner.qmd#messagespreprocessor
-                - text: MessageType
-                  href: reference/scanner.qmd#messagetype
-                - text: EventType
-                  href: reference/scanner.qmd#eventtype
-                - text: RefusalError
-                  href: reference/scanner.qmd#refusalerror
-                - text: scanner
-                  href: reference/scanner.qmd#scanner
-                - text: loader
-                  href: reference/scanner.qmd#loader
-                - text: as_scorer
-                  href: reference/scanner.qmd#as_scorer
-            - section: async
-              href: reference/async.qmd
-              contents:
-                - text: scan_async
-                  href: reference/async.qmd#scan_async
-                - text: scan_resume_async
-                  href: reference/async.qmd#scan_resume_async
-                - text: scan_complete_async
-                  href: reference/async.qmd#scan_complete_async
-                - text: scan_list_async
-                  href: reference/async.qmd#scan_list_async
-                - text: scan_status_async
-                  href: reference/async.qmd#scan_status_async
-                - text: scan_results_df_async
-                  href: reference/async.qmd#scan_results_df_async
-        - section: Scout CLI
-          href: reference/scout_scan.qmd
-          contents:
-            - text: scout scan
-              href: reference/scout_scan.qmd
-            - text: scout view
-              href: reference/scout_view.qmd
-            - text: scout trace
-              href: reference/scout_trace.qmd
+      - section: scanning
+        href: reference/scanning.qmd
+        contents:
+        - text: scan
+          href: reference/scanning.qmd#scan
+        - text: scan_resume
+          href: reference/scanning.qmd#scan_resume
+        - text: scan_complete
+          href: reference/scanning.qmd#scan_complete
+        - text: scanjob
+          href: reference/scanning.qmd#scanjob
+        - text: ScanJob
+          href: reference/scanning.qmd#scanjob
+        - text: ScanJobConfig
+          href: reference/scanning.qmd#scanjobconfig
+        - text: ScannerSpec
+          href: reference/scanning.qmd#scannerspec
+        - text: ScannerWork
+          href: reference/scanning.qmd#scannerwork
+        - text: Status
+          href: reference/scanning.qmd#status
+        - text: ScanOptions
+          href: reference/scanning.qmd#scanoptions
+        - text: ScanRevision
+          href: reference/scanning.qmd#scanrevision
+        - text: ScanTranscripts
+          href: reference/scanning.qmd#scantranscripts
+        - text: TranscriptField
+          href: reference/scanning.qmd#transcriptfield
+      - section: results
+        href: reference/results.qmd
+        contents:
+        - text: scan_list
+          href: reference/results.qmd#scan_list
+        - text: scan_status
+          href: reference/results.qmd#scan_status
+        - text: Status
+          href: reference/results.qmd#status
+        - text: Summary
+          href: reference/results.qmd#summary
+        - text: scan_results_df
+          href: reference/results.qmd#scan_results_df
+        - text: ScanResultsDF
+          href: reference/results.qmd#scanresultsdf
+        - text: validation_set
+          href: reference/results.qmd#validation_set
+        - text: ValidationSet
+          href: reference/results.qmd#validationset
+        - text: ValidationCase
+          href: reference/results.qmd#validationcase
+        - text: ValidationPredicate
+          href: reference/results.qmd#validationpredicate
+      - section: transcript
+        href: reference/transcript.qmd
+        contents:
+        - text: transcripts_db
+          href: reference/transcript.qmd#transcripts_db
+        - text: TranscriptsDB
+          href: reference/transcript.qmd#transcriptsdb
+        - text: transcripts_from
+          href: reference/transcript.qmd#transcripts_from
+        - text: Transcripts
+          href: reference/transcript.qmd#transcripts
+        - text: TranscriptsReader
+          href: reference/transcript.qmd#transcriptsreader
+        - text: Column
+          href: reference/transcript.qmd#column
+        - text: Condition
+          href: reference/transcript.qmd#condition
+        - text: Metadata
+          href: reference/transcript.qmd#metadata
+        - text: metadata
+          href: reference/transcript.qmd#metadata
+        - text: LogMetadata
+          href: reference/transcript.qmd#logmetadata
+        - text: log_metadata
+          href: reference/transcript.qmd#log_metadata
+      - section: scanner
+        href: reference/scanner.qmd
+        contents:
+        - text: Scanner
+          href: reference/scanner.qmd#scanner
+        - text: ScannerInput
+          href: reference/scanner.qmd#scannerinput
+        - text: Result
+          href: reference/scanner.qmd#result
+        - text: Reference
+          href: reference/scanner.qmd#reference
+        - text: Error
+          href: reference/scanner.qmd#error
+        - text: Loader
+          href: reference/scanner.qmd#loader
+        - text: llm_scanner
+          href: reference/scanner.qmd#llm_scanner
+        - text: AnswerMultiLabel
+          href: reference/scanner.qmd#answermultilabel
+        - text: messages_as_str
+          href: reference/scanner.qmd#messages_as_str
+        - text: MessageFormatOptions
+          href: reference/scanner.qmd#messageformatoptions
+        - text: MessagesPreprocessor
+          href: reference/scanner.qmd#messagespreprocessor
+        - text: MessageType
+          href: reference/scanner.qmd#messagetype
+        - text: EventType
+          href: reference/scanner.qmd#eventtype
+        - text: RefusalError
+          href: reference/scanner.qmd#refusalerror
+        - text: scanner
+          href: reference/scanner.qmd#scanner
+        - text: loader
+          href: reference/scanner.qmd#loader
+        - text: as_scorer
+          href: reference/scanner.qmd#as_scorer
+      - section: async
+        href: reference/async.qmd
+        contents:
+        - text: scan_async
+          href: reference/async.qmd#scan_async
+        - text: scan_resume_async
+          href: reference/async.qmd#scan_resume_async
+        - text: scan_complete_async
+          href: reference/async.qmd#scan_complete_async
+        - text: scan_list_async
+          href: reference/async.qmd#scan_list_async
+        - text: scan_status_async
+          href: reference/async.qmd#scan_status_async
+        - text: scan_results_df_async
+          href: reference/async.qmd#scan_results_df_async
+    - section: Scout CLI
+      href: reference/scout_scan.qmd
+      contents:
+      - text: scout scan
+        href: reference/scout_scan.qmd
+      - text: scout view
+        href: reference/scout_view.qmd
+      - text: scout trace
+        href: reference/scout_trace.qmd

@@ -25,7 +25,7 @@ The `scout scan` command will print its status at the end of its run. If all of 
 You can then pass that directory to the `scan_results_df()` function to get access to the underlying data frames for each scanner:
 
 ``` python
-from inspect_scout import scan_results
+from inspect_scout import scan_results_df
 
 results = scan_results_df("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
 deception_df = results.scanners["deception"]

@@ -25,10 +25,10 @@ def confusion() -> Scanner[Transcript]:
             "Here is a transcript of an LLM agent " +
             "solving a puzzle:\n\n" +
             "===================================" +
-            messages_as_str(transcript.messages) +
+            await messages_as_str(transcript) +
             "===================================\n\n" +
             "In the transcript above do you see the agent " +
-            "becoming confused? Repond beginning with 'Yes' " +
+            "becoming confused? Respond beginning with 'Yes' " +
             "or 'No', followed by an explanation."
         )
 
@@ -130,19 +130,19 @@ result = await get_model().generate(
     "Here is a transcript of an LLM agent " +
     "solving a puzzle:\n\n" +
     "===================================" +
-    messages_as_str(transcript.messages) +
+    await messages_as_str(transcript) +
     "===================================\n\n" +
     "In the transcript above do you see the agent " +
-    "becoming confused? Repond beginning with 'Yes' " +
+    "becoming confused? Respond beginning with 'Yes' " +
     "or 'No', followed by an explanation."
 )
 ```
 
-The `messages_as_str()` function will by default remove system messages from the list. See `MessagesPreprocessor` for other available options.
+The `messages_as_str()` function takes a `Transcript | list[ChatMessage]` and will by default remove system messages from the message list. See `MessagesPreprocessor` for other available options.
 
 ## Multiple Results
 
-Scanners can return multiple resulsts as a list. For example:
+Scanners can return multiple results as a list. For example:
 
 ``` python
 return [
@@ -208,7 +208,7 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
 
 ## Scanners as Scorers {#scanners-as-scorers}
 
-You have likely certainly that scanners are very simillar to Inspect [Scorers](https://inspect.aisi.org.uk/scorers.html). This is by design, and it is actually possible to use scanners directly as Inspect scorers.
+You have likely certainly that scanners are very similar to Inspect [Scorers](https://inspect.aisi.org.uk/scorers.html). This is by design, and it is actually possible to use scanners directly as Inspect scorers.
 
 For example, for the `confusion()` scorer we implemented above:
 

@@ -23,6 +23,7 @@ from inspect_scout._scanner.extract import (
     messages_as_str,
 )
 from inspect_scout._scanner.result import Reference
+from inspect_scout._transcript.types import Transcript
 
 
 @pytest.mark.parametrize(
@@ -585,7 +586,7 @@ def test_exclude_parameters(
 @pytest.mark.asyncio
 async def test_messages_as_str(
     messages: list[ChatMessage],
-    filter: MessagesPreprocessor | None,
+    filter: MessagesPreprocessor[list[ChatMessage]] | None,
     include_ids: bool,
     expected_result: str,
     expected_ids: dict[str, str] | None,
@@ -639,6 +640,131 @@ async def test_messages_as_str_with_preprocessor() -> None:
     assert len(refs) == 2
     assert refs[0].id == "msg1"
     assert refs[1].id == "msg3"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_with_transcript() -> None:
+    """Test messages_as_str accepts Transcript objects."""
+    transcript = Transcript(
+        transcript_id="test-123",
+        source_id="eval-456",
+        source_type="test",
+        source_uri="file:///test.log",
+        messages=[
+            ChatMessageUser(content="Hello", id="msg1"),
+            ChatMessageAssistant(content="Hi there", id="msg2"),
+        ],
+    )
+
+    # Without IDs
+    result = await messages_as_str(transcript)
+    assert result == "user:\nHello\n\nassistant:\nHi there\n"
+
+    # With IDs
+    result_with_ids, extract_references = await messages_as_str(
+        transcript, include_ids=True
+    )
+    assert result_with_ids == "[M1] user:\nHello\n\n[M2] assistant:\nHi there\n"
+
+    # Test extract_references
+    refs = extract_references("[M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg2"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_with_transcript_and_preprocessor() -> None:
+    """Test messages_as_str with Transcript and preprocessor."""
+
+    async def keep_only_user_messages(
+        transcript: Transcript,
+    ) -> list[ChatMessage]:
+        return [m for m in transcript.messages if m.role == "user"]
+
+    transcript = Transcript(
+        transcript_id="test-789",
+        source_id="eval-abc",
+        source_type="test",
+        source_uri="file:///test2.log",
+        messages=[
+            ChatMessageUser(content="First user", id="msg1"),
+            ChatMessageAssistant(content="First assistant", id="msg2"),
+            ChatMessageUser(content="Second user", id="msg3"),
+            ChatMessageAssistant(content="Second assistant", id="msg4"),
+        ],
+    )
+
+    result, extract_references = await messages_as_str(
+        transcript,
+        preprocessor=MessagesPreprocessor(transform=keep_only_user_messages),
+        include_ids=True,
+    )
+
+    # Only user messages should be present
+    assert "[M1] user:\nFirst user\n" in result
+    assert "[M2] user:\nSecond user\n" in result
+    assert "assistant" not in result
+
+    # Test extract_references
+    refs = extract_references("[M1] [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg3"
+
+
+@pytest.mark.asyncio
+async def test_type_checking_with_generic_preprocessor() -> None:
+    """Test that generic MessagesPreprocessor enforces type safety.
+
+    Valid combinations:
+    - list[ChatMessage] input + list[ChatMessage] transform
+    - Transcript input + Transcript transform
+    - Either input + no transform
+
+    Invalid combinations (caught by mypy):
+    - Transcript input + list[ChatMessage] transform (type error)
+    - list[ChatMessage] input + Transcript transform (type error)
+    """
+
+    async def list_transform(messages: list[ChatMessage]) -> list[ChatMessage]:
+        return [m for m in messages if m.role == "user"]
+
+    async def transcript_transform(transcript: Transcript) -> list[ChatMessage]:
+        return transcript.messages
+
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi", id="msg2"),
+    ]
+    transcript = Transcript(
+        transcript_id="t1",
+        source_type="test",
+        source_id="s1",
+        source_uri="test://uri",
+        messages=messages,
+    )
+
+    # Valid: matching types
+    result1 = await messages_as_str(
+        messages, preprocessor=MessagesPreprocessor(transform=list_transform)
+    )
+    assert "Hello" in result1 and "Hi" not in result1
+
+    result2 = await messages_as_str(
+        transcript, preprocessor=MessagesPreprocessor(transform=transcript_transform)
+    )
+    assert "Hello" in result2
+
+    # Valid: no transform works with both
+    result3 = await messages_as_str(
+        messages, preprocessor=MessagesPreprocessor[list[ChatMessage]]()
+    )
+    result4 = await messages_as_str(
+        transcript, preprocessor=MessagesPreprocessor[Transcript]()
+    )
+    assert "Hello" in result3 and "Hi" in result3
+    assert "Hello" in result4 and "Hi" in result4
 
 
 @pytest.mark.parametrize(

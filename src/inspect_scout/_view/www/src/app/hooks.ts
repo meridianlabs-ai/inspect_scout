@@ -115,9 +115,9 @@ export const useServerScannerDataframe = () => {
       // Start loading (since we are going to fetch)
       setLoadingData(true);
       try {
-        // In single file mode, send an absolute path
+        // If resultsDir is used, send an absolute path
         let location = scanPath;
-        if (singleFileMode) {
+        if (resultsDir) {
           location = join(scanPath, resultsDir);
         }
 
@@ -264,6 +264,12 @@ export const useScannerData = (
     let cancelled = false;
     setIsLoading(true);
 
+    const parse = async <T>(text: string | null): Promise<T | undefined> => {
+      return text !== null
+        ? (asyncJsonParse<ScannerCore[]>(text) as Promise<T>)
+        : undefined;
+    };
+
     const parseData = async () => {
       try {
         const valueType = filtered.get("value_type", 0) as
@@ -283,9 +289,11 @@ export const useScannerData = (
             | "null"
             | "array"
             | "object"
-        ): Promise<string | number | boolean | null | unknown[] | object> => {
+        ): Promise<
+          string | number | boolean | null | unknown[] | object | undefined
+        > => {
           if (valueType === "object" || valueType === "array") {
-            return asyncJsonParse<object | unknown[]>(val as string);
+            return parse<object | unknown[]>(val as string);
           } else {
             return Promise.resolve(val as string | number | boolean | null);
           }
@@ -307,19 +315,19 @@ export const useScannerData = (
           validationTarget,
           value,
         ] = await Promise.all([
-          asyncJsonParse(filtered.get("event_references", 0) as string),
-          asyncJsonParse(filtered.get("input", 0) as string),
-          asyncJsonParse(filtered.get("input_ids", 0) as string),
-          asyncJsonParse(filtered.get("message_references", 0) as string),
-          asyncJsonParse(filtered.get("metadata", 0) as string),
-          asyncJsonParse(filtered.get("scan_events", 0) as string),
-          asyncJsonParse(filtered.get("scan_metadata", 0) as string),
-          asyncJsonParse(filtered.get("scan_model_usage", 0) as string),
-          asyncJsonParse(filtered.get("scan_tags", 0) as string),
-          asyncJsonParse(filtered.get("scanner_params", 0) as string),
-          asyncJsonParse(filtered.get("transcript_metadata", 0) as string),
-          asyncJsonParse(filtered.get("validation_result", 0) as string),
-          asyncJsonParse(filtered.get("validation_target", 0) as string),
+          parse(filtered.get("event_references", 0) as string),
+          parse(filtered.get("input", 0) as string),
+          parse(filtered.get("input_ids", 0) as string),
+          parse(filtered.get("message_references", 0) as string),
+          parse(filtered.get("metadata", 0) as string),
+          parse(filtered.get("scan_events", 0) as string),
+          parse(filtered.get("scan_metadata", 0) as string),
+          parse(filtered.get("scan_model_usage", 0) as string),
+          parse(filtered.get("scan_tags", 0) as string),
+          parse(filtered.get("scanner_params", 0) as string),
+          parse(filtered.get("transcript_metadata", 0) as string),
+          parse(filtered.get("validation_result", 0) as string),
+          parse(filtered.get("validation_target", 0) as string),
           simpleValue(filtered.get("value", 0), valueType),
         ]);
 
@@ -389,7 +397,7 @@ export const useScannerData = (
           validationTarget: validationTarget as
             | boolean
             | Record<string, boolean>,
-          value,
+          value: value || null,
           valueType,
         };
 
@@ -505,6 +513,12 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
     let cancelled = false;
     setIsLoading(true);
 
+    const parse = async <T>(text: string | null): Promise<T | undefined> => {
+      return text !== null
+        ? (asyncJsonParse<ScannerCore[]>(text) as Promise<T>)
+        : undefined;
+    };
+
     const parsePreviews = async () => {
       try {
         const parsedPreviews = await Promise.all(
@@ -520,7 +534,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               | "array"
               | "object";
 
-            const simpleValue = (
+            const simpleValue = async (
               val: unknown,
               valueType:
                 | "string"
@@ -533,7 +547,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               string | number | boolean | null | unknown[] | object
             > => {
               if (valueType === "object" || valueType === "array") {
-                return asyncJsonParse<object | unknown[]>(val as string);
+                return (await parse<object | unknown[]>(val as string)) || null;
               } else {
                 return Promise.resolve(val as string | number | boolean | null);
               }
@@ -547,14 +561,12 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               input,
               value,
             ] = await Promise.all([
-              asyncJsonParse(r.validation_result as string),
-              asyncJsonParse(r.validation_target as string),
-              asyncJsonParse<Record<string, unknown>>(
-                r.transcript_metadata as string
-              ),
-              asyncJsonParse(r.event_references as string),
-              asyncJsonParse(r.message_references as string),
-              asyncJsonParse(r.input as string),
+              parse(r.validation_result as string),
+              parse(r.validation_target as string),
+              parse<Record<string, unknown>>(r.transcript_metadata as string),
+              parse(r.event_references as string),
+              parse(r.message_references as string),
+              parse(r.input as string),
               simpleValue(r.value, valueType),
             ]);
 
@@ -581,7 +593,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
                 | Record<string, boolean>,
               value,
               valueType,
-              transcriptMetadata,
+              transcriptMetadata: transcriptMetadata || {},
               transcriptSourceId,
             };
 

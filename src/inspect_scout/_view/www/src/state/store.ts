@@ -425,10 +425,7 @@ export const createStore = (api: ScanApi) =>
               delete newListPositions[name];
 
               return {
-                app: {
-                  ...state,
-                  listPositions: newListPositions,
-                },
+                listPositions: newListPositions,
               };
             });
           },
@@ -558,7 +555,11 @@ export const createStore = (api: ScanApi) =>
           ),
           version: 1,
           partialize: (state) => {
-            const { hasInitializedRouting, ...persistedState } = state;
+            const {
+              hasInitializedRouting,
+              visibleScannerResults,
+              ...persistedState
+            } = state;
             return persistedState;
           },
         }

@@ -751,8 +751,12 @@ async def test_type_checking_with_generic_preprocessor() -> None:
     assert "Hello" in result2
 
     # Valid: no transform works with both
-    result3 = await messages_as_str(messages, preprocessor=MessagesPreprocessor())
-    result4 = await messages_as_str(transcript, preprocessor=MessagesPreprocessor())
+    result3 = await messages_as_str(
+        messages, preprocessor=MessagesPreprocessor[list[ChatMessage]]()
+    )
+    result4 = await messages_as_str(
+        transcript, preprocessor=MessagesPreprocessor[Transcript]()
+    )
     assert "Hello" in result3 and "Hi" in result3
     assert "Hello" in result4 and "Hi" in result4
 

@@ -1,6 +1,7 @@
 import re
+from dataclasses import dataclass
 from functools import reduce
-from typing import Awaitable, Callable, Generic, Literal, NamedTuple, TypeVar, overload
+from typing import Awaitable, Callable, Generic, Literal, TypeVar, overload
 
 from inspect_ai.model import (
     ChatMessage,
@@ -17,7 +18,8 @@ from .util import _message_id
 T = TypeVar("T", Transcript, list[ChatMessage])
 
 
-class MessagesPreprocessor(NamedTuple, Generic[T]):
+@dataclass(frozen=True)
+class MessagesPreprocessor(Generic[T]):
     """ChatMessage preprocessing transformations.
 
     Provide a `transform` function for fully custom transformations.
@@ -127,17 +129,16 @@ def message_as_str(
         should be excluded based on the provided flags.
     """
     preprocessor = preprocessor or MessagesPreprocessor()
-    _, exclude_system, exclude_reasoning, exclude_tool_usage = preprocessor
 
-    if exclude_system and message.role == "system":
+    if preprocessor.exclude_system and message.role == "system":
         return None
 
     content = _better_content_text(
-        message.content, exclude_tool_usage, exclude_reasoning
+        message.content, preprocessor.exclude_tool_usage, preprocessor.exclude_reasoning
     )
 
     if (
-        not exclude_tool_usage
+        not preprocessor.exclude_tool_usage
         and isinstance(message, ChatMessageAssistant)
         and message.tool_calls
     ):
@@ -156,7 +157,7 @@ def message_as_str(
         return entry
 
     elif isinstance(message, ChatMessageTool):
-        if exclude_tool_usage:
+        if preprocessor.exclude_tool_usage:
             return None
         func_name = message.function or "unknown"
         error_part = (

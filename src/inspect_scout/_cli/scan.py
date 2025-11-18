@@ -23,7 +23,7 @@ from inspect_scout._validation.types import ValidationSet
 from .._scan import scan
 from .._scanjob import ScanJob, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
-from .._transcript.eval_log import transcripts_from_logs as transcripts_from
+from .._transcript.eval_log import transcripts_from_logs
 from .._util.constants import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TRANSCRIPTS
 from .common import CommonOptions, common_options, process_common_options
 
@@ -355,13 +355,17 @@ def scan_command(
             scanjob = ScanJob(transcripts=None, scanners=scanners)
 
     # resolve transcripts (could be from ScanJob)
-    tx = transcripts_from(transcripts) if len(transcripts) > 0 else scanjob.transcripts
+    tx = (
+        transcripts_from_logs(transcripts)
+        if len(transcripts) > 0
+        else scanjob.transcripts
+    )
     if tx is None:
         # see if we can auto-discover transcripts from inspect logs
         inspect_log_dir = os.environ.get("INSPECT_LOG_DIR", "./logs")
         fs = filesystem(inspect_log_dir)
         if fs.exists(inspect_log_dir) and len(list_eval_logs(inspect_log_dir)) > 0:
-            tx = transcripts_from(inspect_log_dir)
+            tx = transcripts_from_logs(inspect_log_dir)
 
     if tx is None:
         raise PrerequisiteError(

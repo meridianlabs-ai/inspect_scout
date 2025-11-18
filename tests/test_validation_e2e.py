@@ -37,7 +37,7 @@ async def get_n_transcript_ids(n: int) -> list[str]:
     transcripts = transcripts_from_logs(LOGS_DIR)
     async with transcripts.reader() as tr:
         index_list = [info async for info in tr.index()]
-        return [info.id for info in index_list[:n]]
+        return [info.transcript_id for info in index_list[:n]]
 
 
 def create_validation_set(
@@ -69,10 +69,10 @@ def bool_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return True/False based on whether transcript ID hash is even/odd
-        value = hash(transcript.id) % 2 == 0
+        value = hash(transcript.transcript_id) % 2 == 0
         return Result(
             value=value,
-            explanation=f"Bool scanner processed {transcript.id}: {value}",
+            explanation=f"Bool scanner processed {transcript.transcript_id}: {value}",
         )
 
     return scan_transcript
@@ -84,10 +84,10 @@ def int_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return int value based on transcript ID hash modulo 100
-        value = abs(hash(transcript.id)) % 100
+        value = abs(hash(transcript.transcript_id)) % 100
         return Result(
             value=value,
-            explanation=f"Int scanner processed {transcript.id}: {value}",
+            explanation=f"Int scanner processed {transcript.transcript_id}: {value}",
         )
 
     return scan_transcript
@@ -99,10 +99,10 @@ def str_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return string value based on transcript ID
-        value = f"result_{transcript.id[:8]}"
+        value = f"result_{transcript.transcript_id[:8]}"
         return Result(
             value=value,
-            explanation=f"String scanner processed {transcript.id}",
+            explanation=f"String scanner processed {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -114,7 +114,7 @@ def dict_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return dict with multiple dimensions
-        tid_hash = abs(hash(transcript.id))
+        tid_hash = abs(hash(transcript.transcript_id))
         value: JsonValue = {
             "score_a": tid_hash % 100,
             "score_b": (tid_hash // 100) % 100,
@@ -122,7 +122,7 @@ def dict_scanner_factory() -> Scanner[Transcript]:
         }
         return Result(
             value=value,
-            explanation=f"Dict scanner processed {transcript.id}",
+            explanation=f"Dict scanner processed {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -135,7 +135,7 @@ def validation_scanner_a_factory() -> Scanner[Transcript]:
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
             value=True,
-            explanation=f"Scanner A processed {transcript.id}",
+            explanation=f"Scanner A processed {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -148,7 +148,7 @@ def validation_scanner_b_factory() -> Scanner[Transcript]:
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
             value=False,
-            explanation=f"Scanner B processed {transcript.id}",
+            explanation=f"Scanner B processed {transcript.transcript_id}",
         )
 
     return scan_transcript

@@ -74,7 +74,7 @@ def valid_transcript_scanner() -> Scanner[Transcript]:
     """Scanner that requires both messages and events."""
 
     async def scan(transcript: Transcript) -> Result:
-        return Result(value={"id": transcript.id})
+        return Result(value={"id": transcript.transcript_id})
 
     return scan
 

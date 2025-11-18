@@ -31,7 +31,7 @@ def create_sample_transcript(
 ) -> Transcript:
     """Create a test transcript with customizable fields."""
     return Transcript(
-        id=id,
+        transcript_id=id,
         source_type="test",
         source_id=source_id,
         source_uri=source_uri,
@@ -206,7 +206,7 @@ async def test_select_all(populated_db: ParquetTranscriptsDB) -> None:
     # Verify TranscriptInfo structure
     first = results[0]
     assert isinstance(first, TranscriptInfo)
-    assert first.id is not None
+    assert first.transcript_id is not None
     assert first.source_id is not None
     assert first.source_uri is not None
 
@@ -237,14 +237,20 @@ async def test_select_with_limit(populated_db: ParquetTranscriptsDB) -> None:
 async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
     """Test shuffle with deterministic seed."""
     # Get results with same seed twice
-    results1 = [info.id async for info in populated_db.select([], None, shuffle=42)]
-    results2 = [info.id async for info in populated_db.select([], None, shuffle=42)]
+    results1 = [
+        info.transcript_id async for info in populated_db.select([], None, shuffle=42)
+    ]
+    results2 = [
+        info.transcript_id async for info in populated_db.select([], None, shuffle=42)
+    ]
 
     # Should be same order
     assert results1 == results2
 
     # Get results with different seed
-    results3 = [info.id async for info in populated_db.select([], None, shuffle=123)]
+    results3 = [
+        info.transcript_id async for info in populated_db.select([], None, shuffle=123)
+    ]
 
     # Should be different order (very likely)
     assert results1 != results3
@@ -353,7 +359,7 @@ async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
     assert len(transcript.events) == 0
 
     # Should still have metadata
-    assert transcript.id == infos[0].id
+    assert transcript.transcript_id == infos[0].transcript_id
 
 
 # Schema & File Management Tests
@@ -396,7 +402,7 @@ async def test_arbitrary_metadata(parquet_db: ParquetTranscriptsDB) -> None:
         async for info in parquet_db.select([m["nested.deep.value"] == 42], None, False)
     ]
     assert len(results) == 1
-    assert results[0].id == "complex-1"
+    assert results[0].transcript_id == "complex-1"
 
 
 @pytest.mark.asyncio
@@ -483,11 +489,11 @@ async def test_shuffle_method(test_location: Path) -> None:
     shuffled = transcripts_obj.shuffle(seed=42)
 
     async with shuffled.reader() as reader:
-        results1 = [info.id async for info in reader.index()]
+        results1 = [info.transcript_id async for info in reader.index()]
 
     # Shuffle again with same seed
     async with shuffled.reader() as reader:
-        results2 = [info.id async for info in reader.index()]
+        results2 = [info.transcript_id async for info in reader.index()]
 
     # Should be same order
     assert results1 == results2
@@ -521,7 +527,7 @@ async def test_read_nonexistent_transcript(populated_db: ParquetTranscriptsDB) -
     """Test reading missing transcript."""
     # Create a non-existent TranscriptInfo
     fake_info = TranscriptInfo(
-        id="non-existent-id",
+        transcript_id="non-existent-id",
         source_type="test",
         source_id="fake",
         source_uri="fake://uri",
@@ -532,7 +538,7 @@ async def test_read_nonexistent_transcript(populated_db: ParquetTranscriptsDB) -
     transcript = await populated_db.read(fake_info, content)
 
     # Should not raise error, just return empty
-    assert transcript.id == "non-existent-id"
+    assert transcript.transcript_id == "non-existent-id"
     assert len(transcript.messages) == 0
 
 
@@ -579,7 +585,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
         )
     ]
     assert len(results) == 1
-    assert results[0].id == "nested-1"
+    assert results[0].transcript_id == "nested-1"
 
     # Verify nested structures are preserved
     assert results[0].metadata["config"] == {"temperature": 0.7, "top_p": 0.9}
@@ -593,7 +599,7 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> N
 
     # Should raise error for reserved keys (actual Parquet columns)
     with pytest.raises(ValueError, match="reserved"):
-        _validate_metadata_keys({"id": "bad"})
+        _validate_metadata_keys({"transcript_id": "bad"})
 
     with pytest.raises(ValueError, match="reserved"):
         _validate_metadata_keys({"source_id": "bad"})

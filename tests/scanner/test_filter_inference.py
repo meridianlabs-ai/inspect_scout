@@ -132,7 +132,7 @@ def test_no_inference_for_transcript() -> None:
         @scanner()  # No filters, can't infer for Transcript
         def transcript_scanner() -> Scanner[Transcript]:
             async def scan(transcript: Transcript) -> Result:
-                return Result(value={"id": transcript.id})
+                return Result(value={"id": transcript.transcript_id})
 
             return scan
 
@@ -208,7 +208,7 @@ def test_no_inference_with_loader() -> None:
     @scanner(loader=loader_instance)
     def loader_scanner() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
-            return Result(value={"id": transcript.id})
+            return Result(value={"id": transcript.transcript_id})
 
         return scan
 

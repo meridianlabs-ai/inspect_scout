@@ -87,7 +87,7 @@ class TranscriptsDBReader(TranscriptsReader):
             ScanTranscripts snapshot for serialization.
         """
         # Collect all matching transcript IDs
-        sample_ids = [info.id async for info in self.index()]
+        sample_ids = [info.transcript_id async for info in self.index()]
 
         # Create minimal DataFrame with IDs
         df = pd.DataFrame({"id": sample_ids})

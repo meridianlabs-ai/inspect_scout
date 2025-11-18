@@ -20,7 +20,7 @@ TEST_TRANSCRIPT_ID = "test-transcript-123"
 def create_test_transcript() -> Transcript:
     """Create a simple test transcript with a known ID."""
     return Transcript(
-        id=TEST_TRANSCRIPT_ID,
+        transcript_id=TEST_TRANSCRIPT_ID,
         source_type="test",
         source_id="test-source",
         source_uri="test://source",
@@ -37,14 +37,14 @@ def multi_finding_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> list[Result]:
         # Return different findings based on transcript ID
-        if len(transcript.id) % 3 == 0:
+        if len(transcript.transcript_id) % 3 == 0:
             # Return deception and jailbreak
             return [
                 Result(label="deception", value=True, explanation="Found deception"),
                 Result(label="jailbreak", value=True, explanation="Found jailbreak"),
             ]
 
-        elif len(transcript.id) % 3 == 1:
+        elif len(transcript.transcript_id) % 3 == 1:
             # Return only deception
             return [
                 Result(label="deception", value=True, explanation="Found deception"),

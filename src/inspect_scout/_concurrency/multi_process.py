@@ -224,7 +224,7 @@ def multi_process_strategy(
                             items_processed += 1
                             print_diagnostics(
                                 "MP Collector",
-                                f"Recorded results for {transcript_info.id} (total: {items_processed})",
+                                f"Recorded results for {transcript_info.transcript_id} (total: {items_processed})",
                             )
 
                         case MetricsItem(worker_id, metrics):

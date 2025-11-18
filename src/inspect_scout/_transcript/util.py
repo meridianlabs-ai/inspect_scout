@@ -48,7 +48,7 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         A new Transcript with filtered messages and events based on the content specification.
     """
     return Transcript(
-        id=transcript.id,
+        transcript_id=transcript.transcript_id,
         source_type=transcript.source_type,
         source_id=transcript.source_id,
         source_uri=transcript.source_uri,

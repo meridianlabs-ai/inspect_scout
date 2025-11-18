@@ -39,7 +39,7 @@ def recorder_buffer() -> Generator[RecorderBuffer]:
 def sample_transcript() -> TranscriptInfo:
     """Create a sample TranscriptInfo for testing."""
     return TranscriptInfo(
-        id="test-transcript-123",
+        transcript_id="test-transcript-123",
         source_type="test",
         source_id="source-42",
         source_uri="/path/to/source.log",
@@ -121,7 +121,7 @@ async def test_is_recorded(
 
     # Check with different transcript ID
     other_transcript = TranscriptInfo(
-        id="other-transcript-456",
+        transcript_id="other-transcript-456",
         source_type="test",
         source_id="42",
         source_uri="/other/source.log",

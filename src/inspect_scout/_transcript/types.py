@@ -34,7 +34,7 @@ class TranscriptContent:
 class TranscriptInfo(BaseModel):
     """Transcript identifier, location, and metadata."""
 
-    id: str
+    transcript_id: str
     """Globally unique id for transcript (e.g. sample uuid)."""
 
     source_type: str
@@ -58,3 +58,15 @@ class Transcript(TranscriptInfo):
 
     events: list[Event] = Field(default_factory=list)
     """Events from transcript."""
+
+
+# Reserved column names that cannot be used as metadata keys
+# These are actual Parquet columns, so metadata keys cannot use these names
+RESERVED_COLUMNS = {
+    "transcript_id",
+    "source_type",
+    "source_id",
+    "source_uri",
+    "messages",
+    "events",
+}

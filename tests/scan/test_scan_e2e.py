@@ -17,10 +17,10 @@ def simple_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return a simple result based on transcript ID
-        value = len(transcript.id) % 2 == 0
+        value = len(transcript.transcript_id) % 2 == 0
         return Result(
             value=value,
-            explanation=f"Scanned transcript {transcript.id[:8]}",
+            explanation=f"Scanned transcript {transcript.transcript_id[:8]}",
         )
 
     return scan_transcript

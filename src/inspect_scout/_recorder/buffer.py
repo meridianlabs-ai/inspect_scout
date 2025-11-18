@@ -73,7 +73,7 @@ class RecorderBuffer:
             cast(
                 dict[str, str | bool | int | float | None],
                 {
-                    "transcript_id": transcript.id,
+                    "transcript_id": transcript.transcript_id,
                     "transcript_source_type": transcript.source_type,
                     "transcript_source_id": transcript.source_id,
                     "transcript_source_uri": transcript.source_uri,
@@ -102,10 +102,10 @@ class RecorderBuffer:
         sdir.mkdir(parents=True, exist_ok=True)
 
         # One-shot write per transcript
-        final_path = sdir / f"{transcript.id}.parquet"
+        final_path = sdir / f"{transcript.transcript_id}.parquet"
 
         # Atomic write: write to .tmp, then os.replace to final
-        tmp_path = sdir / f".{transcript.id}.parquet.tmp"
+        tmp_path = sdir / f".{transcript.transcript_id}.parquet.tmp"
         pq.write_table(
             table,
             tmp_path.as_posix(),
@@ -127,7 +127,7 @@ class RecorderBuffer:
 
     async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
-        transcript_file = sdir / f"{transcript.id}.parquet"
+        transcript_file = sdir / f"{transcript.transcript_id}.parquet"
         if transcript_file.exists():
             # check if there are any non-null scan_error fields
             table = pq.read_table(transcript_file.as_posix(), columns=["scan_error"])

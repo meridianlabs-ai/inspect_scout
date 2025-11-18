@@ -587,7 +587,7 @@ async def test_query_all(db: EvalLogTranscriptsDB) -> None:
     # Check that each result is a TranscriptInfo
     for result in results:
         assert isinstance(result, TranscriptInfo)
-        assert result.id.startswith("sample_")
+        assert result.transcript_id.startswith("sample_")
         assert result.source_uri.startswith("/path/to/log_")
         assert isinstance(result.metadata, dict)
 
@@ -633,18 +633,18 @@ async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
     """Test querying with shuffle."""
     # Get results without shuffle
     results1 = [item async for item in db.query(where=[], limit=10)]
-    ids1 = [r.id for r in results1]
+    ids1 = [r.transcript_id for r in results1]
 
     # Get results with shuffle (seed=42)
     results2 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
-    ids2 = [r.id for r in results2]
+    ids2 = [r.transcript_id for r in results2]
 
     # Results should be different order (very unlikely to be same)
     assert ids1 != ids2
 
     # Get results with same seed - should be same order
     results3 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
-    ids3 = [r.id for r in results3]
+    ids3 = [r.transcript_id for r in results3]
     assert ids2 == ids3
 
 

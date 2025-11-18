@@ -40,7 +40,7 @@ def _create_transcript(
 ) -> Transcript:
     """Helper to create test transcripts with required fields."""
     return Transcript(
-        id="test-id",
+        transcript_id="test-id",
         source_type="test",
         source_id="test-source",
         source_uri="test://uri",

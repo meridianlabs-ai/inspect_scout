@@ -51,7 +51,7 @@ from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
 from .transcripts import Transcripts, TranscriptsReader
-from .types import Transcript, TranscriptContent, TranscriptInfo
+from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
 
 TRANSCRIPTS = "transcripts"
 
@@ -108,7 +108,7 @@ class EvalLogTranscripts(Transcripts, TranscriptsReader):
     async def snapshot(self) -> ScanTranscripts:
         # get the subset of the transcripts df that matches our current query
         df = self.db._transcripts_df
-        sample_ids = [item.id async for item in self.index()]
+        sample_ids = [item.transcript_id async for item in self.index()]
         df = df[df["sample_id"].isin(sample_ids)]
 
         # get fields
@@ -318,11 +318,15 @@ class EvalLogTranscriptsDB:
                     f"Missing required fields: sample_id={transcript_id}, log={transcript_source_uri}"
                 )
 
-            # everything else goes into metadata
-            metadata = {k: v for k, v in row_dict.items() if v is not None}
+            # everything else goes into metadata (excluding reserved columns)
+            metadata = {
+                k: v
+                for k, v in row_dict.items()
+                if v is not None and k not in RESERVED_COLUMNS
+            }
 
             yield TranscriptInfo(
-                id=transcript_id,
+                transcript_id=transcript_id,
                 source_type=TRANSCRIPT_SOURCE_EVAL_LOG,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
@@ -331,7 +335,7 @@ class EvalLogTranscriptsDB:
 
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         id_, epoch = self._transcripts_df[
-            self._transcripts_df["sample_id"] == t.id
+            self._transcripts_df["sample_id"] == t.transcript_id
         ].iloc[0][["id", "epoch"]]
         sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
 

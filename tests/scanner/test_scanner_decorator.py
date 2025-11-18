@@ -65,7 +65,7 @@ def test_scanner_with_both_filters() -> None:
     @scanner(messages=["user"], events=["model"])
     def test_scanner() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
-            return Result(value={"id": transcript.id})
+            return Result(value={"id": transcript.transcript_id})
 
         return scan
 
@@ -140,7 +140,7 @@ def test_scanner_with_loader() -> None:
     @scanner(loader=loader_instance)
     def test_scanner() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
-            return Result(value={"id": transcript.id})
+            return Result(value={"id": transcript.transcript_id})
 
         return scan
 

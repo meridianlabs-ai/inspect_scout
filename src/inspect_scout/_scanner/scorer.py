@@ -52,7 +52,7 @@ def as_scorer(
         async def score(state: TaskState, target: Target) -> Score | None:
             # prepare transcript from state
             transcript = Transcript(
-                id=state.uuid,
+                transcript_id=state.uuid,
                 source_type=TRANSCRIPT_SOURCE_EVAL_LOG,
                 source_id="",
                 source_uri="",

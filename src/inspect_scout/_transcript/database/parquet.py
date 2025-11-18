@@ -19,23 +19,13 @@ from typing_extensions import override
 
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
 from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
+from inspect_scout._transcript.types import RESERVED_COLUMNS
 
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import LocalFilesCache, create_temp_cache
 from ..metadata import Condition
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
-
-# Reserved column names that cannot be used as metadata keys
-# These are actual Parquet columns, so metadata keys cannot use these names
-RESERVED_COLUMNS = {
-    "id",
-    "source_type",
-    "source_id",
-    "source_uri",
-    "messages",
-    "events",
-}
 
 
 class ParquetTranscriptsDB(TranscriptsDB):
@@ -201,7 +191,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if shuffle:
             seed = 0 if shuffle is True else shuffle
             self._register_shuffle_function(seed)
-            sql += " ORDER BY shuffle_hash(id)"
+            sql += " ORDER BY shuffle_hash(transcript_id)"
 
         # Add LIMIT
         params = where_params.copy()
@@ -217,7 +207,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             row_dict = dict(zip(column_names, row, strict=True))
 
             # Extract reserved fields
-            transcript_id = row_dict["id"]
+            transcript_id = row_dict["transcript_id"]
             transcript_source_type = row_dict["source_type"]
             transcript_source_id = row_dict["source_id"]
             transcript_source_uri = row_dict["source_uri"]
@@ -239,7 +229,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                         metadata[col] = value
 
             yield TranscriptInfo(
-                id=transcript_id,
+                transcript_id=transcript_id,
                 source_type=transcript_source_type,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
@@ -266,7 +256,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if not need_messages and not need_events:
             # No content needed
             return Transcript(
-                id=t.id,
+                transcript_id=t.transcript_id,
                 source_type=t.source_type,
                 source_id=t.source_id,
                 source_uri=t.source_uri,
@@ -281,13 +271,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             columns.append("events")
 
         # Query DuckDB for the content columns
-        sql = f"SELECT {', '.join(columns)} FROM transcripts WHERE id = ?"
-        result = self._conn.execute(sql, [t.id]).fetchone()
+        sql = f"SELECT {', '.join(columns)} FROM transcripts WHERE transcript_id = ?"
+        result = self._conn.execute(sql, [t.transcript_id]).fetchone()
 
         if not result:
             # Transcript not found
             return Transcript(
-                id=t.id,
+                transcript_id=t.transcript_id,
                 source_type=t.source_type,
                 source_id=t.source_id,
                 source_uri=t.source_uri,
@@ -408,7 +398,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Start with reserved fields
         row: dict[str, Any] = {
-            "id": transcript.id,
+            "transcript_id": transcript.transcript_id,
             "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
@@ -446,7 +436,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         # Reserved columns with fixed types
         fields: list[tuple[str, pa.DataType]] = [
-            ("id", pa.string()),
+            ("transcript_id", pa.string()),
             ("source_type", pa.string()),
             ("source_id", pa.string()),
             ("source_uri", pa.string()),
@@ -585,7 +575,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._conn.execute("""
                 CREATE VIEW transcripts AS
                 SELECT
-                    ''::VARCHAR AS id,
+                    ''::VARCHAR AS transcript_id,
                     ''::VARCHAR AS source_type,
                     ''::VARCHAR AS source_id,
                     ''::VARCHAR AS source_uri,

@@ -23,7 +23,7 @@ async def get_n_transcript_ids(n: int) -> list[str]:
     transcripts = transcripts_from_logs(LOGS_DIR)
     async with transcripts.reader() as tr:
         index_list = [info async for info in tr.index()]
-        return [info.id for info in index_list[:n]]
+        return [info.transcript_id for info in index_list[:n]]
 
 
 # Define scanner factories that can be used in tests
@@ -35,7 +35,7 @@ def counter_a_scanner() -> Scanner[Transcript]:
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
             value=1,
-            explanation=f"Scanner counter_a processed transcript {transcript.id}",
+            explanation=f"Scanner counter_a processed transcript {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -48,7 +48,7 @@ def counter_b_scanner() -> Scanner[Transcript]:
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
             value=2,
-            explanation=f"Scanner counter_b processed transcript {transcript.id}",
+            explanation=f"Scanner counter_b processed transcript {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -60,7 +60,8 @@ def scanner_a_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
-            value=1, explanation=f"Scanner A processed transcript {transcript.id}"
+            value=1,
+            explanation=f"Scanner A processed transcript {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -72,7 +73,8 @@ def scanner_b_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
-            value=2, explanation=f"Scanner B processed transcript {transcript.id}"
+            value=2,
+            explanation=f"Scanner B processed transcript {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -83,7 +85,9 @@ def scanner_1_factory() -> Scanner[Transcript]:
     """Scanner 1."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
-        return Result(value=1, explanation=f"Scanner 1 processed {transcript.id}")
+        return Result(
+            value=1, explanation=f"Scanner 1 processed {transcript.transcript_id}"
+        )
 
     return scan_transcript
 
@@ -93,7 +97,9 @@ def scanner_2_factory() -> Scanner[Transcript]:
     """Scanner 2."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
-        return Result(value=2, explanation=f"Scanner 2 processed {transcript.id}")
+        return Result(
+            value=2, explanation=f"Scanner 2 processed {transcript.transcript_id}"
+        )
 
     return scan_transcript
 
@@ -103,7 +109,9 @@ def scanner_3_factory() -> Scanner[Transcript]:
     """Scanner 3."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
-        return Result(value=3, explanation=f"Scanner 3 processed {transcript.id}")
+        return Result(
+            value=3, explanation=f"Scanner 3 processed {transcript.transcript_id}"
+        )
 
     return scan_transcript
 
@@ -113,7 +121,9 @@ def scanner_4_factory() -> Scanner[Transcript]:
     """Scanner 4."""
 
     async def scan_transcript(transcript: Transcript) -> Result:
-        return Result(value=4, explanation=f"Scanner 4 processed {transcript.id}")
+        return Result(
+            value=4, explanation=f"Scanner 4 processed {transcript.transcript_id}"
+        )
 
     return scan_transcript
 

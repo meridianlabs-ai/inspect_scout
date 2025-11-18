@@ -111,7 +111,7 @@ def single_process_strategy(
                 )
 
         def _scanner_job_info(item: ScannerJob) -> str:
-            return f"{item.union_transcript.id, item.scanner_name}"
+            return f"{item.union_transcript.transcript_id, item.scanner_name}"
 
         def _update_metrics() -> None:
             if update_metrics:
@@ -191,7 +191,7 @@ def single_process_strategy(
                 result = await parse_function(parse_job)
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",
-                    f"Parsed  ({(time.time() - exec_start_time):.3f}s) - ('{parse_job.transcript_info.id}')",
+                    f"Parsed  ({(time.time() - exec_start_time):.3f}s) - ('{parse_job.transcript_info.transcript_id}')",
                 )
 
                 # Check success/failure tag

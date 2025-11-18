@@ -50,7 +50,7 @@ async def test_basic_loading() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test-001",
+        transcript_id="test-001",
         source_type="test",
         source_id="source-001",
         source_uri="/test.json",
@@ -60,7 +60,7 @@ async def test_basic_loading() -> None:
     result = await load_filtered_transcript(stream, info, "all", "all")
 
     assert isinstance(result, Transcript)
-    assert result.id == "test-001"
+    assert result.transcript_id == "test-001"
     assert result.source_uri == "/test.json"
     assert result.metadata == {
         "test": True,
@@ -105,7 +105,10 @@ async def test_message_filtering(
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, message_filter, "all")
@@ -153,7 +156,10 @@ async def test_event_filtering(
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, "all", event_filter)
@@ -187,7 +193,10 @@ async def test_combined_filtering() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, ["user"], ["score"])
@@ -238,7 +247,10 @@ async def test_attachment_resolution() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, "all", "all")
@@ -263,7 +275,10 @@ async def test_missing_attachments() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, "all", "all")
@@ -291,7 +306,10 @@ async def test_malformed_attachments() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, "all", "all")
@@ -321,7 +339,10 @@ async def test_unicode_and_special_chars() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, "all", "all")
@@ -336,7 +357,10 @@ async def test_empty_transcript() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="empty", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="empty",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, "all", "all")
@@ -368,7 +392,7 @@ async def test_parse_and_filter() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test",
+        transcript_id="test",
         source_type="test",
         source_id="42",
         source_uri="/test.json",
@@ -378,7 +402,7 @@ async def test_parse_and_filter() -> None:
     transcript = await load_filtered_transcript(stream, info, ["user"], ["score"])
 
     assert isinstance(transcript, Transcript)
-    assert transcript.id == "test"
+    assert transcript.transcript_id == "test"
     assert transcript.metadata == {"key": "value"}
     assert len(transcript.messages) == 1
     assert transcript.messages[0].role == "user"
@@ -435,7 +459,10 @@ async def test_attachment_resolution_in_nested_structures() -> None:
 
     stream = create_json_stream(data)
     info = TranscriptInfo(
-        id="test", source_type="test", source_id="42", source_uri="/test.json"
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
     )
 
     result = await load_filtered_transcript(stream, info, "all", "all")
@@ -474,7 +501,7 @@ async def test_s3_eval_assistant_tool_filter() -> None:
     member_name = "samples/astropy__astropy-14309_epoch_1.json"
 
     info = TranscriptInfo(
-        id="what id?",
+        transcript_id="what id?",
         source_type="test",
         source_id="vend_fat_eval",
         source_uri=s3_path,
@@ -494,7 +521,7 @@ async def test_s3_eval_assistant_tool_filter() -> None:
         print(f"Parse took {duration:.3f}s")
 
     assert isinstance(result, Transcript)
-    assert result.id == "what id?"
+    assert result.transcript_id == "what id?"
     assert result.source_uri == s3_path
     # Check that we got what we asked for and only what we asked for
     role_counts = Counter(msg.role for msg in result.messages)

@@ -591,7 +591,7 @@ async def _scan_async_inner(
 
                         except Exception as ex:  # pylint: disable=W0718
                             error = Error(
-                                transcript_id=job.union_transcript.id,
+                                transcript_id=job.union_transcript.transcript_id,
                                 scanner=job.scanner_name,
                                 error=str(ex),
                                 traceback=traceback.format_exc(),
@@ -779,7 +779,8 @@ async def _parse_jobs(
             # if its not in the worklist then move on
             if (
                 scanner_to_transcript_ids is not None
-                and transcript_info.id not in scanner_to_transcript_ids.get(name, [])
+                and transcript_info.transcript_id
+                not in scanner_to_transcript_ids.get(name, [])
             ):
                 continue
             # if its already recorded then move on
@@ -809,7 +810,7 @@ def _reports_for_parse_error(
 ) -> list[ResultReport]:
     # Create placeholder transcript since parse failed
     placeholder_transcript = Transcript(
-        id=job.transcript_info.id,
+        transcript_id=job.transcript_info.transcript_id,
         source_type=job.transcript_info.source_type,
         source_id=job.transcript_info.source_id,
         source_uri=job.transcript_info.source_uri,
@@ -820,12 +821,12 @@ def _reports_for_parse_error(
     return [
         ResultReport(
             input_type="transcript",
-            input_ids=[job.transcript_info.id],
+            input_ids=[job.transcript_info.transcript_id],
             input=placeholder_transcript,
             result=None,
             validation=None,
             error=Error(
-                transcript_id=job.transcript_info.id,
+                transcript_id=job.transcript_info.transcript_id,
                 scanner=scanner_names[idx],
                 error=str(exception),
                 traceback=traceback.format_exc(),

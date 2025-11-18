@@ -104,7 +104,7 @@ Here's how you might use this in a full pipeline:
 ``` python
 from inspect_scout import analyze, transcripts_from_logs
 
-transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts_from("./logs")
 results = await analyze(
     transcripts=transcripts, 
     scanners=[reward_hacking()]

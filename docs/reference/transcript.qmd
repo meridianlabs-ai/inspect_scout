@@ -10,8 +10,7 @@ reference: "inspect_scout"
 
 ## Reading
 
-### transcripts_from_db
-### transcripts_from_logs
+### transcripts_from
 ### Transcripts
 ### TranscriptsReader
 

@@ -7,7 +7,7 @@ import pandas as pd
 from inspect_ai.model import ModelOutput
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
-from inspect_scout._transcript.eval_log import transcripts_from_logs
+from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
 # Test data location
@@ -47,7 +47,7 @@ def test_retry_success_after_refusals_regular_answer() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[retry_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -109,7 +109,7 @@ def test_retry_exceed_limit() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[exceed_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -170,7 +170,7 @@ def test_no_retries_needed() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[no_retry_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -212,7 +212,7 @@ def test_retry_limit_zero_no_retries() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[no_retries_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -272,7 +272,7 @@ def test_retry_limit_one() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[one_retry_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -313,7 +313,7 @@ def test_retry_limit_one_exceeded() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[one_retry_exceeded_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -369,7 +369,7 @@ def test_retry_limit_false_means_no_retries() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[false_retries_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -448,7 +448,7 @@ def test_multiple_transcripts_mixed_results() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[mixed_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=2,
             max_processes=1,
@@ -516,7 +516,7 @@ def test_retry_with_string_answer_type() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[string_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -562,7 +562,7 @@ def test_retry_with_numeric_answer_type() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[numeric_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -611,7 +611,7 @@ def test_refusal_flag_is_true_for_refusal_errors() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[refusal_scanner(), regular_error_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -668,7 +668,7 @@ def test_scan_refusal_column_populated() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[refusal_scanner(), regular_error_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,

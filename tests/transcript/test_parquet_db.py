@@ -7,8 +7,9 @@ import pytest
 import pytest_asyncio
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
-from inspect_scout._transcript.database.factory import transcripts_from_db
+from inspect_scout import transcripts_from
 from inspect_scout._transcript.database.parquet import (
+    PARQUET_TRANSCRIPTS_GLOB,
     ParquetTranscriptsDB,
 )
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
@@ -144,7 +145,7 @@ async def test_insert_single_batch(
     await parquet_db.insert(transcripts)
 
     # Verify Parquet file was created
-    parquet_files = list(test_location.glob("transcripts_*.parquet"))
+    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
     assert len(parquet_files) == 1
 
     # Verify count
@@ -162,7 +163,7 @@ async def test_insert_multiple_batches(
     await parquet_db.insert(transcripts)
 
     # Verify multiple Parquet files were created
-    parquet_files = list(test_location.glob("transcripts_*.parquet"))
+    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
     assert len(parquet_files) == 3  # 1000 + 1000 + 500
 
     # Verify count
@@ -429,7 +430,7 @@ async def test_null_handling(parquet_db: ParquetTranscriptsDB) -> None:
 @pytest.mark.asyncio
 async def test_factory_function(test_location: Path) -> None:
     """Test transcripts_from_parquet factory function."""
-    transcripts = transcripts_from_db(str(test_location))
+    transcripts = transcripts_from(str(test_location))
     assert transcripts is not None
 
     # Insert some data
@@ -447,7 +448,7 @@ async def test_factory_function(test_location: Path) -> None:
 async def test_where_filtering(test_location: Path) -> None:
     """Test .where() method on ParquetTranscripts."""
     # Create and populate
-    transcripts_obj = transcripts_from_db(str(test_location))
+    transcripts_obj = transcripts_from(str(test_location))
     async with transcripts_obj.reader() as reader:
         if isinstance(reader, TranscriptsDBReader):
             await reader._db.insert(create_test_transcripts(20))
@@ -464,7 +465,7 @@ async def test_where_filtering(test_location: Path) -> None:
 @pytest.mark.asyncio
 async def test_limit_method(test_location: Path) -> None:
     """Test .limit() method."""
-    transcripts_obj = transcripts_from_db(str(test_location))
+    transcripts_obj = transcripts_from(str(test_location))
     async with transcripts_obj.reader() as reader:
         if isinstance(reader, TranscriptsDBReader):
             await reader._db.insert(create_test_transcripts(20))
@@ -480,7 +481,7 @@ async def test_limit_method(test_location: Path) -> None:
 @pytest.mark.asyncio
 async def test_shuffle_method(test_location: Path) -> None:
     """Test .shuffle() method."""
-    transcripts_obj = transcripts_from_db(str(test_location))
+    transcripts_obj = transcripts_from(str(test_location))
     async with transcripts_obj.reader() as reader:
         if isinstance(reader, TranscriptsDBReader):
             await reader._db.insert(create_test_transcripts(10))
@@ -641,7 +642,7 @@ async def test_schema_evolution(
     await parquet_db.insert(batch2)
 
     # Should have 2 Parquet files
-    parquet_files = list(test_location.glob("transcripts_*.parquet"))
+    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
     assert len(parquet_files) == 2
 
     # Query should work across both schemas

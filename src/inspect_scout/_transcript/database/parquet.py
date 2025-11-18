@@ -27,6 +27,8 @@ from ..metadata import Condition
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
+PARQUET_TRANSCRIPTS_GLOB = "transcripts_*.parquet"
+
 
 class ParquetTranscriptsDB(TranscriptsDB):
     """DuckDB-based transcript database using Parquet file storage.
@@ -644,7 +646,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 location_path.mkdir(parents=True, exist_ok=True)
                 return []
 
-            return list(glob.glob(str(location_path / "transcripts_*.parquet")))
+            return list(glob.glob(str(location_path / PARQUET_TRANSCRIPTS_GLOB)))
 
     def _as_async_iterator(
         self,

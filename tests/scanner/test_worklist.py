@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from inspect_scout import Result, Scanner, ScannerWork, scan, scanner
 from inspect_scout._scanresults import scan_results_db, scan_status
-from inspect_scout._transcript.eval_log import transcripts_from_logs
+from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
 # Test data location
@@ -20,7 +20,7 @@ LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 
 async def get_n_transcript_ids(n: int) -> list[str]:
     """Get first n transcript IDs from test logs."""
-    transcripts = transcripts_from_logs(LOGS_DIR)
+    transcripts = transcripts_from(LOGS_DIR)
     async with transcripts.reader() as tr:
         index_list = [info async for info in tr.index()]
         return [info.transcript_id for info in index_list[:n]]
@@ -292,7 +292,7 @@ async def test_worklist_basic_filtering() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[counter_a_scanner(), counter_b_scanner()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )
@@ -318,7 +318,7 @@ async def test_worklist_no_overlap() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[scanner_a_factory(), scanner_b_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )
@@ -344,7 +344,7 @@ async def test_worklist_empty_transcript_list() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[scanner_a_factory(), scanner_b_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )
@@ -377,7 +377,7 @@ async def test_worklist_single_scanner_subset() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[subset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )
@@ -412,7 +412,7 @@ async def test_worklist_nonexistent_transcript_ids() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[resilient_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )
@@ -431,7 +431,7 @@ async def test_worklist_default_behavior_without_worklist() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[default_a_factory(), default_b_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             # Note: No worklist parameter - should process all transcripts
             results=tmpdir,
             limit=10,  # Limit to 10 to match our transcript_ids
@@ -462,7 +462,7 @@ async def test_worklist_spec_persistence() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[spec_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=original_worklist,
             results=tmpdir,
         )
@@ -514,7 +514,7 @@ async def test_worklist_partial_overlap_many_scanners() -> None:
                 scanner_3_factory(),
                 scanner_4_factory(),
             ],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )
@@ -554,7 +554,7 @@ async def test_worklist_results_database_filtering() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=[db_scanner_a_factory(), db_scanner_b_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )
@@ -615,7 +615,7 @@ async def test_worklist_with_named_scanners_dict() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         result = scan(
             scanners=scanners_dict,
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
             results=tmpdir,
         )

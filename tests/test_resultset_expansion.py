@@ -5,7 +5,7 @@ from pathlib import Path
 
 from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_db, scan_results_df
-from inspect_scout._transcript.eval_log import transcripts_from_logs
+from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
 # Test data location
@@ -71,7 +71,7 @@ def test_resultset_expansion_basic() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -111,7 +111,7 @@ def test_resultset_expansion_with_type_casting() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -141,7 +141,7 @@ def test_resultset_expansion_preserves_other_columns() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -164,7 +164,7 @@ def test_mixed_scanners_expansion() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory(), simple_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -187,7 +187,7 @@ def test_rows_parameter_transcripts_mode() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -215,7 +215,7 @@ def test_empty_resultset_expansion() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[empty_resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -233,7 +233,7 @@ def test_resultset_with_optional_fields() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -258,7 +258,7 @@ def test_multiple_transcripts_with_resultsets() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=2,  # Scan 2 transcripts
             max_processes=1,
@@ -287,7 +287,7 @@ def test_duckdb_resultset_expansion_basic() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -324,7 +324,7 @@ def test_duckdb_resultset_type_casting() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -357,7 +357,7 @@ def test_duckdb_rows_transcripts_mode() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -384,7 +384,7 @@ def test_duckdb_mixed_scanners() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory(), simple_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -411,7 +411,7 @@ def test_duckdb_preserves_columns() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -440,7 +440,7 @@ def test_duckdb_multiple_transcripts() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=2,  # Scan 2 transcripts
             max_processes=1,
@@ -471,7 +471,7 @@ def test_duckdb_empty_resultset() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[empty_resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -491,7 +491,7 @@ def test_duckdb_query_expanded_results() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -531,7 +531,7 @@ def test_resultset_expansion_nulls_scan_execution_fields() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -554,7 +554,7 @@ def test_duckdb_resultset_expansion_nulls_scan_execution_fields() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -620,7 +620,7 @@ def test_resultset_expansion_with_references() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_with_references_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,
@@ -674,7 +674,7 @@ def test_duckdb_resultset_expansion_with_references() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[resultset_with_references_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,

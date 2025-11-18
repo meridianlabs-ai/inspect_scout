@@ -33,8 +33,7 @@ from ._scanspec import (
     TranscriptField,
 )
 from ._transcript.database.database import TranscriptsDB
-from ._transcript.database.factory import transcripts_db, transcripts_from_db
-from ._transcript.eval_log import transcripts_from_logs
+from ._transcript.factory import transcripts_from
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
 from ._transcript.transcripts import Transcripts, TranscriptsReader
@@ -82,8 +81,7 @@ __all__ = [
     # transcript
     "transcripts_db",
     "TranscriptsDB",
-    "transcripts_from_db",
-    "transcripts_from_logs",
+    "transcripts_from",
     "Transcripts",
     "TranscriptsReader",
     "Transcript",
@@ -123,11 +121,19 @@ __all__ = [
 ]
 
 
-_SCAN_RESULTS_VERSION_2_2 = "0.2.2"
+_DEPRECATED_VERSION_2_2 = "0.2.2"
 _REMOVED_IN = "0.3"
 relocated_module_attribute(
     "scan_results",
     "inspect_scout.scan_results_df",
-    _SCAN_RESULTS_VERSION_2_2,
+    _DEPRECATED_VERSION_2_2,
+    _REMOVED_IN,
+)
+
+
+relocated_module_attribute(
+    "transcripts_from_logs",
+    "inspect_scout.transcripts_from",
+    _DEPRECATED_VERSION_2_2,
     _REMOVED_IN,
 )

@@ -8,22 +8,22 @@ Transcripts are the fundamental input to scanners, and are read from one or more
 
 ## Reading Transcripts
 
-Use the `transcripts_from_logs()` function to read a collection of `Transcripts` from one or more Inspect logs:
+Use the `transcripts_from()` function to read a collection of `Transcripts` from one or more Inspect logs:
 
 ``` python
-from inspect_scout import transcripts_from_logs
+from inspect_scout import transcripts_from
 
 # read from a log directory
-transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts_from("./logs")
 
 # read from an S3 log directory
-transcripts = transcripts_from_logs("s3://my-inspect-logs")
+transcripts = transcripts_from("s3://my-inspect-logs")
 
 # read multiple log directories
-transcripts = transcripts_from_logs(["./logs", "./logs2"])
+transcripts = transcripts_from(["./logs", "./logs2"])
 
 # read from one or more log files
-transcripts = transcripts_from_logs(
+transcripts = transcripts_from(
     ["logs/cybench.eval", "logs/swebench.eval"]
 )
 ```
@@ -33,10 +33,10 @@ transcripts = transcripts_from_logs(
 If you want to scan only a subset of transcripts, you can use the `.where()` method to narrow down the collection. For example:
 
 ``` python
-from inspect_scout import transcripts_from_logs, log_metadata as m
+from inspect_scout import transcripts_from, log_metadata as m
 
 transcripts = (
-    transcripts_from_logs("./logs")
+    transcripts_from("./logs")
     .where(m.task_name == "cybench")
     .where(m.model.like("openai/%"))
 )
@@ -49,10 +49,10 @@ See the `LogMetadata` documentation for the standard metadata fields that are ex
 You can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don't want to process all transcripts). For example:
 
 ``` python
-from inspect_scout import transcripts_from_logs, log_metadata as m
+from inspect_scout import transcripts_from, log_metadata as m
 
 transcripts = (
-    transcripts_from_logs("./logs")
+    transcripts_from("./logs")
     .limit(10)
     .shuffle(42)
 )
@@ -67,13 +67,13 @@ transcripts = (
 Once you have established your list of transcripts to scan, just pass them to the `scan()` function:
 
 ``` python
-from inspect_scout import scan, transcripts_from_logs
+from inspect_scout import scan, transcripts_from
 
 from .scanners import ctf_environment, java_tool_calls
 
 scan(
     scanners = [ctf_environment(), java_tool_calls()],
-    transcripts = transcripts_from_logs("./logs")
+    transcripts = transcripts_from("./logs")
 )
 ```
 

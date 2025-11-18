@@ -55,7 +55,7 @@ from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptIn
 
 TRANSCRIPTS = "transcripts"
 
-LogPaths: TypeAlias = (
+Logs: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
 )
 
@@ -63,10 +63,10 @@ LogPaths: TypeAlias = (
 class EvalLogTranscripts(Transcripts, TranscriptsReader):
     """Collection of transcripts for scanning."""
 
-    def __init__(self, logs: LogPaths | ScanTranscripts) -> None:
+    def __init__(self, logs: Logs | ScanTranscripts) -> None:
         super().__init__()
         if isinstance(logs, ScanTranscripts):
-            self._logs: LogPaths | pd.DataFrame = self._logs_df_from_snapshot(logs)
+            self._logs: Logs | pd.DataFrame = self._logs_df_from_snapshot(logs)
         else:
             self._logs = logs
         self._db: EvalLogTranscriptsDB | None = None
@@ -186,7 +186,7 @@ class EvalLogTranscripts(Transcripts, TranscriptsReader):
 
 
 class EvalLogTranscriptsDB:
-    def __init__(self, logs: LogPaths | pd.DataFrame):
+    def __init__(self, logs: Logs | pd.DataFrame):
         # pandas required
         verify_df_prerequisites()
         import pandas as pd
@@ -389,7 +389,7 @@ class EvalLogTranscriptsDB:
         return "", []
 
 
-def transcripts_from_logs(logs: LogPaths) -> Transcripts:
+def transcripts_from_logs(logs: Logs) -> Transcripts:
     """Read sample transcripts from eval logs.
 
     Args:

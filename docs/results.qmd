@@ -38,13 +38,13 @@ The `scan()` function returns a `Status` object which indicates whether the scan
 
 ``` python
 from inspect_scout import (
-    scan, scan_results, transcripts_from_logs
+    scan, scan_results, transcripts_from
 )
 
 from .scanners import ctf_environment, java_tool_calls
 
 status = scan(
-    transcripts=transcripts_from_logs("./logs"),
+    transcripts=transcripts_from("./logs"),
     scanners=[ctf_environment(), java_tool_calls()]
 )
 

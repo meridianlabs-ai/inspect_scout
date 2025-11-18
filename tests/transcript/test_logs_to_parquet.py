@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator
 import pytest
 import pytest_asyncio
 from inspect_scout import metadata as m
-from inspect_scout import transcripts_from_db, transcripts_from_logs
+from inspect_scout import transcripts_from
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.transcripts import Transcripts
 from inspect_scout._transcript.types import Transcript, TranscriptContent
@@ -19,7 +19,7 @@ TEST_LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 @pytest.fixture
 def log_transcripts() -> Transcripts:
     """Load transcripts from test eval logs."""
-    return transcripts_from_logs(str(TEST_LOGS_DIR))
+    return transcripts_from(str(TEST_LOGS_DIR))
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def parquet_transcripts(
     test_db_location: Path, populated_parquet_db: ParquetTranscriptsDB
 ) -> Transcripts:
     """Get Transcripts interface to the populated Parquet database."""
-    return transcripts_from_db(str(test_db_location))
+    return transcripts_from(str(test_db_location))
 
 
 async def get_transcript_ids(transcripts: Transcripts) -> list[str]:

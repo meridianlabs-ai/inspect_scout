@@ -28,7 +28,7 @@ from jsonschema import Draft7Validator
 from pydantic import BaseModel, ConfigDict, Field
 
 from inspect_scout._scanspec import ScannerSpec, ScannerWork
-from inspect_scout._transcript.eval_log import transcripts_from_logs
+from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
 
@@ -197,7 +197,7 @@ class ScanJob:
 
         # realize transcripts
         if config.transcripts is not None:
-            kwargs["transcripts"] = transcripts_from_logs(config.transcripts)
+            kwargs["transcripts"] = transcripts_from(config.transcripts)
 
         return ScanJob(**kwargs)
 

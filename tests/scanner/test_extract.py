@@ -586,7 +586,7 @@ def test_exclude_parameters(
 @pytest.mark.asyncio
 async def test_messages_as_str(
     messages: list[ChatMessage],
-    filter: MessagesPreprocessor | None,
+    filter: MessagesPreprocessor[list[ChatMessage]] | None,
     include_ids: bool,
     expected_result: str,
     expected_ids: dict[str, str] | None,
@@ -614,9 +614,8 @@ async def test_messages_as_str_with_preprocessor() -> None:
     """Test messages_as_str with async message preprocessor."""
 
     async def keep_only_user_messages(
-        input: Transcript | list[ChatMessage],
+        messages: list[ChatMessage],
     ) -> list[ChatMessage]:
-        messages = input if isinstance(input, list) else input.messages
         return [m for m in messages if m.role == "user"]
 
     messages: list[ChatMessage] = [
@@ -678,10 +677,9 @@ async def test_messages_as_str_with_transcript_and_preprocessor() -> None:
     """Test messages_as_str with Transcript and preprocessor."""
 
     async def keep_only_user_messages(
-        input: Transcript | list[ChatMessage],
+        transcript: Transcript,
     ) -> list[ChatMessage]:
-        messages = input if isinstance(input, list) else input.messages
-        return [m for m in messages if m.role == "user"]
+        return [m for m in transcript.messages if m.role == "user"]
 
     transcript = Transcript(
         id="test-789",
@@ -711,6 +709,56 @@ async def test_messages_as_str_with_transcript_and_preprocessor() -> None:
     assert len(refs) == 2
     assert refs[0].id == "msg1"
     assert refs[1].id == "msg3"
+
+
+@pytest.mark.asyncio
+async def test_type_checking_with_generic_preprocessor() -> None:
+    """Test that generic MessagesPreprocessor enforces type safety.
+
+    Valid combinations:
+    - list[ChatMessage] input + list[ChatMessage] transform
+    - Transcript input + Transcript transform
+    - Either input + no transform
+
+    Invalid combinations (caught by mypy):
+    - Transcript input + list[ChatMessage] transform (type error)
+    - list[ChatMessage] input + Transcript transform (type error)
+    """
+
+    async def list_transform(messages: list[ChatMessage]) -> list[ChatMessage]:
+        return [m for m in messages if m.role == "user"]
+
+    async def transcript_transform(transcript: Transcript) -> list[ChatMessage]:
+        return transcript.messages
+
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi", id="msg2"),
+    ]
+    transcript = Transcript(
+        id="t1", source_id="s1", source_uri="test://uri", messages=messages
+    )
+
+    # Valid: matching types
+    result1 = await messages_as_str(
+        messages, preprocessor=MessagesPreprocessor(transform=list_transform)
+    )
+    assert "Hello" in result1 and "Hi" not in result1
+
+    result2 = await messages_as_str(
+        transcript, preprocessor=MessagesPreprocessor(transform=transcript_transform)
+    )
+    assert "Hello" in result2
+
+    # Valid: no transform works with both
+    result3 = await messages_as_str(
+        messages, preprocessor=MessagesPreprocessor[list[ChatMessage]]()
+    )
+    result4 = await messages_as_str(
+        transcript, preprocessor=MessagesPreprocessor[Transcript]()
+    )
+    assert "Hello" in result3 and "Hi" in result3
+    assert "Hello" in result4 and "Hi" in result4
 
 
 @pytest.mark.parametrize(

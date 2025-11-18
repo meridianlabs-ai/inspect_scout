@@ -15,9 +15,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
-from inspect_ai.event._event import Event
-from inspect_ai.model._chat_message import ChatMessage
-from pydantic import TypeAdapter
 from typing_extensions import override
 
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
@@ -30,7 +27,6 @@ from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
 # TODO: ScanTranscritps and recovery
-# TODO: read_table could read directly into temp file
 
 # Reserved column names that cannot be used as metadata keys
 # These are actual Parquet columns, so metadata keys cannot use these names
@@ -42,10 +38,6 @@ RESERVED_COLUMNS = {
     "messages",
     "events",
 }
-
-# Type adapters for parsing Union types
-_chat_message_adapter: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
-_event_adapter: TypeAdapter[Event] = TypeAdapter(Event)
 
 
 class ParquetTranscriptsDB(TranscriptsDB):

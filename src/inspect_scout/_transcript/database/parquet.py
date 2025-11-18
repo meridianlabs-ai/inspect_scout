@@ -4,6 +4,7 @@ import glob
 import hashlib
 import json
 import os
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +15,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai._util.file import filesystem
+from inspect_ai._util.file import basename, filesystem
 from typing_extensions import override
 
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
@@ -38,14 +39,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
     S3 storage with hybrid caching strategy.
     """
 
-    BATCH_SIZE = 1000
-    """Number of transcripts to batch before writing a Parquet file."""
-
     def __init__(
         self,
         location: str,
         memory_limit: str = "4GB",
         cache_dir: Path | None = None,
+        batch_size: int = 100,
     ) -> None:
         """Initialize Parquet transcript database.
 
@@ -53,10 +52,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
             location: Directory path (local or S3) containing Parquet files.
             memory_limit: DuckDB memory limit (e.g., '4GB', '8GB').
             cache_dir: Optional cache directory for S3 files. If None, creates temp cache.
+            batch_size: Maximum number of transcripts in a parquet file.
         """
         super().__init__(location)
         self._memory_limit = memory_limit
         self._cache_dir = cache_dir
+        self._batch_size = batch_size
 
         # State (initialized in connect)
         self._conn: duckdb.DuckDBPyConnection | None = None
@@ -133,14 +134,33 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Args:
             transcripts: Transcripts to insert (iterable or async iterator).
         """
+        last_source_id: str | None = None
         batch: list[Transcript] = []
         async for transcript in self._as_async_iterator(transcripts):
+            # flush if the source id changed
+            if last_source_id is not None:
+                if transcript.source_id != last_source_id:
+                    await self._write_parquet_batch(batch)
+                    batch = []
+            last_source_id = transcript.source_id
+
+            # tick
+            print(f"{basename(transcript.source_uri)} ({transcript.transcript_id})")
+
+            # append to batch
             batch.append(transcript)
-            if len(batch) >= self.BATCH_SIZE:
+
+            # enforce batch size
+            if len(batch) >= self._batch_size:
                 await self._write_parquet_batch(batch)
                 batch = []
+
+        # write any leftover elements
         if batch:
             await self._write_parquet_batch(batch)
+
+        # refresh the view
+        await self._create_transcripts_view()
 
     @override
     async def count(
@@ -528,9 +548,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Determine output path and write Parquet file
         assert self._location is not None
         if self._location.startswith("s3://"):
-            # For S3, write to temp file then upload
-            import tempfile
+            s3_path = f"{self._location.rstrip('/')}/{filename}"
 
+            # For S3, write to temp file then upload
             with tempfile.NamedTemporaryFile(
                 suffix=".parquet", delete=False
             ) as tmp_file:
@@ -549,6 +569,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 s3_path = f"{self._location.rstrip('/')}/{filename}"
                 assert self._fs is not None
                 await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
+                print(s3_path)
             finally:
                 # Clean up temp file
                 Path(tmp_path).unlink(missing_ok=True)
@@ -564,8 +585,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 use_dictionary=True,
             )
 
-        # Refresh view to include new file
-        await self._create_transcripts_view()
+            print(output_path.as_posix())
 
     async def _create_transcripts_view(self) -> None:
         """Create or refresh DuckDB view of all Parquet files with schema union."""
@@ -616,24 +636,27 @@ class ParquetTranscriptsDB(TranscriptsDB):
             assert self._fs is not None
             assert self._cache is not None
 
-            # List all files in directory (returns list of paths as strings)
+            # List all files in directory (returns list of FileInfo objects)
+            from inspect_ai._util.file import FileInfo
+
             fs = filesystem(self._location)
             all_files = fs.ls(self._location)
             # Filter for transcript parquet files
-            files = [
-                f["name"] if isinstance(f, dict) else str(f)
-                for f in all_files
-                if (
-                    isinstance(f, dict)
-                    and f.get("name", "").endswith(".parquet")
-                    and "transcripts_" in f.get("name", "")
-                )
-                or (
-                    isinstance(f, str)
-                    and f.endswith(".parquet")
-                    and "transcripts_" in f
-                )
-            ]
+            files = []
+            for f in all_files:
+                # Get the file name from different possible types
+                if isinstance(f, FileInfo):
+                    name = f.name
+                elif isinstance(f, dict):
+                    name = f.get("name", "")
+                elif isinstance(f, str):
+                    name = f
+                else:
+                    continue
+
+                # Check if it's a transcript parquet file
+                if name.endswith(".parquet") and "transcripts_" in name:
+                    files.append(name)
 
             # Try to cache files, but if cache is full, use S3 URIs directly
             file_paths = []

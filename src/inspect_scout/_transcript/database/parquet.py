@@ -13,7 +13,6 @@ import duckdb
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from anyio import to_thread
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai.event._event import Event
@@ -258,11 +257,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     @override
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
-        """Load full transcript content from Parquet using streaming.
-
-        Uses a hybrid approach:
-        1. DuckDB to find which Parquet file contains the transcript
-        2. PyArrow to stream the content bytes from separate columns
+        """Load full transcript content using DuckDB.
 
         Args:
             t: TranscriptInfo identifying the transcript.
@@ -287,12 +282,19 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 metadata=t.metadata,
             )
 
-        # Step 1: Find which Parquet file contains this transcript
-        # We need to check each file since DuckDB creates a union view
-        file_paths = await self._discover_parquet_files()
+        # Build column list for SELECT
+        columns = []
+        if need_messages:
+            columns.append("messages")
+        if need_events:
+            columns.append("events")
 
-        if not file_paths:
-            # Return transcript with no content
+        # Query DuckDB for the content columns
+        sql = f"SELECT {', '.join(columns)} FROM transcripts WHERE id = ?"
+        result = self._conn.execute(sql, [t.id]).fetchone()
+
+        if not result:
+            # Transcript not found
             return Transcript(
                 id=t.id,
                 source_type=t.source_type,
@@ -301,84 +303,47 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 metadata=t.metadata,
             )
 
-        # Step 2: Find the file containing this transcript ID
-        content_file = None
-        for file_path in file_paths:
-            # Quick check if this file contains the ID
-            result = self._conn.execute(
-                "SELECT 1 FROM read_parquet(?) WHERE id = ? LIMIT 1",
-                [file_path, t.id],
-            ).fetchone()
-            if result:
-                content_file = file_path
-                break
+        # Extract column values
+        messages_json: str | None = None
+        events_json: str | None = None
 
-        if not content_file:
-            # Transcript not found in any file
-            return Transcript(
-                id=t.id,
-                source_type=t.source_type,
-                source_id=t.source_id,
-                source_uri=t.source_uri,
-                metadata=t.metadata,
-            )
+        col_idx = 0
+        if need_messages:
+            messages_json = result[col_idx]
+            col_idx += 1
+        if need_events:
+            events_json = result[col_idx]
 
-        # Step 3: Stream combined JSON from separate columns
-        # To minimize memory usage for large content (events can be >1GB),
-        # we read and stream each column separately
+        # Stream combined JSON construction
         async def stream_content_bytes() -> AsyncIterator[bytes]:
             """Stream construction of combined JSON object."""
-
-            # Helper to read a single column
-            def read_column(column_name: str) -> str | None:
-                """Blocking read operation run in thread pool."""
-                table = pq.read_table(
-                    content_file,
-                    columns=["id", column_name],
-                    filters=[("id", "==", t.id)],
-                    use_threads=False,
-                )
-                if table.num_rows == 0:
-                    return None
-                value: str | None = table.column(column_name)[0].as_py()
-                return value
-
-            # Start the combined JSON object
             yield b"{"
 
-            # Stream messages column if needed
-            if need_messages:
-                messages_json = await to_thread.run_sync(
-                    lambda: read_column("messages")
-                )
-                if messages_json:
-                    # Strip outer braces from {"messages": [...]} to get "messages": [...]
-                    messages_bytes = messages_json.encode("utf-8")
-                    if messages_bytes.startswith(b"{") and messages_bytes.endswith(
-                        b"}"
-                    ):
-                        inner = messages_bytes[1:-1]  # Remove { and }
-                        # Stream in 64KB chunks
-                        chunk_size = 64 * 1024
-                        for i in range(0, len(inner), chunk_size):
-                            yield inner[i : i + chunk_size]
+            # Stream messages if we have them
+            if messages_json:
+                # Strip outer braces from {"messages": [...]} to get "messages": [...]
+                messages_bytes = messages_json.encode("utf-8")
+                if messages_bytes.startswith(b"{") and messages_bytes.endswith(b"}"):
+                    inner = messages_bytes[1:-1]  # Remove { and }
+                    # Stream in 64KB chunks
+                    chunk_size = 64 * 1024
+                    for i in range(0, len(inner), chunk_size):
+                        yield inner[i : i + chunk_size]
 
-            # Add separator if we have both columns
-            if need_messages and need_events:
+            # Add separator if we have both
+            if messages_json and events_json:
                 yield b", "
 
-            # Stream events column if needed
-            if need_events:
-                events_json = await to_thread.run_sync(lambda: read_column("events"))
-                if events_json:
-                    # Strip outer braces from {"events": [...]} to get "events": [...]
-                    events_bytes = events_json.encode("utf-8")
-                    if events_bytes.startswith(b"{") and events_bytes.endswith(b"}"):
-                        inner = events_bytes[1:-1]  # Remove { and }
-                        # Stream in 64KB chunks
-                        chunk_size = 64 * 1024
-                        for i in range(0, len(inner), chunk_size):
-                            yield inner[i : i + chunk_size]
+            # Stream events if we have them
+            if events_json:
+                # Strip outer braces from {"events": [...]} to get "events": [...]
+                events_bytes = events_json.encode("utf-8")
+                if events_bytes.startswith(b"{") and events_bytes.endswith(b"}"):
+                    inner = events_bytes[1:-1]  # Remove { and }
+                    # Stream in 64KB chunks
+                    chunk_size = 64 * 1024
+                    for i in range(0, len(inner), chunk_size):
+                        yield inner[i : i + chunk_size]
 
             # Close the combined JSON object
             yield b"}"

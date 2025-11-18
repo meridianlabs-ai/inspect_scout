@@ -715,13 +715,12 @@ class ParquetTranscripts(Transcripts):
         Returns:
             TranscriptsReader configured with current query parameters.
         """
-        if self._db is None:
-            self._db = ParquetTranscriptsDB(
-                self._location,
-                memory_limit=self._memory_limit,
-                cache_dir=self._cache_dir,
-            )
-        return TranscriptsDBReader(self._db, None, self._query)
+        db = ParquetTranscriptsDB(
+            self._location,
+            memory_limit=self._memory_limit,
+            cache_dir=self._cache_dir,
+        )
+        return TranscriptsDBReader(db, self._query)
 
 
 def _validate_metadata_keys(metadata: dict[str, Any]) -> None:

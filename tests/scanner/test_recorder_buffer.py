@@ -18,7 +18,7 @@ def recorder_buffer() -> Generator[RecorderBuffer]:
         spec = ScanSpec(
             scan_name="myscan",
             transcripts=ScanTranscripts(
-                type="inspect_log",
+                type="eval_log",
                 fields=[],
                 count=0,
                 data="",

@@ -25,7 +25,7 @@ from inspect_scout._transcript.eval_log import EvalLogTranscripts
 from inspect_scout._util.constants import (
     DEFAULT_MAX_TRANSCRIPTS,
     PKG_NAME,
-    TRANSCRIPT_SOURCE_INSPECT_LOG,
+    TRANSCRIPT_SOURCE_EVAL_LOG,
 )
 from inspect_scout._validation.types import ValidationSet
 
@@ -208,7 +208,7 @@ def job_args(scanjob: ScanJob) -> dict[str, Any] | None:
 
 
 async def _transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
-    if snapshot.type in [TRANSCRIPT_SOURCE_INSPECT_LOG, "eval_log"]:
+    if snapshot.type in [TRANSCRIPT_SOURCE_EVAL_LOG, "eval_log"]:
         return EvalLogTranscripts(snapshot)
     else:
         raise ValueError(f"Unrecognized transcript type '{snapshot.type}")

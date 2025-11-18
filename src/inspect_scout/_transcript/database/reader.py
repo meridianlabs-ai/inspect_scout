@@ -1,8 +1,10 @@
 """TranscriptsReader implementation for TranscriptDB backends."""
 
+import io
 from types import TracebackType
 from typing import AsyncIterator
 
+import pandas as pd
 from typing_extensions import override
 
 from inspect_scout._scanspec import ScanTranscripts, TranscriptField
@@ -18,11 +20,9 @@ class TranscriptsDBReader(TranscriptsReader):
     def __init__(
         self,
         db: TranscriptsDB,
-        content_db: TranscriptsDB | None,
         query: TranscriptsQuery,
     ) -> None:
         self._db = db
-        self._content_db = content_db or db
         self._query = query
 
     @override
@@ -77,7 +77,7 @@ class TranscriptsDBReader(TranscriptsReader):
         Returns:
             Full Transcript with content.
         """
-        return await self._content_db.read(transcript, content)
+        return await self._db.read(transcript, content)
 
     @override
     async def snapshot(self) -> ScanTranscripts:
@@ -88,12 +88,6 @@ class TranscriptsDBReader(TranscriptsReader):
         """
         # Collect all matching transcript IDs
         sample_ids = [info.id async for info in self.index()]
-
-        # For now, create a simple snapshot
-        # TODO: Implement proper Parquet-based snapshot
-        import io
-
-        import pandas as pd
 
         # Create minimal DataFrame with IDs
         df = pd.DataFrame({"id": sample_ids})
@@ -107,7 +101,8 @@ class TranscriptsDBReader(TranscriptsReader):
         fields: list[TranscriptField] = [{"name": "id", "type": "string"}]
 
         return ScanTranscripts(
-            type="parquet",
+            type="database",
+            location=self._db._location,
             fields=fields,
             count=len(sample_ids),
             data=data,

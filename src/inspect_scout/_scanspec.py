@@ -77,8 +77,11 @@ class TranscriptField(TypedDict, total=False):
 class ScanTranscripts(BaseModel):
     """Transcripts targeted by a scan."""
 
-    type: str
-    """Transcripts backing store type (currently only 'eval_log')."""
+    type: Literal["eval_log", "database"]
+    """Transcripts backing store type ('eval_log' or 'database')."""
+
+    location: str | None = Field(default=None)
+    """Location of transcript collection (e.g. database location)."""
 
     fields: list[TranscriptField]
     """Data types of transcripts fields."""

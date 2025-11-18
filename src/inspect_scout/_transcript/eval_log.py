@@ -44,7 +44,7 @@ from inspect_ai.log._file import (
 from typing_extensions import override
 
 from inspect_scout._util.async_zip import AsyncZipReader
-from inspect_scout._util.constants import TRANSCRIPT_SOURCE_INSPECT_LOG
+from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 from .._scanspec import ScanTranscripts, TranscriptField
 from .json.load_filtered import load_filtered_transcript
@@ -122,7 +122,7 @@ class EvalLogTranscripts(Transcripts, TranscriptsReader):
         data = buffer.getvalue()
 
         return ScanTranscripts(
-            type=TRANSCRIPT_SOURCE_INSPECT_LOG,
+            type="eval_log",
             fields=fields,
             count=len(df),
             data=data,
@@ -323,7 +323,7 @@ class EvalLogTranscriptsDB:
 
             yield TranscriptInfo(
                 id=transcript_id,
-                source_type=TRANSCRIPT_SOURCE_INSPECT_LOG,
+                source_type=TRANSCRIPT_SOURCE_EVAL_LOG,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
                 metadata=metadata,

@@ -1,3 +1,4 @@
+from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.database import TranscriptsDB
 from inspect_scout._transcript.database.parquet import (
     ParquetTranscripts,
@@ -43,3 +44,19 @@ def transcripts_from_db(location: str) -> Transcripts:
         ```
     """
     return ParquetTranscripts(location=location)
+
+
+def transcripts_from_db_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+    if not snapshot.type == "database":
+        raise ValueError(
+            f"Snapshot is of type '{snapshot.type}' (must be of type 'database')"
+        )
+    if snapshot.location is None:
+        raise ValueError("Snapshot does not have a 'location' so cannot be restored.")
+
+    # create transcripts
+    transcripts = ParquetTranscripts(snapshot.location)
+
+    # TODO: apply where clause to constrain to the IDs in the snapshot
+
+    return transcripts

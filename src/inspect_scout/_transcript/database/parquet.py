@@ -7,7 +7,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterable, cast
+from typing import Any, AsyncIterator, Callable, Iterable, cast
 
 import duckdb
 import pandas as pd
@@ -41,7 +41,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def __init__(
         self,
         location: str,
-        cache_dir: Path | None = None,
         batch_size: int = 100,
     ) -> None:
         """Initialize Parquet transcript database.
@@ -52,13 +51,18 @@ class ParquetTranscriptsDB(TranscriptsDB):
             batch_size: Maximum number of transcripts in a parquet file.
         """
         super().__init__(location)
-        self._cache_dir = cache_dir
         self._batch_size = batch_size
+
+        # initialize cache
+        self._cache_cleanup: Callable[[], None] | None = None
+        self._cache = LocalFilesCache.task_cache()
+        if self._cache is None:
+            self._cache = create_temp_cache()
+            self._cache_cleanup = self._cache.cleanup
 
         # State (initialized in connect)
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._fs: AsyncFilesystem | None = None
-        self._cache: LocalFilesCache | None = None
         self._current_shuffle_seed: int | None = None
 
     @override
@@ -91,11 +95,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._location is not None
         if self._location.startswith("s3://"):
             self._fs = AsyncFilesystem()
-            self._cache = (
-                LocalFilesCache(self._cache_dir)
-                if self._cache_dir
-                else create_temp_cache()
-            )
 
         # Discover and register Parquet files
         await self._create_transcripts_view()
@@ -112,9 +111,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             await self._fs.close()
             self._fs = None
 
-        if self._cache is not None:
-            self._cache.cleanup()
-            self._cache = None
+        if self._cache_cleanup is not None:
+            self._cache_cleanup()
+            self._cache_cleanup = None
 
     @override
     async def insert(
@@ -718,18 +717,15 @@ class ParquetTranscripts(Transcripts):
     def __init__(
         self,
         location: str,
-        cache_dir: Path | None = None,
     ) -> None:
         """Initialize Parquet transcript collection.
 
         Args:
             location: Directory path (local or S3) containing Parquet files.
             memory_limit: DuckDB memory limit (e.g., '4GB', '8GB').
-            cache_dir: Optional cache directory for S3 files.
         """
         super().__init__()
         self._location = location
-        self._cache_dir = cache_dir
         self._db: ParquetTranscriptsDB | None = None
 
     @override
@@ -739,10 +735,7 @@ class ParquetTranscripts(Transcripts):
         Returns:
             TranscriptsReader configured with current query parameters.
         """
-        db = ParquetTranscriptsDB(
-            self._location,
-            cache_dir=self._cache_dir,
-        )
+        db = ParquetTranscriptsDB(self._location)
         return TranscriptsDBReader(db, self._query)
 
 

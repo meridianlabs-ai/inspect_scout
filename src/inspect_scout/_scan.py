@@ -31,6 +31,10 @@ from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 from rich.console import RenderableType
 
+from inspect_scout._transcript.local_files_cache import (
+    cleanup_task_files_cache,
+    init_task_files_cache,
+)
 from inspect_scout._util.attachments import resolve_event_attachments
 from inspect_scout._util.refusal import RefusalError
 from inspect_scout._validation.types import ValidationSet
@@ -463,6 +467,9 @@ async def _scan_async_inner(
         # set background task group for this coroutine (used by batching)
         set_background_task_group(tg)
 
+        # initialize task local files cache
+        init_task_files_cache()
+
         # apply limits/shuffle
         transcripts = scan.transcripts
         if scan.spec.options.limit is not None:
@@ -705,6 +712,9 @@ async def _scan_async_inner(
 
     except anyio.get_cancelled_exc_class():
         return await handle_scan_interrupted("Aborted!", scan.spec, recorder)
+
+    finally:
+        cleanup_task_files_cache()
 
 
 def top_level_sync_init(display: DisplayType | None) -> None:

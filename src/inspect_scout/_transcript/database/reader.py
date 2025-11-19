@@ -8,6 +8,7 @@ import pandas as pd
 from typing_extensions import override
 
 from inspect_scout._scanspec import ScanTranscripts, TranscriptField
+from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
 from ..transcripts import TranscriptsQuery, TranscriptsReader
 from ..types import Transcript, TranscriptContent, TranscriptInfo
@@ -101,7 +102,7 @@ class TranscriptsDBReader(TranscriptsReader):
         fields: list[TranscriptField] = [{"name": "id", "type": "string"}]
 
         return ScanTranscripts(
-            type="database",
+            type=TRANSCRIPT_SOURCE_DATABASE,
             location=self._db._location,
             fields=fields,
             count=len(sample_ids),

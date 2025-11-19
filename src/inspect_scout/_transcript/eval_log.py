@@ -127,7 +127,7 @@ class EvalLogTranscripts(Transcripts, TranscriptsReader):
         data = buffer.getvalue()
 
         return ScanTranscripts(
-            type="eval_log",
+            type=TRANSCRIPT_SOURCE_EVAL_LOG,
             fields=fields,
             count=len(df),
             data=data,

@@ -46,7 +46,7 @@ class TranscriptInfo(BaseModel):
     """Globally unique id for transcript (e.g. sample uuid)."""
 
     source_type: str
-    """Type of source for transcript (e.g. "eval_log")."""
+    """Type of source for transcript (e.g. "database" or "eval_log")."""
 
     source_id: str
     """Globally unique ID for transcript source (e.g. eval_id)."""

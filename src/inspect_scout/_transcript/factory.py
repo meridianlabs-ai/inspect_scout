@@ -9,6 +9,10 @@ from inspect_scout._transcript.database.factory import transcripts_from_db
 from inspect_scout._transcript.database.parquet import PARQUET_TRANSCRIPTS_GLOB
 from inspect_scout._transcript.eval_log import Logs, transcripts_from_logs
 from inspect_scout._transcript.transcripts import Transcripts
+from inspect_scout._util.constants import (
+    TRANSCRIPT_SOURCE_DATABASE,
+    TRANSCRIPT_SOURCE_EVAL_LOG,
+)
 
 
 def transcripts_from(location: str | Logs) -> Transcripts:
@@ -42,7 +46,7 @@ def transcripts_from(location: str | Logs) -> Transcripts:
         match _location_type(locations_str[0]):
             case "database":
                 return transcripts_from_db(locations_str[0])
-            case "inspect_log":
+            case "eval_log":
                 return transcripts_from_logs(locations_str[0])
     else:
         # if any of the locations are "database" this is invalid
@@ -53,7 +57,7 @@ def transcripts_from(location: str | Logs) -> Transcripts:
         return transcripts_from_logs(locations_str)
 
 
-def _location_type(location: str | PathLike[str]) -> Literal["inspect_log", "database"]:
+def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "database"]:
     """Determine the type of location based on its contents.
 
     Args:
@@ -61,21 +65,21 @@ def _location_type(location: str | PathLike[str]) -> Literal["inspect_log", "dat
 
     Returns:
         "database" if location contains parquet files or is empty,
-        "inspect_log" otherwise
+        otherwise "eval_log"
     """
     location_path = UPath(location)
 
     # Check for parquet files with the database naming convention
     parquet_files = list(location_path.glob(PARQUET_TRANSCRIPTS_GLOB))
     if parquet_files:
-        return "database"
+        return TRANSCRIPT_SOURCE_DATABASE
 
     # Check if directory is empty
     if location_path.is_dir():
         # Check if there are any files or subdirectories (efficiently, without materializing the full list)
         if next(location_path.iterdir(), None) is None:
             # Empty directory - treat as database location
-            return "database"
+            return TRANSCRIPT_SOURCE_DATABASE
 
     # Non-empty directory without parquet files - assume inspect_log
-    return "inspect_log"
+    return TRANSCRIPT_SOURCE_EVAL_LOG

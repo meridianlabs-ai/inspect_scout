@@ -9,6 +9,7 @@ from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
 from inspect_scout._scanner.result import Reference, Result, ResultReport
 from inspect_scout._scanspec import ScannerSpec, ScanSpec, ScanTranscripts
 from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 
 @pytest.fixture
@@ -18,7 +19,7 @@ def recorder_buffer() -> Generator[RecorderBuffer]:
         spec = ScanSpec(
             scan_name="myscan",
             transcripts=ScanTranscripts(
-                type="eval_log",
+                type=TRANSCRIPT_SOURCE_EVAL_LOG,
                 fields=[],
                 count=0,
                 data="",

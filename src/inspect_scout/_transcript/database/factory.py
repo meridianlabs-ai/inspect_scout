@@ -10,6 +10,7 @@ from inspect_scout._transcript.database.parquet import (
 )
 from inspect_scout._transcript.metadata import Column
 from inspect_scout._transcript.transcripts import Transcripts
+from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
 
 def transcripts_db(location: str) -> TranscriptsDB:
@@ -55,9 +56,9 @@ def transcripts_from_db(location: str) -> Transcripts:
 
 
 def transcripts_from_db_snapshot(snapshot: ScanTranscripts) -> Transcripts:
-    if not snapshot.type == "database":
+    if not snapshot.type == TRANSCRIPT_SOURCE_DATABASE:
         raise ValueError(
-            f"Snapshot is of type '{snapshot.type}' (must be of type 'database')"
+            f"Snapshot is of type '{snapshot.type}' (must be of type '{TRANSCRIPT_SOURCE_DATABASE}')"
         )
     if snapshot.location is None:
         raise ValueError("Snapshot does not have a 'location' so cannot be restored.")

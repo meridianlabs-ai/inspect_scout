@@ -69,7 +69,7 @@ from ._transcript.types import (
     TranscriptInfo,
 )
 from ._transcript.util import union_transcript_contents
-from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+from ._util.constants import DEFAULT_MAX_TRANSCRIPTS, TRANSCRIPT_SOURCE_DATABASE
 from ._util.log import init_log
 
 logger = getLogger(__name__)
@@ -659,6 +659,7 @@ async def _scan_async_inner(
                         diagnostics=diagnostics,
                     )
                     if total_scans == 1
+                    or scan.spec.transcripts.type == TRANSCRIPT_SOURCE_DATABASE
                     or scan.spec.options.limit == 1
                     or scan.spec.options.max_processes == 1
                     or os.name == "nt"

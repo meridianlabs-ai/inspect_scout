@@ -320,14 +320,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Stream messages if we have them
             if messages_json:
-                # Strip outer braces from {"messages": [...]} to get "messages": [...]
+                yield b'"messages": '
+                # Stream the array directly in 64KB chunks
                 messages_bytes = messages_json.encode("utf-8")
-                if messages_bytes.startswith(b"{") and messages_bytes.endswith(b"}"):
-                    inner = messages_bytes[1:-1]  # Remove { and }
-                    # Stream in 64KB chunks
-                    chunk_size = 64 * 1024
-                    for i in range(0, len(inner), chunk_size):
-                        yield inner[i : i + chunk_size]
+                chunk_size = 64 * 1024
+                for i in range(0, len(messages_bytes), chunk_size):
+                    yield messages_bytes[i : i + chunk_size]
 
             # Add separator if we have both
             if messages_json and events_json:
@@ -335,14 +333,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Stream events if we have them
             if events_json:
-                # Strip outer braces from {"events": [...]} to get "events": [...]
+                yield b'"events": '
+                # Stream the array directly in 64KB chunks
                 events_bytes = events_json.encode("utf-8")
-                if events_bytes.startswith(b"{") and events_bytes.endswith(b"}"):
-                    inner = events_bytes[1:-1]  # Remove { and }
-                    # Stream in 64KB chunks
-                    chunk_size = 64 * 1024
-                    for i in range(0, len(inner), chunk_size):
-                        yield inner[i : i + chunk_size]
+                chunk_size = 64 * 1024
+                for i in range(0, len(events_bytes), chunk_size):
+                    yield events_bytes[i : i + chunk_size]
 
             # Close the combined JSON object
             yield b"}"
@@ -410,9 +406,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Validate metadata keys don't conflict with reserved names
         _validate_metadata_keys(transcript.metadata)
 
-        # Serialize messages and events to separate JSON strings
-        messages_dict = {"messages": [msg.model_dump() for msg in transcript.messages]}
-        events_dict = {"events": [event.model_dump() for event in transcript.events]}
+        # Serialize messages and events as JSON arrays
+        messages_array = [msg.model_dump() for msg in transcript.messages]
+        events_array = [event.model_dump() for event in transcript.events]
 
         # Start with reserved fields
         row: dict[str, Any] = {
@@ -420,8 +416,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
-            "messages": json.dumps(messages_dict),
-            "events": json.dumps(events_dict),
+            "messages": json.dumps(messages_array),
+            "events": json.dumps(events_array),
         }
 
         # Flatten metadata: add each key as a column

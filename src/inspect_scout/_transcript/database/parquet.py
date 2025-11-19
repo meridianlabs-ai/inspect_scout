@@ -649,16 +649,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 if name.endswith(".parquet") and "transcripts_" in name:
                     files.append(name)
 
-            # Try to cache files, but if cache is full, use S3 URIs directly
-            file_paths = []
-            for file_uri in files:
-                cached_path = await self._cache.resolve_remote_uri_to_local(
-                    self._fs, file_uri
-                )
-                # If caching failed (exceeded 5GB), cached_path == file_uri
-                file_paths.append(cached_path)
+            # no caching for now (downoads block initial startup and aggregate
+            # gain seems minimal)
+            return files
 
-            return file_paths
+            # Try to cache files, but if cache is full, use S3 URIs directly
+            # file_paths = []
+            # for file_uri in files:
+            #     cached_path = await self._cache.resolve_remote_uri_to_local(
+            #         self._fs, file_uri
+            #     )
+            #     # If caching failed (exceeded 5GB), cached_path == file_uri
+            #     file_paths.append(cached_path)
+
+            # return file_paths
         else:
             location_path = Path(self._location)
             if not location_path.exists():

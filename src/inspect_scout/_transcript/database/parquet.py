@@ -79,6 +79,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._conn.execute("INSTALL httpfs")
         self._conn.execute("LOAD httpfs")
 
+        # Create secret that automatically picks up credentials from environment
+        self._conn.execute("""
+            CREATE SECRET (
+                TYPE S3,
+                PROVIDER credential_chain
+            )
+        """)
+
         # Configure S3 credentials from environment
         if os.getenv("AWS_ACCESS_KEY_ID"):
             self._conn.execute(

@@ -74,26 +74,26 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Create DuckDB connection
         self._conn = duckdb.connect(":memory:")
 
-        # Install httpfs extension for S3 support
-        self._conn.execute("INSTALL httpfs")
-        self._conn.execute("LOAD httpfs")
-
-        # Create secret that automatically picks up credentials from environment
-        self._conn.execute("""
-            CREATE SECRET (
-                TYPE S3,
-                PROVIDER credential_chain
-            )
-        """)
-
-        # Enable DuckDB's HTTP/S3 caching features for better performance
-        self._conn.execute("SET enable_http_metadata_cache=true")
-        self._conn.execute("SET http_keep_alive=true")
-        self._conn.execute("SET http_timeout=30000")  # 30 seconds
-
         # Initialize filesystem and cache
         assert self._location is not None
         if self._location.startswith("s3://"):
+            # Install httpfs extension for S3 support
+            self._conn.execute("INSTALL httpfs")
+            self._conn.execute("LOAD httpfs")
+
+            # Create secret that automatically picks up credentials from environment
+            self._conn.execute("""
+                CREATE SECRET (
+                    TYPE S3,
+                    PROVIDER credential_chain
+                )
+            """)
+
+            # Enable DuckDB's HTTP/S3 caching features for better performance
+            self._conn.execute("SET enable_http_metadata_cache=true")
+            self._conn.execute("SET http_keep_alive=true")
+            self._conn.execute("SET http_timeout=30000")  # 30 seconds
+
             self._fs = AsyncFilesystem()
 
         # Discover and register Parquet files

@@ -87,17 +87,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             )
         """)
 
-        # Configure S3 credentials from environment
-        if os.getenv("AWS_ACCESS_KEY_ID"):
-            self._conn.execute(
-                f"SET s3_access_key_id='{os.getenv('AWS_ACCESS_KEY_ID')}'"
-            )
-            self._conn.execute(
-                f"SET s3_secret_access_key='{os.getenv('AWS_SECRET_ACCESS_KEY')}'"
-            )
-        if os.getenv("AWS_REGION"):
-            self._conn.execute(f"SET s3_region='{os.getenv('AWS_REGION')}'")
-
         # Enable DuckDB's HTTP/S3 caching features for better performance
         self._conn.execute("SET enable_http_metadata_cache=true")
         self._conn.execute("SET http_keep_alive=true")

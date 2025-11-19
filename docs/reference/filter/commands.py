@@ -11,7 +11,6 @@ from contextlib import ExitStack, contextmanager
 from typing import Any, Iterator, cast
 
 import click
-from click._utils import UNSET
 from markdown.extensions.toc import slugify
 
 
@@ -45,7 +44,7 @@ def make_command_docs(
 
 def _recursively_make_command_docs(
     prog_name: str,
-    command: click.BaseCommand,
+    command: click.Command,
     parent: click.Context | None = None,
     depth: int = 0,
     style: str = "plain",
@@ -92,9 +91,9 @@ def _recursively_make_command_docs(
 
 
 def _build_command_context(
-    prog_name: str, command: click.BaseCommand, parent: click.Context | None
+    prog_name: str, command: click.Command, parent: click.Context | None
 ) -> click.Context:
-    return click.Context(cast(click.Command, command), info_name=prog_name, parent=parent)
+    return click.Context(command, info_name=prog_name, parent=parent)
 
 
 def _get_sub_commands(command: click.Command, ctx: click.Context) -> list[click.Command]:
@@ -315,7 +314,7 @@ def _format_table_option_row(option: click.Option) -> str:
 
     # -> `False`
     none_default_msg = "_required" if option.required else ""
-    default = f"`{option.default}`" if (option.default is not None and option.default != UNSET) else none_default_msg
+    default = f"`{option.default}`" if (option.default is not None and not not option.default) else none_default_msg
 
     # -> "| `-V`, `--version` / `--show-version` | boolean | Show version info. | `False` |"
     return f"| {names} | {value_type} | {description} | {default} |"
@@ -368,7 +367,7 @@ def _make_subcommands_links(
     yield ""
 
 
-def load_command(module: str, attribute: str) -> click.BaseCommand:
+def load_command(module: str, attribute: str) -> click.Command:
     """
     Load and return the Click command object located at '<module>:<attribute>'.
     """
@@ -376,7 +375,7 @@ def load_command(module: str, attribute: str) -> click.BaseCommand:
 
     if not isinstance(command, click.Command):
         raise RuntimeError(
-            f"{attribute!r} must be a 'click.BaseCommand' object, got {type(command)}"
+            f"{attribute!r} must be a 'click.Command' object, got {type(command)}"
         )
 
     return command

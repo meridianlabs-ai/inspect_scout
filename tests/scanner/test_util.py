@@ -15,7 +15,12 @@ from inspect_scout._transcript.types import Transcript
     [
         # Single items with explicit IDs
         (
-            Transcript(id="t1", source_id="s1", source_uri="uri://1"),
+            Transcript(
+                transcript_id="t1",
+                source_type="test",
+                source_id="s1",
+                source_uri="uri://1",
+            ),
             "transcript",
             ["t1"],
         ),

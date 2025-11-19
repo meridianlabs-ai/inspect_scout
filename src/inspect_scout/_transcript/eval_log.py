@@ -4,12 +4,14 @@ import json
 import sqlite3
 from datetime import datetime
 from functools import reduce
+from os import PathLike
 from types import TracebackType
 from typing import (
     Any,
     AsyncIterator,
     Final,
-    Type,
+    Sequence,
+    TypeAlias,
     cast,
 )
 
@@ -38,10 +40,13 @@ from inspect_ai.analysis._dataframe.samples.table import (
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
 )
-from pydantic import JsonValue
+from inspect_ai.log._file import (
+    EvalLogInfo,
+)
 from typing_extensions import override
 
 from inspect_scout._util.async_zip import AsyncZipReader
+from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 from .._scanspec import ScanTranscripts, TranscriptField
 from .._transcript.transcripts import Transcripts
@@ -49,56 +54,70 @@ from .caching import samples_df_with_caching
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
-from .types import LogPaths, Transcript, TranscriptContent, TranscriptInfo
+from .transcripts import TranscriptsQuery, TranscriptsReader
+from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
 
 TRANSCRIPTS = "transcripts"
+
+Logs: TypeAlias = (
+    PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
+)
 
 
 class EvalLogTranscripts(Transcripts):
     """Collection of transcripts for scanning."""
 
-    def __init__(self, logs: LogPaths | ScanTranscripts) -> None:
+    def __init__(self, logs: Logs | ScanTranscripts) -> None:
         super().__init__()
         if isinstance(logs, ScanTranscripts):
-            self._logs: LogPaths | pd.DataFrame = self._logs_df_from_snapshot(logs)
+            self._logs: Logs | pd.DataFrame = _logs_df_from_snapshot(logs)
         else:
             self._logs = logs
-        self._db: EvalLogTranscriptsDB | None = None
 
     @override
-    async def __aenter__(self) -> "Transcripts":
-        await self.db.connect()
+    def reader(self) -> TranscriptsReader:
+        return EvalLogTranscriptsReader(self._logs, self._query)
+
+
+class EvalLogTranscriptsReader(TranscriptsReader):
+    def __init__(self, logs: Logs | pd.DataFrame, query: TranscriptsQuery) -> None:
+        self._db = EvalLogTranscriptsDB(logs)
+        self._query = query
+
+    @override
+    async def __aenter__(self) -> "TranscriptsReader":
+        await self._db.connect()
         return self
 
     @override
     async def __aexit__(
         self,
-        exc_type: Type[BaseException] | None,
+        exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> bool | None:
-        await self.db.disconnect()
+        await self._db.disconnect()
         return None
 
     @override
     async def count(self) -> int:
-        return await self.db.count(self._where, self._limit)
+        return await self._db.count(self._query.where, self._query.limit)
 
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        return self.db.query(self._where, self._limit, self._shuffle)
+        return self._db.query(self._query.where, self._query.limit, self._query.shuffle)
 
     @override
     async def read(
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> Transcript:
-        return await self.db.read(transcript, content)
+        return await self._db.read(transcript, content)
 
     @override
-    async def snapshot(self) -> ScanTranscripts:
+    async def snapshot(self) -> tuple[ScanTranscripts, list[str]]:
         # get the subset of the transcripts df that matches our current query
-        df = self.db._transcripts_df
-        sample_ids = [item.id async for item in self.index()]
+        df = self._db._transcripts_df
+        sample_ids = [item.transcript_id async for item in self.index()]
         df = df[df["sample_id"].isin(sample_ids)]
 
         # get fields
@@ -112,71 +131,61 @@ class EvalLogTranscripts(Transcripts):
         data = buffer.getvalue()
 
         return ScanTranscripts(
-            type="eval_log",
+            type=TRANSCRIPT_SOURCE_EVAL_LOG,
             fields=fields,
             count=len(df),
             data=data,
-        )
+        ), sample_ids
 
-    @staticmethod
-    def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
-        import pandas as pd
 
-        # Read CSV data from snapshot
-        df = pd.read_csv(io.StringIO(snapshot.data))
+def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
+    import pandas as pd
 
-        # Process field definitions to apply correct dtypes
-        for field in snapshot.fields:
-            col_name = field["name"]
-            col_type = field["type"]
+    # Read CSV data from snapshot
+    df = pd.read_csv(io.StringIO(snapshot.data))
 
-            # Skip if column doesn't exist in DataFrame
-            if col_name not in df.columns:
-                continue
+    # Process field definitions to apply correct dtypes
+    for field in snapshot.fields:
+        col_name = field["name"]
+        col_type = field["type"]
 
-            # Handle datetime columns with timezone
-            if col_type == "datetime":
-                tz = field.get("tz")
-                if tz:
-                    # Parse datetime with timezone
-                    df[col_name] = pd.to_datetime(df[col_name]).dt.tz_localize(tz)
-                else:
-                    df[col_name] = pd.to_datetime(df[col_name])
+        # Skip if column doesn't exist in DataFrame
+        if col_name not in df.columns:
+            continue
 
-            # Handle other specific types
-            elif col_type == "integer":
-                # Handle nullable integers
-                if df[col_name].isnull().any():
-                    df[col_name] = df[col_name].astype("Int64")
-                else:
-                    df[col_name] = df[col_name].astype("int64")
+        # Handle datetime columns with timezone
+        if col_type == "datetime":
+            tz = field.get("tz")
+            if tz:
+                # Parse datetime with timezone
+                df[col_name] = pd.to_datetime(df[col_name]).dt.tz_localize(tz)
+            else:
+                df[col_name] = pd.to_datetime(df[col_name])
 
-            elif col_type == "number":
-                df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
+        # Handle other specific types
+        elif col_type == "integer":
+            # Handle nullable integers
+            if df[col_name].isnull().any():
+                df[col_name] = df[col_name].astype("Int64")
+            else:
+                df[col_name] = df[col_name].astype("int64")
 
-            elif col_type == "boolean":
-                df[col_name] = df[col_name].astype("bool")
+        elif col_type == "number":
+            df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
 
-            elif col_type == "string":
-                df[col_name] = df[col_name].astype("string")
+        elif col_type == "boolean":
+            df[col_name] = df[col_name].astype("bool")
 
-            # For any other type, let pandas infer or keep as-is
+        elif col_type == "string":
+            df[col_name] = df[col_name].astype("string")
 
-        return df
+        # For any other type, let pandas infer or keep as-is
 
-    @property
-    def db(self) -> "EvalLogTranscriptsDB":
-        if self._db is None:
-            if self._logs is None:
-                raise RuntimeError(
-                    "Attempted to use eval log transcripts without specifying 'logs'"
-                )
-            self._db = EvalLogTranscriptsDB(self._logs)
-        return self._db
+    return df
 
 
 class EvalLogTranscriptsDB:
-    def __init__(self, logs: LogPaths | pd.DataFrame):
+    def __init__(self, logs: Logs | pd.DataFrame):
         # pandas required
         verify_df_prerequisites()
         import pandas as pd
@@ -240,9 +249,14 @@ class EvalLogTranscriptsDB:
         if self._conn is not None:
             return
         self._conn = sqlite3.connect(":memory:")
-        self._transcripts_df.to_sql(
-            TRANSCRIPTS, self._conn, index=False, if_exists="replace"
-        )
+
+        # Convert datetime columns to strings for SQLite compatibility
+        df_to_write = self._transcripts_df.copy()
+        for col in df_to_write.columns:
+            if pd.api.types.is_datetime64_any_dtype(df_to_write[col]):
+                df_to_write[col] = df_to_write[col].astype(str)
+
+        df_to_write.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")
         self._files_cache = create_temp_cache()
 
     async def count(
@@ -314,14 +328,6 @@ class EvalLogTranscriptsDB:
                 if column in row_dict:
                     row_dict[column] = json.loads(row_dict[column])
 
-            # extract additional fields we'll use in TranscriptInfo
-            score = row_dict.get("score", None)
-            scores: dict[str, JsonValue] = {}
-            for key, value in row_dict.items():
-                if key.startswith("score_"):
-                    scores[key.replace("score_", "", 1)] = value
-            variables = row_dict.get("sample_metadata", {})
-
             # ensure we have required fields
             if (
                 transcript_id is None
@@ -332,22 +338,24 @@ class EvalLogTranscriptsDB:
                     f"Missing required fields: sample_id={transcript_id}, log={transcript_source_uri}"
                 )
 
-            # everything else goes into metadata
-            metadata = {k: v for k, v in row_dict.items() if v is not None}
+            # everything else goes into metadata (excluding reserved columns)
+            metadata = {
+                k: v
+                for k, v in row_dict.items()
+                if v is not None and k not in RESERVED_COLUMNS
+            }
 
             yield TranscriptInfo(
-                id=transcript_id,
+                transcript_id=transcript_id,
+                source_type=TRANSCRIPT_SOURCE_EVAL_LOG,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
-                score=score,
-                scores=scores,
-                variables=variables,
                 metadata=metadata,
             )
 
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         id_, epoch = self._transcripts_df[
-            self._transcripts_df["sample_id"] == t.id
+            self._transcripts_df["sample_id"] == t.transcript_id
         ].iloc[0][["id", "epoch"]]
         sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
 
@@ -401,7 +409,7 @@ class EvalLogTranscriptsDB:
         return "", []
 
 
-def transcripts_from_logs(logs: LogPaths) -> Transcripts:
+def transcripts_from_logs(logs: Logs) -> Transcripts:
     """Read sample transcripts from eval logs.
 
     Args:
@@ -411,46 +419,6 @@ def transcripts_from_logs(logs: LogPaths) -> Transcripts:
         Transcripts: Collection of transcripts for scanning.
     """
     return EvalLogTranscripts(logs)
-
-
-async def transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
-    match snapshot.type:
-        case "eval_log":
-            return EvalLogTranscripts(snapshot)
-        case _:
-            raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
-
-
-async def transcripts_df_from_snapshot(snapshot: ScanTranscripts) -> pd.DataFrame:
-    """Get a DataFrame from a transcript snapshot (internal use with original column names)."""
-    match snapshot.type:
-        case "eval_log":
-            return EvalLogTranscripts._logs_df_from_snapshot(snapshot)
-        case _:
-            raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
-
-
-async def transcripts_df_for_results(snapshot: ScanTranscripts) -> pd.DataFrame:
-    """Get a DataFrame from a transcript snapshot with renamed columns.
-
-    Renames columns to match scanner table naming for easier joins:
-    - sample_id => id (matches scanner's transcript_id)
-    - eval_id => source_id (matches scanner's transcript_source_id)
-    - log => source_uri (matches scanner's transcript_source_uri)
-    """
-    match snapshot.type:
-        case "eval_log":
-            df = EvalLogTranscripts._logs_df_from_snapshot(snapshot)
-
-            # Rename columns for consistency with scanner tables
-            rename_map = {
-                "sample_id": "id",
-                "eval_id": "source_id",
-                "log": "source_uri",
-            }
-            return df.rename(columns=rename_map)
-        case _:
-            raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
 
 
 TranscriptColumns: list[Column] = (

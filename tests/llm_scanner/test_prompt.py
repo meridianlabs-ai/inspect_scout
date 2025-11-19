@@ -36,19 +36,16 @@ class _TestAnswer(Answer):
 
 def _create_transcript(
     messages: list[ChatMessage] | None = None,
-    variables: dict[str, JsonValue] | None = None,
-    score: float | None = None,
-    scores: dict[str, JsonValue] | None = None,
+    metadata: dict[str, JsonValue] | None = None,
 ) -> Transcript:
     """Helper to create test transcripts with required fields."""
     return Transcript(
-        id="test-id",
+        transcript_id="test-id",
+        source_type="test",
         source_id="test-source",
         source_uri="test://uri",
         messages=messages or [],
-        variables=variables or {},
-        score=score,
-        scores=scores or {},
+        metadata=metadata or {},
     )
 
 
@@ -82,43 +79,45 @@ async def test_render_basic_prompt() -> None:
 @pytest.mark.parametrize(
     "template,transcript_kwargs,expected_parts",
     [
-        # Variables from transcript (accessed via transcript object)
+        # Metadata from transcript (accessed via transcript object)
         (
-            "Name: {{ transcript.variables.name }}, Age: {{ transcript.variables.age }}",
-            {"variables": {"name": "Alice", "age": 30}},
+            "Name: {{ metadata.name }}, Age: {{ metadata.age }}",
+            {"metadata": {"name": "Alice", "age": 30}},
             ["Name: Alice", "Age: 30"],
         ),
         # Special characters
         (
-            "Text: {{ transcript.variables.text }}",
-            {"variables": {"text": 'Hello "world" & <tag>'}},
+            "Text: {{ metadata.text }}",
+            {"metadata": {"text": 'Hello "world" & <tag>'}},
             ['Text: Hello "world" & <tag>'],
         ),
         # Score (present)
         (
-            "Score: {{ transcript.score }}",
-            {"score": 0.85},
+            "Score: {{ metadata.score }}",
+            {"metadata": {"score": 0.85}},
             ["Score: 0.85"],
         ),
         # Score (absent - None)
         (
-            "Score: {% if transcript.score %}{{ transcript.score }}{% else %}N/A{% endif %}",
+            "Score: {% if metadata.score %}{{ metadata.score }}{% else %}N/A{% endif %}",
             {},
             ["Score: N/A"],
         ),
         # Named scores
         (
-            "Accuracy: {{ transcript.scores.accuracy }}, Fluency: {{ transcript.scores.fluency }}",
-            {"scores": {"accuracy": 0.9, "fluency": 0.8}},
+            "Accuracy: {{ metadata.scores.accuracy }}, Fluency: {{ metadata.scores.fluency }}",
+            {"metadata": {"scores": {"accuracy": 0.9, "fluency": 0.8}}},
             ["Accuracy: 0.9", "Fluency: 0.8"],
         ),
-        # Mixed: variables, score, and named scores
+        # Mixed: metadata fields including score and named scores
         (
-            "Model: {{ transcript.variables.model }}, Score: {{ transcript.score }}, Help: {{ transcript.scores.helpfulness }}",
+            "Model: {{ metadata.model }}, Score: {{ metadata.score }}, Help: {{ metadata.scores.helpfulness }}",
             {
-                "variables": {"model": "gpt-4"},
-                "score": 0.88,
-                "scores": {"helpfulness": 0.92},
+                "metadata": {
+                    "model": "gpt-4",
+                    "score": 0.88,
+                    "scores": {"helpfulness": 0.92},
+                }
             },
             ["Model: gpt-4", "Score: 0.88", "Help: 0.92"],
         ),
@@ -128,7 +127,7 @@ async def test_render_basic_prompt() -> None:
 async def test_render_transcript_variable_substitution(
     template: str, transcript_kwargs: dict[str, Any], expected_parts: list[str]
 ) -> None:
-    """Transcript variables, scores, and named scores are substituted correctly."""
+    """Transcript metadata fields are substituted correctly in templates."""
     transcript = _create_transcript(**transcript_kwargs)
 
     result = await render_scanner_prompt(

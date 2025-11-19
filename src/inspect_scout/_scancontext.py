@@ -20,7 +20,15 @@ from inspect_ai.model._model_config import (
     model_roles_to_model_roles_config,
 )
 
-from inspect_scout._util.constants import DEFAULT_MAX_TRANSCRIPTS, PKG_NAME
+from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
+from inspect_scout._transcript.eval_log import EvalLogTranscripts
+from inspect_scout._util.constants import (
+    DEFAULT_MAX_TRANSCRIPTS,
+    PKG_NAME,
+    TRANSCRIPT_SOURCE_DATABASE,
+    TRANSCRIPT_SOURCE_EVAL_LOG,
+)
 from inspect_scout._validation.types import ValidationSet
 
 from ._recorder.factory import scan_recorder_type_for_location
@@ -38,7 +46,6 @@ from ._scanspec import (
     ScanRevision,
     ScanSpec,
 )
-from ._transcript.database import transcripts_from_snapshot
 from ._transcript.transcripts import Transcripts
 
 
@@ -89,30 +96,28 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
     model = scanjob.model or None
 
     # create scan spec
-    async with scanjob.transcripts:
-        spec = ScanSpec(
-            scan_file=job_file(scanjob),
-            scan_name=scanjob.name,
-            scan_args=job_args(scanjob),
-            options=options or ScanOptions(),
-            transcripts=await scanjob.transcripts.snapshot(),
-            scanners=_spec_scanners(scanjob.scanners),
-            worklist=list(scanjob.worklist) if scanjob.worklist else None,
-            validation=scanjob.validation,
-            tags=scanjob.tags,
-            metadata=scanjob.metadata,
-            model=ModelConfig(
-                model=str(ModelName(model)),
-                config=model.config,
-                base_url=model.api.base_url,
-                args=model_args_for_log(scanjob.model_args or {}),
-            )
-            if model is not None
-            else None,
-            model_roles=model_roles_to_model_roles_config(scanjob.model_roles),
-            revision=revision,
-            packages=packages,
+    spec = ScanSpec(
+        scan_file=job_file(scanjob),
+        scan_name=scanjob.name,
+        scan_args=job_args(scanjob),
+        options=options or ScanOptions(),
+        scanners=_spec_scanners(scanjob.scanners),
+        worklist=list(scanjob.worklist) if scanjob.worklist else None,
+        validation=scanjob.validation,
+        tags=scanjob.tags,
+        metadata=scanjob.metadata,
+        model=ModelConfig(
+            model=str(ModelName(model)),
+            config=model.config,
+            base_url=model.api.base_url,
+            args=model_args_for_log(scanjob.model_args or {}),
         )
+        if model is not None
+        else None,
+        model_roles=model_roles_to_model_roles_config(scanjob.model_roles),
+        revision=revision,
+        packages=packages,
+    )
 
     return ScanContext(
         spec=spec,
@@ -131,7 +136,9 @@ async def resume_scan(scan_location: str) -> ScanContext:
         raise PrerequisiteError(f"Scan at '{scan_location}' is already complete.")
 
     spec = status.spec
-    transcripts = await transcripts_from_snapshot(spec.transcripts)
+    if spec.transcripts is None:
+        raise RuntimeError("Cannot resume scan because it has no transcripts snapshot.")
+    transcripts = await _transcripts_from_snapshot(spec.transcripts)
     scanners = _scanners_from_spec(spec.scanners)
     return ScanContext(
         spec=spec,
@@ -200,3 +207,12 @@ def job_args(scanjob: ScanJob) -> dict[str, Any] | None:
         return dict(registry_params(scanjob))
     else:
         return None
+
+
+async def _transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+    if snapshot.type == TRANSCRIPT_SOURCE_EVAL_LOG:
+        return EvalLogTranscripts(snapshot)
+    elif snapshot.type == TRANSCRIPT_SOURCE_DATABASE:
+        return transcripts_from_db_snapshot(snapshot)
+    else:
+        raise ValueError(f"Unrecognized transcript type '{snapshot.type}")

@@ -98,4 +98,5 @@ class ConcurrencyStrategy(Protocol):
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
         update_metrics: Callable[[ScanMetrics], None],
+        scan_completed: Callable[[], Awaitable[None]],
     ) -> None: ...

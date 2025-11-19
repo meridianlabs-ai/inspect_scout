@@ -19,6 +19,7 @@ from pydantic import JsonValue
 from inspect_scout._scanner.result import Result, as_resultset
 from inspect_scout._scanner.scanner import Scanner, metrics_for_scanner
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 
 def as_scorer(
@@ -51,10 +52,10 @@ def as_scorer(
         async def score(state: TaskState, target: Target) -> Score | None:
             # prepare transcript from state
             transcript = Transcript(
-                id=state.uuid,
+                transcript_id=state.uuid,
+                source_type=TRANSCRIPT_SOURCE_EVAL_LOG,
                 source_id="",
                 source_uri="",
-                variables=state.metadata,
                 metadata={
                     "id": state.sample_id,
                     "epoch": state.epoch,

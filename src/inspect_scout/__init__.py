@@ -36,10 +36,12 @@ from ._scanspec import (
     ScanTranscripts,
     TranscriptField,
 )
-from ._transcript.database import transcripts_from_logs
+from ._transcript.database.database import TranscriptsDB
+from ._transcript.database.factory import transcripts_db
+from ._transcript.factory import transcripts_from
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
-from ._transcript.transcripts import Transcripts
+from ._transcript.transcripts import Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
     MessageType,
@@ -75,7 +77,6 @@ __all__ = [
     "scanjob",
     "ScanJob",
     "ScanJobConfig",
-    # results
     "scan_list",
     "scan_status",
     "scan_results_df",
@@ -83,8 +84,11 @@ __all__ = [
     "ScanResultsDF",
     "Summary",
     # transcript
-    "transcripts_from_logs",
+    "transcripts_db",
+    "TranscriptsDB",
+    "transcripts_from",
     "Transcripts",
+    "TranscriptsReader",
     "Transcript",
     "TranscriptInfo",
     "Column",
@@ -109,7 +113,6 @@ __all__ = [
     "MessageFormatOptions",
     "MessagesPreprocessor",
     "RefusalError",
-    # llm_scanner
     "llm_scanner",
     "AnswerMultiLabel",
     "AnswerStructured",
@@ -123,11 +126,19 @@ __all__ = [
 ]
 
 
-_SCAN_RESULTS_VERSION_2_2 = "0.2.2"
+_DEPRECATED_VERSION_2_2 = "0.2.2"
 _REMOVED_IN = "0.3"
 relocated_module_attribute(
     "scan_results",
     "inspect_scout.scan_results_df",
-    _SCAN_RESULTS_VERSION_2_2,
+    _DEPRECATED_VERSION_2_2,
+    _REMOVED_IN,
+)
+
+
+relocated_module_attribute(
+    "transcripts_from_logs",
+    "inspect_scout.transcripts_from",
+    _DEPRECATED_VERSION_2_2,
     _REMOVED_IN,
 )

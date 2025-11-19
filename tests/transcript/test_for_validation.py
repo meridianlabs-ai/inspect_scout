@@ -3,13 +3,16 @@
 from typing import Any
 
 from inspect_scout._scanner.result import Result
-from inspect_scout._transcript.transcripts import Transcripts
+from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
 from inspect_scout._validation import ValidationCase, ValidationSet
 from pydantic import JsonValue
 
 
-class MockTranscripts(Transcripts):
+class MockTranscripts(Transcripts, TranscriptsReader):
     """Mock implementation of Transcripts for testing."""
+
+    def reader(self) -> TranscriptsReader:
+        return self
 
     async def __aenter__(self) -> "MockTranscripts":
         return self
@@ -47,10 +50,10 @@ def test_for_validation_single_id() -> None:
     filtered = transcripts.for_validation(validation)
 
     # Verify a condition was added
-    assert len(filtered._where) == 1
+    assert len(filtered._query.where) == 1
 
     # Verify the SQL generated
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     assert sql == '"sample_id" IN (?, ?)'
@@ -69,9 +72,9 @@ def test_for_validation_list_ids() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    assert len(filtered._where) == 1
+    assert len(filtered._query.where) == 1
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     assert sql == '"sample_id" IN (?, ?, ?)'
@@ -91,7 +94,7 @@ def test_for_validation_mixed_ids() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     assert sql == '"sample_id" IN (?, ?, ?, ?)'
@@ -113,7 +116,7 @@ def test_for_validation_duplicate_ids() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Should only have 2 unique IDs
@@ -135,7 +138,7 @@ def test_for_validation_preserves_order() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Order should be: id_c, id_a, id_b (first occurrence preserved)
@@ -149,9 +152,9 @@ def test_for_validation_empty_cases() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    assert len(filtered._where) == 1
+    assert len(filtered._query.where) == 1
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Empty IN should return "1 = 0" (always false)
@@ -168,9 +171,9 @@ def test_for_validation_large_id_list() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    assert len(filtered._where) == 1
+    assert len(filtered._query.where) == 1
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Should have all 1500 IDs
@@ -200,15 +203,15 @@ def test_for_validation_combines_with_existing_conditions() -> None:
     filtered = transcripts_filtered.for_validation(validation)
 
     # Should have 2 conditions now
-    assert len(filtered._where) == 2
+    assert len(filtered._query.where) == 2
 
     # First condition is the model filter
-    sql1, params1 = filtered._where[0].to_sql("sqlite")
+    sql1, params1 = filtered._query.where[0].to_sql("sqlite")
     assert '"model" = ?' in sql1
     assert params1 == ["gpt-4"]
 
     # Second condition is the ID filter
-    sql2, params2 = filtered._where[1].to_sql("sqlite")
+    sql2, params2 = filtered._query.where[1].to_sql("sqlite")
     assert '"sample_id" IN (?, ?)' in sql2
     assert params2 == ["transcript_1", "transcript_2"]
 
@@ -225,7 +228,7 @@ def test_for_validation_sql_generation_sqlite() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     assert sql == '"sample_id" IN (?, ?)'
@@ -244,7 +247,7 @@ def test_for_validation_sql_generation_postgres() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("postgres")
 
     # PostgreSQL uses $1, $2 instead of ?
@@ -264,7 +267,7 @@ def test_for_validation_sql_generation_duckdb() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("duckdb")
 
     assert sql == '"sample_id" IN (?, ?)'
@@ -280,15 +283,15 @@ def test_for_validation_does_not_modify_original() -> None:
     )
 
     transcripts = MockTranscripts()
-    original_where_len = len(transcripts._where)
+    original_where_len = len(transcripts._query.where)
 
     # Create filtered version
     filtered = transcripts.for_validation(validation)
 
     # Original should be unchanged
-    assert len(transcripts._where) == original_where_len
+    assert len(transcripts._query.where) == original_where_len
     # Filtered should have new condition
-    assert len(filtered._where) == original_where_len + 1
+    assert len(filtered._query.where) == original_where_len + 1
 
 
 def test_for_validation_with_predicate() -> None:
@@ -308,7 +311,7 @@ def test_for_validation_with_predicate() -> None:
     filtered = transcripts.for_validation(validation)
 
     # Should still create the ID filter
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     assert sql == '"sample_id" IN (?)'
@@ -324,7 +327,7 @@ def test_for_validation_chunk_boundary() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Should NOT use OR (fits in single IN clause)
@@ -342,7 +345,7 @@ def test_for_validation_just_over_chunk_boundary() -> None:
     transcripts = MockTranscripts()
     filtered = transcripts.for_validation(validation)
 
-    condition = filtered._where[0]
+    condition = filtered._query.where[0]
     sql, params = condition.to_sql("sqlite")
 
     # Should use OR to split into 2 chunks: 999 + 1

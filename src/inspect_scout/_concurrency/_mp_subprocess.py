@@ -161,6 +161,7 @@ def subprocess_main(
                             parse_function=ctx.parse_function,
                             scan_function=ctx.scan_function,
                             update_metrics=_update_worker_metrics,
+                            scan_completed=ctx.scan_completed,
                         )
                         print_diagnostics("Worker main", "All tasks completed normally")
                     except Exception as ex:

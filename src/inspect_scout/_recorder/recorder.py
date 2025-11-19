@@ -7,7 +7,7 @@ import duckdb
 import pandas as pd
 
 from .._scanner.result import Error, ResultReport
-from .._scanspec import ScanSpec
+from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
 from .summary import Summary
 
@@ -156,7 +156,10 @@ class ScanRecorder(abc.ABC):
     async def location(self) -> str: ...
 
     @abc.abstractmethod
-    async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool: ...
+    async def is_recorded(self, transcript_id: str, scanner: str) -> bool: ...
+
+    @abc.abstractmethod
+    async def snapshot_transcripts(self, snapshot: ScanTranscripts) -> None: ...
 
     @abc.abstractmethod
     async def record(

@@ -50,14 +50,14 @@ The section below provides more details on how prompts are constructed for `llm_
 
 The `answer` type determines how the LLM is prompted to answer, the way that answers are extracted, and the Python type of the scanner result value. There are several distinct `answer` types supported:
 
-| Type              | LLM Output        | Result Type            |
-|-------------------|-------------------|------------------------|
-| boolean           | ANSWER: yes       | `bool`                 |
-| numeric           | ANSWER: 10        | `float`                |
-| string            | ANSWER: brown fox | `str`                  |
-| label             | ANSWER: C         | `str`                  |
-| labels (multiple) | ANSWER: C, D      | `list[str]`            |
-| structured        | JSON object       | `dict[str,JsonValue]`  |
+| Type              | LLM Output        | Result Type           |
+|-------------------|-------------------|-----------------------|
+| boolean           | ANSWER: yes       | `bool`                |
+| numeric           | ANSWER: 10        | `float`               |
+| string            | ANSWER: brown fox | `str`                 |
+| label             | ANSWER: C         | `str`                 |
+| labels (multiple) | ANSWER: C, D      | `list[str]`           |
+| structured        | JSON object       | `dict[str,JsonValue]` |
 
 For details on JSON object answers, see the [Structured Answers](#structured-answers) section below.
 
@@ -91,7 +91,7 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ question }}}` | Question about the transcript posed to the LLM (e.g. "Did the assistant refuse the user's request?") |
 | `{{{ answer_prompt }}}` | The prompt used by the current answer type (e.g. "Answer the following yes or no question:") |
 | `{{{ answer_format }}}` | Formatting guidelines used by the current answer type (e.g. ""'ANSWER: \$VALUE' (without quotes) where \$VALUE is yes or no.") |
-| `{{{ transcript }}}` | Dictionary of the `Transcript` fields |
+| `{{{ metadata }}}` | Dictionary from `Transcript.metadata` |
 
 : {tbl-colwidths=\[40,60\]}
 
@@ -174,13 +174,13 @@ Transcript messages are included within the prompt template subject to a `Messag
 
 The default `MessagesPreprocessor` used by the LLM scanner removes system messages and leaves all other content alone.
 
-## Structured Answers
+## Structured Answers {#structured-answers}
 
 Scanners can yield richer results and/or multiple results by prompting the scanner model to return JSON rather than a simple data type ("yes/no", etc.).
 
 For example, here we prompt the model to look at a transcript and provide several pieces of data. To do this we create a Pydantic model that enumerates the fields, their types, and descriptions:
 
-```python
+``` python
 from pydantic import BaseModel, Field
 from inspect_scout import (
     AnswerStructured, Scanner, llm_scanner, scanner
@@ -203,7 +203,7 @@ def cyberlint():
 
 In some cases it may be more natural for scanners to return multiple results. To do this, just specity `list[T]` as the `type`. For example:
 
-```python
+``` python
 from pydantic import BaseModel, Field
 from textwrap import dedent
 from typing import Literal
@@ -237,9 +237,9 @@ Note that we add a `label` field for distinguishing different observation types.
 
 Scanners produce results which ultimately carry a specific `value`. There are two types of `value` supported by the LLM scanner:
 
-1. The default behavior is to yield a `dict` for the value, where the fields correpsond to the fields in your Pydantic model. For example, this will result in the `value` being a dict with fields `efficiency` and `persistence`:
+1.  The default behavior is to yield a `dict` for the value, where the fields correpsond to the fields in your Pydantic model. For example, this will result in the `value` being a dict with fields `efficiency` and `persistence`:
 
-    ```python
+    ``` python
     class AgentRating(BaseModel):
         efficiency: int = Field(description="Rate the assistant's efficiency from 1-10.")
 
@@ -253,7 +253,7 @@ Scanners produce results which ultimately carry a specific `value`. There are tw
 
 2.  For cases where you want your scanner to yield a more specific value, you can designate a field in your `BaseModel` as the value by adding `alias="value"` to it. For example:
 
-    ```python
+    ``` python
     class ToolErrors(BaseModel):
         tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
 
@@ -264,13 +264,12 @@ Scanners produce results which ultimately carry a specific `value`. There are tw
 
 We've noted the special `label` field. There is also an `explanation` fields automatically added for the model to provide an explanation with references. If these field names don't make sense in your domain you can use other names and alias them back to `label` and `explanation`. For example, here we alias the `category` and `reason` fields to `label` and `explanation` fields (respectively):
 
-```python
+``` python
 class CyberLint(BaseModel):
     category: Literal["misconfiguration", "tool_error"] = Field(alias="label", description="Category of behavior observed.")
    
     reason: str = Field(alias="explanation", description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
 ```
-
 
 ## Dynamic Questions
 

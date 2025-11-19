@@ -81,6 +81,7 @@ def single_process_strategy(
         parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
+        scan_completed: Callable[[], Awaitable[None]],
     ) -> None:
         metrics = ScanMetrics(1)
         nonlocal overall_start_time
@@ -110,7 +111,7 @@ def single_process_strategy(
                 )
 
         def _scanner_job_info(item: ScannerJob) -> str:
-            return f"{item.union_transcript.id, item.scanner_name}"
+            return f"{item.union_transcript.transcript_id, item.scanner_name}"
 
         def _update_metrics() -> None:
             if update_metrics:
@@ -190,7 +191,7 @@ def single_process_strategy(
                 result = await parse_function(parse_job)
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",
-                    f"Parsed  ({(time.time() - exec_start_time):.3f}s) - ('{parse_job.transcript_info.id}')",
+                    f"Parsed  ({(time.time() - exec_start_time):.3f}s) - ('{parse_job.transcript_info.transcript_id}')",
                 )
 
                 # Check success/failure tag
@@ -276,6 +277,8 @@ def single_process_strategy(
                         and metrics.tasks_idle == metrics.task_count - 1
                     ):
                         break
+
+                await scan_completed()
 
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",

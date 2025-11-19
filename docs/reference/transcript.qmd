@@ -3,14 +3,25 @@ title: Transcript API
 reference: "inspect_scout"
 ---
 
-### transcripts_from_logs
+## Database
+
+### transcripts_db
+### TranscriptsDB
+
+## Reading
+
+### transcripts_from
 ### Transcripts
-### TranscriptInfo
-### Transcript
+### TranscriptsReader
+
+## Filtering
+
 ### Column
 ### Condition
 ### Metadata
 ### metadata
 ### LogMetadata
 ### log_metadata
+
+
 

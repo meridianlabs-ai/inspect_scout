@@ -31,6 +31,11 @@ from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 from rich.console import RenderableType
 
+from inspect_scout._transcript.database.parquet import ParquetTranscripts
+from inspect_scout._transcript.local_files_cache import (
+    cleanup_task_files_cache,
+    init_task_files_cache,
+)
 from inspect_scout._util.attachments import resolve_event_attachments
 from inspect_scout._util.refusal import RefusalError
 from inspect_scout._validation.types import ValidationSet
@@ -58,7 +63,7 @@ from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_r
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScannerWork, ScanSpec
-from ._transcript.transcripts import Transcripts
+from ._transcript.transcripts import Transcripts, TranscriptsReader
 from ._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -463,6 +468,9 @@ async def _scan_async_inner(
         # set background task group for this coroutine (used by batching)
         set_background_task_group(tg)
 
+        # initialize task local files cache
+        init_task_files_cache()
+
         # apply limits/shuffle
         transcripts = scan.transcripts
         if scan.spec.options.limit is not None:
@@ -474,14 +482,21 @@ async def _scan_async_inner(
                 else None
             )
 
-        async with transcripts:
+        async with transcripts.reader() as tr:
+            # get the snapshot and list of ids
+            snapshot, transcript_ids = await tr.snapshot()
+            scan.spec.transcripts = snapshot
+
+            # write the snapshot
+            await recorder.snapshot_transcripts(snapshot)
+
             # Count already-completed scans to initialize progress
             scanner_names_list = list(scan.scanners.keys())
             total_scans = 0
             skipped_scans = 0
-            async for transcript_info in transcripts.index():
+            for transcript_id in transcript_ids:
                 for name in scanner_names_list:
-                    if await recorder.is_recorded(transcript_info, name):
+                    if await recorder.is_recorded(transcript_id, name):
                         skipped_scans += 1
                     total_scans += 1
 
@@ -506,9 +521,25 @@ async def _scan_async_inner(
                     ]
                 )
 
+                # initialized on demand in child processes
+                transcripts_reader: TranscriptsReader | None = None
+
+                async def _transcripts_reader() -> TranscriptsReader:
+                    nonlocal transcripts_reader
+                    if transcripts_reader is None:
+                        transcripts_reader = await transcripts.reader().__aenter__()
+                    return transcripts_reader
+
+                async def _scan_completed_function() -> None:
+                    nonlocal transcripts_reader
+                    if transcripts_reader is not None:
+                        await transcripts_reader.__aexit__(None, None, None)
+                        transcripts_reader = None
+
                 async def _parse_function(job: ParseJob) -> ParseFunctionResult:
                     try:
-                        union_transcript = await transcripts.read(
+                        reader = await _transcripts_reader()
+                        union_transcript = await reader.read(
                             job.transcript_info, union_content
                         )
                         return (
@@ -591,7 +622,7 @@ async def _scan_async_inner(
                             if fail_on_error:
                                 raise
                             error = Error(
-                                transcript_id=job.union_transcript.id,
+                                transcript_id=job.union_transcript.transcript_id,
                                 scanner=job.scanner_name,
                                 error=str(ex),
                                 traceback=traceback.format_exc(),
@@ -636,6 +667,9 @@ async def _scan_async_inner(
                         diagnostics=diagnostics,
                     )
                     if total_scans == 1
+                    or isinstance(
+                        transcripts, ParquetTranscripts
+                    )  # duckdb is borked in multiprocessing
                     or scan.spec.options.limit == 1
                     or scan.spec.options.max_processes == 1
                     or os.name == "nt"
@@ -657,11 +691,12 @@ async def _scan_async_inner(
                     scan_display.results(transcript, scanner, results)
 
                 await strategy(
-                    parse_jobs=_parse_jobs(scan, recorder, transcripts),
+                    parse_jobs=_parse_jobs(scan, recorder, tr),
                     parse_function=_parse_function,
                     scan_function=_scan_function,
                     record_results=record_results,
                     update_metrics=scan_display.metrics,
+                    scan_completed=_scan_completed_function,
                 )
 
                 # report status
@@ -688,6 +723,9 @@ async def _scan_async_inner(
 
     except anyio.get_cancelled_exc_class():
         return await handle_scan_interrupted("Aborted!", scan.spec, recorder)
+
+    finally:
+        cleanup_task_files_cache()
 
 
 def top_level_sync_init(display: DisplayType | None) -> None:
@@ -751,7 +789,7 @@ async def handle_scan_interrupted(
 async def _parse_jobs(
     context: ScanContext,
     recorder: ScanRecorder,
-    transcripts: Transcripts,
+    tr: TranscriptsReader,
 ) -> AsyncIterator[ParseJob]:
     """Yield `ParseJob` objects for transcripts needing scanning.
 
@@ -772,17 +810,18 @@ async def _parse_jobs(
     else:
         scanner_to_transcript_ids = None
 
-    async for transcript_info in transcripts.index():
+    async for transcript_info in tr.index():
         scanner_indices_for_transcript: list[int] = []
         for name in scanner_names:
             # if its not in the worklist then move on
             if (
                 scanner_to_transcript_ids is not None
-                and transcript_info.id not in scanner_to_transcript_ids.get(name, [])
+                and transcript_info.transcript_id
+                not in scanner_to_transcript_ids.get(name, [])
             ):
                 continue
             # if its already recorded then move on
-            if await recorder.is_recorded(transcript_info, name):
+            if await recorder.is_recorded(transcript_info.transcript_id, name):
                 continue
             scanner_indices_for_transcript.append(name_to_index[name])
         if not scanner_indices_for_transcript:
@@ -808,7 +847,8 @@ def _reports_for_parse_error(
 ) -> list[ResultReport]:
     # Create placeholder transcript since parse failed
     placeholder_transcript = Transcript(
-        id=job.transcript_info.id,
+        transcript_id=job.transcript_info.transcript_id,
+        source_type=job.transcript_info.source_type,
         source_id=job.transcript_info.source_id,
         source_uri=job.transcript_info.source_uri,
         metadata=job.transcript_info.metadata,
@@ -818,12 +858,12 @@ def _reports_for_parse_error(
     return [
         ResultReport(
             input_type="transcript",
-            input_ids=[job.transcript_info.id],
+            input_ids=[job.transcript_info.transcript_id],
             input=placeholder_transcript,
             result=None,
             validation=None,
             error=Error(
-                transcript_id=job.transcript_info.id,
+                transcript_id=job.transcript_info.transcript_id,
                 scanner=scanner_names[idx],
                 error=str(exception),
                 traceback=traceback.format_exc(),

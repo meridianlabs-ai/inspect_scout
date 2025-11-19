@@ -53,6 +53,7 @@ class RawTranscript:
     """Temporary structure for transcript data before validation."""
 
     id: str
+    source_type: str
     source_id: str
     source_uri: str
     metadata: dict[str, Any]
@@ -194,7 +195,8 @@ async def _parse_and_filter(
 
     return (
         RawTranscript(
-            id=t.id,
+            id=t.transcript_id,
+            source_type=t.source_type,
             source_id=t.source_id,
             source_uri=t.source_uri,
             # t.metadata's sample_metadata is potentially thinned, so swap in the full one
@@ -253,7 +255,8 @@ def _resolve_attachments(
     # Create new transcript with resolved data using single validation
     return Transcript.model_validate(
         {
-            "id": transcript.id,
+            "transcript_id": transcript.id,
+            "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
             "metadata": transcript.metadata,

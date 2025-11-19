@@ -23,7 +23,7 @@ from inspect_scout._validation.types import ValidationSet
 from .._scan import scan
 from .._scanjob import ScanJob, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
-from .._transcript.database import transcripts_from_logs as transcripts_from
+from .._transcript.factory import transcripts_from
 from .._util.constants import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TRANSCRIPTS
 from .common import CommonOptions, common_options, process_common_options
 

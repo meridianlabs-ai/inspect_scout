@@ -63,14 +63,16 @@ website:
       - section: transcript
         href: reference/transcript.qmd
         contents:
-        - text: transcripts_from_logs
-          href: reference/transcript.qmd#transcripts_from_logs
+        - text: transcripts_db
+          href: reference/transcript.qmd#transcripts_db
+        - text: TranscriptsDB
+          href: reference/transcript.qmd#transcriptsdb
+        - text: transcripts_from
+          href: reference/transcript.qmd#transcripts_from
         - text: Transcripts
           href: reference/transcript.qmd#transcripts
-        - text: TranscriptInfo
-          href: reference/transcript.qmd#transcriptinfo
-        - text: Transcript
-          href: reference/transcript.qmd#transcript
+        - text: TranscriptsReader
+          href: reference/transcript.qmd#transcriptsreader
         - text: Column
           href: reference/transcript.qmd#column
         - text: Condition

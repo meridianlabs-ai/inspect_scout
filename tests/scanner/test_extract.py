@@ -646,8 +646,9 @@ async def test_messages_as_str_with_preprocessor() -> None:
 async def test_messages_as_str_with_transcript() -> None:
     """Test messages_as_str accepts Transcript objects."""
     transcript = Transcript(
-        id="test-123",
+        transcript_id="test-123",
         source_id="eval-456",
+        source_type="test",
         source_uri="file:///test.log",
         messages=[
             ChatMessageUser(content="Hello", id="msg1"),
@@ -682,8 +683,9 @@ async def test_messages_as_str_with_transcript_and_preprocessor() -> None:
         return [m for m in transcript.messages if m.role == "user"]
 
     transcript = Transcript(
-        id="test-789",
+        transcript_id="test-789",
         source_id="eval-abc",
+        source_type="test",
         source_uri="file:///test2.log",
         messages=[
             ChatMessageUser(content="First user", id="msg1"),
@@ -736,7 +738,11 @@ async def test_type_checking_with_generic_preprocessor() -> None:
         ChatMessageAssistant(content="Hi", id="msg2"),
     ]
     transcript = Transcript(
-        id="t1", source_id="s1", source_uri="test://uri", messages=messages
+        transcript_id="t1",
+        source_type="test",
+        source_id="s1",
+        source_uri="test://uri",
+        messages=messages,
     )
 
     # Valid: matching types

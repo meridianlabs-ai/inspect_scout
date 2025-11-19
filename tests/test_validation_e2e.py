@@ -19,7 +19,7 @@ from inspect_scout import (
 )
 from inspect_scout._scanner.loader import Loader
 from inspect_scout._scanresults import scan_results_db, scan_results_df
-from inspect_scout._transcript.database import transcripts_from_logs
+from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 from pydantic import JsonValue
 
@@ -34,10 +34,10 @@ LOGS_DIR = Path(__file__).parent / "recorder" / "logs"
 
 async def get_n_transcript_ids(n: int) -> list[str]:
     """Get first n transcript IDs from test logs."""
-    transcripts = transcripts_from_logs(LOGS_DIR)
-    async with transcripts:
-        index_list = [tr async for tr in transcripts.index()]
-        return [tr.id for tr in index_list[:n]]
+    transcripts = transcripts_from(LOGS_DIR)
+    async with transcripts.reader() as tr:
+        index_list = [info async for info in tr.index()]
+        return [info.transcript_id for info in index_list[:n]]
 
 
 def create_validation_set(
@@ -69,10 +69,10 @@ def bool_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return True/False based on whether transcript ID hash is even/odd
-        value = hash(transcript.id) % 2 == 0
+        value = hash(transcript.transcript_id) % 2 == 0
         return Result(
             value=value,
-            explanation=f"Bool scanner processed {transcript.id}: {value}",
+            explanation=f"Bool scanner processed {transcript.transcript_id}: {value}",
         )
 
     return scan_transcript
@@ -84,10 +84,10 @@ def int_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return int value based on transcript ID hash modulo 100
-        value = abs(hash(transcript.id)) % 100
+        value = abs(hash(transcript.transcript_id)) % 100
         return Result(
             value=value,
-            explanation=f"Int scanner processed {transcript.id}: {value}",
+            explanation=f"Int scanner processed {transcript.transcript_id}: {value}",
         )
 
     return scan_transcript
@@ -99,10 +99,10 @@ def str_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return string value based on transcript ID
-        value = f"result_{transcript.id[:8]}"
+        value = f"result_{transcript.transcript_id[:8]}"
         return Result(
             value=value,
-            explanation=f"String scanner processed {transcript.id}",
+            explanation=f"String scanner processed {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -114,7 +114,7 @@ def dict_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return dict with multiple dimensions
-        tid_hash = abs(hash(transcript.id))
+        tid_hash = abs(hash(transcript.transcript_id))
         value: JsonValue = {
             "score_a": tid_hash % 100,
             "score_b": (tid_hash // 100) % 100,
@@ -122,7 +122,7 @@ def dict_scanner_factory() -> Scanner[Transcript]:
         }
         return Result(
             value=value,
-            explanation=f"Dict scanner processed {transcript.id}",
+            explanation=f"Dict scanner processed {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -135,7 +135,7 @@ def validation_scanner_a_factory() -> Scanner[Transcript]:
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
             value=True,
-            explanation=f"Scanner A processed {transcript.id}",
+            explanation=f"Scanner A processed {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -148,7 +148,7 @@ def validation_scanner_b_factory() -> Scanner[Transcript]:
     async def scan_transcript(transcript: Transcript) -> Result:
         return Result(
             value=False,
-            explanation=f"Scanner B processed {transcript.id}",
+            explanation=f"Scanner B processed {transcript.transcript_id}",
         )
 
     return scan_transcript
@@ -174,7 +174,7 @@ async def test_validation_basic_single_target_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[bool_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
@@ -246,7 +246,7 @@ async def test_validation_multi_target_dict_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[dict_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
@@ -317,7 +317,7 @@ async def test_validation_multiple_scanners_e2e() -> None:
                 validation_scanner_a_factory(),
                 validation_scanner_b_factory(),
             ],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation_dict,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
@@ -359,7 +359,7 @@ async def test_validation_different_predicates_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[int_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
@@ -398,7 +398,7 @@ async def test_validation_partial_coverage_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[bool_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=5,  # Scan 5 transcripts, but only 3 have validation
@@ -472,7 +472,7 @@ async def test_validation_with_custom_predicate_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[int_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
@@ -508,7 +508,7 @@ async def test_validation_failing_cases_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[bool_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
@@ -543,7 +543,7 @@ async def test_validation_database_columns_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[bool_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
@@ -624,7 +624,7 @@ async def test_validation_message_based_scanner_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[message_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,  # Only scan 1 transcript
         )
@@ -660,7 +660,7 @@ async def test_validation_message_based_scanner_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[message_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=1,  # Scan same transcript
@@ -702,7 +702,7 @@ async def test_validation_event_based_scanner_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[event_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,  # Only scan 1 transcript
         )
@@ -736,7 +736,7 @@ async def test_validation_event_based_scanner_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[event_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=1,  # Scan same transcript
@@ -818,7 +818,7 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[pair_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,  # Only scan 1 transcript
         )
@@ -854,7 +854,7 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
             scanners=[pair_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
             results=tmpdir,
             limit=1,  # Scan same transcript

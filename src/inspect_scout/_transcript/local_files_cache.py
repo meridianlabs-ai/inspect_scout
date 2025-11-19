@@ -8,8 +8,9 @@ import hashlib
 import os
 import shutil
 import tempfile
+from contextvars import ContextVar
 from pathlib import Path
-from typing import Final
+from typing import Final, Optional
 
 import anyio
 from inspect_ai._util.asyncfiles import AsyncFilesystem
@@ -24,6 +25,10 @@ class LocalFilesCache:
     """
 
     MAX_CACHE_FILE_SIZE: Final[int] = 5 * 1024 * 1024 * 1024  # 5GB
+
+    @staticmethod
+    def task_cache() -> Optional["LocalFilesCache"]:
+        return _task_files_cache.get()
 
     def __init__(self, cache_dir: Path) -> None:
         """Initialize cache with specified directory.
@@ -124,3 +129,19 @@ def create_temp_cache() -> LocalFilesCache:
     """
     temp_dir = tempfile.mkdtemp(prefix="inspect_scout_cache_")
     return LocalFilesCache(Path(temp_dir))
+
+
+def init_task_files_cache() -> None:
+    _task_files_cache.set(create_temp_cache())
+
+
+def cleanup_task_files_cache() -> None:
+    cache = _task_files_cache.get()
+    if cache is not None:
+        cache.cleanup()
+        _task_files_cache.set(None)
+
+
+_task_files_cache = ContextVar[LocalFilesCache | None](
+    "_task_files_cache", default=None
+)

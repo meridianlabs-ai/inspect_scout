@@ -4,7 +4,7 @@ from pathlib import Path
 from inspect_ai.model import ModelOutput
 from inspect_scout import Result, Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
-from inspect_scout._transcript.database import transcripts_from_logs
+from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
 # Test data location
@@ -17,10 +17,10 @@ def simple_scanner_factory() -> Scanner[Transcript]:
 
     async def scan_transcript(transcript: Transcript) -> Result:
         # Return a simple result based on transcript ID
-        value = len(transcript.id) % 2 == 0
+        value = len(transcript.transcript_id) % 2 == 0
         return Result(
             value=value,
-            explanation=f"Scanned transcript {transcript.id[:8]}",
+            explanation=f"Scanned transcript {transcript.transcript_id[:8]}",
         )
 
     return scan_transcript
@@ -64,7 +64,7 @@ def test_scan_basic_e2e() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[simple_scanner_factory(), llm_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=2,
             max_processes=1,
@@ -106,7 +106,7 @@ def test_scan_with_dynamic_question() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[llm_dynamic_question_scanner_factory()],
-            transcripts=transcripts_from_logs(LOGS_DIR),
+            transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
             max_processes=1,

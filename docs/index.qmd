@@ -297,12 +297,12 @@ In the example(s) above we scanned all of the samples within an Inspect log dire
 
 ``` python
 from inspect_scout (
-    import scan, transcripts_from_logs, log_metadata as m
+    import scan, transcripts_from, log_metadata as m
 )
 
 from .scanners import deception, tool_errors
 
-transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts_from("./logs")
 transcripts = transcripts.where(m.task_name == "cybench")
 
 status = scan(

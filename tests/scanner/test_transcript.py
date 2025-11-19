@@ -6,7 +6,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 import pytest_asyncio
-from inspect_scout._transcript.database import EvalLogTranscriptsDB
+from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB
 from inspect_scout._transcript.metadata import metadata as m
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -226,12 +226,12 @@ def test_ilike_operator() -> None:
     assert sql == """LOWER(json_extract("metadata", '$.message')) LIKE LOWER(?)"""
     assert params == ["%Error%"]
 
-    # DuckDB with JSON path - now uses json_extract with VARCHAR cast
+    # DuckDB with JSON path - now uses json_extract_string with VARCHAR cast
     condition = m["metadata.message"].ilike("%Error%")
     sql, params = condition.to_sql("duckdb")
     assert (
         sql
-        == """LOWER(CAST(json_extract("metadata", '$.message') AS VARCHAR)) LIKE LOWER(?)"""
+        == """LOWER(CAST(json_extract_string("metadata", '$.message') AS VARCHAR)) LIKE LOWER(?)"""
     )
     assert params == ["%Error%"]
 
@@ -333,9 +333,11 @@ def test_nested_json_paths() -> None:
     assert sql == "json_extract(\"metadata\", '$.config.temperature') > ?"
     assert params == [0.7]
 
-    # DuckDB - now uses json_extract with type casting
+    # DuckDB - now uses json_extract_string with type casting
     sql, params = condition.to_sql("duckdb")
-    assert sql == "(json_extract(\"metadata\", '$.config.temperature'))::DOUBLE > ?"
+    assert (
+        sql == "(json_extract_string(\"metadata\", '$.config.temperature'))::DOUBLE > ?"
+    )
     assert params == [0.7]
 
     # PostgreSQL - should use ->> for last element AND cast from text for numeric comparison
@@ -360,9 +362,9 @@ def test_column_name_escaping() -> None:
     assert sql == """json_extract("metadata", '$."key''with''quotes"') = ?"""
     assert params == ["value"]
 
-    # DuckDB - uses json_extract
+    # DuckDB - uses json_extract_string
     sql, params = condition.to_sql("duckdb")
-    assert sql == """json_extract("metadata", '$.key''with''quotes') = ?"""
+    assert sql == """json_extract_string("metadata", '$.key''with''quotes') = ?"""
     assert params == ["value"]
 
 
@@ -487,11 +489,11 @@ def test_deep_nested_paths() -> None:
     assert sql == "json_extract(\"metadata\", '$.level1.level2.level3.value') > ?"
     assert params == [10]
 
-    # DuckDB - uses json_extract with type casting
+    # DuckDB - uses json_extract_string with type casting
     sql, params = condition.to_sql("duckdb")
     assert (
         sql
-        == "(json_extract(\"metadata\", '$.level1.level2.level3.value'))::BIGINT > ?"
+        == "(json_extract_string(\"metadata\", '$.level1.level2.level3.value'))::BIGINT > ?"
     )
     assert params == [10]
 
@@ -585,7 +587,7 @@ async def test_query_all(db: EvalLogTranscriptsDB) -> None:
     # Check that each result is a TranscriptInfo
     for result in results:
         assert isinstance(result, TranscriptInfo)
-        assert result.id.startswith("sample_")
+        assert result.transcript_id.startswith("sample_")
         assert result.source_uri.startswith("/path/to/log_")
         assert isinstance(result.metadata, dict)
 
@@ -631,18 +633,18 @@ async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
     """Test querying with shuffle."""
     # Get results without shuffle
     results1 = [item async for item in db.query(where=[], limit=10)]
-    ids1 = [r.id for r in results1]
+    ids1 = [r.transcript_id for r in results1]
 
     # Get results with shuffle (seed=42)
     results2 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
-    ids2 = [r.id for r in results2]
+    ids2 = [r.transcript_id for r in results2]
 
     # Results should be different order (very unlikely to be same)
     assert ids1 != ids2
 
     # Get results with same seed - should be same order
     results3 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
-    ids3 = [r.id for r in results3]
+    ids3 = [r.transcript_id for r in results3]
     assert ids2 == ids3
 
 

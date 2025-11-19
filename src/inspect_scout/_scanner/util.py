@@ -23,7 +23,7 @@ def get_input_type_and_ids(
           the input is an empty sequence.
     """
     if isinstance(loader_result, Transcript):
-        return ("transcript", [loader_result.id])
+        return ("transcript", [loader_result.transcript_id])
     elif isinstance(loader_result, ChatMessageBase):
         return ("message", [_message_id(loader_result)])
     elif isinstance(loader_result, BaseEvent):

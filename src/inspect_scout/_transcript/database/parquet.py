@@ -41,7 +41,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def __init__(
         self,
         location: str,
-        memory_limit: str = "4GB",
         cache_dir: Path | None = None,
         batch_size: int = 100,
     ) -> None:
@@ -49,12 +48,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Args:
             location: Directory path (local or S3) containing Parquet files.
-            memory_limit: DuckDB memory limit (e.g., '4GB', '8GB').
             cache_dir: Optional cache directory for S3 files. If None, creates temp cache.
             batch_size: Maximum number of transcripts in a parquet file.
         """
         super().__init__(location)
-        self._memory_limit = memory_limit
         self._cache_dir = cache_dir
         self._batch_size = batch_size
 
@@ -72,7 +69,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Create DuckDB connection
         self._conn = duckdb.connect(":memory:")
-        self._conn.execute(f"SET memory_limit='{self._memory_limit}'")
 
         # Install httpfs extension for S3 support
         self._conn.execute("INSTALL httpfs")
@@ -208,7 +204,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build WHERE clause
         where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT * FROM transcripts{where_clause}"
+        sql = f"SELECT * EXCLUDE (events, messages) FROM transcripts{where_clause}"
 
         # Add ORDER BY for shuffle
         if shuffle:
@@ -223,6 +219,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             params.append(limit)
 
         # Execute query and yield results
+        print(sql)
         cursor = self._conn.execute(sql, params)
         column_names = [desc[0] for desc in cursor.description]
 
@@ -721,7 +718,6 @@ class ParquetTranscripts(Transcripts):
     def __init__(
         self,
         location: str,
-        memory_limit: str = "4GB",
         cache_dir: Path | None = None,
     ) -> None:
         """Initialize Parquet transcript collection.
@@ -733,7 +729,6 @@ class ParquetTranscripts(Transcripts):
         """
         super().__init__()
         self._location = location
-        self._memory_limit = memory_limit
         self._cache_dir = cache_dir
         self._db: ParquetTranscriptsDB | None = None
 
@@ -746,7 +741,6 @@ class ParquetTranscripts(Transcripts):
         """
         db = ParquetTranscriptsDB(
             self._location,
-            memory_limit=self._memory_limit,
             cache_dir=self._cache_dir,
         )
         return TranscriptsDBReader(db, self._query)

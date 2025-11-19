@@ -38,13 +38,13 @@ def transcripts_from_db(location: str) -> Transcripts:
 
     Example:
         ```python
-        from inspect_scout import transcripts_from_db, metadata as m
+        from inspect_scout import transcripts_from, metadata as m
 
         # Load from local directory
-        transcripts = transcripts_from_db("./transcript_db")
+        transcripts = transcripts_from("./transcript_db")
 
         # Load from S3
-        transcripts = transcripts_from_db("s3://bucket/transcript_db")
+        transcripts = transcripts_from("s3://bucket/transcript_db")
 
         # Filter by metadata
         transcripts = transcripts.where(m.model == "gpt-4")

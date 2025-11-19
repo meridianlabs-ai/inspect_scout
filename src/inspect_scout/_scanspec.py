@@ -149,7 +149,7 @@ class ScanSpec(BaseModel):
     options: ScanOptions = Field(default_factory=ScanOptions)
     """Scan options."""
 
-    transcripts: ScanTranscripts
+    transcripts: ScanTranscripts | None = Field(default=None)
     """Transcripts to scan."""
 
     scanners: dict[str, ScannerSpec]

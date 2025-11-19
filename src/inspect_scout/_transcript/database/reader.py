@@ -81,17 +81,17 @@ class TranscriptsDBReader(TranscriptsReader):
         return await self._db.read(transcript, content)
 
     @override
-    async def snapshot(self) -> ScanTranscripts:
+    async def snapshot(self) -> tuple[ScanTranscripts, list[str]]:
         """Create snapshot of current query results.
 
         Returns:
             ScanTranscripts snapshot for serialization.
         """
         # Collect all matching transcript IDs
-        sample_ids = [info.transcript_id async for info in self.index()]
+        transcript_ids = [info.transcript_id async for info in self.index()]
 
         # Create minimal DataFrame with IDs
-        df = pd.DataFrame({"id": sample_ids})
+        df = pd.DataFrame({"transcript_id": transcript_ids})
 
         # Convert to CSV
         buffer = io.StringIO()
@@ -99,12 +99,12 @@ class TranscriptsDBReader(TranscriptsReader):
         data = buffer.getvalue()
 
         # Create field definitions
-        fields: list[TranscriptField] = [{"name": "id", "type": "string"}]
+        fields: list[TranscriptField] = [{"name": "transcript_id", "type": "string"}]
 
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_DATABASE,
             location=self._db._location,
             fields=fields,
-            count=len(sample_ids),
+            count=len(transcript_ids),
             data=data,
-        )
+        ), transcript_ids

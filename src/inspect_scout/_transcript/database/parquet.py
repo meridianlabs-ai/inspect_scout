@@ -218,7 +218,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             params.append(limit)
 
         # Execute query and yield results
-        print(sql)
         cursor = self._conn.execute(sql, params)
         column_names = [desc[0] for desc in cursor.description]
 

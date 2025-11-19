@@ -110,7 +110,7 @@ class EvalLogTranscripts(Transcripts, TranscriptsReader):
         return await self.db.read(transcript, content)
 
     @override
-    async def snapshot(self) -> ScanTranscripts:
+    async def snapshot(self) -> tuple[ScanTranscripts, list[str]]:
         # get the subset of the transcripts df that matches our current query
         df = self.db._transcripts_df
         sample_ids = [item.transcript_id async for item in self.index()]
@@ -131,7 +131,7 @@ class EvalLogTranscripts(Transcripts, TranscriptsReader):
             fields=fields,
             count=len(df),
             data=data,
-        )
+        ), sample_ids
 
     @staticmethod
     def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":

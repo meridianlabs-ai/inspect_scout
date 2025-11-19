@@ -31,6 +31,7 @@ from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 from rich.console import RenderableType
 
+from inspect_scout._transcript.database.parquet import ParquetTranscripts
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
     init_task_files_cache,
@@ -69,7 +70,7 @@ from ._transcript.types import (
     TranscriptInfo,
 )
 from ._transcript.util import union_transcript_contents
-from ._util.constants import DEFAULT_MAX_TRANSCRIPTS, TRANSCRIPT_SOURCE_DATABASE
+from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.log import init_log
 
 logger = getLogger(__name__)
@@ -482,13 +483,19 @@ async def _scan_async_inner(
             )
 
         async with transcripts.reader() as tr:
+            # get the snapshot and list of ids
+            snapshot, transcript_ids = await tr.snapshot()
+
+            # write the snapshot
+            await recorder.snapshot_transcripts(snapshot)
+
             # Count already-completed scans to initialize progress
             scanner_names_list = list(scan.scanners.keys())
             total_scans = 0
             skipped_scans = 0
-            async for transcript_info in tr.index():
+            for transcript_id in transcript_ids:
                 for name in scanner_names_list:
-                    if await recorder.is_recorded(transcript_info, name):
+                    if await recorder.is_recorded(transcript_id, name):
                         skipped_scans += 1
                     total_scans += 1
 
@@ -659,7 +666,9 @@ async def _scan_async_inner(
                         diagnostics=diagnostics,
                     )
                     if total_scans == 1
-                    or scan.spec.transcripts.type == TRANSCRIPT_SOURCE_DATABASE
+                    or isinstance(
+                        transcripts, ParquetTranscripts
+                    )  # duckdb is borked in multiprocessing
                     or scan.spec.options.limit == 1
                     or scan.spec.options.max_processes == 1
                     or os.name == "nt"
@@ -811,7 +820,7 @@ async def _parse_jobs(
             ):
                 continue
             # if its already recorded then move on
-            if await recorder.is_recorded(transcript_info, name):
+            if await recorder.is_recorded(transcript_info.transcript_id, name):
                 continue
             scanner_indices_for_transcript.append(name_to_index[name])
         if not scanner_indices_for_transcript:

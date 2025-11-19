@@ -68,9 +68,9 @@ def transcripts_from_db_snapshot(snapshot: ScanTranscripts) -> Transcripts:
 
     # parse IDs from snapshot CSV
     df = pd.read_csv(io.StringIO(snapshot.data))
-    sample_ids = df["id"].tolist()
+    sample_ids = df["transcript_id"].tolist()
 
     # filter to only the transcripts in the snapshot
-    transcripts = transcripts.where(Column("id").in_(sample_ids))
+    transcripts = transcripts.where(Column("transcript_id").in_(sample_ids))
 
     return transcripts

@@ -96,30 +96,28 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
     model = scanjob.model or None
 
     # create scan spec
-    async with scanjob.transcripts.reader() as tr:
-        spec = ScanSpec(
-            scan_file=job_file(scanjob),
-            scan_name=scanjob.name,
-            scan_args=job_args(scanjob),
-            options=options or ScanOptions(),
-            transcripts=await tr.snapshot(),
-            scanners=_spec_scanners(scanjob.scanners),
-            worklist=list(scanjob.worklist) if scanjob.worklist else None,
-            validation=scanjob.validation,
-            tags=scanjob.tags,
-            metadata=scanjob.metadata,
-            model=ModelConfig(
-                model=str(ModelName(model)),
-                config=model.config,
-                base_url=model.api.base_url,
-                args=model_args_for_log(scanjob.model_args or {}),
-            )
-            if model is not None
-            else None,
-            model_roles=model_roles_to_model_roles_config(scanjob.model_roles),
-            revision=revision,
-            packages=packages,
+    spec = ScanSpec(
+        scan_file=job_file(scanjob),
+        scan_name=scanjob.name,
+        scan_args=job_args(scanjob),
+        options=options or ScanOptions(),
+        scanners=_spec_scanners(scanjob.scanners),
+        worklist=list(scanjob.worklist) if scanjob.worklist else None,
+        validation=scanjob.validation,
+        tags=scanjob.tags,
+        metadata=scanjob.metadata,
+        model=ModelConfig(
+            model=str(ModelName(model)),
+            config=model.config,
+            base_url=model.api.base_url,
+            args=model_args_for_log(scanjob.model_args or {}),
         )
+        if model is not None
+        else None,
+        model_roles=model_roles_to_model_roles_config(scanjob.model_roles),
+        revision=revision,
+        packages=packages,
+    )
 
     return ScanContext(
         spec=spec,
@@ -138,6 +136,8 @@ async def resume_scan(scan_location: str) -> ScanContext:
         raise PrerequisiteError(f"Scan at '{scan_location}' is already complete.")
 
     spec = status.spec
+    if spec.transcripts is None:
+        raise RuntimeError("Cannot resume scan because it has no transcripts snapshot.")
     transcripts = await _transcripts_from_snapshot(spec.transcripts)
     scanners = _scanners_from_spec(spec.scanners)
     return ScanContext(

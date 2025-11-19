@@ -7,9 +7,8 @@ import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
 from inspect_scout._scanner.result import Reference, Result, ResultReport
-from inspect_scout._scanspec import ScannerSpec, ScanSpec, ScanTranscripts
+from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
-from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 
 @pytest.fixture
@@ -18,12 +17,6 @@ def recorder_buffer() -> Generator[RecorderBuffer]:
     with tempfile.TemporaryDirectory() as tmpdir:
         spec = ScanSpec(
             scan_name="myscan",
-            transcripts=ScanTranscripts(
-                type=TRANSCRIPT_SOURCE_EVAL_LOG,
-                fields=[],
-                count=0,
-                data="",
-            ),
             scanners={
                 "test_scanner": ScannerSpec(name="test_scanner"),
                 "test-scanner.with:special/chars": ScannerSpec(
@@ -110,14 +103,18 @@ async def test_is_recorded(
     scanner_name = "test_scanner"
 
     # Check before recording
-    is_recorded = await recorder_buffer.is_recorded(sample_transcript, scanner_name)
+    is_recorded = await recorder_buffer.is_recorded(
+        sample_transcript.transcript_id, scanner_name
+    )
     assert is_recorded is False
 
     # Record data
     await recorder_buffer.record(sample_transcript, scanner_name, sample_results)
 
     # Check after recording
-    is_recorded = await recorder_buffer.is_recorded(sample_transcript, scanner_name)
+    is_recorded = await recorder_buffer.is_recorded(
+        sample_transcript.transcript_id, scanner_name
+    )
     assert is_recorded is True
 
     # Check with different transcript ID
@@ -127,7 +124,9 @@ async def test_is_recorded(
         source_id="42",
         source_uri="/other/source.log",
     )
-    is_recorded = await recorder_buffer.is_recorded(other_transcript, scanner_name)
+    is_recorded = await recorder_buffer.is_recorded(
+        other_transcript.transcript_id, scanner_name
+    )
     assert is_recorded is False
 
 

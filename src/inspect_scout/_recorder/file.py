@@ -21,7 +21,7 @@ from .._recorder.buffer import (
     scanner_table,
 )
 from .._scanner.result import Error, ResultReport
-from .._scanspec import ScanSpec
+from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
 from .recorder import (
     ScanRecorder,
@@ -43,14 +43,17 @@ class FileRecorder(ScanRecorder):
         # create the scan dir
         self._scan_dir = _ensure_scan_dir(UPath(scans_location), spec.scan_id)
         self._scanners_completed: list[str] = []
-        # write the spec
-        with file((self.scan_dir / SCAN_JSON).as_posix(), "w") as f:
-            f.write(to_json_str_safe(spec))
         # save the spec
         self._scan_spec = spec
+        self._write_scan_spec()
 
         # create the scan buffer
         self._scan_buffer = RecorderBuffer(self._scan_dir.as_posix(), self._scan_spec)
+
+    async def snapshot_transcripts(self, snapshot: ScanTranscripts) -> None:
+        assert self._scan_spec
+        self._scan_spec.transcripts = snapshot
+        self._write_scan_spec()
 
     @override
     async def resume(self, scan_location: str) -> ScanSpec:
@@ -65,8 +68,8 @@ class FileRecorder(ScanRecorder):
         return self.scan_dir.as_posix()
 
     @override
-    async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
-        return await self._scan_buffer.is_recorded(transcript, scanner)
+    async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
+        return await self._scan_buffer.is_recorded(transcript_id, scanner)
 
     @override
     async def record(
@@ -101,6 +104,10 @@ class FileRecorder(ScanRecorder):
                 "File recorder must be initialized or resumed before use."
             )
         return self._scan_spec
+
+    def _write_scan_spec(self) -> None:
+        with file((self.scan_dir / SCAN_JSON).as_posix(), "w") as f:
+            f.write(to_json_str_safe(self._scan_spec))
 
     @override
     @staticmethod

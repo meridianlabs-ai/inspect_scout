@@ -124,9 +124,9 @@ class RecorderBuffer:
                 with open(str(self._error_file), "at") as f:
                     f.write(result.error.model_dump_json(warnings=False) + "\n")
 
-    async def is_recorded(self, transcript: TranscriptInfo, scanner: str) -> bool:
+    async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
-        transcript_file = sdir / f"{transcript.transcript_id}.parquet"
+        transcript_file = sdir / f"{transcript_id}.parquet"
         if transcript_file.exists():
             # check if there are any non-null scan_error fields
             table = pq.read_table(transcript_file.as_posix(), columns=["scan_error"])

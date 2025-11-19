@@ -485,6 +485,7 @@ async def _scan_async_inner(
         async with transcripts.reader() as tr:
             # get the snapshot and list of ids
             snapshot, transcript_ids = await tr.snapshot()
+            scan.spec.transcripts = snapshot
 
             # write the snapshot
             await recorder.snapshot_transcripts(snapshot)

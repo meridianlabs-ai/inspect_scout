@@ -256,9 +256,7 @@ class EvalLogTranscriptsDB:
             if pd.api.types.is_datetime64_any_dtype(df_to_write[col]):
                 df_to_write[col] = df_to_write[col].astype(str)
 
-        df_to_write.to_sql(
-            TRANSCRIPTS, self._conn, index=False, if_exists="replace"
-        )
+        df_to_write.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")
         self._files_cache = create_temp_cache()
 
     async def count(

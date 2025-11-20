@@ -296,7 +296,9 @@ async def test_query_shuffle_deterministic(
     parquet_ids = await get_transcript_ids(parquet_filtered)
 
     # With same seed, shuffled order should be identical (sort for platform independence)
-    assert sorted(log_ids) == sorted(parquet_ids), "Should return same IDs with same seed"
+    assert sorted(log_ids) == sorted(parquet_ids), (
+        "Should return same IDs with same seed"
+    )
 
     # Verify it's actually shuffled (not in original order)
     original_log_ids = await get_transcript_ids(log_transcripts)

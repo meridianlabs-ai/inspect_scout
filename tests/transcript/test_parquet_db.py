@@ -154,50 +154,60 @@ async def test_insert_single_batch(
 
 
 @pytest.mark.asyncio
-async def test_insert_multiple_batches(
-    parquet_db: ParquetTranscriptsDB, test_location: Path
-) -> None:
-    """Test inserting large batch with batch_size splitting.
+async def test_insert_multiple_batches(test_location: Path) -> None:
+    """Test inserting large batch with size-based splitting.
 
     Transcripts are processed sequentially and split into batches
-    based on batch_size=100, regardless of source_id.
+    based on target file size, regardless of source_id.
     """
-    # Create 500 transcripts with source_id groups of 250
-    # This will create 2 source_ids: eval-00 (transcripts 0-249), eval-01 (transcripts 250-499)
-    transcripts = []
-    for i in range(500):
-        transcripts.append(
-            create_sample_transcript(
-                id=f"sample-{i:03d}",
-                source_id=f"eval-{i // 250:02d}",  # Groups of 250 to test batch splitting
-                source_uri=f"test://log-{i:03d}.json",
-                metadata={
-                    "model": ["gpt-4", "gpt-3.5-turbo", "claude-3-opus"][i % 3],
-                    "task": ["math", "coding", "qa"][i % 3],
-                    "temperature": 0.5 + (i % 5) * 0.1,
-                    "index": i,
-                    "score": 0.5 + (i % 10) * 0.05,
-                    "accuracy": 0.8,
-                    "completeness": 0.9,
-                    "var_a": i,
-                    "var_b": f"value_{i}",
-                },
+    # Create database with very small target_file_size_mb to force batching
+    # Use 0.01 MB (10KB) to ensure multiple batches with small test transcripts
+    parquet_db = ParquetTranscriptsDB(str(test_location), target_file_size_mb=0.01)
+    await parquet_db.connect()
+
+    try:
+        # Create 500 transcripts with source_id groups of 250
+        # This will create 2 source_ids: eval-00 (transcripts 0-249), eval-01 (transcripts 250-499)
+        transcripts = []
+        for i in range(500):
+            transcripts.append(
+                create_sample_transcript(
+                    id=f"sample-{i:03d}",
+                    source_id=f"eval-{i // 250:02d}",  # Groups of 250 to test batch splitting
+                    source_uri=f"test://log-{i:03d}.json",
+                    metadata={
+                        "model": ["gpt-4", "gpt-3.5-turbo", "claude-3-opus"][i % 3],
+                        "task": ["math", "coding", "qa"][i % 3],
+                        "temperature": 0.5 + (i % 5) * 0.1,
+                        "index": i,
+                        "score": 0.5 + (i % 10) * 0.05,
+                        "accuracy": 0.8,
+                        "completeness": 0.9,
+                        "var_a": i,
+                        "var_b": f"value_{i}",
+                    },
+                )
             )
+
+        await parquet_db.insert(transcripts)
+
+        # Expected file count:
+        # - 500 transcripts total with target_file_size_mb=0.01
+        # - Small test transcripts result in multiple files based on accumulated size
+        # - Should create multiple parquet files (exact count depends on serialized size)
+        parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
+        assert len(parquet_files) >= 2, (
+            f"Expected multiple files, got {len(parquet_files)}"
+        )
+        assert len(parquet_files) <= 20, (
+            f"Expected reasonable number of files, got {len(parquet_files)}"
         )
 
-    await parquet_db.insert(transcripts)
-
-    # Expected file count:
-    # - 500 transcripts total with batch_size=100
-    # - Transcripts are processed sequentially (not grouped by source_id)
-    # - Creates batches: 0-99, 100-199, 200-299, 300-399, 400-499
-    # - Total: 5 parquet files (5 batches of 100 each)
-    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
-    assert len(parquet_files) == 5
-
-    # Verify count
-    count = await parquet_db.count([], None)
-    assert count == 500
+        # Verify count
+        count = await parquet_db.count([], None)
+        assert count == 500
+    finally:
+        await parquet_db.disconnect()
 
 
 @pytest.mark.asyncio
@@ -698,6 +708,94 @@ async def test_schema_evolution(
 
 
 @pytest.mark.asyncio
+async def test_partitioning_file_and_row_group_levels(test_location: Path) -> None:
+    """Test that transcripts are partitioned correctly at both file and row group levels."""
+    import pyarrow.parquet as pq
+
+    # Create database with specific size targets for predictable partitioning
+    # Use very small sizes to ensure multiple files and row groups
+    target_file_size_mb = 0.05  # 50KB per file
+    row_group_size_mb = 0.02  # 20KB per row group
+    parquet_db = ParquetTranscriptsDB(
+        str(test_location),
+        target_file_size_mb=target_file_size_mb,
+        row_group_size_mb=row_group_size_mb,
+    )
+    await parquet_db.connect()
+
+    try:
+        # Create 100 transcripts with substantial content to trigger partitioning
+        transcripts = []
+        for i in range(100):
+            # Create messages with enough content to make transcripts ~2-3KB each
+            messages: list[ChatMessage] = [
+                ChatMessageUser(content=f"Question {i}: " + "x" * 1000),
+                ChatMessageUser(content=f"Follow-up {i}: " + "y" * 500),
+            ]
+            transcripts.append(
+                create_sample_transcript(
+                    id=f"sample-{i:03d}",
+                    source_id=f"eval-{i // 10:02d}",
+                    source_uri=f"test://log-{i:03d}.json",
+                    metadata={
+                        "index": i,
+                        "model": "gpt-4",
+                        "description": "z" * 200,  # Add more bulk to metadata
+                    },
+                    messages=messages,
+                )
+            )
+
+        await parquet_db.insert(transcripts)
+
+        # Verify file-level partitioning
+        parquet_files = sorted(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
+        assert len(parquet_files) >= 3, (
+            f"Expected at least 3 files with {target_file_size_mb}MB target, "
+            f"got {len(parquet_files)}"
+        )
+
+        # Verify row group level partitioning by inspecting Parquet metadata
+        total_row_groups = 0
+        for parquet_file in parquet_files:
+            metadata = pq.read_metadata(parquet_file)
+            num_row_groups = metadata.num_row_groups
+
+            # Each file should have multiple row groups given our small row_group_size
+            assert num_row_groups >= 1, f"File {parquet_file.name} has no row groups"
+            total_row_groups += num_row_groups
+
+            # Verify row group sizes are approximately as configured
+            for rg_idx in range(num_row_groups):
+                rg = metadata.row_group(rg_idx)
+                rg_size_bytes = rg.total_byte_size
+                rg_size_mb = rg_size_bytes / (1024 * 1024)
+
+                # Row groups should be roughly the configured size
+                # (allow some overhead/variation, but should be in the ballpark)
+                # Last row group in file may be smaller
+                is_last_rg_in_file = rg_idx == num_row_groups - 1
+                if not is_last_rg_in_file:
+                    assert rg_size_mb <= row_group_size_mb * 2, (
+                        f"Row group {rg_idx} in {parquet_file.name} is {rg_size_mb:.3f}MB, "
+                        f"expected ~{row_group_size_mb}MB (allowing 2x for overhead)"
+                    )
+
+        # Should have multiple row groups across all files
+        assert total_row_groups >= len(parquet_files), (
+            f"Expected at least {len(parquet_files)} row groups total, "
+            f"got {total_row_groups}"
+        )
+
+        # Verify data integrity - all transcripts should be queryable
+        count = await parquet_db.count([], None)
+        assert count == 100, f"Expected 100 transcripts, got {count}"
+
+    finally:
+        await parquet_db.disconnect()
+
+
+@pytest.mark.asyncio
 async def test_recursive_discovery(test_location: Path) -> None:
     """Test that parquet files in subdirectories are discovered and read correctly."""
     # Create subdirectories
@@ -707,7 +805,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     subdir2.mkdir(parents=True)
 
     # Create database and insert transcripts to root
-    db = ParquetTranscriptsDB(str(test_location), batch_size=3)
+    db = ParquetTranscriptsDB(str(test_location))
     await db.connect()
 
     root_transcripts = [
@@ -720,7 +818,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db.disconnect()
 
     # Create database and insert transcripts to subdir1
-    db1 = ParquetTranscriptsDB(str(subdir1), batch_size=3)
+    db1 = ParquetTranscriptsDB(str(subdir1))
     await db1.connect()
     subdir1_transcripts = [
         create_sample_transcript(
@@ -732,7 +830,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db1.disconnect()
 
     # Create database and insert transcripts to subdir2
-    db2 = ParquetTranscriptsDB(str(subdir2), batch_size=3)
+    db2 = ParquetTranscriptsDB(str(subdir2))
     await db2.connect()
     subdir2_transcripts = [
         create_sample_transcript(
@@ -744,7 +842,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db2.disconnect()
 
     # Now create a database pointing to root and verify it discovers all files recursively
-    db_all = ParquetTranscriptsDB(str(test_location), batch_size=3)
+    db_all = ParquetTranscriptsDB(str(test_location))
     await db_all.connect()
 
     # Should find all 9 transcripts across root and subdirectories

@@ -41,17 +41,23 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def __init__(
         self,
         location: str,
-        batch_size: int = 100,
+        target_file_size_mb: float = 100,
+        row_group_size_mb: float = 32,
+        transcript_id_bloom_fpp: float = 0.01,
     ) -> None:
         """Initialize Parquet transcript database.
 
         Args:
             location: Directory path (local or S3) containing Parquet files.
-            cache_dir: Optional cache directory for S3 files. If None, creates temp cache.
-            batch_size: Maximum number of transcripts in a parquet file.
+            target_file_size_mb: Target size in MB for each Parquet file. Individual
+                transcripts may cause files to exceed this limit. Can be fractional.
+            row_group_size_mb: Target row group size in MB for Parquet files. Can be fractional.
+            transcript_id_bloom_fpp: False positive probability for transcript_id bloom filter.
         """
         super().__init__(location)
-        self._batch_size = batch_size
+        self._target_file_size_mb = target_file_size_mb
+        self._row_group_size_mb = row_group_size_mb
+        self._transcript_id_bloom_fpp = transcript_id_bloom_fpp
 
         # initialize cache
         self._cache_cleanup: Callable[[], None] | None = None
@@ -135,23 +141,37 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._transcript_ids = []
             cursor = self._conn.execute("SELECT transcript_id FROM transcripts")
             column_names = [desc[0] for desc in cursor.description]
-            for row in cursor.fetchall():
-                row_dict = dict(zip(column_names, row, strict=True))
+            for cursor_row in cursor.fetchall():
+                row_dict = dict(zip(column_names, cursor_row, strict=True))
                 self._transcript_ids.append(row_dict["transcript_id"])
 
-        batch: list[Transcript] = []
+        batch: list[dict[str, Any]] = []
+        current_batch_size = 0
+        target_size_bytes = self._target_file_size_mb * 1024 * 1024
+
         async for transcript in self._as_async_iterator(transcripts):
             # tick
             print(f"{basename(transcript.source_uri)} ({transcript.transcript_id})")
 
-            # append to batch and transcripts ids
-            batch.append(transcript)
+            # Serialize once for both size calculation and writing
+            row = self._transcript_to_row(transcript)
+            row_size = self._estimate_row_size(row)
+
+            # Add transcript ID for duplicate tracking
             self._transcript_ids.append(transcript.transcript_id)
 
-            # enforce batch size
-            if len(batch) >= self._batch_size:
+            # Write batch if adding this row would exceed target size
+            if (
+                current_batch_size > 0
+                and current_batch_size + row_size >= target_size_bytes
+            ):
                 await self._write_parquet_batch(batch)
                 batch = []
+                current_batch_size = 0
+
+            # Add row to batch
+            batch.append(row)
+            current_batch_size += row_size
 
         # write any leftover elements
         if batch:
@@ -443,6 +463,35 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         return row
 
+    def _estimate_row_size(self, row: dict[str, Any]) -> int:
+        """Estimate size of serialized row in bytes.
+
+        Note: Row values are already serialized by _transcript_to_row(),
+        so complex types (dict/list) are JSON strings.
+
+        Args:
+            row: Row dict from _transcript_to_row().
+
+        Returns:
+            Estimated size in bytes.
+        """
+        size = 0
+
+        for value in row.values():
+            if value is None:
+                continue  # NULL values have minimal overhead
+            elif isinstance(value, str):
+                size += len(
+                    value
+                )  # Already serialized (messages, events, JSON metadata)
+            elif isinstance(value, bool):
+                size += 1  # Boolean stored as 1 byte
+            elif isinstance(value, (int, float)):
+                size += 8  # 64-bit numeric types
+
+        # Add overhead for Parquet columnar format (conservative 1.2x)
+        return int(size * 1.2)
+
     def _infer_schema(self, rows: list[dict[str, Any]]) -> pa.Schema:
         """Infer PyArrow schema from transcript rows.
 
@@ -515,23 +564,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Mixed incompatible types → use string
             return pa.string()
 
-    async def _write_parquet_batch(self, batch: list[Transcript]) -> None:
-        """Write a batch of transcripts to a new Parquet file.
+    async def _write_parquet_batch(self, batch: list[dict[str, Any]]) -> None:
+        """Write a batch of pre-serialized rows to a new Parquet file.
 
         Args:
-            batch: List of transcripts to write.
+            batch: List of row dicts (already serialized by _transcript_to_row).
         """
         if not batch:
             return
 
-        # Convert transcripts to rows with flattened metadata
-        rows = [self._transcript_to_row(t) for t in batch]
-
         # Infer schema from actual data
-        schema = self._infer_schema(rows)
+        schema = self._infer_schema(batch)
 
         # Create DataFrame and convert to PyArrow table
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(batch)
         table = pa.Table.from_pandas(df, schema=schema)
 
         # Generate filename
@@ -557,6 +603,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     tmp_path,
                     compression="zstd",
                     use_dictionary=True,
+                    row_group_size=int(self._row_group_size_mb * 1024 * 1024),
+                    write_statistics=True,
                 )
 
                 # Upload to S3
@@ -577,6 +625,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 output_path.as_posix(),
                 compression="zstd",
                 use_dictionary=True,
+                row_group_size=int(self._row_group_size_mb * 1024 * 1024),
+                write_statistics=True,
             )
 
             print(output_path.as_posix())

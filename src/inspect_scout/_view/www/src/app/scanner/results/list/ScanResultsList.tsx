@@ -21,7 +21,10 @@ import {
   resultIdentifierStr,
   resultLog,
 } from "../../../utils/results";
-import { kFilterPositiveResults } from "../ScanResultsFilter";
+import {
+  kFilterAllResults,
+  kFilterPositiveResults,
+} from "../ScanResultsFilter";
 
 import { ScanResultsHeader } from "./ScanHeader";
 import { ScanResultGroup } from "./ScanResultsGroup";
@@ -311,13 +314,25 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     [gridDescriptor, isResultGroup]
   );
 
+  let noContentMessage: string | undefined = undefined;
+  if (!busy && scannerSummaries.length === 0) {
+    noContentMessage = "No scan results are available.";
+  } else if (
+    !busy &&
+    filteredSummaries.length === 0 &&
+    selectedFilter !== kFilterAllResults &&
+    !scansSearchText
+  ) {
+    noContentMessage = "No positive scan results were found.";
+  } else if (!busy && filteredSummaries.length === 0) {
+    noContentMessage = "No scan results match the current filter.";
+  }
+
   return (
     <div className={clsx(styles.container)}>
       <ScanResultsHeader gridDescriptor={gridDescriptor} />
       <ActivityBar animating={isLoading} />
-      {!busy && filteredSummaries.length === 0 && (
-        <NoContentsPanel text="No scan results to display." />
-      )}
+      {noContentMessage && <NoContentsPanel text={noContentMessage} />}
       {!busy && filteredSummaries.length > 0 && (
         <LiveVirtualList<ScannerCore | ResultGroup>
           id={id}

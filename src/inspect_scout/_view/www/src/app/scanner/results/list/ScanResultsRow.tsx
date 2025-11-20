@@ -45,6 +45,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   // Information about the row
   const hasExplanation = gridDescriptor.columns.includes("explanation");
   const hasLabel = gridDescriptor.columns.includes("label");
+  const hasErrors = gridDescriptor.columns.includes("error");
 
   const grid = (
     <div
@@ -78,8 +79,17 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
       )}
 
       <div className={clsx(styles.value, "text-size-smaller")}>
-        <Value result={entry} style="inline" />
+        {!entry.scanError && <Value result={entry} style="inline" />}
       </div>
+      {hasErrors && (
+        <div className={clsx(styles.error, "text-size-smallest")}>
+          {entry.scanError || (
+            <span className={clsx("text-style-secondary")}>
+              {entry.scanError}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 

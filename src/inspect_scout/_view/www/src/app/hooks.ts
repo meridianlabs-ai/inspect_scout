@@ -351,6 +351,9 @@ export const useScannerData = (
         const scanErrorTraceback = filtered.get("scan_error_traceback", 0) as
           | string
           | undefined;
+        const scanErrorRefusal = filtered.get("scan_error_refusal", false) as
+          | boolean
+          | undefined;
         const scanId = filtered.get("scan_id", 0) as string;
         const scanTotalTokens = filtered.get("scan_total_tokens", 0) as number;
         const scannerFile = filtered.get("scanner_file", 0) as string;
@@ -377,6 +380,7 @@ export const useScannerData = (
           metadata: metadata as Record<string, JsonValue>,
           scanError,
           scanErrorTraceback,
+          scanErrorRefusal,
           scanEvents: scanEvents as Events,
           scanId,
           scanMetadata: scanMetadata as Record<string, JsonValue>,
@@ -524,6 +528,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
         const parsedPreviews = await Promise.all(
           (rowData || []).map(async (row) => {
             const r = row as Record<string, unknown>;
+            console.log({ row: r });
 
             // Determine the value type
             const valueType = r.value_type as
@@ -579,6 +584,9 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               | "event"
               | "events";
 
+            const scanError = r.scan_error as string;
+            const scanErrorRefusal = r.scan_error_refusal as boolean;
+
             const basePreview = {
               uuid: r.uuid as string | undefined,
               label: r.label as string | undefined,
@@ -595,6 +603,8 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               valueType,
               transcriptMetadata: transcriptMetadata || {},
               transcriptSourceId,
+              scanError,
+              scanErrorRefusal,
             };
 
             // Create typed preview based on inputType

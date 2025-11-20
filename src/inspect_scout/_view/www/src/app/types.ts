@@ -39,6 +39,8 @@ export interface ScannerCoreBase {
   valueType: ValueType;
   transcriptMetadata: Record<string, JsonValue>;
   transcriptSourceId: string;
+  scanError?: string;
+  scanErrorRefusal?: boolean;
 }
 
 interface ScannerCoreTranscript extends ScannerCoreBase {
@@ -92,6 +94,7 @@ interface ScannerDataBase extends ScannerCoreBase {
   metadata: Record<string, JsonValue>;
   scanError?: string;
   scanErrorTraceback?: string;
+  scanErrorRefusal?: boolean;
   scanEvents: Events;
   scanId: string;
   scanMetadata: Record<string, JsonValue>;

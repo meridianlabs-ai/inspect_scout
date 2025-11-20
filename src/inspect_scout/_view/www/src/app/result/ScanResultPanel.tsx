@@ -21,6 +21,7 @@ import {
 } from "../hooks";
 import { Navbar } from "../navbar/Navbar";
 
+import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
 import { InputPanel } from "./input/InputPanel";
 import { ResultPanel } from "./result/ResultPanel";
@@ -30,6 +31,7 @@ import styles from "./ScanResultPanel.module.css";
 import { TranscriptPanel } from "./transcript/TranscriptPanel";
 
 const kTabIdResult = "Result";
+const kTabIdError = "Error";
 const kTabIdInput = "Input";
 const kTabIdInfo = "Info";
 const kTabIdJson = "JSON";
@@ -103,6 +105,10 @@ export const ScanResultPanel: FC = () => {
     return hasNonSpanEvents;
   }, [selectedResult?.scanEvents]);
 
+  const hasError =
+    selectedResult?.scanError !== undefined &&
+    selectedResult?.scanError !== null;
+
   return (
     <div className={clsx(styles.root)}>
       <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
@@ -117,18 +123,38 @@ export const ScanResultPanel: FC = () => {
             tabControlsClassName={clsx(styles.tabControl)}
             className={clsx(styles.tabs)}
           >
-            <TabPanel
-              id={kTabIdResult}
-              selected={
-                selectedTab === kTabIdResult || selectedTab === undefined
-              }
-              title="Result"
-              onSelected={() => {
-                handleTabChange(kTabIdResult);
-              }}
-            >
-              <ResultPanel result={selectedResult} />
-            </TabPanel>
+            {hasError ? (
+              <TabPanel
+                id={kTabIdError}
+                selected={
+                  selectedTab === kTabIdError || selectedTab === undefined
+                }
+                title="Error"
+                onSelected={() => {
+                  handleTabChange(kTabIdError);
+                }}
+              >
+                <ErrorPanel
+                  error={selectedResult.scanError}
+                  traceback={selectedResult.scanErrorTraceback}
+                />
+              </TabPanel>
+            ) : undefined}
+            {!hasError ? (
+              <TabPanel
+                id={kTabIdResult}
+                selected={
+                  selectedTab === kTabIdResult ||
+                  (!hasError && selectedTab === undefined)
+                }
+                title="Result"
+                onSelected={() => {
+                  handleTabChange(kTabIdResult);
+                }}
+              >
+                <ResultPanel result={selectedResult} />
+              </TabPanel>
+            ) : undefined}
             <TabPanel
               id={kTabIdInput}
               selected={selectedTab === kTabIdInput}

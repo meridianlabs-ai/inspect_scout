@@ -38,3 +38,9 @@
 .link:hover {
   color: var(--bs-body-color);
 }
+
+.error {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: calc(150px - 3em);
+}

@@ -1,4 +1,4 @@
-import { ColumnTable } from "arquero";
+import { ColumnTable, desc } from "arquero";
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -72,7 +72,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   // Compute the optimal column layout based on the current data
   const gridDescriptor = useMemo(() => {
-    return optimalColumnLayout(scannerSummaries);
+    const descriptor = optimalColumnLayout(scannerSummaries);
+    console.log({ descriptor });
+    return descriptor;
   }, [scannerSummaries]);
 
   const filteredSummaries = useMemo(() => {
@@ -383,7 +385,9 @@ const optimalColumnLayout = (
   const maxIdLen = scannerSummaries.reduce((max, s) => {
     return Math.max(max, resultIdentifier(s).id.length);
   }, 0);
-  gridColParts.push(`${Math.min(Math.max(maxIdLen * 8, 50), 250)}px`);
+  gridColParts.push(
+    `minmax(${Math.min(Math.max(maxIdLen * 8, 50), 250)}px, 1fr)`
+  );
 
   // The explanation column, if any explanations exist
   const hasExplanation = scannerSummaries.some((s) => !!s.explanation);
@@ -400,7 +404,9 @@ const optimalColumnLayout = (
     const maxlabelLen = scannerSummaries.reduce((max, s) => {
       return Math.max(max, resultIdentifier(s).id.length);
     }, 0);
-    gridColParts.push(`${Math.min(Math.max(maxlabelLen * 4, 50), 250)}px`);
+    gridColParts.push(
+      `minmax(${Math.min(Math.max(maxlabelLen * 4, 50), 250)}px, 1fr)`
+    );
   }
 
   // The value column
@@ -422,7 +428,21 @@ const optimalColumnLayout = (
         return Math.max(max, valStr.length);
       }
     }, 0);
-    gridColParts.push(`${Math.min(Math.max(maxValueLen * 4, 50), 300)}px`);
+    gridColParts.push(
+      `minmax(${Math.min(Math.max(maxValueLen * 4, 50), 300)}px, 1fr)`
+    );
+  }
+
+  const hasErrors = scannerSummaries.some((s) => !!s.scanError);
+  if (hasErrors) {
+    const maxErrorLen = scannerSummaries.reduce((max, s) => {
+      return Math.max(max, s.scanError ? s.scanError.length : 0);
+    }, 0);
+
+    columns.push("error");
+    gridColParts.push(
+      `minmax(${Math.min(Math.max(maxErrorLen * 4, 50), 250)}px, 1fr)`
+    );
   }
 
   // Special case - if there is only an id and value column, divide space evenly

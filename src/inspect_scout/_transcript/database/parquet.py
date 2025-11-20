@@ -695,10 +695,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Create metadata-only table (EXCLUDE large content columns)
         # This keeps memory usage low while enabling fast indexed lookups
-        # Include filename column to enable targeted reads of specific files
+        # filename column is automatically included via filename=true parameter
         self._conn.execute(f"""
             CREATE TABLE transcripts AS
-            SELECT * EXCLUDE (messages, events), filename
+            SELECT * EXCLUDE (messages, events)
             FROM read_parquet({pattern}, union_by_name=true, filename=true)
         """)
 

@@ -77,4 +77,5 @@ RESERVED_COLUMNS = {
     "source_uri",
     "messages",
     "events",
+    "filename",  # Internal column for DuckDB file-targeting optimization
 }

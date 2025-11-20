@@ -125,16 +125,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Args:
             transcripts: Transcripts to insert (iterable or async iterator).
         """
-        last_source_id: str | None = None
         batch: list[Transcript] = []
         async for transcript in self._as_async_iterator(transcripts):
-            # flush if the source id changed
-            if last_source_id is not None:
-                if transcript.source_id != last_source_id:
-                    await self._write_parquet_batch(batch)
-                    batch = []
-            last_source_id = transcript.source_id
-
             # tick
             print(f"{basename(transcript.source_uri)} ({transcript.transcript_id})")
 

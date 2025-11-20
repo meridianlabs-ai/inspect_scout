@@ -62,6 +62,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const selectedFilter = useStore((state) => state.selectedFilter);
   const groupResultsBy = useStore((state) => state.groupResultsBy);
   const scansSearchText = useStore((state) => state.scansSearchText);
+  const selectedStatus = useStore((state) => state.selectedScanStatus);
 
   // Setters
   const setVisibleScannerResults = useStore(
@@ -70,6 +71,13 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const setSelectedScanResult = useStore(
     (state) => state.setSelectedScanResult
   );
+  const setSelectedFilter = useStore((state) => state.setSelectedFilter);
+
+  useEffect(() => {
+    if (selectedFilter === undefined && selectedStatus?.complete === false) {
+      setSelectedFilter(kFilterAllResults);
+    }
+  }, [selectedStatus, selectedFilter, setSelectedFilter]);
 
   // Apply filtering to the scanner summaries
   const filteredSummaries = useMemo(() => {

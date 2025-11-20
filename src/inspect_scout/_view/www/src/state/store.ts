@@ -348,7 +348,6 @@ export const createStore = (api: ScanApi) =>
               state.selectedScanResult = undefined;
             });
           },
-
           setPropertyValue<T>(id: string, propertyName: string, value: T) {
             set((state) => {
               if (!state.properties[id]) {

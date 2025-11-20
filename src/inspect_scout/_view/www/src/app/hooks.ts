@@ -528,7 +528,6 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
         const parsedPreviews = await Promise.all(
           (rowData || []).map(async (row) => {
             const r = row as Record<string, unknown>;
-            console.log({ row: r });
 
             // Determine the value type
             const valueType = r.value_type as

@@ -58,6 +58,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   // Options / State
   const listHandle = useRef<VirtuosoHandle | null>(null);
+  const selectedScanResult = useStore((state) => state.selectedScanResult);
   const selectedFilter = useStore((state) => state.selectedFilter);
   const groupResultsBy = useStore((state) => state.groupResultsBy);
   const scansSearchText = useStore((state) => state.scansSearchText);
@@ -70,13 +71,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     (state) => state.setSelectedScanResult
   );
 
-  // Compute the optimal column layout based on the current data
-  const gridDescriptor = useMemo(() => {
-    const descriptor = optimalColumnLayout(scannerSummaries);
-    console.log({ descriptor });
-    return descriptor;
-  }, [scannerSummaries]);
-
+  // Apply filtering to the scanner summaries
   const filteredSummaries = useMemo(() => {
     let textFiltered = scannerSummaries;
     if (scansSearchText && scansSearchText.length > 0) {
@@ -103,7 +98,11 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     }
   }, [scannerSummaries, selectedFilter, scansSearchText]);
 
-  const selectedScanResult = useStore((state) => state.selectedScanResult);
+  // Compute the optimal column layout based on the current data
+  const gridDescriptor = useMemo(() => {
+    const descriptor = optimalColumnLayout(filteredSummaries);
+    return descriptor;
+  }, [filteredSummaries]);
 
   interface ResultGroup {
     type: "group";

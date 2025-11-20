@@ -630,25 +630,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             assert self._fs is not None
             assert self._cache is not None
 
-            # List all files in directory (returns list of FileInfo objects)
-            from inspect_ai._util.file import FileInfo
-
+            # List all files recursively (returns list of FileInfo objects)
             fs = filesystem(self._location)
-            all_files = fs.ls(self._location)
+            all_files = fs.ls(self._location, recursive=True)
             # Filter for transcript parquet files
             files = []
             for f in all_files:
-                # Get the file name from different possible types
-                if isinstance(f, FileInfo):
-                    name = f.name
-                elif isinstance(f, dict):
-                    name = f.get("name", "")
-                elif isinstance(f, str):
-                    name = f
-                else:
-                    continue
-
-                # Check if it's a transcript parquet file
+                name = f.name
                 if name.endswith(".parquet") and "transcripts_" in name:
                     files.append(name)
 
@@ -672,7 +660,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 location_path.mkdir(parents=True, exist_ok=True)
                 return []
 
-            return list(glob.glob(str(location_path / PARQUET_TRANSCRIPTS_GLOB)))
+            # Recursively discover all transcript parquet files
+            return list(
+                glob.glob(
+                    str(location_path / "**" / PARQUET_TRANSCRIPTS_GLOB), recursive=True
+                )
+            )
 
     def _have_transcript(self, transcript_id: str) -> bool:
         return transcript_id in (self._transcript_ids or [])

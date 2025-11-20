@@ -8,6 +8,7 @@ import {
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { ScannerCore } from "../../../types";
+import { Error } from "../../../values/Error";
 import { Explanation } from "../../../values/Explanation";
 import { Identifier } from "../../../values/Identifier";
 import { Value } from "../../../values/Value";
@@ -83,11 +84,10 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
       </div>
       {hasErrors && (
         <div className={clsx(styles.error, "text-size-smallest")}>
-          {entry.scanError || (
-            <span className={clsx("text-style-secondary")}>
-              {entry.scanError}
-            </span>
-          )}
+          <Error
+            error={entry.scanError || "unknown error"}
+            refusal={entry.scanErrorRefusal}
+          />
         </div>
       )}
     </div>

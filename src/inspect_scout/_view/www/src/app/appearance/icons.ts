@@ -115,6 +115,7 @@ export const ApplicationIcons = {
   play: "bi bi-play-fill",
   previous: "bi bi-chevron-left",
   refresh: "bi bi-arrow-clockwise",
+  refuse: "bi bi-sign-stop-fill",
   retry: "bi bi-arrow-repeat",
   role: {
     user: "bi bi-person",

@@ -1,0 +1,9 @@
+.error i:global(.bi:before) {
+  color: var(--bs-danger) !important;
+  margin-right: 0.3rem;
+}
+
+.refusal i:global(.bi:before) {
+  color: var(--bs-danger) !important;
+  margin-right: 0.3rem;
+}

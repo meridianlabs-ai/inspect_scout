@@ -83,6 +83,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Create DuckDB connection
         self._conn = duckdb.connect(":memory:")
 
+        # Enable Parquet metadata caching for better performance when querying same files
+        # multiple times (e.g., SELECT for metadata, then read() for content)
+        self._conn.execute("SET parquet_metadata_cache=true")
+
         # Initialize filesystem and cache
         assert self._location is not None
         if self._location.startswith("s3://"):

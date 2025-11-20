@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from os import PathLike
-from typing import Literal, Sequence, TypeAlias
+from typing import Any, Literal, Sequence, TypeAlias
 
 from inspect_ai.event._event import Event
 from inspect_ai.log._file import (
@@ -54,7 +54,7 @@ class TranscriptInfo(BaseModel):
     source_uri: str
     """URI for source data (e.g. log file path)"""
 
-    metadata: dict[str, JsonValue] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     """Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.)."""
 
 

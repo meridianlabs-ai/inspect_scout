@@ -7,7 +7,7 @@ from inspect_ai.log._file import (
     EvalLogInfo,
 )
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, Field
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""

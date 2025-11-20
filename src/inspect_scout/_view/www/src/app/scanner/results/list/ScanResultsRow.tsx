@@ -84,10 +84,12 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
       </div>
       {hasErrors && (
         <div className={clsx(styles.error, "text-size-smallest")}>
-          <Error
-            error={entry.scanError || "unknown error"}
-            refusal={entry.scanErrorRefusal}
-          />
+          {entry.scanError && (
+            <Error
+              error={entry.scanError || "unknown error"}
+              refusal={!!entry.scanErrorRefusal}
+            />
+          )}
         </div>
       )}
     </div>

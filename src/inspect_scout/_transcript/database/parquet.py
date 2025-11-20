@@ -232,7 +232,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build WHERE clause
         where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT * EXCLUDE (events, messages) FROM transcripts{where_clause}"
+        # Note: transcripts table already excludes messages/events, so just SELECT *
+        sql = f"SELECT * FROM transcripts{where_clause}"
 
         # Add ORDER BY for shuffle
         if shuffle:
@@ -317,9 +318,27 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if need_events:
             columns.append("events")
 
-        # Query DuckDB for the content columns
-        sql = f"SELECT {', '.join(columns)} FROM transcripts WHERE transcript_id = ?"
-        result = self._conn.execute(sql, [t.transcript_id]).fetchone()
+        # First, get the filename from the metadata table (fast indexed lookup)
+        filename_result = self._conn.execute(
+            "SELECT filename FROM transcripts WHERE transcript_id = ?",
+            [t.transcript_id],
+        ).fetchone()
+
+        if not filename_result:
+            # Transcript not found in metadata table
+            return Transcript(
+                transcript_id=t.transcript_id,
+                source_type=t.source_type,
+                source_id=t.source_id,
+                source_uri=t.source_uri,
+                metadata=t.metadata,
+            )
+
+        # Now read content from just that specific file (targeted I/O)
+        # This avoids scanning all files - only reads from the one file containing this transcript
+        filename = filename_result[0]
+        sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+        result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
 
         if not result:
             # Transcript not found
@@ -634,26 +653,32 @@ class ParquetTranscriptsDB(TranscriptsDB):
             print(output_path.as_posix())
 
     async def _create_transcripts_view(self) -> None:
-        """Create or refresh DuckDB view of all Parquet files with schema union."""
+        """Create or refresh DuckDB structures for querying transcripts.
+
+        Creates metadata-only table (excluding messages/events) with filename column.
+        This enables:
+        1. Fast indexed lookups on transcript_id and other metadata
+        2. Targeted file access for content reads (via filename column)
+        3. Low memory usage (only metadata in memory, content stays in Parquet)
+        """
         assert self._conn is not None
 
-        # Drop existing view
-        self._conn.execute("DROP VIEW IF EXISTS transcripts")
+        # Drop existing table
+        self._conn.execute("DROP TABLE IF EXISTS transcripts")
 
         # Discover Parquet files
         file_paths = await self._discover_parquet_files()
 
         if not file_paths:
-            # Create empty view with minimal schema
+            # Create empty table with minimal schema
             self._conn.execute("""
-                CREATE VIEW transcripts AS
+                CREATE TABLE transcripts AS
                 SELECT
                     ''::VARCHAR AS transcript_id,
                     ''::VARCHAR AS source_type,
                     ''::VARCHAR AS source_id,
                     ''::VARCHAR AS source_uri,
-                    ''::VARCHAR AS messages,
-                    ''::VARCHAR AS events
+                    ''::VARCHAR AS filename
                 WHERE FALSE
             """)
             return
@@ -664,11 +689,18 @@ class ParquetTranscriptsDB(TranscriptsDB):
         else:
             pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
 
-        # Create view with schema union (DuckDB handles different schemas)
-        # union_by_name=true merges columns across files with different schemas
+        # Create metadata-only table (EXCLUDE large content columns)
+        # This keeps memory usage low while enabling fast indexed lookups
+        # Include filename column to enable targeted reads of specific files
         self._conn.execute(f"""
-            CREATE VIEW transcripts AS
-            SELECT * FROM read_parquet({pattern}, union_by_name=true)
+            CREATE TABLE transcripts AS
+            SELECT * EXCLUDE (messages, events), filename
+            FROM read_parquet({pattern}, union_by_name=true, filename=true)
+        """)
+
+        # Create index on transcript_id for fast lookups
+        self._conn.execute("""
+            CREATE INDEX idx_transcript_id ON transcripts(transcript_id)
         """)
 
     async def _discover_parquet_files(self) -> list[str]:

@@ -304,7 +304,9 @@ def scan_resume(
     """
     top_level_sync_init(display)
     return run_coroutine(
-        scan_resume_async(scan_location, log_level=log_level, fail_on_error=fail_on_error)
+        scan_resume_async(
+            scan_location, log_level=log_level, fail_on_error=fail_on_error
+        )
     )
 
 

@@ -14,6 +14,7 @@ class CommonOptions(TypedDict):
     log_level: str
     debug: bool
     debug_port: int
+    fail_on_error: bool
 
 
 def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
@@ -45,6 +46,14 @@ def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
         default=5678,
         envvar="SCOUT_DEBUG_PORT",
         help="Port number for debugger",
+    )
+    @click.option(
+        "--fail-on-error",
+        type=bool,
+        is_flag=True,
+        default=False,
+        help="Re-raise exceptions instead of capturing them in results",
+        envvar="SCOUT_SCAN_FAIL_ON_ERROR",
     )
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> click.Context:

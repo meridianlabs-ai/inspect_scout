@@ -288,6 +288,7 @@ def scan_resume(
     scan_location: str,
     display: DisplayType | None = None,
     log_level: str | None = None,
+    fail_on_error: bool = False,
 ) -> Status:
     """Resume a previous scan.
 
@@ -296,21 +297,27 @@ def scan_resume(
        display: Display type: "rich", "plain", or "none" (defaults to "rich").
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+       fail_on_error: Re-raise exceptions instead of capturing them in results.
 
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
     top_level_sync_init(display)
-    return run_coroutine(scan_resume_async(scan_location, log_level=log_level))
+    return run_coroutine(
+        scan_resume_async(scan_location, log_level=log_level, fail_on_error=fail_on_error)
+    )
 
 
-async def scan_resume_async(scan_location: str, log_level: str | None = None) -> Status:
+async def scan_resume_async(
+    scan_location: str, log_level: str | None = None, fail_on_error: bool = False
+) -> Status:
     """Resume a previous scan.
 
     Args:
        scan_location: Scan location to resume from.
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
+       fail_on_error: Re-raise exceptions instead of capturing them in results.
 
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -341,7 +348,7 @@ async def scan_resume_async(scan_location: str, log_level: str | None = None) ->
     # create recorder and scan
     recorder = scan_recorder_for_location(scan_location)
     await recorder.resume(scan_location)
-    return await _scan_async(scan=scan, recorder=recorder)
+    return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
 
 
 def scan_complete(

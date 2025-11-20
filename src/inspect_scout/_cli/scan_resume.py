@@ -18,4 +18,4 @@ def scan_resume_command(
     # Process common options
     process_common_options(common)
 
-    scan_resume(scan_location)
+    scan_resume(scan_location, fail_on_error=common["fail_on_error"])

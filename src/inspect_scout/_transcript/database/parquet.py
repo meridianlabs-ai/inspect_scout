@@ -64,6 +64,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._fs: AsyncFilesystem | None = None
         self._current_shuffle_seed: int | None = None
+        self._transcript_ids: list[str] | None = None
 
     @override
     async def connect(self) -> None:
@@ -122,16 +123,30 @@ class ParquetTranscriptsDB(TranscriptsDB):
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
+        Transcript ids that are already in the database are not inserted.
+
         Args:
             transcripts: Transcripts to insert (iterable or async iterator).
         """
+        assert self._conn is not None
+
+        # if we don't yet have a list of transcript ids then query for one
+        if self._transcript_ids is None:
+            self._transcript_ids = []
+            cursor = self._conn.execute("SELECT transcript_id FROM transcripts")
+            column_names = [desc[0] for desc in cursor.description]
+            for row in cursor.fetchall():
+                row_dict = dict(zip(column_names, row, strict=True))
+                self._transcript_ids.append(row_dict["transcript_id"])
+
         batch: list[Transcript] = []
         async for transcript in self._as_async_iterator(transcripts):
             # tick
             print(f"{basename(transcript.source_uri)} ({transcript.transcript_id})")
 
-            # append to batch
+            # append to batch and transcripts ids
             batch.append(transcript)
+            self._transcript_ids.append(transcript.transcript_id)
 
             # enforce batch size
             if len(batch) >= self._batch_size:
@@ -659,6 +674,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return list(glob.glob(str(location_path / PARQUET_TRANSCRIPTS_GLOB)))
 
+    def _have_transcript(self, transcript_id: str) -> bool:
+        return transcript_id in (self._transcript_ids or [])
+
     def _as_async_iterator(
         self,
         transcripts: Iterable[Transcript] | AsyncIterator[Transcript] | Transcripts,
@@ -674,7 +692,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         # Already an async iterator - return it directly
         if hasattr(transcripts, "__anext__"):
-            return cast(AsyncIterator[Transcript], transcripts)
+            transcripts = cast(AsyncIterator[Transcript], transcripts)
+
+            async def _iter() -> AsyncIterator[Transcript]:
+                async for transcript in transcripts:
+                    if not self._have_transcript(transcript.transcript_id):
+                        yield transcript
+
+            return _iter()
 
         # Transcripts, yield an iterator that reads them fully
         elif isinstance(transcripts, Transcripts):
@@ -682,9 +707,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
             async def _iter() -> AsyncIterator[Transcript]:
                 async with transcripts.reader() as tr:
                     async for t in tr.index():
-                        yield await tr.read(
-                            t, content=TranscriptContent(messages="all", events="all")
-                        )
+                        if not self._have_transcript(t.transcript_id):
+                            yield await tr.read(
+                                t,
+                                content=TranscriptContent(messages="all", events="all"),
+                            )
 
             return _iter()
 
@@ -693,7 +720,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 for transcript in transcripts:
-                    yield transcript
+                    if not self._have_transcript(transcript.transcript_id):
+                        yield transcript
 
             return _iter()
 

@@ -43,7 +43,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         location: str,
         target_file_size_mb: float = 100,
         row_group_size_mb: float = 32,
-        transcript_id_bloom_fpp: float = 0.01,
     ) -> None:
         """Initialize Parquet transcript database.
 
@@ -52,12 +51,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
             target_file_size_mb: Target size in MB for each Parquet file. Individual
                 transcripts may cause files to exceed this limit. Can be fractional.
             row_group_size_mb: Target row group size in MB for Parquet files. Can be fractional.
-            transcript_id_bloom_fpp: False positive probability for transcript_id bloom filter.
         """
         super().__init__(location)
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
-        self._transcript_id_bloom_fpp = transcript_id_bloom_fpp
+
+        # Note: Bloom filter support for transcript_id would be beneficial for point
+        # lookups, but PyArrow doesn't yet support writing bloom filters (as of v21.0.0).
+        # PR #37400 is in progress: https://github.com/apache/arrow/pull/37400
+        # When available, add: bloom_filter_columns=['transcript_id'] to write_table calls.
 
         # initialize cache
         self._cache_cleanup: Callable[[], None] | None = None

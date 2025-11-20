@@ -157,12 +157,10 @@ async def test_insert_single_batch(
 async def test_insert_multiple_batches(
     parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
-    """Test inserting large batch with source_id grouping and batch_size splitting.
+    """Test inserting large batch with batch_size splitting.
 
-    With the new logic:
-    - Transcripts are grouped by source_id (one or more files per source_id)
-    - Each file is capped at batch_size=100 transcripts
-    - We use larger source_id groups to properly test both behaviors
+    Transcripts are processed sequentially and split into batches
+    based on batch_size=100, regardless of source_id.
     """
     # Create 500 transcripts with source_id groups of 250
     # This will create 2 source_ids: eval-00 (transcripts 0-249), eval-01 (transcripts 250-499)
@@ -190,12 +188,12 @@ async def test_insert_multiple_batches(
     await parquet_db.insert(transcripts)
 
     # Expected file count:
-    # - 2 source_ids (eval-00, eval-01)
-    # - Each has 250 transcripts
-    # - With batch_size=100: each splits into 100 + 100 + 50 = 3 files
-    # - Total: 2 × 3 = 6 parquet files
+    # - 500 transcripts total with batch_size=100
+    # - Transcripts are processed sequentially (not grouped by source_id)
+    # - Creates batches: 0-99, 100-199, 200-299, 300-399, 400-499
+    # - Total: 5 parquet files (5 batches of 100 each)
     parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
-    assert len(parquet_files) == 6
+    assert len(parquet_files) == 5
 
     # Verify count
     count = await parquet_db.count([], None)

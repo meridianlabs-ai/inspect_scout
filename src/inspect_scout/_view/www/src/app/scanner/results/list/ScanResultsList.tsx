@@ -102,7 +102,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
     ) {
       return textFiltered.filter((s) => !!s.value).sort(sortByIdentifier);
     } else {
-      return [...textFiltered].sort(sortByIdentifier);
+      return [...textFiltered].sort(sortByError);
     }
   }, [scannerSummaries, selectedFilter, scansSearchText]);
 
@@ -379,6 +379,19 @@ const sortByIdentifier = (a: ScannerCore, b: ScannerCore): number => {
   }
 
   return 0;
+};
+
+const sortByError = (a: ScannerCore, b: ScannerCore): number => {
+  if (a.scanError && b.scanError) {
+    return sortByIdentifier(a, b);
+  }
+  if (a.scanError) {
+    return -1;
+  }
+  if (b.scanError) {
+    return 1;
+  }
+  return sortByIdentifier(a, b);
 };
 
 const optimalColumnLayout = (

@@ -6,7 +6,6 @@ from typing_extensions import Literal
 from upath import UPath
 
 from inspect_scout._transcript.database.factory import transcripts_from_db
-from inspect_scout._transcript.database.parquet import PARQUET_TRANSCRIPTS_GLOB
 from inspect_scout._transcript.eval_log import Logs, transcripts_from_logs
 from inspect_scout._transcript.transcripts import Transcripts
 from inspect_scout._util.constants import (
@@ -67,6 +66,8 @@ def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "databa
         "database" if location contains parquet files or is empty,
         otherwise "eval_log"
     """
+    from inspect_scout._transcript.database.parquet import PARQUET_TRANSCRIPTS_GLOB
+
     location_path = UPath(location)
 
     # Check for parquet files with the database naming convention

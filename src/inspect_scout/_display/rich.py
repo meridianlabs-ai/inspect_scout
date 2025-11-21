@@ -1,5 +1,6 @@
 import contextlib
 from functools import lru_cache
+from types import TracebackType
 from typing import Any, Iterator, Sequence
 
 import psutil
@@ -16,6 +17,7 @@ from rich.panel import Panel
 from rich.progress import (
     BarColumn,
     Progress,
+    SpinnerColumn,
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
@@ -24,7 +26,7 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import override
 
-from inspect_scout._display.protocol import Display, ScanDisplay
+from inspect_scout._display.protocol import Display, ScanDisplay, TextProgress
 from inspect_scout._display.util import (
     scan_complete_message,
     scan_config,
@@ -54,6 +56,11 @@ class DisplayRich(Display):
     ) -> None:
         console = rich.get_console()
         console.print(*objects, sep=sep, end=end, markup=markup, highlight=False)
+
+    @contextlib.contextmanager
+    def text_progress(self, caption: str, count: bool) -> Iterator[TextProgress]:
+        with TextProgressRich(caption, count) as progress:
+            yield progress
 
     @contextlib.contextmanager
     def scan_display(
@@ -181,6 +188,37 @@ class ScanDisplayRich(
             panel,
             refresh=True,
         )
+
+
+class TextProgressRich(TextProgress):
+    def __init__(
+        self,
+        caption: str,
+        count: bool,
+    ):
+        self._caption = caption
+        self._count = count
+        text_column_fmt = "[blue]{task.description}:[/blue] [meta]{task.fields[text]}"
+        if self._count:
+            text_column_fmt = text_column_fmt + " - {task.completed:,}"
+        text_column_fmt = text_column_fmt + "[/meta]"
+        self._progress = Progress(SpinnerColumn(), TextColumn(text_column_fmt))
+        self._task_id = self._progress.add_task(caption, total=None, text="(preparing)")
+
+    def __enter__(self) -> "TextProgress":
+        self._progress.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self._progress.stop()
+
+    def update(self, text: str) -> None:
+        self._progress.update(task_id=self._task_id, text=text, advance=1)
 
 
 def scan_panel(

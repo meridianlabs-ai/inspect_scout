@@ -25,6 +25,10 @@ class Display(abc.ABC):
     ) -> None: ...
 
     @contextlib.contextmanager
+    def text_progress(self, caption: str, count: bool) -> Iterator["TextProgress"]:
+        yield TextProgressNone()
+
+    @contextlib.contextmanager
     def scan_display(
         self,
         scan: ScanContext,
@@ -64,4 +68,14 @@ class ScanDisplayNone(ScanDisplay):
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
+        pass
+
+
+class TextProgress(abc.ABC):
+    @abc.abstractmethod
+    def update(self, text: str) -> None: ...
+
+
+class TextProgressNone(TextProgress):
+    def update(self, text: str) -> None:
         pass

@@ -4,10 +4,6 @@ import pandas as pd
 
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.database import TranscriptsDB
-from inspect_scout._transcript.database.parquet import (
-    ParquetTranscripts,
-    ParquetTranscriptsDB,
-)
 from inspect_scout._transcript.metadata import Column
 from inspect_scout._transcript.transcripts import Transcripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
@@ -23,6 +19,7 @@ def transcripts_db(location: str) -> TranscriptsDB:
         Transcripts database for writing and reading.
     """
     from inspect_scout._scan import init_environment
+    from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 
     init_environment()
     return ParquetTranscriptsDB(location)
@@ -52,10 +49,14 @@ def transcripts_from_db(location: str) -> Transcripts:
         transcripts = transcripts.limit(100)
         ```
     """
+    from inspect_scout._transcript.database.parquet import ParquetTranscripts
+
     return ParquetTranscripts(location=location)
 
 
 def transcripts_from_db_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+    from inspect_scout._transcript.database.parquet import ParquetTranscripts
+
     if not snapshot.type == TRANSCRIPT_SOURCE_DATABASE:
         raise ValueError(
             f"Snapshot is of type '{snapshot.type}' (must be of type '{TRANSCRIPT_SOURCE_DATABASE}')"

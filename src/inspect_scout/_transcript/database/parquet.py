@@ -17,6 +17,7 @@ from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from typing_extensions import override
 
+from inspect_scout._display._display import display
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
 from inspect_scout._transcript.source import TranscriptsSource
 from inspect_scout._transcript.transcripts import (
@@ -169,36 +170,36 @@ class ParquetTranscriptsDB(TranscriptsDB):
         current_batch_size = 0
         target_size_bytes = self._target_file_size_mb * 1024 * 1024
 
-        async for transcript in self._as_async_iterator(transcripts):
-            # tick
-            print(f"{transcript.transcript_id}")
+        with display().text_progress("Transcript", True) as progress:
+            async for transcript in self._as_async_iterator(transcripts):
+                progress.update(text=transcript.transcript_id)
 
-            # Serialize once for both size calculation and writing
-            row = self._transcript_to_row(transcript)
-            row_size = self._estimate_row_size(row)
+                # Serialize once for both size calculation and writing
+                row = self._transcript_to_row(transcript)
+                row_size = self._estimate_row_size(row)
 
-            # Add transcript ID for duplicate tracking
-            self._transcript_ids.append(transcript.transcript_id)
+                # Add transcript ID for duplicate tracking
+                self._transcript_ids.append(transcript.transcript_id)
 
-            # Write batch if adding this row would exceed target size
-            if (
-                current_batch_size > 0
-                and current_batch_size + row_size >= target_size_bytes
-            ):
+                # Write batch if adding this row would exceed target size
+                if (
+                    current_batch_size > 0
+                    and current_batch_size + row_size >= target_size_bytes
+                ):
+                    await self._write_parquet_batch(batch)
+                    batch = []
+                    current_batch_size = 0
+
+                # Add row to batch
+                batch.append(row)
+                current_batch_size += row_size
+
+            # write any leftover elements
+            if batch:
                 await self._write_parquet_batch(batch)
-                batch = []
-                current_batch_size = 0
 
-            # Add row to batch
-            batch.append(row)
-            current_batch_size += row_size
-
-        # write any leftover elements
-        if batch:
-            await self._write_parquet_batch(batch)
-
-        # refresh the view
-        await self._create_transcripts_table()
+            # refresh the view
+            await self._create_transcripts_table()
 
     @override
     async def count(
@@ -650,7 +651,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 s3_path = f"{self._location.rstrip('/')}/{filename}"
                 assert self._fs is not None
                 await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
-                print(s3_path)
             finally:
                 # Clean up temp file
                 Path(tmp_path).unlink(missing_ok=True)

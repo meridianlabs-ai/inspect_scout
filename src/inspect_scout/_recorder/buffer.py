@@ -20,6 +20,7 @@ from inspect_scout._util.path import normalize_for_hashing
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
+from .._transcript.util import LazyJSONDict
 
 SCAN_ERRORS = "_errors.jsonl"
 SCAN_SUMMARY = "_summary.json"
@@ -297,6 +298,9 @@ def _normalize_scalar(v: Any) -> Any:
             return v
     except Exception:
         pass
+    # Handle LazyJSONDict specially to avoid materializing unparsed fields
+    if isinstance(v, LazyJSONDict):
+        return v.to_json_string()
     # Decimal, lists, dicts, sets, tuples -> JSON text if possible
     try:
         return json.dumps(v, ensure_ascii=False, separators=(",", ":"))

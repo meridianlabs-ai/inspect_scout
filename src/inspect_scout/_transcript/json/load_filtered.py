@@ -252,18 +252,23 @@ def _resolve_attachments(
         resolved_dict = _resolve_dict_attachments(event_dict, resolve_string)
         resolved_events.append(resolved_dict)
 
-    # Create new transcript with resolved data using single validation
-    return Transcript.model_validate(
+    # Create new transcript with resolved data
+    # Use model_validate to validate messages/events into proper types,
+    # but pass metadata separately via __pydantic_private__ to preserve LazyJSONDict
+    validated = Transcript.model_validate(
         {
             "transcript_id": transcript.id,
             "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
-            "metadata": transcript.metadata,
+            "metadata": {},  # Placeholder to avoid validation
             "messages": resolved_messages,
             "events": resolved_events,
         }
     )
+    # Directly assign metadata to preserve LazyJSONDict
+    validated.metadata = transcript.metadata
+    return validated
 
 
 def _resolve_dict_attachments(obj: Any, resolve_func: Callable[[str], str]) -> Any:

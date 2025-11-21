@@ -26,6 +26,7 @@ from inspect_scout._transcript.transcripts import (
     TranscriptsReader,
 )
 from inspect_scout._transcript.types import RESERVED_COLUMNS
+from inspect_scout._transcript.util import LazyJSONDict
 
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import LocalFilesCache, create_temp_cache
@@ -280,22 +281,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
             transcript_source_uri = row_dict["source_uri"]
 
             # Reconstruct metadata from all non-reserved columns
-            metadata: dict[str, Any] = {}
-            for col, value in row_dict.items():
-                if col not in RESERVED_COLUMNS and value is not None:
-                    # Try to deserialize JSON strings back to objects/arrays
-                    # Only attempt parsing if string starts with JSON markers
-                    if isinstance(value, str) and value and value[0] in ("{", "["):
-                        try:
-                            parsed = json.loads(value)
-                            metadata[col] = parsed
-                        except (json.JSONDecodeError, ValueError):
-                            # Not valid JSON, keep as string
-                            metadata[col] = value
-                    else:
-                        metadata[col] = value
+            # Use LazyJSONDict to defer JSON parsing until values are accessed
+            metadata_dict = {
+                col: value
+                for col, value in row_dict.items()
+                if col not in RESERVED_COLUMNS and value is not None
+            }
+            metadata = LazyJSONDict(metadata_dict)
 
-            yield TranscriptInfo(
+            # Use model_construct to bypass Pydantic validation which would
+            # convert LazyJSONDict to a plain dict, defeating lazy parsing
+            yield TranscriptInfo.model_construct(
                 transcript_id=transcript_id,
                 source_type=transcript_source_type,
                 source_id=transcript_source_id,
@@ -321,8 +317,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         need_events = content.events is not None
 
         if not need_messages and not need_events:
-            # No content needed
-            return Transcript(
+            # No content needed - use model_construct to preserve LazyJSONDict
+            return Transcript.model_construct(
                 transcript_id=t.transcript_id,
                 source_type=t.source_type,
                 source_id=t.source_id,
@@ -344,8 +340,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ).fetchone()
 
         if not filename_result:
-            # Transcript not found in metadata table
-            return Transcript(
+            # Transcript not found in metadata table - use model_construct to preserve LazyJSONDict
+            return Transcript.model_construct(
                 transcript_id=t.transcript_id,
                 source_type=t.source_type,
                 source_id=t.source_id,
@@ -360,8 +356,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
 
         if not result:
-            # Transcript not found
-            return Transcript(
+            # Transcript not found - use model_construct to preserve LazyJSONDict
+            return Transcript.model_construct(
                 transcript_id=t.transcript_id,
                 source_type=t.source_type,
                 source_id=t.source_id,

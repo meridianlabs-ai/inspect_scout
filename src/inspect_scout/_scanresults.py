@@ -266,6 +266,10 @@ def _handle_label_validation(
         # Set validation result for this synthetic row
         template_row["validation_result"] = parsed_results.get(label, None)
 
+        template_row["scan_error"] = None
+        template_row["scan_error_traceback"] = None
+        template_row["scan_error_type"] = None
+
         # NULL out scan execution fields
         template_row["scan_total_tokens"] = None
         template_row["scan_model_usage"] = None

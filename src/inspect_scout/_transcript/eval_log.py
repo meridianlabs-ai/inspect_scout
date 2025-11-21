@@ -56,6 +56,7 @@ from .local_files_cache import LocalFilesCache, create_temp_cache
 from .metadata import Condition
 from .transcripts import TranscriptsQuery, TranscriptsReader
 from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
+from .util import LazyJSONDict
 
 TRANSCRIPTS = "transcripts"
 EVAL_LOG_SOURCE_TYPE = "eval_log"
@@ -324,11 +325,6 @@ class EvalLogTranscriptsDB:
             transcript_source_id = row_dict.get("eval_id", None)
             transcript_source_uri = row_dict.get("log", None)
 
-            # materialize JSON columns
-            for column in JSON_COLUMNS:
-                if column in row_dict:
-                    row_dict[column] = json.loads(row_dict[column])
-
             # ensure we have required fields
             if (
                 transcript_id is None
@@ -340,13 +336,17 @@ class EvalLogTranscriptsDB:
                 )
 
             # everything else goes into metadata (excluding reserved columns)
-            metadata = {
+            # Use LazyJSONDict with JSON_COLUMNS to defer JSON parsing until accessed
+            metadata_dict = {
                 k: v
                 for k, v in row_dict.items()
                 if v is not None and k not in RESERVED_COLUMNS
             }
+            metadata = LazyJSONDict(metadata_dict, json_keys=JSON_COLUMNS)
 
-            yield TranscriptInfo(
+            # Use model_construct to bypass Pydantic validation which would
+            # convert LazyJSONDict to a plain dict, defeating lazy parsing
+            yield TranscriptInfo.model_construct(
                 transcript_id=transcript_id,
                 source_type=EVAL_LOG_SOURCE_TYPE,
                 source_id=transcript_source_id,

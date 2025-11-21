@@ -41,6 +41,7 @@ from ._transcript.database.factory import transcripts_db
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogMetadata, log_metadata
 from ._transcript.metadata import Column, Condition, Metadata, metadata
+from ._transcript.source import TranscriptsSource
 from ._transcript.transcripts import Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
@@ -88,6 +89,7 @@ __all__ = [
     "TranscriptsDB",
     "transcripts_from",
     "Transcripts",
+    "TranscriptsSource",
     "TranscriptsReader",
     "Transcript",
     "TranscriptInfo",

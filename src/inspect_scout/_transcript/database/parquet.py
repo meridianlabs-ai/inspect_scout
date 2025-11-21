@@ -18,6 +18,7 @@ from inspect_ai._util.file import filesystem
 from typing_extensions import override
 
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
+from inspect_scout._transcript.source import TranscriptsSource
 from inspect_scout._transcript.transcripts import (
     Transcripts,
     TranscriptsQuery,
@@ -141,14 +142,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
     @override
     async def insert(
         self,
-        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
+        transcripts: Iterable[Transcript]
+        | AsyncIterable[Transcript]
+        | Transcripts
+        | TranscriptsSource,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
         Transcript ids that are already in the database are not inserted.
 
         Args:
-            transcripts: Transcripts to insert (iterable or async iterator).
+            transcripts: Transcripts to insert (iterable, async iterable, or source).
         """
         assert self._conn is not None
 
@@ -795,29 +799,22 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _as_async_iterator(
         self,
-        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
+        transcripts: Iterable[Transcript]
+        | AsyncIterable[Transcript]
+        | Transcripts
+        | TranscriptsSource,
     ) -> AsyncIterator[Transcript]:
-        """Convert iterable or async iterator to async iterator.
+        """Convert various transcript sources to async iterator.
 
         Args:
-            transcripts: Either a regular iterable or async iterator.
+            transcripts: Transcripts from various sources (iterable, async iterable,
+                Transcripts object, or TranscriptsSource callable).
 
         Returns:
-            AsyncIterator over transcripts. If input is already async, returns it
-            directly. Otherwise, wraps the iterable in an async generator.
+            AsyncIterator over transcripts, filtered to exclude already-present transcripts.
         """
-        # Already an async iterator - return it directly
-        if isinstance(transcripts, AsyncIterable):
-
-            async def _iter() -> AsyncIterator[Transcript]:
-                async for transcript in transcripts:
-                    if not self._have_transcript(transcript.transcript_id):
-                        yield transcript
-
-            return _iter()
-
-        # Transcripts, yield an iterator that reads them fully
-        elif isinstance(transcripts, Transcripts):
+        # Transcripts - read them fully using reader
+        if isinstance(transcripts, Transcripts):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 async with transcripts.reader() as tr:
@@ -830,11 +827,31 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return _iter()
 
-        # ordinary iterator
-        else:
+        # AsyncIterable - iterate with async for
+        elif isinstance(transcripts, AsyncIterable):
+
+            async def _iter() -> AsyncIterator[Transcript]:
+                async for transcript in transcripts:
+                    if not self._have_transcript(transcript.transcript_id):
+                        yield transcript
+
+            return _iter()
+
+        # Regular iterable (not callable) - wrap in async generator
+        elif not callable(transcripts):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 for transcript in transcripts:
+                    if not self._have_transcript(transcript.transcript_id):
+                        yield transcript
+
+            return _iter()
+
+        # TranscriptsSource (callable) - call it to get AsyncIterator
+        else:
+
+            async def _iter() -> AsyncIterator[Transcript]:
+                async for transcript in transcripts():
                     if not self._have_transcript(transcript.transcript_id):
                         yield transcript
 

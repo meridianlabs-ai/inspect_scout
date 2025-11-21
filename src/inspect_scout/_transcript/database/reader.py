@@ -21,10 +21,10 @@ class TranscriptsDBReader(TranscriptsReader):
     def __init__(
         self,
         db: TranscriptsDB,
-        query: TranscriptsQuery,
+        query: TranscriptsQuery | None = None,
     ) -> None:
         self._db = db
-        self._query = query
+        self._query = query or TranscriptsQuery()
 
     @override
     async def __aenter__(self) -> "TranscriptsDBReader":

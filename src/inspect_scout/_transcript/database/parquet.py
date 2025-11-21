@@ -18,7 +18,11 @@ from inspect_ai._util.file import filesystem
 from typing_extensions import override
 
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
-from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
+from inspect_scout._transcript.transcripts import (
+    Transcripts,
+    TranscriptsQuery,
+    TranscriptsReader,
+)
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 
 from ..json.load_filtered import load_filtered_transcript
@@ -43,6 +47,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         location: str,
         target_file_size_mb: float = 100,
         row_group_size_mb: float = 32,
+        query: TranscriptsQuery | None = None,
     ) -> None:
         """Initialize Parquet transcript database.
 
@@ -51,10 +56,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
             target_file_size_mb: Target size in MB for each Parquet file. Individual
                 transcripts may cause files to exceed this limit. Can be fractional.
             row_group_size_mb: Target row group size in MB for Parquet files. Can be fractional.
+            query: Optional query to apply during table creation for optimization.
+                If provided, WHERE conditions are pushed down to Parquet scan,
+                and SHUFFLE/LIMIT are applied during table creation.
+                Query-time filters are additive (AND combination).
         """
         super().__init__(location)
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
+        self._query = query
 
         # Note: Bloom filter support for transcript_id would be beneficial for point
         # lookups, but PyArrow doesn't yet support writing bloom filters (as of v21.0.0).
@@ -110,7 +120,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._fs = AsyncFilesystem()
 
         # Discover and register Parquet files
-        await self._create_transcripts_view()
+        await self._create_transcripts_table()
 
     @override
     async def disconnect(self) -> None:
@@ -184,7 +194,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             await self._write_parquet_batch(batch)
 
         # refresh the view
-        await self._create_transcripts_view()
+        await self._create_transcripts_table()
 
     @override
     async def count(
@@ -656,14 +666,18 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             print(output_path.as_posix())
 
-    async def _create_transcripts_view(self) -> None:
+    async def _create_transcripts_table(self) -> None:
         """Create or refresh DuckDB structures for querying transcripts.
 
         Creates metadata-only table (excluding messages/events) with filename column.
+        If a query was provided during initialization, applies WHERE/SHUFFLE/LIMIT
+        during table creation for optimization (enables Parquet filter pushdown).
+
         This enables:
         1. Fast indexed lookups on transcript_id and other metadata
         2. Targeted file access for content reads (via filename column)
         3. Low memory usage (only metadata in memory, content stays in Parquet)
+        4. Parquet filter pushdown for WHERE conditions (when query provided)
         """
         assert self._conn is not None
 
@@ -693,14 +707,35 @@ class ParquetTranscriptsDB(TranscriptsDB):
         else:
             pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
 
-        # Create metadata-only table (EXCLUDE large content columns)
-        # This keeps memory usage low while enabling fast indexed lookups
-        # filename column is automatically included via filename=true parameter
-        self._conn.execute(f"""
+        # Build base query
+        sql = f"""
             CREATE TABLE transcripts AS
             SELECT * EXCLUDE (messages, events)
             FROM read_parquet({pattern}, union_by_name=true, filename=true)
-        """)
+        """
+        params: list[Any] = []
+
+        # Apply pre-filter query if provided
+        if self._query:
+            # Apply WHERE conditions (enables Parquet filter pushdown)
+            if self._query.where:
+                where_clause, where_params = self._build_where_clause(self._query.where)
+                sql += where_clause
+                params.extend(where_params)
+
+            # Apply SHUFFLE (register UDF first)
+            if self._query.shuffle:
+                seed = 0 if self._query.shuffle is True else self._query.shuffle
+                self._register_shuffle_function(seed)
+                sql += " ORDER BY shuffle_hash(transcript_id)"
+
+            # Apply LIMIT
+            if self._query.limit:
+                sql += " LIMIT ?"
+                params.append(self._query.limit)
+
+        # Execute query with parameters
+        self._conn.execute(sql, params)
 
         # Create index on transcript_id for fast lookups
         self._conn.execute("""
@@ -834,8 +869,8 @@ class ParquetTranscripts(Transcripts):
         Returns:
             TranscriptsReader configured with current query parameters.
         """
-        db = ParquetTranscriptsDB(self._location)
-        return TranscriptsDBReader(db, self._query)
+        db = ParquetTranscriptsDB(self._location, query=self._query)
+        return TranscriptsDBReader(db)
 
 
 def _validate_metadata_keys(metadata: dict[str, Any]) -> None:

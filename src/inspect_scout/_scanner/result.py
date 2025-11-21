@@ -151,7 +151,7 @@ class ResultReport(BaseModel):
             # error/refusal
             columns["scan_error"] = None
             columns["scan_error_traceback"] = None
-            columns["scan_error_refusal"] = None
+            columns["scan_error_type"] = None
         elif self.error is not None:
             columns["uuid"] = uuid()
             columns["label"] = None
@@ -164,7 +164,7 @@ class ResultReport(BaseModel):
             columns["event_references"] = to_json_str_safe([])
             columns["scan_error"] = self.error.error
             columns["scan_error_traceback"] = self.error.traceback
-            columns["scan_error_refusal"] = self.error.refusal
+            columns["scan_error_type"] = "refusal"
         else:
             raise ValueError(
                 "A scan result must have either a 'result', 'refusal, or 'error' field."

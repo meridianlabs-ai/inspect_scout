@@ -143,7 +143,7 @@ def test_retry_exceed_limit() -> None:
         results = scan_results_df(status.location, scanner="exceed_retry")
         df = results.scanners["exceed_retry"]
         assert len(df) == 1
-        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert pd.notna(df["scan_error_type"].iloc[0])
         assert "content filter" in df["scan_error"].iloc[0]
 
 
@@ -240,7 +240,7 @@ def test_retry_limit_zero_no_retries() -> None:
         results = scan_results_df(status.location, scanner="no_retries_allowed")
         df = results.scanners["no_retries_allowed"]
         assert len(df) == 1
-        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert pd.notna(df["scan_error_type"].iloc[0])
         assert "content filter" in df["scan_error"].iloc[0]
 
 
@@ -342,7 +342,7 @@ def test_retry_limit_one_exceeded() -> None:
         results = scan_results_df(status.location, scanner="one_retry_exceeded")
         df = results.scanners["one_retry_exceeded"]
         assert len(df) == 1
-        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert pd.notna(df["scan_error_type"].iloc[0])
         assert "content filter" in df["scan_error"].iloc[0]
 
 
@@ -397,7 +397,7 @@ def test_retry_limit_false_means_no_retries() -> None:
         results = scan_results_df(status.location, scanner="false_retries")
         df = results.scanners["false_retries"]
         assert len(df) == 1
-        assert pd.notna(df["scan_error_refusal"].iloc[0])
+        assert pd.notna(df["scan_error_type"].iloc[0])
         assert "content filter" in df["scan_error"].iloc[0]
 
 
@@ -478,11 +478,11 @@ def test_multiple_transcripts_mixed_results() -> None:
         # Check successful transcript (has value, no refusal)
         successful_rows = df[df["value"].notna()]
         assert len(successful_rows) == 1
-        assert pd.isna(successful_rows["scan_error_refusal"].iloc[0])
+        assert pd.isna(successful_rows["scan_error_type"].iloc[0])
         assert pd.isna(successful_rows["scan_error"].iloc[0])
 
         # Check failed transcript (has refusal, no value)
-        failed_rows = df[df["scan_error_refusal"].notna()]
+        failed_rows = df[df["scan_error_type"].notna()]
         assert len(failed_rows) == 1
         assert pd.isna(failed_rows["value"].iloc[0])
         assert "content filter" in failed_rows["scan_error"].iloc[0]
@@ -683,7 +683,7 @@ def test_scan_refusal_column_populated() -> None:
         refusal_results = scan_results_df(status.location, scanner="refusal_scanner")
         refusal_df = refusal_results.scanners["refusal_scanner"]
         assert len(refusal_df) == 1
-        assert pd.notna(refusal_df["scan_error_refusal"].iloc[0])
+        assert pd.notna(refusal_df["scan_error_type"].iloc[0])
         assert "content filter" in refusal_df["scan_error"].iloc[0]
         assert pd.isna(refusal_df["value"].iloc[0])
 

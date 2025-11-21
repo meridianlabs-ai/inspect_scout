@@ -28,6 +28,8 @@ transcripts = transcripts_from(
 )
 ```
 
+## Transcripts Database
+
 ## Filtering Transcripts
 
 If you want to scan only a subset of transcripts, you can use the `.where()` method to narrow down the collection. For example:

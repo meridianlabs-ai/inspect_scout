@@ -16,7 +16,7 @@ filters:
 
 website:
    title: "Inspect Scout"
-   description: "Transcript analysis for Inspect AI"
+   description: "Transcript Analysis for AI Agents"
    bread-crumbs: true
    page-navigation: true
    repo-url: https://github.com/meridianlabs-ai/inspect_scout
@@ -24,10 +24,10 @@ website:
    repo-actions: [issue]
    twitter-card:
       title: "Inspect Scout"
-      description: "Transcript analysis for Inspect AI"
+      description: "Transcript Analysis for AI Agents"
    open-graph: 
       title: "Inspect Scout"
-      description: "Transcript analysis for Inspect AI"
+      description: "Transcript Analysis for AI Agents"
    navbar:
       title: "Inspect Scout"
       background: light

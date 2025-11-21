@@ -1,7 +1,7 @@
 
 ``` {.python filename="cybench_scan.py"}
 from inspect_scout (
-    import ScanJob, scanjob, transcripts_from, log_metadata as m
+    import ScanJob, scanjob, transcripts_from, metadata as m
 )
 
 from .scanners import deception, tool_errors

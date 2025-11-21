@@ -1,17 +1,19 @@
 ---
 title: "Inspect Scout"
-description: "Transcript analysis for Inspect AI"
+description: "Transcript Analysis for AI Agents"
 tbl-colwidths: [30,70]
 ---
 
 ## Welcome
 
-Welcome to Inspect Scout, a tool for in-depth analysis of [Inspect AI](https://inspect.aisi.org.uk/)  transcripts. Scout has the following core features:
+Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. Scout has the following core features:
 
-1.  Scan full sample transcripts or individual messages or events.
+1.  Scan full transcripts or individual messages or events.
 2.  High performance parallel processing of transcript content.
 3.  Resume scans that are stopped due to errors or interruptions.
-4.  Tightly integrated with Inspect [data frames](https://inspect.aisi.org.uk/dataframe.html) for input and analysis.
+4.  Scout View for rich visualization of scan results.
+
+Scout can process input either from a [transcript database](transcripts.qmd#transcripts-database) (which can be populated from any source) or by directly reading Inspect AI eval logs.
 
 ### Installation
 
@@ -27,7 +29,7 @@ You should also be sure to install the [Inspect AI VS Code Extension](https://in
 
 Below we'll provide some simple examples of creating and using Scout scanners. Some core components we'll make use of here include:
 
--   `Transcript` --- LLM conversation to analyze (e.g. an Inspect sample trajectory).
+-   `Transcript` --- LLM conversation to analyze (e.g. an agent rollout or a sample from an Inspect eval).
 
 -   `Scanner` --- Function that takes an input from a `Transcript` and returns a `Result` (conceptually very similar to an Inspect `Scorer`).
 
@@ -90,44 +92,42 @@ def ctf_environment() -> Scanner[Transcript]:
 
 4.  As with scorers, results also include additional context (here the extracted answer and full model completion).
 
-Above we used only the `messages` field from the `transcript`, but `Transcript` includes many other fields with additional context. See  [Transcript Fields](transcripts.qmd#transcript-fields) for additional details.
+Above we used only the `messages` field from the `transcript`, but `Transcript` includes many other fields with additional context. See [Transcript Fields](transcripts.qmd#transcript-fields) for additional details.
 
 ### Running a Scan
 
-We can now run that scanner on our log files. The `Scanner` will be called once for each sample trajectory in the log (total samples \* epochs):
+We can now run that scanner on our transcripts. The `Scanner` will be called once for each sample trajectory in the log (total samples \* epochs):
 
 ``` bash
 scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
-You can also address individual scanners using `@<scanner-name>`. For example:
+The `-T` argument indicates which transcripts to scan (in this case a local Inspect log directory). You can also scan from a [transcripts database](transcripts.qmd#transcripts-database) that is either local or on S3. For example, here we scan some W&B Weave transcripts stored on S3:
 
 ``` bash
-scout scan scanner.py@ctf_environment -T ./logs --model openai/gpt-5
+scout scan scanner.py \
+   -T s3://weave-rollouts/cybench \
+   --model openai/gpt-5
 ```
-
-Note that if no `-T` argument is provided then Scout will use the current `INSPECT_LOG_DIR` (by default `./logs`) so the `-T` above is not strictly necessary.
 
 As with Inspect AI, Inspect Scout will read your `.env` file for [environmental options](https://inspect.aisi.org.uk/options.html#env-files). So if your `.env` contained the following:
 
-```{.makefile filename=".env"}
-SCOUT_SCAN_TRANSCRIPTS=./logs
+``` {.makefile filename=".env"}
+SCOUT_SCAN_TRANSCRIPTS=s3://weave-rollouts/cybench
 SCOUT_SCAN_MODEL=openai/gpt-5
 ```
 
 Then you could shorten the above command to:
 
-```bash
+``` bash
 scout scan scanner.py 
 ```
-
-
 
 ### LLM Scanner
 
 The example scanner above repeats several steps quite common to LLM-driven scanners (prompting, message history, answer extraction, etc.). There is a higher-level `llm_scanner()` function that includes these things automatically and provides several ways to configure its behavior. For example, we could re-write our scanner above as follows:
 
-```{.python filename="scanner.py"}
+``` {.python filename="scanner.py"}
 from inspect_scout import Transcript, llm_scanner, scanner
 
 @scanner(messages="all")
@@ -173,13 +173,13 @@ See the [Scanners](scanners.qmd) article for more details on creating scanners, 
 
 Scout includes a viewer application for looking at scan results in depth. Run the viewer with:
 
-```bash
+``` bash
 scout view
 ```
 
 By default this will view the scan results in the `./scans` directory of the current working directory (of the location pointed to the by the `SCOUT_SCAN_RESULTS` environment variable). Specify an alternate results location with:
 
-```bash
+``` bash
 scout view --results s3://my-scan-results
 ```
 
@@ -191,7 +191,7 @@ You may want to import scanners from other modules and compose them into a `Scan
 
 A `ScanJob` can also include `transcripts` or any other option that you can pass to `scout scan` (e.g. `model`). For example:
 
-```{.python filename="scanning.py"}
+``` {.python filename="scanning.py"}
 from inspect_scout import ScanJob, scanjob
 
 @scanjob
@@ -211,7 +211,7 @@ scout scan scanning.py
 
 You can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:
 
-```{.yaml filename="scan.yaml"}
+``` {.yaml filename="scan.yaml"}
 scanners:
   - name: deception
     file: scanner.py
@@ -248,7 +248,7 @@ See the [Results](results.qmd) article for more details on the columns available
 
 As you are developing scanners you may want to validate them against some ground truth regarding what the ideal scanner result would be. You can do this by including a `ValidationSet` along with your scan. For example, imagine you had a validation set in the form of a CSV with `id` and `target` columns (representing the transcript_id and ideal target for the scanner):
 
-```{.default filename="ctf-validation.csv"}
+``` {.default filename="ctf-validation.csv"}
 Fg3KBpgFr6RSsEWmHBUqeo, true
 VFkCH7gXWpJYUYonvfHxrG, false
 SiEXpECj7U9nNAvM3H7JqB, true
@@ -256,7 +256,7 @@ SiEXpECj7U9nNAvM3H7JqB, true
 
 You can then compute results from the validation set as you scan:
 
-```python
+``` python
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
     transcripts="./logs",
@@ -268,12 +268,11 @@ scan(
 
 Validation results are reported both in the scan status/summary UI as well as within columns in the data frame produced for each scanner. To learn more see the article on [Validation](validation.qmd).
 
-
 ## Handling Errors
 
 If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the `scan resume` command. For example:
 
-```bash
+``` bash
 scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
 ```
 
@@ -283,21 +282,19 @@ By default, if errors occur during an individual scan, they are caught and repor
 
 If you prefer to fail immediately when an error occurs rather than capturing errors in results, use the `--fail-on-error` flag:
 
-```bash
+``` bash
 scout scan scanner.py -T ./logs --fail-on-error
 ```
 
 With this flag, any exception will cause the entire scan to terminate immediately. This can be valuable when developing a scanner.
 
-
-
 ## Transcripts
 
-In the example(s) above we scanned all of the samples within an Inspect log direcotry. Often though you'll want to scan only a subset of logs in that directory. For example, here we scan all of Cybench logs in the `./logs` directory:
+In the example(s) above we scanned all available transcripts. Often though you'll want to scan only a subset of transcripts. For example, here we filter down to only Cybench logs:
 
 ``` python
 from inspect_scout (
-    import scan, transcripts_from, log_metadata as m
+    import scan, transcripts_from, metadata as m
 )
 
 from .scanners import deception, tool_errors
@@ -311,7 +308,7 @@ status = scan(
 )
 ```
 
-The `log_metadata` object (aliased to `m`) provides a typed way to specified `where()` clauses for filtering transcripts.
+The `metadata` object (aliased to `m`) provides a convenient way to specified `where()` clauses for filtering transcripts.
 
 Note that doing this query required us to switch to the Python `scan()` API. We can still use the CLI if we wrap our transcript query in a `ScanJob`:
 
@@ -333,14 +330,14 @@ The Scout scanning pipeline is optimized for parallel reading and scanning as we
 
 See the following articles to learn more about using Scout:
 
-- [Transcripts](transcripts.qmd): Reading and filtering transcripts for scanning.
+-   [Transcripts](transcripts.qmd): Reading and filtering transcripts for scanning.
 
-- [Scanners](scanners.qmd): Implementing custom scanners and loaders.
+-   [Scanners](scanners.qmd): Implementing custom scanners and loaders.
 
-- [LLM Scanner](llm_scanner.qmd): Customizable LLM scanner for model evaluation of transcripts.
+-   [LLM Scanner](llm_scanner.qmd): Customizable LLM scanner for model evaluation of transcripts.
 
-- [Results](results.qmd): Collecting and analyzing scanner results.
+-   [Results](results.qmd): Collecting and analyzing scanner results.
 
-- [Validation](validation.qmd): Validation of scanner results against ground truth target values.
+-   [Validation](validation.qmd): Validation of scanner results against ground truth target values.
 
-- [Reference](reference/index.qmd): Detailed documentation on the Scout Python API and CLI commands.
+-   [Reference](reference/index.qmd): Detailed documentation on the Scout Python API and CLI commands.

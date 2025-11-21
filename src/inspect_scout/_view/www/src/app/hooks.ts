@@ -229,7 +229,7 @@ export const useScannerData = (
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo((): ColumnTable | undefined => {
     // Not a valid index
     if (!scanResultUuid || !columnTable) {
       return undefined;
@@ -351,9 +351,11 @@ export const useScannerData = (
         const scanErrorTraceback = filtered.get("scan_error_traceback", 0) as
           | string
           | undefined;
-        const scanErrorRefusal = filtered.get("scan_error_refusal", false) as
-          | boolean
-          | undefined;
+        const scanErrorRefusal = filtered
+          .columnNames()
+          .includes("scan_error_refusal")
+          ? (filtered.get("scan_error_refusal", 0) as boolean | undefined)
+          : false;
         const scanId = filtered.get("scan_id", 0) as string;
         const scanTotalTokens = filtered.get("scan_total_tokens", 0) as number;
         const scannerFile = filtered.get("scanner_file", 0) as string;

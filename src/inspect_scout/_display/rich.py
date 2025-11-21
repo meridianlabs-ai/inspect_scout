@@ -308,17 +308,17 @@ def scan_panel(
                 if m not in total_usage:
                     total_usage[m] = ModelUsage()
                 total_usage[m] = add_model_usage(total_usage[m], usage)
-
-        usage_table = Table.grid(expand=False)
-        usage_table.add_column()
-        usage_table.add_column()
-        for model, usage in total_usage.items():
-            usage_table.add_row(
-                *model_usage_summary(model, usage),
-                style=theme.light,
-            )
-        table.add_row(usage_table, "", "")
-        table.add_row()
+        if total_usage:
+            usage_table = Table.grid(expand=False)
+            usage_table.add_column()
+            usage_table.add_column()
+            for model, usage in total_usage.items():
+                usage_table.add_row(
+                    *model_usage_summary(model, usage),
+                    style=theme.light,
+                )
+            table.add_row(usage_table, "", "")
+            table.add_row()
 
     scanning_group: list[RenderableType] = []
     if progress:

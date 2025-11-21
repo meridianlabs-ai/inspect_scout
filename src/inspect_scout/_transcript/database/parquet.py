@@ -7,14 +7,14 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, AsyncIterator, Callable, Iterable, cast
+from typing import Any, AsyncIterable, AsyncIterator, Callable, Iterable
 
 import duckdb
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai._util.file import basename, filesystem
+from inspect_ai._util.file import filesystem
 from typing_extensions import override
 
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
@@ -131,7 +131,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
     @override
     async def insert(
         self,
-        transcripts: Iterable[Transcript] | AsyncIterator[Transcript] | Transcripts,
+        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
@@ -157,7 +157,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         async for transcript in self._as_async_iterator(transcripts):
             # tick
-            print(f"{basename(transcript.source_uri)} ({transcript.transcript_id})")
+            print(f"{transcript.transcript_id}")
 
             # Serialize once for both size calculation and writing
             row = self._transcript_to_row(transcript)
@@ -760,7 +760,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _as_async_iterator(
         self,
-        transcripts: Iterable[Transcript] | AsyncIterator[Transcript] | Transcripts,
+        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
     ) -> AsyncIterator[Transcript]:
         """Convert iterable or async iterator to async iterator.
 
@@ -772,8 +772,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             directly. Otherwise, wraps the iterable in an async generator.
         """
         # Already an async iterator - return it directly
-        if hasattr(transcripts, "__anext__"):
-            transcripts = cast(AsyncIterator[Transcript], transcripts)
+        if isinstance(transcripts, AsyncIterable):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 async for transcript in transcripts:

@@ -1,6 +1,6 @@
 import abc
 from types import TracebackType
-from typing import AsyncIterator, Iterable, Type
+from typing import AsyncIterable, AsyncIterator, Iterable, Type
 
 from inspect_scout._transcript.transcripts import Transcripts
 
@@ -51,7 +51,7 @@ class TranscriptsDB(abc.ABC):
     @abc.abstractmethod
     async def insert(
         self,
-        transcripts: Iterable[Transcript] | AsyncIterator[Transcript] | Transcripts,
+        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
     ) -> None:
         """Insert transcripts into database.
 

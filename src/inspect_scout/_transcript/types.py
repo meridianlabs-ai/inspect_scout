@@ -45,14 +45,14 @@ class TranscriptInfo(BaseModel):
     transcript_id: str
     """Globally unique id for transcript (e.g. sample uuid)."""
 
-    source_type: str
-    """Type of source for transcript (e.g. "database" or "eval_log")."""
+    source_type: str | None = Field(default=None)
+    """Type of source for transcript (e.g. "eval_log")."""
 
-    source_id: str
+    source_id: str | None = Field(default=None)
     """Globally unique ID for transcript source (e.g. eval_id)."""
 
-    source_uri: str
-    """URI for source data (e.g. log file path)"""
+    source_uri: str | None = Field(default=None)
+    """Optional. URI for source data (e.g. log file path)."""
 
     metadata: dict[str, Any] = Field(default_factory=dict)
     """Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.)."""

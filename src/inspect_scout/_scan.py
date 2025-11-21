@@ -660,19 +660,25 @@ async def _scan_async_inner(
                     "true",
                     "yes",
                 )
+                # are we running single process?
+                single_process = (
+                    True
+                    if total_scans == 1
+                    or isinstance(transcripts, ParquetTranscripts)
+                    or scan.spec.options.limit == 1
+                    or scan.spec.options.max_processes == 1
+                    or os.name == "nt"
+                    else False
+                )
+
+                # set strategy accordingly
                 strategy = (
                     single_process_strategy(
                         task_count=max_tasks,
                         prefetch_multiple=prefetch_multiple,
                         diagnostics=diagnostics,
                     )
-                    if total_scans == 1
-                    or isinstance(
-                        transcripts, ParquetTranscripts
-                    )  # duckdb is borked in multiprocessing
-                    or scan.spec.options.limit == 1
-                    or scan.spec.options.max_processes == 1
-                    or os.name == "nt"
+                    if single_process
                     else multi_process_strategy(
                         total_scans=total_scans,
                         max_processes=scan.spec.options.max_processes,
@@ -681,6 +687,11 @@ async def _scan_async_inner(
                         diagnostics=diagnostics,
                     )
                 )
+
+                # if we are single process then re-use the tr we are holding
+                # (otherwise this will be initialized on demand in children)
+                if single_process:
+                    transcripts_reader = tr
 
                 async def record_results(
                     transcript: TranscriptInfo,

@@ -53,9 +53,9 @@ class RawTranscript:
     """Temporary structure for transcript data before validation."""
 
     id: str
-    source_type: str
-    source_id: str
-    source_uri: str
+    source_type: str | None
+    source_id: str | None
+    source_uri: str | None
     metadata: dict[str, Any]
     messages: list[dict[str, Any]]
     events: list[dict[str, Any]]

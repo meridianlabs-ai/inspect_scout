@@ -588,6 +588,7 @@ async def test_query_all(db: EvalLogTranscriptsDB) -> None:
     for result in results:
         assert isinstance(result, TranscriptInfo)
         assert result.transcript_id.startswith("sample_")
+        assert result.source_uri
         assert result.source_uri.startswith("/path/to/log_")
         assert isinstance(result.metadata, dict)
 

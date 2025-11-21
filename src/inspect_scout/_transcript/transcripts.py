@@ -194,4 +194,6 @@ class Transcripts(abc.ABC):
         return transcripts
 
     @abc.abstractmethod
-    def reader(self) -> TranscriptsReader: ...
+    def reader(self) -> TranscriptsReader:
+        """Read the selected transcripts."""
+        ...

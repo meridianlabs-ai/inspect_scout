@@ -58,6 +58,7 @@ from .transcripts import TranscriptsQuery, TranscriptsReader
 from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
 
 TRANSCRIPTS = "transcripts"
+EVAL_LOG_SOURCE_TYPE = "eval_log"
 
 Logs: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
@@ -347,7 +348,7 @@ class EvalLogTranscriptsDB:
 
             yield TranscriptInfo(
                 transcript_id=transcript_id,
-                source_type=TRANSCRIPT_SOURCE_EVAL_LOG,
+                source_type=EVAL_LOG_SOURCE_TYPE,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
                 metadata=metadata,
@@ -367,7 +368,10 @@ class EvalLogTranscriptsDB:
 
         zip_reader = AsyncZipReader(
             self._fs,
-            await self._files_cache.resolve_remote_uri_to_local(self._fs, t.source_uri),
+            await self._files_cache.resolve_remote_uri_to_local(
+                self._fs,
+                t.source_uri or "",  # always has a source_uri
+            ),
         )
         async with zip_reader.open_member(sample_file_name) as json_iterator:
             return await load_filtered_transcript(

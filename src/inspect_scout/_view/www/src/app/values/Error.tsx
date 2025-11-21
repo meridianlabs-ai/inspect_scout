@@ -11,7 +11,6 @@ interface ErrorProps {
 }
 
 export const Error: FC<ErrorProps> = ({ error, refusal }) => {
-  refusal = false;
   const icon = refusal ? ApplicationIcons.refuse : ApplicationIcons.error;
   const message = refusal ? "Refusal" : error;
   return (

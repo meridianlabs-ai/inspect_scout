@@ -37,9 +37,9 @@ export const decodeArrowBytes = (bytes: ArrayBuffer | Uint8Array) => {
   // Now Arquero can read the uncompressed Arrow data
   let table = fromArrow(uncompressedBytes);
 
-  // Cast the value column to appropriate types based on value_type
+  // Cast columns to appropriate types
   // (Mixed-type columns get converted to strings by Arrow/Pandas)
-  table = castValueColumn(table);
+  table = castColumns(table);
 
   return table;
 };
@@ -61,19 +61,17 @@ function ensureLZ4CodecRegistered(): void {
   }
 }
 
-/**
- * Cast the 'value' column to its appropriate type based on 'value_type'.
- *
- * When Arrow/Pandas encounters mixed-type columns (e.g., numbers and nulls),
- * it converts everything to strings for safety. This function restores the
- * original types based on the value_type column.
- */
-function castValueColumn(table: ColumnTable): ColumnTable {
-  // Check if value and value_type columns exist
-  if (
-    !table.columnNames().includes("value") ||
-    !table.columnNames().includes("value_type")
-  ) {
+// When Arrow/Pandas encounters mixed-type columns (e.g., numbers and nulls),
+// it converts everything to strings for safety. This function restores the
+// original types based on the value_type column (or a known type).
+function castColumns(table: ColumnTable): ColumnTable {
+  const columnNames = table.columnNames();
+  const hasValue =
+    columnNames.includes("value") && columnNames.includes("value_type");
+  const hasScanRefusal = columnNames.includes("scan_error_refusal");
+
+  // If neither column needs casting, return as-is
+  if (!hasValue && !hasScanRefusal) {
     return table;
   }
 
@@ -119,10 +117,26 @@ function castValueColumn(table: ColumnTable): ColumnTable {
     }
   };
 
-  // Cast based on each row's value_type
-  return table.derive({
-    value: escape((d: { value: unknown; value_type: string }) => {
+  // Build derivation object for all columns that need casting
+  const derivations: {
+    value?: ReturnType<typeof escape>;
+    scan_error_refusal?: ReturnType<typeof escape>;
+  } = {};
+
+  if (hasValue) {
+    derivations.value = escape((d: { value: unknown; value_type: string }) => {
       return castValue(d.value, d.value_type);
-    }),
-  });
+    });
+  }
+
+  if (hasScanRefusal) {
+    derivations.scan_error_refusal = escape(
+      (d: { scan_error_refusal: string }) => {
+        return d.scan_error_refusal?.toLowerCase() === "true";
+      }
+    );
+  }
+
+  // Apply all derivations in a single pass
+  return table.derive(derivations);
 }

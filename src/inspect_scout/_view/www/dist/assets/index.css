@@ -4275,13 +4275,13 @@ button._segment_19z32_10 {
   height: 100%;
   width: 100%;
 }
-._error_1i25x_1 i.bi:before {
+._error_1rpqv_1 i.bi:before {
   color: var(--bs-danger) !important;
   margin-right: 0.3rem;
 }
 
-._refusal_1i25x_6 i.bi:before {
-  color: var(--bs-danger) !important;
+._refusal_1rpqv_6 i.bi:before {
+  color: var(--bs-primary) !important;
   margin-right: 0.3rem;
 }
 ._id_1a3zo_1 {

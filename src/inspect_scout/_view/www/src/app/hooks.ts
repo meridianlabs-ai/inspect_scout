@@ -354,7 +354,9 @@ export const useScannerData = (
         const scanErrorRefusal = filtered
           .columnNames()
           .includes("scan_error_refusal")
-          ? (filtered.get("scan_error_refusal", 0) as boolean | undefined)
+          ? (filtered.get("scan_error_refusal", undefined) as
+              | boolean
+              | undefined)
           : false;
         const scanId = filtered.get("scan_id", 0) as string;
         const scanTotalTokens = filtered.get("scan_total_tokens", 0) as number;

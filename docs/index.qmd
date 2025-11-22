@@ -134,7 +134,7 @@ from inspect_scout import Transcript, llm_scanner, scanner
 def ctf_environment() -> Scanner[Transcript]:
     
     return llm_scanner(
-        prompt = "In the transcript above do you detect any " +
+        question = "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
             "preventing the agent from completing it's task?"
         answer="boolean"

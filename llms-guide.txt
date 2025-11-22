@@ -1686,6 +1686,9 @@ included embedded JSON data, these are all noted below):
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]JSON | Tags associated with the scan. |
 | `scan_metadata` | dictJSON | Additional scan metadata. |
+| `scan_git_origin` | str | Git origin for repo where scan was run from. |
+| `scan_git_version` | str | Git version (based on tags) for repo where scan was run from. |
+| `scan_git_commit` | str | Git commit for repo where scan was run from. |
 | `scanner_key` | str | Unique key for scan within scan job (defaults to `scanner_name`). |
 | `scanner_name` | str | Scanner name. |
 | `scanner_version` | int | Scanner version. |

@@ -15,6 +15,7 @@ interface ChatViewProps {
   title?: string;
   indented?: boolean;
   labeled?: boolean;
+  highlightLabeled?: boolean;
   className?: string | string[];
   allowLinking?: boolean;
   messageLabels?: Record<string, string>;
@@ -30,6 +31,7 @@ export const ChatView: FC<ChatViewProps> = ({
   resolveToolCallsIntoPreviousMessage = true,
   indented,
   labeled = true,
+  highlightLabeled = false,
   className,
   allowLinking = true,
   messageLabels,
@@ -45,18 +47,14 @@ export const ChatView: FC<ChatViewProps> = ({
   const result = (
     <div className={clsx(className)}>
       {collapsedMessages.map((msg, index) => {
-        const number =
-          collapsedMessages.length > 1 && labeled ? index + 1 : undefined;
-
-        const msgLabel =
-          messageLabels && msg.message.id ? messageLabels[msg.message.id] : "";
-        const label = msgLabel || number;
-
         return (
           <ChatMessageRow
+            index={index}
             key={`${id}-msg-${index}`}
             parentName={id || "chat-view"}
-            label={label ? String(label) : undefined}
+            labeled={labeled}
+            labels={messageLabels}
+            highlightLabeled={highlightLabeled}
             resolvedMessage={msg}
             indented={indented}
             toolCallStyle={toolCallStyle}

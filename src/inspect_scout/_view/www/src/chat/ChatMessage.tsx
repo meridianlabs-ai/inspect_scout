@@ -31,14 +31,7 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage: FC<ChatMessageProps> = memo(
-  ({
-    id,
-    message,
-    toolMessages,
-    indented,
-    toolCallStyle,
-    allowLinking = true,
-  }) => {
+  ({ id, message, indented, allowLinking = true }) => {
     const messageUrl = undefined; //useSampleMessageUrl(message.id);
     const supportsLinking = useCallback(() => {
       return false;
@@ -95,13 +88,7 @@ export const ChatMessage: FC<ChatMessageProps> = memo(
             collapse={collapse}
             lines={collapse ? 15 : 25}
           >
-            <MessageContents
-              id={`${id}-contents`}
-              key={`${id}-contents`}
-              message={message}
-              toolMessages={toolMessages}
-              toolCallStyle={toolCallStyle}
-            />
+            <MessageContents key={`${id}-contents`} message={message} />
           </ExpandablePanel>
 
           {message.metadata && Object.keys(message.metadata).length > 0 ? (

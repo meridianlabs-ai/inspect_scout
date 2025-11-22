@@ -3,6 +3,7 @@ import { FC, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../../chat/ChatViewVirtualList";
+import { useStore } from "../../../state/store";
 import { TranscriptView } from "../../../transcript/TranscriptView";
 import { ScannerData } from "../../types";
 
@@ -20,6 +21,8 @@ export const InputPanel: FC<InputPanelProps> = ({ result }) => {
   const initialMessageId = searchParams.get("message");
   const initialEventId = searchParams.get("event");
 
+  const highlightLabeled = useStore((state) => state.highlightLabeled);
+
   return (
     <div ref={scrollRef} className={clsx(styles.container)}>
       <InputRenderer
@@ -27,6 +30,7 @@ export const InputPanel: FC<InputPanelProps> = ({ result }) => {
         scrollRef={scrollRef}
         initialMessageId={initialMessageId}
         initialEventId={initialEventId}
+        highlightLabeled={highlightLabeled}
       />
     </div>
   );
@@ -38,6 +42,7 @@ interface InputRendererProps {
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   initialMessageId?: string | null;
   initialEventId?: string | null;
+  highlightLabeled?: boolean;
 }
 
 const InputRenderer: FC<InputRendererProps> = ({
@@ -46,6 +51,7 @@ const InputRenderer: FC<InputRendererProps> = ({
   scrollRef,
   initialMessageId,
   initialEventId,
+  highlightLabeled,
 }) => {
   switch (result?.inputType) {
     case "transcript": {
@@ -60,8 +66,6 @@ const InputRenderer: FC<InputRendererProps> = ({
           {} as Record<string, string>
         );
 
-        // TODO: We need to support a mode where tool messages get numbered
-        // as links to tool calls in the chat don't display a label, so this is disabled for now
         return (
           <ChatViewVirtualList
             messages={result.input.messages}
@@ -72,7 +76,8 @@ const InputRenderer: FC<InputRendererProps> = ({
             className={className}
             scrollRef={scrollRef}
             initialMessageId={initialMessageId}
-            labeled={false}
+            labeled={true}
+            highlightLabeled={highlightLabeled}
             messageLabels={labels}
           />
         );

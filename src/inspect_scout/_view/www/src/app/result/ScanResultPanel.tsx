@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { FC, useEffect, useMemo } from "react";
+import { FC, useCallback, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import { ActivityBar } from "../../components/ActivityBar";
@@ -13,6 +13,8 @@ import {
 } from "../../router/url";
 import { useStore } from "../../state/store";
 import { EventNode, EventType } from "../../transcript/types";
+import { ApplicationIcons } from "../appearance/icons";
+import { ToolButton } from "../components/ToolButton";
 import {
   useServerScans,
   useServerScanner,
@@ -109,6 +111,32 @@ export const ScanResultPanel: FC = () => {
     selectedResult?.scanError !== undefined &&
     selectedResult?.scanError !== null;
 
+  const highlightLabeled = useStore((state) => state.highlightLabeled);
+  const setHighlightLabeled = useStore((state) => state.setHighlightLabeled);
+  const toggleHighlightLabeled = useCallback(() => {
+    setHighlightLabeled(!highlightLabeled);
+  }, [highlightLabeled, setHighlightLabeled]);
+
+  const tools = useMemo(() => {
+    if (
+      selectedTab === kTabIdInput &&
+      selectedResult?.inputType === "transcript" &&
+      selectedResult?.messageReferences.length > 0
+    ) {
+      return [
+        <ToolButton
+          icon={ApplicationIcons.highlight}
+          key="highlight-labeled"
+          latched={!!highlightLabeled}
+          onClick={toggleHighlightLabeled}
+          label="Highlight Refs"
+        />,
+      ];
+    } else {
+      return [];
+    }
+  }, [highlightLabeled, toggleHighlightLabeled, selectedTab, selectedResult]);
+
   return (
     <div className={clsx(styles.root)}>
       <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
@@ -122,6 +150,7 @@ export const ScanResultPanel: FC = () => {
             tabPanelsClassName={clsx(styles.tabSet)}
             tabControlsClassName={clsx(styles.tabControl)}
             className={clsx(styles.tabs)}
+            tools={tools}
           >
             {hasError ? (
               <TabPanel

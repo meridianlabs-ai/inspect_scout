@@ -1,4 +1,4 @@
-import { ColumnTable, desc } from "arquero";
+import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";

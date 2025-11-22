@@ -33,6 +33,7 @@ interface ChatViewVirtualListProps {
   getMessageUrl?: (id: string) => string | undefined;
   allowLinking?: boolean;
   labeled?: boolean;
+  highlightLabeled?: boolean;
   messageLabels?: Record<string, string>;
 }
 
@@ -50,6 +51,7 @@ export const ChatViewVirtualList: FC<ChatViewVirtualListProps> = memo(
     toolCallStyle,
     indented,
     labeled = true,
+    highlightLabeled = false,
     scrollRef,
     running,
     allowLinking = true,
@@ -109,6 +111,7 @@ export const ChatViewVirtualList: FC<ChatViewVirtualListProps> = memo(
         toolCallStyle={toolCallStyle}
         indented={indented}
         labeled={labeled}
+        highlightLabeled={highlightLabeled}
         running={running}
         allowLinking={allowLinking}
         messageLabels={messageLabels}
@@ -132,6 +135,7 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
       toolCallStyle,
       indented,
       labeled = true,
+      highlightLabeled,
       scrollRef,
       running,
       allowLinking = true,
@@ -161,25 +165,13 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
 
       const renderRow = useCallback(
         (index: number, item: ResolvedMessage): ReactNode => {
-          const number =
-            collapsedMessages.length > 1 && labeled ? index + 1 : undefined;
-
-          const maxlabelLen = messageLabels
-            ? Object.values(messageLabels).reduce((curr, r) => {
-                return Math.max(r.length, curr);
-              }, 0)
-            : 0;
-
-          const label =
-            messageLabels && item.message.id
-              ? messageLabels[item.message.id] ||
-                "\u00A0".repeat(maxlabelLen * 2)
-              : number || undefined;
-
           return (
             <ChatMessageRow
+              index={index}
               parentName={id || "chat-virtual-list"}
-              label={label ? String(label) : undefined}
+              labeled={labeled}
+              highlightLabeled={highlightLabeled}
+              labels={messageLabels}
               resolvedMessage={item}
               indented={indented}
               toolCallStyle={toolCallStyle}
@@ -188,7 +180,14 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
             />
           );
         },
-        [id, labeled, indented, toolCallStyle, collapsedMessages]
+        [
+          id,
+          labeled,
+          indented,
+          toolCallStyle,
+          collapsedMessages,
+          highlightLabeled,
+        ]
       );
 
       const Item = ({

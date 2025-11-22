@@ -17,5 +17,9 @@
 }
 
 .tabControl {
-  margin: 0.5rem;
+  margin: 0.2rem;
+}
+
+.tabs {
+  margin-right: 1rem;
 }

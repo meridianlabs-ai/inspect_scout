@@ -2,7 +2,3 @@
   display: grid;
   row-gap: 0.5em;
 }
-
-.toolCallView:not(:first-child) {
-  margin-top: 1em;
-}

@@ -159,7 +159,7 @@ const messageRenderers: Record<string, MessageRenderer> = {
               markdown={purgeInternalContainers(c.text) || ""}
               className={isLast ? "no-last-para-padding" : ""}
             />
-            {c.citations ? (
+            {c.citations && c.citations.length > 0 ? (
               <MessageCitations citations={c.citations} />
             ) : undefined}
           </Fragment>

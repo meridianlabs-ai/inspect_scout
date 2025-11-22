@@ -62,6 +62,7 @@ interface StoreState {
   showingRefPopover?: string;
   groupResultsBy?: "source" | "label" | "none";
   scansSearchText?: string;
+  highlightLabeled?: boolean;
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -159,6 +160,7 @@ interface StoreState {
   clearShowingRefPopover: () => void;
   setGroupResultsBy: (groupBy: "source" | "label" | "none") => void;
   setScansSearchText: (text: string) => void;
+  setHighlightLabeled: (highlight: boolean) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -203,6 +205,7 @@ export const createStore = (api: ScanApi) =>
           transcriptCollapsedEvents: {},
           scopedErrors: {} as Record<ErrorScope, string>,
           visibleScannerResults: [],
+          highlightLabeled: false,
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -544,6 +547,11 @@ export const createStore = (api: ScanApi) =>
           setScansSearchText: (text: string) => {
             set((state) => {
               state.scansSearchText = text;
+            });
+          },
+          setHighlightLabeled: (highlight: boolean) => {
+            set((state) => {
+              state.highlightLabeled = highlight;
             });
           },
         })),

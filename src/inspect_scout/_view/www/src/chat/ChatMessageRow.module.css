@@ -1,7 +1,8 @@
 .grid {
   display: grid;
   grid-template-columns: max-content auto;
-  column-gap: 0.4em;
+  column-gap: 0.4rem;
+  row-gap: 0;
 }
 
 .number {
@@ -11,8 +12,35 @@
 .user {
   background-color: var(--bs-secondary-bg);
   border-radius: var(--bs-border-radius);
+  border: solid 1px var(--bs-light-border-subtle);
 }
 
 .container {
-  padding: 0.4em 0.4em 0.4em 0.4em;
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
+  padding-top: 0.5rem;
+  border-left: solid 1px var(--bs-light-border-subtle);
+  border-right: solid 1px var(--bs-light-border-subtle);
+}
+
+.first {
+  border-top-left-radius: var(--bs-border-radius);
+  border-top-right-radius: var(--bs-border-radius);
+  border-top: solid 1px var(--bs-light-border-subtle);
+  padding-top: 0.7rem;
+}
+
+.last {
+  border-bottom-left-radius: var(--bs-border-radius);
+  border-bottom-right-radius: var(--bs-border-radius);
+  border-bottom: solid 1px var(--bs-light-border-subtle);
+  padding-bottom: 0.7rem;
+}
+
+.label {
+  padding-top: 0.7rem;
+}
+
+.highlight {
+  background-color: rgba(var(--bs-info-rgb), 0.12);
 }

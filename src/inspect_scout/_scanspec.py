@@ -52,7 +52,7 @@ class ScanOptions(BaseModel):
     """Maximum number of concurrent transcripts (defaults to 25)."""
 
     max_processes: int | None = Field(default=None)
-    """Number of worker processes. Defaults to `multiprocessing.cpu_count()`."""
+    """Number of worker processes. Defaults to 1."""
 
     limit: int | None = Field(default=None)
     """Transcript limit (maximum number of transcripts to read)."""

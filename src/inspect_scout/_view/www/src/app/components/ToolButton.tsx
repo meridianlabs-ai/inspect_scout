@@ -5,13 +5,12 @@ import styles from "./ToolButton.module.css";
 
 interface ToolButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string | ReactNode;
-  classes?: string;
   icon?: string;
   latched?: boolean;
 }
 
 export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(
-  ({ label, classes = "", icon, className, latched, ...rest }, ref) => {
+  ({ label, icon, className, latched, ...rest }, ref) => {
     // Combine class names, ensuring default classes are applied first
 
     return (
@@ -19,10 +18,9 @@ export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(
         ref={ref}
         type="button"
         className={clsx(
+          styles.toolButton,
           "btn",
           "btn-tools",
-          styles.toolButton,
-          classes,
           className,
           latched ? styles.latched : undefined
         )}

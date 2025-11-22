@@ -23,7 +23,7 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scan.py#L154)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scan.py#L163)
 
 ``` python
 async def scan_async(
@@ -47,6 +47,7 @@ async def scan_async(
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
+    fail_on_error: bool = False,
 ) -> Status
 ```
 
@@ -94,7 +95,7 @@ serves as the default value for `max_connections`). Defaults to 25.
 
 `max_processes` int \| None  
 The maximum number of concurrent processes (for multiproccesing).
-Defaults to `multiprocessing.cpu_count()`.
+Defaults to 1.
 
 `limit` int \| None  
 Limit the number of transcripts processed.
@@ -113,14 +114,20 @@ Metadata for this scan.
 Level for logging to the console: “debug”, “http”, “sandbox”, “info”,
 “warning”, “error”, “critical”, or “notset” (defaults to “warning”)
 
+`fail_on_error` bool  
+Re-raise exceptions instead of capturing them in results. Defaults to
+False.
+
 ### scan_resume_async
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scan.py#L296)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scan.py#L313)
 
 ``` python
-async def scan_resume_async(scan_location: str, log_level: str | None = None) -> Status
+async def scan_resume_async(
+    scan_location: str, log_level: str | None = None, fail_on_error: bool = False
+) -> Status
 ```
 
 `scan_location` str  
@@ -130,6 +137,9 @@ Scan location to resume from.
 Level for logging to the console: “debug”, “http”, “sandbox”, “info”,
 “warning”, “error”, “critical”, or “notset” (defaults to “warning”)
 
+`fail_on_error` bool  
+Re-raise exceptions instead of capturing them in results.
+
 ### scan_complete_async
 
 Complete a scan.
@@ -137,7 +147,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scan.py#L360)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scan.py#L380)
 
 ``` python
 async def scan_complete_async(
@@ -156,7 +166,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanlist.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanlist.py#L19)
 
 ``` python
 async def scan_list_async(scans_location: str) -> list[Status]
@@ -169,7 +179,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanresults.py#L30)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanresults.py#L30)
 
 ``` python
 async def scan_status_async(scan_location: str) -> Status
@@ -182,7 +192,7 @@ Location to get status for (e.g. directory or s3 bucket)
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanresults.py#L67)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanresults.py#L67)
 
 ``` python
 async def scan_results_df_async(

@@ -3,16 +3,17 @@
 
 ## Welcome
 
-Welcome to Inspect Scout, a tool for in-depth analysis of [Inspect
-AI](https://inspect.aisi.org.uk/) transcripts. Scout has the following
-core features:
+Welcome to Inspect Scout, a tool for in-depth analysis of AI agent
+transcripts. Scout has the following core features:
 
-1.  Scan full sample transcripts or individual messages or events.
+1.  Scan full transcripts or individual messages or events.
 2.  High performance parallel processing of transcript content.
 3.  Resume scans that are stopped due to errors or interruptions.
-4.  Tightly integrated with Inspect [data
-    frames](https://inspect.aisi.org.uk/dataframe.html) for input and
-    analysis.
+4.  Scout View for rich visualization of scan results.
+
+Scout can process input either from a [transcript
+database](transcripts.qmd#transcripts-database) (which can be populated
+from any source) or by directly reading Inspect AI eval logs.
 
 ### Installation
 
@@ -31,8 +32,8 @@ features for viewing and debugging Scout scans.
 Below we’ll provide some simple examples of creating and using Scout
 scanners. Some core components we’ll make use of here include:
 
-- `Transcript` — LLM conversation to analyze (e.g. an Inspect sample
-  trajectory).
+- `Transcript` — LLM conversation to analyze (e.g. an agent rollout or a
+  sample from an Inspect eval).
 
 - `Scanner` — Function that takes an input from a `Transcript` and
   returns a `Result` (conceptually very similar to an Inspect `Scorer`).
@@ -53,6 +54,7 @@ from inspect_scout import (
 )
 
 from inspect_ai.model import get_model
+import re
 
 @scanner(messages="all")
 def ctf_environment() -> Scanner[Transcript]:
@@ -64,11 +66,11 @@ def ctf_environment() -> Scanner[Transcript]:
             "Here is a transcript of an LLM agent " +
             "solving a cybersecurity challenge:\n\n" +
             "===================================" +
-            messages_as_str(transcript.messages) +
+            await messages_as_str(transcript) +
             "===================================\n\n" +
             "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
-            "preventing the agent from completing it's " + 
+            "preventing the agent from completing its " +
             "task? If no, simply respond with 'No'. " +
             "If yes, respond with 'Yes' followed by an " +
             "explanation."
@@ -91,22 +93,23 @@ def ctf_environment() -> Scanner[Transcript]:
     return scan
 ```
 
-Line 7  
+Line 8  
 Scanners are decorated with `@scanner` so they can specify the exact
 subset of content they need to read. In this case only messages (and not
 events) will be read from the log, decreasing load time.
 
-Line 13  
+Line 14  
 Scanners frequently use models to perform scanning. Calling
 `get_model()` utilizes the default model for the scan job (which can be
 specified in the top level call to scan).
 
-Lines 16-18  
+Lines 17-19  
 Convert the message history into a string for presentation to the model.
-The `messages_as_str()` function will by default remove system messages
-from the list. See `MessagesPreprocessor` for other available options.
+The `messages_as_str()` function takes a `Transcript | list[Messages]`
+and will by default remove system messages from the message list. See
+`MessagesPreprocessor` for other available options.
 
-Lines 33-37  
+Lines 34-38  
 As with scorers, results also include additional context (here the
 extracted answer and full model completion).
 
@@ -117,7 +120,7 @@ details.
 
 ### Running a Scan
 
-We can now run that scanner on our log files. The `Scanner` will be
+We can now run that scanner on our transcripts. The `Scanner` will be
 called once for each sample trajectory in the log (total samples \*
 epochs):
 
@@ -125,16 +128,17 @@ epochs):
 scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
-You can also address individual scanners using `@<scanner-name>`. For
-example:
+The `-T` argument indicates which transcripts to scan (in this case a
+local Inspect log directory). You can also scan from a [transcripts
+database](transcripts.qmd#transcripts-database) that is either local or
+on S3. For example, here we scan some W&B Weave transcripts stored on
+S3:
 
 ``` bash
-scout scan scanner.py@ctf_environment -T ./logs --model openai/gpt-5
+scout scan scanner.py \
+   -T s3://weave-rollouts/cybench \
+   --model openai/gpt-5
 ```
-
-Note that if no `-T` argument is provided then Scout will use the
-current `INSPECT_LOG_DIR` (by default `./logs`) so the `-T` above is not
-strictly necessary.
 
 As with Inspect AI, Inspect Scout will read your `.env` file for
 [environmental
@@ -144,7 +148,7 @@ options](https://inspect.aisi.org.uk/options.html#env-files). So if your
 **.env**
 
 ``` makefile
-SCOUT_SCAN_TRANSCRIPTS=./logs
+SCOUT_SCAN_TRANSCRIPTS=s3://weave-rollouts/cybench
 SCOUT_SCAN_MODEL=openai/gpt-5
 ```
 
@@ -171,7 +175,7 @@ from inspect_scout import Transcript, llm_scanner, scanner
 def ctf_environment() -> Scanner[Transcript]:
     
     return llm_scanner(
-        prompt = "In the transcript above do you detect any " +
+        question = "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
             "preventing the agent from completing it's task?"
         answer="boolean"
@@ -353,27 +357,37 @@ runtime error, you can resume the scan from where it left off using the
 scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
 ```
 
-If errors occur during an individual scan, they are caught and reported.
-You can then either retry the failed scans with `scan resume` or
-complete the scan (ignoring errors) with `scan complete`:
+By default, if errors occur during an individual scan, they are caught
+and reported. You can then either retry the failed scans with
+`scan resume` or complete the scan (ignoring errors) with
+`scan complete`:
 
 ![](images/scan-resume.png)
 
+If you prefer to fail immediately when an error occurs rather than
+capturing errors in results, use the `--fail-on-error` flag:
+
+``` bash
+scout scan scanner.py -T ./logs --fail-on-error
+```
+
+With this flag, any exception will cause the entire scan to terminate
+immediately. This can be valuable when developing a scanner.
+
 ## Transcripts
 
-In the example(s) above we scanned all of the samples within an Inspect
-log direcotry. Often though you’ll want to scan only a subset of logs in
-that directory. For example, here we scan all of Cybench logs in the
-`./logs` directory:
+In the example(s) above we scanned all available transcripts. Often
+though you’ll want to scan only a subset of transcripts. For example,
+here we filter down to only Cybench logs:
 
 ``` python
 from inspect_scout (
-    import scan, transcripts_from_logs, log_metadata as m
+    import scan, transcripts_from, metadata as m
 )
 
 from .scanners import deception, tool_errors
 
-transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts_from("s3://weave-rollouts")
 transcripts = transcripts.where(m.task_name == "cybench")
 
 status = scan(
@@ -382,7 +396,7 @@ status = scan(
 )
 ```
 
-The `log_metadata` object (aliased to `m`) provides a typed way to
+The `metadata` object (aliased to `m`) provides a convenient way to
 specified `where()` clauses for filtering transcripts.
 
 Note that doing this query required us to switch to the Python `scan()`
@@ -393,15 +407,15 @@ API. We can still use the CLI if we wrap our transcript query in a
 
 ``` python
 from inspect_scout (
-    import ScanJob, scanjob, transcripts_from_logs, log_metadata as m
+    import ScanJob, scanjob, transcripts_from, metadata as m
 )
 
 from .scanners import deception, tool_errors
 
 @scanjob
-def cybench_job(logs: str = "./logs") -> ScanJob:
+def cybench_job(logs: str = "s3://weave-rollouts") -> ScanJob:
 
-    transcripts = transcripts_from_logs(logs)
+    transcripts = transcripts_from(logs)
     transcripts = transcripts.where(m.task_name == "cybench")
 
     return ScanJob(
@@ -420,7 +434,7 @@ The `-S` argument enables you to pass arguments to the `@scanjob`
 function (in this case determining what directory to read logs from).
 
 See the article on [Transcripts](transcripts.qmd) to learn more about
-the various ways to read and filter transcripts.
+the various ways to create, read, filter transcripts.
 
 ## Parallelism
 
@@ -432,7 +446,7 @@ you can use to tune parallelism:
 |----|----|
 | `--max-transcripts` | The maximum number of transcripts to scan in parallel (defaults to 25). You can set this higher if your model API endpoint can handle larger numbers of concurrent requests. |
 | `--max-connections` | The maximum number of concurrent requests to the model provider (defaults to `--max-transcripts`). |
-| `--max-processes` | The maximum number of processes to use for parsing and scanning (defaults to the number of CPUs on the system). |
+| `--max-processes` | The maximum number of processes to use for parsing and scanning (defaults to 1). |
 
 ## Learning More
 

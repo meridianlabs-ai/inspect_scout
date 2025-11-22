@@ -108,10 +108,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <meta property="og:title" content="Inspect Scout">
-<meta property="og:description" content="Transcript analysis for Inspect AI">
+<meta property="og:description" content="Transcript Analysis for AI Agents">
 <meta property="og:site_name" content="Inspect Scout">
 <meta name="twitter:title" content="Inspect Scout">
-<meta name="twitter:description" content="Transcript analysis for Inspect AI">
+<meta name="twitter:description" content="Transcript Analysis for AI Agents">
 <meta name="twitter:card" content="summary">
 </head>
 
@@ -317,7 +317,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> provides a core “batteries included” implementation of an LLM-based <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> scanner with the following features:.</p>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> provides a core “batteries included” implementation of an LLM-based <code>Transcript</code> scanner with the following features:.</p>
 <ul>
 <li>Support for a variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output.</li>
 <li>Textual presentation of message history including a numbering scheme that enables models to create reference links to specific messages.</li>
@@ -445,8 +445,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Formatting guidelines used by the current answer type (e.g.&nbsp;““‘ANSWER: $VALUE’ (without quotes) where $VALUE is yes or no.”)</td>
 </tr>
 <tr class="odd">
-<td><code>{{ transcript }}</code></td>
-<td>Dictionary of the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> fields</td>
+<td><code>{{ metadata }}</code></td>
+<td>Dictionary from <code>Transcript.metadata</code></td>
 </tr>
 </tbody>
 </table>
@@ -634,7 +634,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="dynamic-questions" class="level2">
 <h2 class="anchored" data-anchor-id="dynamic-questions">Dynamic Questions</h2>
-<p>Instead of a static string, you can pass a function that takes a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> and returns a string. This enables you to dynamically generate questions based on the transcript content:</p>
+<p>Instead of a static string, you can pass a function that takes a <code>Transcript</code> and returns a string. This enables you to dynamically generate questions based on the transcript content:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> question_from_transcript(transcript: Transcript) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Access transcript metadata</span></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    topic <span class="op">=</span> transcript.variables.get(<span class="st">"topic"</span>, <span class="st">"unknown"</span>)</span>

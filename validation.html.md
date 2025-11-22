@@ -91,13 +91,13 @@ validation set. The `Transcript` class includes a filtering function to
 do this. For example:
 
 ``` python
-from inspect_scout import scan, transcripts_from_logs, validation_set
+from inspect_scout import scan, transcripts_from, validation_set
 
 validation = {
     "ctf_environment": validation_set("ctf-validation.csv")
 }
 
-transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts_from("./logs")
 transcripts = transcripts.for_validation(validation)
 
 scan(

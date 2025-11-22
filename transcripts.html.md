@@ -3,25 +3,145 @@
 
 ## Overview
 
-Transcripts are the fundamental input to scanners, and are read from one
-or more Inspect logs. The `Transcripts` class represents a collection of
-transcripts that has been selected for scanning. This is an index of
-`TranscriptInfo` rather than full transcript content, and supports
-various filtering operations to refine the collection.
+Transcripts are the fundamental input to scanners. The `Transcripts`
+class represents a collection of transcripts that has been selected for
+scanning, and supports various filtering operations to refine the
+collection.
 
 ## Reading Transcripts
 
-Use the `transcripts_from_logs()` function to read a collection of
-`Transcripts` from one or more Inspect logs:
+Use the `transcripts_from()` function to read a collection of
+`Transcripts`:
 
 ``` python
-from inspect_scout import transcripts_from_logs
+from inspect_scout import transcripts_from
 
+# read from a transcript database on S3
+transcripts = transcripts_from("s3://weave-rollouts/cybench")
+
+# read from an Inspect log directory
+transcripts = transcripts_from("./logs")
+```
+
+The `transcripts_from()` function can read transcripts from either:
+
+1.  A transcript database that contains transcripts you have imported
+    from a variety of sources (Agent traces, RL rollouts, Inspect logs,
+    etc.); or
+
+2.  One or more Inspect log directories that contain Inspect `.eval`
+    logs.
+
+See the sections below on the [Transcripts
+Database](#transcripts-database) and [Inspect Eval
+Logs](#inspect-eval-logs) for additional details.
+
+## Filtering Transcripts
+
+If you want to scan only a subset of transcripts, you can use the
+`.where()` method to narrow down the collection. For example:
+
+``` python
+from inspect_scout import transcripts_from, metadata as m
+
+transcripts = (
+    transcripts_from("./logs")
+    .where(m.task_name == "cybench")
+    .where(m.model.like("openai/%"))
+)
+```
+
+See the `Column` documentation for additional details on supported
+filtering operations.
+
+You can also limit the total number of transcripts as well as shuffle
+the order of transcripts read (both are useful during scanner
+development when you don’t want to process all transcripts). For
+example:
+
+``` python
+from inspect_scout import transcripts_from, log_metadata as m
+
+transcripts = (
+    transcripts_from("./logs")
+    .limit(10)
+    .shuffle(42)
+)
+```
+
+## Transcript Fields
+
+Here are the available `Transcript` fields:
+
+| Field | Type | Description |
+|----|----|----|
+| `transcript_id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in Inspect logs). |
+| `source_type` | str | Type of transcript source (e.g. “eval_log”, “weave”, etc.). |
+| `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
+| `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
+| `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
+| `messages` | list\[ChatMessage\] | Message history. |
+| `events` | list\[Event\] | Event history (e.g. model events, tool events, etc.) |
+
+## Scanning Transcripts
+
+Once you have established your list of transcripts to scan, just pass
+them to the `scan()` function:
+
+``` python
+from inspect_scout import scan, transcripts_from
+
+from .scanners import ctf_environment, java_tool_calls
+
+scan(
+    scanners = [ctf_environment(), java_tool_calls()],
+    transcripts = transcripts_from("./logs")
+)
+```
+
+If you want to do transcript filtering and then invoke your scan from
+the CLI using `scout scan`, then perform the filtering inside a
+`@scanjob`. For example:
+
+**cybench_scan.py**
+
+``` python
+from inspect_scout (
+    import ScanJob, scanjob, transcripts_from, metadata as m
+)
+
+from .scanners import deception, tool_errors
+
+@scanjob
+def cybench_job(logs: str = "s3://weave-rollouts") -> ScanJob:
+
+    transcripts = transcripts_from(logs)
+    transcripts = transcripts.where(m.task_name == "cybench")
+
+    return ScanJob(
+        scanners = [deception(), java_tool_usages()],
+        transcripts = transcripts
+    )
+```
+
+Then from the CLI:
+
+``` bash
+scout scan cybench.py -S logs=./logs --model openai/gpt-5
+```
+
+The `-S` argument enables you to pass arguments to the `@scanjob`
+function (in this case determining what directory to read logs from).
+
+## Inspect Eval Logs
+
+The `transcripts_from()` function can read a collection of transcripts
+directly from an Inspect log directory. You can specify one or more
+directories and/or individual log files. For example:
+
+``` python
 # read from a log directory
 transcripts = transcripts_from_logs("./logs")
-
-# read from an S3 log directory
-transcripts = transcripts_from_logs("s3://my-inspect-logs")
 
 # read multiple log directories
 transcripts = transcripts_from_logs(["./logs", "./logs2"])
@@ -32,62 +152,8 @@ transcripts = transcripts_from_logs(
 )
 ```
 
-## Filtering Transcripts
-
-If you want to scan only a subset of transcripts, you can use the
-`.where()` method to narrow down the collection. For example:
-
-``` python
-from inspect_scout import transcripts_from_logs, log_metadata as m
-
-transcripts = (
-    transcripts_from_logs("./logs")
-    .where(m.task_name == "cybench")
-    .where(m.model.like("openai/%"))
-)
-```
-
-See the `Column` documentation for additional details on supported
-filtering operations.
-
-See the `LogMetadata` documentation for the standard metadata fields
-that are exposed from logs for filtering.
-
-You can also limit the total number of transcripts as well as shuffle
-the order of transcripts read (both are useful during scanner
-development when you don’t want to process all transcripts). For
-example:
-
-``` python
-from inspect_scout import transcripts_from_logs, log_metadata as m
-
-transcripts = (
-    transcripts_from_logs("./logs")
-    .limit(10)
-    .shuffle(42)
-)
-```
-
-## Transcript Fields
-
-The `Transcript` type is defined somewhat generally to accommodate other
-non-Inspect transcript sources in the future. Here are the available
-`Transcript` fields and how these map back onto Inspect logs:
-
-| Field | Type | Description |
-|----|----|----|
-| `id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log). |
-| `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log) |
-| `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `score` | JsonValue | Main score assigned to transcript (optional). |
-| `scores` | dict\[str, JsonValue\] | All scores assigned to transcript (optional). |
-| `variables` | dict\[str, JsonValue\] | Variables (e.g. to be used in a prompt template) associated with transcript. For Inspect logs this is `Sample.metadata`. |
-| `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). See `LogMetadata` for details on metadata available for Inspect logs. |
-| `messages` | list\[ChatMessage\] | Message history from `EvalSample` |
-| `events` | list\[Event\] | Event history from `EvalSample` |
-
-The `metadata` field includes fields read from eval sample metadata. For
-example:
+For Inspect logs, the `metadata` field within `TranscriptInfo` includes
+fields from eval sample metadata. For example:
 
 ``` python
 transcript.metadata["sample_id"]        # sample uuid 
@@ -100,24 +166,140 @@ transcript.metadata["score_<scorer>"]   # named sample scores
 ```
 
 See the `LogMetadata` class for details on all of the fields included in
-`transcript.metadata` for Inspect logs.
-
-## Scanning Transcripts
-
-Once you have established your list of transcripts to scan, just pass
-them to the `scan()` function:
+`transcript.metadata`. Use `log_metadata` (aliased to `m` below) to do
+typesafe filtering for Inspect logs:
 
 ``` python
-from inspect_scout import scan, transcripts_from_logs
+from inspect_scout import transcripts_from, log_metadata as m
 
-from .scanners import ctf_environment, java_tool_calls
-
-scan(
-    scanners = [ctf_environment(), java_tool_calls()],
-    transcripts = transcripts_from_logs("./logs")
+transcripts = (
+    transcripts_from("./logs")
+    .where(m.task_name == "cybench")
+    .where(m.model.like("openai/%"))
 )
 ```
 
-If you want to do transcript filtering and then invoke your scan from
-the CLI using `scout scan`, then perform the filtering inside a
-`@scanjob`. For example:
+## Transcripts Database
+
+Scout can analyze transcripts from any source (e.g. Agent traces, RL
+rollouts, etc.) so long as the transcripts have been imported into a
+transcripts database. Transcript databases use
+[Parquet](https://parquet.apache.org) files for storage and can be
+located in the local filesystem or remote systems like S3.
+
+To create a transcripts database, use the `transcripts_db()` function to
+get a `TranscriptsDB` interface and then insert `Transcript` objects:
+
+``` python
+from inspect_scout import transcripts_db
+
+from .weave import read_weave_transcripts
+
+# create/open database
+async with transcripts_db("s3://my-transcripts") as db:
+
+    # read transcripts to insert
+    transcripts = read_weave_transcripts()
+
+    # insert into database
+    await db.insert(transcripts)
+```
+
+Once you’ve created a database and populated it with transcripts, you
+can read from it using `transcripts_from()`:
+
+``` python
+from inspect_scout import scan, transcripts_from
+
+scan(
+    scanners=[...],
+    transcripts=transcripts_from("s3://my-transcripts")
+)
+```
+
+### Streaming
+
+If you are inserting a large number of transcripts you will likely want
+to read them in a generator that yields transcripts for insertion one at
+a time. For example, we might implement `read_weave_transcripts()` like
+this:
+
+``` python
+
+from pathlib import Path
+from typing import AsyncIterator
+
+def read_weave_transcripts(dir: Path) -> AsyncIterator[Transcript]:
+    weave_json_files = list(dir.rglob("*.json"))
+    for json_file in weave_json_files:
+        yield weave_json_to_transcript(json_file)
+
+def weave_json_to_transcript(json_file: Path) -> Transcript:
+    # convert json_file to Transcript
+    return Transcript(...)
+```
+
+We can then pass this generator function directly to `db.insert()`:
+
+``` python
+async with transcripts_db("s3://my-transcripts") as db:
+    await db.insert(read_weave_transcripts())
+```
+
+### Transcripts
+
+Databases are composed of `Transcript` objects, which minimally have a
+`transcript_id` and a list of `messages`. In addition, there are fields
+you can include that indicate the *source* of the transcript and
+metadata about transcript.
+
+| Field | Description |
+|----|----|
+| `transcript_id` | Required. A globally unique identifier for a transcript. Provides a reference from the transcript database to the origin of the transcript. |
+| `source_type` | Optional. Type of transcript source (e.g. “weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the `metadata` field. |
+| `source_id` | Optional. Globally unique identifier for a transcript source (e.g. a project id). |
+| `source_uri` | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript). |
+| `metadata` | Optional. Dict of source specific metadata (e.g. agent name, model, dataset, limits, scores, etc.). |
+| `messages` | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history. |
+| `events` | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.) |
+
+For example, here is how we might implement
+`weave_json_to_transcript()`:
+
+``` python
+def weave_json_to_transcript(json_file: Path) -> Transcript:
+    with open(json_file, "r") as f:
+        weave_json: dict[str,Any] = json.loads(json_file.read())
+        return Transcript(
+            transcript_id = weave_json["trace_id"],
+            source_type="weave",
+            source_id=weave_json["project_id"],
+            metadata=weave_json["attributes"],
+            messages=weave_json_messages(weave_json)
+        )
+    
+def weave_json_messages(weave_json: dict[str, Any]) -> list[ChatMessage]:
+    # extract chat messages from weave_json
+```
+
+The most important fields to populate are `transcript_id` and
+`messages`. The `source_*` fields are also useful for providing
+additional context. The `metadata` field, while not required, is a
+convenient way to provide additional transcript attributes which may be
+useful for filtering or analysis. The `events` field is not required and
+useful primarily for more complex multi-agent transcripts.
+
+### Storage
+
+Transcript databases are stored on a local or remote filesystem using
+[Parquet](https://parquet.apache.org) files, which are optimized for
+fast access to metadata and incremental access to larger content fields
+(e.g. `messages` and `events`).
+
+Each call to `db.insert()` will minimally create one Parquet file, but
+will break transcripts across multiple files as required, limiting the
+size of files to 100MB. This will create a storage layout optimized for
+fast queries and content reading. Consequently, when importing a large
+number of transcripts you should always write a generator (as shown
+above), rather than making many calls to `db.insert()` (which is likely
+to result in more Parquet files than is ideal).

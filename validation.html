@@ -107,13 +107,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <meta property="og:title" content="Inspect Scout">
-<meta property="og:description" content="Transcript analysis for Inspect AI">
+<meta property="og:description" content="Transcript Analysis for AI Agents">
 <meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/sample-uuid.png">
 <meta property="og:site_name" content="Inspect Scout">
 <meta property="og:image:height" content="562">
 <meta property="og:image:width" content="1862">
 <meta name="twitter:title" content="Inspect Scout">
-<meta name="twitter:description" content="Transcript analysis for Inspect AI">
+<meta name="twitter:description" content="Transcript Analysis for AI Agents">
 <meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/sample-uuid.png">
 <meta name="twitter:image-height" content="562">
 <meta name="twitter:image-width" content="1862">
@@ -371,14 +371,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="filtering-transcripts" class="level2">
 <h2 class="anchored" data-anchor-id="filtering-transcripts">Filtering Transcripts</h2>
-<p>Your validation set will typically be only a subset of all of the transcripts you are scanning, and is intended to provide a rough heuristic on how prompt changes are impacting results. In some cases you will want to <em>only</em> evaluate transcript content that is included in the validation set. The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> class includes a filtering function to do this. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, transcripts_from_logs, validation_set</span>
+<p>Your validation set will typically be only a subset of all of the transcripts you are scanning, and is intended to provide a rough heuristic on how prompt changes are impacting results. In some cases you will want to <em>only</em> evaluate transcript content that is included in the validation set. The <code>Transcript</code> class includes a filtering function to do this. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, transcripts_from, validation_set</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>validation <span class="op">=</span> {</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ctf_environment"</span>: validation_set(<span class="st">"ctf-validation.csv"</span>)</span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(<span class="st">"./logs"</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"./logs"</span>)</span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts.for_validation(validation)</span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>scan(</span>

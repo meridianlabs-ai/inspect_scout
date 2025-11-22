@@ -108,13 +108,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <meta property="og:title" content="Inspect Scout">
-<meta property="og:description" content="Transcript analysis for Inspect AI">
+<meta property="og:description" content="Transcript Analysis for AI Agents">
 <meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scan-complete.png">
 <meta property="og:site_name" content="Inspect Scout">
 <meta property="og:image:height" content="362">
 <meta property="og:image:width" content="1606">
 <meta name="twitter:title" content="Inspect Scout">
-<meta name="twitter:description" content="Transcript analysis for Inspect AI">
+<meta name="twitter:description" content="Transcript Analysis for AI Agents">
 <meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scan-complete.png">
 <meta name="twitter:image-height" content="362">
 <meta name="twitter:image-width" content="1606">
@@ -335,7 +335,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The <code>scout scan</code> command will print its status at the end of its run. If all of the scanners completed without errors you’ll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:</p>
 <p><img src="images/scan-complete.png" class="img-fluid"></p>
 <p>You can then pass that directory to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> function to get access to the underlying data frames for each scanner:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan_results</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan_results_df</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_df(<span class="st">"scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8"</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>deception_df <span class="op">=</span> results.scanners[<span class="st">"deception"</span>]</span>
@@ -345,13 +345,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="python-api">Python API</h3>
 <p>The <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> function returns a <span class="element-type-name ref-interlink"><a href="./reference/results.html#status">Status</a></span> object which indicates whether the scan completed successfully (in which case the scanner results are available for analysis). You’ll therefore want to check the <code>.completed</code> field before proceeding to read the results. For example:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> (</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    scan, scan_results, transcripts_from_logs</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    scan, scan_results, transcripts_from</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> ctf_environment, java_tool_calls</span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>status <span class="op">=</span> scan(</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span>transcripts_from_logs(<span class="st">"./logs"</span>),</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span>transcripts_from(<span class="st">"./logs"</span>),</span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    scanners<span class="op">=</span>[ctf_environment(), java_tool_calls()]</span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
@@ -465,139 +465,149 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Globally unique identifier for a transcript (maps to <code>EvalSample.uuid</code> in the Inspect log or <code>sample_id</code> in Inspect analysis data frames).</td>
 </tr>
 <tr class="even">
+<td><code>transcript_source_type</code></td>
+<td>str</td>
+<td>Type of transcript source (e.g.&nbsp;“eval_log”).</td>
+</tr>
+<tr class="odd">
 <td><code>transcript_source_id</code></td>
 <td>str</td>
 <td>Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log and analysis data frames).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>transcript_source_uri</code></td>
 <td>str</td>
 <td>URI for source data (e.g.&nbsp;full path to the Inspect log file).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>transcript_metadata</code></td>
 <td>dict <br><small>JSON</small></td>
 <td>Eval configuration metadata (e.g.&nbsp;task, model, scores, etc.).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_id</code></td>
 <td>str</td>
 <td>Globally unique identifier for scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_tags</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Tags associated with the scan.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Additional scan metadata.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_key</code></td>
 <td>str</td>
 <td>Unique key for scan within scan job (defaults to <code>scanner_name</code>).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_name</code></td>
 <td>str</td>
 <td>Scanner name.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_version</code></td>
 <td>int</td>
 <td>Scanner version.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_file</code></td>
 <td>str</td>
 <td>Source file for scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_params</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Params used to create scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input_type</code></td>
 <td>transcript | message | messages | event | events</td>
 <td>Input type received by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>input_ids</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Unique ids of scanner input.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input</code></td>
 <td>ScannerInput<br><small>JSON</small></td>
 <td>Scanner input value.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>uuid</code></td>
 <td>str</td>
 <td>Globally unique id for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>label</code></td>
 <td>str</td>
 <td>Label for the origin of the result (optional).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>value</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value returned by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>value_type</code></td>
 <td>string | boolean | number | array | object | null</td>
 <td>Type of value returned by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>answer</code></td>
 <td>str</td>
 <td>Answer extracted from scanner generation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>explanation</code></td>
 <td>str</td>
 <td>Explanation for scan result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Metadata for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>message_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Messages referenced by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>event_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Events referenced by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>validation_target</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Target value from validation set.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>validation_result</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error</code></td>
 <td>str</td>
 <td>Error which occurred during scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_error_traceback</code></td>
 <td>str</td>
 <td>Traceback for error (if any)</td>
+</tr>
+<tr class="even">
+<td><code>scan_error_type</code></td>
+<td>str</td>
+<td>Error type (either “refusal” for refusals or null for other errors).</td>
 </tr>
 <tr class="odd">
 <td><code>scan_events</code></td>

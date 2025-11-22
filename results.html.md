@@ -36,7 +36,7 @@ You can then pass that directory to the `scan_results_df()` function to
 get access to the underlying data frames for each scanner:
 
 ``` python
-from inspect_scout import scan_results
+from inspect_scout import scan_results_df
 
 results = scan_results_df("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
 deception_df = results.scanners["deception"]
@@ -52,13 +52,13 @@ field before proceeding to read the results. For example:
 
 ``` python
 from inspect_scout import (
-    scan, scan_results, transcripts_from_logs
+    scan, scan_results, transcripts_from
 )
 
 from .scanners import ctf_environment, java_tool_calls
 
 status = scan(
-    transcripts=transcripts_from_logs("./logs"),
+    transcripts=transcripts_from("./logs"),
     scanners=[ctf_environment(), java_tool_calls()]
 )
 
@@ -120,6 +120,7 @@ included embedded JSON data, these are all noted below):
 | Field | Type | Description |
 |----|----|----|
 | `transcript_id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log or `sample_id` in Inspect analysis data frames). |
+| `transcript_source_type` | str | Type of transcript source (e.g. “eval_log”). |
 | `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to \`eval_id\` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `transcript_metadata` | dict JSON | Eval configuration metadata (e.g. task, model, scores, etc.). |
@@ -147,6 +148,7 @@ included embedded JSON data, these are all noted below):
 | `validation_result` | JsonValueJSON | Result returned from comparing `validation_target` to `value`. |
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
+| `scan_error_type` | str | Error type (either “refusal” for refusals or null for other errors). |
 | `scan_events` | list\[Event\]JSON | Scan events (e.g. model event, log event, etc.) |
 | `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
 | `scan_model_usage` | dict \[str, ModelUsage\]JSON | Token usage by model for scan (only included when `rows = "transcripts"`). |

@@ -13,7 +13,7 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scan.py#L73)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scan.py#L79)
 
 ``` python
 def scan(
@@ -38,6 +38,7 @@ def scan(
     metadata: dict[str, Any] | None = None,
     display: DisplayType | None = None,
     log_level: str | None = None,
+    fail_on_error: bool = False,
 ) -> Status
 ```
 
@@ -85,7 +86,7 @@ serves as the default value for `max_connections`). Defaults to 25.
 
 `max_processes` int \| None  
 The maximum number of concurrent processes (for multiproccesing).
-Defaults to `multiprocessing.cpu_count()`.
+Defaults to 1.
 
 `limit` int \| None  
 Limit the number of transcripts processed.
@@ -107,17 +108,22 @@ Display type: “rich”, “plain”, or “none” (defaults to “rich”).
 Level for logging to the console: “debug”, “http”, “sandbox”, “info”,
 “warning”, “error”, “critical”, or “notset” (defaults to “warning”)
 
+`fail_on_error` bool  
+Re-raise exceptions instead of capturing them in results. Defaults to
+False.
+
 ### scan_resume
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scan.py#L276)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scan.py#L287)
 
 ``` python
 def scan_resume(
     scan_location: str,
     display: DisplayType | None = None,
     log_level: str | None = None,
+    fail_on_error: bool = False,
 ) -> Status
 ```
 
@@ -131,6 +137,9 @@ Display type: “rich”, “plain”, or “none” (defaults to “rich”).
 Level for logging to the console: “debug”, “http”, “sandbox”, “info”,
 “warning”, “error”, “critical”, or “notset” (defaults to “warning”)
 
+`fail_on_error` bool  
+Re-raise exceptions instead of capturing them in results.
+
 ### scan_complete
 
 Complete a scan.
@@ -138,7 +147,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scan.py#L336)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scan.py#L356)
 
 ``` python
 def scan_complete(
@@ -164,7 +173,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Decorator for registering scan jobs.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanjob.py#L319)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanjob.py#L319)
 
 ``` python
 def scanjob(
@@ -182,7 +191,7 @@ Optional name for scanjob (defaults to function name).
 
 Scan job definition.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanjob.py#L107)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanjob.py#L107)
 
 ``` python
 class ScanJob
@@ -236,7 +245,7 @@ serves as the default value for `max_connections`). Defaults to 25.
 
 `max_processes` int \| None  
 The maximum number of concurrent processes (for multiproccesing).
-Defaults to `multiprocessing.cpu_count()`.
+Defaults to 1.
 
 `limit` int \| None  
 Limit the number of transcripts processed.
@@ -259,7 +268,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Scan job configuration.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanjob.py#L39)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanjob.py#L39)
 
 ``` python
 class ScanJobConfig(BaseModel)
@@ -313,7 +322,7 @@ serves as the default value for `max_connections`). Defaults to 25.
 
 `max_processes` int \| None  
 The maximum number of concurrent processes (for multiproccesing).
-Defaults to `multiprocessing.cpu_count()`.
+Defaults to 1.
 
 `limit` int \| None  
 Limit the number of transcripts processed.
@@ -336,7 +345,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Scanner used by scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanspec.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanspec.py#L19)
 
 ``` python
 class ScannerSpec(BaseModel)
@@ -364,7 +373,7 @@ By default scanners process all transcripts passed to `scan()`. You can
 alternately pass a list of `ScannerWork` to specify that only particular
 scanners and transcripts should be processed.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanspec.py#L93)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanspec.py#L96)
 
 ``` python
 class ScannerWork(BaseModel)
@@ -384,7 +393,7 @@ List of transcript ids.
 
 Status of scan job.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_recorder/recorder.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_recorder/recorder.py#L15)
 
 ``` python
 @dataclass
@@ -412,7 +421,7 @@ Errors during last scan attempt.
 
 Options used for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanspec.py#L48)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanspec.py#L48)
 
 ``` python
 class ScanOptions(BaseModel)
@@ -424,7 +433,7 @@ class ScanOptions(BaseModel)
 Maximum number of concurrent transcripts (defaults to 25).
 
 `max_processes` int \| None  
-Number of worker processes. Defaults to `multiprocessing.cpu_count()`.
+Number of worker processes. Defaults to 1.
 
 `limit` int \| None  
 Transcript limit (maximum number of transcripts to read).
@@ -436,7 +445,7 @@ Shuffle order of transcripts.
 
 Git revision for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanspec.py#L35)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanspec.py#L35)
 
 ``` python
 class ScanRevision(BaseModel)
@@ -455,9 +464,9 @@ Revision commit.
 
 ### ScanTranscripts
 
-Transcripts target by a scan.
+Transcripts targeted by a scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanspec.py#L77)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanspec.py#L77)
 
 ``` python
 class ScanTranscripts(BaseModel)
@@ -465,8 +474,11 @@ class ScanTranscripts(BaseModel)
 
 #### Attributes
 
-`type` str  
-Transcripts backing store type (currently only ‘eval_log’).
+`type` Literal\['eval_log', 'database'\]  
+Transcripts backing store type (‘eval_log’ or ‘database’).
+
+`location` str \| None  
+Location of transcript collection (e.g. database location).
 
 `fields` list\[[TranscriptField](scanning.qmd#transcriptfield)\]  
 Data types of transcripts fields.
@@ -481,7 +493,7 @@ Transcript data as a csv.
 
 Field in transcript data frame.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e3dd1f6ab1493ad579a853889106aa219d99b50e/src/inspect_scout/_scanspec.py#L64)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/db6043784ca0ac948fc4af520b4cb01071876abd/src/inspect_scout/_scanspec.py#L64)
 
 ``` python
 class TranscriptField(TypedDict, total=False)

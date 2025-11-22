@@ -37,10 +37,10 @@ def confusion() -> Scanner[Transcript]:
             "Here is a transcript of an LLM agent " +
             "solving a puzzle:\n\n" +
             "===================================" +
-            messages_as_str(transcript.messages) +
+            await messages_as_str(transcript) +
             "===================================\n\n" +
             "In the transcript above do you see the agent " +
-            "becoming confused? Repond beginning with 'Yes' " +
+            "becoming confused? Respond beginning with 'Yes' " +
             "or 'No', followed by an explanation."
         )
 
@@ -128,37 +128,17 @@ transcripts.
 
 ### Transcript Fields
 
-The `Transcript` type is defined somewhat generally to accommodate other
-non-Inspect transcript sources in the future. Here are the available
-`Transcript` fields and how these map back onto Inspect logs:
+Here are the available `Transcript` fields:
 
 | Field | Type | Description |
 |----|----|----|
-| `id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log). |
-| `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log) |
+| `transcript_id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in Inspect logs). |
+| `source_type` | str | Type of transcript source (e.g. “eval_log”, “weave”, etc.). |
+| `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
 | `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `score` | JsonValue | Main score assigned to transcript (optional). |
-| `scores` | dict\[str, JsonValue\] | All scores assigned to transcript (optional). |
-| `variables` | dict\[str, JsonValue\] | Variables (e.g. to be used in a prompt template) associated with transcript. For Inspect logs this is `Sample.metadata`. |
-| `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). See `LogMetadata` for details on metadata available for Inspect logs. |
-| `messages` | list\[ChatMessage\] | Message history from `EvalSample` |
-| `events` | list\[Event\] | Event history from `EvalSample` |
-
-The `metadata` field includes fields read from eval sample metadata. For
-example:
-
-``` python
-transcript.metadata["sample_id"]        # sample uuid 
-transcript.metadata["id"]               # dataset sample id 
-transcript.metadata["epoch"]            # sample epoch
-transcript.metadata["eval_metadata"]    # eval metadata
-transcript.metadata["sample_metadata"]  # sample metadata
-transcript.metadata["score"]            # main sample score 
-transcript.metadata["score_<scorer>"]   # named sample scores
-```
-
-See the `LogMetadata` class for details on all of the fields included in
-`transcript.metadata` for Inspect logs.
+| `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
+| `messages` | list\[ChatMessage\] | Message history. |
+| `events` | list\[Event\] | Event history (e.g. model events, tool events, etc.) |
 
 ### Content Filtering
 
@@ -197,20 +177,22 @@ result = await get_model().generate(
     "Here is a transcript of an LLM agent " +
     "solving a puzzle:\n\n" +
     "===================================" +
-    messages_as_str(transcript.messages) +
+    await messages_as_str(transcript) +
     "===================================\n\n" +
     "In the transcript above do you see the agent " +
-    "becoming confused? Repond beginning with 'Yes' " +
+    "becoming confused? Respond beginning with 'Yes' " +
     "or 'No', followed by an explanation."
 )
 ```
 
-The `messages_as_str()` function will by default remove system messages
-from the list. See `MessagesPreprocessor` for other available options.
+The `messages_as_str()` function takes a
+`Transcript | list[ChatMessage]` and will by default remove system
+messages from the message list. See `MessagesPreprocessor` for other
+available options.
 
 ## Multiple Results
 
-Scanners can return multiple resulsts as a list. For example:
+Scanners can return multiple results as a list. For example:
 
 ``` python
 return [
@@ -289,7 +271,7 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
 
 ## Scanners as Scorers
 
-You have likely certainly that scanners are very simillar to Inspect
+You have likely certainly that scanners are very similar to Inspect
 [Scorers](https://inspect.aisi.org.uk/scorers.html). This is by design,
 and it is actually possible to use scanners directly as Inspect scorers.
 

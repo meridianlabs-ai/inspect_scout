@@ -107,7 +107,7 @@ The following substitutable values are available for prompt templates:
 | `{{ question }}` | Question about the transcript posed to the LLM (e.g. “Did the assistant refuse the user’s request?”) |
 | `{{ answer_prompt }}` | The prompt used by the current answer type (e.g. “Answer the following yes or no question:”) |
 | `{{ answer_format }}` | Formatting guidelines used by the current answer type (e.g. ““‘ANSWER: \$VALUE’ (without quotes) where \$VALUE is yes or no.”) |
-| `{{ transcript }}` | Dictionary of the `Transcript` fields |
+| `{{ metadata }}` | Dictionary from `Transcript.metadata` |
 
 In addition, you can use the `template_variables` option to pass
 additional variables for use in your template.

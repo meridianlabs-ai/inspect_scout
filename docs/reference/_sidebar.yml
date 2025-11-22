@@ -67,6 +67,8 @@ website:
           href: reference/transcript.qmd#transcripts_db
         - text: TranscriptsDB
           href: reference/transcript.qmd#transcriptsdb
+        - text: TranscriptsSource
+          href: reference/transcript.qmd#transcriptssource
         - text: transcripts_from
           href: reference/transcript.qmd#transcripts_from
         - text: Transcripts

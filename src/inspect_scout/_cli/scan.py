@@ -21,7 +21,7 @@ from inspect_scout._validation.predicates import PREDICATES, ValidationPredicate
 from inspect_scout._validation.types import ValidationSet
 
 from .._scan import scan
-from .._scanjob import ScanJob, scanjob_from_file
+from .._scanjob import ScanJob, scanjob_from_cli_spec, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
 from .._transcript.factory import transcripts_from
 from .._util.constants import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TRANSCRIPTS
@@ -344,15 +344,21 @@ def scan_command(
 
     # resolve scanjobs
     scanjob_args = parse_cli_args(s)
-    scanjob = scanjob_from_file(file, scanjob_args)
+
+    # see if it is a package reference
+    scanjob = scanjob_from_cli_spec(file, scanjob_args)
     if scanjob is None:
-        scanners = scanners_from_file(file, scanjob_args)
-        if len(scanners) == 0:
-            raise PrerequisiteError(
-                f"No @scanjob or @scanner decorated functions found in '{file}'"
-            )
-        else:
-            scanjob = ScanJob(transcripts=None, scanners=scanners)
+        # now check for a scanjob file (.py or .yaml)
+        scanjob = scanjob_from_file(file, scanjob_args)
+        if scanjob is None:
+            # now check for a .py file with scanners
+            scanners = scanners_from_file(file, scanjob_args)
+            if len(scanners) == 0:
+                raise PrerequisiteError(
+                    f"No @scanjob or @scanner decorated functions found in '{file}'"
+                )
+            else:
+                scanjob = ScanJob(transcripts=None, scanners=scanners)
 
     # resolve transcripts (could be from ScanJob)
     tx = transcripts_from(transcripts) if len(transcripts) > 0 else scanjob.transcripts

@@ -204,9 +204,9 @@ class TextProgressRich(TextProgress):
         text_column_fmt = text_column_fmt + "[/meta]"
         self._progress = Progress(SpinnerColumn(), TextColumn(text_column_fmt))
         self._task_id = self._progress.add_task(caption, total=None, text="(preparing)")
+        self._started = False
 
     def __enter__(self) -> "TextProgress":
-        self._progress.start()
         return self
 
     def __exit__(
@@ -215,9 +215,13 @@ class TextProgressRich(TextProgress):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        self._progress.stop()
+        if self._started:
+            self._progress.stop()
 
     def update(self, text: str) -> None:
+        if self._started is False:
+            self._progress.start()
+            self._started = True
         self._progress.update(task_id=self._task_id, text=text, advance=1)
 
 

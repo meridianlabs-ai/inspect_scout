@@ -4,6 +4,7 @@ import json
 import sqlite3
 from datetime import datetime
 from functools import reduce
+from logging import getLogger
 from os import PathLike
 from types import TracebackType
 from typing import (
@@ -43,6 +44,7 @@ from inspect_ai.analysis._dataframe.util import (
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
+from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._util.async_zip import AsyncZipReader
@@ -57,6 +59,8 @@ from .metadata import Condition
 from .transcripts import TranscriptsQuery, TranscriptsReader
 from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
 from .util import LazyJSONDict
+
+logger = getLogger(__name__)
 
 TRANSCRIPTS = "transcripts"
 EVAL_LOG_SOURCE_TYPE = "eval_log"
@@ -188,29 +192,36 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
 
 class EvalLogTranscriptsDB:
     def __init__(self, logs: Logs | pd.DataFrame):
+        from inspect_scout._display._display import display
+
         # pandas required
         verify_df_prerequisites()
         import pandas as pd
 
         # resolve logs or df to transcript_df (sample per row)
         if not isinstance(logs, pd.DataFrame):
+            with display().text_progress("Indexing", True) as progress:
 
-            def read_samples(path: str) -> pd.DataFrame:
-                # This cast is wonky, but the public function, samples_df, uses overloads
-                # to make the return type be a DataFrame when strict=True. Since we're
-                # calling the helper method, we'll just have to cast it.
-                return cast(
-                    pd.DataFrame,
-                    _read_samples_df_serial(
-                        [path],
-                        TranscriptColumns,
-                        full=False,
-                        strict=True,
-                        progress=False,
-                    ),
-                )
+                def read_samples(path: str) -> pd.DataFrame:
+                    with trace_action(
+                        logger, "Scout Eval Log Index", f"Indexing {path}"
+                    ):
+                        # This cast is wonky, but the public function, samples_df, uses overloads
+                        # to make the return type be a DataFrame when strict=True. Since we're
+                        # calling the helper method, we'll just have to cast it.
+                        progress.update(path)
+                        return cast(
+                            pd.DataFrame,
+                            _read_samples_df_serial(
+                                [path],
+                                TranscriptColumns,
+                                full=False,
+                                strict=True,
+                                progress=False,
+                            ),
+                        )
 
-            self._transcripts_df = samples_df_with_caching(read_samples, logs)
+                self._transcripts_df = samples_df_with_caching(read_samples, logs)
         else:
             self._transcripts_df = logs
 
@@ -373,13 +384,18 @@ class EvalLogTranscriptsDB:
                 t.source_uri or "",  # always has a source_uri
             ),
         )
-        async with zip_reader.open_member(sample_file_name) as json_iterator:
-            return await load_filtered_transcript(
-                json_iterator,
-                t,
-                content.messages,
-                content.events,
-            )
+        with trace_action(
+            logger,
+            "Scout Eval Log Read",
+            f"Reading from {t.source_uri} ({sample_file_name})",
+        ):
+            async with zip_reader.open_member(sample_file_name) as json_iterator:
+                return await load_filtered_transcript(
+                    json_iterator,
+                    t,
+                    content.messages,
+                    content.events,
+                )
 
     async def disconnect(self) -> None:
         if self._conn is not None:

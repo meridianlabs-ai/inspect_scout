@@ -9,12 +9,16 @@ import os
 import shutil
 import tempfile
 from contextvars import ContextVar
+from logging import getLogger
 from pathlib import Path
 from typing import Final, Optional
 
 import anyio
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
+from inspect_ai.util import trace_action, trace_message
+
+logger = getLogger(__name__)
 
 
 class LocalFilesCache:
@@ -80,30 +84,32 @@ class LocalFilesCache:
                 return cache_file.as_posix()
 
             if not _try_create_marker(marker_file):
+                trace_message(logger, "Scout Cache Wait", f"Waiting for {uri}")
                 await anyio.sleep(1)
                 continue
 
             # We own the marker now - download
-            try:
-                # The streaming approach is leaking something that causes aiobotocore
-                # to raise errors on shutdown. Though harmless, it's disconcerting.
-                #
-                # file_size = await fs.get_size(uri)
-                # async with await fs.read_file_bytes(uri, 0, file_size) as stream:
-                #     with open(cache_file, "wb") as f:
-                #         async for chunk in stream:
-                #             f.write(chunk)
-                #
-                # TODO: We'll continue trying to get to the bottom of it, but we'll
-                # revert to fsspec for now.
-                fs2 = filesystem(uri)
-                fs2.get_file(uri, cache_file.as_posix())
-                marker_file.unlink()
-                return cache_file.as_posix()
+            with trace_action(logger, "Scout Cache Download", f"Downloading {uri}"):
+                try:
+                    # The streaming approach is leaking something that causes aiobotocore
+                    # to raise errors on shutdown. Though harmless, it's disconcerting.
+                    #
+                    # file_size = await fs.get_size(uri)
+                    # async with await fs.read_file_bytes(uri, 0, file_size) as stream:
+                    #     with open(cache_file, "wb") as f:
+                    #         async for chunk in stream:
+                    #             f.write(chunk)
+                    #
+                    # TODO: We'll continue trying to get to the bottom of it, but we'll
+                    # revert to fsspec for now.
+                    fs2 = filesystem(uri)
+                    fs2.get_file(uri, cache_file.as_posix())
+                    marker_file.unlink()
+                    return cache_file.as_posix()
 
-            except Exception:
-                marker_file.unlink(missing_ok=True)
-                raise
+                except Exception:
+                    marker_file.unlink(missing_ok=True)
+                    raise
 
     def cleanup(self) -> None:
         """Delete the cache directory and all its contents."""

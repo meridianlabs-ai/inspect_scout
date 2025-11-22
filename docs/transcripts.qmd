@@ -4,7 +4,7 @@ title: Transcripts
 
 ## Overview
 
-Transcripts are the fundamental input to scanners. The `Transcripts` class represents a collection of transcripts that has been selected for scanning. This is an index of `TranscriptInfo` rather than full transcript content, and supports various filtering operations to refine the collection.
+Transcripts are the fundamental input to scanners. The `Transcripts` class represents a collection of transcripts that has been selected for scanning, and supports various filtering operations to refine the collection.
 
 ## Reading Transcripts
 
@@ -14,24 +14,26 @@ Use the `transcripts_from()` function to read a collection of `Transcripts`:
 from inspect_scout import transcripts_from
 
 # read from a transcript database on S3
-transcripts = transcripts_from("s3://weave-rollouts-cybench")
+transcripts = transcripts_from("s3://weave-rollouts/cybench")
 
 # read from an Inspect log directory
 transcripts = transcripts_from("./logs")
 ```
 
-Scout can read from either a [transcript database](#transcripts-database) or by directly reading Inspect AI eval logs. The following sections cover each of these scenarios in details
+The `transcripts_from()` function can read transcripts from either:
 
-## Transcripts Database {#transcripts-database}
+1. A transcript database that contains transcripts you have imported from a variety of sources (Agent traces, RL rollouts, Inspect logs, etc.); or 
 
-## Inspect Eval Logs
+2. One or more Inspect log directories that contain Inspect `.eval` logs. 
+
+See the sections below on the [Transcripts Database] and [Inspect Eval Logs] for additional details.
 
 ## Filtering Transcripts
 
 If you want to scan only a subset of transcripts, you can use the `.where()` method to narrow down the collection. For example:
 
 ``` python
-from inspect_scout import transcripts_from, log_metadata as m
+from inspect_scout import transcripts_from, metadata as m
 
 transcripts = (
     transcripts_from("./logs")
@@ -41,8 +43,6 @@ transcripts = (
 ```
 
 See the `Column` documentation for additional details on supported filtering operations.
-
-See the `LogMetadata` documentation for the standard metadata fields that are exposed from logs for filtering.
 
 You can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don't want to process all transcripts). For example:
 
@@ -76,3 +76,60 @@ scan(
 ```
 
 If you want to do transcript filtering and then invoke your scan from the CLI using `scout scan`, then perform the filtering inside a `@scanjob`. For example:
+
+{{< include _scanjob-transcripts.md >}}
+
+## Inspect Eval Logs
+
+The `transcripts_from()` function can read a collection of transcripts directly from an Inspect log directory. You can specify one or more directories and/or individual log files. For example:
+
+```python
+# read from a log directory
+transcripts = transcripts_from_logs("./logs")
+
+# read multiple log directories
+transcripts = transcripts_from_logs(["./logs", "./logs2"])
+
+# read from one or more log files
+transcripts = transcripts_from_logs(
+    ["logs/cybench.eval", "logs/swebench.eval"]
+)
+```
+
+For Inspect logs, the `metadata` field within `TranscriptInfo` includes fields from eval sample metadata. For example:
+
+```python
+transcript.metadata["sample_id"]        # sample uuid 
+transcript.metadata["id"]               # dataset sample id 
+transcript.metadata["epoch"]            # sample epoch
+transcript.metadata["eval_metadata"]    # eval metadata
+transcript.metadata["sample_metadata"]  # sample metadata
+transcript.metadata["score"]            # main sample score 
+transcript.metadata["score_<scorer>"]   # named sample scores
+```
+
+See the `LogMetadata` class for details on all of the fields included in `transcript.metadata`. Use `log_metadata` (aliased to `m` below) to do typesafe filtering for Inspect logs:
+
+```python
+from inspect_scout import transcripts_from, log_metadata as m
+
+transcripts = (
+    transcripts_from("./logs")
+    .where(m.task_name == "cybench")
+    .where(m.model.like("openai/%"))
+)
+```
+
+## Transcripts Database
+
+Scout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been imported into a transcipts database. Transcript databases use [Parquet](https://parquet.apache.org) files for storage and can be located in the local filesystem or remote systems like S3.
+
+To create a transcripts database, use the `transcripts_db()` function (which returns a `TranscriptsDB`):
+
+```python
+from inspect_scout import transcripts_db
+
+db = transcripts_db("s3://my-transcripts")
+```
+
+You can 

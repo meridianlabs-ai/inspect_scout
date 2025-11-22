@@ -25,6 +25,9 @@ class ScannerSpec(BaseModel):
     version: int = Field(default=0)
     """Scanner version."""
 
+    package_version: str | None = Field(default=None)
+    """Scanner package version (if in a package)."""
+
     file: str | None = Field(default=None)
     """Scanner source file (if not in a package)."""
 

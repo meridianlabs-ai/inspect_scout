@@ -93,6 +93,9 @@ class RecorderBuffer:
                     "scanner_key": scanner,
                     "scanner_name": self._spec.scanners[scanner].name,
                     "scanner_version": self._spec.scanners[scanner].version,
+                    "scanner_package_version": self._spec.scanners[
+                        scanner
+                    ].package_version,
                     "scanner_file": self._spec.scanners[scanner].file,
                     "scanner_params": self._spec.scanners[scanner].params,
                 },

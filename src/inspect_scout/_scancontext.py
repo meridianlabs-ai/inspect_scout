@@ -9,7 +9,9 @@ from inspect_ai._util.module import load_module
 from inspect_ai._util.path import cwd_relative_path
 from inspect_ai._util.registry import (
     is_registry_object,
+    registry_info,
     registry_log_name,
+    registry_package_name,
     registry_params,
 )
 from inspect_ai.model._model import ModelName
@@ -152,11 +154,20 @@ def _spec_scanners(
         k: ScannerSpec(
             name=registry_log_name(v),
             version=scanner_version(v),
+            package_version=_scanner_package_version(v),
             file=scanner_file(v),
             params=registry_params(v),
         )
         for k, v in scanners.items()
     }
+
+
+def _scanner_package_version(scanner: Scanner[Any]) -> str | None:
+    package_name = registry_package_name(registry_info(scanner).name)
+    if package_name is not None:
+        return importlib_metadata.version(package_name)
+    else:
+        return None
 
 
 def _scanners_from_spec(

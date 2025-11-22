@@ -98,7 +98,7 @@ def multi_process_strategy(
         )
 
     if max_processes is None:
-        max_processes = 1
+        max_processes = min(MAX_PROCESS, multiprocessing.cpu_count(), total_scans)
 
     async def the_func(
         *,

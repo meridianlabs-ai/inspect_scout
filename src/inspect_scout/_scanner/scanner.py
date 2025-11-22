@@ -27,6 +27,7 @@ from inspect_ai._util.registry import (
     registry_info,
     registry_kwargs,
     registry_lookup,
+    registry_name,
     registry_tag,
 )
 from inspect_ai.event._event import Event
@@ -277,6 +278,8 @@ def scanner(
             else:
                 scanner_name = str(getattr(factory_fn, "__name__", "scanner"))
 
+            scanner_name = registry_name(factory_fn, scanner_name)
+
             if not is_callable_coroutine(scanner_fn):
                 raise TypeError(
                     f"'{scanner_name}' is not declared as an async callable."
@@ -359,7 +362,9 @@ def scanner(
 
             return scanner_fn
 
-        scanner_name = name or str(getattr(factory_fn, "__name__", "scanner"))
+        scanner_name = registry_name(
+            factory_fn, name or str(getattr(factory_fn, "__name__", "scanner"))
+        )
         scanner_factory_wrapper = cast(ScannerFactory[P, T], factory_wrapper)
         registry_add(
             scanner_factory_wrapper,

@@ -32,7 +32,7 @@ from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
 
-from ._scanner.scanner import Scanner
+from ._scanner.scanner import Scanner, scanner_create
 from ._transcript.transcripts import Transcripts
 
 
@@ -387,6 +387,26 @@ def scanjob(
             return create_scanjob_wrapper(func)
 
         return decorator
+
+
+def scanjob_from_cli_spec(spec: str, scanjob_args: dict[str, Any]) -> ScanJob | None:
+    # only look if its a package reference
+    if "/" not in spec:
+        return None
+
+    # scan job in registry
+    o = registry_lookup("scanjob", spec)
+    if o is not None:
+        return scanjob_create(spec, scanjob_args)
+
+    # scanner in registry
+    o = registry_lookup("scanner", spec)
+    if o is not None:
+        scanner = scanner_create(spec, scanjob_args)
+        return ScanJob(transcripts=None, scanners=[scanner])
+
+    # nothing
+    return None
 
 
 def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None:

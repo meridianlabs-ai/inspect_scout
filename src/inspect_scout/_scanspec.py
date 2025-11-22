@@ -32,6 +32,9 @@ class ScannerSpec(BaseModel):
     """Scanner arguments."""
 
 
+GIT_VERSION_UNKNOWN = "0.0.0-dev.0+unknown"
+
+
 class ScanRevision(BaseModel):
     """Git revision for scan."""
 
@@ -40,6 +43,9 @@ class ScanRevision(BaseModel):
 
     origin: str
     """Revision origin server"""
+
+    version: str = Field(default=GIT_VERSION_UNKNOWN)
+    """Revision version (based on tags)."""
 
     commit: str
     """Revision commit."""

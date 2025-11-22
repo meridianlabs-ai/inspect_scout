@@ -5,7 +5,6 @@ from typing import Any, Sequence, Set, cast
 import importlib_metadata
 from inspect_ai._util.constants import PKG_NAME as INSPECT_PKG_NAME
 from inspect_ai._util.error import PrerequisiteError
-from inspect_ai._util.git import git_context
 from inspect_ai._util.module import load_module
 from inspect_ai._util.path import cwd_relative_path
 from inspect_ai._util.registry import (
@@ -29,6 +28,7 @@ from inspect_scout._util.constants import (
     TRANSCRIPT_SOURCE_DATABASE,
     TRANSCRIPT_SOURCE_EVAL_LOG,
 )
+from inspect_scout._util.revision import scan_revision
 from inspect_scout._validation.types import ValidationSet
 
 from ._recorder.factory import scan_recorder_type_for_location
@@ -43,7 +43,6 @@ from ._scanspec import (
     ScannerSpec,
     ScannerWork,
     ScanOptions,
-    ScanRevision,
     ScanSpec,
 )
 from ._transcript.transcripts import Transcripts
@@ -75,10 +74,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         raise PrerequisiteError("You cannot specify both a worklist and a limit")
 
     # get revision and package version
-    git = git_context()
-    revision = (
-        ScanRevision(type="git", origin=git.origin, commit=git.commit) if git else None
-    )
+    revision = scan_revision()
     packages = {
         INSPECT_PKG_NAME: importlib_metadata.version(INSPECT_PKG_NAME),
         PKG_NAME: importlib_metadata.version(PKG_NAME),

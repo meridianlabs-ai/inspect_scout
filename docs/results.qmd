@@ -110,6 +110,9 @@ The data frame includes the following fields (note that some fields included emb
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]</br><small>JSON</small> | Tags associated with the scan. |
 | `scan_metadata` | dict<br/><small>JSON</small> | Additional scan metadata. |
+| `scan_git_origin` | str | Git origin for repo where scan was run from. |
+| `scan_git_version` | str | Git version (based on tags) for repo where scan was run from. |
+| `scan_git_commit` | str | Git commit for repo where scan was run from. |
 | `scanner_key` | str | Unique key for scan within scan job (defaults to `scanner_name`). |
 | `scanner_name` | str | Scanner name. |
 | `scanner_version` | int | Scanner version. |

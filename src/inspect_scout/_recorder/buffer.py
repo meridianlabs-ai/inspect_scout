@@ -81,6 +81,15 @@ class RecorderBuffer:
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
                     "scan_metadata": self._spec.metadata or {},
+                    "scan_git_origin": self._spec.revision.origin
+                    if self._spec.revision
+                    else None,
+                    "scan_git_version": self._spec.revision.version
+                    if self._spec.revision
+                    else None,
+                    "scan_git_commit": self._spec.revision.commit
+                    if self._spec.revision
+                    else None,
                     "scanner_key": scanner,
                     "scanner_name": self._spec.scanners[scanner].name,
                     "scanner_version": self._spec.scanners[scanner].version,

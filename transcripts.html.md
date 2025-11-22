@@ -141,13 +141,13 @@ directories and/or individual log files. For example:
 
 ``` python
 # read from a log directory
-transcripts = transcripts_from_logs("./logs")
+transcripts = transcripts_from("./logs")
 
 # read multiple log directories
-transcripts = transcripts_from_logs(["./logs", "./logs2"])
+transcripts = transcripts_from(["./logs", "./logs2"])
 
 # read from one or more log files
-transcripts = transcripts_from_logs(
+transcripts = transcripts_from(
     ["logs/cybench.eval", "logs/swebench.eval"]
 )
 ```
@@ -229,7 +229,7 @@ this:
 from pathlib import Path
 from typing import AsyncIterator
 
-def read_weave_transcripts(dir: Path) -> AsyncIterator[Transcript]:
+async def read_weave_transcripts(dir: Path) -> AsyncIterator[Transcript]:
     weave_json_files = list(dir.rglob("*.json"))
     for json_file in weave_json_files:
         yield weave_json_to_transcript(json_file)
@@ -245,6 +245,11 @@ We can then pass this generator function directly to `db.insert()`:
 async with transcripts_db("s3://my-transcripts") as db:
     await db.insert(read_weave_transcripts())
 ```
+
+Note that transcript insertion is idempotent—once a transcript with a
+given ID has been inserted it will not be inserted again. This means
+that you can safely resume imports that are interrupted, and only new
+transcripts will be added.
 
 ### Transcripts
 
@@ -269,7 +274,7 @@ For example, here is how we might implement
 ``` python
 def weave_json_to_transcript(json_file: Path) -> Transcript:
     with open(json_file, "r") as f:
-        weave_json: dict[str,Any] = json.loads(json_file.read())
+        weave_json: dict[str,Any] = json.loads(f.read())
         return Transcript(
             transcript_id = weave_json["trace_id"],
             source_type="weave",
@@ -303,3 +308,30 @@ fast queries and content reading. Consequently, when importing a large
 number of transcripts you should always write a generator (as shown
 above), rather than making many calls to `db.insert()` (which is likely
 to result in more Parquet files than is ideal).
+
+### Importing Logs
+
+If you prefer to keep all of your transcripts (including ones from
+Inspect evals) in a transcript database, you can easily import Inspect
+logs as follows:
+
+``` python
+from inspect_scout import transcripts_db, transcripts_from
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(transcripts_from("./logs"))
+```
+
+You could also insert a filtered list of transcripts:
+
+``` python
+async with transcripts_db("s3://my-transcript-db/") as db:
+
+    transcripts = (
+        transcripts_from("./logs")
+        .where(m.task_name == "cybench")
+        .where(m.model.like("openai/%"))
+    )
+
+    await db.insert(transcripts)
+```

@@ -288,6 +288,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#streaming" id="toc-streaming" class="nav-link" data-scroll-target="#streaming">Streaming</a></li>
   <li><a href="#transcripts" id="toc-transcripts" class="nav-link" data-scroll-target="#transcripts">Transcripts</a></li>
   <li><a href="#storage" id="toc-storage" class="nav-link" data-scroll-target="#storage">Storage</a></li>
+  <li><a href="#importing-logs" id="toc-importing-logs" class="nav-link" data-scroll-target="#importing-logs">Importing Logs</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -451,13 +452,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="inspect-eval-logs">Inspect Eval Logs</h2>
 <p>The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_from">transcripts_from()</a></span> function can read a collection of transcripts directly from an Inspect log directory. You can specify one or more directories and/or individual log files. For example:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># read from a log directory</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(<span class="st">"./logs"</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"./logs"</span>)</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># read multiple log directories</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs([<span class="st">"./logs"</span>, <span class="st">"./logs2"</span>])</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from([<span class="st">"./logs"</span>, <span class="st">"./logs2"</span>])</span>
 <span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># read from one or more log files</span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from_logs(</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(</span>
 <span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"logs/cybench.eval"</span>, <span class="st">"logs/swebench.eval"</span>]</span>
 <span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>For Inspect logs, the <code>metadata</code> field within <code>TranscriptInfo</code> includes fields from eval sample metadata. For example:</p>
@@ -507,7 +508,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> AsyncIterator</span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> read_weave_transcripts(<span class="bu">dir</span>: Path) <span class="op">-&gt;</span> AsyncIterator[Transcript]:</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read_weave_transcripts(<span class="bu">dir</span>: Path) <span class="op">-&gt;</span> AsyncIterator[Transcript]:</span>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    weave_json_files <span class="op">=</span> <span class="bu">list</span>(<span class="bu">dir</span>.rglob(<span class="st">"*.json"</span>))</span>
 <span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> json_file <span class="kw">in</span> weave_json_files:</span>
 <span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">yield</span> weave_json_to_transcript(json_file)</span>
@@ -518,6 +519,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>We can then pass this generator function directly to <code>db.insert()</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(read_weave_transcripts())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Note that transcript insertion is idempotent—once a transcript with a given ID has been inserted it will not be inserted again. This means that you can safely resume imports that are interrupted, and only new transcripts will be added.</p>
 </section>
 <section id="transcripts" class="level3">
 <h3 class="anchored" data-anchor-id="transcripts">Transcripts</h3>
@@ -567,7 +569,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>For example, here is how we might implement <code>weave_json_to_transcript()</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> weave_json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(json_file, <span class="st">"r"</span>) <span class="im">as</span> f:</span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        weave_json: <span class="bu">dict</span>[<span class="bu">str</span>,Any] <span class="op">=</span> json.loads(json_file.read())</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        weave_json: <span class="bu">dict</span>[<span class="bu">str</span>,Any] <span class="op">=</span> json.loads(f.read())</span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Transcript(</span>
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            transcript_id <span class="op">=</span> weave_json[<span class="st">"trace_id"</span>],</span>
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>            source_type<span class="op">=</span><span class="st">"weave"</span>,</span>
@@ -584,6 +586,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="storage">Storage</h3>
 <p>Transcript databases are stored on a local or remote filesystem using <a href="https://parquet.apache.org">Parquet</a> files, which are optimized for fast access to metadata and incremental access to larger content fields (e.g.&nbsp;<code>messages</code> and <code>events</code>).</p>
 <p>Each call to <code>db.insert()</code> will minimally create one Parquet file, but will break transcripts across multiple files as required, limiting the size of files to 100MB. This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator (as shown above), rather than making many calls to <code>db.insert()</code> (which is likely to result in more Parquet files than is ideal).</p>
+</section>
+<section id="importing-logs" class="level3">
+<h3 class="anchored" data-anchor-id="importing-logs">Importing Logs</h3>
+<p>If you prefer to keep all of your transcripts (including ones from Inspect evals) in a transcript database, you can easily import Inspect logs as follows:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db, transcripts_from</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts_from(<span class="st">"./logs"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You could also insert a filtered list of transcripts:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> (</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>        transcripts_from(<span class="st">"./logs"</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>        .where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>        .where(m.model.like(<span class="st">"openai/%"</span>))</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

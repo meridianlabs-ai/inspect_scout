@@ -299,7 +299,7 @@ from inspect_scout (
 
 from .scanners import deception, tool_errors
 
-transcripts = transcripts_from("./logs")
+transcripts = transcripts_from("s3://weave-rollouts")
 transcripts = transcripts.where(m.task_name == "cybench")
 
 status = scan(
@@ -314,7 +314,7 @@ Note that doing this query required us to switch to the Python `scan()` API. We 
 
 {{< include _scanjob-transcripts.md >}}
 
-See the article on [Transcripts](transcripts.qmd) to learn more about the various ways to read and filter transcripts.
+See the article on [Transcripts](transcripts.qmd) to learn more about the various ways to create, read, filter transcripts.
 
 ## Parallelism
 

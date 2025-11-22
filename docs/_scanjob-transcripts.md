@@ -7,7 +7,7 @@ from inspect_scout (
 from .scanners import deception, tool_errors
 
 @scanjob
-def cybench_job(logs: str = "./logs") -> ScanJob:
+def cybench_job(logs: str = "s3://weave-rollouts") -> ScanJob:
 
     transcripts = transcripts_from(logs)
     transcripts = transcripts.where(m.task_name == "cybench")

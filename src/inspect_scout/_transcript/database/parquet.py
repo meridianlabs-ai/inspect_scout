@@ -6,6 +6,7 @@ import json
 import tempfile
 import uuid
 from datetime import datetime, timezone
+from logging import getLogger
 from pathlib import Path
 from typing import Any, AsyncIterable, AsyncIterator, Callable, Iterable
 
@@ -15,6 +16,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
+from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._display._display import display
@@ -33,6 +35,9 @@ from ..local_files_cache import LocalFilesCache, create_temp_cache
 from ..metadata import Condition
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
+
+logger = getLogger(__name__)
+
 
 PARQUET_TRANSCRIPTS_GLOB = "transcripts_*.parquet"
 
@@ -93,34 +98,39 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._conn is not None:
             return
 
-        # Create DuckDB connection
-        self._conn = duckdb.connect(":memory:")
+        with trace_action(
+            logger,
+            "Scout DuckDB Init",
+            f"Initializing DuckDB connection for {self._location}.",
+        ):
+            # Create DuckDB connection
+            self._conn = duckdb.connect(":memory:")
 
-        # Enable Parquet metadata caching for better performance when querying same files
-        # multiple times (e.g., SELECT for metadata, then read() for content)
-        self._conn.execute("SET parquet_metadata_cache=true")
+            # Enable Parquet metadata caching for better performance when querying same files
+            # multiple times (e.g., SELECT for metadata, then read() for content)
+            self._conn.execute("SET parquet_metadata_cache=true")
 
-        # Initialize filesystem and cache
-        assert self._location is not None
-        if self._location.startswith("s3://"):
-            # Install httpfs extension for S3 support
-            self._conn.execute("INSTALL httpfs")
-            self._conn.execute("LOAD httpfs")
+            # Initialize filesystem and cache
+            assert self._location is not None
+            if self._location.startswith("s3://"):
+                # Install httpfs extension for S3 support
+                self._conn.execute("INSTALL httpfs")
+                self._conn.execute("LOAD httpfs")
 
-            # Create secret that automatically picks up credentials from environment
-            self._conn.execute("""
-                CREATE SECRET (
-                    TYPE S3,
-                    PROVIDER credential_chain
-                )
-            """)
+                # Create secret that automatically picks up credentials from environment
+                self._conn.execute("""
+                    CREATE SECRET (
+                        TYPE S3,
+                        PROVIDER credential_chain
+                    )
+                """)
 
-            # Enable DuckDB's HTTP/S3 caching features for better performance
-            self._conn.execute("SET enable_http_metadata_cache=true")
-            self._conn.execute("SET http_keep_alive=true")
-            self._conn.execute("SET http_timeout=30000")  # 30 seconds
+                # Enable DuckDB's HTTP/S3 caching features for better performance
+                self._conn.execute("SET enable_http_metadata_cache=true")
+                self._conn.execute("SET http_keep_alive=true")
+                self._conn.execute("SET http_timeout=30000")  # 30 seconds
 
-            self._fs = AsyncFilesystem()
+                self._fs = AsyncFilesystem()
 
         # Discover and register Parquet files
         await self._create_transcripts_table()
@@ -312,107 +322,110 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
-        # Determine which columns we need to read
-        need_messages = content.messages is not None
-        need_events = content.events is not None
+        with trace_action(
+            logger, "Scout Parquet Read", f"Reading from {t.transcript_id}"
+        ):
+            # Determine which columns we need to read
+            need_messages = content.messages is not None
+            need_events = content.events is not None
 
-        if not need_messages and not need_events:
-            # No content needed - use model_construct to preserve LazyJSONDict
-            return Transcript.model_construct(
-                transcript_id=t.transcript_id,
-                source_type=t.source_type,
-                source_id=t.source_id,
-                source_uri=t.source_uri,
-                metadata=t.metadata,
+            if not need_messages and not need_events:
+                # No content needed - use model_construct to preserve LazyJSONDict
+                return Transcript.model_construct(
+                    transcript_id=t.transcript_id,
+                    source_type=t.source_type,
+                    source_id=t.source_id,
+                    source_uri=t.source_uri,
+                    metadata=t.metadata,
+                )
+
+            # Build column list for SELECT
+            columns = []
+            if need_messages:
+                columns.append("messages")
+            if need_events:
+                columns.append("events")
+
+            # First, get the filename from the metadata table (fast indexed lookup)
+            filename_result = self._conn.execute(
+                "SELECT filename FROM transcripts WHERE transcript_id = ?",
+                [t.transcript_id],
+            ).fetchone()
+
+            if not filename_result:
+                # Transcript not found in metadata table - use model_construct to preserve LazyJSONDict
+                return Transcript.model_construct(
+                    transcript_id=t.transcript_id,
+                    source_type=t.source_type,
+                    source_id=t.source_id,
+                    source_uri=t.source_uri,
+                    metadata=t.metadata,
+                )
+
+            # Now read content from just that specific file (targeted I/O)
+            # This avoids scanning all files - only reads from the one file containing this transcript
+            filename = filename_result[0]
+            sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+            result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
+
+            if not result:
+                # Transcript not found - use model_construct to preserve LazyJSONDict
+                return Transcript.model_construct(
+                    transcript_id=t.transcript_id,
+                    source_type=t.source_type,
+                    source_id=t.source_id,
+                    source_uri=t.source_uri,
+                    metadata=t.metadata,
+                )
+
+            # Extract column values
+            messages_json: str | None = None
+            events_json: str | None = None
+
+            col_idx = 0
+            if need_messages:
+                messages_json = result[col_idx]
+                col_idx += 1
+            if need_events:
+                events_json = result[col_idx]
+
+            # Stream combined JSON construction
+            async def stream_content_bytes() -> AsyncIterator[bytes]:
+                """Stream construction of combined JSON object."""
+                yield b"{"
+
+                # Stream messages if we have them
+                if messages_json:
+                    yield b'"messages": '
+                    # Stream the array directly in 64KB chunks
+                    messages_bytes = messages_json.encode("utf-8")
+                    chunk_size = 64 * 1024
+                    for i in range(0, len(messages_bytes), chunk_size):
+                        yield messages_bytes[i : i + chunk_size]
+
+                # Add separator if we have both
+                if messages_json and events_json:
+                    yield b", "
+
+                # Stream events if we have them
+                if events_json:
+                    yield b'"events": '
+                    # Stream the array directly in 64KB chunks
+                    events_bytes = events_json.encode("utf-8")
+                    chunk_size = 64 * 1024
+                    for i in range(0, len(events_bytes), chunk_size):
+                        yield events_bytes[i : i + chunk_size]
+
+                # Close the combined JSON object
+                yield b"}"
+
+            # Use existing streaming JSON parser with filtering
+            return await load_filtered_transcript(
+                stream_content_bytes(),
+                t,
+                content.messages,
+                content.events,
             )
-
-        # Build column list for SELECT
-        columns = []
-        if need_messages:
-            columns.append("messages")
-        if need_events:
-            columns.append("events")
-
-        # First, get the filename from the metadata table (fast indexed lookup)
-        filename_result = self._conn.execute(
-            "SELECT filename FROM transcripts WHERE transcript_id = ?",
-            [t.transcript_id],
-        ).fetchone()
-
-        if not filename_result:
-            # Transcript not found in metadata table - use model_construct to preserve LazyJSONDict
-            return Transcript.model_construct(
-                transcript_id=t.transcript_id,
-                source_type=t.source_type,
-                source_id=t.source_id,
-                source_uri=t.source_uri,
-                metadata=t.metadata,
-            )
-
-        # Now read content from just that specific file (targeted I/O)
-        # This avoids scanning all files - only reads from the one file containing this transcript
-        filename = filename_result[0]
-        sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
-        result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
-
-        if not result:
-            # Transcript not found - use model_construct to preserve LazyJSONDict
-            return Transcript.model_construct(
-                transcript_id=t.transcript_id,
-                source_type=t.source_type,
-                source_id=t.source_id,
-                source_uri=t.source_uri,
-                metadata=t.metadata,
-            )
-
-        # Extract column values
-        messages_json: str | None = None
-        events_json: str | None = None
-
-        col_idx = 0
-        if need_messages:
-            messages_json = result[col_idx]
-            col_idx += 1
-        if need_events:
-            events_json = result[col_idx]
-
-        # Stream combined JSON construction
-        async def stream_content_bytes() -> AsyncIterator[bytes]:
-            """Stream construction of combined JSON object."""
-            yield b"{"
-
-            # Stream messages if we have them
-            if messages_json:
-                yield b'"messages": '
-                # Stream the array directly in 64KB chunks
-                messages_bytes = messages_json.encode("utf-8")
-                chunk_size = 64 * 1024
-                for i in range(0, len(messages_bytes), chunk_size):
-                    yield messages_bytes[i : i + chunk_size]
-
-            # Add separator if we have both
-            if messages_json and events_json:
-                yield b", "
-
-            # Stream events if we have them
-            if events_json:
-                yield b'"events": '
-                # Stream the array directly in 64KB chunks
-                events_bytes = events_json.encode("utf-8")
-                chunk_size = 64 * 1024
-                for i in range(0, len(events_bytes), chunk_size):
-                    yield events_bytes[i : i + chunk_size]
-
-            # Close the combined JSON object
-            yield b"}"
-
-        # Use existing streaming JSON parser with filtering
-        return await load_filtered_transcript(
-            stream_content_bytes(),
-            t,
-            content.messages,
-            content.events,
-        )
 
     def _register_shuffle_function(self, seed: int) -> None:
         """Register DuckDB UDF for deterministic shuffling.
@@ -609,62 +622,61 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if not batch:
             return
 
-        # Infer schema from actual data
-        schema = self._infer_schema(batch)
+        with trace_action(logger, "Scout Parquet Write", "Writing transcripts batch"):
+            # Infer schema from actual data
+            schema = self._infer_schema(batch)
 
-        # Create DataFrame and convert to PyArrow table
-        df = pd.DataFrame(batch)
-        table = pa.Table.from_pandas(df, schema=schema)
+            # Create DataFrame and convert to PyArrow table
+            df = pd.DataFrame(batch)
+            table = pa.Table.from_pandas(df, schema=schema)
 
-        # Generate filename
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-        file_uuid = uuid.uuid4().hex[:8]
-        filename = f"transcripts_{timestamp}_{file_uuid}.parquet"
+            # Generate filename
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+            file_uuid = uuid.uuid4().hex[:8]
+            filename = f"transcripts_{timestamp}_{file_uuid}.parquet"
 
-        # Determine output path and write Parquet file
-        assert self._location is not None
-        if self._location.startswith("s3://"):
-            s3_path = f"{self._location.rstrip('/')}/{filename}"
+            # Determine output path and write Parquet file
+            assert self._location is not None
+            if self._location.startswith("s3://"):
+                s3_path = f"{self._location.rstrip('/')}/{filename}"
 
-            # For S3, write to temp file then upload
-            with tempfile.NamedTemporaryFile(
-                suffix=".parquet", delete=False
-            ) as tmp_file:
-                tmp_path = tmp_file.name
+                # For S3, write to temp file then upload
+                with tempfile.NamedTemporaryFile(
+                    suffix=".parquet", delete=False
+                ) as tmp_file:
+                    tmp_path = tmp_file.name
 
-            try:
-                # Write to temporary file
+                try:
+                    # Write to temporary file
+                    pq.write_table(
+                        table,
+                        tmp_path,
+                        compression="zstd",
+                        use_dictionary=True,
+                        row_group_size=int(self._row_group_size_mb * 1024 * 1024),
+                        write_statistics=True,
+                    )
+
+                    # Upload to S3
+                    s3_path = f"{self._location.rstrip('/')}/{filename}"
+                    assert self._fs is not None
+                    await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
+                finally:
+                    # Clean up temp file
+                    Path(tmp_path).unlink(missing_ok=True)
+            else:
+                # Local file system
+                output_path = Path(self._location) / filename
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+
                 pq.write_table(
                     table,
-                    tmp_path,
+                    output_path.as_posix(),
                     compression="zstd",
                     use_dictionary=True,
                     row_group_size=int(self._row_group_size_mb * 1024 * 1024),
                     write_statistics=True,
                 )
-
-                # Upload to S3
-                s3_path = f"{self._location.rstrip('/')}/{filename}"
-                assert self._fs is not None
-                await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
-            finally:
-                # Clean up temp file
-                Path(tmp_path).unlink(missing_ok=True)
-        else:
-            # Local file system
-            output_path = Path(self._location) / filename
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-
-            pq.write_table(
-                table,
-                output_path.as_posix(),
-                compression="zstd",
-                use_dictionary=True,
-                row_group_size=int(self._row_group_size_mb * 1024 * 1024),
-                write_statistics=True,
-            )
-
-            print(output_path.as_posix())
 
     async def _create_transcripts_table(self) -> None:
         """Create or refresh DuckDB structures for querying transcripts.
@@ -681,66 +693,69 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
-        # Drop existing table
-        self._conn.execute("DROP TABLE IF EXISTS transcripts")
+        with trace_action(logger, "Scout Parquet Index", f"Indexing {self._location}"):
+            # Drop existing table
+            self._conn.execute("DROP TABLE IF EXISTS transcripts")
 
-        # Discover Parquet files
-        file_paths = await self._discover_parquet_files()
+            # Discover Parquet files
+            file_paths = await self._discover_parquet_files()
 
-        if not file_paths:
-            # Create empty table with minimal schema
-            self._conn.execute("""
+            if not file_paths:
+                # Create empty table with minimal schema
+                self._conn.execute("""
+                    CREATE TABLE transcripts AS
+                    SELECT
+                        ''::VARCHAR AS transcript_id,
+                        ''::VARCHAR AS source_type,
+                        ''::VARCHAR AS source_id,
+                        ''::VARCHAR AS source_uri,
+                        ''::VARCHAR AS filename
+                    WHERE FALSE
+                """)
+                return
+
+            # Build file list for read_parquet
+            if len(file_paths) == 1:
+                pattern = f"'{file_paths[0]}'"
+            else:
+                pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
+
+            # Build base query
+            sql = f"""
                 CREATE TABLE transcripts AS
-                SELECT
-                    ''::VARCHAR AS transcript_id,
-                    ''::VARCHAR AS source_type,
-                    ''::VARCHAR AS source_id,
-                    ''::VARCHAR AS source_uri,
-                    ''::VARCHAR AS filename
-                WHERE FALSE
+                SELECT * EXCLUDE (messages, events)
+                FROM read_parquet({pattern}, union_by_name=true, filename=true)
+            """
+            params: list[Any] = []
+
+            # Apply pre-filter query if provided
+            if self._query:
+                # Apply WHERE conditions (enables Parquet filter pushdown)
+                if self._query.where:
+                    where_clause, where_params = self._build_where_clause(
+                        self._query.where
+                    )
+                    sql += where_clause
+                    params.extend(where_params)
+
+                # Apply SHUFFLE (register UDF first)
+                if self._query.shuffle:
+                    seed = 0 if self._query.shuffle is True else self._query.shuffle
+                    self._register_shuffle_function(seed)
+                    sql += " ORDER BY shuffle_hash(transcript_id)"
+
+                # Apply LIMIT
+                if self._query.limit:
+                    sql += " LIMIT ?"
+                    params.append(self._query.limit)
+
+            # Execute query with parameters
+            self._conn.execute(sql, params)
+
+            # Create index on transcript_id for fast lookups
+            self._conn.execute("""
+                CREATE INDEX idx_transcript_id ON transcripts(transcript_id)
             """)
-            return
-
-        # Build file list for read_parquet
-        if len(file_paths) == 1:
-            pattern = f"'{file_paths[0]}'"
-        else:
-            pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
-
-        # Build base query
-        sql = f"""
-            CREATE TABLE transcripts AS
-            SELECT * EXCLUDE (messages, events)
-            FROM read_parquet({pattern}, union_by_name=true, filename=true)
-        """
-        params: list[Any] = []
-
-        # Apply pre-filter query if provided
-        if self._query:
-            # Apply WHERE conditions (enables Parquet filter pushdown)
-            if self._query.where:
-                where_clause, where_params = self._build_where_clause(self._query.where)
-                sql += where_clause
-                params.extend(where_params)
-
-            # Apply SHUFFLE (register UDF first)
-            if self._query.shuffle:
-                seed = 0 if self._query.shuffle is True else self._query.shuffle
-                self._register_shuffle_function(seed)
-                sql += " ORDER BY shuffle_hash(transcript_id)"
-
-            # Apply LIMIT
-            if self._query.limit:
-                sql += " LIMIT ?"
-                params.append(self._query.limit)
-
-        # Execute query with parameters
-        self._conn.execute(sql, params)
-
-        # Create index on transcript_id for fast lookups
-        self._conn.execute("""
-            CREATE INDEX idx_transcript_id ON transcripts(transcript_id)
-        """)
 
     async def _discover_parquet_files(self) -> list[str]:
         """Discover all Parquet files in location.

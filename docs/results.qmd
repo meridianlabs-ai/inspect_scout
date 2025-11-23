@@ -22,7 +22,9 @@ The `scout scan` command will print its status at the end of its run. If all of 
 
 ![](images/scan-complete.png)
 
-You can then pass that directory to the `scan_results_df()` function to get access to the underlying data frames for each scanner:
+If you are running in VS Code, you can click the scan directory to view the results in Scout View. If you are using another editor, execute `scout view` from the terminal to launch the viewer.
+
+To get programmatic access to the results, pass the scan directory to the `scan_results_df()` function:
 
 ``` python
 from inspect_scout import scan_results_df
@@ -141,11 +143,3 @@ The data frame includes the following fields (note that some fields included emb
 | `scan_model_usage` | dict \[str, ModelUsage\]<br/><small>JSON</small> | Token usage by model for scan (only included when `rows = "transcripts"`). |
 
 : {tbl-colwidths=\[20,20,60\]}
-
-Several of these fields can be used to link back to the source eval log and sample for the transcript:
-
--   `transcript_id` — This is the same as the `EvalSample.uuid` in the Inspect log or the `sample_id` in data frames created by [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df).
-
--   `transcript_source_id` — This is the same as the `eval_id` in both the Inspect log and Inspect data frames.
-
--   `transcript_source_uri` — This is the full path (filesystem or S3) to the actual log file where the transcript was read from.

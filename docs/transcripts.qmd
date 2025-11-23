@@ -26,7 +26,7 @@ The `transcripts_from()` function can read transcripts from either:
 
 2.  One or more Inspect log directories that contain Inspect `.eval` logs.
 
-See the sections below on the [Transcripts Database] and [Inspect Eval Logs] for additional details.
+See the sections below on the [Transcripts Database] and [Inspect Eval Logs] for additional details on working with each.
 
 ## Filtering Transcripts
 
@@ -124,18 +124,18 @@ transcripts = (
 
 Scout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been imported into a transcripts database. Transcript databases use [Parquet](https://parquet.apache.org) files for storage and can be located in the local filesystem or remote systems like S3.
 
-To create a transcripts database, use the `transcripts_db()` function to get a `TranscriptsDB` interface and then insert `Transcript` objects:
+To create a transcripts database, use the `transcripts_db()` function to get a `TranscriptsDB` interface and then insert `Transcript` objects. In this example imagine we have a `read_weave_transcripts()` function which can read transcripts from an external JSON transcript format:
 
 ``` python
 from inspect_scout import transcripts_db
 
-from .weave import read_weave_transcripts
+from .readers import read_json_transcripts
 
 # create/open database
 async with transcripts_db("s3://my-transcripts") as db:
 
     # read transcripts to insert
-    transcripts = read_weave_transcripts()
+    transcripts = read_json_transcripts()
 
     # insert into database
     await db.insert(transcripts)
@@ -154,19 +154,19 @@ scan(
 
 ### Streaming
 
-If you are inserting a large number of transcripts you will likely want to read them in a generator that yields transcripts for insertion one at a time. For example, we might implement `read_weave_transcripts()` like this:
+If you are inserting a large number of transcripts you will likely want to read them in a generator that streams transcripts. For example, we might implement `read_json_transcripts()` like this:
 
 ``` python
 
 from pathlib import Path
 from typing import AsyncIterator
 
-async def read_weave_transcripts(dir: Path) -> AsyncIterator[Transcript]:
-    weave_json_files = list(dir.rglob("*.json"))
-    for json_file in weave_json_files:
-        yield weave_json_to_transcript(json_file)
+async def read_json_transcripts(dir: Path) -> AsyncIterator[Transcript]:
+    json_files = list(dir.rglob("*.json"))
+    for json_file in json_files:
+        yield json_to_transcript(json_file)
 
-def weave_json_to_transcript(json_file: Path) -> Transcript:
+def json_to_transcript(json_file: Path) -> Transcript:
     # convert json_file to Transcript
     return Transcript(...)
 ```
@@ -175,7 +175,7 @@ We can then pass this generator function directly to `db.insert()`:
 
 ``` python
 async with transcripts_db("s3://my-transcripts") as db:
-    await db.insert(read_weave_transcripts())
+    await db.insert(read_json_transcripts())
 ```
 
 Note that transcript insertion is idempotent---once a transcript with a given ID has been inserted it will not be inserted again. This means that you can safely resume imports that are interrupted, and only new transcripts will be added.
@@ -196,22 +196,22 @@ Databases are composed of `Transcript` objects, which minimally have a `transcri
 
 : {tbl-colwidths=\[25,75\]}
 
-For example, here is how we might implement `weave_json_to_transcript()`:
+For example, here is how we might implement `json_to_transcript()`:
 
 ``` python
-def weave_json_to_transcript(json_file: Path) -> Transcript:
+def json_to_transcript(json_file: Path) -> Transcript:
     with open(json_file, "r") as f:
-        weave_json: dict[str,Any] = json.loads(f.read())
+        json_data: dict[str,Any] = json.loads(f.read())
         return Transcript(
-            transcript_id = weave_json["trace_id"],
-            source_type="weave",
-            source_id=weave_json["project_id"],
-            metadata=weave_json["attributes"],
-            messages=weave_json_messages(weave_json)
+            transcript_id = json_data["trace_id"],
+            source_type="abracadabra",
+            source_id=json_data["project_id"],
+            metadata=json_data["attributes"],
+            messages=json_messages(json_data)
         )
     
-def weave_json_messages(weave_json: dict[str, Any]) -> list[ChatMessage]:
-    # extract chat messages from weave_json
+def json_messages(json_data: dict[str, Any]) -> list[ChatMessage]:
+    # extract chat messages from json_data
 ```
 
 The most important fields to populate are `transcript_id` and `messages`. The `source_*` fields are also useful for providing additional context. The `metadata` field, while not required, is a convenient way to provide additional transcript attributes which may be useful for filtering or analysis. The `events` field is not required and useful primarily for more complex multi-agent transcripts.
@@ -222,11 +222,11 @@ Transcript databases are stored on a local or remote filesystem using [Parquet](
 
 Each call to `db.insert()` will minimally create one Parquet file, but will break transcripts across multiple files as required, limiting the size of files to 100MB. This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator (as shown above), rather than making many calls to `db.insert()` (which is likely to result in more Parquet files than is ideal).
 
-### Importing Logs 
+### Importing Logs
 
 If you prefer to keep all of your transcripts (including ones from Inspect evals) in a transcript database, you can easily import Inspect logs as follows:
 
-```python
+``` python
 from inspect_scout import transcripts_db, transcripts_from
 
 async with transcripts_db("s3://my-transcript-db/") as db:
@@ -235,7 +235,7 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 
 You could also insert a filtered list of transcripts:
 
-```python
+``` python
 async with transcripts_db("s3://my-transcript-db/") as db:
 
     transcripts = (
@@ -246,4 +246,3 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 
     await db.insert(transcripts)
 ```
-

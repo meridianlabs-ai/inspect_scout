@@ -1,6 +1,6 @@
 from typing import AsyncIterator, Protocol, runtime_checkable
 
-from ..types import Transcript
+from ...types import Transcript
 
 
 @runtime_checkable

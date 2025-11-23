@@ -38,12 +38,11 @@ export default defineConfig(({ mode }) => {
           formats: ["es"],
         },
         rollupOptions: {
-          external: ["react", "react-dom", "react-router-dom"],
+          external: ["react", "react-dom"],
           output: {
             globals: {
               react: "React",
               "react-dom": "ReactDOM",
-              "react-router-dom": "ReactRouterDOM",
             },
             assetFileNames: (assetInfo) => {
               if (assetInfo.name && assetInfo.name.endsWith(".css")) {

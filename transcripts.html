@@ -334,7 +334,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p>A transcript database that contains transcripts you have imported from a variety of sources (Agent traces, RL rollouts, Inspect logs, etc.); or</p></li>
 <li><p>One or more Inspect log directories that contain Inspect <code>.eval</code> logs.</p></li>
 </ol>
-<p>See the sections below on the <a href="#transcripts-database">Transcripts Database</a> and <a href="#inspect-eval-logs">Inspect Eval Logs</a> for additional details.</p>
+<p>See the sections below on the <a href="#transcripts-database">Transcripts Database</a> and <a href="#inspect-eval-logs">Inspect Eval Logs</a> for additional details on working with each.</p>
 </section>
 <section id="filtering-transcripts" class="level2">
 <h2 class="anchored" data-anchor-id="filtering-transcripts">Filtering Transcripts</h2>
@@ -400,12 +400,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>messages</code></td>
-<td>list[ChatMessage]</td>
+<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages">list[ChatMessage]</a></td>
 <td>Message history.</td>
 </tr>
 <tr class="odd">
 <td><code>events</code></td>
-<td>list[Event]</td>
+<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html">list[Event]</a></td>
 <td>Event history (e.g.&nbsp;model events, tool events, etc.)</td>
 </tr>
 </tbody>
@@ -434,7 +434,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"s3://weave-rollouts"</span>) <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(logs)</span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
@@ -481,16 +481,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="transcripts-database" class="level2">
 <h2 class="anchored" data-anchor-id="transcripts-database">Transcripts Database</h2>
 <p>Scout can analyze transcripts from any source (e.g.&nbsp;Agent traces, RL rollouts, etc.) so long as the transcripts have been imported into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
-<p>To create a transcripts database, use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> function to get a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcriptsdb">TranscriptsDB</a></span> interface and then insert <code>Transcript</code> objects:</p>
+<p>To create a transcripts database, use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> function to get a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcriptsdb">TranscriptsDB</a></span> interface and then insert <code>Transcript</code> objects. In this example imagine we have a <code>read_weave_transcripts()</code> function which can read transcripts from an external JSON transcript format:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .weave <span class="im">import</span> read_weave_transcripts</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .readers <span class="im">import</span> read_json_transcripts</span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co"># create/open database</span></span>
 <span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
 <span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># read transcripts to insert</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> read_weave_transcripts()</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> read_json_transcripts()</span>
 <span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># insert into database</span></span>
 <span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -503,22 +503,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="streaming" class="level3">
 <h3 class="anchored" data-anchor-id="streaming">Streaming</h3>
-<p>If you are inserting a large number of transcripts you will likely want to read them in a generator that yields transcripts for insertion one at a time. For example, we might implement <code>read_weave_transcripts()</code> like this:</p>
+<p>If you are inserting a large number of transcripts you will likely want to read them in a generator that streams transcripts. For example, we might implement <code>read_json_transcripts()</code> like this:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> AsyncIterator</span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read_weave_transcripts(<span class="bu">dir</span>: Path) <span class="op">-&gt;</span> AsyncIterator[Transcript]:</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    weave_json_files <span class="op">=</span> <span class="bu">list</span>(<span class="bu">dir</span>.rglob(<span class="st">"*.json"</span>))</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> json_file <span class="kw">in</span> weave_json_files:</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">yield</span> weave_json_to_transcript(json_file)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read_json_transcripts(<span class="bu">dir</span>: Path) <span class="op">-&gt;</span> AsyncIterator[Transcript]:</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    json_files <span class="op">=</span> <span class="bu">list</span>(<span class="bu">dir</span>.rglob(<span class="st">"*.json"</span>))</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> json_file <span class="kw">in</span> json_files:</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">yield</span> json_to_transcript(json_file)</span>
 <span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> weave_json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
 <span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># convert json_file to Transcript</span></span>
 <span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Transcript(...)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>We can then pass this generator function directly to <code>db.insert()</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(read_weave_transcripts())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(read_json_transcripts())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Note that transcript insertion is idempotent—once a transcript with a given ID has been inserted it will not be inserted again. This means that you can safely resume imports that are interrupted, and only new transcripts will be added.</p>
 </section>
 <section id="transcripts" class="level3">
@@ -566,20 +566,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<p>For example, here is how we might implement <code>weave_json_to_transcript()</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> weave_json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
+<p>For example, here is how we might implement <code>json_to_transcript()</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(json_file, <span class="st">"r"</span>) <span class="im">as</span> f:</span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        weave_json: <span class="bu">dict</span>[<span class="bu">str</span>,Any] <span class="op">=</span> json.loads(f.read())</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        json_data: <span class="bu">dict</span>[<span class="bu">str</span>,Any] <span class="op">=</span> json.loads(f.read())</span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Transcript(</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            transcript_id <span class="op">=</span> weave_json[<span class="st">"trace_id"</span>],</span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>            source_type<span class="op">=</span><span class="st">"weave"</span>,</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>            source_id<span class="op">=</span>weave_json[<span class="st">"project_id"</span>],</span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>            metadata<span class="op">=</span>weave_json[<span class="st">"attributes"</span>],</span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>            messages<span class="op">=</span>weave_json_messages(weave_json)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            transcript_id <span class="op">=</span> json_data[<span class="st">"trace_id"</span>],</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>            source_type<span class="op">=</span><span class="st">"abracadabra"</span>,</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>            source_id<span class="op">=</span>json_data[<span class="st">"project_id"</span>],</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>            metadata<span class="op">=</span>json_data[<span class="st">"attributes"</span>],</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>            messages<span class="op">=</span>json_messages(json_data)</span>
 <span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        )</span>
 <span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> weave_json_messages(weave_json: <span class="bu">dict</span>[<span class="bu">str</span>, Any]) <span class="op">-&gt;</span> <span class="bu">list</span>[ChatMessage]:</span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># extract chat messages from weave_json</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> json_messages(json_data: <span class="bu">dict</span>[<span class="bu">str</span>, Any]) <span class="op">-&gt;</span> <span class="bu">list</span>[ChatMessage]:</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># extract chat messages from json_data</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The most important fields to populate are <code>transcript_id</code> and <code>messages</code>. The <code>source_*</code> fields are also useful for providing additional context. The <code>metadata</code> field, while not required, is a convenient way to provide additional transcript attributes which may be useful for filtering or analysis. The <code>events</code> field is not required and useful primarily for more complex multi-agent transcripts.</p>
 </section>
 <section id="storage" class="level3">

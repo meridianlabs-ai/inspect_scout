@@ -328,7 +328,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="basic-usage" class="level2">
 <h2 class="anchored" data-anchor-id="basic-usage">Basic Usage</h2>
-<p>Prompting and parsing several common answer types are supported. Here is a simple example of using <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> for a boolean answer:</p>
+<p>Prompting and parsing for several common answer types are supported. Here is a simple example of using <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> for a boolean answer:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Scanner, Transcript, llm_scanner, scanner</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
@@ -353,7 +353,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="answer-types" class="level2">
 <h2 class="anchored" data-anchor-id="answer-types">Answer Types</h2>
-<p>The <code>answer</code> type determines how the LLM is prompted to answer, the way that answers are extracted, and the Python type of the scanner result value. There are several distinct <code>answer</code> types supported:</p>
+<p>The <code>answer</code> type determines how the LLM is prompted to respond, the way that answers are extracted, and the Python type of the scanner result value. There are several distinct <code>answer</code> types supported:</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -454,7 +454,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="scanner-results" class="level2">
 <h2 class="anchored" data-anchor-id="scanner-results">Scanner Results</h2>
-<p>The following provides an end to end example of a scanner, generated prompt, model response, results yielded back from the scanner.</p>
+<p>The following provides an end to end example of a scanner, generated prompt, model response, and results yielded back from the scanner.</p>
 <section id="scanner" class="level4">
 <h4 class="anchored" data-anchor-id="scanner">Scanner</h4>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
@@ -574,7 +574,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="multiple-results" class="level3">
 <h3 class="anchored" data-anchor-id="multiple-results">Multiple Results</h3>
-<p>In some cases it may be more natural for scanners to return multiple results. To do this, just specity <code>list[T]</code> as the <code>type</code>. For example:</p>
+<p>In some cases it may be more natural for scanners to return multiple results. To do this, just specify <code>list[T]</code> as the <code>type</code>. For example:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pydantic <span class="im">import</span> BaseModel, Field</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> textwrap <span class="im">import</span> dedent</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> Literal</span>
@@ -606,7 +606,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="result-values">Result Values</h3>
 <p>Scanners produce results which ultimately carry a specific <code>value</code>. There are two types of <code>value</code> supported by the LLM scanner:</p>
 <ol type="1">
-<li><p>The default behavior is to yield a <code>dict</code> for the value, where the fields correpsond to the fields in your Pydantic model. For example, this will result in the <code>value</code> being a dict with fields <code>efficiency</code> and <code>persistence</code>:</p>
+<li><p>The default behavior is to yield a <code>dict</code> for the value, where the fields correspond to the fields in your Pydantic model. For example, this will result in the <code>value</code> being a dict with fields <code>efficiency</code> and <code>persistence</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AgentRating(BaseModel):</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    efficiency: <span class="bu">int</span> <span class="op">=</span> Field(description<span class="op">=</span><span class="st">"Rate the assistant's efficiency from 1-10."</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -636,10 +636,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="dynamic-questions">Dynamic Questions</h2>
 <p>Instead of a static string, you can pass a function that takes a <code>Transcript</code> and returns a string. This enables you to dynamically generate questions based on the transcript content:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> question_from_transcript(transcript: Transcript) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Access transcript metadata</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    topic <span class="op">=</span> transcript.variables.get(<span class="st">"topic"</span>, <span class="st">"unknown"</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># access sample metadata</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    topic <span class="op">=</span> transcript.metadata[<span class="st">"sample_metadata]"</span>.get(<span class="st">"topic"</span>, <span class="st">"unknown"</span>)</span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Access message count</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># access message count</span></span>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    num_messages <span class="op">=</span> <span class="bu">len</span>(transcript.messages)</span>
 <span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Generate a dynamic question</span></span>
@@ -653,7 +653,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Dynamic questions are useful when:</p>
 <ul>
-<li>The question depends on transcript metadata or variables</li>
+<li>The question depends on transcript metadata.</li>
 <li>You need to reference specific aspects of the conversation in your question</li>
 <li>The same scanner needs to adapt its question based on context</li>
 </ul>

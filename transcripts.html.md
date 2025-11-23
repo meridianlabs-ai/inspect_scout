@@ -34,7 +34,7 @@ The `transcripts_from()` function can read transcripts from either:
 
 See the sections below on the [Transcripts
 Database](#transcripts-database) and [Inspect Eval
-Logs](#inspect-eval-logs) for additional details.
+Logs](#inspect-eval-logs) for additional details on working with each.
 
 ## Filtering Transcripts
 
@@ -80,8 +80,8 @@ Here are the available `Transcript` fields:
 | `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
 | `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
-| `messages` | list\[ChatMessage\] | Message history. |
-| `events` | list\[Event\] | Event history (e.g. model events, tool events, etc.) |
+| `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
+| `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
 
 ## Scanning Transcripts
 
@@ -113,7 +113,7 @@ from inspect_scout (
 from .scanners import deception, tool_errors
 
 @scanjob
-def cybench_job(logs: str = "s3://weave-rollouts") -> ScanJob:
+def cybench_job(logs: str = "./logs") -> ScanJob:
 
     transcripts = transcripts_from(logs)
     transcripts = transcripts.where(m.task_name == "cybench")
@@ -188,18 +188,20 @@ transcripts database. Transcript databases use
 located in the local filesystem or remote systems like S3.
 
 To create a transcripts database, use the `transcripts_db()` function to
-get a `TranscriptsDB` interface and then insert `Transcript` objects:
+get a `TranscriptsDB` interface and then insert `Transcript` objects. In
+this example imagine we have a `read_weave_transcripts()` function which
+can read transcripts from an external JSON transcript format:
 
 ``` python
 from inspect_scout import transcripts_db
 
-from .weave import read_weave_transcripts
+from .readers import read_json_transcripts
 
 # create/open database
 async with transcripts_db("s3://my-transcripts") as db:
 
     # read transcripts to insert
-    transcripts = read_weave_transcripts()
+    transcripts = read_json_transcripts()
 
     # insert into database
     await db.insert(transcripts)
@@ -220,21 +222,20 @@ scan(
 ### Streaming
 
 If you are inserting a large number of transcripts you will likely want
-to read them in a generator that yields transcripts for insertion one at
-a time. For example, we might implement `read_weave_transcripts()` like
-this:
+to read them in a generator that streams transcripts. For example, we
+might implement `read_json_transcripts()` like this:
 
 ``` python
 
 from pathlib import Path
 from typing import AsyncIterator
 
-async def read_weave_transcripts(dir: Path) -> AsyncIterator[Transcript]:
-    weave_json_files = list(dir.rglob("*.json"))
-    for json_file in weave_json_files:
-        yield weave_json_to_transcript(json_file)
+async def read_json_transcripts(dir: Path) -> AsyncIterator[Transcript]:
+    json_files = list(dir.rglob("*.json"))
+    for json_file in json_files:
+        yield json_to_transcript(json_file)
 
-def weave_json_to_transcript(json_file: Path) -> Transcript:
+def json_to_transcript(json_file: Path) -> Transcript:
     # convert json_file to Transcript
     return Transcript(...)
 ```
@@ -243,7 +244,7 @@ We can then pass this generator function directly to `db.insert()`:
 
 ``` python
 async with transcripts_db("s3://my-transcripts") as db:
-    await db.insert(read_weave_transcripts())
+    await db.insert(read_json_transcripts())
 ```
 
 Note that transcript insertion is idempotent—once a transcript with a
@@ -268,23 +269,22 @@ metadata about transcript.
 | `messages` | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history. |
 | `events` | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.) |
 
-For example, here is how we might implement
-`weave_json_to_transcript()`:
+For example, here is how we might implement `json_to_transcript()`:
 
 ``` python
-def weave_json_to_transcript(json_file: Path) -> Transcript:
+def json_to_transcript(json_file: Path) -> Transcript:
     with open(json_file, "r") as f:
-        weave_json: dict[str,Any] = json.loads(f.read())
+        json_data: dict[str,Any] = json.loads(f.read())
         return Transcript(
-            transcript_id = weave_json["trace_id"],
-            source_type="weave",
-            source_id=weave_json["project_id"],
-            metadata=weave_json["attributes"],
-            messages=weave_json_messages(weave_json)
+            transcript_id = json_data["trace_id"],
+            source_type="abracadabra",
+            source_id=json_data["project_id"],
+            metadata=json_data["attributes"],
+            messages=json_messages(json_data)
         )
     
-def weave_json_messages(weave_json: dict[str, Any]) -> list[ChatMessage]:
-    # extract chat messages from weave_json
+def json_messages(json_data: dict[str, Any]) -> list[ChatMessage]:
+    # extract chat messages from json_data
 ```
 
 The most important fields to populate are `transcript_id` and

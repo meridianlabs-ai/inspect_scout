@@ -32,8 +32,12 @@ directory where results are stored:
 
 ![](images/scan-complete.png)
 
-You can then pass that directory to the `scan_results_df()` function to
-get access to the underlying data frames for each scanner:
+If you are running in VS Code, you can click the scan directory to view
+the results in Scout View. If you are using another editor, execute
+`scout view` from the terminal to launch the viewer.
+
+To get programmatic access to the results, pass the scan directory to
+the `scan_results_df()` function:
 
 ``` python
 from inspect_scout import scan_results_df
@@ -133,6 +137,7 @@ included embedded JSON data, these are all noted below):
 | `scanner_key` | str | Unique key for scan within scan job (defaults to `scanner_name`). |
 | `scanner_name` | str | Scanner name. |
 | `scanner_version` | int | Scanner version. |
+| `scanner_package_version` | int | Scanner package version. |
 | `scanner_file` | str | Source file for scanner. |
 | `scanner_params` | dictJSON | Params used to create scanner. |
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |
@@ -155,16 +160,3 @@ included embedded JSON data, these are all noted below):
 | `scan_events` | list\[Event\]JSON | Scan events (e.g. model event, log event, etc.) |
 | `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
 | `scan_model_usage` | dict \[str, ModelUsage\]JSON | Token usage by model for scan (only included when `rows = "transcripts"`). |
-
-Several of these fields can be used to link back to the source eval log
-and sample for the transcript:
-
-- `transcript_id` — This is the same as the `EvalSample.uuid` in the
-  Inspect log or the `sample_id` in data frames created by
-  [samples_df()](https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df).
-
-- `transcript_source_id` — This is the same as the `eval_id` in both the
-  Inspect log and Inspect data frames.
-
-- `transcript_source_uri` — This is the full path (filesystem or S3) to
-  the actual log file where the transcript was read from.

@@ -6,7 +6,7 @@
 Scanners are the main unit of processing in Inspect Scout and can target
 a wide variety of content types. In this article we’ll cover the basic
 scanning concepts, and then drill into creating scanners that target
-various types (`Transcript`, `Event`, or `ChatMessage`) as well as
+various types (`Transcript`, `ChatMessage`, or `Event`) as well as
 creating custom loaders which enable scanning of lists of events or
 messages.
 
@@ -17,10 +17,12 @@ Scorers](#scanners-as-scorers) for details).
 
 A `Scanner` is a function that takes a `ScannerInput` (typically a
 `Transcript`, but possibly an `Event`, `ChatMessage`, or list of events
-or messages) and returns a `Result`. The result includes a `value` which
-can be of any type—this might be `True` to indicate that something was
-found but might equally be a number to indicate a count. More elaborate
-scanner values (`dict` or `list`) are also possible.
+or messages) and returns a `Result`.
+
+The result includes a `value` which can be of any type—this might be
+`True` to indicate that something was found but might equally be a
+number to indicate a count. More elaborate scanner values (`dict` or
+`list`) are also possible.
 
 Here is a simple scanner that uses a model to look for agent
 “confusion”—whether or not it finds confusion, it still returns the
@@ -39,9 +41,10 @@ def confusion() -> Scanner[Transcript]:
             "===================================" +
             await messages_as_str(transcript) +
             "===================================\n\n" +
-            "In the transcript above do you see the agent " +
-            "becoming confused? Respond beginning with 'Yes' " +
-            "or 'No', followed by an explanation."
+            "In the transcript above do you see the " +
+            "agent becoming confused? Respond " +
+            "beginning with 'Yes' or 'No', followed " +
+            "by an explanation."
         )
 
         # extract the first word
@@ -61,17 +64,32 @@ def confusion() -> Scanner[Transcript]:
     return scan
 ```
 
+This scanner illustrates some of the lower-level mechanics of building
+custom scanners. You can also use the higher level `llm_scanner()` to
+implement this in far fewer lines of code:
+
+``` python
+from inspect_scout import Transcript, llm_scanner, scanner
+
+@scanner(messages="all")
+def confusion() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="In the transcript above do you see " +
+            "the agent becoming confused?"
+        answer="boolean"
+    )
+```
+
 ### Input Types
 
 `Transcript` is the most common `ScannerInput` however several other
 types are possible:
 
 - `Event` — Single event from the transcript (e.g. `ModelEvent`,
-  `ToolEvent`, etc.). More than one `Event` in a `Transcript` can be
-  scanned.
+  `ToolEvent`, etc.).
 
 - `ChatMessage` — Single chat message from the transcript message
-  history. More than one `ChatMessage` in a `Transcript` can be scanned.
+  history.
 
 - `list[Event]` or `list[ChatMessage]` — Arbitrary sets of events or
   messages extracted from the `Transcript` (see [Loaders](#loaders)
@@ -113,18 +131,18 @@ def assistant_swearing() -> Scanner[Transcript]:
     return scan
 ```
 
-With this filter, only assistant messages and no events whatsoever will
-be loaded from transcripts during scanning.
+With this filter, only assistant messages (and no events at all) will be
+loaded from transcripts during scanning.
 
 Note that by default, no filters are active, so if you don’t specify
 values for `messages` and/or `events` your scanner will not be called!
 
 ## Transcripts
 
-Transcripts are the most common input to scanners, and are read from one
-or more Inspect logs. A `Transcript` represents a single epoch from an
-Inspect sample—so each Inspect log file will have `samples * epochs`
-transcripts.
+Transcripts are the most common input to scanners. If you are reading
+from Inspect eval logs, each log will have `samples * epochs`
+transcripts. If you are reading from another source, each agent trace
+will yield a single `Transcript`.
 
 ### Transcript Fields
 
@@ -137,8 +155,8 @@ Here are the available `Transcript` fields:
 | `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
 | `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
-| `messages` | list\[ChatMessage\] | Message history. |
-| `events` | list\[Event\] | Event history (e.g. model events, tool events, etc.) |
+| `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
+| `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
 
 ### Content Filtering
 
@@ -271,7 +289,7 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
 
 ## Scanners as Scorers
 
-You have likely certainly that scanners are very similar to Inspect
+You may have noticed that scanners are very similar to Inspect
 [Scorers](https://inspect.aisi.org.uk/scorers.html). This is by design,
 and it is actually possible to use scanners directly as Inspect scorers.
 
@@ -319,7 +337,7 @@ def mytask():
 We can also use it with the `inspect score` command:
 
 ``` bash
-inspect score --scorer scanners.py@confusion <logfile.eval>
+inspect score --scorer scanners.py@confusion logfile.eval
 ```
 
 ### Metrics

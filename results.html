@@ -334,7 +334,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scout-cli">Scout CLI</h3>
 <p>The <code>scout scan</code> command will print its status at the end of its run. If all of the scanners completed without errors you’ll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:</p>
 <p><img src="images/scan-complete.png" class="img-fluid"></p>
-<p>You can then pass that directory to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> function to get access to the underlying data frames for each scanner:</p>
+<p>If you are running in VS Code, you can click the scan directory to view the results in Scout View. If you are using another editor, execute <code>scout view</code> from the terminal to launch the viewer.</p>
+<p>To get programmatic access to the results, pass the scan directory to the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> function:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan_results_df</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_df(<span class="st">"scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8"</span>)</span>
@@ -530,123 +531,122 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Scanner version.</td>
 </tr>
 <tr class="odd">
+<td><code>scanner_package_version</code></td>
+<td>int</td>
+<td>Scanner package version.</td>
+</tr>
+<tr class="even">
 <td><code>scanner_file</code></td>
 <td>str</td>
 <td>Source file for scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_params</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Params used to create scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input_type</code></td>
 <td>transcript | message | messages | event | events</td>
 <td>Input type received by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>input_ids</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Unique ids of scanner input.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input</code></td>
 <td>ScannerInput<br><small>JSON</small></td>
 <td>Scanner input value.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>uuid</code></td>
 <td>str</td>
 <td>Globally unique id for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>label</code></td>
 <td>str</td>
 <td>Label for the origin of the result (optional).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>value</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value returned by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>value_type</code></td>
 <td>string | boolean | number | array | object | null</td>
 <td>Type of value returned by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>answer</code></td>
 <td>str</td>
 <td>Answer extracted from scanner generation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>explanation</code></td>
 <td>str</td>
 <td>Explanation for scan result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Metadata for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>message_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Messages referenced by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>event_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Events referenced by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>validation_target</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Target value from validation set.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>validation_result</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error</code></td>
 <td>str</td>
 <td>Error which occurred during scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_error_traceback</code></td>
 <td>str</td>
 <td>Traceback for error (if any)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error_type</code></td>
 <td>str</td>
 <td>Error type (either “refusal” for refusals or null for other errors).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
 <td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_total_tokens</code></td>
 <td>number</td>
 <td>Total tokens used by scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_model_usage</code></td>
 <td>dict [str, ModelUsage]<br><small>JSON</small></td>
 <td>Token usage by model for scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
 </tbody>
 </table>
-<p>Several of these fields can be used to link back to the source eval log and sample for the transcript:</p>
-<ul>
-<li><p><code>transcript_id</code> — This is the same as the <code>EvalSample.uuid</code> in the Inspect log or the <code>sample_id</code> in data frames created by <a href="https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#samples_df">samples_df()</a>.</p></li>
-<li><p><code>transcript_source_id</code> — This is the same as the <code>eval_id</code> in both the Inspect log and Inspect data frames.</p></li>
-<li><p><code>transcript_source_uri</code> — This is the full path (filesystem or S3) to the actual log file where the transcript was read from.</p></li>
-</ul>
 
 
 </section>

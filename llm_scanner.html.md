@@ -22,8 +22,8 @@ absolutely required.
 
 ## Basic Usage
 
-Prompting and parsing several common answer types are supported. Here is
-a simple example of using `llm_scanner()` for a boolean answer:
+Prompting and parsing for several common answer types are supported.
+Here is a simple example of using `llm_scanner()` for a boolean answer:
 
 ``` python
 from inspect_scout import Scanner, Transcript, llm_scanner, scanner
@@ -58,7 +58,7 @@ for `llm_scanner()`.
 
 ## Answer Types
 
-The `answer` type determines how the LLM is prompted to answer, the way
+The `answer` type determines how the LLM is prompted to respond, the way
 that answers are extracted, and the Python type of the scanner result
 value. There are several distinct `answer` types supported:
 
@@ -115,7 +115,7 @@ additional variables for use in your template.
 ## Scanner Results
 
 The following provides an end to end example of a scanner, generated
-prompt, model response, results yielded back from the scanner.
+prompt, model response, and results yielded back from the scanner.
 
 #### Scanner
 
@@ -221,7 +221,7 @@ def cyberlint():
 ### Multiple Results
 
 In some cases it may be more natural for scanners to return multiple
-results. To do this, just specity `list[T]` as the `type`. For example:
+results. To do this, just specify `list[T]` as the `type`. For example:
 
 ``` python
 from pydantic import BaseModel, Field
@@ -260,7 +260,7 @@ Scanners produce results which ultimately carry a specific `value`.
 There are two types of `value` supported by the LLM scanner:
 
 1.  The default behavior is to yield a `dict` for the value, where the
-    fields correpsond to the fields in your Pydantic model. For example,
+    fields correspond to the fields in your Pydantic model. For example,
     this will result in the `value` being a dict with fields
     `efficiency` and `persistence`:
 
@@ -311,10 +311,10 @@ generate questions based on the transcript content:
 
 ``` python
 async def question_from_transcript(transcript: Transcript) -> str:
-    # Access transcript metadata
-    topic = transcript.variables.get("topic", "unknown")
+    # access sample metadata
+    topic = transcript.metadata["sample_metadata]".get("topic", "unknown")
 
-    # Access message count
+    # access message count
     num_messages = len(transcript.messages)
 
     # Generate a dynamic question
@@ -330,7 +330,7 @@ def contextual_accuracy() -> Scanner[Transcript]:
 
 Dynamic questions are useful when:
 
-- The question depends on transcript metadata or variables
+- The question depends on transcript metadata.
 - You need to reference specific aspects of the conversation in your
   question
 - The same scanner needs to adapt its question based on context

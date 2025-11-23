@@ -604,7 +604,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
 <span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"s3://weave-rollouts"</span>) <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
 <span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(logs)</span>
 <span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>

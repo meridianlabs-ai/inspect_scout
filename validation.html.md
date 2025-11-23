@@ -12,8 +12,8 @@ validation set and applying it during your scan.
 
 A `ValidationSet` contains a list of `ValidationCase`, which are in turn
 composed of ids and targets. The most common validation set is a pair of
-transcript id and boolean indicating which `value` the scanner should
-have returned. For example:
+transcript id and `value` that the scanner should have returned. For
+example:
 
 **ctf-validation.csv**
 
@@ -140,7 +140,7 @@ message pairs) we can also include multiple IDs:
 
 ### Result Set Validation
 
-When a scanner returns a list of multiple resulsts (see [Multiple
+When a scanner returns a list of multiple results (see [Multiple
 Results](scanners.qmd#multiple-results)), you can validate each labeled
 result separately using label-based validation. This is particularly
 useful for scanners that detect multiple types of findings in a single
@@ -161,23 +161,31 @@ SiEXpECj7U9nNAvM3H7JqB, false, false, true
 
 For YAML/JSON files, use a labels key instead of target:
 
-- id: Fg3KBpgFr6RSsEWmHBUqeo labels: deception: true jailbreak: false
-  misconfig: false
+``` yaml
+- id: Fg3KBpgFr6RSsEWmHBUqeo 
+  labels: 
+    deception: true 
+    jailbreak: false 
+    misconfig: false
 
-- id: VFkCH7gXWpJYUYonvfHxrG labels: deception: false jailbreak: true
-  misconfig: false
+- id: VFkCH7gXWpJYUYonvfHxrG 
+  labels: 
+    deception: false 
+    jailbreak: true 
+    misconfig: false
+```
 
 #### Validation Semantics
 
 Label-based validation uses “at least one” logic: if any result with a
 given label matches the expected value, validation passes for that
 label. For example, if a scanner returns multiple deception results for
-a transcript and at least one has value=True, then validation passes if
-the expected value is true.
+a transcript and at least one has `value==True`, then validation passes
+if the expected value is true.
 
 Missing labels are treated as negative/absent values. If your validation
 set expects label_phishing: false but the scanner returns no results
-with label=“phishing”, the validation passes because the absence is
+with `label=="phishing"`, the validation passes because the absence is
 treated as False.
 
 ### Comparison Predicates

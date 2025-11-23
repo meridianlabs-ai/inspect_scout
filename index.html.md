@@ -17,10 +17,10 @@ from any source) or by directly reading Inspect AI eval logs.
 
 ### Installation
 
-Install the `inspect_scout` package from GitHub as follows:
+Install the `inspect_scout` package from PyPI with:
 
 ``` bash
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
+pip install inspect_scout
 ```
 
 You should also be sure to install the [Inspect AI VS Code

@@ -17,10 +17,10 @@ Scout can process input either from a [transcript database](transcripts.qmd#tran
 
 ### Installation
 
-Install the `inspect_scout` package from GitHub as follows:
+Install the `inspect_scout` package from PyPI with:
 
 ``` bash
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
+pip install inspect_scout
 ```
 
 You should also be sure to install the [Inspect AI VS Code Extension](https://inspect.aisi.org.uk/vscode.html) which includes features for viewing and debugging Scout scans.

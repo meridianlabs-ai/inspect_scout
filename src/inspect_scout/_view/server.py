@@ -2,15 +2,16 @@ import base64
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, TypeVar
+from typing import Any, Iterable, Literal, TypeVar
 
 import anyio
 import pandas as pd
 import pyarrow as pa
 import pyarrow.ipc as pa_ipc
+import pyarrow.parquet as pq
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import FileSystem, filesystem
 from inspect_ai._util.json import to_json_safe
@@ -164,6 +165,7 @@ def view_server_app(
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
+    streaming_batch_size: int = 1024,
 ) -> "FastAPI":
     app = FastAPI()
 
@@ -246,32 +248,50 @@ def view_server_app(
         # validate
         await _validate_read(request, scan_path)
 
-        # read the results and return
-        result = await scan_results_df_async(str(scan_path), rows="transcripts")
+        def stream_parquet_as_arrow_ipc(
+            parquet: pq.ParquetFile,
+        ) -> Iterable[bytes]:
+            buf = io.BytesIO()
 
-        # convert the dataframes to their serializable form
-        df = result.scanners.get(query_scanner)
-        if df is None:
+            # Convert dataframe to Arrow IPC format with LZ4 compression
+            # LZ4 provides good compression with fast decompression and
+            # has native js codecs for the client
+            #
+            # Note that it was _much_ faster to compress vs gzip
+            # with only a moderate loss in compression ratio
+            # (e.g. 40% larger in exchange for ~20x faster compression)
+            with pa_ipc.new_stream(
+                buf,
+                parquet.schema_arrow,
+                options=pa_ipc.IpcWriteOptions(compression="lz4"),
+            ) as writer:
+                for batch in parquet.iter_batches(batch_size=streaming_batch_size):
+                    writer.write_batch(batch)
+
+                    # Flush whatever the writer just appended
+                    data = buf.getvalue()
+                    if data:
+                        yield data
+                        buf.seek(0)
+                        buf.truncate(0)
+
+            # Footer / EOS marker
+            remaining = buf.getvalue()
+            if remaining:
+                yield remaining
+
+        scanner_path = scan_path / f"{query_scanner}.parquet"
+        try:
+            parquet = pq.ParquetFile(str(scanner_path))
+        except FileNotFoundError as e:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail=f"Scanner '{query_scanner}' not found in scan results",
-            )
-
-        # Convert dataframe to Arrow IPC format with LZ4 compression
-        # LZ4 provides good compression with fast decompression and
-        # has native js codecs for the client
-        #
-        # Note that it was _much_ faster to compress vs gzip
-        # with only a moderate loss in compression ratio
-        # (e.g. 40% larger in exchange for ~20x faster compression)
-        table = pa.Table.from_pandas(df, preserve_index=False)
-        buf = io.BytesIO()
-        with pa_ipc.new_stream(
-            buf, table.schema, options=pa_ipc.IpcWriteOptions(compression="lz4")
-        ) as writer:
-            writer.write_table(table)
-
-        return Response(content=buf.getvalue(), media_type="application/octet-stream")
+            ) from e
+        return StreamingResponse(
+            content=stream_parquet_as_arrow_ipc(parquet),
+            media_type="application/vnd.apache.arrow.stream; codecs=lz4",
+        )
 
     @app.get("/scan/{scan:path}")
     async def scan(

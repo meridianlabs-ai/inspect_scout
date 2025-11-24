@@ -20,21 +20,21 @@ from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._display._display import display
-from inspect_scout._transcript.database.reader import TranscriptsDBReader
-from inspect_scout._transcript.source import TranscriptsSource
-from inspect_scout._transcript.transcripts import (
-    Transcripts,
-    TranscriptsQuery,
-    TranscriptsReader,
-)
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import LocalFilesCache, create_temp_cache
 from ..metadata import Condition
+from ..transcripts import (
+    Transcripts,
+    TranscriptsQuery,
+    TranscriptsReader,
+)
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
+from .reader import TranscriptsDBReader
+from .source import TranscriptsSource
 
 logger = getLogger(__name__)
 

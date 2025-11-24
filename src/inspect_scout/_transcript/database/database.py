@@ -2,7 +2,6 @@ import abc
 from types import TracebackType
 from typing import AsyncIterable, AsyncIterator, Iterable, Type
 
-from inspect_scout._transcript.source import TranscriptsSource
 from inspect_scout._transcript.transcripts import Transcripts
 
 from ..metadata import Condition
@@ -11,6 +10,7 @@ from ..types import (
     TranscriptContent,
     TranscriptInfo,
 )
+from .source import TranscriptsSource
 
 
 class TranscriptsDB(abc.ABC):

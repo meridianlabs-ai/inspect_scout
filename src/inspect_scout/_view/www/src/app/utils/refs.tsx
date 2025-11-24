@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 import { ChatView } from "../../chat/ChatView";
 import { TranscriptView } from "../../transcript/TranscriptView";
-import { MarkdownReference } from "../components/MarkdownDivWithReferences";
+import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
 import { ScannerCore } from "../types";
 
 export type MakeReferenceUrl = (
@@ -23,8 +23,8 @@ export const toMarkdownRefs = (
       refs.push({
         id: ref.id,
         cite: ref.cite,
-        renderCitePreview: renderPreview,
-        url: makeReferenceUrl(ref.id, "message"),
+        citePreview: renderPreview,
+        citeUrl: makeReferenceUrl(ref.id, "message"),
       });
     }
   }
@@ -35,8 +35,8 @@ export const toMarkdownRefs = (
       refs.push({
         id: ref.id,
         cite: ref.cite,
-        renderCitePreview: renderPreview,
-        url: makeReferenceUrl(ref.id, "event"),
+        citePreview: renderPreview,
+        citeUrl: makeReferenceUrl(ref.id, "event"),
       });
     }
   }

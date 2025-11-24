@@ -3908,6 +3908,17 @@ span.ap-marker-container:hover span.ap-marker {
   height: 100%;
   overflow-y: auto;
 }
+._cite_1t1bm_1 {
+  color: var(--bs-primary-text-emphasis);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  cursor: pointer;
+}
+
+._cite_1t1bm_1:hover {
+  text-decoration-style: solid;
+  background-color: var(--bs-primary-bg-subtle);
+}
 ._panel_twp3v_1 {
   width: 100%;
   display: flex;
@@ -3919,17 +3930,6 @@ span.ap-marker-container:hover span.ap-marker {
   display: grid;
   grid-template-columns: max-content max-content;
   column-gap: 0.3em;
-}
-._cite_1t1bm_1 {
-  color: var(--bs-primary-text-emphasis);
-  text-decoration: underline;
-  text-decoration-style: dashed;
-  cursor: pointer;
-}
-
-._cite_1t1bm_1:hover {
-  text-decoration-style: solid;
-  background-color: var(--bs-primary-bg-subtle);
 }
 ._boolean_xgip4_1 {
   font-family: "Consola Regular";

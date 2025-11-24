@@ -9,7 +9,7 @@ import {
 import {
   MarkdownDivWithReferences,
   MarkdownReference,
-} from "../components/MarkdownDivWithReferences";
+} from "../../components/MarkdownDivWithReferences";
 import { ScannerCore } from "../types";
 import { toMarkdownRefs } from "../utils/refs";
 

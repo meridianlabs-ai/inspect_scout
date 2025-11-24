@@ -10,7 +10,7 @@ import {
 import { printArray } from "../../utils/array";
 import { formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
-import { MarkdownDivWithReferences } from "../components/MarkdownDivWithReferences";
+import { MarkdownDivWithReferences } from "../../components/MarkdownDivWithReferences";
 import {
   ScannerCore,
   isStringValue,

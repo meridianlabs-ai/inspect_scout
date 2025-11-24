@@ -42,19 +42,23 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
 }) => {
   const views: ReactNode[] = [];
   const viewLabels: Array<string | undefined> = [];
+  const useLabels = labeled && Object.keys(labels || {}).length > 0;
 
-  // The chat message and label
-  const number = index + 1;
-  // TODO: don't do this for every row
-  const maxlabelLen = labels
-    ? Object.values(labels).reduce((curr, r) => {
-        return Math.max(r.length, curr);
-      }, 0)
-    : 3;
-  const chatMessageLabel =
-    labels && resolvedMessage.message.id
-      ? labels[resolvedMessage.message.id] || "\u00A0".repeat(maxlabelLen * 2)
-      : String(number) || undefined;
+  if (useLabels) {
+    // The chat message and label
+    const number = index + 1;
+    // TODO: don't do this for every row
+    const maxlabelLen = labels
+      ? Object.values(labels).reduce((curr, r) => {
+          return Math.max(r.length, curr);
+        }, 0)
+      : 3;
+    const chatMessageLabel =
+      labels && resolvedMessage.message.id
+        ? labels[resolvedMessage.message.id] || "\u00A0".repeat(maxlabelLen * 2)
+        : String(number) || undefined;
+    viewLabels.push(chatMessageLabel);
+  }
 
   // The chat message
   views.push(
@@ -67,7 +71,6 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
       allowLinking={allowLinking}
     />
   );
-  viewLabels.push(chatMessageLabel);
 
   // The tool messages associated with this chat message
   if (
@@ -97,7 +100,10 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
 
       // Resolve the tool output
       const resolvedToolOutput = resolveToolMessage(toolMessage);
-      viewLabels.push(toolLabel);
+      if (useLabels) {
+        viewLabels.push(toolLabel);
+      }
+
       if (toolCallStyle === "compact") {
         views.push(
           <ToolCallViewCompact idx={idx} functionCall={functionCall} />
@@ -120,7 +126,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
     }
   }
 
-  if (labeled) {
+  if (labeled && viewLabels.length > 0) {
     return (
       <>
         <div className={clsx(styles.grid)}>
@@ -161,22 +167,24 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
       </>
     );
   } else {
-    return (
-      <div
-        className={clsx(
-          styles.container,
-          styles.simple,
-          highlightUserMessage && resolvedMessage.message.role === "user"
-            ? styles.user
-            : undefined
-        )}
-      >
-        {views}
-        {resolvedMessage.message.role === "user" ? (
-          <div style={{ height: "10px" }}></div>
-        ) : undefined}
-      </div>
-    );
+    return views.map((view, idx) => {
+      return (
+        <div
+          className={clsx(
+            styles.container,
+            idx === 0 ? styles.first : undefined,
+            idx === views.length - 1 ? styles.last : undefined,
+
+            styles.simple,
+            highlightUserMessage && resolvedMessage.message.role === "user"
+              ? styles.user
+              : undefined
+          )}
+        >
+          {view}
+        </div>
+      );
+    });
   }
 };
 

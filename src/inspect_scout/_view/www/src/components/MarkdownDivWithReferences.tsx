@@ -1,18 +1,18 @@
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { MarkdownDiv } from "../../components/MarkdownDiv";
-import { NoContentsPanel } from "../../components/NoContentsPanel";
-import { PopOver } from "../../components/PopOver";
-import { useStore } from "../../state/store";
+import { useStore } from "../state/store";
 
+import { MarkdownDiv } from "./MarkdownDiv";
 import styles from "./MarkdownDivWithReferences.module.css";
+import { NoContentsPanel } from "./NoContentsPanel";
+import { PopOver } from "./PopOver";
 
 export interface MarkdownReference {
   id: string;
   cite: string;
-  renderCitePreview: () => React.ReactNode;
-  url?: string;
+  citePreview?: () => React.ReactNode;
+  citeUrl?: string;
 }
 
 interface MarkdownDivWithReferencesProps {
@@ -53,7 +53,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
         const escapedCite = ref.cite.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(escapedCite, "g");
 
-        const href = ref.url || "javascript:void(0)";
+        const href = ref.citeUrl || "javascript:void(0)";
         const replacement = `<a href="${href}" class="${styles.cite}" data-ref-id="${ref.id}">${ref.cite}</a>`;
 
         processedHtml = processedHtml.replace(regex, replacement);
@@ -155,7 +155,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
           hoverDelay={200}
           showArrow={true}
         >
-          {currentRef.renderCitePreview() || (
+          {(currentRef.citePreview && currentRef.citePreview()) || (
             <NoContentsPanel text="No preview available." />
           )}
         </PopOver>

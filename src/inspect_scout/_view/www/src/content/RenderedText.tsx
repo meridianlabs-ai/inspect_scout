@@ -1,10 +1,14 @@
 import { CSSProperties, ForwardedRef, forwardRef } from "react";
 
-import { MarkdownDiv } from "../components/MarkdownDiv";
+import {
+  MarkdownDivWithReferences,
+  MarkdownReference,
+} from "../components/MarkdownDivWithReferences";
 import { Preformatted } from "../components/Preformatted";
 
 interface RenderedTextProps {
   markdown: string;
+  references?: MarkdownReference[];
   style?: CSSProperties;
   className?: string | string[];
   forceRender?: boolean;
@@ -14,13 +18,14 @@ interface RenderedTextProps {
 export const RenderedText = forwardRef<
   HTMLDivElement | HTMLPreElement,
   RenderedTextProps
->(({ markdown, style, className, forceRender, omitMedia }, ref) => {
+>(({ markdown, references, style, className, forceRender, omitMedia }, ref) => {
   const displayMode = "rendered";
   if (forceRender || displayMode === "rendered") {
     return (
-      <MarkdownDiv
+      <MarkdownDivWithReferences
         ref={ref as ForwardedRef<HTMLDivElement>}
         markdown={markdown}
+        references={references}
         style={style}
         className={className}
         omitMedia={omitMedia}

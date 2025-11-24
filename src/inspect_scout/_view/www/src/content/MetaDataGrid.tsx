@@ -1,12 +1,15 @@
 import clsx from "clsx";
 import { CSSProperties, FC, Fragment } from "react";
 
+import { MarkdownReference } from "../components/MarkdownDivWithReferences";
+
 import styles from "./MetadataGrid.module.css";
 import { RenderedContent } from "./RenderedContent";
 
 interface MetadataGridProps {
   id?: string;
   className?: string | string[];
+  references?: MarkdownReference[];
   style?: CSSProperties;
   size?: "mini" | "small";
   entries: Record<string, unknown>;
@@ -20,6 +23,7 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
   id,
   entries,
   className,
+  references,
   size,
   style,
   plain,
@@ -56,6 +60,7 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
             <RenderedContent
               id={id}
               entry={entry}
+              references={references}
               renderObject={(obj: any) => {
                 return (
                   <MetaDataGrid
@@ -64,6 +69,7 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
                     entries={obj}
                     size={size}
                     plain={plain}
+                    references={references}
                   />
                 );
               }}

@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo, useRef } from "react";
+import { FC, use, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
@@ -15,7 +15,7 @@ import {
 import { useStore } from "../../../../state/store";
 import { basename } from "../../../../utils/path";
 import { useScannerPreviews } from "../../../hooks";
-import { ScannerCore } from "../../../types";
+import { ScannerCore, SortColumn } from "../../../types";
 import {
   resultIdentifier,
   resultIdentifierStr,
@@ -73,13 +73,17 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   );
   const setSelectedFilter = useStore((state) => state.setSelectedFilter);
 
+  // Sorting
+  const sortResults = useStore((state) => state.sortResults);
+  const setSortResults = useStore((state) => state.setSortResults);
+
   useEffect(() => {
     if (selectedFilter === undefined && selectedStatus?.complete === false) {
       setSelectedFilter(kFilterAllResults);
     }
   }, [selectedStatus, selectedFilter, setSelectedFilter]);
 
-  // Apply filtering to the scanner summaries
+  // Apply text filtering to the scanner summaries
   const filteredSummaries = useMemo(() => {
     let textFiltered = scannerSummaries;
     if (scansSearchText && scansSearchText.length > 0) {
@@ -96,15 +100,36 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       });
     }
 
-    if (
-      selectedFilter === kFilterPositiveResults ||
-      selectedFilter === undefined
-    ) {
-      return textFiltered.filter((s) => !!s.value).sort(sortByIdentifier);
+    // Filter positives results if needed
+    const resultsFiltered =
+      selectedFilter === kFilterPositiveResults || selectedFilter === undefined
+        ? textFiltered.filter((s) => !!s.value)
+        : textFiltered;
+
+    // Return filtered sorted summaries
+    if (sortResults === undefined || sortResults.length === 0) {
+      return resultsFiltered;
     } else {
-      return [...textFiltered].sort(sortByError);
+      return [...resultsFiltered].sort((a, b) =>
+        sortByColumns(a, b, sortResults)
+      );
     }
-  }, [scannerSummaries, selectedFilter, scansSearchText]);
+  }, [scannerSummaries, selectedFilter, scansSearchText, sortResults]);
+
+  // Set the default sort order when the filter changes (if there isn't an explicit order)
+  useEffect(() => {
+    if (filteredSummaries.length === 0 || sortResults) {
+      return;
+    }
+
+    if (
+      selectedFilter === kFilterAllResults &&
+      filteredSummaries.some((s) => !!s.scanError)
+    ) {
+      // Default sort for error filter: errors first, then by identifier
+      setSortResults([{ column: "Error", direction: "desc" }]);
+    }
+  }, [sortResults, selectedFilter, filteredSummaries]);
 
   // Compute the optimal column layout based on the current data
   const gridDescriptor = useMemo(() => {
@@ -356,42 +381,65 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   );
 };
 
-const sortByIdentifier = (a: ScannerCore, b: ScannerCore): number => {
-  // Sort first by id
-  const identifierA = resultIdentifier(a);
-  const identifierB = resultIdentifier(b);
-  const idComparison = identifierA.id.localeCompare(identifierB.id);
+// Sorts scan results by multiple columns and directions.
+// Applies sorting rules in order, falling back to the next rule if values are equal.
+const sortByColumns = (
+  a: ScannerCore,
+  b: ScannerCore,
+  sortColumns: SortColumn[]
+): number => {
+  for (const sortCol of sortColumns) {
+    let comparison = 0;
 
-  if (idComparison !== 0) {
-    return idComparison;
+    switch (sortCol.column.toLowerCase()) {
+      case "id": {
+        const identifierA = resultIdentifier(a);
+        const identifierB = resultIdentifier(b);
+        comparison = identifierA.id.localeCompare(identifierB.id);
+        if (comparison === 0 && identifierA.epoch && identifierB.epoch) {
+          comparison = identifierA.epoch.localeCompare(identifierB.epoch);
+        }
+        break;
+      }
+      case "explanation": {
+        const explA = a.explanation || "";
+        const explB = b.explanation || "";
+        comparison = explA.localeCompare(explB);
+        break;
+      }
+      case "label": {
+        const labelA = a.label || "";
+        const labelB = b.label || "";
+        comparison = labelA.localeCompare(labelB);
+        break;
+      }
+      case "value": {
+        const valueA =
+          a.value !== null && a.value !== undefined ? String(a.value) : "";
+        const valueB =
+          b.value !== null && b.value !== undefined ? String(b.value) : "";
+        comparison = valueA.localeCompare(valueB);
+        break;
+      }
+      case "error": {
+        const errorA = a.scanError || "";
+        const errorB = b.scanError || "";
+        comparison = errorA.localeCompare(errorB);
+        break;
+      }
+      default:
+        // Unknown column, skip
+        continue;
+    }
+
+    // Apply direction (asc or desc)
+    if (comparison !== 0) {
+      return sortCol.direction === "asc" ? comparison : -comparison;
+    }
   }
 
-  // then by epoch
-  if (identifierA.epoch && identifierB.epoch) {
-    return identifierA.epoch.localeCompare(identifierB.epoch);
-  }
-
-  if (identifierA.epoch) {
-    return -1;
-  }
-  if (identifierB.epoch) {
-    return 1;
-  }
-
+  // All comparisons are equal
   return 0;
-};
-
-const sortByError = (a: ScannerCore, b: ScannerCore): number => {
-  if (a.scanError && b.scanError) {
-    return sortByIdentifier(a, b);
-  }
-  if (a.scanError) {
-    return -1;
-  }
-  if (b.scanError) {
-    return 1;
-  }
-  return sortByIdentifier(a, b);
 };
 
 const optimalColumnLayout = (

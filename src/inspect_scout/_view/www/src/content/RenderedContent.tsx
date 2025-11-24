@@ -37,7 +37,13 @@ export const RenderedContent: FC<RenderedContentProps> = ({
 }): JSX.Element => {
   // Explicitly specify return type
   if (entry.value === null) {
-    return <span>[null]</span>;
+    return (
+      <span>
+        <pre>
+          <code>[null]</code>
+        </pre>
+      </span>
+    );
   }
   const renderers = contentRenderers(renderObject);
   const renderer = Object.keys(renderers)

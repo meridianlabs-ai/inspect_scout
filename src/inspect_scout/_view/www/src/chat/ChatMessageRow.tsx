@@ -23,6 +23,7 @@ interface ChatMessageRowProps {
   padded?: boolean;
   highlightUserMessage?: boolean;
   allowLinking?: boolean;
+  className?: string | string[];
 }
 
 /**
@@ -39,6 +40,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
   indented,
   highlightUserMessage,
   allowLinking = true,
+  className,
 }) => {
   const views: ReactNode[] = [];
   const viewLabels: Array<string | undefined> = [];
@@ -129,7 +131,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
   if (useLabels) {
     return (
       <>
-        <div className={clsx(styles.grid)}>
+        <div className={clsx(styles.grid, className)}>
           {views.map((view, idx) => {
             const label = viewLabels[idx];
             return (
@@ -174,7 +176,8 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
             styles.container,
             idx === 0 ? styles.first : undefined,
             idx === views.length - 1 ? styles.last : undefined,
-
+            idx === views.length - 1 ? styles.bottomMargin : undefined,
+            className,
             styles.simple,
             highlightUserMessage && resolvedMessage.message.role === "user"
               ? styles.user

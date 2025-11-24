@@ -44,3 +44,7 @@
 .highlight {
   background-color: rgba(var(--bs-info-rgb), 0.12);
 }
+
+.bottomMargin {
+  margin-bottom: 0.5rem;
+}

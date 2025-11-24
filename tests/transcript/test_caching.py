@@ -258,3 +258,47 @@ def test_samples_df_with_caching_directory_input(
     result = samples_df_with_caching(mock_reader, "s3://bucket/dir/")
     assert mock_reader.call_count == 2
     assert len(result) == 2
+
+
+def test_cached_dataframe_loses_datetime_dtype(mock_kvstore: Mock) -> None:
+    """Cache roundtrip should preserve datetime dtype."""
+    from inspect_scout._transcript.caching import _get_cached_df, _put_cached_df
+
+    # Create DataFrame with datetime column
+    original_df = pd.DataFrame(
+        {
+            "eval_id": ["eval_001"],
+            "eval_created": [pd.Timestamp("2024-01-01T10:00:00")],
+            "score": [0.85],
+        }
+    )
+    assert original_df["eval_created"].dtype == "datetime64[ns]"
+
+    # Roundtrip through cache
+    path = "test.json"
+    etag = "test_etag"
+
+    # Use the mock kvstore directly
+    from unittest.mock import MagicMock
+    kvstore = MagicMock()
+    stored_value = None
+
+    def mock_put(key: str, value: str) -> None:
+        nonlocal stored_value
+        stored_value = value
+
+    def mock_get(key: str) -> str | None:
+        return stored_value
+
+    kvstore.put = mock_put
+    kvstore.get = mock_get
+
+    _put_cached_df(kvstore, path, etag, original_df)
+    cached_df = _get_cached_df(kvstore, path, etag)
+
+    # Cached DataFrame should preserve datetime dtype
+    assert cached_df is not None
+    assert cached_df["eval_created"].dtype == "datetime64[ns]"
+
+    # Values should be preserved
+    pd.testing.assert_frame_equal(cached_df, original_df)

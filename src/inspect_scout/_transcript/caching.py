@@ -1,3 +1,4 @@
+import io
 import json
 from collections.abc import Callable
 from os import PathLike
@@ -97,11 +98,11 @@ def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
     # Normalize to list of str
     logs_list = [logs] if isinstance(logs, str | PathLike | EvalLogInfo) else logs
     logs_str = [
-        Path(log).as_posix()
-        if isinstance(log, PathLike)
-        else log.name
-        if isinstance(log, EvalLogInfo)
-        else log
+        (
+            Path(log).as_posix()
+            if isinstance(log, PathLike)
+            else log.name if isinstance(log, EvalLogInfo) else log
+        )
         for log in logs_list
     ]
 
@@ -150,12 +151,8 @@ def _get_cached_df(
         if cached_etag != current_etag:
             return None
 
-        # Reconstruct DataFrame from records
-        records = cached_data.get("records", [])
-        if not records:
-            return None
-
-        return pd.DataFrame.from_records(records)
+        result = pd.read_json(io.StringIO(cached_data.get("table")), orient="table")
+        return result
 
     except Exception:
         # On any error, return None to fall back to reading from source
@@ -174,16 +171,10 @@ def _put_cached_df(
         df: DataFrame to cache
     """
     try:
+        xxx = {"etag": etag, "table": df.to_json(orient="table")}
         kvstore.put(
             log_path,
-            json.dumps(
-                {
-                    "etag": etag,
-                    # Serialize DataFrame to JSON records. We can't go straight to Python because
-                    # the df contains non-serializable data like timestamps
-                    "records": json.loads(df.to_json(orient="records")),
-                }
-            ),
+            json.dumps(xxx),
         )
 
     except Exception:

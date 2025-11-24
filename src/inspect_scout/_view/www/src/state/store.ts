@@ -7,7 +7,7 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
-import { ErrorScope, ScannerCore } from "../app/types";
+import { ErrorScope, ScannerCore, SortColumn } from "../app/types";
 import { Status } from "../types";
 import { debounce } from "../utils/sync";
 
@@ -61,6 +61,7 @@ interface StoreState {
   selectedFilter?: string;
   showingRefPopover?: string;
   groupResultsBy?: "source" | "label" | "none";
+  sortResults?: SortColumn[];
   scansSearchText?: string;
   highlightLabeled?: boolean;
 
@@ -159,6 +160,7 @@ interface StoreState {
   setShowingRefPopover: (popoverKey: string) => void;
   clearShowingRefPopover: () => void;
   setGroupResultsBy: (groupBy: "source" | "label" | "none") => void;
+  setSortResults: (sortColumns?: SortColumn[]) => void;
   setScansSearchText: (text: string) => void;
   setHighlightLabeled: (highlight: boolean) => void;
 }
@@ -349,6 +351,7 @@ export const createStore = (api: ScanApi) =>
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;
               state.selectedScanResult = undefined;
+              state.sortResults = undefined;
             });
           },
           setPropertyValue<T>(id: string, propertyName: string, value: T) {
@@ -542,6 +545,11 @@ export const createStore = (api: ScanApi) =>
           setGroupResultsBy: (groupBy: "source" | "label" | "none") => {
             set((state) => {
               state.groupResultsBy = groupBy;
+            });
+          },
+          setSortResults: (sortColumns?: SortColumn[]) => {
+            set((state) => {
+              state.sortResults = sortColumns;
             });
           },
           setScansSearchText: (text: string) => {

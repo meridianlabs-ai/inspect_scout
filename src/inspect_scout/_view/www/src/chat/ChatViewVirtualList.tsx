@@ -32,9 +32,9 @@ interface ChatViewVirtualListProps {
   running?: boolean;
   getMessageUrl?: (id: string) => string | undefined;
   allowLinking?: boolean;
-  labeled?: boolean;
+  labels?: Record<string, string>;
+  showLabels?: boolean;
   highlightLabeled?: boolean;
-  messageLabels?: Record<string, string>;
 }
 
 interface ChatViewVirtualListComponentProps extends ChatViewVirtualListProps {
@@ -50,12 +50,12 @@ export const ChatViewVirtualList: FC<ChatViewVirtualListProps> = memo(
     className,
     toolCallStyle,
     indented,
-    labeled = true,
-    highlightLabeled = false,
     scrollRef,
     running,
     allowLinking = true,
-    messageLabels,
+    labels,
+    showLabels = true,
+    highlightLabeled = false,
   }) => {
     const listHandle = useRef<VirtuosoHandle>(null);
 
@@ -110,11 +110,11 @@ export const ChatViewVirtualList: FC<ChatViewVirtualListProps> = memo(
         topOffset={topOffset}
         toolCallStyle={toolCallStyle}
         indented={indented}
-        labeled={labeled}
-        highlightLabeled={highlightLabeled}
         running={running}
         allowLinking={allowLinking}
-        messageLabels={messageLabels}
+        labels={labels}
+        showLabels={showLabels}
+        highlightLabeled={highlightLabeled}
       />
     );
   }
@@ -134,12 +134,12 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
       className,
       toolCallStyle,
       indented,
-      labeled = true,
-      highlightLabeled,
       scrollRef,
       running,
       allowLinking = true,
-      messageLabels,
+      labels,
+      showLabels = true,
+      highlightLabeled,
     }) => {
       const collapsedMessages = useMemo(() => {
         return resolveMessages(messages);
@@ -169,9 +169,9 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
             <ChatMessageRow
               index={index}
               parentName={id || "chat-virtual-list"}
-              labeled={labeled}
+              showLabels={showLabels}
               highlightLabeled={highlightLabeled}
-              labels={messageLabels}
+              labels={labels}
               resolvedMessage={item}
               indented={indented}
               toolCallStyle={toolCallStyle}
@@ -182,11 +182,13 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
         },
         [
           id,
-          labeled,
+          showLabels,
+          labels,
           indented,
           toolCallStyle,
           collapsedMessages,
           highlightLabeled,
+          allowLinking,
         ]
       );
 

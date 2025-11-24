@@ -51,19 +51,42 @@ const ColumnHeader: FC<{
       e.stopPropagation();
       e.preventDefault();
 
-      const dir = sort?.direction === "asc" ? "desc" : "asc";
-      if (e.shiftKey) {
-        // multi-column sort
-        const newSorts = sortResults ? [...sortResults] : [];
-        const existingIndex = newSorts.findIndex((s) => s.column === label);
-        if (existingIndex >= 0) {
-          newSorts[existingIndex] = { column: label, direction: dir };
+      const nextSortDirection =
+        sort?.direction === undefined
+          ? "asc"
+          : sort?.direction === "asc"
+            ? "desc"
+            : undefined;
+
+      if (!nextSortDirection) {
+        // remove sorting for this column
+        if (e.shiftKey) {
+          // multi-column sort
+          const newSorts = sortResults
+            ? sortResults.filter((s) => s.column !== label)
+            : [];
+          setSortResults(newSorts.length > 0 ? newSorts : undefined);
         } else {
-          newSorts.push({ column: label, direction: dir });
+          setSortResults(undefined);
         }
-        setSortResults(newSorts);
+        return;
       } else {
-        setSortResults([{ column: label, direction: dir }]);
+        if (e.shiftKey) {
+          // multi-column sort
+          const newSorts = sortResults ? [...sortResults] : [];
+          const existingIndex = newSorts.findIndex((s) => s.column === label);
+          if (existingIndex >= 0) {
+            newSorts[existingIndex] = {
+              column: label,
+              direction: nextSortDirection,
+            };
+          } else {
+            newSorts.push({ column: label, direction: nextSortDirection });
+          }
+          setSortResults(newSorts);
+        } else {
+          setSortResults([{ column: label, direction: nextSortDirection }]);
+        }
       }
     },
     [sort, sortResults, setSortResults]

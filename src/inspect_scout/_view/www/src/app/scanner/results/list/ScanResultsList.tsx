@@ -127,13 +127,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       filteredSummaries.some((s) => !!s.scanError)
     ) {
       // Default sort for error filter: errors first, then by identifier
-      setSortResults([
-        { column: "Error", direction: "desc" },
-        { column: "Id", direction: "asc" },
-      ]);
-    } else {
-      // Default sort: by identifier
-      setSortResults([{ column: "Id", direction: "asc" }]);
+      setSortResults([{ column: "Error", direction: "desc" }]);
     }
   }, [sortResults, selectedFilter, filteredSummaries]);
 

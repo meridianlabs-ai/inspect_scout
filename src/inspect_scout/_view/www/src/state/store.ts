@@ -160,7 +160,7 @@ interface StoreState {
   setShowingRefPopover: (popoverKey: string) => void;
   clearShowingRefPopover: () => void;
   setGroupResultsBy: (groupBy: "source" | "label" | "none") => void;
-  setSortResults: (sortColumns: SortColumn[]) => void;
+  setSortResults: (sortColumns?: SortColumn[]) => void;
   setScansSearchText: (text: string) => void;
   setHighlightLabeled: (highlight: boolean) => void;
 }
@@ -547,7 +547,7 @@ export const createStore = (api: ScanApi) =>
               state.groupResultsBy = groupBy;
             });
           },
-          setSortResults: (sortColumns: SortColumn[]) => {
+          setSortResults: (sortColumns?: SortColumn[]) => {
             set((state) => {
               state.sortResults = sortColumns;
             });

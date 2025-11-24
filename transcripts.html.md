@@ -226,16 +226,16 @@ to read them in a generator that streams transcripts. For example, we
 might implement `read_json_transcripts()` like this:
 
 ``` python
-
 from pathlib import Path
 from typing import AsyncIterator
+from inspect_scout import Transcript
 
 async def read_json_transcripts(dir: Path) -> AsyncIterator[Transcript]:
     json_files = list(dir.rglob("*.json"))
     for json_file in json_files:
-        yield json_to_transcript(json_file)
+        yield await json_to_transcript(json_file)
 
-def json_to_transcript(json_file: Path) -> Transcript:
+async def json_to_transcript(json_file: Path) -> Transcript:
     # convert json_file to Transcript
     return Transcript(...)
 ```
@@ -272,7 +272,14 @@ metadata about transcript.
 For example, here is how we might implement `json_to_transcript()`:
 
 ``` python
-def json_to_transcript(json_file: Path) -> Transcript:
+from pathlib import Path
+from typing import AsyncIterator
+from inspect_ai.model import (
+    messages_from_openai, model_output_from_openai
+)
+from inspect_scout import Transcript
+
+async def json_to_transcript(json_file: Path) -> Transcript:
     with open(json_file, "r") as f:
         json_data: dict[str,Any] = json.loads(f.read())
         return Transcript(
@@ -280,11 +287,25 @@ def json_to_transcript(json_file: Path) -> Transcript:
             source_type="abracadabra",
             source_id=json_data["project_id"],
             metadata=json_data["attributes"],
-            messages=json_messages(json_data)
+            messages=await json_to_messages(
+                input=json_data["inputs"]["messages"], 
+                output=json_data["output"]
+            )
         )
     
-def json_messages(json_data: dict[str, Any]) -> list[ChatMessage]:
-    # extract chat messages from json_data
+# convert raw model input and output to inspect messages
+async def json_to_messages(
+    input: list[dict[str, Any]], output: dict[str, Any]
+) -> list[ChatMessage]:
+    # start with input messages
+    messages = await messages_from_openai(input)
+
+    # extract and append assistant message from output
+    output = await model_output_from_openai(output)
+    messages.append(output.message)
+
+    # return full message history for transcript
+    return messages
 ```
 
 The most important fields to populate are `transcript_id` and
@@ -293,6 +314,29 @@ additional context. The `metadata` field, while not required, is a
 convenient way to provide additional transcript attributes which may be
 useful for filtering or analysis. The `events` field is not required and
 useful primarily for more complex multi-agent transcripts.
+
+### Messages
+
+In the example above we called the functions `messages_from_openai()`
+and `model_output_from_openai()` to convert raw REST API message inputs
+and outputs into Inspect `ChatMessage`. This sort of conversion will
+frequently be required since most LLM tracing systems save raw inputs
+and outputs rather than normalizing them into a standard format.
+
+There are several functions available in the `inspect_ai` package for
+handling raw REST API content from various providers:
+
+[TABLE]
+
+> [!NOTE]
+>
+> The message conversion functions described above are available only in
+> the development version of Inspect. To install the development version
+> from GitHub:
+>
+> ``` bash
+> pip install git+https://github.com/UKGovernmentBEIS/inspect_ai
+> ```
 
 ### Storage
 

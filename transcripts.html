@@ -287,6 +287,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#streaming" id="toc-streaming" class="nav-link" data-scroll-target="#streaming">Streaming</a></li>
   <li><a href="#transcripts" id="toc-transcripts" class="nav-link" data-scroll-target="#transcripts">Transcripts</a></li>
+  <li><a href="#messages" id="toc-messages" class="nav-link" data-scroll-target="#messages">Messages</a></li>
   <li><a href="#storage" id="toc-storage" class="nav-link" data-scroll-target="#storage">Storage</a></li>
   <li><a href="#importing-logs" id="toc-importing-logs" class="nav-link" data-scroll-target="#importing-logs">Importing Logs</a></li>
   </ul></li>
@@ -504,16 +505,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="streaming" class="level3">
 <h3 class="anchored" data-anchor-id="streaming">Streaming</h3>
 <p>If you are inserting a large number of transcripts you will likely want to read them in a generator that streams transcripts. For example, we might implement <code>read_json_transcripts()</code> like this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> AsyncIterator</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> AsyncIterator</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript</span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read_json_transcripts(<span class="bu">dir</span>: Path) <span class="op">-&gt;</span> AsyncIterator[Transcript]:</span>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    json_files <span class="op">=</span> <span class="bu">list</span>(<span class="bu">dir</span>.rglob(<span class="st">"*.json"</span>))</span>
 <span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> json_file <span class="kw">in</span> json_files:</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">yield</span> json_to_transcript(json_file)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">yield</span> <span class="cf">await</span> json_to_transcript(json_file)</span>
 <span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
 <span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># convert json_file to Transcript</span></span>
 <span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Transcript(...)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>We can then pass this generator function directly to <code>db.insert()</code>:</p>
@@ -567,20 +568,90 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>For example, here is how we might implement <code>json_to_transcript()</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(json_file, <span class="st">"r"</span>) <span class="im">as</span> f:</span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        json_data: <span class="bu">dict</span>[<span class="bu">str</span>,Any] <span class="op">=</span> json.loads(f.read())</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Transcript(</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            transcript_id <span class="op">=</span> json_data[<span class="st">"trace_id"</span>],</span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>            source_type<span class="op">=</span><span class="st">"abracadabra"</span>,</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>            source_id<span class="op">=</span>json_data[<span class="st">"project_id"</span>],</span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>            metadata<span class="op">=</span>json_data[<span class="st">"attributes"</span>],</span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>            messages<span class="op">=</span>json_messages(json_data)</span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> json_messages(json_data: <span class="bu">dict</span>[<span class="bu">str</span>, Any]) <span class="op">-&gt;</span> <span class="bu">list</span>[ChatMessage]:</span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># extract chat messages from json_data</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> AsyncIterator</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.model <span class="im">import</span> (</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    messages_from_openai, model_output_from_openai</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(json_file, <span class="st">"r"</span>) <span class="im">as</span> f:</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        json_data: <span class="bu">dict</span>[<span class="bu">str</span>,Any] <span class="op">=</span> json.loads(f.read())</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Transcript(</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>            transcript_id <span class="op">=</span> json_data[<span class="st">"trace_id"</span>],</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>            source_type<span class="op">=</span><span class="st">"abracadabra"</span>,</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>            source_id<span class="op">=</span>json_data[<span class="st">"project_id"</span>],</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>            metadata<span class="op">=</span>json_data[<span class="st">"attributes"</span>],</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>            messages<span class="op">=</span><span class="cf">await</span> json_to_messages(</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>                <span class="bu">input</span><span class="op">=</span>json_data[<span class="st">"inputs"</span>][<span class="st">"messages"</span>], </span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>                output<span class="op">=</span>json_data[<span class="st">"output"</span>]</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a><span class="co"># convert raw model input and output to inspect messages</span></span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> json_to_messages(</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>    <span class="bu">input</span>: <span class="bu">list</span>[<span class="bu">dict</span>[<span class="bu">str</span>, Any]], output: <span class="bu">dict</span>[<span class="bu">str</span>, Any]</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="bu">list</span>[ChatMessage]:</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># start with input messages</span></span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>    messages <span class="op">=</span> <span class="cf">await</span> messages_from_openai(<span class="bu">input</span>)</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>    <span class="co"># extract and append assistant message from output</span></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>    output <span class="op">=</span> <span class="cf">await</span> model_output_from_openai(output)</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>    messages.append(output.message)</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>    <span class="co"># return full message history for transcript</span></span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> messages</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The most important fields to populate are <code>transcript_id</code> and <code>messages</code>. The <code>source_*</code> fields are also useful for providing additional context. The <code>metadata</code> field, while not required, is a convenient way to provide additional transcript attributes which may be useful for filtering or analysis. The <code>events</code> field is not required and useful primarily for more complex multi-agent transcripts.</p>
+</section>
+<section id="messages" class="level3">
+<h3 class="anchored" data-anchor-id="messages">Messages</h3>
+<p>In the example above we called the functions <code>messages_from_openai()</code> and <code>model_output_from_openai()</code> to convert raw REST API message inputs and outputs into Inspect <code>ChatMessage</code>. This sort of conversion will frequently be required since most LLM tracing systems save raw inputs and outputs rather than normalizing them into a standard format.</p>
+<p>There are several functions available in the <code>inspect_ai</code> package for handling raw REST API content from various providers:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Provider API</th>
+<th>Functions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>OpenAI Chat Completions</td>
+<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages_from_openai">messages_from_openai()</a><br>
+<a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model_output_from_openai">model_output_from_openai()</a></td>
+</tr>
+<tr class="even">
+<td>OpenAI Responses</td>
+<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages_from_openai_responses">messages_from_openai_responses()</a><br>
+<a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model_output_from_openai_responses">model_output_from_openai_responses()</a></td>
+</tr>
+<tr class="odd">
+<td>Anthropic Messages</td>
+<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages_from_anthropic">messages_from_anthropic()</a><br>
+<a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model_output_from_anthropic">model_output_from_anthropic()</a></td>
+</tr>
+<tr class="even">
+<td>Google Generate Content</td>
+<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages_from_google">messages_from_google()</a><br>
+<a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model_output_from_google">model_output_from_google()</a></td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The message conversion functions described above are available only in the development version of Inspect. To install the development version from GitHub:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install git+https://github.com/UKGovernmentBEIS/inspect_ai</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
 </section>
 <section id="storage" class="level3">
 <h3 class="anchored" data-anchor-id="storage">Storage</h3>
@@ -590,20 +661,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="importing-logs" class="level3">
 <h3 class="anchored" data-anchor-id="importing-logs">Importing Logs</h3>
 <p>If you prefer to keep all of your transcripts (including ones from Inspect evals) in a transcript database, you can easily import Inspect logs as follows:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db, transcripts_from</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts_from(<span class="st">"./logs"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You could also insert a filtered list of transcripts:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db, transcripts_from</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> (</span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>        transcripts_from(<span class="st">"./logs"</span>)</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>        .where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>        .where(m.model.like(<span class="st">"openai/%"</span>))</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts_from(<span class="st">"./logs"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You could also insert a filtered list of transcripts:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> (</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>        transcripts_from(<span class="st">"./logs"</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>        .where(m.task_name <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        .where(m.model.like(<span class="st">"openai/%"</span>))</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

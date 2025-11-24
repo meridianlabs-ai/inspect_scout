@@ -671,13 +671,11 @@ async def _scan_async_inner(
                 )
                 # are we running single process?
                 single_process = (
-                    True
-                    if total_scans == 1
+                    total_scans == 1
                     or isinstance(transcripts, ParquetTranscripts)
                     or scan.spec.options.limit == 1
                     or scan.spec.options.max_processes == 1
                     or os.name == "nt"
-                    else False
                 )
 
                 # set strategy accordingly

@@ -4,14 +4,14 @@ Provides transparent caching of remote files (e.g., S3) to local disk,
 with multiprocess coordination via marker files.
 """
 
+import atexit
 import hashlib
 import os
 import shutil
 import tempfile
-from contextvars import ContextVar
 from logging import getLogger
 from pathlib import Path
-from typing import Final, Optional
+from typing import Callable, Final
 
 import anyio
 from inspect_ai._util.asyncfiles import AsyncFilesystem
@@ -29,10 +29,6 @@ class LocalFilesCache:
     """
 
     MAX_CACHE_FILE_SIZE: Final[int] = 5 * 1024 * 1024 * 1024  # 5GB
-
-    @staticmethod
-    def task_cache() -> Optional["LocalFilesCache"]:
-        return _task_files_cache.get()
 
     def __init__(self, cache_dir: Path) -> None:
         """Initialize cache with specified directory.
@@ -84,7 +80,6 @@ class LocalFilesCache:
                 return cache_file.as_posix()
 
             if not _try_create_marker(marker_file):
-                print(f"XXX ({os.getpid()}) waiting on {marker_file}")
                 trace_message(logger, "Scout Cache Wait", f"Waiting for {uri}")
                 await anyio.sleep(1)
                 continue
@@ -92,11 +87,8 @@ class LocalFilesCache:
             # We own the marker now - download
             with trace_action(logger, "Scout Cache Download", f"Downloading {uri}"):
                 try:
-                    print(f"XXX ({os.getpid()}) downloading {marker_file}")
                     await _download_file(fs, uri, marker_file)
-                    print(f"XXX ({os.getpid()}) downloaded {marker_file}")
                     marker_file.rename(cache_file)
-                    print(f"XXX ({os.getpid()}) renamed {marker_file} -> {cache_file}")
                     return cache_file.as_posix()
                 except Exception:
                     marker_file.unlink(missing_ok=True)
@@ -147,17 +139,26 @@ def create_temp_cache() -> LocalFilesCache:
     return LocalFilesCache(Path(temp_dir))
 
 
-def init_task_files_cache() -> None:
-    _task_files_cache.set(create_temp_cache())
+_task_files_cache: tuple[LocalFilesCache, int, Callable[[], None]] | None = None
+
+
+def init_task_files_cache() -> LocalFilesCache:
+    global _task_files_cache
+    if not _task_files_cache:
+        cache = create_temp_cache()
+        handler = atexit.register(_atexit_task_files_cache)
+        _task_files_cache = (cache, os.getpid(), handler)
+    return _task_files_cache[0]
+
+
+def _atexit_task_files_cache() -> None:
+    if _task_files_cache and _task_files_cache[1] == os.getpid():
+        cleanup_task_files_cache()
 
 
 def cleanup_task_files_cache() -> None:
-    cache = _task_files_cache.get()
-    if cache is not None:
-        cache.cleanup()
-        _task_files_cache.set(None)
-
-
-_task_files_cache = ContextVar[LocalFilesCache | None](
-    "_task_files_cache", default=None
-)
+    global _task_files_cache
+    if _task_files_cache:
+        atexit.unregister(_task_files_cache[2])
+        _task_files_cache[0].cleanup()
+        _task_files_cache = None

@@ -54,7 +54,7 @@ from .._scanspec import ScanTranscripts, TranscriptField
 from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
 from .json.load_filtered import load_filtered_transcript
-from .local_files_cache import LocalFilesCache, create_temp_cache
+from .local_files_cache import LocalFilesCache, init_task_files_cache
 from .metadata import Condition
 from .transcripts import TranscriptsQuery, TranscriptsReader
 from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
@@ -75,6 +75,9 @@ class EvalLogTranscripts(Transcripts):
 
     def __init__(self, logs: Logs | ScanTranscripts) -> None:
         super().__init__()
+
+        self._files_cache = init_task_files_cache()
+
         if isinstance(logs, ScanTranscripts):
             self._logs: Logs | pd.DataFrame = _logs_df_from_snapshot(logs)
         else:
@@ -82,12 +85,17 @@ class EvalLogTranscripts(Transcripts):
 
     @override
     def reader(self) -> TranscriptsReader:
-        return EvalLogTranscriptsReader(self._logs, self._query)
+        return EvalLogTranscriptsReader(self._logs, self._query, self._files_cache)
 
 
 class EvalLogTranscriptsReader(TranscriptsReader):
-    def __init__(self, logs: Logs | pd.DataFrame, query: TranscriptsQuery) -> None:
-        self._db = EvalLogTranscriptsDB(logs)
+    def __init__(
+        self,
+        logs: Logs | pd.DataFrame,
+        query: TranscriptsQuery,
+        files_cache: LocalFilesCache,
+    ) -> None:
+        self._db = EvalLogTranscriptsDB(logs, files_cache)
         self._query = query
 
     @override
@@ -136,12 +144,15 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         df.to_csv(buffer, index=False)
         data = buffer.getvalue()
 
-        return ScanTranscripts(
-            type=TRANSCRIPT_SOURCE_EVAL_LOG,
-            fields=fields,
-            count=len(df),
-            data=data,
-        ), sample_ids
+        return (
+            ScanTranscripts(
+                type=TRANSCRIPT_SOURCE_EVAL_LOG,
+                fields=fields,
+                count=len(df),
+                data=data,
+            ),
+            sample_ids,
+        )
 
 
 def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
@@ -191,8 +202,14 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
 
 
 class EvalLogTranscriptsDB:
-    def __init__(self, logs: Logs | pd.DataFrame):
+    def __init__(
+        self,
+        logs: Logs | pd.DataFrame,
+        files_cache: LocalFilesCache | None = None,
+    ):
         from inspect_scout._display._display import display
+
+        self._files_cache = files_cache
 
         # pandas required
         verify_df_prerequisites()
@@ -231,9 +248,6 @@ class EvalLogTranscriptsDB:
         # AsyncFilesystem (starts out none)
         self._fs: AsyncFilesystem | None = None
 
-        # LocalFilesCache (starts out none)
-        self._files_cache: LocalFilesCache | None = None
-
         # Track current shuffle seed for UDF registration
         self._current_shuffle_seed: int | None = None
 
@@ -270,7 +284,6 @@ class EvalLogTranscriptsDB:
                 df_to_write[col] = df_to_write[col].astype(str)
 
         df_to_write.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")
-        self._files_cache = create_temp_cache()
 
     async def count(
         self,
@@ -374,16 +387,17 @@ class EvalLogTranscriptsDB:
         if not self._fs:
             self._fs = AsyncFilesystem()
 
-        if not self._files_cache:
-            self._files_cache = create_temp_cache()
-
-        zip_reader = AsyncZipReader(
-            self._fs,
-            await self._files_cache.resolve_remote_uri_to_local(
+        source_uri = (
+            ""  # always has a source_uri
+            if t.source_uri is None
+            else await self._files_cache.resolve_remote_uri_to_local(
                 self._fs,
-                t.source_uri or "",  # always has a source_uri
-            ),
+                t.source_uri,
+            )
+            if self._files_cache
+            else t.source_uri
         )
+        zip_reader = AsyncZipReader(self._fs, source_uri)
         with trace_action(
             logger,
             "Scout Eval Log Read",
@@ -406,10 +420,6 @@ class EvalLogTranscriptsDB:
         if self._fs is not None:
             await self._fs.close()
             self._fs = None
-
-        if self._files_cache is not None:
-            self._files_cache.cleanup()
-            self._files_cache = None
 
     def _build_where_clause(self, where: list[Condition]) -> tuple[str, list[Any]]:
         """Build WHERE clause and parameters from conditions.

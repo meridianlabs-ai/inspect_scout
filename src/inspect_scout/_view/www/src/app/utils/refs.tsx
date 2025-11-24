@@ -64,7 +64,6 @@ const referenceTable = (
           <ChatView
             messages={[result.input]}
             resolveToolCallsIntoPreviousMessage={false}
-            labeled={false}
           />
         );
       },
@@ -77,7 +76,6 @@ const referenceTable = (
             <ChatView
               messages={[msg]}
               resolveToolCallsIntoPreviousMessage={false}
-              labeled={false}
             />
           );
         };
@@ -134,7 +132,6 @@ const referenceTable = (
             <ChatView
               messages={[msg]}
               resolveToolCallsIntoPreviousMessage={false}
-              labeled={false}
             />
           );
         };

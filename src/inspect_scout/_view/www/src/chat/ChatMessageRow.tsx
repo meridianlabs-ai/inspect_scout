@@ -14,8 +14,8 @@ import { ChatViewToolCallStyle } from "./types";
 interface ChatMessageRowProps {
   index: number;
   parentName: string;
-  labeled?: boolean;
   labels?: Record<string, string>;
+  showLabels?: boolean;
   highlightLabeled?: boolean;
   resolvedMessage: ResolvedMessage;
   toolCallStyle: ChatViewToolCallStyle;
@@ -31,7 +31,7 @@ interface ChatMessageRowProps {
 export const ChatMessageRow: FC<ChatMessageRowProps> = ({
   index,
   parentName,
-  labeled,
+  showLabels,
   labels,
   highlightLabeled,
   resolvedMessage,
@@ -42,7 +42,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
 }) => {
   const views: ReactNode[] = [];
   const viewLabels: Array<string | undefined> = [];
-  const useLabels = labeled && Object.keys(labels || {}).length > 0;
+  const useLabels = showLabels && Object.keys(labels || {}).length > 0;
 
   if (useLabels) {
     // The chat message and label
@@ -126,7 +126,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
     }
   }
 
-  if (labeled && viewLabels.length > 0) {
+  if (useLabels) {
     return (
       <>
         <div className={clsx(styles.grid)}>

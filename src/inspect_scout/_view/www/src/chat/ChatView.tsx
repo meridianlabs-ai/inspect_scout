@@ -14,11 +14,11 @@ interface ChatViewProps {
   resolveToolCallsIntoPreviousMessage?: boolean;
   title?: string;
   indented?: boolean;
-  labeled?: boolean;
-  highlightLabeled?: boolean;
   className?: string | string[];
   allowLinking?: boolean;
-  messageLabels?: Record<string, string>;
+  labels?: Record<string, string>;
+  showLabels?: boolean;
+  highlightLabeled?: boolean;
 }
 
 /**
@@ -30,8 +30,8 @@ export const ChatView: FC<ChatViewProps> = ({
   toolCallStyle = "complete",
   resolveToolCallsIntoPreviousMessage = true,
   indented,
-  labeled = true,
-  messageLabels,
+  labels,
+  showLabels = true,
   highlightLabeled = false,
   className,
   allowLinking = true,
@@ -52,8 +52,8 @@ export const ChatView: FC<ChatViewProps> = ({
             index={index}
             key={`${id}-msg-${index}`}
             parentName={id || "chat-view"}
-            labeled={labeled}
-            labels={messageLabels}
+            showLabels={showLabels}
+            labels={labels}
             highlightLabeled={highlightLabeled}
             resolvedMessage={msg}
             indented={indented}

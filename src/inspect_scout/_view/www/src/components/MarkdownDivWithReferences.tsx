@@ -1,5 +1,12 @@
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useStore } from "../state/store";
 
@@ -17,15 +24,16 @@ export interface MarkdownReference {
 
 interface MarkdownDivWithReferencesProps {
   markdown: string;
-  references: MarkdownReference[];
+  references?: MarkdownReference[];
   className?: string | string[];
+  style?: React.CSSProperties;
+  omitMedia?: boolean;
 }
 
-export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
-  markdown,
-  references,
-  className,
-}) => {
+export const MarkdownDivWithReferences = forwardRef<
+  HTMLDivElement,
+  MarkdownDivWithReferencesProps
+>(({ markdown, references, className, style, omitMedia }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [positionEl, setPositionEl] = useState<HTMLElement | null>(null);
   const [currentRef, setCurrentRef] = useState<MarkdownReference | null>(null);
@@ -38,7 +46,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
 
   // Create a map for quick lookup of references by ID
   const refMap = useMemo(
-    () => new Map(references.map((ref) => [ref.id, ref])),
+    () => new Map(references?.map((ref) => [ref.id, ref])),
     [references]
   );
 
@@ -48,7 +56,7 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
       let processedHtml = html;
 
       // Replace each reference cite with a link
-      references.forEach((ref) => {
+      references?.forEach((ref) => {
         // Escape special regex characters in the cite text
         const escapedCite = ref.cite.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(escapedCite, "g");
@@ -67,7 +75,16 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
   // Memoize the MarkdownDiv to prevent re-renders when popover state changes
   // This keeps the DOM stable so event handlers remain attached
   const memoizedMarkdown = useMemo(
-    () => <MarkdownDiv markdown={markdown} postProcess={postProcess} />,
+    () => (
+      <MarkdownDiv
+        ref={ref}
+        markdown={markdown}
+        postProcess={postProcess}
+        className={className}
+        style={style}
+        omitMedia={omitMedia}
+      />
+    ),
     [markdown, postProcess]
   );
 
@@ -162,6 +179,6 @@ export const MarkdownDivWithReferences: FC<MarkdownDivWithReferencesProps> = ({
       )}
     </div>
   );
-};
+});
 
 const popoverKey = (ref: MarkdownReference) => `markdown-ref-popover-${ref.id}`;

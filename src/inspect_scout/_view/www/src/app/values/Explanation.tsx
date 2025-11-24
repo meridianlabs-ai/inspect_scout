@@ -2,14 +2,14 @@ import { FC, ReactNode, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
 import {
+  MarkdownDivWithReferences,
+  MarkdownReference,
+} from "../../components/MarkdownDivWithReferences";
+import {
   getRelativePathFromParams,
   parseScanResultPath,
   scanResultRoute,
 } from "../../router/url";
-import {
-  MarkdownDivWithReferences,
-  MarkdownReference,
-} from "../../components/MarkdownDivWithReferences";
 import { ScannerCore } from "../types";
 import { toMarkdownRefs } from "../utils/refs";
 

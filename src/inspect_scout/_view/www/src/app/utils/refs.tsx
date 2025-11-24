@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 
 import { ChatView } from "../../chat/ChatView";
-import { TranscriptView } from "../../transcript/TranscriptView";
 import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
+import { TranscriptView } from "../../transcript/TranscriptView";
 import { ScannerCore } from "../types";
 
 export type MakeReferenceUrl = (

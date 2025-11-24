@@ -31,10 +31,10 @@ export const ChatView: FC<ChatViewProps> = ({
   resolveToolCallsIntoPreviousMessage = true,
   indented,
   labeled = true,
+  messageLabels,
   highlightLabeled = false,
   className,
   allowLinking = true,
-  messageLabels,
 }) => {
   const collapsedMessages = resolveToolCallsIntoPreviousMessage
     ? resolveMessages(messages)

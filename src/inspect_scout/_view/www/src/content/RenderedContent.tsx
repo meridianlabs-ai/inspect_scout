@@ -8,6 +8,7 @@ import { isMessageContent, MessageContent } from "../chat/MessageContent";
 import { defaultContext } from "../chat/MessageContents";
 import { ANSIDisplay } from "../components/AnsiDisplay";
 import JSONPanel from "../components/JsonPanel";
+import { MarkdownReference } from "../components/MarkdownDivWithReferences";
 import { formatNumber } from "../utils/format";
 import { isJson } from "../utils/json";
 
@@ -19,6 +20,7 @@ import { Buckets, ContentRenderer, RenderOptions } from "./types";
 interface RenderedContentProps {
   id: string;
   entry: { name: string; value: unknown };
+  references?: MarkdownReference[];
   renderOptions?: RenderOptions;
   renderObject?(entry: any): ReactNode;
 }
@@ -29,6 +31,7 @@ interface RenderedContentProps {
 export const RenderedContent: FC<RenderedContentProps> = ({
   id,
   entry,
+  references,
   renderOptions = { renderString: "markdown" },
   renderObject,
 }): JSX.Element => {
@@ -52,7 +55,7 @@ export const RenderedContent: FC<RenderedContentProps> = ({
     });
 
   if (renderer) {
-    const { rendered } = renderer.render(id, entry, renderOptions);
+    const { rendered } = renderer.render(id, entry, renderOptions, references);
     if (rendered !== undefined && isValidElement(rendered)) {
       return rendered;
     }
@@ -159,11 +162,13 @@ const contentRenderers: (
       canRender: (entry) => {
         return typeof entry.value === "string";
       },
-      render: (_id, entry, options) => {
+      render: (_id, entry, options, references) => {
         const rendered = entry.value.trim();
         if (options.renderString === "markdown") {
           return {
-            rendered: <RenderedText markdown={rendered} />,
+            rendered: (
+              <RenderedText markdown={rendered} references={references} />
+            ),
           };
         } else {
           return {

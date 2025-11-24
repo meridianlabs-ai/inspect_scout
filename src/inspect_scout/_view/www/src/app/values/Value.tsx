@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { FC, Fragment, ReactNode, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
+import { MarkdownDivWithReferences } from "../../components/MarkdownDivWithReferences";
 import {
   getRelativePathFromParams,
   parseScanResultPath,
@@ -10,7 +11,6 @@ import {
 import { printArray } from "../../utils/array";
 import { formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
-import { MarkdownDivWithReferences } from "../../components/MarkdownDivWithReferences";
 import {
   ScannerCore,
   isStringValue,

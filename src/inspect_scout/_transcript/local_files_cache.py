@@ -80,10 +80,11 @@ class LocalFilesCache:
         marker_file = cache_file.with_suffix(".downloading")
 
         while True:
-            if cache_file.exists() and not marker_file.exists():
+            if cache_file.exists():
                 return cache_file.as_posix()
 
             if not _try_create_marker(marker_file):
+                print(f"XXX ({os.getpid()}) waiting on {marker_file}")
                 trace_message(logger, "Scout Cache Wait", f"Waiting for {uri}")
                 await anyio.sleep(1)
                 continue
@@ -91,22 +92,12 @@ class LocalFilesCache:
             # We own the marker now - download
             with trace_action(logger, "Scout Cache Download", f"Downloading {uri}"):
                 try:
-                    # The streaming approach is leaking something that causes aiobotocore
-                    # to raise errors on shutdown. Though harmless, it's disconcerting.
-                    #
-                    # file_size = await fs.get_size(uri)
-                    # async with await fs.read_file_bytes(uri, 0, file_size) as stream:
-                    #     with open(cache_file, "wb") as f:
-                    #         async for chunk in stream:
-                    #             f.write(chunk)
-                    #
-                    # TODO: We'll continue trying to get to the bottom of it, but we'll
-                    # revert to fsspec for now.
-                    fs2 = filesystem(uri)
-                    fs2.get_file(uri, cache_file.as_posix())
-                    marker_file.unlink()
+                    print(f"XXX ({os.getpid()}) downloading {marker_file}")
+                    await _download_file(fs, uri, marker_file)
+                    print(f"XXX ({os.getpid()}) downloaded {marker_file}")
+                    marker_file.rename(cache_file)
+                    print(f"XXX ({os.getpid()}) renamed {marker_file} -> {cache_file}")
                     return cache_file.as_posix()
-
                 except Exception:
                     marker_file.unlink(missing_ok=True)
                     raise
@@ -115,6 +106,25 @@ class LocalFilesCache:
         """Delete the cache directory and all its contents."""
         if self._cache_dir.exists():
             shutil.rmtree(self._cache_dir)
+
+
+async def _download_file(fs: AsyncFilesystem, uri: str, dest_path: Path) -> None:
+    """Download remote file to local path."""
+    # The streaming approach is leaking something that causes aiobotocore to raise
+    # errors on shutdown. Though harmless, it's disconcerting.
+    #
+    # TODO: We'll continue trying to get to the bottom of it, but we'll revert to
+    # fsspec.get_file for now.
+    use_streaming = False
+
+    if use_streaming:
+        file_size = await fs.get_size(uri)
+        async with await fs.read_file_bytes(uri, 0, file_size) as stream:
+            with open(dest_path, "wb") as f:
+                async for chunk in stream:
+                    f.write(chunk)
+    else:
+        filesystem(uri).get_file(uri, dest_path.as_posix())
 
 
 def _try_create_marker(marker_file: Path) -> bool:

@@ -1,6 +1,7 @@
 .header {
   border-bottom: solid var(--bs-light-border-subtle) 1px;
   padding: 0.3rem 1rem;
+  user-select: none;
 }
 
 .center {
@@ -13,4 +14,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.clickable {
+  cursor: pointer;
 }

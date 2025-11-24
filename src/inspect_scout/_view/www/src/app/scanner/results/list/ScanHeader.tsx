@@ -1,5 +1,8 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, useCallback, MouseEvent } from "react";
+
+import { useStore } from "../../../../state/store";
+import { ApplicationIcons } from "../../../appearance/icons";
 
 import styles from "./ScanHeader.module.css";
 import { GridDescriptor } from "./ScanResultsList";
@@ -10,25 +13,74 @@ interface ScanResultsHeaderProps {
 export const ScanResultsHeader: FC<ScanResultsHeaderProps> = ({
   gridDescriptor,
 }) => {
+  // Column information
   const hasExplanation = gridDescriptor.columns.includes("explanation");
   const hasLabel = gridDescriptor.columns.includes("label");
   const hasError = gridDescriptor.columns.includes("error");
+
   return (
     <div
       style={gridDescriptor.gridStyle}
       className={clsx(
         styles.header,
-        "text-size-smallestest",
+        "text-size-smallest",
         "text-style-label",
         "text-style-secondary",
         hasExplanation ? "" : styles.noExplanation
       )}
     >
-      <div>Id</div>
-      {hasExplanation && <div>Explanation</div>}
-      {hasLabel && <div>Label</div>}
-      <div className={clsx(styles.value)}>Value</div>
-      {hasError && <div>Error</div>}
+      <ColumnHeader label="Id" />
+      {hasExplanation && <ColumnHeader label="Explanation" />}
+      {hasLabel && <ColumnHeader label="Label" />}
+      <ColumnHeader label="Value" className={clsx(styles.value)} />
+      {hasError && <ColumnHeader label="Error" />}
+    </div>
+  );
+};
+
+const ColumnHeader: FC<{
+  label: string;
+  className?: string | string[];
+}> = ({ label, className }) => {
+  const sortResults = useStore((state) => state.sortResults);
+  const setSortResults = useStore((state) => state.setSortResults);
+  const sort = sortResults?.find((s) => s.column === label);
+
+  const handleSort = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const dir = sort?.direction === "asc" ? "desc" : "asc";
+      if (e.shiftKey) {
+        // multi-column sort
+        const newSorts = sortResults ? [...sortResults] : [];
+        const existingIndex = newSorts.findIndex((s) => s.column === label);
+        if (existingIndex >= 0) {
+          newSorts[existingIndex] = { column: label, direction: dir };
+        } else {
+          newSorts.push({ column: label, direction: dir });
+        }
+        setSortResults(newSorts);
+      } else {
+        setSortResults([{ column: label, direction: dir }]);
+      }
+    },
+    [sort, sortResults, setSortResults]
+  );
+
+  return (
+    <div className={clsx(className, styles.clickable)} onClick={handleSort}>
+      {label}
+      {sort && (
+        <i
+          className={clsx(
+            sort?.direction === "asc"
+              ? ApplicationIcons.arrows.up
+              : ApplicationIcons.arrows.down
+          )}
+        />
+      )}
     </div>
   );
 };

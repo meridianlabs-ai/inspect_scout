@@ -4297,21 +4297,26 @@ button._segment_19z32_10 {
 ._gridWrapper_yeano_1 .ag-cell {
   line-height: 1.1em;
 }
-._header_cpxb8_1 {
+._header_u9u40_1 {
   border-bottom: solid var(--bs-light-border-subtle) 1px;
   padding: 0.3rem 1rem;
+  user-select: none;
 }
 
-._center_cpxb8_6 {
+._center_u9u40_7 {
   justify-self: center;
 }
 
-._shrinkable_cpxb8_10 {
+._shrinkable_u9u40_11 {
   min-width: 0;
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+._clickable_u9u40_19 {
+  cursor: pointer;
 }
 ._row_q8zt3_1 {
   border-bottom: solid 1px var(--bs-border-color);

@@ -9,6 +9,11 @@ import {
   Events,
 } from "../types/log";
 
+export interface SortColumn {
+  column: string;
+  direction: "asc" | "desc";
+}
+
 export type ErrorScope = "scanjobs" | "scanner" | "dataframe";
 
 export type ScannerCore =

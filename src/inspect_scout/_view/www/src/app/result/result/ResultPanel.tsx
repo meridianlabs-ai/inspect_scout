@@ -77,7 +77,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
             <CardBody>
               <LabeledValue label="Scanner">
                 <ChatView
-                  labeled={false}
+                  showLabels={false}
                   messages={messages}
                   id={`scan-result-chat`}
                   toolCallStyle={"compact"}

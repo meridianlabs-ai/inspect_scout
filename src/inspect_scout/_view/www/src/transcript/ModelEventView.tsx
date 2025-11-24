@@ -92,7 +92,6 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
         <ChatView
           id={`${eventNode.id}-model-output`}
           messages={[...userMessages, ...(outputMessages || [])]}
-          labeled={false}
           toolCallStyle={showToolCalls ? "complete" : "omit"}
           resolveToolCallsIntoPreviousMessage={context?.hasToolEvents !== false}
           allowLinking={false}

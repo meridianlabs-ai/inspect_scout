@@ -76,9 +76,9 @@ const InputRenderer: FC<InputRendererProps> = ({
             className={className}
             scrollRef={scrollRef}
             initialMessageId={initialMessageId}
-            labeled={true}
+            showLabels={true}
             highlightLabeled={highlightLabeled}
-            messageLabels={labels}
+            labels={labels}
           />
         );
       } else if (result.input.events.length > 0) {

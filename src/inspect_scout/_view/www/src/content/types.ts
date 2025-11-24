@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
 
+import { MarkdownReference } from "../components/MarkdownDivWithReferences";
+
 export const Buckets = {
   first: 0,
   intermediate: 10,
@@ -16,7 +18,8 @@ export interface ContentRenderer {
   render: (
     id: string,
     content: any,
-    options: RenderOptions
+    options: RenderOptions,
+    references?: MarkdownReference[]
   ) => {
     rendered: string | number | bigint | boolean | object | ReactNode | null;
   };

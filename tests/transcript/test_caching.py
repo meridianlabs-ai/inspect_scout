@@ -46,6 +46,19 @@ def mock_kvstore() -> Iterator[Mock]:
     class MockKVStore(KVStore):
         def __init__(self) -> None:
             self._store: dict[str, str] = {}
+            self.conn = self._create_mock_conn()
+
+        def _create_mock_conn(self) -> Mock:
+            """Create mock connection with execute() and commit() methods."""
+            conn = Mock()
+
+            def execute(sql: str) -> None:
+                if sql == "DELETE FROM kv_store":
+                    self._store.clear()
+
+            conn.execute = execute
+            conn.commit = Mock()
+            return conn
 
         def get(self, key: str) -> str | None:
             return self._store.get(key)
@@ -303,3 +316,33 @@ def test_cached_dataframe_loses_datetime_dtype(mock_kvstore: Mock) -> None:
 
     # Values should be preserved
     pd.testing.assert_frame_equal(cached_df, original_df)
+
+
+def test_cache_version_invalidation(
+    mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
+) -> None:
+    """Cache version mismatch clears cache and re-reads data."""
+    from inspect_scout._transcript.caching import _CACHE_VERSION
+
+    # First call populates cache with current version
+    result1 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+    assert mock_reader.call_count == 1
+
+    # Second call uses cache (same version)
+    result2 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+    assert mock_reader.call_count == 1
+    pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
+
+    # Simulate version change by patching _CACHE_VERSION
+    with patch(
+        "inspect_scout._transcript.caching._CACHE_VERSION",
+        _CACHE_VERSION + 1,
+    ):
+        # Third call triggers cache invalidation and re-read
+        result3 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+        assert mock_reader.call_count == 2
+
+        # Fourth call uses cache again (with new version)
+        result4 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+        assert mock_reader.call_count == 2
+        pd.testing.assert_frame_equal(result3, result4, check_dtype=False)

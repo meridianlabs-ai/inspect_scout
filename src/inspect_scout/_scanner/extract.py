@@ -149,7 +149,7 @@ def message_as_str(
         and isinstance(message, ChatMessageAssistant)
         and message.tool_calls
     ):
-        entry = f"{message.role}:\n{content}\n"
+        entry = f"{message.role.upper()}:\n{content}\n"
 
         for tool in message.tool_calls:
             func_name = tool.function
@@ -172,10 +172,10 @@ def message_as_str(
             if message.error
             else ""
         )
-        return f"{message.role}:\n{content}{error_part}\n"
+        return f"{message.role.upper()}:\n{content}{error_part}\n"
 
     else:
-        return f"{message.role}:\n{content}\n"
+        return f"{message.role.upper()}:\n{content}\n"
 
 
 def _text_from_content(

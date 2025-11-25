@@ -11,6 +11,8 @@ reference: inspect_scout
 ### Summary
 ### scan_results_df
 ### ScanResultsDF
+### scan_results_arrow
+### ScanResultsArrow
 
 ## Validation
 

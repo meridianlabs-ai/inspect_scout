@@ -2,7 +2,7 @@ import base64
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, TypeVar
+from typing import Any, Iterable, Literal, TypeVar
 
 import anyio
 import pandas as pd
@@ -10,7 +10,7 @@ import pyarrow as pa
 import pyarrow.ipc as pa_ipc
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import FileSystem, filesystem
 from inspect_ai._util.json import to_json_safe
@@ -35,6 +35,7 @@ from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanlist import scan_list_async
 from inspect_scout._scanresults import (
     remove_scan_results,
+    scan_results_arrow_async,
     scan_results_df_async,
 )
 from inspect_scout._scanspec import ScanSpec
@@ -164,6 +165,7 @@ def view_server_app(
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
+    streaming_batch_size: int = 1024,
 ) -> "FastAPI":
     app = FastAPI()
 
@@ -246,32 +248,53 @@ def view_server_app(
         # validate
         await _validate_read(request, scan_path)
 
-        # read the results and return
-        result = await scan_results_df_async(str(scan_path), rows="transcripts")
+        # get the result
+        result = await scan_results_arrow_async(str(scan_path))
 
-        # convert the dataframes to their serializable form
-        df = result.scanners.get(query_scanner)
-        if df is None:
+        # ensure we have the data (404 if not)
+        if query_scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail=f"Scanner '{query_scanner}' not found in scan results",
             )
 
-        # Convert dataframe to Arrow IPC format with LZ4 compression
-        # LZ4 provides good compression with fast decompression and
-        # has native js codecs for the client
-        #
-        # Note that it was _much_ faster to compress vs gzip
-        # with only a moderate loss in compression ratio
-        # (e.g. 40% larger in exchange for ~20x faster compression)
-        table = pa.Table.from_pandas(df, preserve_index=False)
-        buf = io.BytesIO()
-        with pa_ipc.new_stream(
-            buf, table.schema, options=pa_ipc.IpcWriteOptions(compression="lz4")
-        ) as writer:
-            writer.write_table(table)
+        def stream_as_arrow_ipc() -> Iterable[bytes]:
+            buf = io.BytesIO()
 
-        return Response(content=buf.getvalue(), media_type="application/octet-stream")
+            # Convert dataframe to Arrow IPC format with LZ4 compression
+            # LZ4 provides good compression with fast decompression and
+            # has native js codecs for the client
+            #
+            # Note that it was _much_ faster to compress vs gzip
+            # with only a moderate loss in compression ratio
+            # (e.g. 40% larger in exchange for ~20x faster compression)
+            with result.reader(
+                query_scanner, streaming_batch_size=streaming_batch_size
+            ) as reader:
+                with pa_ipc.new_stream(
+                    buf,
+                    reader.schema,
+                    options=pa_ipc.IpcWriteOptions(compression="lz4"),
+                ) as writer:
+                    for batch in reader:
+                        writer.write_batch(batch)
+
+                        # Flush whatever the writer just appended
+                        data = buf.getvalue()
+                        if data:
+                            yield data
+                            buf.seek(0)
+                            buf.truncate(0)
+
+                # Footer / EOS marker
+                remaining = buf.getvalue()
+                if remaining:
+                    yield remaining
+
+        return StreamingResponse(
+            content=stream_as_arrow_ipc(),
+            media_type="application/vnd.apache.arrow.stream; codecs=lz4",
+        )
 
     @app.get("/scan/{scan:path}")
     async def scan(

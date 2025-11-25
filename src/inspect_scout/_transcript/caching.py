@@ -101,7 +101,9 @@ def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
         (
             Path(log).as_posix()
             if isinstance(log, PathLike)
-            else log.name if isinstance(log, EvalLogInfo) else log
+            else log.name
+            if isinstance(log, EvalLogInfo)
+            else log
         )
         for log in logs_list
     ]
@@ -171,10 +173,9 @@ def _put_cached_df(
         df: DataFrame to cache
     """
     try:
-        xxx = {"etag": etag, "table": df.to_json(orient="table")}
         kvstore.put(
             log_path,
-            json.dumps(xxx),
+            json.dumps({"etag": etag, "table": df.to_json(orient="table")}),
         )
 
     except Exception:

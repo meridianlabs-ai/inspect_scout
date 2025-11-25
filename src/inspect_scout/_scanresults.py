@@ -9,6 +9,7 @@ from upath import UPath
 from ._recorder.factory import scan_recorder_type_for_location
 from ._recorder.file import _cast_value_column
 from ._recorder.recorder import (
+    ScanResultsArrow,
     ScanResultsDB,
     ScanResultsDF,
     Status,
@@ -38,6 +39,33 @@ async def scan_status_async(scan_location: str) -> Status:
     """
     recorder = scan_recorder_type_for_location(scan_location)
     return await recorder.status(scan_location)
+
+
+def scan_results_arrow(
+    scan_location: str,
+) -> ScanResultsArrow:
+    """Scan results as Arrow.
+
+    Args:
+        scan_location: Location of scan (e.g. directory or s3 bucket).
+
+    Returns:
+        ScanResultsArrow: Results as Arrow record batches.
+    """
+    return run_coroutine(scan_results_arrow_async(scan_location))
+
+
+async def scan_results_arrow_async(scan_location: str) -> ScanResultsArrow:
+    """Scan results as Arrow.
+
+    Args:
+        scan_location: Location of scan (e.g. directory or s3 bucket).
+
+    Returns:
+        ScanResultsArrow: Results as Arrow record batches.
+    """
+    recorder = scan_recorder_type_for_location(scan_location)
+    return await recorder.results_arrow(scan_location)
 
 
 def scan_results_df(
@@ -84,7 +112,7 @@ async def scan_results_df_async(
          ScanResults: Results as Pandas data frames.
     """
     recorder = scan_recorder_type_for_location(scan_location)
-    results = await recorder.results(scan_location, scanner=scanner)
+    results = await recorder.results_df(scan_location, scanner=scanner)
 
     # Expand resultset rows when in "results" mode
     if rows == "results":

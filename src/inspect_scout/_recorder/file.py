@@ -3,6 +3,8 @@ from typing import Literal, Sequence
 
 import duckdb
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
@@ -25,6 +27,7 @@ from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
 from .recorder import (
     ScanRecorder,
+    ScanResultsArrow,
     ScanResultsDB,
     ScanResultsDF,
     Status,
@@ -160,7 +163,42 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
-    async def results(
+    async def results_arrow(
+        scan_location: str,
+    ) -> ScanResultsArrow:
+        class _ScanResultsArrowFiles(ScanResultsArrow):
+            @override
+            def reader(
+                self, scanner: str, streaming_batch_size: int = 1024
+            ) -> pa.RecordBatchReader:
+                scan_path = UPath(scan_location)
+                scanner_path = scan_path / f"{scanner}.parquet"
+                parquet = pq.ParquetFile(str(scanner_path))
+                return pa.RecordBatchReader.from_batches(
+                    parquet.schema_arrow,
+                    parquet.iter_batches(batch_size=streaming_batch_size),
+                )
+
+        # get the status
+        status = await FileRecorder.status(scan_location)
+
+        # enumerate the scanners
+        scanners = [
+            file.stem for file in sorted(UPath(scan_location).glob("*.parquet"))
+        ]
+
+        return _ScanResultsArrowFiles(
+            status=status.complete,
+            spec=status.spec,
+            location=status.location,
+            summary=status.summary,
+            errors=status.errors,
+            scanners=scanners,
+        )
+
+    @override
+    @staticmethod
+    async def results_df(
         scan_location: str,
         *,
         scanner: str | None = None,

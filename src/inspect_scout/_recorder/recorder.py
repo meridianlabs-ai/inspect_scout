@@ -5,6 +5,7 @@ from typing import Literal, Sequence
 
 import duckdb
 import pandas as pd
+import pyarrow as pa
 
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
@@ -30,6 +31,36 @@ class Status:
 
     errors: list[Error]
     """Errors during last scan attempt."""
+
+
+@dataclass
+class ScanResultsArrow(Status):
+    """Scan results as Arrow."""
+
+    scanners: list[str]
+    """Scanner names."""
+
+    def __init__(
+        self,
+        status: bool,
+        spec: ScanSpec,
+        location: str,
+        summary: Summary,
+        errors: list[Error],
+        scanners: list[str],
+    ) -> None:
+        super().__init__(status, spec, location, summary, errors)
+        self.scanners = scanners
+
+    @abc.abstractmethod
+    def reader(
+        self, scanner: str, streaming_batch_size: int = 1024
+    ) -> pa.RecordBatchReader:
+        """Acquire a reader for the specified scanner.
+
+        The return reader is a context manager that should be acquired before reading.
+        """
+        ...
 
 
 @dataclass
@@ -185,9 +216,13 @@ class ScanRecorder(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    async def results(
+    async def results_df(
         scan_location: str, *, scanner: str | None = None
     ) -> ScanResultsDF: ...
+
+    @staticmethod
+    @abc.abstractmethod
+    async def results_arrow(scan_location: str) -> ScanResultsArrow: ...
 
     @staticmethod
     @abc.abstractmethod

@@ -280,6 +280,7 @@ def test_cached_dataframe_loses_datetime_dtype(mock_kvstore: Mock) -> None:
 
     # Use the mock kvstore directly
     from unittest.mock import MagicMock
+
     kvstore = MagicMock()
     stored_value = None
 

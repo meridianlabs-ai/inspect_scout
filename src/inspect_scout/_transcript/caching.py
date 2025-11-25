@@ -98,13 +98,11 @@ def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
     # Normalize to list of str
     logs_list = [logs] if isinstance(logs, str | PathLike | EvalLogInfo) else logs
     logs_str = [
-        (
-            Path(log).as_posix()
-            if isinstance(log, PathLike)
-            else log.name
-            if isinstance(log, EvalLogInfo)
-            else log
-        )
+        Path(log).as_posix()
+        if isinstance(log, PathLike)
+        else log.name
+        if isinstance(log, EvalLogInfo)
+        else log
         for log in logs_list
     ]
 

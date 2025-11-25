@@ -1,5 +1,7 @@
+import io
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from os import PathLike
 from pathlib import Path
 
@@ -10,7 +12,34 @@ from inspect_ai.log._file import EvalLogInfo, log_files_from_ls
 
 from .types import LogPaths
 
-MAX_CACHE_ENTRIES = 5000
+DEFAULT_MAX_CACHE_ENTRIES = 5000
+_CACHE_VERSION = 2
+_CACHE_VERSION_KEY = "__cache_version__"
+
+
+@contextmanager
+def _transcript_info_kvstore(
+    name: str, max_entries: int | None = None
+) -> Generator[KVStore, None, None]:
+    """Wrap inspect_kvstore with version management for cache invalidation.
+
+    Validates cache version on entry. If version key is missing or doesn't match
+    CACHE_VERSION, clears all cache entries and writes current version.
+
+    Args:
+        name: KVStore name for cache storage
+        max_entries: Maximum number of entries to keep in cache
+
+    Yields:
+        KVStore instance with validated version
+    """
+    with inspect_kvstore(name, max_entries=max_entries) as kvstore:
+        stored_version = kvstore.get(_CACHE_VERSION_KEY)
+        if stored_version != str(_CACHE_VERSION):
+            kvstore.conn.execute("DELETE FROM kv_store")
+            kvstore.conn.commit()
+            kvstore.put(_CACHE_VERSION_KEY, str(_CACHE_VERSION))
+        yield kvstore
 
 
 def _get_cached_dfs(
@@ -68,7 +97,9 @@ def samples_df_with_caching(
     if not (paths_and_etags := _resolve_logs(logs)):
         return pd.DataFrame()
 
-    with inspect_kvstore(cache_store, max_entries=MAX_CACHE_ENTRIES) as kvstore:
+    with _transcript_info_kvstore(
+        cache_store, max_entries=DEFAULT_MAX_CACHE_ENTRIES
+    ) as kvstore:
         cache_hits, cache_misses = _get_cached_dfs(kvstore, paths_and_etags)
 
         # Read and cache the dataframes for all of the cache misses.
@@ -150,12 +181,8 @@ def _get_cached_df(
         if cached_etag != current_etag:
             return None
 
-        # Reconstruct DataFrame from records
-        records = cached_data.get("records", [])
-        if not records:
-            return None
-
-        return pd.DataFrame.from_records(records)
+        result = pd.read_json(io.StringIO(cached_data.get("table")), orient="table")
+        return result
 
     except Exception:
         # On any error, return None to fall back to reading from source
@@ -176,14 +203,7 @@ def _put_cached_df(
     try:
         kvstore.put(
             log_path,
-            json.dumps(
-                {
-                    "etag": etag,
-                    # Serialize DataFrame to JSON records. We can't go straight to Python because
-                    # the df contains non-serializable data like timestamps
-                    "records": json.loads(df.to_json(orient="records")),
-                }
-            ),
+            json.dumps({"etag": etag, "table": df.to_json(orient="table")}),
         )
 
     except Exception:

@@ -46,6 +46,19 @@ def mock_kvstore() -> Iterator[Mock]:
     class MockKVStore(KVStore):
         def __init__(self) -> None:
             self._store: dict[str, str] = {}
+            self.conn = self._create_mock_conn()
+
+        def _create_mock_conn(self) -> Mock:
+            """Create mock connection with execute() and commit() methods."""
+            conn = Mock()
+
+            def execute(sql: str) -> None:
+                if sql == "DELETE FROM kv_store":
+                    self._store.clear()
+
+            conn.execute = execute
+            conn.commit = Mock()
+            return conn
 
         def get(self, key: str) -> str | None:
             return self._store.get(key)
@@ -258,3 +271,78 @@ def test_samples_df_with_caching_directory_input(
     result = samples_df_with_caching(mock_reader, "s3://bucket/dir/")
     assert mock_reader.call_count == 2
     assert len(result) == 2
+
+
+def test_cached_dataframe_loses_datetime_dtype(mock_kvstore: Mock) -> None:
+    """Cache roundtrip should preserve datetime dtype."""
+    from inspect_scout._transcript.caching import _get_cached_df, _put_cached_df
+
+    # Create DataFrame with datetime column
+    original_df = pd.DataFrame(
+        {
+            "eval_id": ["eval_001"],
+            "eval_created": [pd.Timestamp("2024-01-01T10:00:00")],
+            "score": [0.85],
+        }
+    )
+    assert original_df["eval_created"].dtype == "datetime64[ns]"
+
+    # Roundtrip through cache
+    path = "test.json"
+    etag = "test_etag"
+
+    # Use the mock kvstore directly
+    from unittest.mock import MagicMock
+
+    kvstore = MagicMock()
+    stored_value = None
+
+    def mock_put(key: str, value: str) -> None:
+        nonlocal stored_value
+        stored_value = value
+
+    def mock_get(key: str) -> str | None:
+        return stored_value
+
+    kvstore.put = mock_put
+    kvstore.get = mock_get
+
+    _put_cached_df(kvstore, path, etag, original_df)
+    cached_df = _get_cached_df(kvstore, path, etag)
+
+    # Cached DataFrame should preserve datetime dtype
+    assert cached_df is not None
+    assert cached_df["eval_created"].dtype == "datetime64[ns]"
+
+    # Values should be preserved
+    pd.testing.assert_frame_equal(cached_df, original_df)
+
+
+def test_cache_version_invalidation(
+    mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
+) -> None:
+    """Cache version mismatch clears cache and re-reads data."""
+    from inspect_scout._transcript.caching import _CACHE_VERSION
+
+    # First call populates cache with current version
+    result1 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+    assert mock_reader.call_count == 1
+
+    # Second call uses cache (same version)
+    result2 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+    assert mock_reader.call_count == 1
+    pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
+
+    # Simulate version change by patching _CACHE_VERSION
+    with patch(
+        "inspect_scout._transcript.caching._CACHE_VERSION",
+        _CACHE_VERSION + 1,
+    ):
+        # Third call triggers cache invalidation and re-read
+        result3 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+        assert mock_reader.call_count == 2
+
+        # Fourth call uses cache again (with new version)
+        result4 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
+        assert mock_reader.call_count == 2
+        pd.testing.assert_frame_equal(result3, result4, check_dtype=False)

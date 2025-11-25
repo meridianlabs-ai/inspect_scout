@@ -86,7 +86,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._fs: AsyncFilesystem | None = None
         self._current_shuffle_seed: int | None = None
-        self._transcript_ids: list[str] | None = None
+        self._transcript_ids: set[str] | None = None
 
     @override
     async def connect(self) -> None:
@@ -162,12 +162,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # if we don't yet have a list of transcript ids then query for one
         if self._transcript_ids is None:
-            self._transcript_ids = []
+            self._transcript_ids = set()
             cursor = self._conn.execute("SELECT transcript_id FROM transcripts")
             column_names = [desc[0] for desc in cursor.description]
             for cursor_row in cursor.fetchall():
                 row_dict = dict(zip(column_names, cursor_row, strict=True))
-                self._transcript_ids.append(row_dict["transcript_id"])
+                self._transcript_ids.add(row_dict["transcript_id"])
 
         batch: list[dict[str, Any]] = []
         current_batch_size = 0
@@ -182,7 +182,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 row_size = self._estimate_row_size(row)
 
                 # Add transcript ID for duplicate tracking
-                self._transcript_ids.append(transcript.transcript_id)
+                self._transcript_ids.add(transcript.transcript_id)
 
                 # Write batch if adding this row would exceed target size
                 if (
@@ -798,7 +798,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             )
 
     def _have_transcript(self, transcript_id: str) -> bool:
-        return transcript_id in (self._transcript_ids or [])
+        return transcript_id in (self._transcript_ids or set())
 
     def _as_async_iterator(
         self,

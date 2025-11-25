@@ -1,6 +1,6 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
-import { FC, use, useCallback, useEffect, useMemo, useRef } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 

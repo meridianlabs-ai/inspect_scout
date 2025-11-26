@@ -49,6 +49,7 @@ from ._mp_common import (
 from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
+
 # Import subprocess_main lazily to avoid importing _mp_setup in parent process
 # (it needs to run in child process AFTER environment variables are set)
 from .common import (
@@ -282,7 +283,12 @@ def multi_process_strategy(
 
             # Set environment variables for subprocess to configure sys.path before unpickling
             os.environ["INSPECT_SCOUT_SYS_PATH"] = json.dumps(sys.path)
-            os.environ["INSPECT_SCOUT_WORKING_DIR"] = os.getcwd()
+
+            # Pass plugin directories to subprocess for sys.path
+            from .._plugin_context import get_plugin_directories
+            plugin_dirs = get_plugin_directories()
+            if plugin_dirs:
+                os.environ["INSPECT_SCOUT_PLUGIN_DIRS"] = json.dumps(list(plugin_dirs))
 
             # Import subprocess_main AFTER setting env vars to avoid importing _mp_setup in parent
             from ._mp_subprocess import subprocess_main

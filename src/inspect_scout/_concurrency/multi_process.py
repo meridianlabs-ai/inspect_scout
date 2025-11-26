@@ -149,9 +149,9 @@ def multi_process_strategy(
             remainder_tasks = task_count % max_processes
             # Initialize shared IPC context that will be inherited by forked workers
             _mp_common.ipc_context = IPCContext(
-                parse_function=DillCallable(parse_function),  # type: ignore[arg-type]
-                scan_function=DillCallable(scan_function),  # type: ignore[arg-type]
-                scan_completed=DillCallable(scan_completed),  # type: ignore[arg-type]
+                parse_function=DillCallable(parse_function),
+                scan_function=DillCallable(scan_function),
+                scan_completed=DillCallable(scan_completed),
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
@@ -280,6 +280,7 @@ def multi_process_strategy(
 
             # Get plugin directories to pass to subprocesses
             from .._plugin_context import get_plugin_directories
+
             plugin_dirs = list(get_plugin_directories())
 
             # Import subprocess_main
@@ -295,7 +296,12 @@ def multi_process_strategy(
                 try:
                     p = ctx.Process(
                         target=subprocess_main,
-                        args=(worker_id, task_count_for_worker, plugin_dirs, _mp_common.ipc_context),
+                        args=(
+                            worker_id,
+                            task_count_for_worker,
+                            plugin_dirs,
+                            _mp_common.ipc_context,
+                        ),
                     )
                     p.start()
                     processes.append(p)

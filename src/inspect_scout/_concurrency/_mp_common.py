@@ -16,7 +16,7 @@ from threading import Condition
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeAlias, TypeVar, cast
 
 import anyio
-import dill
+import dill  # type: ignore
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -39,7 +39,7 @@ class DillCallable:
         Args:
             func: The callable to wrap (can be closure, lambda, etc)
         """
-        self._pickled_func = dill.dumps(func)
+        self._pickled_func: bytes = dill.dumps(func)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Call the wrapped function.

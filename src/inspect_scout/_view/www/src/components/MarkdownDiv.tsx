@@ -16,10 +16,11 @@ interface MarkdownDivProps {
   omitMedia?: boolean;
   style?: CSSProperties;
   className?: string | string[];
+  postProcess?: (html: string) => string;
 }
 
 const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
-  ({ markdown, omitMedia, style, className }, ref) => {
+  ({ markdown, omitMedia, style, className, postProcess }, ref) => {
     // Check cache for rendered content
     const cacheKey = `${markdown}:${omitMedia ? "1" : "0"}`;
     const cachedHtml = renderCache.get(cacheKey);
@@ -76,10 +77,15 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
         const unescaped = unprotectMarkdown(html);
 
         // For `code` tags, reverse the escaping if we can
-        const withCode = unescapeCodeHtmlEntities(unescaped);
+        const finalContent = unescapeCodeHtmlEntities(unescaped);
+
+        // Apply post-processing if provided
+        const processedContent = postProcess
+          ? postProcess(finalContent)
+          : finalContent;
 
         // For `sup` tags, reverse the escaping if we can
-        const withSup = unescapeSupHtmlEntities(withCode);
+        const withSup = unescapeSupHtmlEntities(processedContent);
 
         // Wrap in Promise.resolve to satisfy async requirement
         return Promise.resolve(withSup);
@@ -192,7 +198,7 @@ class MarkdownRenderQueue {
       cancelled = true;
       // Mark task as cancelled in queue
       const index = this.queue.findIndex((t) => !t.cancelled);
-      if (index !== -1) {
+      if (index !== -1 && this.queue[index]) {
         this.queue[index].cancelled = true;
       }
     };

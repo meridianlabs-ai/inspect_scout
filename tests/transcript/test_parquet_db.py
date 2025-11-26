@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any, AsyncIterator
 
+import pyarrow as pa
 import pytest
 import pytest_asyncio
 from inspect_ai.event._event import Event
@@ -898,3 +899,461 @@ async def test_recursive_discovery(test_location: Path) -> None:
     assert subdir2_transcript.metadata.get("location") == "subdir2"
 
     await db_all.disconnect()
+
+
+# RecordBatchReader Tests
+def create_record_batch_reader(
+    transcript_ids: list[str],
+    include_source_fields: bool = True,
+    include_content_fields: bool = True,
+    metadata: dict[str, list[Any]] | None = None,
+) -> pa.RecordBatchReader:
+    """Create a RecordBatchReader for testing.
+
+    Args:
+        transcript_ids: List of transcript IDs.
+        include_source_fields: Include source_type, source_id, source_uri.
+        include_content_fields: Include messages and events columns.
+        metadata: Additional metadata columns as {name: [values]}.
+
+    Returns:
+        PyArrow RecordBatchReader.
+    """
+    data = {"transcript_id": transcript_ids}
+
+    if include_source_fields:
+        data["source_type"] = ["test"] * len(transcript_ids)
+        data["source_id"] = [f"source-{i}" for i in range(len(transcript_ids))]
+        data["source_uri"] = [f"test://uri/{i}" for i in range(len(transcript_ids))]
+
+    if include_content_fields:
+        data["messages"] = ["[]"] * len(transcript_ids)
+        data["events"] = ["[]"] * len(transcript_ids)
+
+    if metadata:
+        data.update(metadata)
+
+    table = pa.table(data)  # type: ignore[arg-type]
+    return table.to_reader()
+
+
+@pytest.mark.asyncio
+async def test_insert_record_batch_reader_all_columns(test_location: Path) -> None:
+    """Test inserting via RecordBatchReader with all columns."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Create RecordBatchReader with all columns
+        reader = create_record_batch_reader(
+            transcript_ids=["rb-001", "rb-002", "rb-003"],
+            include_source_fields=True,
+            include_content_fields=True,
+            metadata={"model": ["gpt-4", "gpt-4", "gpt-4"]},
+        )
+
+        # Insert
+        await db.insert(reader)
+
+        # Verify count
+        count = await db.count([], None)
+        assert count == 3
+
+        # Verify data is queryable
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 3
+
+        # Verify fields are populated
+        info = results[0]
+        assert info.transcript_id.startswith("rb-")
+        assert info.source_type == "test"
+        assert info.source_id is not None
+        assert info.source_uri is not None
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_insert_record_batch_reader_minimal_schema(test_location: Path) -> None:
+    """Test inserting via RecordBatchReader with only transcript_id."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Create RecordBatchReader with minimal schema
+        reader = create_record_batch_reader(
+            transcript_ids=["min-001", "min-002"],
+            include_source_fields=False,
+            include_content_fields=False,
+        )
+
+        # Insert
+        await db.insert(reader)
+
+        # Verify count
+        count = await db.count([], None)
+        assert count == 2
+
+        # Verify select() returns None for optional fields
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 2
+
+        info = results[0]
+        assert info.transcript_id.startswith("min-")
+        assert info.source_type is None
+        assert info.source_id is None
+        assert info.source_uri is None
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_insert_record_batch_reader_duplicate_filtering(
+    test_location: Path,
+) -> None:
+    """Test that duplicate transcript_ids are filtered during RecordBatchReader insert."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # First insert some transcripts
+        transcripts = [
+            create_sample_transcript(id="dup-001"),
+            create_sample_transcript(id="dup-002"),
+        ]
+        await db.insert(transcripts)
+
+        # Verify initial count
+        count = await db.count([], None)
+        assert count == 2
+
+        # Create RecordBatchReader with mix of new and duplicate IDs
+        reader = create_record_batch_reader(
+            transcript_ids=["dup-001", "dup-002", "dup-003", "dup-004"],
+            include_source_fields=True,
+            include_content_fields=True,
+        )
+
+        # Insert - duplicates should be filtered
+        await db.insert(reader)
+
+        # Verify only new ones were added
+        count = await db.count([], None)
+        assert count == 4  # 2 original + 2 new (dup-003, dup-004)
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_insert_record_batch_reader_batch_size_splitting(
+    test_location: Path,
+) -> None:
+    """Test that large RecordBatchReader data is split into multiple files."""
+    # Use very small target file size to force splitting
+    db = ParquetTranscriptsDB(str(test_location), target_file_size_mb=0.001)
+    await db.connect()
+
+    try:
+        # Create many transcripts with content to exceed file size
+        transcript_ids = [f"split-{i:04d}" for i in range(100)]
+        messages = ['[{"role": "user", "content": "' + "x" * 1000 + '"}]'] * 100
+        events = ["[]"] * 100
+
+        table = pa.table(
+            {
+                "transcript_id": transcript_ids,
+                "source_type": ["test"] * 100,
+                "source_id": [f"src-{i}" for i in range(100)],
+                "source_uri": [f"uri-{i}" for i in range(100)],
+                "messages": messages,
+                "events": events,
+            }
+        )
+        # Use small chunk size to create multiple batches for realistic testing
+        batches = table.to_batches(max_chunksize=10)
+        reader = pa.RecordBatchReader.from_batches(table.schema, batches)
+
+        # Insert
+        await db.insert(reader)
+
+        # Verify multiple files were created
+        parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
+        assert len(parquet_files) > 1
+
+        # Verify all data is queryable
+        count = await db.count([], None)
+        assert count == 100
+    finally:
+        await db.disconnect()
+
+
+# Schema Validation Tests
+@pytest.mark.asyncio
+async def test_insert_record_batch_reader_missing_transcript_id(
+    test_location: Path,
+) -> None:
+    """Test that missing transcript_id raises ValueError."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Create table without transcript_id
+        table = pa.table({"source_type": ["test", "test"]})
+        reader = table.to_reader()
+
+        # Verify ValueError is raised
+        with pytest.raises(ValueError, match="transcript_id"):
+            await db.insert(reader)
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_insert_record_batch_reader_invalid_transcript_id_type(
+    test_location: Path,
+) -> None:
+    """Test that non-string transcript_id raises ValueError."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Create table with int64 transcript_id
+        table = pa.table({"transcript_id": [1, 2, 3]})
+        reader = table.to_reader()
+
+        # Verify ValueError is raised
+        with pytest.raises(ValueError, match="string type"):
+            await db.insert(reader)
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_insert_record_batch_reader_invalid_optional_column_type(
+    test_location: Path,
+) -> None:
+    """Test that non-string optional columns raise ValueError."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Create table with int64 source_type
+        table = pa.table({"transcript_id": ["t1", "t2"], "source_type": [1, 2]})
+        reader = table.to_reader()
+
+        # Verify ValueError is raised
+        with pytest.raises(ValueError, match="string type"):
+            await db.insert(reader)
+    finally:
+        await db.disconnect()
+
+
+# Select with Missing Columns Tests
+@pytest.mark.asyncio
+async def test_select_missing_optional_columns(test_location: Path) -> None:
+    """Test that select() returns None for missing optional columns."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Insert via RecordBatchReader with minimal schema
+        reader = create_record_batch_reader(
+            transcript_ids=["sel-001", "sel-002"],
+            include_source_fields=False,
+            include_content_fields=False,
+        )
+        await db.insert(reader)
+
+        # Verify select() returns TranscriptInfo with None for optional fields
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 2
+
+        for info in results:
+            assert info.transcript_id.startswith("sel-")
+            assert info.source_type is None
+            assert info.source_id is None
+            assert info.source_uri is None
+    finally:
+        await db.disconnect()
+
+
+# Read with Missing Content Columns Tests
+@pytest.mark.asyncio
+async def test_read_missing_messages_column(test_location: Path) -> None:
+    """Test that read() handles missing messages column gracefully."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Insert via RecordBatchReader without messages column (but with events)
+        table = pa.table(
+            {
+                "transcript_id": ["rm-001", "rm-002"],
+                "source_type": ["test", "test"],
+                "source_id": ["src-1", "src-2"],
+                "source_uri": ["uri-1", "uri-2"],
+                "events": ["[]", "[]"],
+            }
+        )
+        reader = table.to_reader()
+        await db.insert(reader)
+
+        # Get transcript info
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 2
+
+        # Read with messages requested - should return empty
+        content = TranscriptContent(messages="all", events=None)
+        transcript = await db.read(results[0], content)
+        assert transcript.messages == []
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_read_missing_events_column(test_location: Path) -> None:
+    """Test that read() handles missing events column gracefully."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Insert via RecordBatchReader without events column (but with messages)
+        table = pa.table(
+            {
+                "transcript_id": ["re-001", "re-002"],
+                "source_type": ["test", "test"],
+                "source_id": ["src-1", "src-2"],
+                "source_uri": ["uri-1", "uri-2"],
+                "messages": ["[]", "[]"],
+            }
+        )
+        reader = table.to_reader()
+        await db.insert(reader)
+
+        # Get transcript info
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 2
+
+        # Read with events requested - should return empty
+        content = TranscriptContent(messages=None, events="all")
+        transcript = await db.read(results[0], content)
+        assert transcript.events == []
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_read_missing_both_content_columns(test_location: Path) -> None:
+    """Test that read() handles missing messages and events columns."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Insert via RecordBatchReader with only transcript_id
+        reader = create_record_batch_reader(
+            transcript_ids=["rb-001", "rb-002"],
+            include_source_fields=False,
+            include_content_fields=False,
+        )
+        await db.insert(reader)
+
+        # Get transcript info
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 2
+
+        # Read with both messages and events requested - should return empty
+        content = TranscriptContent(messages="all", events="all")
+        transcript = await db.read(results[0], content)
+        assert transcript.messages == []
+        assert transcript.events == []
+    finally:
+        await db.disconnect()
+
+
+# File Columns Cache Tests
+@pytest.mark.asyncio
+async def test_file_columns_cache_populated(test_location: Path) -> None:
+    """Test that _file_columns_cache is populated after read() with missing columns."""
+    import pyarrow.parquet as pq
+
+    # Write a parquet file directly (simulating external data lake without messages)
+    table = pa.table(
+        {
+            "transcript_id": ["cache-001", "cache-002"],
+            "source_type": ["test", "test"],
+            "source_id": ["src-1", "src-2"],
+            "source_uri": ["uri-1", "uri-2"],
+            "events": ["[]", "[]"],
+        }
+    )
+    parquet_path = test_location / "transcripts_external_001.parquet"
+    pq.write_table(table, str(parquet_path))
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Cache should be empty initially
+        assert len(db._file_columns_cache) == 0
+
+        # Get transcript info
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 2
+
+        # Read a transcript (triggers cache population on BinderException)
+        content = TranscriptContent(messages="all", events="all")
+        await db.read(results[0], content)
+
+        # Verify _file_columns_cache is now populated
+        assert len(db._file_columns_cache) == 1
+
+        # Verify the cached columns include expected columns
+        cached_columns = list(db._file_columns_cache.values())[0]
+        assert "transcript_id" in cached_columns
+        assert "events" in cached_columns
+        assert "messages" not in cached_columns  # This was missing
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_file_columns_cache_reused(test_location: Path) -> None:
+    """Test that cached column info is reused on subsequent reads."""
+    import pyarrow.parquet as pq
+
+    # Write a parquet file directly (simulating external data lake without messages)
+    table = pa.table(
+        {
+            "transcript_id": ["reuse-001", "reuse-002", "reuse-003"],
+            "source_type": ["test", "test", "test"],
+            "source_id": ["src-1", "src-2", "src-3"],
+            "source_uri": ["uri-1", "uri-2", "uri-3"],
+            "events": ["[]", "[]", "[]"],
+        }
+    )
+    parquet_path = test_location / "transcripts_external_002.parquet"
+    pq.write_table(table, str(parquet_path))
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Get transcript info
+        results = [info async for info in db.select([], None, False)]
+        assert len(results) == 3
+
+        # Read first transcript (populates cache)
+        content = TranscriptContent(messages="all", events="all")
+        await db.read(results[0], content)
+
+        # Verify cache has one entry
+        assert len(db._file_columns_cache) == 1
+
+        # Read second and third transcripts from same file
+        await db.read(results[1], content)
+        await db.read(results[2], content)
+
+        # Cache should still have just one entry (reused, not re-populated)
+        assert len(db._file_columns_cache) == 1
+    finally:
+        await db.disconnect()

@@ -8,11 +8,12 @@ import uuid
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterable, AsyncIterator, Callable, Iterable
+from typing import Any, AsyncIterable, AsyncIterator, Callable, Iterable, cast
 
 import duckdb
 import pandas as pd
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
@@ -90,7 +91,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._fs: AsyncFilesystem | None = None
         self._current_shuffle_seed: int | None = None
-        self._transcript_ids: set[str] | None = None
+        self._transcript_ids: set[str] = set()
+        self._file_columns_cache: dict[str, set[str]] = {}
 
     @override
     async def connect(self) -> None:
@@ -157,60 +159,35 @@ class ParquetTranscriptsDB(TranscriptsDB):
         transcripts: Iterable[Transcript]
         | AsyncIterable[Transcript]
         | Transcripts
-        | TranscriptsSource,
+        | TranscriptsSource
+        | pa.RecordBatchReader,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
         Transcript ids that are already in the database are not inserted.
 
         Args:
-            transcripts: Transcripts to insert (iterable, async iterable, or source).
+            transcripts: Transcripts to insert (iterable, async iterable, source,
+                or PyArrow RecordBatchReader for efficient Arrow-native insertion).
         """
         assert self._conn is not None
 
         # if we don't yet have a list of transcript ids then query for one
-        if self._transcript_ids is None:
-            self._transcript_ids = set()
+        if len(self._transcript_ids) == 0:
             cursor = self._conn.execute("SELECT transcript_id FROM transcripts")
             column_names = [desc[0] for desc in cursor.description]
             for cursor_row in cursor.fetchall():
                 row_dict = dict(zip(column_names, cursor_row, strict=True))
                 self._transcript_ids.add(row_dict["transcript_id"])
 
-        batch: list[dict[str, Any]] = []
-        current_batch_size = 0
-        target_size_bytes = self._target_file_size_mb * 1024 * 1024
+        # two insert codepaths, one for arrow batch, one for transcripts
+        if isinstance(transcripts, pa.RecordBatchReader):
+            await self._insert_from_record_batch_reader(transcripts)
+        else:
+            await self._insert_from_transcripts(transcripts)
 
-        with display().text_progress("Transcript", True) as progress:
-            async for transcript in self._as_async_iterator(transcripts):
-                progress.update(text=transcript.transcript_id)
-
-                # Serialize once for both size calculation and writing
-                row = self._transcript_to_row(transcript)
-                row_size = self._estimate_row_size(row)
-
-                # Add transcript ID for duplicate tracking
-                self._transcript_ids.add(transcript.transcript_id)
-
-                # Write batch if adding this row would exceed target size
-                if (
-                    current_batch_size > 0
-                    and current_batch_size + row_size >= target_size_bytes
-                ):
-                    await self._write_parquet_batch(batch)
-                    batch = []
-                    current_batch_size = 0
-
-                # Add row to batch
-                batch.append(row)
-                current_batch_size += row_size
-
-            # write any leftover elements
-            if batch:
-                await self._write_parquet_batch(batch)
-
-            # refresh the view
-            await self._create_transcripts_table()
+        # refresh the view
+        await self._create_transcripts_table()
 
     @override
     async def count(
@@ -284,11 +261,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
         for row in cursor.fetchall():
             row_dict = dict(zip(column_names, row, strict=True))
 
-            # Extract reserved fields
+            # Extract reserved fields (optional fields use .get() for missing columns)
             transcript_id = row_dict["transcript_id"]
-            transcript_source_type = row_dict["source_type"]
-            transcript_source_id = row_dict["source_id"]
-            transcript_source_uri = row_dict["source_uri"]
+            transcript_source_type = row_dict.get("source_type")
+            transcript_source_id = row_dict.get("source_id")
+            transcript_source_uri = row_dict.get("source_uri")
 
             # Reconstruct metadata from all non-reserved columns
             # Use LazyJSONDict to defer JSON parsing until values are accessed
@@ -365,8 +342,30 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Now read content from just that specific file (targeted I/O)
             # This avoids scanning all files - only reads from the one file containing this transcript
             filename = filename_result[0]
-            sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
-            result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
+
+            # Try optimistic read first (fast path for files with all columns)
+            try:
+                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
+                columns_read = columns  # All requested columns were available
+            except duckdb.BinderException:
+                # Column doesn't exist - check which ones are available (cached)
+                available = self._get_available_content_columns(filename)
+                columns_read = [c for c in columns if c in available]
+
+                if not columns_read:
+                    # No content columns available - return empty content
+                    return Transcript.model_construct(
+                        transcript_id=t.transcript_id,
+                        source_type=t.source_type,
+                        source_id=t.source_id,
+                        source_uri=t.source_uri,
+                        metadata=t.metadata,
+                    )
+
+                # Retry with only available columns
+                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
 
             if not result:
                 # Transcript not found - use model_construct to preserve LazyJSONDict
@@ -378,15 +377,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     metadata=t.metadata,
                 )
 
-            # Extract column values
+            # Extract column values based on which columns were actually read
             messages_json: str | None = None
             events_json: str | None = None
 
             col_idx = 0
-            if need_messages:
+            if "messages" in columns_read:
                 messages_json = result[col_idx]
                 col_idx += 1
-            if need_events:
+            if "events" in columns_read:
                 events_json = result[col_idx]
 
             # Stream combined JSON construction
@@ -426,6 +425,112 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 content.messages,
                 content.events,
             )
+
+    async def _insert_from_transcripts(
+        self,
+        transcripts: Iterable[Transcript]
+        | AsyncIterable[Transcript]
+        | Transcripts
+        | TranscriptsSource,
+    ) -> None:
+        batch: list[dict[str, Any]] = []
+        current_batch_size = 0
+        target_size_bytes = self._target_file_size_mb * 1024 * 1024
+
+        with display().text_progress("Transcript", True) as progress:
+            async for transcript in self._as_async_iterator(transcripts):
+                progress.update(text=transcript.transcript_id)
+
+                # Serialize once for both size calculation and writing
+                row = self._transcript_to_row(transcript)
+                row_size = self._estimate_row_size(row)
+
+                # Add transcript ID for duplicate tracking
+                self._transcript_ids.add(transcript.transcript_id)
+
+                # Write batch if adding this row would exceed target size
+                if (
+                    current_batch_size > 0
+                    and current_batch_size + row_size >= target_size_bytes
+                ):
+                    await self._write_parquet_batch(batch)
+                    batch = []
+                    current_batch_size = 0
+
+                # Add row to batch
+                batch.append(row)
+                current_batch_size += row_size
+
+            # write any leftover elements
+            if batch:
+                await self._write_parquet_batch(batch)
+
+    async def _insert_from_record_batch_reader(
+        self, reader: pa.RecordBatchReader
+    ) -> None:
+        """Insert transcripts from Arrow RecordBatchReader.
+
+        Filters duplicates, respects file size limits, validates schema.
+
+        Args:
+            reader: PyArrow RecordBatchReader containing transcript data.
+        """
+        # Validate schema once
+        self._validate_record_batch_schema(reader.schema)
+
+        # Build exclude array for duplicate filtering (explicit type for empty set)
+        assert self._transcript_ids is not None
+        exclude_array = pa.array(self._transcript_ids, type=pa.string())
+
+        # Batch accumulation state
+        accumulated_batches: list[pa.RecordBatch] = []
+        accumulated_size = 0
+        target_size_bytes = self._target_file_size_mb * 1024 * 1024
+        total_rows = 0
+
+        with display().text_progress("Rows", True) as progress:
+            for batch in reader:
+                # Filter out duplicates
+                is_duplicate = pc.is_in(
+                    batch.column("transcript_id"), value_set=exclude_array
+                )
+                mask = pc.invert(is_duplicate)
+                filtered_batch = batch.filter(mask)
+
+                # Skip if all rows were duplicates
+                if filtered_batch.num_rows == 0:
+                    continue
+
+                # Track new IDs for subsequent batches (cast is safe - schema validated)
+                new_ids = cast(
+                    list[str], filtered_batch.column("transcript_id").to_pylist()
+                )
+                self._transcript_ids.update(new_ids)
+                exclude_array = pa.array(self._transcript_ids, type=pa.string())
+
+                # Update progress
+                total_rows += filtered_batch.num_rows
+                progress.update(text=str(total_rows))
+
+                # Estimate batch size
+                batch_size = self._estimate_batch_size(filtered_batch)
+
+                # Write if adding this batch would exceed target size
+                if (
+                    accumulated_size > 0
+                    and accumulated_size + batch_size >= target_size_bytes
+                ):
+                    await self._write_arrow_batch(accumulated_batches)
+                    accumulated_batches = []
+                    accumulated_size = 0
+
+                # Accumulate batch
+                accumulated_batches.append(filtered_batch)
+                accumulated_size += batch_size
+
+            # Write remainder
+            if accumulated_batches:
+                await self._write_arrow_batch(accumulated_batches)
 
     def _register_shuffle_function(self, seed: int) -> None:
         """Register DuckDB UDF for deterministic shuffling.
@@ -541,6 +646,173 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Add overhead for Parquet columnar format (conservative 1.2x)
         return int(size * 1.2)
 
+    def _estimate_batch_size(self, batch: pa.RecordBatch) -> int:
+        """Estimate size of Arrow batch in bytes.
+
+        Uses batch.nbytes as primary estimate with 1.2x overhead factor
+        to match existing _estimate_row_size behavior.
+
+        Args:
+            batch: PyArrow RecordBatch to estimate size for.
+
+        Returns:
+            Estimated size in bytes.
+        """
+        return int(batch.nbytes * 1.2)
+
+    def _validate_record_batch_schema(self, schema: pa.Schema) -> None:
+        """Validate that RecordBatch schema meets requirements.
+
+        Requirements:
+        - transcript_id column must exist and be string type
+        - Optional columns (source_type, source_id, source_uri, messages, events)
+          must be string type if present
+
+        Args:
+            schema: PyArrow schema to validate.
+
+        Raises:
+            ValueError: If schema doesn't meet requirements.
+        """
+        # Check transcript_id exists
+        if "transcript_id" not in schema.names:
+            raise ValueError("RecordBatch schema must contain 'transcript_id' column")
+
+        # Check transcript_id is string type
+        transcript_id_type = schema.field("transcript_id").type
+        if transcript_id_type not in (pa.string(), pa.large_string()):
+            raise ValueError(
+                f"'transcript_id' column must be string type, got {transcript_id_type}"
+            )
+
+        # Check optional columns are string type if present
+        optional_string_columns = [
+            "source_type",
+            "source_id",
+            "source_uri",
+            "messages",
+            "events",
+        ]
+        for col in optional_string_columns:
+            if col in schema.names:
+                col_type = schema.field(col).type
+                if col_type not in (pa.string(), pa.large_string()):
+                    raise ValueError(
+                        f"'{col}' column must be string type, got {col_type}"
+                    )
+
+    def _ensure_required_columns(self, table: pa.Table) -> pa.Table:
+        """Add missing optional columns as null-filled string columns.
+
+        Ensures all optional reserved columns exist in the table for
+        schema consistency when writing Parquet files.
+
+        Args:
+            table: PyArrow table to normalize.
+
+        Returns:
+            Table with all optional columns present (null-filled if missing).
+        """
+        optional_columns = [
+            "source_type",
+            "source_id",
+            "source_uri",
+            "messages",
+            "events",
+        ]
+        for col in optional_columns:
+            if col not in table.column_names:
+                null_array = pa.nulls(len(table), type=pa.string())
+                table = table.append_column(col, null_array)
+        return table
+
+    def _get_available_content_columns(self, filename: str) -> set[str]:
+        """Get available content columns for a file, with caching.
+
+        Args:
+            filename: Path to the Parquet file.
+
+        Returns:
+            Set of column names available in the file.
+        """
+        if filename not in self._file_columns_cache:
+            assert self._conn is not None
+            schema_result = self._conn.execute(
+                "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
+                [filename],
+            ).fetchall()
+            self._file_columns_cache[filename] = {row[0] for row in schema_result}
+        return self._file_columns_cache[filename]
+
+    def _write_parquet_file(self, table: pa.Table, path: str) -> None:
+        """Write PyArrow table to Parquet file with standard settings.
+
+        Args:
+            table: PyArrow table to write.
+            path: Destination file path.
+        """
+        pq.write_table(
+            table,
+            path,
+            compression="zstd",
+            use_dictionary=True,
+            row_group_size=int(self._row_group_size_mb * 1024 * 1024),
+            write_statistics=True,
+        )
+
+    async def _write_arrow_batch(self, batches: list[pa.RecordBatch]) -> None:
+        """Write accumulated Arrow batches to a new Parquet file.
+
+        Concatenates batches into a single table and writes with same
+        compression settings as _write_parquet_batch.
+
+        Args:
+            batches: List of PyArrow RecordBatches to write.
+        """
+        if not batches:
+            return
+
+        with trace_action(logger, "Scout Parquet Write", "Writing Arrow batch"):
+            # Concatenate batches into a single table
+            table = pa.Table.from_batches(batches)
+
+            # Ensure all required columns exist
+            table = self._ensure_required_columns(table)
+
+            # Generate filename
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+            file_uuid = uuid.uuid4().hex[:8]
+            filename = f"transcripts_{timestamp}_{file_uuid}.parquet"
+
+            # Determine output path and write Parquet file
+            assert self._location is not None
+            if self._location.startswith("s3://"):
+                s3_path = f"{self._location.rstrip('/')}/{filename}"
+
+                # For S3, write to temp file then upload
+                with tempfile.NamedTemporaryFile(
+                    suffix=".parquet", delete=False
+                ) as tmp_file:
+                    tmp_path = tmp_file.name
+
+                try:
+                    # Write to temporary file
+                    self._write_parquet_file(table, tmp_path)
+
+                    # Upload to S3
+                    s3_path = f"{self._location.rstrip('/')}/{filename}"
+                    assert self._fs is not None
+                    await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
+                finally:
+                    # Clean up temp file
+                    Path(tmp_path).unlink(missing_ok=True)
+            else:
+                # Local file system
+                output_path = Path(self._location) / filename
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+
+                self._write_parquet_file(table, output_path.as_posix())
+
     def _infer_schema(self, rows: list[dict[str, Any]]) -> pa.Schema:
         """Infer PyArrow schema from transcript rows.
 
@@ -648,14 +920,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
                 try:
                     # Write to temporary file
-                    pq.write_table(
-                        table,
-                        tmp_path,
-                        compression="zstd",
-                        use_dictionary=True,
-                        row_group_size=int(self._row_group_size_mb * 1024 * 1024),
-                        write_statistics=True,
-                    )
+                    self._write_parquet_file(table, tmp_path)
 
                     # Upload to S3
                     s3_path = f"{self._location.rstrip('/')}/{filename}"
@@ -669,14 +934,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 output_path = Path(self._location) / filename
                 output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                pq.write_table(
-                    table,
-                    output_path.as_posix(),
-                    compression="zstd",
-                    use_dictionary=True,
-                    row_group_size=int(self._row_group_size_mb * 1024 * 1024),
-                    write_statistics=True,
-                )
+                self._write_parquet_file(table, output_path.as_posix())
 
     async def _create_transcripts_table(self) -> None:
         """Create or refresh DuckDB structures for querying transcripts.
@@ -720,10 +978,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
             else:
                 pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
 
-            # Build base query
+            # Check which content columns exist (external parquet files may lack them)
+            schema_result = self._conn.execute(
+                f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
+            ).fetchall()
+            existing_columns = {row[0] for row in schema_result}
+            exclude_columns = [
+                col for col in ["messages", "events"] if col in existing_columns
+            ]
+
+            # Build base query (only exclude columns that exist)
+            if exclude_columns:
+                exclude_clause = f" EXCLUDE ({', '.join(exclude_columns)})"
+            else:
+                exclude_clause = ""
+
             sql = f"""
                 CREATE TABLE transcripts AS
-                SELECT * EXCLUDE (messages, events)
+                SELECT *{exclude_clause}
                 FROM read_parquet({pattern}, union_by_name=true, filename=true)
             """
             params: list[Any] = []

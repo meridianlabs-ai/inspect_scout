@@ -18,6 +18,7 @@ def patch_inspect_log_handler(patch_fn: Callable[[logging.LogRecord], None]) -> 
         patch_fn: A callable that receives a LogRecord and handles it (typically by
             queuing it for transmission to the parent process).
     """
+    # TODO: Disabled until we fix it
     # object.__setattr__(find_inspect_log_handler(), "emit", patch_fn)
 
 

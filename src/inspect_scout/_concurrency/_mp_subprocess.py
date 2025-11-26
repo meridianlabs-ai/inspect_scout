@@ -8,9 +8,6 @@ via a single multiplexed upstream queue.
 
 from __future__ import annotations
 
-# IMPORTANT: Import _mp_setup FIRST to configure sys.path before unpickling
-from . import _mp_setup  # noqa: F401
-
 import logging
 import time
 from threading import Condition
@@ -23,7 +20,12 @@ from inspect_scout._display._display import display
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
-from . import _mp_common
+
+# IMPORTANT: Import _mp_setup FIRST to configure sys.path before unpickling
+from . import (
+    _mp_common,
+    _mp_setup,  # noqa: F401
+)
 from ._iterator import iterator_from_queue
 from ._mp_common import IPCContext, LoggingItem, run_sync_on_thread
 from ._mp_logging import patch_inspect_log_handler
@@ -73,7 +75,7 @@ async def _shutdown_monitor_task(
 def subprocess_main(
     worker_id: int,
     task_count: int,
-    ipc_context: IPCContext,
+    ctx: IPCContext,
 ) -> None:
     """Worker subprocess main function.
 
@@ -83,10 +85,8 @@ def subprocess_main(
     Args:
         worker_id: Unique identifier for this worker process
         task_count: Number of concurrent tasks for this worker process
-        ipc_context: Shared IPC context passed from parent process
+        ctx: Shared IPC context passed from parent process
     """
-    # Use IPC context passed as argument (for spawn compatibility)
-    ctx = ipc_context
 
     def _log_in_parent(record: logging.LogRecord) -> None:
         # Strip exc_info from record to avoid pickling traceback objects since it

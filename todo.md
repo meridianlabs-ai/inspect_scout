@@ -1,4 +1,12 @@
-# Fork to Spawn Conversion - COMPLETED ✅
+# Fork to Spawn Conversion
+
+## Remaining Issues
+
+- [ ] Only works if cd into directory with scan job
+- [ ] Remaining Busted Items that relied on the fork approach
+  Likely all of these can be fixed by performing proper initialization code in `worker_main`
+  - [ ] Monkey patching logging 
+  - [ ] Shared concurrency model
 
 ## Final Solution
 

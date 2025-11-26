@@ -15,12 +15,14 @@ import {
 import { MessageContent } from "../MessageContent";
 import { defaultContext } from "../MessageContents";
 
+import { getCustomToolView } from "./customToolRendering";
 import styles from "./ToolCallView.module.css";
 import { ToolInput } from "./ToolInput";
 import { ToolTitle } from "./ToolTitle";
 
-interface ToolCallViewProps {
+export interface ToolCallViewProps {
   id: string;
+  tool: string;
   functionCall: string;
   input?: unknown;
   description?: string;
@@ -55,6 +57,7 @@ interface ToolCallViewProps {
  */
 export const ToolCallView: FC<ToolCallViewProps> = ({
   id,
+  tool,
   functionCall,
   input,
   description,
@@ -114,6 +117,20 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
       return true;
     }
   });
+
+  // See if there is a custom view for this tool
+  const customToolView = getCustomToolView({
+    id,
+    tool,
+    functionCall,
+    input,
+    description,
+    contentType,
+    output,
+  });
+  if (customToolView) {
+    return customToolView;
+  }
 
   const contents = mode !== "compact" ? input : input || functionCall;
   const context = defaultContext();

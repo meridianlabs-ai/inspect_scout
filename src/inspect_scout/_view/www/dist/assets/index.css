@@ -734,6 +734,22 @@ a._citationLink_1ggvf_9:hover {
 ._bottomMargin_17ltx_48 {
   margin-bottom: 0.5rem;
 }
+._sourcePanel_bat6y_1 {
+  width: 100%;
+  padding: 0.5em;
+}
+
+._sourcePanel_bat6y_1:not(._simple_bat6y_6) {
+  background: var(--bs-light);
+  border-radius: var(--bs-border-radius);
+}
+
+._sourcePanel_bat6y_1 ._code_bat6y_11 {
+  font-size: var(--inspect-font-size-small);
+  white-space: pre-wrap !important;
+  word-wrap: anywhere !important;
+  background: transparent !important;
+}
 ._toolCallView_x6cus_1 {
   display: grid;
   row-gap: 0.5em;

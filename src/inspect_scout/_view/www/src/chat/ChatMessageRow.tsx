@@ -85,7 +85,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
     let idx = 0;
     for (const tool_call of resolvedMessage.message.tool_calls) {
       // Extract tool input
-      const { input, description, functionCall, contentType } =
+      const { name, input, description, functionCall, contentType } =
         resolveToolInput(tool_call.function, tool_call.arguments);
 
       let toolMessage: ChatMessageTool | undefined;
@@ -115,6 +115,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
           <ToolCallView
             id={`${index}-tool-call-${idx}`}
             key={`tool-call-${idx}`}
+            tool={name}
             functionCall={functionCall}
             input={input}
             description={description}

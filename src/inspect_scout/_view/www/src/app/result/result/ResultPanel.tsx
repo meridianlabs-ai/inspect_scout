@@ -80,7 +80,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
                   showLabels={false}
                   messages={messages}
                   id={`scan-result-chat`}
-                  toolCallStyle={"compact"}
+                  toolCallStyle={"complete"}
                   indented={false}
                 />
               </LabeledValue>

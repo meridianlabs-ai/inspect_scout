@@ -6,6 +6,7 @@ import { Arguments1 } from "../../types/log";
 
 export const kToolTodoContentType = "agent/todo-list";
 export interface ToolCallResult {
+  name: string;
   functionCall: string;
   input?: unknown;
   description?: string;
@@ -29,6 +30,7 @@ export const resolveToolInput = (
   const functionCall =
     args.length > 0 ? `${toolName}(${args.join(", ")})` : toolName;
   return {
+    name: fn,
     functionCall,
     input,
     description,

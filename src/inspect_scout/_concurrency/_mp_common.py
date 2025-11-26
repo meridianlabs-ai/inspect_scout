@@ -13,9 +13,10 @@ from multiprocessing.managers import DictProxy
 from multiprocessing.queues import Queue
 from multiprocessing.synchronize import Event
 from threading import Condition
-from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeAlias, TypeVar, cast
 
 import anyio
+import dill
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -23,6 +24,51 @@ from .common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
 
 if TYPE_CHECKING:
     from ._mp_semaphore import PicklableMPSemaphore
+
+
+class DillCallable:
+    """Wrapper for callables that uses dill for pickling.
+
+    This allows closures and other complex callables to be serialized
+    for use with spawn multiprocessing context.
+    """
+
+    def __init__(self, func: Callable[..., Any]) -> None:
+        """Initialize with a callable.
+
+        Args:
+            func: The callable to wrap (can be closure, lambda, etc)
+        """
+        self._pickled_func = dill.dumps(func)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """Call the wrapped function.
+
+        Args:
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+
+        Returns:
+            Result from calling the wrapped function
+        """
+        func = dill.loads(self._pickled_func)
+        return func(*args, **kwargs)
+
+    def __getstate__(self) -> bytes:
+        """Get state for pickling.
+
+        Returns:
+            Pickled function bytes
+        """
+        return self._pickled_func
+
+    def __setstate__(self, state: bytes) -> None:
+        """Set state from unpickling.
+
+        Args:
+            state: Pickled function bytes
+        """
+        self._pickled_func = state
 
 
 @dataclass(frozen=True)

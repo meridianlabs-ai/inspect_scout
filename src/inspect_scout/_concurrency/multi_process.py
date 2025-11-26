@@ -16,10 +16,13 @@ See: https://stackoverflow.com/questions/75270606
 
 from __future__ import annotations
 
+import json
 import multiprocessing
+import os
 import signal
+import sys
 import time
-from multiprocessing.context import ForkProcess
+from multiprocessing.context import SpawnProcess
 from typing import AsyncIterator, Awaitable, Callable, cast
 
 import anyio
@@ -33,6 +36,7 @@ from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._mp_common import (
+    DillCallable,
     IPCContext,
     LoggingItem,
     MetricsItem,
@@ -146,9 +150,9 @@ def multi_process_strategy(
             remainder_tasks = task_count % max_processes
             # Initialize shared IPC context that will be inherited by forked workers
             _mp_common.ipc_context = IPCContext(
-                parse_function=parse_function,
-                scan_function=scan_function,
-                scan_completed=scan_completed,
+                parse_function=DillCallable(parse_function),  # type: ignore[arg-type]
+                scan_function=DillCallable(scan_function),  # type: ignore[arg-type]
+                scan_completed=DillCallable(scan_completed),  # type: ignore[arg-type]
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
@@ -275,9 +279,13 @@ def multi_process_strategy(
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 
+            # Set environment variables for subprocess to configure sys.path before unpickling
+            os.environ["INSPECT_SCOUT_SYS_PATH"] = json.dumps(sys.path)
+            os.environ["INSPECT_SCOUT_WORKING_DIR"] = os.getcwd()
+
             # Start worker processes directly
-            ctx = multiprocessing.get_context("fork")
-            processes: list[ForkProcess] = []
+            ctx = multiprocessing.get_context("spawn")
+            processes: list[SpawnProcess] = []
             for worker_id in range(max_processes):
                 task_count_for_worker = base_tasks + (
                     1 if worker_id < remainder_tasks else 0

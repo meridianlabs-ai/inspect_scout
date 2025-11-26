@@ -8,6 +8,9 @@ via a single multiplexed upstream queue.
 
 from __future__ import annotations
 
+# IMPORTANT: Import _mp_setup FIRST to configure sys.path before unpickling
+from . import _mp_setup  # noqa: F401
+
 import logging
 import time
 from threading import Condition

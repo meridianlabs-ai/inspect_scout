@@ -20,12 +20,7 @@ from inspect_scout._display._display import display
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
-
-# IMPORTANT: Import _mp_setup FIRST to configure sys.path before unpickling
-from . import (
-    _mp_common,
-    _mp_setup,  # noqa: F401
-)
+from . import _mp_common
 from ._iterator import iterator_from_queue
 from ._mp_common import IPCContext, LoggingItem, run_sync_on_thread
 from ._mp_logging import patch_inspect_log_handler
@@ -75,6 +70,7 @@ async def _shutdown_monitor_task(
 def subprocess_main(
     worker_id: int,
     task_count: int,
+    plugin_dirs: list[str],
     ctx: IPCContext,
 ) -> None:
     """Worker subprocess main function.
@@ -85,8 +81,15 @@ def subprocess_main(
     Args:
         worker_id: Unique identifier for this worker process
         task_count: Number of concurrent tasks for this worker process
+        plugin_dirs: Plugin directories to add to sys.path before unpickling
         ctx: Shared IPC context passed from parent process
     """
+    # Configure sys.path with plugin directories FIRST, before any imports
+    import sys
+
+    for plugin_dir in plugin_dirs:
+        if plugin_dir not in sys.path:
+            sys.path.insert(0, plugin_dir)
 
     def _log_in_parent(record: logging.LogRecord) -> None:
         # Strip exc_info from record to avoid pickling traceback objects since it

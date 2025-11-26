@@ -16,11 +16,8 @@ See: https://stackoverflow.com/questions/75270606
 
 from __future__ import annotations
 
-import json
 import multiprocessing
-import os
 import signal
-import sys
 import time
 from multiprocessing.context import SpawnProcess
 from typing import AsyncIterator, Awaitable, Callable, cast
@@ -281,46 +278,30 @@ def multi_process_strategy(
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 
-            # Get plugin directories and temporarily add to sys.path during subprocess spawning
+            # Get plugin directories to pass to subprocesses
             from .._plugin_context import get_plugin_directories
-            plugin_dirs = get_plugin_directories()
+            plugin_dirs = list(get_plugin_directories())
 
-            # Save original sys.path to restore after spawning
-            original_sys_path = sys.path.copy()
+            # Import subprocess_main
+            from ._mp_subprocess import subprocess_main
 
-            try:
-                # Add plugin directories to sys.path
-                for plugin_dir in plugin_dirs:
-                    if plugin_dir not in sys.path:
-                        sys.path.insert(0, plugin_dir)
-
-                # Set environment variable with sys.path (now includes plugin dirs)
-                os.environ["INSPECT_SCOUT_SYS_PATH"] = json.dumps(sys.path)
-
-                # Import subprocess_main AFTER setting env vars to avoid importing _mp_setup in parent
-                from ._mp_subprocess import subprocess_main
-
-                # Start worker processes directly
-                ctx = multiprocessing.get_context("spawn")
-                processes: list[SpawnProcess] = []
-                for worker_id in range(max_processes):
-                    task_count_for_worker = base_tasks + (
-                        1 if worker_id < remainder_tasks else 0
+            # Start worker processes directly
+            ctx = multiprocessing.get_context("spawn")
+            processes: list[SpawnProcess] = []
+            for worker_id in range(max_processes):
+                task_count_for_worker = base_tasks + (
+                    1 if worker_id < remainder_tasks else 0
+                )
+                try:
+                    p = ctx.Process(
+                        target=subprocess_main,
+                        args=(worker_id, task_count_for_worker, plugin_dirs, _mp_common.ipc_context),
                     )
-                    try:
-                        p = ctx.Process(
-                            target=subprocess_main,
-                            args=(worker_id, task_count_for_worker, _mp_common.ipc_context),
-                        )
-                        p.start()
-                        processes.append(p)
-                    except Exception as ex:
-                        display().print(ex)
-                        raise
-
-            finally:
-                # Restore original sys.path after subprocess spawning
-                sys.path[:] = original_sys_path
+                    p.start()
+                    processes.append(p)
+                except Exception as ex:
+                    display().print(ex)
+                    raise
 
             # Restore SIGINT handler in parent only (workers inherited SIG_IGN)
             signal.signal(signal.SIGINT, original_sigint_handler)

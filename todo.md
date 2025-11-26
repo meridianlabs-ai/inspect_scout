@@ -1,22 +1,34 @@
 # Fork to Spawn Conversion - COMPLETED ✅
 
-## Final Solution: Environment Variables at Import Time
+## Final Solution
 
-Successfully converted multi-process strategy from fork to spawn using standard `multiprocessing` + `dill` + **environment variables**.
+Successfully converted from fork to spawn using:
+1. Standard `multiprocessing` (not `multiprocess` package)
+2. `DillCallable` wrapper for closures
+3. Environment variables for sys.path/cwd (set at import time)
+4. IPCContext passed as argument (not global)
 
-## The Critical Insight
+## The Journey
 
-**Problem:** When Python spawns a subprocess, it unpickles function arguments BEFORE entering the function. Setting sys.path inside the function is too late.
+### Issue 1: Python 3.14 Compatibility
+- ❌ `multiprocess` package has `subprocess._USE_VFORK` error
+- ✅ Created `DillCallable` wrapper with standard `multiprocessing`
 
-**Solution:** Use environment variables that are read at MODULE IMPORT TIME, before any unpickling happens.
+### Issue 2: Module Import Errors
+- ❌ User modules not importable in subprocess (missing sys.path/cwd)
+- ✅ Set via environment variables read at MODULE IMPORT TIME
 
-## Implementation
+### Issue 3: Global Variable Not Inherited
+- ❌ `_mp_common.ipc_context` global is `None` in spawn subprocess
+- ✅ Pass `IPCContext` as argument to `subprocess_main`
 
-### 1. New Setup Module (_mp_setup.py)
+## Final Implementation
+
+### 1. Setup Module (_mp_setup.py) - NEW FILE
+Reads environment at import time (before any unpickling):
 ```python
 import json, os, sys
 
-# Read environment and configure BEFORE any imports
 if "INSPECT_SCOUT_SYS_PATH" in os.environ:
     sys.path[:] = json.loads(os.environ["INSPECT_SCOUT_SYS_PATH"])
 if "INSPECT_SCOUT_WORKING_DIR" in os.environ:
@@ -25,30 +37,53 @@ if "INSPECT_SCOUT_WORKING_DIR" in os.environ:
 
 ### 2. Import Setup First (_mp_subprocess.py:12)
 ```python
-# IMPORTANT: Import _mp_setup FIRST before anything else
-from . import _mp_setup  # noqa: F401
+from . import _mp_setup  # noqa: F401  # BEFORE other imports
 ```
 
-### 3. Set Environment Variables (multi_process.py:274-275)
+### 3. Accept IPCContext Parameter (_mp_subprocess.py:76)
 ```python
+def subprocess_main(worker_id, task_count, ipc_context):
+    ctx = ipc_context  # Use parameter, not global
+```
+
+### 4. Set Environment + Pass IPCContext (multi_process.py)
+```python
+# Set env vars before spawning
 os.environ["INSPECT_SCOUT_SYS_PATH"] = json.dumps(sys.path)
 os.environ["INSPECT_SCOUT_WORKING_DIR"] = os.getcwd()
+
+# Pass IPCContext as argument
+p = ctx.Process(
+    target=subprocess_main,
+    args=(worker_id, task_count, ipc_context),
+)
 ```
 
-### 4. Use DillCallable for Closures (_mp_common.py)
-Wrap closures so they can be pickled with user module references.
+### 5. DillCallable Wrapper (_mp_common.py)
+```python
+class DillCallable:
+    def __init__(self, func):
+        self._pickled_func = dill.dumps(func)
+    def __call__(self, *args, **kwargs):
+        func = dill.loads(self._pickled_func)
+        return func(*args, **kwargs)
+```
 
 ## Files Modified
-1. **_mp_setup.py** (NEW) - reads env vars at import time
-2. **_mp_subprocess.py** - imports _mp_setup first
-3. **_mp_common.py** - added DillCallable wrapper
-4. **multi_process.py** - sets env vars, uses spawn, wraps callables
+1. **_mp_setup.py** (NEW) - reads env at import time
+2. **_mp_subprocess.py** - imports _mp_setup, accepts ipc_context param
+3. **_mp_common.py** - DillCallable wrapper
+4. **multi_process.py** - sets env vars, uses spawn, wraps functions, passes ipc_context
 
 ## Test Results
 ✅ All 41 multi-process tests pass
 ✅ Works on Python 3.14
-✅ No multiprocess dependency
-✅ User modules importable (sys.path set before unpickling)
+✅ No `multiprocess` dependency
+✅ User modules import correctly
+✅ Ready for production
 
-## Key Lesson
-With spawn multiprocessing, you cannot set sys.path by passing it as an argument - by the time your function receives it, unpickling has already happened. Use environment variables that are read at module import time instead.
+## Key Insights
+1. **Unpickling happens before function entry** - can't set sys.path by passing as arg
+2. **Environment variables work** - read at module import time, before unpickling
+3. **Globals don't transfer with spawn** - must pass IPCContext as argument
+4. **Import order matters** - _mp_setup must be imported FIRST

@@ -49,7 +49,8 @@ from ._mp_common import (
 from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
-from ._mp_subprocess import subprocess_main
+# Import subprocess_main lazily to avoid importing _mp_setup in parent process
+# (it needs to run in child process AFTER environment variables are set)
 from .common import (
     ConcurrencyStrategy,
     ParseFunctionResult,
@@ -283,6 +284,9 @@ def multi_process_strategy(
             os.environ["INSPECT_SCOUT_SYS_PATH"] = json.dumps(sys.path)
             os.environ["INSPECT_SCOUT_WORKING_DIR"] = os.getcwd()
 
+            # Import subprocess_main AFTER setting env vars to avoid importing _mp_setup in parent
+            from ._mp_subprocess import subprocess_main
+
             # Start worker processes directly
             ctx = multiprocessing.get_context("spawn")
             processes: list[SpawnProcess] = []
@@ -293,7 +297,7 @@ def multi_process_strategy(
                 try:
                     p = ctx.Process(
                         target=subprocess_main,
-                        args=(worker_id, task_count_for_worker),
+                        args=(worker_id, task_count_for_worker, _mp_common.ipc_context),
                     )
                     p.start()
                     processes.append(p)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import time
-from multiprocessing.context import ForkProcess
+from collections.abc import Sequence
+from multiprocessing.context import SpawnProcess
 from multiprocessing.queues import Queue
 from queue import Empty
 from typing import Any, Callable
@@ -12,7 +13,7 @@ from . import _mp_common
 
 
 async def shutdown_subprocesses(
-    processes: list[ForkProcess],
+    processes: Sequence[SpawnProcess],
     ctx: _mp_common.IPCContext,
     print_diagnostics: Callable[[str, object], None],
     shutdown_sentinel: _mp_common.ShutdownSentinel,

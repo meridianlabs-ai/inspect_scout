@@ -1,8 +1,7 @@
 """Shared context for multiprocessing communication.
 
-This module contains the globals that are shared between the main process and worker
-subprocesses via fork. The main process initializes these values, and forked workers
-inherit them through copy-on-write memory.
+This module contains types and globals shared between the main process and worker
+subprocesses. State is serialized and passed to spawned workers via IPCContext.
 """
 
 from __future__ import annotations
@@ -11,19 +10,74 @@ from dataclasses import dataclass
 from logging import LogRecord
 from multiprocessing.managers import DictProxy
 from multiprocessing.queues import Queue
-from multiprocessing.synchronize import Event
-from threading import Condition
-from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
+from threading import Condition, Event
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    TypeAlias,
+    TypeVar,
+)
 
 import anyio
+import dill  # type: ignore
+from inspect_ai.model import GenerateConfig, Model, ModelConfig
 from typing_extensions import TypeVarTuple, Unpack
 
-from .._scanner.result import ResultReport
-from .._transcript.types import TranscriptInfo
-from .common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
-
 if TYPE_CHECKING:
+    from .._scanner.result import ResultReport
+    from .._transcript.types import TranscriptInfo
     from ._mp_semaphore import PicklableMPSemaphore
+
+    # TODO: This import from .common needs to be within a TYPE_CHECKING check since
+    # it creates a circular dependency. We should fix this.
+    from .common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
+
+
+class DillCallable:
+    """Wrapper for callables that uses dill for pickling.
+
+    This allows closures and other complex callables to be serialized
+    for use with spawn multiprocessing context.
+    """
+
+    def __init__(self, func: Callable[..., Any]) -> None:
+        """Initialize with a callable.
+
+        Args:
+            func: The callable to wrap (can be closure, lambda, etc)
+        """
+        self._pickled_func: bytes = dill.dumps(func)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """Call the wrapped function.
+
+        Args:
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+
+        Returns:
+            Result from calling the wrapped function
+        """
+        func = dill.loads(self._pickled_func)
+        return func(*args, **kwargs)
+
+    def __getstate__(self) -> bytes:
+        """Get state for pickling.
+
+        Returns:
+            Pickled function bytes
+        """
+        return self._pickled_func
+
+    def __setstate__(self, state: bytes) -> None:
+        """Set state from unpickling.
+
+        Args:
+            state: Pickled function bytes
+        """
+        self._pickled_func = state
 
 
 @dataclass(frozen=True)
@@ -93,9 +147,27 @@ UpstreamQueueItem: TypeAlias = (
 
 
 @dataclass
+class ModelContext:
+    """Model configuration shared between main process and workers.
+
+    This captures the model setup required for scanner operations so that
+    worker subprocesses can reconstruct the same model configuration.
+
+    Attributes:
+        model_config: Configuration specifying which model provider and settings to use.
+        model_roles: Optional mapping of role names to specific Model instances.
+        config: Generation parameters (temperature, max_tokens, etc.) for model calls.
+    """
+
+    model_config: ModelConfig
+    model_roles: dict[str, Model] | None
+    config: GenerateConfig
+
+
+@dataclass
 class IPCContext:
     """
-    Shared state for IPC between main process and forked workers.
+    Shared state for IPC between main process and spawned workers.
 
     For consistency, it should contain ALL data used by subprocesses that is invariant
     across subprocesses. The `executor.submit` should only pass subprocess specific
@@ -176,11 +248,14 @@ class IPCContext:
     and works across processes despite the threading.Condition type.
     """
 
+    plugin_dirs: set[str]
+    """Plugin directories to add to sys.path in subprocesses."""
 
-# Global IPC context shared between main process and forked subprocesses.
-# Initialized by multi_process strategy, inherited by workers via fork.
-# Type is non-None but runtime starts as None (cast) to avoid | None everywhere.
-ipc_context = cast(IPCContext, None)
+    log_level: str | None
+    """Log level for subprocess initialization."""
+
+    model_context: ModelContext
+    """Model configuration for scanner operations in worker subprocesses."""
 
 
 T_Retval = TypeVar("T_Retval")
@@ -210,3 +285,37 @@ async def run_sync_on_thread(
         static checkers.
     """
     return await anyio.to_thread.run_sync(func, *args, abandon_on_cancel=True)
+
+
+# Deferred config for spawn-based subprocess initialization.
+# Set early during scan setup, retrieved later if multi-process.
+_plugin_directories: set[str] = set()
+_log_level: str | None = None
+_model_context: ModelContext | None = None
+
+
+def register_plugin_directory(directory: str) -> None:
+    _plugin_directories.add(directory)
+
+
+def get_plugin_directories() -> set[str]:
+    return _plugin_directories.copy()
+
+
+def set_log_level(level: str | None) -> None:
+    global _log_level
+    _log_level = level
+
+
+def get_log_level() -> str | None:
+    return _log_level
+
+
+def set_model_context(ctx: ModelContext) -> None:
+    global _model_context
+    _model_context = ctx
+
+
+def get_model_context() -> ModelContext:
+    assert _model_context is not None, "model_context not set"
+    return _model_context

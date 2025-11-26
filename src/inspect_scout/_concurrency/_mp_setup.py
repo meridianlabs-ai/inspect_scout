@@ -13,10 +13,5 @@ import sys
 if "INSPECT_SCOUT_SYS_PATH" in os.environ:
     sys_path = json.loads(os.environ["INSPECT_SCOUT_SYS_PATH"])
     sys.path[:] = sys_path  # Modify in place to preserve sys.path identity
-
-# Add plugin directories to sys.path for user imports (scanjobs, scanners, etc.)
-if "INSPECT_SCOUT_PLUGIN_DIRS" in os.environ:
-    plugin_dirs = json.loads(os.environ["INSPECT_SCOUT_PLUGIN_DIRS"])
-    for plugin_dir in plugin_dirs:
-        if plugin_dir not in sys.path:
-            sys.path.insert(0, plugin_dir)
+    # Note: sys_path already includes plugin directories since parent process
+    # added them before capturing sys.path

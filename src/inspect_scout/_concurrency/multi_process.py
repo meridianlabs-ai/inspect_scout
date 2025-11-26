@@ -281,35 +281,46 @@ def multi_process_strategy(
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 
-            # Set environment variables for subprocess to configure sys.path before unpickling
-            os.environ["INSPECT_SCOUT_SYS_PATH"] = json.dumps(sys.path)
-
-            # Pass plugin directories to subprocess for sys.path
+            # Get plugin directories and temporarily add to sys.path during subprocess spawning
             from .._plugin_context import get_plugin_directories
             plugin_dirs = get_plugin_directories()
-            if plugin_dirs:
-                os.environ["INSPECT_SCOUT_PLUGIN_DIRS"] = json.dumps(list(plugin_dirs))
 
-            # Import subprocess_main AFTER setting env vars to avoid importing _mp_setup in parent
-            from ._mp_subprocess import subprocess_main
+            # Save original sys.path to restore after spawning
+            original_sys_path = sys.path.copy()
 
-            # Start worker processes directly
-            ctx = multiprocessing.get_context("spawn")
-            processes: list[SpawnProcess] = []
-            for worker_id in range(max_processes):
-                task_count_for_worker = base_tasks + (
-                    1 if worker_id < remainder_tasks else 0
-                )
-                try:
-                    p = ctx.Process(
-                        target=subprocess_main,
-                        args=(worker_id, task_count_for_worker, _mp_common.ipc_context),
+            try:
+                # Add plugin directories to sys.path
+                for plugin_dir in plugin_dirs:
+                    if plugin_dir not in sys.path:
+                        sys.path.insert(0, plugin_dir)
+
+                # Set environment variable with sys.path (now includes plugin dirs)
+                os.environ["INSPECT_SCOUT_SYS_PATH"] = json.dumps(sys.path)
+
+                # Import subprocess_main AFTER setting env vars to avoid importing _mp_setup in parent
+                from ._mp_subprocess import subprocess_main
+
+                # Start worker processes directly
+                ctx = multiprocessing.get_context("spawn")
+                processes: list[SpawnProcess] = []
+                for worker_id in range(max_processes):
+                    task_count_for_worker = base_tasks + (
+                        1 if worker_id < remainder_tasks else 0
                     )
-                    p.start()
-                    processes.append(p)
-                except Exception as ex:
-                    display().print(ex)
-                    raise
+                    try:
+                        p = ctx.Process(
+                            target=subprocess_main,
+                            args=(worker_id, task_count_for_worker, _mp_common.ipc_context),
+                        )
+                        p.start()
+                        processes.append(p)
+                    except Exception as ex:
+                        display().print(ex)
+                        raise
+
+            finally:
+                # Restore original sys.path after subprocess spawning
+                sys.path[:] = original_sys_path
 
             # Restore SIGINT handler in parent only (workers inherited SIG_IGN)
             signal.signal(signal.SIGINT, original_sigint_handler)

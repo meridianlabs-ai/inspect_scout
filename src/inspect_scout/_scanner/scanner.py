@@ -20,7 +20,7 @@ from inspect_ai._util.decorator import parse_decorators
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.module import load_module
 from inspect_ai._util.package import get_installed_package_name
-from inspect_ai._util.path import chdir_python, pretty_path
+from inspect_ai._util.path import add_to_syspath, pretty_path
 from inspect_ai._util.registry import (
     RegistryInfo,
     registry_add,
@@ -412,8 +412,8 @@ def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[
     if not scanner_path.exists():
         raise PrerequisiteError(f"The file '{pretty_path(file)}' does not exist.")
 
-    # switch contexts for load
-    with chdir_python(scanner_path.parent.as_posix()):
+    # add plugin root to sys.path for imports
+    with add_to_syspath(scanner_path.parent.as_posix()):
         # create scanners
         load_module(scanner_path)
         scanners: list[Scanner[Any]] = []

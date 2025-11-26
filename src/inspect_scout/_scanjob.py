@@ -10,7 +10,7 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import file
 from inspect_ai._util.module import load_module
 from inspect_ai._util.package import get_installed_package_name
-from inspect_ai._util.path import chdir_python, pretty_path
+from inspect_ai._util.path import add_to_syspath, pretty_path
 from inspect_ai._util.registry import (
     RegistryInfo,
     is_registry_object,
@@ -424,9 +424,8 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
     if scanjob_path.suffix in [".json", ".yml", ".yaml"]:
         return scanjob_from_config_file(scanjob_path)
     else:
-        # switch contexts for load
-        with chdir_python(scanjob_path.parent.as_posix()):
-            # create scanjob
+        # add plugin root to sys.path for imports
+        with add_to_syspath(scanjob_path.parent.as_posix()):
             load_module(scanjob_path)
             scanjob_decorators = parse_decorators(scanjob_path, "scanjob")
             if job is not None and job in [deco[0] for deco in scanjob_decorators]:

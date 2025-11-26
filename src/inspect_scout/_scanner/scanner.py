@@ -412,7 +412,7 @@ def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[
     if not scanner_path.exists():
         raise PrerequisiteError(f"The file '{pretty_path(file)}' does not exist.")
 
-    # add plugin root to sys.path for imports
+    # add file directory to sys.path for imports
     with add_to_syspath(scanner_path.parent.as_posix()):
         # create scanners
         load_module(scanner_path)

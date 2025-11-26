@@ -424,7 +424,7 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
     if scanjob_path.suffix in [".json", ".yml", ".yaml"]:
         return scanjob_from_config_file(scanjob_path)
     else:
-        # add plugin root to sys.path for imports
+        # add scanjob directory to sys.path for imports
         with add_to_syspath(scanjob_path.parent.as_posix()):
             load_module(scanjob_path)
             scanjob_decorators = parse_decorators(scanjob_path, "scanjob")

@@ -64,6 +64,7 @@ interface StoreState {
   sortResults?: SortColumn[];
   scansSearchText?: string;
   highlightLabeled?: boolean;
+  selectedResultRow?: number;
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -163,6 +164,7 @@ interface StoreState {
   setSortResults: (sortColumns?: SortColumn[]) => void;
   setScansSearchText: (text: string) => void;
   setHighlightLabeled: (highlight: boolean) => void;
+  setSelectedResultRow: (row: number) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -560,6 +562,11 @@ export const createStore = (api: ScanApi) =>
           setHighlightLabeled: (highlight: boolean) => {
             set((state) => {
               state.highlightLabeled = highlight;
+            });
+          },
+          setSelectedResultRow: (row: number) => {
+            set((state) => {
+              state.selectedResultRow = row;
             });
           },
         })),

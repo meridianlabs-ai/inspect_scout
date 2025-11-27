@@ -156,3 +156,32 @@ export function formatDuration(start: Date, end: Date): string {
   const durationSec = durationMs / 1000;
   return formatTime(durationSec);
 }
+
+/**
+ * Truncates a string from the center, showing start and end with ellipsis in the middle.
+ * @param str - The string to truncate
+ * @param maxLength - Maximum length of the output string (default: 50)
+ * @returns The truncated string with ellipsis in the middle if needed
+ */
+export function centerTruncate(str: string, maxLength: number = 50): string {
+  if (str.length <= maxLength) {
+    return str;
+  }
+
+  const ellipsis = "…";
+  const availableLength = maxLength - ellipsis.length;
+
+  // If maxLength is too small to show anything meaningful
+  if (availableLength <= 0) {
+    return ellipsis;
+  }
+
+  // Calculate how much to show from start and end
+  const startLength = Math.ceil(availableLength / 2);
+  const endLength = Math.floor(availableLength / 2);
+
+  const start = str.slice(0, startLength);
+  const end = str.slice(-endLength);
+
+  return start + ellipsis + end;
+}

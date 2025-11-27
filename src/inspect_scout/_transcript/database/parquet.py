@@ -25,7 +25,7 @@ from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 
 from ..json.load_filtered import load_filtered_transcript
-from ..local_files_cache import LocalFilesCache, create_temp_cache
+from ..local_files_cache import init_task_files_cache
 from ..metadata import Condition
 from ..transcripts import (
     Transcripts,
@@ -81,11 +81,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # When available, add: bloom_filter_columns=['transcript_id'] to write_table calls.
 
         # initialize cache
-        self._cache_cleanup: Callable[[], None] | None = None
-        self._cache = LocalFilesCache.task_cache()
-        if self._cache is None:
-            self._cache = create_temp_cache()
-            self._cache_cleanup = self._cache.cleanup
+        self._cache = init_task_files_cache()
 
         # State (initialized in connect)
         self._conn: duckdb.DuckDBPyConnection | None = None
@@ -148,10 +144,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._fs is not None:
             await self._fs.close()
             self._fs = None
-
-        if self._cache_cleanup is not None:
-            self._cache_cleanup()
-            self._cache_cleanup = None
 
     @override
     async def insert(

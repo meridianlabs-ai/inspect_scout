@@ -32,27 +32,27 @@ from inspect_scout._transcript.types import Transcript
         # Basic user message
         (
             ChatMessageUser(content="Hello, world!"),
-            "user:\nHello, world!\n",
+            "USER:\nHello, world!\n",
         ),
         # Basic assistant message
         (
             ChatMessageAssistant(content="I can help with that."),
-            "assistant:\nI can help with that.\n",
+            "ASSISTANT:\nI can help with that.\n",
         ),
         # Basic tool message
         (
             ChatMessageTool(content="Operation successful", function="write_file"),
-            "tool:\nOperation successful\n",
+            "TOOL:\nOperation successful\n",
         ),
         # Message with whitespace gets stripped
         (
             ChatMessageUser(content="  \n  Hello  \n  "),
-            "user:\n  \n  Hello  \n  \n",
+            "USER:\n  \n  Hello  \n  \n",
         ),
         # Message with empty content
         (
             ChatMessageUser(content=""),
-            "user:\n\n",
+            "USER:\n\n",
         ),
     ],
 )
@@ -70,21 +70,21 @@ def test_simple_messages(message: ChatMessage, expected: str) -> None:
             "Error occurred",
             "get_weather",
             "Connection timeout",
-            "tool:\nError occurred\n\nError in tool call 'get_weather':\nConnection timeout\n\n",
+            "TOOL:\nError occurred\n\nError in tool call 'get_weather':\nConnection timeout\n\n",
         ),
         # Tool error without function name
         (
             "Something went wrong",
             None,
             "Unknown error",
-            "tool:\nSomething went wrong\n\nError in tool call 'unknown':\nUnknown error\n\n",
+            "TOOL:\nSomething went wrong\n\nError in tool call 'unknown':\nUnknown error\n\n",
         ),
         # Tool error with empty content
         (
             "",
             "read_file",
             "Access denied",
-            "tool:\n\n\nError in tool call 'read_file':\nAccess denied\n\n",
+            "TOOL:\n\n\nError in tool call 'read_file':\nAccess denied\n\n",
         ),
     ],
 )
@@ -116,7 +116,7 @@ def test_tool_messages_with_errors(
                     )
                 ],
             ),
-            "assistant:\nLet me check the weather.\n\n"
+            "ASSISTANT:\nLet me check the weather.\n\n"
             "Tool Call: get_weather\nArguments:\n"
             "location: San Francisco\nunits: celsius\n",
         ),
@@ -137,7 +137,7 @@ def test_tool_messages_with_errors(
                     ),
                 ],
             ),
-            "assistant:\nLet me check both.\n\n"
+            "ASSISTANT:\nLet me check both.\n\n"
             "Tool Call: get_weather\nArguments:\nlocation: San Francisco\n\n"
             "Tool Call: get_time\nArguments:\ntimezone: PST\n",
         ),
@@ -149,7 +149,7 @@ def test_tool_messages_with_errors(
                     ToolCall(id="call_1", function="no_args_function", arguments={})
                 ],
             ),
-            "assistant:\nCalling with no args.\n\nTool Call: no_args_function\nArguments:\n\n",
+            "ASSISTANT:\nCalling with no args.\n\nTool Call: no_args_function\nArguments:\n\n",
         ),
         # Tool call with empty content
         (
@@ -161,7 +161,7 @@ def test_tool_messages_with_errors(
                     )
                 ],
             ),
-            "assistant:\n\n\nTool Call: search\nArguments:\nquery: test\n",
+            "ASSISTANT:\n\n\nTool Call: search\nArguments:\nquery: test\n",
         ),
         # Tool call with nested arguments
         (
@@ -178,7 +178,7 @@ def test_tool_messages_with_errors(
                     )
                 ],
             ),
-            "assistant:\nRunning complex call.\n\n"
+            "ASSISTANT:\nRunning complex call.\n\n"
             "Tool Call: complex_function\nArguments:\n"
             "config: {'retry': True, 'timeout': 30}\n"
             "items: ['item1', 'item2']\n",
@@ -204,7 +204,7 @@ def test_assistant_messages_with_tool_calls(
                     ContentText(text="Second text"),
                 ]
             ),
-            "user:\nFirst text\nSecond text\n",
+            "USER:\nFirst text\nSecond text\n",
         ),
         # Mixed content - text extracted, non-text ignored
         (
@@ -215,12 +215,12 @@ def test_assistant_messages_with_tool_calls(
                     ContentText(text="Text after image"),
                 ]
             ),
-            "user:\nText before image\n<image />\nText after image\n",
+            "USER:\nText before image\n<image />\nText after image\n",
         ),
         # Only non-text content produces empty text
         (
             ChatMessageUser(content=[ContentImage(image="data:image/png;base64,abc")]),
-            "user:\n<image />\n",
+            "USER:\n<image />\n",
         ),
         # Reasoning + text (reasoning is not type='text' so excluded)
         (
@@ -230,7 +230,7 @@ def test_assistant_messages_with_tool_calls(
                     ContentText(text="The answer is 42"),
                 ]
             ),
-            "assistant:\n\n<think>Let me think...</think>\nThe answer is 42\n",
+            "ASSISTANT:\n\n<think>Let me think...</think>\nThe answer is 42\n",
         ),
         # Text mixed with various content types
         (
@@ -243,7 +243,7 @@ def test_assistant_messages_with_tool_calls(
                     ContentText(text="End"),
                 ]
             ),
-            "user:\nStart\n<data />\nMiddle\n<document />\nEnd\n",
+            "USER:\nStart\n<data />\nMiddle\n<document />\nEnd\n",
         ),
         # Content with whitespace in text parts - strips outer, not inner
         (
@@ -253,7 +253,7 @@ def test_assistant_messages_with_tool_calls(
                     ContentText(text="\n\nText with newlines\n\n"),
                 ]
             ),
-            "user:\n  Text with spaces  \n\n\nText with newlines\n\n\n",
+            "USER:\n  Text with spaces  \n\n\nText with newlines\n\n\n",
         ),
         # Tool message with list content
         (
@@ -264,7 +264,7 @@ def test_assistant_messages_with_tool_calls(
                 ],
                 function="analyze",
             ),
-            "tool:\nTool result\n<image />\n",
+            "TOOL:\nTool result\n<image />\n",
         ),
         # Assistant with list content and tool calls
         (
@@ -280,7 +280,7 @@ def test_assistant_messages_with_tool_calls(
                     )
                 ],
             ),
-            "assistant:\nLet me search\n<image />\nfor that\n\n"
+            "ASSISTANT:\nLet me search\n<image />\nfor that\n\n"
             "Tool Call: search\nArguments:\nquery: test\n",
         ),
         # Tool message with list content and error
@@ -293,7 +293,7 @@ def test_assistant_messages_with_tool_calls(
                 function="slow_operation",
                 error=ToolCallError(type="timeout", message="Operation timed out"),
             ),
-            "tool:\nAttempted operation\n<data />\n\nError in tool call 'slow_operation':\nOperation timed out\n\n",
+            "TOOL:\nAttempted operation\n<data />\n\nError in tool call 'slow_operation':\nOperation timed out\n\n",
         ),
     ],
 )
@@ -320,7 +320,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             False,
-            "assistant:\nLet me check the weather.\n",
+            "ASSISTANT:\nLet me check the weather.\n",
         ),
         # Tool calls only: excluded with multiple calls
         (
@@ -333,7 +333,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             False,
-            "assistant:\nLet me check both.\n",
+            "ASSISTANT:\nLet me check both.\n",
         ),
         # Tool calls only: included (default)
         (
@@ -345,7 +345,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "assistant:\nUsing tools.\n\nTool Call: search\nArguments:\nq: test\n",
+            "ASSISTANT:\nUsing tools.\n\nTool Call: search\nArguments:\nq: test\n",
         ),
         # Tool calls only: excluded with empty content
         (
@@ -357,7 +357,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             False,
-            "assistant:\n\n",
+            "ASSISTANT:\n\n",
         ),
         # Tool calls only: excluded with list content
         (
@@ -372,7 +372,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             False,
-            "assistant:\nSearching\n<image />\n",
+            "ASSISTANT:\nSearching\n<image />\n",
         ),
         # Reasoning only: included (exclude=False)
         (
@@ -384,7 +384,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "assistant:\n\n<think>Let me think...</think>\nThe answer is 42\n",
+            "ASSISTANT:\n\n<think>Let me think...</think>\nThe answer is 42\n",
         ),
         # Reasoning only: excluded (default, exclude=True)
         (
@@ -396,21 +396,21 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             True,
-            "assistant:\nThe answer is 42\n",
+            "ASSISTANT:\nThe answer is 42\n",
         ),
         # Reasoning only: only reasoning content, included
         (
             ChatMessageAssistant(content=[ContentReasoning(reasoning="Thinking...")]),
             False,
             False,
-            "assistant:\n\n<think>Thinking...</think>\n",
+            "ASSISTANT:\n\n<think>Thinking...</think>\n",
         ),
         # Reasoning only: only reasoning content, excluded (default)
         (
             ChatMessageAssistant(content=[ContentReasoning(reasoning="Thinking...")]),
             False,
             True,
-            "assistant:\n\n",
+            "ASSISTANT:\n\n",
         ),
         # Reasoning only: multiple reasoning parts, included
         (
@@ -423,7 +423,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "assistant:\n\n<think>First thought</think>\nAnswer\n\n<think>Second thought</think>\n",
+            "ASSISTANT:\n\n<think>First thought</think>\nAnswer\n\n<think>Second thought</think>\n",
         ),
         # Reasoning only: multiple reasoning parts, excluded (default)
         (
@@ -436,7 +436,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             True,
-            "assistant:\nAnswer\n",
+            "ASSISTANT:\nAnswer\n",
         ),
         # Combined: both excluded
         (
@@ -451,7 +451,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             True,
-            "assistant:\nAnswer\n",
+            "ASSISTANT:\nAnswer\n",
         ),
         # Combined: both included
         (
@@ -466,7 +466,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "assistant:\n\n<think>Let me think</think>\nAnswer\n\n"
+            "ASSISTANT:\n\n<think>Let me think</think>\nAnswer\n\n"
             "Tool Call: search\nArguments:\nq: test\n",
         ),
         # Combined: only reasoning included (tool calls excluded)
@@ -480,7 +480,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             False,
-            "assistant:\n\n<think>Thinking</think>\nDone\n",
+            "ASSISTANT:\n\n<think>Thinking</think>\nDone\n",
         ),
         # Combined: only tool calls included (reasoning excluded, default)
         (
@@ -493,7 +493,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             True,
-            "assistant:\nDone\n\nTool Call: act\nArguments:\n\n",
+            "ASSISTANT:\nDone\n\nTool Call: act\nArguments:\n\n",
         ),
         # Combined: both excluded, only reasoning and tool calls in content
         (
@@ -503,7 +503,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             True,
-            "assistant:\n\n",
+            "ASSISTANT:\n\n",
         ),
     ],
 )
@@ -534,7 +534,7 @@ def test_exclude_parameters(
             ],
             None,
             False,
-            "user:\nHello\n\nassistant:\nHi\n",
+            "USER:\nHello\n\nASSISTANT:\nHi\n",
             None,
         ),
         # Basic case with IDs
@@ -545,7 +545,7 @@ def test_exclude_parameters(
             ],
             None,
             True,
-            "[M1] user:\nHello\n\n[M2] assistant:\nHi\n",
+            "[M1] USER:\nHello\n\n[M2] ASSISTANT:\nHi\n",
             {"M1": "msg1", "M2": "msg2"},
         ),
         # System messages excluded by default
@@ -556,7 +556,7 @@ def test_exclude_parameters(
             ],
             MessagesPreprocessor(),
             True,
-            "[M1] user:\nHello\n",
+            "[M1] USER:\nHello\n",
             {"M1": "msg1"},
         ),
         # Tool messages excluded when filter set
@@ -568,7 +568,7 @@ def test_exclude_parameters(
             ],
             MessagesPreprocessor(exclude_tool_usage=True),
             True,
-            "[M1] user:\nHello\n\n[M2] assistant:\nDone\n",
+            "[M1] USER:\nHello\n\n[M2] ASSISTANT:\nDone\n",
             {"M1": "msg1", "M2": "msg2"},
         ),
         # Empty list
@@ -578,7 +578,7 @@ def test_exclude_parameters(
             [ChatMessageUser(content="Single", id="msg1")],
             None,
             True,
-            "[M1] user:\nSingle\n",
+            "[M1] USER:\nSingle\n",
             {"M1": "msg1"},
         ),
     ],
@@ -631,8 +631,8 @@ async def test_messages_as_str_with_preprocessor() -> None:
     )
 
     # Test the formatted string
-    assert "[M1] user:\nUser 1\n" in result
-    assert "[M2] user:\nUser 2\n" in result
+    assert "[M1] USER:\nUser 1\n" in result
+    assert "[M2] USER:\nUser 2\n" in result
     assert "Assistant" not in result
 
     # Test the extract_references function
@@ -658,13 +658,13 @@ async def test_messages_as_str_with_transcript() -> None:
 
     # Without IDs
     result = await messages_as_str(transcript)
-    assert result == "user:\nHello\n\nassistant:\nHi there\n"
+    assert result == "USER:\nHello\n\nASSISTANT:\nHi there\n"
 
     # With IDs
     result_with_ids, extract_references = await messages_as_str(
         transcript, include_ids=True
     )
-    assert result_with_ids == "[M1] user:\nHello\n\n[M2] assistant:\nHi there\n"
+    assert result_with_ids == "[M1] USER:\nHello\n\n[M2] ASSISTANT:\nHi there\n"
 
     # Test extract_references
     refs = extract_references("[M1] and [M2]")
@@ -702,8 +702,8 @@ async def test_messages_as_str_with_transcript_and_preprocessor() -> None:
     )
 
     # Only user messages should be present
-    assert "[M1] user:\nFirst user\n" in result
-    assert "[M2] user:\nSecond user\n" in result
+    assert "[M1] USER:\nFirst user\n" in result
+    assert "[M2] USER:\nSecond user\n" in result
     assert "assistant" not in result
 
     # Test extract_references

@@ -1,0 +1,16 @@
+.sourcePanel {
+  width: 100%;
+  padding: 0.5em;
+}
+
+.sourcePanel:not(.simple) {
+  background: var(--bs-light);
+  border-radius: var(--bs-border-radius);
+}
+
+.sourcePanel .code {
+  font-size: var(--inspect-font-size-small);
+  white-space: pre-wrap !important;
+  word-wrap: anywhere !important;
+  background: transparent !important;
+}

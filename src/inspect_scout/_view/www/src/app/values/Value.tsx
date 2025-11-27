@@ -52,7 +52,7 @@ export const Value: FC<ValueProps> = ({ result, style }): ReactNode => {
 
   if (isStringValue(result)) {
     return `"${result.value}"`;
-  } else if (isNumberValue(result)) {
+  } else if (isNumberValue(result) && result.value !== null) {
     return formatPrettyDecimal(result.value);
   } else if (isBooleanValue(result)) {
     return (

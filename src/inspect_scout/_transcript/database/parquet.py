@@ -40,7 +40,7 @@ from .source import TranscriptsSource
 logger = getLogger(__name__)
 
 
-PARQUET_TRANSCRIPTS_GLOB = "transcripts_*.parquet"
+PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 
 
 class ParquetTranscriptsDB(TranscriptsDB):

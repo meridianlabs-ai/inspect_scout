@@ -85,6 +85,8 @@ def single_process_strategy(
         scan_completed: Callable[[], Awaitable[None]],
     ) -> None:
         metrics = ScanMetrics(1)
+        metrics_updated_at = datetime.datetime.now()
+
         nonlocal overall_start_time
         if not overall_start_time:
             overall_start_time = time.time()
@@ -118,18 +120,19 @@ def single_process_strategy(
             if not update_metrics:
                 return
 
-            if datetime.datetime.now() - metrics.last_updated_at < datetime.timedelta(
+            nonlocal metrics_updated_at
+            if datetime.datetime.now() - metrics_updated_at < datetime.timedelta(
                 seconds=1
             ):
                 return
+
+            metrics_updated_at = datetime.datetime.now()
 
             # USS - Unique Set Size
             metrics.memory_usage = process.memory_full_info().uss
             metrics.cpu_use = process.cpu_percent()
             # print(f"{diag_prefix} CPU {metrics.cpu_use}")
             metrics.buffered_scanner_jobs = len(scanner_job_deque)
-            metrics.last_updated_at = datetime.datetime.now()
-
             update_metrics(metrics)
 
         def _choose_next_action() -> Literal["parse", "scan", "wait"]:

@@ -1,4 +1,3 @@
-import datetime
 from dataclasses import dataclass, fields
 from functools import reduce
 from typing import (
@@ -32,8 +31,6 @@ class ScanMetrics:
     cpu_use: float = 0
     # RSS for now, but we can revisit
     memory_usage: int = 0
-
-    last_updated_at: datetime.datetime = datetime.datetime.now()
 
 
 def sum_metrics(metrics_list: Iterable[ScanMetrics]) -> ScanMetrics:

@@ -1,3 +1,4 @@
+import datetime
 import time
 from collections import deque
 from typing import AsyncIterator, Awaitable, Callable, Literal
@@ -114,13 +115,22 @@ def single_process_strategy(
             return f"{item.union_transcript.transcript_id, item.scanner_name}"
 
         def _update_metrics() -> None:
-            if update_metrics:
-                # USS - Unique Set Size
-                metrics.memory_usage = process.memory_full_info().uss
-                metrics.cpu_use = process.cpu_percent()
-                # print(f"{diag_prefix} CPU {metrics.cpu_use}")
-                metrics.buffered_scanner_jobs = len(scanner_job_deque)
-                update_metrics(metrics)
+            if not update_metrics:
+                return
+
+            if datetime.datetime.now() - metrics.last_updated_at < datetime.timedelta(
+                seconds=1
+            ):
+                return
+
+            # USS - Unique Set Size
+            metrics.memory_usage = process.memory_full_info().uss
+            metrics.cpu_use = process.cpu_percent()
+            # print(f"{diag_prefix} CPU {metrics.cpu_use}")
+            metrics.buffered_scanner_jobs = len(scanner_job_deque)
+            metrics.last_updated_at = datetime.datetime.now()
+
+            update_metrics(metrics)
 
         def _choose_next_action() -> Literal["parse", "scan", "wait"]:
             """Decide what action this worker should take: 'parse', 'scan', or 'wait'."""

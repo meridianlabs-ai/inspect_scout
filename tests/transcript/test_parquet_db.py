@@ -919,7 +919,7 @@ def create_record_batch_reader(
     Returns:
         PyArrow RecordBatchReader.
     """
-    data = {"transcript_id": transcript_ids}
+    data: dict[str, list[Any] | pa.Array[Any]] = {"transcript_id": transcript_ids}
 
     if include_source_fields:
         data["source_type"] = ["test"] * len(transcript_ids)
@@ -933,7 +933,7 @@ def create_record_batch_reader(
     if metadata:
         data.update(metadata)
 
-    table = pa.table(data)  # type: ignore[arg-type]
+    table = pa.table(data)
     return table.to_reader()
 
 

@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterable, AsyncIterator, Callable, Iterable, cast
+from typing import Any, AsyncIterable, AsyncIterator, Iterable, cast
 
 import duckdb
 import pandas as pd

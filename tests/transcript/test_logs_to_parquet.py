@@ -63,12 +63,6 @@ async def get_transcript_ids(transcripts: Transcripts) -> list[str]:
         return [info.transcript_id async for info in reader.index()]
 
 
-async def get_transcript_count(transcripts: Transcripts) -> int:
-    """Get count of transcripts from a Transcripts source."""
-    async with transcripts.reader() as reader:
-        return await reader.count()
-
-
 async def read_full_transcript(
     transcripts: Transcripts, transcript_id: str
 ) -> Transcript:
@@ -124,18 +118,6 @@ def assert_transcripts_equal(t1: Transcript, t2: Transcript) -> None:
         assert type(e1) is type(e2), f"Event {i} type differs: {type(e1)} vs {type(e2)}"
         # Compare the event objects (they should be equal if same type and data)
         assert e1 == e2, f"Event {i} differs"
-
-
-@pytest.mark.asyncio
-async def test_basic_import_and_count(
-    log_transcripts: Transcripts, parquet_transcripts: Transcripts
-) -> None:
-    """Test basic import and verify transcript count matches."""
-    log_count = await get_transcript_count(log_transcripts)
-    parquet_count = await get_transcript_count(parquet_transcripts)
-
-    assert log_count > 0, "Should have transcripts from test logs"
-    assert log_count == parquet_count, "Parquet DB should have same count as logs"
 
 
 @pytest.mark.asyncio

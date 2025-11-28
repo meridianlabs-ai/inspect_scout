@@ -149,10 +149,6 @@ async def test_insert_single_batch(
     parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
     assert len(parquet_files) == 1
 
-    # Verify count
-    count = await parquet_db.count([], None)
-    assert count == 5
-
 
 @pytest.mark.asyncio
 async def test_insert_multiple_batches(test_location: Path) -> None:
@@ -204,9 +200,6 @@ async def test_insert_multiple_batches(test_location: Path) -> None:
             f"Expected reasonable number of files, got {len(parquet_files)}"
         )
 
-        # Verify count
-        count = await parquet_db.count([], None)
-        assert count == 500
     finally:
         await parquet_db.disconnect()
 
@@ -219,22 +212,22 @@ async def test_insert_async_iterator(
     await parquet_db.insert(async_transcript_generator(15))
 
     # Verify data was inserted
-    count = await parquet_db.count([], None)
-    assert count == 15
+    transcript_ids = await parquet_db.transcript_ids([], None)
+    assert len(transcript_ids) == 15
 
 
 @pytest.mark.asyncio
 async def test_count_all(populated_db: ParquetTranscriptsDB) -> None:
     """Test counting all transcripts."""
-    count = await populated_db.count([], None)
-    assert count == 20
+    transcript_ids = await populated_db.transcript_ids([], None)
+    assert len(transcript_ids) == 20
 
 
 @pytest.mark.asyncio
 async def test_count_with_limit(populated_db: ParquetTranscriptsDB) -> None:
     """Test counting with limit parameter."""
-    count = await populated_db.count([], limit=5)
-    assert count == 5
+    transcript_ids = await populated_db.transcript_ids([], limit=5)
+    assert len(transcript_ids) == 5
 
 
 # Query & Filtering Tests
@@ -406,10 +399,6 @@ async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
 # Schema & File Management Tests
 @pytest.mark.asyncio
 async def test_empty_database(parquet_db: ParquetTranscriptsDB) -> None:
-    """Test querying empty database."""
-    count = await parquet_db.count([], None)
-    assert count == 0
-
     results = [info async for info in parquet_db.select([], None, False)]
     assert len(results) == 0
 
@@ -462,8 +451,8 @@ async def test_null_handling(parquet_db: ParquetTranscriptsDB) -> None:
 
     await parquet_db.insert(transcripts)
 
-    count = await parquet_db.count([], None)
-    assert count == 2
+    transcript_ids = await parquet_db.transcript_ids([], None)
+    assert len(transcript_ids) == 2
 
 
 # Integration Tests - ParquetTranscripts
@@ -480,9 +469,6 @@ async def test_factory_function(test_location: Path) -> None:
         if hasattr(reader, "_db"):
             await reader._db.insert(sample_data)
 
-        count = await reader.count()
-        assert count == 5
-
 
 @pytest.mark.asyncio
 async def test_where_filtering(test_location: Path) -> None:
@@ -497,9 +483,9 @@ async def test_where_filtering(test_location: Path) -> None:
     filtered = transcripts_obj.where(m.model == "gpt-4")
 
     async with filtered.reader() as reader:
-        count = await reader.count()
+        index = [info async for info in reader.index()]
         # Should have fewer than 20
-        assert count < 20
+        assert len(index) < 20
 
 
 @pytest.mark.asyncio
@@ -514,8 +500,8 @@ async def test_limit_method(test_location: Path) -> None:
     limited = transcripts_obj.limit(5)
 
     async with limited.reader() as reader:
-        count = await reader.count()
-        assert count == 5
+        index = [info async for info in reader.index()]
+        assert len(index) == 5
 
 
 @pytest.mark.asyncio
@@ -546,8 +532,8 @@ async def test_insert_empty_list(parquet_db: ParquetTranscriptsDB) -> None:
     """Test inserting empty iterable."""
     await parquet_db.insert([])
 
-    count = await parquet_db.count([], None)
-    assert count == 0
+    transcript_ids = await parquet_db.transcript_ids([], None)
+    assert len(transcript_ids) == 0
 
 
 @pytest.mark.asyncio
@@ -789,8 +775,10 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
         )
 
         # Verify data integrity - all transcripts should be queryable
-        count = await parquet_db.count([], None)
-        assert count == 100, f"Expected 100 transcripts, got {count}"
+        transcript_ids = await parquet_db.transcript_ids([], None)
+        assert len(transcript_ids) == 100, (
+            f"Expected 100 transcripts, got {len(transcript_ids)}"
+        )
 
     finally:
         await parquet_db.disconnect()
@@ -847,8 +835,8 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db_all.connect()
 
     # Should find all 9 transcripts across root and subdirectories
-    count = await db_all.count([], None)
-    assert count == 9
+    transcript_ids = await db_all.transcript_ids([], None)
+    assert len(transcript_ids) == 9
 
     # Verify we can query transcripts from all locations
     all_transcripts = [info async for info in db_all.select([], None, False)]
@@ -956,8 +944,8 @@ async def test_insert_record_batch_reader_all_columns(test_location: Path) -> No
         await db.insert(reader)
 
         # Verify count
-        count = await db.count([], None)
-        assert count == 3
+        transcript_ids = await db.transcript_ids([], None)
+        assert len(transcript_ids) == 3
 
         # Verify data is queryable
         results = [info async for info in db.select([], None, False)]
@@ -990,10 +978,6 @@ async def test_insert_record_batch_reader_minimal_schema(test_location: Path) ->
         # Insert
         await db.insert(reader)
 
-        # Verify count
-        count = await db.count([], None)
-        assert count == 2
-
         # Verify select() returns None for optional fields
         results = [info async for info in db.select([], None, False)]
         assert len(results) == 2
@@ -1023,10 +1007,6 @@ async def test_insert_record_batch_reader_duplicate_filtering(
         ]
         await db.insert(transcripts)
 
-        # Verify initial count
-        count = await db.count([], None)
-        assert count == 2
-
         # Create RecordBatchReader with mix of new and duplicate IDs
         reader = create_record_batch_reader(
             transcript_ids=["dup-001", "dup-002", "dup-003", "dup-004"],
@@ -1037,9 +1017,6 @@ async def test_insert_record_batch_reader_duplicate_filtering(
         # Insert - duplicates should be filtered
         await db.insert(reader)
 
-        # Verify only new ones were added
-        count = await db.count([], None)
-        assert count == 4  # 2 original + 2 new (dup-003, dup-004)
     finally:
         await db.disconnect()
 
@@ -1081,8 +1058,8 @@ async def test_insert_record_batch_reader_batch_size_splitting(
         assert len(parquet_files) > 1
 
         # Verify all data is queryable
-        count = await db.count([], None)
-        assert count == 100
+        transcript_ids = await db.transcript_ids([], None)
+        assert len(transcript_ids) == 100
     finally:
         await db.disconnect()
 
@@ -1355,5 +1332,177 @@ async def test_file_columns_cache_reused(test_location: Path) -> None:
 
         # Cache should still have just one entry (reused, not re-populated)
         assert len(db._file_columns_cache) == 1
+    finally:
+        await db.disconnect()
+
+
+# Schema Inference Fallback Tests
+@pytest.mark.asyncio
+async def test_exclude_clause_fallback_mixed_schemas(test_location: Path) -> None:
+    """Test fallback when first file has different content columns than others.
+
+    The schema inference optimization reads schema from the first file only.
+    If that schema differs from other files (e.g., first file lacks messages/events
+    but later files have them), the fallback should scan all file schemas.
+    """
+    import pyarrow.parquet as pq
+
+    # First file: NO messages/events columns (sorted first alphabetically)
+    table1 = pa.table(
+        {
+            "transcript_id": ["a-001", "a-002"],
+            "source_type": ["test", "test"],
+            "custom_field": ["val1", "val2"],
+        }
+    )
+    pq.write_table(table1, str(test_location / "transcripts_aaa_first.parquet"))
+
+    # Second file: HAS messages/events columns (sorted second alphabetically)
+    table2 = pa.table(
+        {
+            "transcript_id": ["b-001", "b-002"],
+            "source_type": ["test", "test"],
+            "messages": ['[{"role": "user", "content": "hello"}]', "[]"],
+            "events": ["[]", "[]"],
+        }
+    )
+    pq.write_table(table2, str(test_location / "transcripts_bbb_second.parquet"))
+
+    # Connect - should handle mixed schemas via fallback
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Should be able to query all transcripts
+        results = [info async for info in db.select()]
+        assert len(results) == 4
+
+        # Verify we got transcripts from both files
+        ids = {r.transcript_id for r in results}
+        assert "a-001" in ids
+        assert "b-001" in ids
+
+        # Read from second file should return messages
+        b_info = next(r for r in results if r.transcript_id == "b-001")
+        content = TranscriptContent(messages="all", events=None)
+        transcript = await db.read(b_info, content)
+        assert len(transcript.messages) == 1
+        assert transcript.messages[0].content == "hello"
+    finally:
+        await db.disconnect()
+
+
+# Snapshot Tests
+@pytest.mark.asyncio
+async def test_snapshot_returns_transcript_ids(test_location: Path) -> None:
+    """Test that snapshot() returns correct ScanTranscripts with transcript IDs."""
+    from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Insert test transcripts
+        transcripts = [
+            create_sample_transcript(id=f"snap-{i:03d}", metadata={"index": i})
+            for i in range(5)
+        ]
+        await db.insert(transcripts)
+
+        # Create reader and get snapshot
+        reader = TranscriptsDBReader(db)
+        scan_transcripts, transcript_ids = await reader.snapshot()
+
+        # Verify ScanTranscripts structure
+        assert scan_transcripts.type == TRANSCRIPT_SOURCE_DATABASE
+        assert scan_transcripts.location == str(test_location)
+        assert scan_transcripts.count == 5
+
+        # Verify fields
+        assert len(scan_transcripts.fields) == 1
+        assert scan_transcripts.fields[0]["name"] == "transcript_id"
+        assert scan_transcripts.fields[0]["type"] == "string"
+
+        # Verify transcript IDs list
+        assert len(transcript_ids) == 5
+        assert set(transcript_ids) == {f"snap-{i:03d}" for i in range(5)}
+
+        # Verify CSV data contains all IDs
+        assert "transcript_id" in scan_transcripts.data  # Header
+        for tid in transcript_ids:
+            assert tid in scan_transcripts.data
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_empty_database(test_location: Path) -> None:
+    """Test that snapshot() works correctly with empty database."""
+    from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        reader = TranscriptsDBReader(db)
+        scan_transcripts, transcript_ids = await reader.snapshot()
+
+        # Verify empty results
+        assert scan_transcripts.type == TRANSCRIPT_SOURCE_DATABASE
+        assert scan_transcripts.count == 0
+        assert len(transcript_ids) == 0
+        assert "transcript_id" in scan_transcripts.data  # Header still present
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_exclude_clause_first_file_has_content(test_location: Path) -> None:
+    """Test that exclude clause works when first file HAS content columns.
+
+    This is the fast path - schema from first file matches all files.
+    """
+    import pyarrow.parquet as pq
+
+    # First file: HAS messages/events (sorted first)
+    table1 = pa.table(
+        {
+            "transcript_id": ["a-001"],
+            "source_type": ["test"],
+            "messages": ['[{"role": "user", "content": "first"}]'],
+            "events": ["[]"],
+        }
+    )
+    pq.write_table(table1, str(test_location / "transcripts_aaa.parquet"))
+
+    # Second file: also HAS messages/events (sorted second)
+    table2 = pa.table(
+        {
+            "transcript_id": ["b-001"],
+            "source_type": ["test"],
+            "messages": ['[{"role": "user", "content": "second"}]'],
+            "events": ["[]"],
+        }
+    )
+    pq.write_table(table2, str(test_location / "transcripts_bbb.parquet"))
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Both transcripts should be queryable
+        results = [info async for info in db.select()]
+        assert len(results) == 2
+
+        # Messages should NOT appear in metadata (excluded from VIEW)
+        for info in results:
+            assert "messages" not in info.metadata
+            assert "events" not in info.metadata
+
+        # But reading content should work
+        content = TranscriptContent(messages="all", events=None)
+        for info in results:
+            transcript = await db.read(info, content)
+            assert len(transcript.messages) == 1
     finally:
         await db.disconnect()

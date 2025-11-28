@@ -114,10 +114,6 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         return None
 
     @override
-    async def count(self) -> int:
-        return await self._db.count(self._query.where, self._query.limit)
-
-    @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
         return self._db.query(self._query.where, self._query.limit, self._query.shuffle)
 
@@ -285,32 +281,9 @@ class EvalLogTranscriptsDB:
 
         df_to_write.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")
 
-    async def count(
-        self,
-        where: list[Condition],
-        limit: int | None = None,
-    ) -> int:
-        assert self._conn is not None
-
-        # build sql with where clause
-        where_clause, where_params = self._build_where_clause(where)
-
-        if limit is not None:
-            # When limit is specified, we need to count from a subquery
-            sql = f"SELECT COUNT(*) FROM (SELECT * FROM {TRANSCRIPTS}{where_clause} LIMIT {limit})"
-        else:
-            # Simple count without limit
-            sql = f"SELECT COUNT(*) FROM {TRANSCRIPTS}{where_clause}"
-
-        # execute the query
-        cursor = self._conn.execute(sql, where_params)
-        result = cursor.fetchone()
-
-        return result[0] if result else 0
-
     async def query(
         self,
-        where: list[Condition],
+        where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
     ) -> AsyncIterator[TranscriptInfo]:
@@ -421,7 +394,9 @@ class EvalLogTranscriptsDB:
             await self._fs.close()
             self._fs = None
 
-    def _build_where_clause(self, where: list[Condition]) -> tuple[str, list[Any]]:
+    def _build_where_clause(
+        self, where: list[Condition] | None
+    ) -> tuple[str, list[Any]]:
         """Build WHERE clause and parameters from conditions.
 
         Args:
@@ -430,7 +405,7 @@ class EvalLogTranscriptsDB:
         Returns:
             Tuple of (where_clause, parameters). where_clause is empty string if no conditions.
         """
-        if len(where) > 0:
+        if where and len(where) > 0:
             condition: Condition = (
                 where[0] if len(where) == 1 else reduce(lambda a, b: a & b, where)
             )

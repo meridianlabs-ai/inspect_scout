@@ -20,9 +20,6 @@ class MockTranscripts(Transcripts, TranscriptsReader):
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         return None
 
-    async def count(self) -> int:
-        return 0
-
     def index(self) -> Any:
         async def empty_generator() -> Any:
             if False:

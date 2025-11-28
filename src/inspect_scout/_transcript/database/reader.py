@@ -10,21 +10,20 @@ from typing_extensions import override
 from inspect_scout._scanspec import ScanTranscripts, TranscriptField
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
-from ..transcripts import TranscriptsQuery, TranscriptsReader
+from ..transcripts import TranscriptsReader
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
 
 
 class TranscriptsDBReader(TranscriptsReader):
-    """TranscriptsReader that delegates to a TranscriptDB backend."""
+    """TranscriptsReader that delegates to a TranscriptDB backend.
 
-    def __init__(
-        self,
-        db: TranscriptsDB,
-        query: TranscriptsQuery | None = None,
-    ) -> None:
+    Query filtering (WHERE/SHUFFLE/LIMIT) is applied at database creation time
+    via ParquetTranscriptsDB's query parameter, not at the reader level.
+    """
+
+    def __init__(self, db: TranscriptsDB) -> None:
         self._db = db
-        self._query = query or TranscriptsQuery()
 
     @override
     async def __aenter__(self) -> "TranscriptsDBReader":
@@ -44,26 +43,13 @@ class TranscriptsDBReader(TranscriptsReader):
         return None
 
     @override
-    async def count(self) -> int:
-        """Count transcripts matching the query.
-
-        Returns:
-            Number of matching transcripts.
-        """
-        return await self._db.count(self._query.where, self._query.limit)
-
-    @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        """Get index of transcripts matching the query.
+        """Get index of all transcripts.
 
         Returns:
             Async iterator of TranscriptInfo (metadata only).
         """
-        return self._db.select(
-            self._query.where,
-            self._query.limit,
-            self._query.shuffle,
-        )
+        return self._db.select()
 
     @override
     async def read(
@@ -82,13 +68,13 @@ class TranscriptsDBReader(TranscriptsReader):
 
     @override
     async def snapshot(self) -> tuple[ScanTranscripts, list[str]]:
-        """Create snapshot of current query results.
+        """Create snapshot of database contents.
 
         Returns:
             ScanTranscripts snapshot for serialization.
         """
-        # Collect all matching transcript IDs
-        transcript_ids = [info.transcript_id async for info in self.index()]
+        # Collect all transcript IDs (uses optimized path when available)
+        transcript_ids = await self._db.transcript_ids()
 
         # Create minimal DataFrame with IDs
         df = pd.DataFrame({"transcript_id": transcript_ids})

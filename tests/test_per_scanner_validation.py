@@ -30,9 +30,6 @@ class MockTranscripts(Transcripts, TranscriptsReader):
     ) -> None:
         return None
 
-    async def count(self) -> int:
-        return 0
-
     def index(self) -> Any:
         async def empty_generator() -> Any:
             if False:

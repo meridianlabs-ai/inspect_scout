@@ -98,16 +98,16 @@ async def test_prefilter_where_reduces_table_size(
     # Without pre-filter: all 100 transcripts
     db_no_filter = ParquetTranscriptsDB(str(test_location))
     await db_no_filter.connect()
-    count_all = await db_no_filter.count([], None)
-    assert count_all == 100
+    transcript_ids = await db_no_filter.transcript_ids([], None)
+    assert len(transcript_ids) == 100
     await db_no_filter.disconnect()
 
     # With pre-filter: only gpt-4 transcripts (33 out of 100)
     query = TranscriptsQuery(where=[m.model == "gpt-4"])
     db_filtered = ParquetTranscriptsDB(str(test_location), query=query)
     await db_filtered.connect()
-    count_filtered = await db_filtered.count([], None)
-    assert count_filtered == 34  # 34 transcripts with model=gpt-4
+    transcript_ids_filtered = await db_filtered.transcript_ids([], None)
+    assert len(transcript_ids_filtered) == 34  # 34 transcripts with model=gpt-4
     await db_filtered.disconnect()
 
 
@@ -120,8 +120,8 @@ async def test_prefilter_limit_creates_smaller_table(
     db = ParquetTranscriptsDB(str(test_location), query=query)
     await db.connect()
 
-    count = await db.count([], None)
-    assert count == 25
+    transcript_ids = await db.transcript_ids([], None)
+    assert len(transcript_ids) == 25
 
     # Verify we can iterate through all 25
     results = []
@@ -184,13 +184,15 @@ async def test_additive_where_filtering(
     await db.connect()
 
     # Base count
-    count_base = await db.count([], None)
-    assert count_base == 34
+    transcript_ids_base = await db.transcript_ids([], None)
+    assert len(transcript_ids_base) == 34
 
     # Additional filter: index < 30
     # Should get gpt-4 AND index < 30
-    count_filtered = await db.count([m.index < 30], None)
-    assert count_filtered == 10  # Only 10 gpt-4 transcripts with index < 30
+    transcript_ids_filtered = await db.transcript_ids([m.index < 30], None)
+    assert (
+        len(transcript_ids_filtered) == 10
+    )  # Only 10 gpt-4 transcripts with index < 30
 
     # Verify the results
     results = []
@@ -242,12 +244,12 @@ async def test_querytime_limit_on_prefiltered_table(
     await db.connect()
 
     # Table has 50 transcripts
-    count_all = await db.count([], None)
-    assert count_all == 50
+    transcript_ids_all = await db.transcript_ids([], None)
+    assert len(transcript_ids_all) == 50
 
     # Query-time limit to 10
-    count_limited = await db.count([], limit=10)
-    assert count_limited == 10
+    transcript_ids_limited = await db.transcript_ids([], limit=10)
+    assert len(transcript_ids_limited) == 10
 
     # Verify select honors limit
     results = []
@@ -273,8 +275,8 @@ async def test_combined_prefilter_where_shuffle_limit(
     await db.connect()
 
     # Table should have exactly 15 gpt-4 transcripts in shuffled order
-    count = await db.count([], None)
-    assert count == 15
+    transcript_ids = await db.transcript_ids([], None)
+    assert len(transcript_ids) == 15
 
     # Verify all are gpt-4
     results = []
@@ -308,8 +310,8 @@ async def test_prefilter_empty_results(
     db = ParquetTranscriptsDB(str(test_location), query=query)
     await db.connect()
 
-    count = await db.count([], None)
-    assert count == 0
+    transcript_ids = await db.transcript_ids([], None)
+    assert len(transcript_ids) == 0
 
     results = []
     async for info in db.select([], None, False):
@@ -329,12 +331,12 @@ async def test_no_prefilter_backward_compatibility(
     await db.connect()
 
     # Should have all transcripts
-    count_all = await db.count([], None)
-    assert count_all == 100
+    transcript_ids_all = await db.transcript_ids([], None)
+    assert len(transcript_ids_all) == 100
 
     # Query-time filtering should work
-    count_gpt4 = await db.count([m.model == "gpt-4"], None)
-    assert count_gpt4 == 34
+    transcript_ids_gpt4 = await db.transcript_ids([m.model == "gpt-4"], None)
+    assert len(transcript_ids_gpt4) == 34
 
     # Query-time limit should work
     results = []
@@ -396,7 +398,7 @@ async def test_multiple_where_conditions_in_prefilter(
     await db.connect()
 
     # Count should reflect both conditions (AND)
-    count = await db.count([], None)
+    transcript_ids = await db.transcript_ids([], None)
 
     # Verify results match both conditions
     results = []
@@ -405,7 +407,7 @@ async def test_multiple_where_conditions_in_prefilter(
         assert info.metadata["model"] == "gpt-4"
         assert info.metadata["dataset"] == "gsm8k"
 
-    assert len(results) == count
+    assert len(results) == len(transcript_ids)
 
     await db.disconnect()
 

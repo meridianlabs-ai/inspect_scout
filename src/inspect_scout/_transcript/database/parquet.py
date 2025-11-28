@@ -89,6 +89,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._current_shuffle_seed: int | None = None
         self._transcript_ids: set[str] = set()
         self._file_columns_cache: dict[str, set[str]] = {}
+        self._parquet_pattern: str | None = None
+        self._exclude_clause: str = ""
 
     @override
     async def connect(self) -> None:
@@ -166,7 +168,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # if we don't yet have a list of transcript ids then query for one
         if len(self._transcript_ids) == 0:
-            cursor = self._conn.execute("SELECT transcript_id FROM transcripts")
+            cursor = self._conn.execute("SELECT transcript_id FROM transcript_index")
             column_names = [desc[0] for desc in cursor.description]
             for cursor_row in cursor.fetchall():
                 row_dict = dict(zip(column_names, cursor_row, strict=True))
@@ -182,38 +184,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         await self._create_transcripts_table()
 
     @override
-    async def count(
-        self,
-        where: list[Condition],
-        limit: int | None = None,
-    ) -> int:
-        """Count transcripts matching conditions.
-
-        Args:
-            where: List of conditions to filter by.
-            limit: Optional limit on count.
-
-        Returns:
-            Number of matching transcripts.
-        """
-        assert self._conn is not None
-
-        where_clause, where_params = self._build_where_clause(where)
-
-        if limit is not None:
-            sql = f"SELECT COUNT(*) FROM (SELECT * FROM transcripts{where_clause} LIMIT ?) AS limited"
-            params = where_params + [limit]
-        else:
-            sql = f"SELECT COUNT(*) FROM transcripts{where_clause}"
-            params = where_params
-
-        result = self._conn.execute(sql, params).fetchone()
-        return result[0] if result else 0
-
-    @override
     async def select(
         self,
-        where: list[Condition],
+        where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
     ) -> AsyncIterator[TranscriptInfo]:
@@ -246,37 +219,86 @@ class ParquetTranscriptsDB(TranscriptsDB):
             sql += " LIMIT ?"
             params.append(limit)
 
-        # Execute query and yield results
+        # Execute query and yield results (stream rows in batches to avoid full materialization)
         cursor = self._conn.execute(sql, params)
         column_names = [desc[0] for desc in cursor.description]
+        batch_size = 1000
+        while True:
+            rows = cursor.fetchmany(batch_size)
+            if not rows:
+                break
+            for row in rows:
+                row_dict = dict(zip(column_names, row, strict=True))
 
-        for row in cursor.fetchall():
-            row_dict = dict(zip(column_names, row, strict=True))
+                # Extract reserved fields (optional fields use .get() for missing columns)
+                transcript_id = row_dict["transcript_id"]
+                transcript_source_type = row_dict.get("source_type")
+                transcript_source_id = row_dict.get("source_id")
+                transcript_source_uri = row_dict.get("source_uri")
 
-            # Extract reserved fields (optional fields use .get() for missing columns)
-            transcript_id = row_dict["transcript_id"]
-            transcript_source_type = row_dict.get("source_type")
-            transcript_source_id = row_dict.get("source_id")
-            transcript_source_uri = row_dict.get("source_uri")
+                # Reconstruct metadata from all non-reserved columns
+                # Use LazyJSONDict to defer JSON parsing until values are accessed
+                metadata_dict = {
+                    col: value
+                    for col, value in row_dict.items()
+                    if col not in RESERVED_COLUMNS and value is not None
+                }
+                metadata = LazyJSONDict(metadata_dict)
 
-            # Reconstruct metadata from all non-reserved columns
-            # Use LazyJSONDict to defer JSON parsing until values are accessed
-            metadata_dict = {
-                col: value
-                for col, value in row_dict.items()
-                if col not in RESERVED_COLUMNS and value is not None
-            }
-            metadata = LazyJSONDict(metadata_dict)
+                # Use model_construct to bypass Pydantic validation which would
+                # convert LazyJSONDict to a plain dict, defeating lazy parsing
+                yield TranscriptInfo.model_construct(
+                    transcript_id=transcript_id,
+                    source_type=transcript_source_type,
+                    source_id=transcript_source_id,
+                    source_uri=transcript_source_uri,
+                    metadata=metadata,
+                )
 
-            # Use model_construct to bypass Pydantic validation which would
-            # convert LazyJSONDict to a plain dict, defeating lazy parsing
-            yield TranscriptInfo.model_construct(
-                transcript_id=transcript_id,
-                source_type=transcript_source_type,
-                source_id=transcript_source_id,
-                source_uri=transcript_source_uri,
-                metadata=metadata,
-            )
+    @override
+    async def transcript_ids(
+        self,
+        where: list[Condition] | None = None,
+        limit: int | None = None,
+        shuffle: bool | int = False,
+    ) -> list[str]:
+        """Get transcript IDs matching conditions.
+
+        Optimized implementation that queries directly from the index table
+        when no WHERE conditions are specified, avoiding Parquet file access.
+
+        Args:
+            where: Condition(s) to filter by.
+            limit: Maximum number to return.
+            shuffle: Randomly shuffle results (pass `int` for reproducible seed).
+
+        Returns:
+            List of transcript IDs.
+        """
+        assert self._conn is not None
+
+        if not where:
+            # No conditions - query index table directly (faster, in-memory)
+            sql = "SELECT transcript_id FROM transcript_index"
+
+            # Add ORDER BY for shuffle
+            if shuffle:
+                seed = 0 if shuffle is True else shuffle
+                self._register_shuffle_function(seed)
+                sql += " ORDER BY shuffle_hash(transcript_id)"
+
+            # Add LIMIT
+            params: list[Any] = []
+            if limit is not None:
+                sql += " LIMIT ?"
+                params.append(limit)
+
+            result = self._conn.execute(sql, params).fetchall()
+            return [row[0] for row in result]
+        else:
+            # Has conditions - need to query VIEW for metadata filtering
+            # Fall back to default implementation
+            return await super().transcript_ids(where, limit, shuffle)
 
     @override
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
@@ -315,9 +337,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if need_events:
                 columns.append("events")
 
-            # First, get the filename from the metadata table (fast indexed lookup)
+            # First, get the filename from the index table (fast indexed lookup)
             filename_result = self._conn.execute(
-                "SELECT filename FROM transcripts WHERE transcript_id = ?",
+                "SELECT filename FROM transcript_index WHERE transcript_id = ?",
                 [t.transcript_id],
             ).fetchone()
 
@@ -549,7 +571,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._conn.create_function("shuffle_hash", shuffle_hash)
         self._current_shuffle_seed = seed
 
-    def _build_where_clause(self, where: list[Condition]) -> tuple[str, list[Any]]:
+    def _build_where_clause(
+        self, where: list[Condition] | None
+    ) -> tuple[str, list[Any]]:
         """Build WHERE clause from conditions.
 
         Args:
@@ -931,29 +955,35 @@ class ParquetTranscriptsDB(TranscriptsDB):
     async def _create_transcripts_table(self) -> None:
         """Create or refresh DuckDB structures for querying transcripts.
 
-        Creates metadata-only table (excluding messages/events) with filename column.
-        If a query was provided during initialization, applies WHERE/SHUFFLE/LIMIT
-        during table creation for optimization (enables Parquet filter pushdown).
+        Creates two structures:
+        1. transcript_index: Small table with transcript_id → filename mapping (for fast read())
+        2. transcripts: VIEW over Parquet files for metadata queries (for select()/count())
 
         This enables:
-        1. Fast indexed lookups on transcript_id and other metadata
-        2. Targeted file access for content reads (via filename column)
-        3. Low memory usage (only metadata in memory, content stays in Parquet)
-        4. Parquet filter pushdown for WHERE conditions (when query provided)
+        1. Fast indexed lookups on transcript_id for read() via index table
+        2. Low memory usage (only transcript_id + filename in memory)
+        3. Efficient metadata queries via VIEW with Parquet predicate pushdown
+        4. Targeted file access for content reads (via filename in index table)
         """
         assert self._conn is not None
 
         with trace_action(logger, "Scout Parquet Index", f"Indexing {self._location}"):
-            # Drop existing table
-            self._conn.execute("DROP TABLE IF EXISTS transcripts")
+            # Drop existing structures
+            self._conn.execute("DROP TABLE IF EXISTS transcript_index")
+            self._conn.execute("DROP VIEW IF EXISTS transcripts")
 
             # Discover Parquet files
             file_paths = await self._discover_parquet_files()
 
             if not file_paths:
-                # Create empty table with minimal schema
+                # Create empty structures with minimal schema
                 self._conn.execute("""
-                    CREATE TABLE transcripts AS
+                    CREATE TABLE transcript_index AS
+                    SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
+                    WHERE FALSE
+                """)
+                self._conn.execute("""
+                    CREATE VIEW transcripts AS
                     SELECT
                         ''::VARCHAR AS transcript_id,
                         ''::VARCHAR AS source_type,
@@ -970,56 +1000,145 @@ class ParquetTranscriptsDB(TranscriptsDB):
             else:
                 pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
 
-            # Check which content columns exist (external parquet files may lack them)
-            schema_result = self._conn.execute(
-                f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
-            ).fetchall()
-            existing_columns = {row[0] for row in schema_result}
-            exclude_columns = [
-                col for col in ["messages", "events"] if col in existing_columns
-            ]
+            # Store pattern for potential future use
+            self._parquet_pattern = pattern
 
-            # Build base query (only exclude columns that exist)
-            if exclude_columns:
-                exclude_clause = f" EXCLUDE ({', '.join(exclude_columns)})"
-            else:
-                exclude_clause = ""
+            # Infer exclude clause from first file (fast - reads one footer only)
+            # If schema differs across files, we'll fall back to full scan later
+            self._exclude_clause = self._infer_exclude_clause(file_paths[0])
 
-            sql = f"""
-                CREATE TABLE transcripts AS
-                SELECT *{exclude_clause}
+            # 1. Create small index table (just transcript_id + filename)
+            # Apply pre-filter if provided (WHERE/SHUFFLE/LIMIT)
+            index_sql = f"""
+                CREATE TABLE transcript_index AS
+                SELECT transcript_id, filename
                 FROM read_parquet({pattern}, union_by_name=true, filename=true)
             """
             params: list[Any] = []
 
             # Apply pre-filter query if provided
             if self._query:
-                # Apply WHERE conditions (enables Parquet filter pushdown)
+                # Apply WHERE conditions
                 if self._query.where:
                     where_clause, where_params = self._build_where_clause(
                         self._query.where
                     )
-                    sql += where_clause
+                    index_sql += where_clause
                     params.extend(where_params)
 
                 # Apply SHUFFLE (register UDF first)
                 if self._query.shuffle:
                     seed = 0 if self._query.shuffle is True else self._query.shuffle
                     self._register_shuffle_function(seed)
-                    sql += " ORDER BY shuffle_hash(transcript_id)"
+                    index_sql += " ORDER BY shuffle_hash(transcript_id)"
 
                 # Apply LIMIT
                 if self._query.limit:
-                    sql += " LIMIT ?"
+                    index_sql += " LIMIT ?"
                     params.append(self._query.limit)
 
-            # Execute query with parameters
-            self._conn.execute(sql, params)
+            self._conn.execute(index_sql, params)
 
             # Create index on transcript_id for fast lookups
-            self._conn.execute("""
-                CREATE INDEX idx_transcript_id ON transcripts(transcript_id)
-            """)
+            self._conn.execute(
+                "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
+            )
+
+            # 2. Create VIEW for metadata queries
+            # Try with exclude clause inferred from first file; if schema differs
+            # across files, fall back to full schema scan
+            self._create_transcripts_view(pattern)
+
+    def _infer_exclude_clause(self, file_path: str) -> str:
+        """Infer EXCLUDE clause from a single file's schema.
+
+        Reads schema from one file (fast - only reads Parquet footer metadata)
+        to determine which content columns to exclude.
+
+        Args:
+            file_path: Path to a Parquet file to sample.
+
+        Returns:
+            EXCLUDE clause string (e.g., " EXCLUDE (messages, events)") or empty string.
+        """
+        assert self._conn is not None
+
+        schema_result = self._conn.execute(
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'))"
+        ).fetchall()
+        existing_columns = {row[0] for row in schema_result}
+        exclude_columns = [
+            col for col in ["messages", "events"] if col in existing_columns
+        ]
+
+        if exclude_columns:
+            return f" EXCLUDE ({', '.join(exclude_columns)})"
+        return ""
+
+    def _infer_exclude_clause_full(self, pattern: str) -> str:
+        """Infer EXCLUDE clause by scanning all files' schemas.
+
+        Slower fallback that unions schemas from all files to handle
+        cases where schema differs across files.
+
+        Args:
+            pattern: DuckDB file pattern for read_parquet.
+
+        Returns:
+            EXCLUDE clause string or empty string.
+        """
+        assert self._conn is not None
+
+        schema_result = self._conn.execute(
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
+        ).fetchall()
+        existing_columns = {row[0] for row in schema_result}
+        exclude_columns = [
+            col for col in ["messages", "events"] if col in existing_columns
+        ]
+
+        if exclude_columns:
+            return f" EXCLUDE ({', '.join(exclude_columns)})"
+        return ""
+
+    def _create_transcripts_view(self, pattern: str) -> None:
+        """Create the transcripts VIEW with appropriate EXCLUDE clause.
+
+        Tries with exclude clause inferred from first file. If that fails
+        (schema differs across files), falls back to full schema scan.
+
+        Args:
+            pattern: DuckDB file pattern for read_parquet.
+        """
+        assert self._conn is not None
+
+        # Build VIEW SQL based on whether pre-filter was applied
+        def build_view_sql(exclude_clause: str) -> str:
+            if self._query and (
+                self._query.where or self._query.shuffle or self._query.limit
+            ):
+                # VIEW joins with pre-filtered index table
+                return f"""
+                    CREATE VIEW transcripts AS
+                    SELECT p.*{exclude_clause}
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true) p
+                    INNER JOIN transcript_index i ON p.transcript_id = i.transcript_id
+                """
+            else:
+                # No pre-filter - VIEW directly queries Parquet
+                return f"""
+                    CREATE VIEW transcripts AS
+                    SELECT *{exclude_clause}
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true)
+                """
+
+        # Try with exclude clause from first file (fast path)
+        try:
+            self._conn.execute(build_view_sql(self._exclude_clause))
+        except duckdb.BinderException:
+            # Schema differs across files - fall back to full scan
+            self._exclude_clause = self._infer_exclude_clause_full(pattern)
+            self._conn.execute(build_view_sql(self._exclude_clause))
 
     async def _discover_parquet_files(self) -> list[str]:
         """Discover all Parquet files in location.

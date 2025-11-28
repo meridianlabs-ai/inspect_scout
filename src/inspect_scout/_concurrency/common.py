@@ -28,7 +28,6 @@ class ScanMetrics:
     tasks_scanning: int = 0
     buffered_scanner_jobs: int = 0
     completed_scans: int = 0
-    cpu_use: float = 0
     # RSS for now, but we can revisit
     memory_usage: int = 0
 

@@ -476,21 +476,6 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
         assert result.metadata["solver"] == "cot"
 
 
-@pytest.mark.asyncio
-async def test_count_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
-    """Test counting records using typed properties."""
-    # Count all with specific model
-    count = await db.count(where=[lm.model == "gpt-4"])
-
-    # Verify count matches query
-    results = [item async for item in db.query(where=[lm.model == "gpt-4"])]
-    assert count == len(results)
-
-    # Count with complex condition
-    count = await db.count(where=[(lm.model == "gpt-4") & (lm.total_tokens > 100)])
-    assert count >= 0
-
-
 # ============================================================================
 # Integration Tests with Transcripts API
 # ============================================================================
@@ -506,8 +491,6 @@ async def test_transcripts_with_log_metadata() -> None:
     try:
         # Simple filter
         conditions = [lm.model == "gpt-4"]
-        count = await db.count(conditions)
-        assert count > 0
 
         # Chain multiple filters
         conditions = [
@@ -540,10 +523,6 @@ async def test_transcripts_complex_filtering() -> None:
             | ((lm.model == "claude-3") & (lm.total_tokens > 160)),
             lm.limit.is_null(),
         ]
-
-        # Verify count
-        count = await db.count(conditions)
-        assert count >= 0
 
         # Verify results match conditions
         results = [item async for item in db.query(conditions, limit=10)]
@@ -687,9 +666,6 @@ async def test_empty_dataframe_with_log_metadata() -> None:
     # Query with typed properties on empty DB
     results = [item async for item in db.query(where=[lm.model == "gpt-4"])]
     assert len(results) == 0
-
-    count = await db.count(where=[lm.epoch > 1])
-    assert count == 0
 
     await db.disconnect()
 

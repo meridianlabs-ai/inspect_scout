@@ -30,11 +30,6 @@ class TranscriptsReader(abc.ABC):
     ) -> bool | None: ...
 
     @abc.abstractmethod
-    async def count(self) -> int:
-        """Number of transcripts in collection."""
-        ...
-
-    @abc.abstractmethod
     def index(self) -> AsyncIterator[TranscriptInfo]:
         """Index of `TranscriptInfo` for the collection."""
         ...

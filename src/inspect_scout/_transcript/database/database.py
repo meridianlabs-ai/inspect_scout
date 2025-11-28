@@ -64,24 +64,32 @@ class TranscriptsDB(abc.ABC):
         """
         ...
 
-    @abc.abstractmethod
-    async def count(
+    async def transcript_ids(
         self,
-        where: list[Condition],
+        where: list[Condition] | None = None,
         limit: int | None = None,
-    ) -> int:
-        """Count transcripts matching a condition.
+        shuffle: bool | int = False,
+    ) -> list[str]:
+        """Get transcript IDs matching conditions.
+
+        Optimized method that returns only transcript IDs without loading
+        full metadata. Default implementation uses select(), but subclasses
+        can override for better performance.
 
         Args:
-           where: Condition(s) to count.
-           limit: Maximum number to count.
+            where: Condition(s) to filter by.
+            limit: Maximum number to return.
+            shuffle: Randomly shuffle results (pass `int` for reproducible seed).
+
+        Returns:
+            List of transcript IDs.
         """
-        ...
+        return [info.transcript_id async for info in self.select(where, limit, shuffle)]
 
     @abc.abstractmethod
     def select(
         self,
-        where: list[Condition],
+        where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
     ) -> AsyncIterator[TranscriptInfo]:

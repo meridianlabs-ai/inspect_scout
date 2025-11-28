@@ -650,37 +650,6 @@ async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_count_all(db: EvalLogTranscriptsDB) -> None:
-    """Test counting all records."""
-    count = await db.count(where=[])
-    assert count == 20
-
-
-@pytest.mark.asyncio
-async def test_count_with_filter(db: EvalLogTranscriptsDB) -> None:
-    """Test counting with filters."""
-    # Count by model
-    count = await db.count(where=[m.model == "gpt-4"])
-    assert count > 0
-
-    # Verify count matches query
-    results = [item async for item in db.query(where=[m.model == "gpt-4"])]
-    assert count == len(results)
-
-
-@pytest.mark.asyncio
-async def test_count_with_limit(db: EvalLogTranscriptsDB) -> None:
-    """Test counting with limit."""
-    count = await db.count(where=[], limit=5)
-    assert count == 5
-
-    # With filter and limit
-    total_gpt4 = await db.count(where=[m.model == "gpt-4"])
-    count_limited = await db.count(where=[m.model == "gpt-4"], limit=2)
-    assert count_limited == min(2, total_gpt4)
-
-
-@pytest.mark.asyncio
 async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
     """Test complex queries with multiple operators."""
     # Complex condition
@@ -772,9 +741,6 @@ async def test_empty_dataframe() -> None:
 
     results = [item async for item in db.query(where=[])]
     assert len(results) == 0
-
-    count = await db.count(where=[])
-    assert count == 0
 
     await db.disconnect()
 

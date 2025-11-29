@@ -6,7 +6,7 @@ import {
   CompressionType,
 } from "apache-arrow";
 import type { ColumnTable } from "arquero";
-import { escape, fromArrow } from "arquero";
+import { escape, fromArrow, table as arqueroTable } from "arquero";
 import * as lz4js from "lz4js";
 
 export const decodeArrowBase64 = (base64: string) => {
@@ -41,7 +41,28 @@ export const decodeArrowBytes = (bytes: ArrayBuffer | Uint8Array) => {
   // (Mixed-type columns get converted to strings by Arrow/Pandas)
   table = castColumns(table);
 
-  return table;
+  // Eagerly materialize the table to prevent Safari from
+  // detaching the underlying ArrayBuffer during navigation.
+  // The Arquero table holds lazy references to the Arrow buffers,
+  // and Safari's aggressive memory management can detach these buffers
+  // when navigating, causing "Bad value" errors in LZ4 decompression.
+  const columns: Record<string, unknown[]> = {};
+  const columnNames = table.columnNames();
+
+  // Convert to column-oriented format (arrays) which forces
+  // immediate materialization and doesn't hold references to Arrow buffers.
+  for (const colName of columnNames) {
+    // Get the column as an array - this forces materialization
+    // Convert TypedArray to regular array to ensure no buffer references
+    const colData = table.array(colName);
+    columns[colName] = Array.isArray(colData)
+      ? colData
+      : Array.from(colData as Iterable<unknown>);
+  }
+
+  // Recreate the table from the materialized column arrays
+  // This ensures the table no longer has any references to detachable buffers
+  return arqueroTable(columns);
 };
 
 // Register LZ4 codec (only needs to be done once)

@@ -8,7 +8,6 @@ via a single multiplexed upstream queue.
 
 from __future__ import annotations
 
-import logging
 import time
 from threading import Condition
 from typing import Callable
@@ -22,8 +21,7 @@ from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._iterator import iterator_from_queue
-from ._mp_common import LoggingItem, run_sync_on_thread
-from ._mp_logging import patch_inspect_log_handler
+from ._mp_common import IPCContext, run_sync_on_thread
 from ._mp_registry import ChildSemaphoreRegistry
 from .common import ScanMetrics
 from .single_process import single_process_strategy
@@ -70,18 +68,40 @@ async def _shutdown_monitor_task(
 def subprocess_main(
     worker_id: int,
     task_count: int,
+    ctx: IPCContext,
 ) -> None:
     """Worker subprocess main function.
 
-    Runs in a forked subprocess with access to parent's memory.
+    Runs in a spawned subprocess with IPCContext passed as argument.
     Uses single_process_strategy internally to coordinate async tasks.
 
     Args:
         worker_id: Unique identifier for this worker process
         task_count: Number of concurrent tasks for this worker process
+        ctx: Shared IPC context passed from parent process
     """
-    # Access IPC context inherited from parent process via fork
-    ctx = _mp_common.ipc_context
+    import logging
+    import sys
+
+    from .._scan import init_scan_model_context, top_level_async_init
+    from ._mp_common import LoggingItem
+    from ._mp_logging import patch_inspect_log_handler
+
+    # Set up sys.path with plugin directories before any user imports
+    for plugin_dir in ctx.plugin_dirs:
+        if plugin_dir not in sys.path:
+            sys.path.insert(0, plugin_dir)
+
+    top_level_async_init(ctx.log_level, subprocess=True)
+
+    init_scan_model_context(
+        model=ctx.model_context.model,
+        model_config=ctx.model_context.model_config,
+        model_base_url=ctx.model_context.model_base_url,
+        model_args=ctx.model_context.model_args,
+        model_roles=ctx.model_context.model_roles,
+        subprocess=True,
+    )
 
     def _log_in_parent(record: logging.LogRecord) -> None:
         # Strip exc_info from record to avoid pickling traceback objects since it

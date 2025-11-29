@@ -19,7 +19,7 @@ from __future__ import annotations
 import multiprocessing
 import signal
 import time
-from multiprocessing.context import ForkProcess
+from multiprocessing.context import SpawnProcess
 from typing import AsyncIterator, Awaitable, Callable, cast
 
 import anyio
@@ -33,6 +33,7 @@ from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._mp_common import (
+    DillCallable,
     IPCContext,
     LoggingItem,
     MetricsItem,
@@ -45,7 +46,9 @@ from ._mp_common import (
 from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
-from ._mp_subprocess import subprocess_main
+
+# Import subprocess_main lazily to avoid importing _mp_setup in parent process
+# (it needs to run in child process AFTER environment variables are set)
 from .common import (
     ConcurrencyStrategy,
     ParseFunctionResult,
@@ -145,10 +148,13 @@ def multi_process_strategy(
             base_tasks = task_count // max_processes
             remainder_tasks = task_count % max_processes
             # Initialize shared IPC context that will be inherited by forked workers
+            # Get subprocess state to pass to subprocesses
+            from . import _subprocess_state
+
             _mp_common.ipc_context = IPCContext(
-                parse_function=parse_function,
-                scan_function=scan_function,
-                scan_completed=scan_completed,
+                parse_function=DillCallable(parse_function),
+                scan_function=DillCallable(scan_function),
+                scan_completed=DillCallable(scan_completed),
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
@@ -158,6 +164,9 @@ def multi_process_strategy(
                 workers_ready_event=manager.Event(),
                 semaphore_registry=parent_registry.sync_manager_dict,
                 semaphore_condition=parent_registry.sync_manager_condition,
+                plugin_dirs=_subprocess_state.get_plugin_directories(),
+                log_level=_subprocess_state.get_log_level(),
+                model_context=_subprocess_state.get_model_context(),
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:
@@ -275,9 +284,12 @@ def multi_process_strategy(
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 
+            # Import subprocess_main
+            from ._mp_subprocess import subprocess_main
+
             # Start worker processes directly
-            ctx = multiprocessing.get_context("fork")
-            processes: list[ForkProcess] = []
+            ctx = multiprocessing.get_context("spawn")
+            processes: list[SpawnProcess] = []
             for worker_id in range(max_processes):
                 task_count_for_worker = base_tasks + (
                     1 if worker_id < remainder_tasks else 0
@@ -285,7 +297,11 @@ def multi_process_strategy(
                 try:
                     p = ctx.Process(
                         target=subprocess_main,
-                        args=(worker_id, task_count_for_worker),
+                        args=(
+                            worker_id,
+                            task_count_for_worker,
+                            _mp_common.ipc_context,
+                        ),
                     )
                     p.start()
                     processes.append(p)

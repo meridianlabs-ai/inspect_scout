@@ -37,7 +37,7 @@ from typing_extensions import overload
 
 from inspect_scout._util.decorator import split_spec
 
-from .._plugin_context import register_plugin_directory
+from .._concurrency import _subprocess_state
 from .._transcript.types import (
     EventType,
     MessageType,
@@ -415,7 +415,7 @@ def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[
 
     # add file directory to sys.path for imports
     scanner_dir = scanner_path.parent.as_posix()
-    register_plugin_directory(scanner_dir)
+    _subprocess_state.register_plugin_directory(scanner_dir)
 
     with add_to_syspath(scanner_dir):
         # create scanners

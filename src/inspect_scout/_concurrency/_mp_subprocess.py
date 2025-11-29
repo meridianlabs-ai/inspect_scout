@@ -8,7 +8,6 @@ via a single multiplexed upstream queue.
 
 from __future__ import annotations
 
-import logging
 import time
 from threading import Condition
 from typing import Callable
@@ -22,8 +21,7 @@ from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._iterator import iterator_from_queue
-from ._mp_common import IPCContext, LoggingItem, run_sync_on_thread
-from ._mp_logging import patch_inspect_log_handler
+from ._mp_common import IPCContext, run_sync_on_thread
 from ._mp_registry import ChildSemaphoreRegistry
 from .common import ScanMetrics
 from .single_process import single_process_strategy
@@ -70,7 +68,6 @@ async def _shutdown_monitor_task(
 def subprocess_main(
     worker_id: int,
     task_count: int,
-    plugin_dirs: list[str],
     ctx: IPCContext,
 ) -> None:
     """Worker subprocess main function.
@@ -81,15 +78,21 @@ def subprocess_main(
     Args:
         worker_id: Unique identifier for this worker process
         task_count: Number of concurrent tasks for this worker process
-        plugin_dirs: Plugin directories to add to sys.path before unpickling
         ctx: Shared IPC context passed from parent process
     """
-    # Configure sys.path with plugin directories FIRST, before any imports
+    import logging
     import sys
 
-    for plugin_dir in plugin_dirs:
+    from .._scan import top_level_async_init
+    from ._mp_common import LoggingItem
+    from ._mp_logging import patch_inspect_log_handler
+
+    # Set up sys.path with plugin directories before any user imports
+    for plugin_dir in ctx.plugin_dirs:
         if plugin_dir not in sys.path:
             sys.path.insert(0, plugin_dir)
+
+    top_level_async_init(ctx.log_level, subprocess=True)
 
     def _log_in_parent(record: logging.LogRecord) -> None:
         # Strip exc_info from record to avoid pickling traceback objects since it

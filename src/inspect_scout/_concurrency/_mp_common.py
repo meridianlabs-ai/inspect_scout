@@ -221,6 +221,12 @@ class IPCContext:
     and works across processes despite the threading.Condition type.
     """
 
+    plugin_dirs: set[str]
+    """Plugin directories to add to sys.path in subprocesses."""
+
+    log_level: str | None
+    """Log level for subprocess initialization."""
+
 
 # Global IPC context shared between main process and forked subprocesses.
 # Initialized by multi_process strategy, inherited by workers via fork.

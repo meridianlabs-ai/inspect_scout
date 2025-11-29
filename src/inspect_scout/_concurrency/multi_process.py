@@ -148,6 +148,9 @@ def multi_process_strategy(
             base_tasks = task_count // max_processes
             remainder_tasks = task_count % max_processes
             # Initialize shared IPC context that will be inherited by forked workers
+            # Get subprocess state to pass to subprocesses
+            from . import _subprocess_state
+
             _mp_common.ipc_context = IPCContext(
                 parse_function=DillCallable(parse_function),
                 scan_function=DillCallable(scan_function),
@@ -161,6 +164,8 @@ def multi_process_strategy(
                 workers_ready_event=manager.Event(),
                 semaphore_registry=parent_registry.sync_manager_dict,
                 semaphore_condition=parent_registry.sync_manager_condition,
+                plugin_dirs=_subprocess_state.get_plugin_directories(),
+                log_level=_subprocess_state.get_log_level(),
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:
@@ -278,11 +283,6 @@ def multi_process_strategy(
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 
-            # Get plugin directories to pass to subprocesses
-            from .._plugin_context import get_plugin_directories
-
-            plugin_dirs = list(get_plugin_directories())
-
             # Import subprocess_main
             from ._mp_subprocess import subprocess_main
 
@@ -299,7 +299,6 @@ def multi_process_strategy(
                         args=(
                             worker_id,
                             task_count_for_worker,
-                            plugin_dirs,
                             _mp_common.ipc_context,
                         ),
                     )

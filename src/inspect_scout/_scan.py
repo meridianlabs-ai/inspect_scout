@@ -42,6 +42,7 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
+from ._concurrency import _subprocess_state
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -752,12 +753,14 @@ def top_level_sync_init(display: DisplayType | None) -> None:
     init_display_type(display)
 
 
-def top_level_async_init(log_level: str | None) -> None:
+def top_level_async_init(log_level: str | None, *, subprocess: bool = False) -> None:
     init_platform(hooks=False)
     init_environment()
     if not display_type_initialized():
         init_display_type("plain")
     init_log(log_level)
+    if not subprocess:
+        _subprocess_state.set_log_level(log_level)
 
 
 def init_environment() -> None:

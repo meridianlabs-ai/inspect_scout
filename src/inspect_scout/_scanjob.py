@@ -32,7 +32,7 @@ from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
 
-from ._plugin_context import register_plugin_directory
+from ._concurrency import _subprocess_state
 from ._scanner.scanner import Scanner, scanner_create
 from ._transcript.transcripts import Transcripts
 
@@ -427,7 +427,7 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
     else:
         # add scanjob directory to sys.path for imports
         scanjob_dir = scanjob_path.parent.as_posix()
-        register_plugin_directory(scanjob_dir)
+        _subprocess_state.register_plugin_directory(scanjob_dir)
 
         with add_to_syspath(scanjob_dir):
             load_module(scanjob_path)

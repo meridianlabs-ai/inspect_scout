@@ -189,10 +189,7 @@ def multi_process_strategy(
                         await run_sync_on_thread(
                             lambda item=item: parse_job_queue.put(item)
                         )
-                        print("put an item")
                 finally:
-                    print("all items put")
-
                     # Send sentinel values to signal worker tasks to stop (one per task)
                     # This runs even if cancelled, allowing graceful shutdown
                     for _ in range(task_count):

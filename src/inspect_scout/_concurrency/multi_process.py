@@ -166,6 +166,7 @@ def multi_process_strategy(
                 semaphore_condition=parent_registry.sync_manager_condition,
                 plugin_dirs=_subprocess_state.get_plugin_directories(),
                 log_level=_subprocess_state.get_log_level(),
+                model_context=_subprocess_state.get_model_context(),
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:

@@ -78,10 +78,12 @@ logger = getLogger(__name__)
 
 
 def scan(
-    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-    | dict[str, Scanner[Any]]
-    | ScanJob
-    | ScanJobConfig,
+    scanners: (
+        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]]
+        | ScanJob
+        | ScanJobConfig
+    ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
@@ -162,10 +164,12 @@ def scan(
 
 
 async def scan_async(
-    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-    | dict[str, Scanner[Any]]
-    | ScanJob
-    | ScanJobConfig,
+    scanners: (
+        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]]
+        | ScanJob
+        | ScanJobConfig
+    ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
@@ -780,8 +784,23 @@ def init_scan_model_context(
     model_base_url: str | None = None,
     model_args: dict[str, Any] | str | None = None,
     model_roles: Mapping[str, str | Model] | None = None,
+    *,
+    subprocess: bool = False,
 ) -> tuple[Model, dict[str, Any], dict[str, Model] | None]:
-    # resolve from inspect eval model env var if rquired
+    if not subprocess:
+        from ._concurrency._mp_common import ModelContext
+
+        _subprocess_state.set_model_context(
+            ModelContext(
+                model=model,
+                model_config=model_config,
+                model_base_url=model_base_url,
+                model_args=model_args,
+                model_roles=model_roles,
+            )
+        )
+
+    # resolve from inspect eval model env var if required
     if model is None:
         model = os.getenv("SCOUT_SCAN_MODEL", None)
 

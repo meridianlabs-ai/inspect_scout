@@ -83,7 +83,7 @@ def subprocess_main(
     import logging
     import sys
 
-    from .._scan import top_level_async_init
+    from .._scan import init_scan_model_context, top_level_async_init
     from ._mp_common import LoggingItem
     from ._mp_logging import patch_inspect_log_handler
 
@@ -93,6 +93,15 @@ def subprocess_main(
             sys.path.insert(0, plugin_dir)
 
     top_level_async_init(ctx.log_level, subprocess=True)
+
+    init_scan_model_context(
+        model=ctx.model_context.model,
+        model_config=ctx.model_context.model_config,
+        model_base_url=ctx.model_context.model_base_url,
+        model_args=ctx.model_context.model_args,
+        model_roles=ctx.model_context.model_roles,
+        subprocess=True,
+    )
 
     def _log_in_parent(record: logging.LogRecord) -> None:
         # Strip exc_info from record to avoid pickling traceback objects since it

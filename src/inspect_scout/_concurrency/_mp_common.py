@@ -13,10 +13,20 @@ from multiprocessing.managers import DictProxy
 from multiprocessing.queues import Queue
 from multiprocessing.synchronize import Event
 from threading import Condition
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeAlias, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Mapping,
+    TypeAlias,
+    TypeVar,
+    cast,
+)
 
 import anyio
-import dill  # type: ignore
+import dill
+from inspect_ai.model import GenerateConfig, Model  # type: ignore
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -138,6 +148,15 @@ UpstreamQueueItem: TypeAlias = (
 
 
 @dataclass
+class ModelContext:
+    model: str | None  # Note that `| Model` isn't in there.
+    model_config: GenerateConfig | None
+    model_base_url: str | None
+    model_args: dict[str, Any] | str | None
+    model_roles: Mapping[str, str | Model] | None
+
+
+@dataclass
 class IPCContext:
     """
     Shared state for IPC between main process and forked workers.
@@ -226,6 +245,8 @@ class IPCContext:
 
     log_level: str | None
     """Log level for subprocess initialization."""
+
+    model_context: ModelContext
 
 
 # Global IPC context shared between main process and forked subprocesses.

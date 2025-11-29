@@ -9,8 +9,8 @@ that carries both results and metrics, simplifying the collection architecture.
 
 Note: multiprocessing.Queue.get() is blocking with no async support, so we use
 anyio.to_thread.run_sync to wrap .get() calls to prevent blocking the event loop.
-Queue.put() on unbounded queues (our case) only blocks briefly for lock contention,
-so threading is unnecessary.
+Queue.put() on bounded queues blocks when full, so we also wrap .put() calls in
+the producer to provide lazy consumption without blocking the event loop.
 See: https://stackoverflow.com/questions/75270606
 """
 
@@ -57,6 +57,11 @@ from .common import (
 
 MAX_PROCESS = 8
 
+# Maximum number of ParseJobs to prefetch into the queue.
+# Provides backpressure to prevent buffering hundreds of thousands of ParseJobs
+# when parse_jobs iterator is very large. Producer will block when queue is full.
+PARSE_JOB_PREFETCH_SIZE = 50
+
 # Sentinel value to signal collectors to shut down during Ctrl-C.
 #
 # MUST be a sentinel: During Ctrl-C shutdown, workers are terminated before they can
@@ -82,7 +87,8 @@ def multi_process_strategy(
 
     Distributes ParseJob work items across multiple worker processes. Each worker
     uses single-process strategy internally to control scan concurrency and buffering.
-    The ParseJob queue is unbounded since ParseJobs are lightweight metadata objects.
+    The ParseJob queue is bounded to provide lazy consumption and prevent memory
+    explosion when parse_jobs iterators are very large.
 
     Args:
         total_scans: The total number of scan invocations for this job.
@@ -146,7 +152,7 @@ def multi_process_strategy(
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
-                parse_job_queue=multiprocessing.Queue(),
+                parse_job_queue=multiprocessing.Queue(maxsize=PARSE_JOB_PREFETCH_SIZE),
                 upstream_queue=multiprocessing.Queue(),
                 shutdown_condition=manager.Condition(),
                 workers_ready_event=manager.Event(),
@@ -166,10 +172,10 @@ def multi_process_strategy(
             )
 
             # Queues are part of IPC context and inherited by forked processes.
-            # ParseJob queue is unbounded - ParseJobs are tiny metadata objects with
-            # no backpressure needed. Real backpressure happens inside each worker via
-            # single-process strategy's ScannerJob buffer.
-            # Upstream queue is also unbounded and multiplexes both results and metrics.
+            # ParseJob queue is bounded to prevent memory explosion when parse_jobs
+            # iterator contains a huge number of items. Producer blocks when queue
+            # is full, providing lazy consumption.
+            # Upstream queue is unbounded and multiplexes both results and metrics.
             parse_job_queue = _mp_common.ipc_context.parse_job_queue
             upstream_queue = _mp_common.ipc_context.upstream_queue
 
@@ -180,12 +186,17 @@ def multi_process_strategy(
                 """Producer task that feeds work items into the queue."""
                 try:
                     async for item in parse_jobs:
-                        parse_job_queue.put(item)
+                        await run_sync_on_thread(
+                            lambda item=item: parse_job_queue.put(item)
+                        )
+                        print("put an item")
                 finally:
+                    print("all items put")
+
                     # Send sentinel values to signal worker tasks to stop (one per task)
                     # This runs even if cancelled, allowing graceful shutdown
                     for _ in range(task_count):
-                        parse_job_queue.put(None)
+                        await run_sync_on_thread(lambda: parse_job_queue.put(None))
 
             async def _upstream_collector() -> None:
                 """Collector task that receives results and metrics."""

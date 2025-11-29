@@ -55,7 +55,7 @@ EventTuple = tuple[str, str, Any]
 CoroutineGen = Generator[None, EventTuple, None]
 
 
-@_ijson_coroutine  # type: ignore[misc]
+@_ijson_coroutine  # type: ignore[untyped-decorator]
 def _item_coroutine(
     target_list: list[dict[str, Any]],
     attachment_refs: set[str],
@@ -123,7 +123,7 @@ def event_item_coroutine(
     )
 
 
-@_ijson_coroutine  # type: ignore[misc]
+@_ijson_coroutine  # type: ignore[untyped-decorator]
 def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     while True:
@@ -142,7 +142,7 @@ def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cove
             state.attachments[attachment_id] = value
 
 
-@_ijson_coroutine  # type: ignore[misc]
+@_ijson_coroutine  # type: ignore[untyped-decorator]
 def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
     """Coroutine to build the metadata object from streaming JSON events."""
     builder: ObjectBuilder | None = None

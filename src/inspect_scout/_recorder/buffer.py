@@ -274,6 +274,12 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
     flush_accumulated(writer)
     writer.close()
 
+    # TODO: If we changed the signature of this function from:
+    #   bytes | None
+    #     to
+    #   pa.Buffer | None
+    # We could avoid the copy (that to_pybytes does) altogether.
+    # Keep in mind that the previous BytesIO.getvalue() made a copy too.
     return buffer.getvalue().to_pybytes()
 
 

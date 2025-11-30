@@ -24,7 +24,7 @@ export const ScannerPanelTitle: FC = () => {
       ? "scan"
       : selectedStatus?.spec.scan_name;
 
-  const transcriptCount = selectedStatus?.spec.transcripts.count || 0;
+  const transcriptCount = selectedStatus?.spec.transcripts?.count || 0;
   return (
     <div className={clsx(styles.scanTitleView)}>
       <div className={clsx(styles.leftColumn)}>

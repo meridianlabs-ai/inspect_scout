@@ -42,6 +42,31 @@ interface ScanInfoCardProps {
   className?: string | string[];
 }
 const ScanInfoCard: FC<ScanInfoCardProps> = ({ selectedStatus, className }) => {
+  console.log({ selectedStatus });
+
+  const record = {
+    ID: selectedStatus.spec.scan_id,
+    Name: selectedStatus.spec.scan_name,
+  };
+  if (selectedStatus.spec.scan_args) {
+    record["Args"] = selectedStatus.spec.scan_args;
+  }
+  if (selectedStatus.spec.scan_file) {
+    record["Source File"] = selectedStatus.spec.scan_file;
+  }
+  if (selectedStatus.spec.revision?.origin) {
+    record["Origin"] = selectedStatus.spec.revision?.origin;
+  }
+  if (selectedStatus.spec.revision?.commit) {
+    record["Commit"] = selectedStatus.spec.revision?.commit;
+  }
+  if (selectedStatus.spec.packages) {
+    record["Packages"] = selectedStatus.spec.packages;
+  }
+  if (selectedStatus.spec.options) {
+    record["Options"] = selectedStatus.spec.options;
+  }
+
   return (
     <InfoCard
       title={`Scan: ${selectedStatus.spec.scan_name}`}
@@ -50,18 +75,7 @@ const ScanInfoCard: FC<ScanInfoCardProps> = ({ selectedStatus, className }) => {
       <MetaDataGrid
         key={`plan-md-task`}
         className={"text-size-small"}
-        entries={{
-          ID: selectedStatus.spec.scan_id,
-          Name: selectedStatus.spec.scan_name,
-          Args: selectedStatus.spec.scan_args,
-          "Source File": selectedStatus.spec.scan_file,
-          Origin: selectedStatus.spec.revision.origin,
-          Commit: selectedStatus.spec.revision.commit,
-          Packages: selectedStatus.spec.packages,
-          Options: selectedStatus.spec.options,
-
-          Timestamp: formatDateTime(new Date(selectedStatus.spec.timestamp)),
-        }}
+        entries={record}
       />
     </InfoCard>
   );
@@ -75,7 +89,10 @@ const ScanMetadataCard: FC<ScanMetadataCardProps> = ({
   selectedStatus,
   className,
 }) => {
-  if (Object.keys(selectedStatus.spec.metadata).length === 0) {
+  if (
+    !selectedStatus.spec.metadata ||
+    Object.keys(selectedStatus.spec.metadata).length === 0
+  ) {
     return null;
   }
 
@@ -95,7 +112,7 @@ const TranscriptsInfoCard: FC<TranscriptsInfoCardProps> = ({
   selectedStatus,
   className,
 }) => {
-  const fieldsDict = selectedStatus.spec.transcripts.fields.reduce(
+  const fieldsDict = selectedStatus.spec.transcripts?.fields.reduce(
     (acc, curr) => {
       const name = curr["name"];
       const type = curr["type"];
@@ -113,8 +130,8 @@ const TranscriptsInfoCard: FC<TranscriptsInfoCardProps> = ({
         key={`plan-md-task`}
         className={"text-size-small"}
         entries={{
-          Type: selectedStatus.spec.transcripts.type,
-          Count: selectedStatus.spec.transcripts.count,
+          Type: selectedStatus.spec.transcripts?.type,
+          Count: selectedStatus.spec.transcripts?.count,
           Fields: fieldsDict,
         }}
       />

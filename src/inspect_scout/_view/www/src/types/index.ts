@@ -58,21 +58,21 @@ export interface Transcript {
 }
 
 export interface ScanSpec {
-  scan_file: string;
+  scan_file?: string;
   scan_id: string;
   scan_name: string;
-  scan_args: Record<string, unknown>;
+  scan_args?: Record<string, unknown>;
   timestamp: string;
 
   model: Model;
 
-  metadata: Record<string, unknown>;
-  options: Record<string, unknown>;
-  packages: Record<string, unknown>;
-  revision: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  packages?: Record<string, unknown>;
+  revision?: Record<string, unknown>;
 
   scanners: Record<string, Scanner>;
-  transcripts: Transcript;
+  transcripts?: Transcript;
 }
 
 export interface Scanner {

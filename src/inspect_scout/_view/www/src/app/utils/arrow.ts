@@ -88,18 +88,15 @@ export async function expandResultsetRows(
         expandedRow.answer = result.answer ?? null;
         expandedRow.explanation = result.explanation ?? null;
 
-        // Extract validations, if present
-        if (row.validation_result && result.label) {
-          if (typeof row.validation_result === "string") {
-            const parsedValidation = await asyncJsonParse<
-              Record<string, boolean>
-            >(row.validation_result);
-
-            const resultValidation = parsedValidation[result.label];
-            expandedRow.validation_result = resultValidation;
-          } else {
-            // TODO: how is a non-string value here?
-          }
+        // Extract label-based validation, if present
+        if (
+          row.validation_result &&
+          typeof row.validation_result === "string"
+        ) {
+          expandedRow.validation_result = await extractLabelValidation(
+            expandedRow,
+            row.validation_result
+          );
         }
 
         // Handle metadata
@@ -145,6 +142,37 @@ export async function expandResultsetRows(
 
     // Create new table from combined array
     return from(allRowsArray);
+  }
+}
+
+async function extractLabelValidation(
+  row: Record<string, unknown>,
+  validationResultStr: string
+): Promise<boolean | string | null | unknown> {
+  if (!row.label || typeof row.label !== "string") {
+    return validationResultStr;
+  }
+
+  try {
+    const parsedValidation = await asyncJsonParse<unknown>(validationResultStr);
+
+    // Check if this is label-based validation (dict of label -> bool)
+    if (
+      typeof parsedValidation === "object" &&
+      parsedValidation !== null &&
+      !Array.isArray(parsedValidation)
+    ) {
+      // Extract the validation result for this specific label
+      const validationDict = parsedValidation as Record<string, boolean>;
+      const labelValidation = validationDict[row.label];
+      return labelValidation ?? null;
+    }
+
+    // Not label-based, return as-is
+    return parsedValidation;
+  } catch (error) {
+    // If parsing fails, return original string
+    return validationResultStr;
   }
 }
 

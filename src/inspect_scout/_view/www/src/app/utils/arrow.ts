@@ -132,13 +132,23 @@ export async function expandResultsetRows(
     }
   }
 
+  // Create synthetic rows for missing labels with negative expected values
+  const syntheticRows = await createSyntheticRows(
+    explodedResultsetRows,
+    resultObjs
+  );
+
   // Combine with non-resultset rows
   if (explodedResultsetRows.length === 0) {
     return otherRows;
   } else {
     // Create an array merging all the rows and convert back to a column table
     const otherRowsArray = otherRows.objects() as Record<string, unknown>[];
-    const allRowsArray = [...otherRowsArray, ...explodedResultsetRows];
+    const allRowsArray = [
+      ...otherRowsArray,
+      ...explodedResultsetRows,
+      ...syntheticRows,
+    ];
 
     // Create new table from combined array
     return from(allRowsArray);
@@ -173,6 +183,120 @@ async function extractLabelValidation(
   } catch (error) {
     // If parsing fails, return original string
     return validationResultStr;
+  }
+}
+
+/**
+ * Create synthetic rows for missing labels with negative expected values.
+ *
+ * When validation_target contains expected labels that are not present in the
+ * expanded results, and the expected value is "negative" (false, null, etc.),
+ * this creates synthetic rows for those missing labels.
+ *
+ * @param expandedRows - The expanded result rows
+ * @param resultsetRows - The original resultset rows (used as template)
+ * @returns Array of synthetic rows to add
+ */
+async function createSyntheticRows(
+  expandedRows: Record<string, unknown>[],
+  resultsetRows: Record<string, unknown>[]
+): Promise<Record<string, unknown>[]> {
+  if (resultsetRows.length === 0 || expandedRows.length === 0) {
+    return [];
+  }
+
+  // Check if we have validation_target in the first row
+  const firstRow = expandedRows[0];
+  if (!firstRow || !firstRow.validation_target || typeof firstRow.validation_target !== "string") {
+    return [];
+  }
+
+  try {
+    // Parse validation_target to check if it's label-based (a dict)
+    const parsedTarget = await asyncJsonParse<unknown>(firstRow.validation_target);
+    if (
+      typeof parsedTarget !== "object" ||
+      parsedTarget === null ||
+      Array.isArray(parsedTarget)
+    ) {
+      return [];
+    }
+
+    const validationTarget = parsedTarget as Record<string, unknown>;
+
+    // Parse validation_result
+    const parsedResult = firstRow.validation_result
+      ? await asyncJsonParse<unknown>(
+          typeof firstRow.validation_result === "string"
+            ? firstRow.validation_result
+            : JSON.stringify(firstRow.validation_result)
+        )
+      : {};
+    const validationResults =
+      typeof parsedResult === "object" && !Array.isArray(parsedResult)
+        ? (parsedResult as Record<string, unknown>)
+        : {};
+
+    // Get all labels present in expanded rows
+    const presentLabels = new Set(
+      expandedRows
+        .map((row) => row.label)
+        .filter((label) => label !== null && label !== undefined)
+    );
+
+    // Get expected labels from validation_target
+    const expectedLabels = Object.keys(validationTarget);
+
+    // Missing labels = expected but not present
+    const missingLabels = expectedLabels.filter(
+      (label) => !presentLabels.has(label)
+    );
+
+    // Create synthetic rows for missing labels with negative expected values
+    const syntheticRows: Record<string, unknown>[] = [];
+    const negativeValues = [false, null, "NONE", "none", 0, ""];
+
+    for (const label of missingLabels) {
+      const expectedValue = validationTarget[label];
+
+      // Only create synthetic row if expected value is negative
+      if (!negativeValues.includes(expectedValue as never)) {
+        continue;
+      }
+
+      // Get a template row from the first resultset row
+      const templateRow = { ...resultsetRows[0] };
+
+      // Set result-specific fields for the synthetic row
+      templateRow.label = label;
+      templateRow.value = expectedValue;
+      templateRow.value_type = typeof expectedValue === "boolean" ? "boolean" : "null";
+      templateRow.answer = null;
+      templateRow.explanation = null;
+      templateRow.metadata = maybeSerializeValue({});
+      templateRow.message_references = maybeSerializeValue([]);
+      templateRow.event_references = maybeSerializeValue([]);
+      templateRow.uuid = null;
+
+      // Set validation result for this synthetic row
+      templateRow.validation_result = validationResults[label] ?? null;
+
+      // NULL out error fields
+      templateRow.scan_error = null;
+      templateRow.scan_error_traceback = null;
+      templateRow.scan_error_type = null;
+
+      // NULL out scan execution fields
+      templateRow.scan_total_tokens = null;
+      templateRow.scan_model_usage = null;
+
+      syntheticRows.push(templateRow);
+    }
+
+    return syntheticRows;
+  } catch (error) {
+    // If parsing fails, no synthetic rows
+    return [];
   }
 }
 

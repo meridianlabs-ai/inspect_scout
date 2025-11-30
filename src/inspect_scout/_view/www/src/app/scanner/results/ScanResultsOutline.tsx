@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useRef } from "react";
+import { FC, Fragment, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
@@ -8,6 +8,7 @@ import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
+import { formatPercent } from "../../../utils/format";
 import { ApplicationIcons } from "../../appearance/icons";
 import { useSelectedScanner } from "../../hooks";
 
@@ -94,13 +95,17 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
         </LabeledValue>
       )}
 
-      {!!entry.validations && (
+      {entry.validations !== undefined && (
         <LabeledValue
           label="Validations"
-          layout="row"
+          layout={typeof entry.validations === "number" ? "row" : "column"}
           className={clsx("text-size-smallest")}
         >
-          {entry.validations}
+          {typeof entry.validations === "number" ? (
+            formatPercent(entry.validations)
+          ) : (
+            <ValidationTable validations={entry.validations} />
+          )}
         </LabeledValue>
       )}
     </div>
@@ -113,7 +118,7 @@ interface ScanResultsOutlineEntry {
   tokens?: number;
   results: number;
   scans: number;
-  validations?: number;
+  validations?: number | Record<string, number>;
   errors?: number;
   params?: string[];
 }
@@ -138,6 +143,10 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
       }
     }
 
+    const validations = summary?.validations
+      ? resolveValidations(summary.validations)
+      : undefined;
+
     entries.push({
       icon: ApplicationIcons.scorer,
       title: scanner,
@@ -146,7 +155,60 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
       tokens: summary?.tokens,
       errors: summary?.errors,
       params: formattedParams,
+      validations: validations,
     });
   }
   return entries;
+};
+
+const resolveValidations = (
+  validations: Array<boolean | Record<string, boolean>>
+): number | Record<string, number> | undefined => {
+  if (validations.length === 0) {
+    return undefined;
+  }
+
+  const first = validations[0];
+  if (typeof first === "boolean") {
+    // Count number of true values
+    const correct = validations.reduce((count, v) => count + (v ? 1 : 0), 0);
+    const total = validations.length;
+    return correct / total;
+  } else {
+    // Count per key
+    const counts: Record<string, number> = {};
+    const total = validations.length;
+    for (const validation of validations) {
+      if (typeof validation === "object") {
+        for (const [key, value] of Object.entries(validation)) {
+          if (value) {
+            counts[key] = (counts[key] || 0) + 1;
+          }
+        }
+      }
+    }
+
+    // Compute percentages
+    for (const key of Object.keys(counts)) {
+      counts[key] = (counts[key] || 0) / total;
+    }
+    return counts;
+  }
+};
+
+const ValidationTable: FC<{
+  validations: Record<string, number>;
+}> = ({ validations }) => {
+  return (
+    <div className={clsx(styles.validationTable)}>
+      {Object.entries(validations).map(([key, value]) => (
+        <Fragment key={key}>
+          <div className={clsx(styles.validationKey)}>{key}</div>
+          <div className={clsx(styles.validationValue)}>
+            {formatPercent(value)}
+          </div>
+        </Fragment>
+      ))}
+    </div>
+  );
 };

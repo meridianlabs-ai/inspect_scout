@@ -185,3 +185,7 @@ export function centerTruncate(str: string, maxLength: number = 50): string {
 
   return start + ellipsis + end;
 }
+
+export function formatPercent(value: number): string {
+  return `${formatPrettyDecimal(value * 100, 2)}%`;
+}

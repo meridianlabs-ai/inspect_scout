@@ -32,3 +32,10 @@
   color: var(--bs-link-hover-color);
   cursor: pointer;
 }
+
+.validationTable {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.5rem;
+  row-gap: 0;
+}

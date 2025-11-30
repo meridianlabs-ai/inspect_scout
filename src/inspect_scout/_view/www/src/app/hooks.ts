@@ -129,7 +129,9 @@ export const useServerScannerDataframe = () => {
 
         // Pre-process result set rows to explode the results
         const table = decodeArrowBytes(arrayBuffer);
-        const expandedTable = expandResultsetRows(table);
+        console.log({ table });
+
+        const expandedTable = await expandResultsetRows(table);
 
         // Store in state
         setSelectedScanResultData(selectedScanner, expandedTable);

@@ -16,3 +16,9 @@
 .scanValue {
   padding-right: 0.5rem;
 }
+
+.values {
+  display: grid;
+  grid-template-columns: max-content auto;
+  column-gap: 0.5rem;
+}

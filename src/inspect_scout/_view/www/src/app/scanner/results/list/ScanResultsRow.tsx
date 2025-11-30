@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { has } from "markdown-it/lib/common/utils.mjs";
 import { FC, memo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
@@ -11,6 +12,7 @@ import { ScannerCore } from "../../../types";
 import { Error } from "../../../values/Error";
 import { Explanation } from "../../../values/Explanation";
 import { Identifier } from "../../../values/Identifier";
+import { ValidationResult } from "../../../values/ValidationResult";
 import { Value } from "../../../values/Value";
 
 import { GridDescriptor } from "./ScanResultsList";
@@ -47,6 +49,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const hasExplanation = gridDescriptor.columns.includes("explanation");
   const hasLabel = gridDescriptor.columns.includes("label");
   const hasErrors = gridDescriptor.columns.includes("error");
+  const hasValidations = gridDescriptor.columns.includes("validations");
 
   const grid = (
     <div
@@ -72,7 +75,14 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
         </div>
       )}
       {hasLabel && (
-        <div className={clsx(styles.label, "text-size-smallest")}>
+        <div
+          className={clsx(
+            styles.label,
+            "text-size-smallest",
+            "text-style-label",
+            "text-style-secondary"
+          )}
+        >
           {entry.label || (
             <span className={clsx("text-style-secondary")}>—</span>
           )}
@@ -82,6 +92,11 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
       <div className={clsx(styles.value, "text-size-smaller")}>
         {!entry.scanError && <Value result={entry} style="inline" />}
       </div>
+      {hasValidations && (
+        <div className={clsx("text-size-smaller")}>
+          <ValidationResult result={entry.validationResult} />
+        </div>
+      )}
       {hasErrors && (
         <div className={clsx(styles.error, "text-size-smallest")}>
           {entry.scanError && (

@@ -36,7 +36,7 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   const ref = useRef(null);
 
   // Get all URL parameters at component level
-  const sampleEventUrl = undefined; // TODO: useSampleEventUrl(node.id);
+  const sampleEventUrl = undefined;
 
   return (
     <>

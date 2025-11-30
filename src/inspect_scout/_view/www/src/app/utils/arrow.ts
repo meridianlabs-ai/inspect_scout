@@ -1,6 +1,7 @@
 import { ColumnTable, from } from "arquero";
 import JSON5 from "json5";
 
+import { asyncJsonParse } from "../../utils/json-worker";
 import { ScannerReference, ValueType } from "../types";
 
 interface Result {
@@ -27,7 +28,9 @@ interface Result {
 // directly in a derive() expression, but it wasn't faster (was actually a
 // touch slower anecdotally) and was a much more complex set of operations.
 // I omit that function and instead just operate on the rows directly.
-export function expandResultsetRows(columnTable: ColumnTable): ColumnTable {
+export async function expandResultsetRows(
+  columnTable: ColumnTable
+): Promise<ColumnTable> {
   // Check if we have any resultset rows
   const colNames = columnTable.columnNames();
   if (
@@ -84,6 +87,20 @@ export function expandResultsetRows(columnTable: ColumnTable): ColumnTable {
         expandedRow.label = result.label ?? null;
         expandedRow.answer = result.answer ?? null;
         expandedRow.explanation = result.explanation ?? null;
+
+        // Extract validations, if present
+        if (row.validation_result && result.label) {
+          if (typeof row.validation_result === "string") {
+            const parsedValidation = await asyncJsonParse<
+              Record<string, boolean>
+            >(row.validation_result);
+
+            const resultValidation = parsedValidation[result.label];
+            expandedRow.validation_result = resultValidation;
+          } else {
+            // TODO: how is a non-string value here?
+          }
+        }
 
         // Handle metadata
         const metadata = result.metadata ?? {};

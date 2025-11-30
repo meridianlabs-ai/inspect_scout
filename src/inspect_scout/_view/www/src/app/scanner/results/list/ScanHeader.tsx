@@ -17,6 +17,7 @@ export const ScanResultsHeader: FC<ScanResultsHeaderProps> = ({
   const hasExplanation = gridDescriptor.columns.includes("explanation");
   const hasLabel = gridDescriptor.columns.includes("label");
   const hasError = gridDescriptor.columns.includes("error");
+  const hasValidations = gridDescriptor.columns.includes("validations");
 
   return (
     <div
@@ -33,6 +34,7 @@ export const ScanResultsHeader: FC<ScanResultsHeaderProps> = ({
       {hasExplanation && <ColumnHeader label="Explanation" />}
       {hasLabel && <ColumnHeader label="Label" />}
       <ColumnHeader label="Value" className={clsx(styles.value)} />
+      {hasValidations && <ColumnHeader label="Validation" />}
       {hasError && <ColumnHeader label="Error" />}
     </div>
   );

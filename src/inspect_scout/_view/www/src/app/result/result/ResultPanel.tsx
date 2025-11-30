@@ -9,6 +9,7 @@ import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
 import { Explanation } from "../../values/Explanation";
+import { ValidationResult } from "../../values/ValidationResult";
 import { Value } from "../../values/Value";
 
 import styles from "./ResultPanel.module.css";
@@ -43,7 +44,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
             <div className={clsx("text-style-label", "text-style-secondary")}>
               Value
             </div>
-            <div>
+            <div className={clsx(styles.values)}>
               {result.valueType === "object" ? (
                 <MetaDataGrid
                   entries={result.value as Record<string, unknown>}
@@ -51,6 +52,9 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
               ) : (
                 <Value result={result} style="block" />
               )}
+              {result.validationResult !== undefined ? (
+                <ValidationResult result={result.validationResult} />
+              ) : undefined}
             </div>
             <div className={clsx("text-style-label", "text-style-secondary")}>
               Explanation

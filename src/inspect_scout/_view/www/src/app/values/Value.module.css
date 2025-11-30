@@ -1,5 +1,4 @@
 .boolean {
-  font-family: "Consola Regular";
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -7,17 +6,18 @@
   padding: 8px;
   width: 2.5rem;
   height: 1rem;
+  font-size: 0.7rem;
 }
 
 .true {
   background-color: var(--bs-success);
-  border-color: var(--bs-success);
+  border: solid var(--bs-success) 1px;
   color: var(--bs-body-bg);
 }
 
 .false {
   background-color: var(--bs-danger);
-  border-color: var(--bs-danger);
+  border: solid var(--bs-danger) 1px;
   color: var(--bs-body-bg);
 }
 

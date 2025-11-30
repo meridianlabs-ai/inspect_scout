@@ -427,6 +427,12 @@ const sortByColumns = (
         comparison = errorA.localeCompare(errorB);
         break;
       }
+      case "validation": {
+        const validationA = a.validationResult ? 1 : 0;
+        const validationB = b.validationResult ? 1 : 0;
+        comparison = validationA - validationB;
+        break;
+      }
       default:
         // Unknown column, skip
         continue;
@@ -473,7 +479,7 @@ const optimalColumnLayout = (
       return Math.max(max, resultIdentifier(s).id.length);
     }, 0);
     gridColParts.push(
-      `minmax(${Math.min(Math.max(maxlabelLen * 4, 50), 250)}px, 1fr)`
+      `minmax(${Math.min(Math.max(maxlabelLen * 5, 75), 250)}px, 1fr)`
     );
   }
 
@@ -499,6 +505,14 @@ const optimalColumnLayout = (
     gridColParts.push(
       `minmax(${Math.min(Math.max(maxValueLen * 4, 50), 300)}px, 1fr)`
     );
+  }
+
+  const hasValidations = scannerSummaries.some(
+    (s) => s.validationResult !== undefined
+  );
+  if (hasValidations) {
+    columns.push("validations");
+    gridColParts.push("4fr");
   }
 
   const hasErrors = scannerSummaries.some((s) => !!s.scanError);

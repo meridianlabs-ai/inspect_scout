@@ -3,6 +3,7 @@ import { FC, Fragment, ReactNode, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
 import { MarkdownDivWithReferences } from "../../components/MarkdownDivWithReferences";
+import { RecordTree } from "../../content/RecordTree";
 import {
   getRelativePathFromParams,
   parseScanResultPath,
@@ -27,11 +28,17 @@ import styles from "./Value.module.css";
 interface ValueProps {
   result: ScannerCore;
   style: "inline" | "block";
+  maxTableSize?: number;
+  interactive?: boolean;
 }
 
 // TODO: Implement popover viewer for object and list values
-// TODO: Implement support for list results
-export const Value: FC<ValueProps> = ({ result, style }): ReactNode => {
+export const Value: FC<ValueProps> = ({
+  result,
+  style,
+  maxTableSize = 5,
+  interactive = false,
+}): ReactNode => {
   const params = useParams<{ "*": string }>();
 
   // Build URL to the scan result with the appropriate query parameters
@@ -68,7 +75,16 @@ export const Value: FC<ValueProps> = ({ result, style }): ReactNode => {
   } else if (isNullValue(result)) {
     return <code>null</code>;
   } else if (isArrayValue(result)) {
-    return <code>[Array(${result.value.length})]</code>;
+    return (
+      <ValueList
+        value={result.value}
+        result={result}
+        buildUrl={buildUrl}
+        style={style}
+        maxListSize={maxTableSize}
+        interactive={interactive}
+      />
+    );
   } else if (isObjectValue(result)) {
     return (
       <ValueTable
@@ -76,6 +92,8 @@ export const Value: FC<ValueProps> = ({ result, style }): ReactNode => {
         result={result}
         buildUrl={buildUrl}
         style={style}
+        maxTableSize={maxTableSize}
+        interactive={interactive}
       />
     );
   } else {
@@ -83,16 +101,16 @@ export const Value: FC<ValueProps> = ({ result, style }): ReactNode => {
   }
 };
 
-const ValueTable: FC<{
-  value: object;
+const ValueList: FC<{
+  value: unknown[];
   result: ScannerCore;
+  maxListSize: number;
+  interactive: boolean;
   buildUrl: (query: string) => string | undefined;
   style: "inline" | "block";
-}> = ({ value, result, buildUrl, style }) => {
-  // Display only 5 rows
-  const maxRows = 5;
-  const keys = Object.keys(value);
-  const keysToDisplay = keys.slice(0, maxRows);
+}> = ({ value, result, maxListSize, interactive, buildUrl, style }) => {
+  // Display only maxListSize rows
+  const itemsToDisplay = value.slice(0, maxListSize);
 
   // Display the rows
   return (
@@ -102,11 +120,61 @@ const ValueTable: FC<{
         style === "inline" ? styles.inline : styles.block
       )}
     >
-      {keysToDisplay.map((key) => {
+      {itemsToDisplay.map((item, index) => {
         const displayValue = renderValue(
+          index,
+          item,
+          result,
+          buildUrl,
+          interactive
+        );
+        return (
+          <Fragment key={`value-table-row-${index}`}>
+            <div
+              className={clsx(
+                styles.valueKey,
+                "text-style-label",
+                "text-style-secondary",
+                "text-size-smallest"
+              )}
+            >
+              [{index}]
+            </div>
+            <div className={clsx(styles.valueValue)}>{displayValue}</div>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+};
+
+const ValueTable: FC<{
+  value: object;
+  result: ScannerCore;
+  maxTableSize: number;
+  interactive: boolean;
+  buildUrl: (query: string) => string | undefined;
+  style: "inline" | "block";
+}> = ({ value, result, maxTableSize, interactive, buildUrl, style }) => {
+  // Display only 5 rows
+  const keys = Object.keys(value);
+  const keysToDisplay = keys.slice(0, maxTableSize);
+
+  // Display the rows
+  return (
+    <div
+      className={clsx(
+        styles.valueTable,
+        style === "inline" ? styles.inline : styles.block
+      )}
+    >
+      {keysToDisplay.map((key, index) => {
+        const displayValue = renderValue(
+          index,
           (value as Record<string, unknown>)[key],
           result,
-          buildUrl
+          buildUrl,
+          interactive
         );
         return (
           <Fragment key={`value-table-row-${key}`}>
@@ -130,9 +198,11 @@ const ValueTable: FC<{
 
 // Renders a simple value (don't further render objects or lists here)
 const renderValue = (
+  index: number,
   val: unknown,
   result: ScannerCore,
-  buildUrl: (query: string) => string | undefined
+  buildUrl: (query: string) => string | undefined,
+  interactive: boolean
 ): ReactNode => {
   if (typeof val === "string") {
     const refs = toMarkdownRefs(
@@ -159,7 +229,14 @@ const renderValue = (
   } else if (Array.isArray(val)) {
     return printArray(val, 25);
   } else if (typeof val === "object") {
-    return printObject(val, 35);
+    return !interactive ? (
+      printObject(val, 35)
+    ) : (
+      <RecordTree
+        id={`value-record-${result.uuid}-${index}`}
+        record={val as Record<string, unknown>}
+      />
+    );
   } else {
     return "Unknown value type";
   }

@@ -6,7 +6,6 @@ import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
-import { formatDateTime } from "../../../utils/format";
 
 import styles from "./ScanInfo.module.css";
 

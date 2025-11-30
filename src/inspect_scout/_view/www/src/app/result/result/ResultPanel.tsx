@@ -44,14 +44,19 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
             <div className={clsx("text-style-label", "text-style-secondary")}>
               Value
             </div>
-            <div className={clsx(styles.values)}>
-              {result.valueType === "object" ? (
-                <MetaDataGrid
-                  entries={result.value as Record<string, unknown>}
-                />
-              ) : (
-                <Value result={result} style="block" />
+            <div
+              className={clsx(
+                result.validationResult !== undefined
+                  ? styles.values
+                  : undefined
               )}
+            >
+              <Value
+                result={result}
+                style="block"
+                maxTableSize={1000}
+                interactive={true}
+              />
               {result.validationResult !== undefined ? (
                 <ValidationResult result={result.validationResult} />
               ) : undefined}

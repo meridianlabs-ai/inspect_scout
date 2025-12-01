@@ -25,11 +25,11 @@ Use the **Copy UUID** button to copy the ID for the transcript you are reviewing
 You'll typically create a distinct validation set for each scanner, and then pass the validation sets to `scan()` as a dict mapping scanner to set:
 
 ``` {.python filename="scanning.py"}
-from inspect_scout import scan, validation_set
+from inspect_scout import scan, transcripts_from, validation_set
 
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
-    transcripts="./logs",
+    transcripts=transcripts_from("./logs"),
     validation={
         "ctf_environment": validation_set("ctf-validation.csv")
     }

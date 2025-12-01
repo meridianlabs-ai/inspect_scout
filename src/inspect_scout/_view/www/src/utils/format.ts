@@ -168,7 +168,7 @@ export function centerTruncate(str: string, maxLength: number = 50): string {
     return str;
   }
 
-  const ellipsis = "…";
+  const ellipsis = " … ";
   const availableLength = maxLength - ellipsis.length;
 
   // If maxLength is too small to show anything meaningful

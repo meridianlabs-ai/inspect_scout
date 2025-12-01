@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, Fragment } from "react";
+import { FC } from "react";
 
 import styles from "./ValidationResult.module.css";
 
@@ -15,7 +15,7 @@ export const ValidationResult: FC<ValidationResultProps> = ({ result }) => {
 
     return (
       <div className={clsx(styles.validationTable)}>
-        {entries.map(([key, value]) => (
+        {entries.map(([_key, value]) => (
           <div>
             <Result value={value} />
           </div>

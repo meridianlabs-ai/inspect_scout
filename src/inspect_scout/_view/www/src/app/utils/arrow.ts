@@ -207,13 +207,19 @@ async function createSyntheticRows(
 
   // Check if we have validation_target in the first row
   const firstRow = expandedRows[0];
-  if (!firstRow || !firstRow.validation_target || typeof firstRow.validation_target !== "string") {
+  if (
+    !firstRow ||
+    !firstRow.validation_target ||
+    typeof firstRow.validation_target !== "string"
+  ) {
     return [];
   }
 
   try {
     // Parse validation_target to check if it's label-based (a dict)
-    const parsedTarget = await asyncJsonParse<unknown>(firstRow.validation_target);
+    const parsedTarget = await asyncJsonParse<unknown>(
+      firstRow.validation_target
+    );
     if (
       typeof parsedTarget !== "object" ||
       parsedTarget === null ||
@@ -270,7 +276,8 @@ async function createSyntheticRows(
       // Set result-specific fields for the synthetic row
       templateRow.label = label;
       templateRow.value = expectedValue;
-      templateRow.value_type = typeof expectedValue === "boolean" ? "boolean" : "null";
+      templateRow.value_type =
+        typeof expectedValue === "boolean" ? "boolean" : "null";
       templateRow.answer = null;
       templateRow.explanation = null;
       templateRow.metadata = maybeSerializeValue({});

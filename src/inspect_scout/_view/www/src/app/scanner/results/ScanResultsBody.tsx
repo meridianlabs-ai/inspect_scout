@@ -37,6 +37,7 @@ export const ScanResultsBody: FC = () => {
   const isLoading = useStore((state) => state.loading);
   const hasScanner = (columnTable?.numRows() || 0) > 0;
   const error = useStore((state) => state.scopedErrors["dataframe"]);
+  const dataframeWrapText = useStore((state) => state.dataframeWrapText);
 
   // Navigation setup
   const navigate = useNavigate();
@@ -64,9 +65,11 @@ export const ScanResultsBody: FC = () => {
           )}
           {selectedResultsView === kSegmentDataframe && (
             <DataframeView
+              options={{ maxStrLen: 1024 }}
               columnTable={columnTable}
               sortedColumns={sortedColumns}
               showRowNumbers={true}
+              wrapText={dataframeWrapText}
               onRowDoubleClicked={(row) => {
                 // Navigate to the result detail view
                 const uuid = (row as { uuid?: string }).uuid;

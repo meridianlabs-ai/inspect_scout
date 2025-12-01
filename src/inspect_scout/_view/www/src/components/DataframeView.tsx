@@ -29,6 +29,7 @@ interface DataframeViewProps {
   };
   enableKeyboardNavigation?: boolean;
   showRowNumbers?: boolean;
+  wrapText?: boolean;
 }
 
 export const DataframeView: FC<DataframeViewProps> = ({
@@ -38,6 +39,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
   options,
   enableKeyboardNavigation = true,
   showRowNumbers = false,
+  wrapText = false,
 }) => {
   const selectedDataframeRow =
     useStore((state) => state.selectedResultRow) || 0;
@@ -89,11 +91,13 @@ export const DataframeView: FC<DataframeViewProps> = ({
               filter: true,
               resizable: true,
               tooltipField: name,
-              maxWidth: 400,
+              maxWidth: 800,
               cellDataType:
                 typeof sampleValue === "boolean" ? false : undefined,
               hide: !columnNames?.includes(name) || false,
               valueFormatter,
+              wrapText: wrapText,
+              autoHeight: wrapText,
             };
           })
           .filter((c) => c !== undefined)
@@ -145,6 +149,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
     sortedColumns,
     options,
     showRowNumbers,
+    wrapText,
     onRowDoubleClicked,
     setSelectedDataframeRow,
   ]);
@@ -272,6 +277,9 @@ export const DataframeView: FC<DataframeViewProps> = ({
         theme={themeBalham}
         enableCellTextSelection={true}
         initialState={gridState}
+        onFirstDataRendered={() => {
+          gridRef.current?.api.sizeColumnsToFit();
+        }}
         onStateUpdated={(e: StateUpdatedEvent) => {
           setGridState(GRID_STATE_NAME, e.state);
         }}

@@ -150,4 +150,5 @@ export const ApplicationIcons = {
   },
   turns: "bi bi-chat-left-text", // bi bi-repeat
   usage: "bi bi-stopwatch",
+  wrap: "bi bi-text-wrap",
 };

@@ -70,7 +70,7 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
             name: Semaphore name
             concurrency: Maximum concurrent holders
         """
-        await run_sync_on_thread(lambda: self._create_semaphore_sync(name, concurrency))
+        await run_sync_on_thread(self._create_semaphore_sync, name, concurrency)
 
     async def get_or_create(
         self, name: str, concurrency: int, key: str | None, visible: bool

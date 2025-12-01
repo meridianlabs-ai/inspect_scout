@@ -186,14 +186,12 @@ def multi_process_strategy(
                 """Producer task that feeds work items into the queue."""
                 try:
                     async for item in parse_jobs:
-                        await run_sync_on_thread(
-                            lambda item=item: parse_job_queue.put(item)
-                        )
+                        await run_sync_on_thread(parse_job_queue.put, item)
                 finally:
                     # Send sentinel values to signal worker tasks to stop (one per task)
                     # This runs even if cancelled, allowing graceful shutdown
                     for _ in range(task_count):
-                        await run_sync_on_thread(lambda: parse_job_queue.put(None))
+                        await run_sync_on_thread(parse_job_queue.put, None)
 
             async def _upstream_collector() -> None:
                 """Collector task that receives results and metrics."""

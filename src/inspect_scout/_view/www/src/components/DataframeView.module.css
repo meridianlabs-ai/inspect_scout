@@ -12,3 +12,12 @@
 .gridWrapper :global(.ag-cell) {
   line-height: 1.1em;
 }
+
+/* Row numbers cell styling */
+.gridWrapper :global(.ag-cell.row-number-cell) {
+  cursor: pointer;
+}
+
+.gridWrapper :global(.ag-cell.row-number-cell:hover) {
+  text-decoration: underline;
+}

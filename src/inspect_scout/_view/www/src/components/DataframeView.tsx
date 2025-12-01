@@ -7,7 +7,7 @@ import {
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { ColumnTable } from "arquero";
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useStore } from "../state/store";
 import { centerTruncate } from "../utils/format";
@@ -28,6 +28,7 @@ interface DataframeViewProps {
     maxStrLen?: number;
   };
   enableKeyboardNavigation?: boolean;
+  showRowNumbers?: boolean;
 }
 
 export const DataframeView: FC<DataframeViewProps> = ({
@@ -36,6 +37,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
   onRowDoubleClicked,
   options,
   enableKeyboardNavigation = true,
+  showRowNumbers = false,
 }) => {
   const selectedDataframeRow =
     useStore((state) => state.selectedResultRow) || 0;
@@ -55,7 +57,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
     const columnNames = sortedColumns || columnTable?.columnNames() || [];
 
     // Create column definitions for ag-grid
-    const columnDefs: Array<ColDef> = columnTable
+    const dataColumnDefs: Array<ColDef> = columnTable
       ? columnNames
           .map((name) => {
             const col = columnTable.column(name);
@@ -97,11 +99,55 @@ export const DataframeView: FC<DataframeViewProps> = ({
           .filter((c) => c !== undefined)
       : [];
 
+    // Add row numbers column if enabled (manual implementation for Community edition)
+    const columnDefs: Array<ColDef> = showRowNumbers
+      ? [
+          {
+            headerName: "",
+            valueGetter: (params) => {
+              return params.node?.rowIndex !== undefined &&
+                params.node?.rowIndex !== null
+                ? params.node.rowIndex + 1
+                : "";
+            },
+            sortable: false,
+            filter: false,
+            resizable: false,
+            width: 60,
+            maxWidth: 60,
+            minWidth: 60,
+            pinned: "left",
+            suppressMovable: true,
+            cellClass: "row-number-cell",
+            cellStyle: {
+              textAlign: "right",
+              paddingRight: "12px",
+            },
+            onCellClicked: (params) => {
+              if (params.data && onRowDoubleClicked) {
+                if (params.rowIndex !== null && params.rowIndex !== undefined) {
+                  setSelectedDataframeRow(params.rowIndex);
+                }
+                onRowDoubleClicked(params.data);
+              }
+            },
+          },
+          ...dataColumnDefs,
+        ]
+      : dataColumnDefs;
+
     // Convert table to array of objects for ag-grid
     const rowData = columnTable?.objects();
 
     return { columnDefs, rowData };
-  }, [columnTable, sortedColumns, options]);
+  }, [
+    columnTable,
+    sortedColumns,
+    options,
+    showRowNumbers,
+    onRowDoubleClicked,
+    setSelectedDataframeRow,
+  ]);
 
   const gridRef = useRef<AgGridReact>(null);
 

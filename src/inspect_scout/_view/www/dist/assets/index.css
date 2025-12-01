@@ -4325,19 +4325,28 @@ button._segment_19z32_10 {
   margin-right: 0.3em;
   margin-left: 0.2em;
 }
-._gridWrapper_yeano_1 {
+._gridWrapper_bykj9_1 {
   height: 100%;
   width: 100%;
 }
 
 /* Hide sort index numbers in multi-column sort */
-._gridWrapper_yeano_1 .ag-header-cell .ag-sort-order {
+._gridWrapper_bykj9_1 .ag-header-cell .ag-sort-order {
   display: none;
 }
 
 /* Set line height for grid cells */
-._gridWrapper_yeano_1 .ag-cell {
+._gridWrapper_bykj9_1 .ag-cell {
   line-height: 1.1em;
+}
+
+/* Row numbers cell styling */
+._gridWrapper_bykj9_1 .ag-cell.row-number-cell {
+  cursor: pointer;
+}
+
+._gridWrapper_bykj9_1 .ag-cell.row-number-cell:hover {
+  text-decoration: underline;
 }
 ._header_u9u40_1 {
   border-bottom: solid var(--bs-light-border-subtle) 1px;

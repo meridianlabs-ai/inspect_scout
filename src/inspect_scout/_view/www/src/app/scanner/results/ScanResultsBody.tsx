@@ -66,6 +66,7 @@ export const ScanResultsBody: FC = () => {
             <DataframeView
               columnTable={columnTable}
               sortedColumns={sortedColumns}
+              showRowNumbers={true}
               onRowDoubleClicked={(row) => {
                 // Navigate to the result detail view
                 const uuid = (row as { uuid?: string }).uuid;

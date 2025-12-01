@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { ApplicationIcons } from "../appearance/icons";
+
 import styles from "./ValidationResult.module.css";
 
 interface ValidationResultProps {
@@ -28,7 +30,11 @@ export const ValidationResult: FC<ValidationResultProps> = ({ result }) => {
 const Result: FC<{ value: boolean }> = ({ value }) => {
   return (
     <div className={clsx(value ? styles.true : styles.false, styles.result)}>
-      {value ? "valid" : "invalid"}
+      {value ? (
+        <i className={clsx(ApplicationIcons.check)} />
+      ) : (
+        <i className={clsx(ApplicationIcons.x)} />
+      )}
     </div>
   );
 };

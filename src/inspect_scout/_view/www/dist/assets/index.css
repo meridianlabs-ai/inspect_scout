@@ -3951,27 +3951,27 @@ span.ap-marker-container:hover span.ap-marker {
   height: 100%;
   overflow-y: auto;
 }
-._result_fgwnb_1 {
+._result_f18wg_1 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   border-radius: 5px;
   padding: 8px;
-  width: 3rem;
+  width: 2rem;
   height: 1rem;
   font-size: 0.7rem;
 }
 
-._true_fgwnb_12 {
+._true_f18wg_12 {
   border: solid var(--bs-success) 1px;
   color: var(--bs-success);
 }
 
-._false_fgwnb_17 {
+._false_f18wg_17 {
   border: solid var(--bs-danger) 1px;
   color: var(--bs-danger);
 }
-._boolean_9sezi_1 {
+._boolean_1uivt_1 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -3982,63 +3982,74 @@ span.ap-marker-container:hover span.ap-marker {
   font-size: 0.7rem;
 }
 
-._true_9sezi_12 {
+._true_1uivt_12 {
   background-color: var(--bs-success);
   border: solid var(--bs-success) 1px;
   color: var(--bs-body-bg);
 }
 
-._false_9sezi_18 {
+._false_1uivt_18 {
   background-color: var(--bs-danger);
   border: solid var(--bs-danger) 1px;
   color: var(--bs-body-bg);
 }
 
-._valueTable_9sezi_24 {
+._valueTable_1uivt_24 {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: max-content auto;
   column-gap: 1rem;
   row-gap: 0rem;
 }
 
-._inline_9sezi_31 ._valueValue_9sezi_31 {
+._inline_1uivt_31 ._valueValue_1uivt_31 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-._inline_9sezi_31 ._valueValue_9sezi_31 p {
+._inline_1uivt_31 ._valueValue_1uivt_31 p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-pre._value_9sezi_24 {
+pre._value_1uivt_24 {
   margin: 0;
 }
-._container_8llud_1 {
+._container_15a30_1 {
   padding: 1rem;
 }
 
-._colspan_8llud_5 {
+._colspan_15a30_5 {
   grid-column: span 2;
 }
 
-._explanation_8llud_9 {
+._explanation_15a30_9 {
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 1rem;
   row-gap: 0.75rem;
 }
 
-._scanValue_8llud_16 {
+._scanValue_15a30_16 {
   padding-right: 0.5rem;
 }
 
-._values_8llud_20 {
+._values_15a30_20 {
   display: grid;
   grid-template-columns: max-content auto;
   column-gap: 0.5rem;
+}
+
+._validation_15a30_26 {
+  margin-left: 1rem;
+  display: grid;
+  grid-template-columns: max-content max-content;
+}
+
+._validationLabel_15a30_32 {
+  padding-right: 0.5rem;
+  margin-top: 2px;
 }
 ._header_ph0sv_1 {
   padding-left: 1rem;

@@ -23,7 +23,7 @@
 
 .valueTable {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: max-content auto;
   column-gap: 1rem;
   row-gap: 0rem;
 }

@@ -58,7 +58,19 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
                 interactive={true}
               />
               {result.validationResult !== undefined ? (
-                <ValidationResult result={result.validationResult} />
+                <div className={clsx(styles.validation)}>
+                  <div
+                    className={clsx(
+                      "text-style-label",
+                      "text-style-secondary",
+                      "text-size-smallest",
+                      styles.validationLabel
+                    )}
+                  >
+                    Validation
+                  </div>
+                  <ValidationResult result={result.validationResult} />
+                </div>
               ) : undefined}
             </div>
             <div className={clsx("text-style-label", "text-style-secondary")}>

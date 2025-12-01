@@ -487,7 +487,18 @@ const optimalColumnLayout = (
   columns.push("value");
   const hasValueObjs = scannerSummaries.some((s) => s.valueType === "object");
   if (hasValueObjs) {
-    gridColParts.push("5fr");
+    const obj = scannerSummaries[0]?.value;
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      // measure the length of the longest key
+      const maxKeyLen = Object.keys(obj).reduce((max, key) => {
+        return Math.max(max, key.length);
+      }, 0);
+      gridColParts.push(
+        `minmax(${Math.min(Math.max(maxKeyLen * 6, 135), 400)}px, 2fr)`
+      );
+    } else {
+      gridColParts.push("3fr");
+    }
   } else {
     const maxValueLen = scannerSummaries.reduce((max: number, s) => {
       if (s.valueType === "array") {
@@ -512,7 +523,7 @@ const optimalColumnLayout = (
   );
   if (hasValidations) {
     columns.push("validations");
-    gridColParts.push("4fr");
+    gridColParts.push("1fr");
   }
 
   const hasErrors = scannerSummaries.some((s) => !!s.scanError);

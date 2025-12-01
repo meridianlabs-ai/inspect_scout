@@ -22,3 +22,14 @@
   grid-template-columns: max-content auto;
   column-gap: 0.5rem;
 }
+
+.validation {
+  margin-left: 1rem;
+  display: grid;
+  grid-template-columns: max-content max-content;
+}
+
+.validationLabel {
+  padding-right: 0.5rem;
+  margin-top: 2px;
+}

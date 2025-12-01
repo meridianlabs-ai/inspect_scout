@@ -43,6 +43,7 @@ export const ApplicationIcons = {
     remove: "bi bi-dash",
     replace: "bi bi-plus-slash-minus",
   },
+  check: "bi bi-check",
   checkbox: {
     checked: "bi bi-check-circle",
     unchecked: "bi bi-circle",
@@ -151,4 +152,5 @@ export const ApplicationIcons = {
   turns: "bi bi-chat-left-text", // bi bi-repeat
   usage: "bi bi-stopwatch",
   wrap: "bi bi-text-wrap",
+  x: "bi bi-x",
 };

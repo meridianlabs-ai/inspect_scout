@@ -193,14 +193,20 @@ async def run_sync_on_thread(
 ) -> T_Retval:
     """Run a blocking callable in a thread, preserving its return type.
 
-    This is a type-safe wrapper around anyio.to_thread.run_sync that preserves
+    This is a type-safe wrapper around `anyio.to_thread.run_sync` that preserves
     the return type of the callable, enabling proper downstream type checking.
+
+    Note: `anyio.to_thread.run_sync` is correctly annotated, but some type
+    checkers/configurations may widen its return type to ``Any``. This wrapper
+    keeps the return type precise (via the TypeVar/Unpack typing) so callers
+    and downstream type checkers retain the specific return type of ``func``.
 
     Args:
         func: A blocking callable
         *args: Arguments to pass to the callable
 
     Returns:
-        The return value of func, with proper type information preserved
+        The return value of ``func``, with type information preserved for
+        static checkers.
     """
     return await anyio.to_thread.run_sync(func, *args, abandon_on_cancel=True)

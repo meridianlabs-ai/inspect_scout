@@ -10,6 +10,7 @@ import { ApplicationIcons } from "../appearance/icons";
 import { resultIdentifierStr, resultLog } from "../utils/results";
 
 import { ScanInfo } from "./info/ScanInfo";
+import { ScanDataframeWrapTextButton } from "./results/ScanDataframeWrapTextButton";
 import { ScanResultsFilter } from "./results/ScanResultsFilter";
 import { ScanResultsGroup } from "./results/ScanResultsGroup";
 import { ScanResultsPanel } from "./results/ScanResultsPanel";
@@ -108,6 +109,10 @@ export const ScannerPanelBody: React.FC = () => {
 
     if (selectedResultsView === kSegmentList) {
       tools.push(<ScanResultsFilter key={"scan-results-filtering"} />);
+    }
+
+    if (selectedResultsView === kSegmentDataframe) {
+      tools.push(<ScanDataframeWrapTextButton />);
     }
 
     if (selectedResultsView === kSegmentList && groupOptions.length > 0) {

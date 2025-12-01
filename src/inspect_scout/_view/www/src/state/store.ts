@@ -65,6 +65,7 @@ interface StoreState {
   scansSearchText?: string;
   highlightLabeled?: boolean;
   selectedResultRow?: number;
+  dataframeWrapText?: boolean;
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -165,6 +166,7 @@ interface StoreState {
   setScansSearchText: (text: string) => void;
   setHighlightLabeled: (highlight: boolean) => void;
   setSelectedResultRow: (row: number) => void;
+  setDataframeWrapText: (wrap: boolean) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -567,6 +569,11 @@ export const createStore = (api: ScanApi) =>
           setSelectedResultRow: (row: number) => {
             set((state) => {
               state.selectedResultRow = row;
+            });
+          },
+          setDataframeWrapText: (wrap: boolean) => {
+            set((state) => {
+              state.dataframeWrapText = wrap;
             });
           },
         })),

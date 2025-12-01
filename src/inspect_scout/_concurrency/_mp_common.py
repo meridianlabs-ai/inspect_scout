@@ -1,6 +1,6 @@
 """Shared context for multiprocessing communication.
 
-This module contains theglobals that are shared between the main process and worker
+This module contains the globals that are shared between the main process and worker
 subprocesses via fork. The main process initializes these values, and forked workers
 inherit them through copy-on-write memory.
 """
@@ -16,6 +16,7 @@ from threading import Condition
 from typing import TYPE_CHECKING, Awaitable, Callable, TypeAlias, TypeVar, cast
 
 import anyio
+from typing_extensions import TypeVarTuple, Unpack
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
@@ -182,19 +183,24 @@ class IPCContext:
 ipc_context = cast(IPCContext, None)
 
 
-T = TypeVar("T")
+T_Retval = TypeVar("T_Retval")
+PosArgsT = TypeVarTuple("PosArgsT")
 
 
-async def run_sync_on_thread(func: Callable[[], T]) -> T:
+async def run_sync_on_thread(
+    func: Callable[[Unpack[PosArgsT]], T_Retval],
+    *args: Unpack[PosArgsT],
+) -> T_Retval:
     """Run a blocking callable in a thread, preserving its return type.
 
     This is a type-safe wrapper around anyio.to_thread.run_sync that preserves
     the return type of the callable, enabling proper downstream type checking.
 
     Args:
-        func: A blocking callable with no arguments
+        func: A blocking callable
+        *args: Arguments to pass to the callable
 
     Returns:
         The return value of func, with proper type information preserved
     """
-    return await anyio.to_thread.run_sync(func, abandon_on_cancel=True)
+    return await anyio.to_thread.run_sync(func, *args, abandon_on_cancel=True)

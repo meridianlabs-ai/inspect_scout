@@ -4,11 +4,13 @@ Supports reading individual members from large ZIP archives (including ZIP64)
 stored locally or remotely (e.g., S3) using async range requests.
 """
 
+from __future__ import annotations
+
 import struct
 import zlib
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import Any, Self
 
 import anyio
 from anyio.abc import ByteReceiveStream
@@ -317,6 +319,48 @@ async def _parse_central_directory(
     return entries
 
 
+class _ZipMemberBytes:
+    """AsyncIterable + AsyncContextManager for zip member data.
+
+    Each iteration creates a fresh decompression stream, enabling re-reads:
+
+        async with zip_reader.open_member("file.json") as member:
+            async for chunk in member:  # first read
+                process(chunk)
+
+            async for chunk in member:  # second read (e.g., retry on error)
+                process_differently(chunk)
+    """
+
+    def __init__(self, zip_reader: AsyncZipReader, member: str | ZipEntry):
+        self._zip_reader = zip_reader
+        self._member = member
+        self._current_stream: _DecompressStream | None = None
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        if self._current_stream:
+            await self._current_stream.aclose()
+
+        offset, end, method = await self._zip_reader._get_member_range_and_method(
+            self._member
+        )
+        self._current_stream = _DecompressStream(
+            await self._zip_reader._filesystem.read_file_bytes(
+                self._zip_reader._filename, offset, end
+            ),
+            method,
+        )
+        async for chunk in self._current_stream:
+            yield chunk
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *_args: Any) -> None:
+        if self._current_stream:
+            await self._current_stream.aclose()
+
+
 class AsyncZipReader:
     """Async ZIP reader that supports streaming decompression of individual members.
 
@@ -324,11 +368,12 @@ class AsyncZipReader:
     the necessary portions of the ZIP file (central directory + requested member).
     Supports ZIP64 archives and streams decompressed data incrementally.
 
-    Example:
+    For example:
+
         async with AsyncFilesystem() as fs:
             reader = AsyncZipReader(fs, "s3://bucket/large-archive.zip")
-            async with reader.open_member("trajectory_001.json") as stream:
-                async for chunk in stream:
+            async with reader.open_member("trajectory_001.json") as iterable:
+                async for chunk in iterable:
                     process(chunk)
     """
 
@@ -358,19 +403,17 @@ class AsyncZipReader:
             raise KeyError(member_name)
         return entry
 
-    @asynccontextmanager
-    async def open_member(
-        self, member: str | ZipEntry
-    ) -> AsyncIterator[_DecompressStream]:
+    def open_member(self, member: str | ZipEntry) -> _ZipMemberBytes:
         """Open a ZIP member and stream its decompressed contents.
 
         Must be used as an async context manager to ensure proper cleanup.
+        Can be re-iterated within the same context manager scope.
 
         Args:
             member: Name or ZipEntry of the member file within the archive
 
-        Yields:
-            AsyncIterator of decompressed data chunks
+        Returns:
+            AsyncIterable of decompressed data chunks
 
         Raises:
             KeyError: If member_name not found in archive
@@ -381,15 +424,7 @@ class AsyncZipReader:
                 async for chunk in stream:
                     process(chunk)
         """
-        offset, end, method = await self._get_member_range_and_method(member)
-        stream = _DecompressStream(
-            await self._filesystem.read_file_bytes(self._filename, offset, end),
-            method,
-        )
-        try:
-            yield stream
-        finally:
-            await stream.aclose()
+        return _ZipMemberBytes(self, member)
 
     async def _get_member_range_and_method(
         self, member: str | ZipEntry

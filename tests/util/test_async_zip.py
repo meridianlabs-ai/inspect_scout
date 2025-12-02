@@ -60,6 +60,22 @@ async def test_read_nested_member(test_zip_file: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_open_member_reiteration(test_zip_file: Path) -> None:
+    """Test that a member can be iterated multiple times within same context."""
+    zip_path = str(test_zip_file)
+
+    async with AsyncFilesystem() as fs:
+        reader = AsyncZipReader(fs, zip_path)
+
+        async with reader.open_member("test.json") as member:
+            data1 = b"".join([chunk async for chunk in member])
+            data2 = b"".join([chunk async for chunk in member])
+
+        assert data1 == data2
+        assert json.loads(data1.decode("utf-8"))["message"] == "hello world"
+
+
+@pytest.mark.asyncio
 async def test_member_not_found(test_zip_file: Path) -> None:
     """Test that KeyError is raised for non-existent member."""
     zip_path = str(test_zip_file)

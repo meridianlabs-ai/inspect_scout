@@ -3,7 +3,8 @@
 import io
 import json
 import time
-from typing import Any, Counter, cast
+from collections.abc import AsyncIterable, AsyncIterator
+from typing import Any, Counter, Literal, cast
 
 import pytest
 from inspect_ai._util.asyncfiles import AsyncFilesystem
@@ -367,6 +368,98 @@ async def test_empty_transcript() -> None:
 
     assert len(result.messages) == 0
     assert len(result.events) == 0
+
+
+class _AsyncChunkedBytes:
+    """AsyncIterable that yields data in chunks, can be iterated multiple times."""
+
+    def __init__(self, data: bytes, chunk_size: int = 64) -> None:
+        self._data = data
+        self._chunk_size = chunk_size
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for i in range(0, len(self._data), self._chunk_size):
+            yield self._data[i : i + self._chunk_size]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("data_type", ["io", "iterable"])
+async def test_json5_nan_inf_fallback(data_type: Literal["io", "iterable"]) -> None:
+    """Test fallback to json5 parser for NaN and Infinity values."""
+    # JSON5 with NaN and Infinity - ijson can't parse this, so fallback triggers
+    json5_content = b"""{
+        "id": "json5-test",
+        "metadata": {"score": NaN, "limit": Infinity, "negative": -Infinity},
+        "messages": [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi there"}
+        ],
+        "events": [
+            {"span_id": "s1", "timestamp": 1.0, "event": "score", "score": {"value": NaN}}
+        ],
+        "attachments": {}
+    }"""
+
+    source: io.BytesIO | AsyncIterable[bytes] = (
+        _AsyncChunkedBytes(json5_content)
+        if data_type == "iterable"
+        else io.BytesIO(json5_content)
+    )
+    info = TranscriptInfo(
+        transcript_id="json5-test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
+        metadata={"original": "metadata"},
+    )
+
+    result = await load_filtered_transcript(source, info, "all", "all")
+
+    assert result.transcript_id == "json5-test"
+    assert len(result.messages) == 2
+    assert len(result.events) == 1
+    # Verify NaN/Inf values are parsed (they become Python float nan/inf)
+    import math
+
+    sample_meta = result.metadata["sample_metadata"]
+    assert math.isnan(sample_meta["score"])
+    assert math.isinf(sample_meta["limit"]) and sample_meta["limit"] > 0
+    assert math.isinf(sample_meta["negative"]) and sample_meta["negative"] < 0
+
+
+@pytest.mark.asyncio
+async def test_json5_fallback_with_filtering() -> None:
+    """Test that json5 fallback applies filtering correctly."""
+    json5_content = b"""{
+        "id": "filter-test",
+        "metadata": {},
+        "messages": [
+            {"role": "user", "content": "User msg"},
+            {"role": "assistant", "content": "Assistant msg"},
+            {"role": "system", "content": "System msg"}
+        ],
+        "events": [
+            {"span_id": "s1", "timestamp": 1.0, "event": "score", "score": {"value": NaN}},
+            {"span_id": "s2", "timestamp": 2.0, "event": "info", "data": {"key": "value"}}
+        ],
+        "attachments": {}
+    }"""
+
+    stream = io.BytesIO(json5_content)
+    info = TranscriptInfo(
+        transcript_id="filter-test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
+    )
+
+    # Filter: only user messages, only score events
+    result = await load_filtered_transcript(stream, info, ["user"], ["score"])
+
+    assert len(result.messages) == 1
+    assert result.messages[0].role == "user"
+    assert len(result.events) == 1
+    assert result.events[0].event == "score"
 
 
 @pytest.mark.asyncio

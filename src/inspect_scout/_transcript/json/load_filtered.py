@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import IO, Any, Callable
 
 import ijson  # type: ignore
+import json5
 
 from inspect_scout._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 
@@ -11,8 +12,10 @@ from ..types import (
     EventFilter,
     MessageFilter,
     Transcript,
+    TranscriptContent,
     TranscriptInfo,
 )
+from ..util import filter_transcript
 from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENTS_PREFIX,
@@ -75,6 +78,8 @@ async def load_filtered_transcript(
     1. Stream parse and filter messages/events while collecting attachment references
     2. Resolve attachment references with actual values
 
+    Falls back to non-streaming json5 parser if streaming fails (e.g., NaN/Inf values).
+
     Args:
         sample_bytes: Byte stream of JSON sample data
         t: TranscriptInfo representing the transcript to load
@@ -86,13 +91,57 @@ async def load_filtered_transcript(
     Returns:
         Transcript object with filtered messages and events, resolved attachments
     """
-    # Phase 1: Parse, filter, and collect attachment references
-    transcript, attachment_refs = await _parse_and_filter(
-        adapt_to_reader(sample_bytes), t, messages, events
-    )
+    try:
+        # Phase 1: Parse, filter, and collect attachment references
+        transcript, attachment_refs = await _parse_and_filter(
+            adapt_to_reader(sample_bytes), t, messages, events
+        )
+        # Phase 2: Resolve attachment references
+        return _resolve_attachments(transcript, attachment_refs)
+    except ijson.JSONError:
+        # Fallback to json5 for JSON5 features (NaN, Inf, etc.)
+        return await _load_with_json5_fallback(sample_bytes, t, messages, events)
 
-    # Phase 2: Resolve attachment references
-    return _resolve_attachments(transcript, attachment_refs)
+
+async def _load_with_json5_fallback(
+    sample_bytes: IO[bytes] | AsyncIterable[bytes],
+    t: TranscriptInfo,
+    messages: MessageFilter,
+    events: EventFilter,
+) -> Transcript:
+    """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
+    # Re-read bytes from source
+    if hasattr(sample_bytes, "read"):
+        io_source: IO[bytes] = sample_bytes  # type: ignore[assignment]
+        io_source.seek(0)
+        all_bytes = io_source.read()
+    else:
+        # AsyncIterable - create fresh iterator
+        async_source: AsyncIterable[bytes] = sample_bytes
+        chunks = [chunk async for chunk in async_source]
+        all_bytes = b"".join(chunks)
+
+    data = json5.loads(all_bytes.decode())
+
+    # Build unfiltered transcript with resolved attachments
+    attachments: dict[str, str] = data.get("attachments", {})
+    raw = RawTranscript(
+        id=t.transcript_id,
+        source_type=t.source_type,
+        source_id=t.source_id,
+        source_uri=t.source_uri,
+        metadata=(
+            t.metadata.copy() | {"sample_metadata": data.get("metadata", {})}
+            if data.get("metadata")
+            else t.metadata
+        ),
+        messages=data.get("messages", []),
+        events=data.get("events", []),
+    )
+    full_transcript = _resolve_attachments(raw, attachments)
+
+    # Apply filtering
+    return filter_transcript(full_transcript, TranscriptContent(messages, events))
 
 
 async def _parse_and_filter(

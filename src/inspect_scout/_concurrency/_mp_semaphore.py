@@ -12,7 +12,7 @@ class PicklableMPSemaphore:
 
     Unlike `multiprocessing.Semaphore`, this can be stored in a `DictProxy` because
     it's built from `SyncManager` proxy objects that can be pickled. This enables
-    lazy/dynamic semaphore creation after process forking.
+    lazy/dynamic semaphore creation across spawn boundaries.
 
     Uses a Condition variable to efficiently block and avoid polling.
     """

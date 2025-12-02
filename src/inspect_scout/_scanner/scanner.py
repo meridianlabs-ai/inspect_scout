@@ -37,6 +37,7 @@ from typing_extensions import overload
 
 from inspect_scout._util.decorator import split_spec
 
+from .._concurrency._mp_common import register_plugin_directory
 from .._transcript.types import (
     EventType,
     MessageType,
@@ -413,7 +414,10 @@ def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[
         raise PrerequisiteError(f"The file '{pretty_path(file)}' does not exist.")
 
     # add file directory to sys.path for imports
-    with add_to_syspath(scanner_path.parent.as_posix()):
+    scanner_dir = scanner_path.parent.as_posix()
+    register_plugin_directory(scanner_dir)
+
+    with add_to_syspath(scanner_dir):
         # create scanners
         load_module(scanner_path)
         scanners: list[Scanner[Any]] = []

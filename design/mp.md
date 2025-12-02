@@ -5,21 +5,24 @@
 The multi-process concurrency strategy distributes scanner work across multiple worker processes, each running its own async event loop with multiple concurrent tasks. This provides true CPU parallelism while maintaining high I/O concurrency within each process.
 
 **Key characteristics:**
-- Fork-based process creation for efficient state sharing
+- Spawn-based process creation with explicit serialization
 - Nested concurrency: N processes × M async tasks = N×M total concurrency
 - Queue-based IPC for work distribution and result collection
 - Robust shutdown handling for both normal and interrupted execution
 
-## Process Creation via Fork
+## Process Creation via Spawn
 
-The architecture uses Python's `fork` multiprocessing context to create worker processes. Fork duplicates the parent's memory space, allowing workers to inherit the shared `IPCContext` (including parse/scan functions, configuration, and IPC primitives) without serialization. Copy-on-write semantics make this fast and memory-efficient, since read-only data remains shared across all processes.
+The architecture uses Python's `spawn` multiprocessing context to create worker processes. Spawn starts fresh Python interpreter processes, requiring explicit serialization of all shared state via `IPCContext`. Key serialization mechanisms:
+- **DillCallable**: Wraps closures and lambdas that standard pickle can't handle, using dill for serialization
+- **ModelContext**: Captures model configuration (provider settings, roles, generation params) for reconstruction in workers
+- **SyncManager proxies**: IPC primitives (queues, conditions, events) are manager-created proxies that work across process boundaries
 
 ## IPC Mechanisms
 
 The architecture coordinates processes through three mechanisms (see `_mp_common.py`):
 
 ### 1. Shared Context (IPCContext)
-A module-level global containing immutable configuration (parse/scan functions, task counts, IPC primitives, semaphore registry). Initialized before forking, inherited by workers via copy-on-write. Never mutated after initialization.
+A dataclass containing immutable configuration (parse/scan functions, task counts, IPC primitives, semaphore registry). Serialized and passed to workers at spawn time. Never mutated after initialization.
 
 ### 2. Multiprocessing Queues
 Two unbounded queues handle data flow:
@@ -39,7 +42,7 @@ Both conditions are created via `SyncManager.Condition()` for consistency. Despi
 
 **Solution:** A three-tier architecture (see `_mp_registry.py`, `_mp_semaphore.py`):
 
-1. **PicklableMPSemaphore**: Custom semaphore built from SyncManager proxy objects (Value, Condition) that can be stored in a `DictProxy`. Unlike standard `multiprocessing.Semaphore`, this can be pickled, enabling lazy creation after forking.
+1. **PicklableMPSemaphore**: Custom semaphore built from SyncManager proxy objects (Value, Condition) that can be stored in a `DictProxy`. Unlike standard `multiprocessing.Semaphore`, this can be pickled and shared across spawn boundaries.
 
 2. **Registry implementations**:
    - **ParentSemaphoreRegistry**: Creates `PicklableMPSemaphore` instances in shared `DictProxy` when requested
@@ -57,7 +60,7 @@ Both parent and child call `init_concurrency()` with their respective registries
 Orchestrates work distribution, result collection, and worker lifecycle:
 - **Producer task**: Feeds ParseJobs into `parse_job_queue`, sends sentinels when done
 - **Collector task**: Reads multiplexed `upstream_queue`, pattern matches on message types (results, metrics, semaphore requests), handles completion sentinels and shutdown signals
-- **Process manager**: Spawns workers via fork, manages SIGINT handlers, executes shutdown
+- **Process manager**: Spawns workers with serialized context, manages SIGINT handlers, executes shutdown
 
 Producer and collector run in a single task group, enabling coordinated cancellation on Ctrl-C and automatic cleanup on failures.
 

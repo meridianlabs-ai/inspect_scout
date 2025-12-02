@@ -55,7 +55,7 @@ The scan recorder persists these Error results, making failures visible in scan 
 
 **Examples:**
 - Queue operation failures
-- Process spawn or fork failures
+- Process spawn failures
 - IPC communication errors (manager proxy failures)
 - Event loop corruption
 - Worker process crashes

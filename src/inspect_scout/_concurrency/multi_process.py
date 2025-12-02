@@ -1,6 +1,6 @@
 """Multi-process work pool implementation for scanner operations.
 
-This module provides a process-based concurrency strategy using fork-based
+This module provides a process-based concurrency strategy using spawn-based
 multiprocessing. Each worker process runs its own async event loop with
 multiple concurrent tasks, allowing efficient parallel execution of scanner work.
 
@@ -19,8 +19,8 @@ from __future__ import annotations
 import multiprocessing
 import signal
 import time
-from multiprocessing.context import ForkProcess
-from typing import AsyncIterator, Awaitable, Callable, cast
+from multiprocessing.context import SpawnProcess
+from typing import AsyncIterator, Awaitable, Callable
 
 import anyio
 from anyio import create_task_group
@@ -31,8 +31,8 @@ from inspect_scout._display._display import display
 
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
-from . import _mp_common
 from ._mp_common import (
+    DillCallable,
     IPCContext,
     LoggingItem,
     MetricsItem,
@@ -40,12 +40,15 @@ from ._mp_common import (
     SemaphoreRequest,
     ShutdownSentinel,
     WorkerComplete,
+    WorkerReady,
+    get_log_level,
+    get_model_context,
+    get_plugin_directory,
     run_sync_on_thread,
 )
 from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
-from ._mp_subprocess import subprocess_main
 from .common import (
     ConcurrencyStrategy,
     ParseFunctionResult,
@@ -73,6 +76,9 @@ PARSE_JOB_PREFETCH_SIZE = 50
 # Uses a dedicated ShutdownSentinel dataclass to maintain type safety while still
 # providing a distinct sentinel value for emergency shutdown.
 _SHUTDOWN_SENTINEL = ShutdownSentinel()
+
+# Singleton guard - only one multi_process_strategy can be active at a time
+_active: bool = False
 
 
 def multi_process_strategy(
@@ -119,14 +125,16 @@ def multi_process_strategy(
     ) -> None:
         all_metrics: dict[int, ScanMetrics] = {}
 
-        # Enforce single active instance - check if ipc_context is already set
-        # (ipc_context is cast(IPCContext, None) initially, so we check truthiness)
-        if _mp_common.ipc_context is not None:
+        # Enforce single active instance
+        global _active
+        if _active:
             raise RuntimeError(
                 "Another multi_process_strategy is already running. Only one instance can be active at a time."
             )
+        _active = True
         # Create Manager and parent registry for cross-process semaphore coordination
-        manager = multiprocessing.Manager()
+        spawn_ctx = multiprocessing.get_context("spawn")
+        manager = spawn_ctx.Manager()
         parent_registry = ParentSemaphoreRegistry(manager)
 
         # Initialize parent's concurrency system with cross-process registry
@@ -144,25 +152,28 @@ def multi_process_strategy(
             # This ensures we use exactly task_count total tasks
             base_tasks = task_count // max_processes
             remainder_tasks = task_count % max_processes
-            # Initialize shared IPC context that will be inherited by forked workers
-            _mp_common.ipc_context = IPCContext(
-                parse_function=parse_function,
-                scan_function=scan_function,
-                scan_completed=scan_completed,
+            # Create a shared IPC context that will be passed to spawned workers
+            ipc_ctx = IPCContext(
+                parse_function=DillCallable(parse_function),
+                scan_function=DillCallable(scan_function),
+                scan_completed=DillCallable(scan_completed),
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
-                parse_job_queue=multiprocessing.Queue(maxsize=PARSE_JOB_PREFETCH_SIZE),
-                upstream_queue=multiprocessing.Queue(),
+                parse_job_queue=spawn_ctx.Queue(maxsize=PARSE_JOB_PREFETCH_SIZE),
+                upstream_queue=spawn_ctx.Queue(),
                 shutdown_condition=manager.Condition(),
                 workers_ready_event=manager.Event(),
                 semaphore_registry=parent_registry.sync_manager_dict,
                 semaphore_condition=parent_registry.sync_manager_condition,
+                plugin_dir=get_plugin_directory(),
+                log_level=get_log_level(),
+                model_context=get_model_context(),
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:
                 if diagnostics:
-                    running_time = f"+{time.time() - _mp_common.ipc_context.overall_start_time:.3f}s"
+                    running_time = f"+{time.time() - ipc_ctx.overall_start_time:.3f}s"
                     display().print(running_time, f"{actor_name}:", *message_parts)
 
             print_diagnostics(
@@ -171,13 +182,13 @@ def multi_process_strategy(
                 f"{task_count} total concurrency",
             )
 
-            # Queues are part of IPC context and inherited by forked processes.
+            # Queues are part of IPC context and passed to spawned processes.
             # ParseJob queue is bounded to prevent memory explosion when parse_jobs
             # iterator contains a huge number of items. Producer blocks when queue
             # is full, providing lazy consumption.
             # Upstream queue is unbounded and multiplexes both results and metrics.
-            parse_job_queue = _mp_common.ipc_context.parse_job_queue
-            upstream_queue = _mp_common.ipc_context.upstream_queue
+            parse_job_queue = ipc_ctx.parse_job_queue
+            upstream_queue = ipc_ctx.upstream_queue
 
             # Track worker ready signals for startup coordination
             workers_ready_count = 0
@@ -205,7 +216,7 @@ def multi_process_strategy(
                     item = await run_sync_on_thread(upstream_queue.get)
 
                     match item:
-                        case _mp_common.WorkerReady(worker_id):
+                        case WorkerReady(worker_id):
                             # Should only receive these during startup phase
                             assert workers_ready_count < max_processes, (
                                 f"Received WorkerReady from worker {worker_id} but already got {workers_ready_count}/{max_processes}"
@@ -223,7 +234,7 @@ def multi_process_strategy(
                                     "MP Collector",
                                     "All workers ready - releasing workers to consume parse jobs",
                                 )
-                                _mp_common.ipc_context.workers_ready_event.set()
+                                ipc_ctx.workers_ready_event.set()
 
                         case ResultItem(transcript_info, scanner_name, results):
                             await record_results(transcript_info, scanner_name, results)
@@ -273,17 +284,22 @@ def multi_process_strategy(
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 
+            from ._mp_subprocess import subprocess_main
+
             # Start worker processes directly
-            ctx = multiprocessing.get_context("fork")
-            processes: list[ForkProcess] = []
+            processes: list[SpawnProcess] = []
             for worker_id in range(max_processes):
                 task_count_for_worker = base_tasks + (
                     1 if worker_id < remainder_tasks else 0
                 )
                 try:
-                    p = ctx.Process(
+                    p = spawn_ctx.Process(
                         target=subprocess_main,
-                        args=(worker_id, task_count_for_worker),
+                        args=(
+                            worker_id,
+                            task_count_for_worker,
+                            ipc_ctx,
+                        ),
                     )
                     p.start()
                     processes.append(p)
@@ -323,14 +339,13 @@ def multi_process_strategy(
                 with anyio.CancelScope(shield=True):
                     await shutdown_subprocesses(
                         processes,
-                        _mp_common.ipc_context,
+                        ipc_ctx,
                         print_diagnostics,
                         _SHUTDOWN_SENTINEL,
                     )
 
         finally:
-            # Always restore signal handler and reset IPC context
             signal.signal(signal.SIGINT, original_sigint_handler)
-            _mp_common.ipc_context = cast(IPCContext, None)
+            _active = False
 
     return the_func

@@ -1,6 +1,7 @@
 import tempfile
 from pathlib import Path
 
+import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout import Result, Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
@@ -45,7 +46,8 @@ def llm_dynamic_question_scanner_factory() -> Scanner[Transcript]:
     return llm_scanner(question=dynamic_question, answer="boolean")
 
 
-def test_scan_basic_e2e() -> None:
+@pytest.mark.parametrize("max_processes", [1, 2])
+def test_scan_basic_e2e(max_processes: int) -> None:
     """Test basic scan functionality end-to-end with mock LLM."""
     # Configure mockllm to return properly formatted responses for llm_scanner
     # The llm_scanner expects responses ending with "ANSWER: yes" or "ANSWER: no"
@@ -67,7 +69,7 @@ def test_scan_basic_e2e() -> None:
             transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=2,
-            max_processes=1,
+            max_processes=max_processes,
             model="mockllm/model",
             model_args={"custom_outputs": mock_responses},
         )
@@ -90,10 +92,16 @@ def test_scan_basic_e2e() -> None:
         assert "value" in llm_df.columns
         assert "explanation" in llm_df.columns
         # Verify the LLM scanner parsed the responses correctly
-        assert sorted(llm_df["value"].tolist()) == [False, True]
+        # In single-process mode, mock responses are consumed in order
+        # In multi-process mode, each process gets its own copy starting at index 0
+        if max_processes == 1:
+            assert sorted(llm_df["value"].tolist()) == [False, True]
+        else:
+            assert all(isinstance(v, bool) for v in llm_df["value"].tolist())
 
 
-def test_scan_with_dynamic_question() -> None:
+@pytest.mark.parametrize("max_processes", [1, 2])
+def test_scan_with_dynamic_question(max_processes: int) -> None:
     """Test LLM scanner with dynamic question callable."""
     # Configure mockllm to return properly formatted responses
     mock_responses = [
@@ -109,7 +117,7 @@ def test_scan_with_dynamic_question() -> None:
             transcripts=transcripts_from(LOGS_DIR),
             results=tmpdir,
             limit=1,
-            max_processes=1,
+            max_processes=max_processes,
             model="mockllm/model",
             model_args={"custom_outputs": mock_responses},
         )

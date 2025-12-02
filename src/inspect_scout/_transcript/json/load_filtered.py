@@ -8,7 +8,6 @@ from typing import IO, Any, Callable
 import ijson  # type: ignore
 
 from inspect_scout._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
-from inspect_scout._util.type_guards import is_async_iterable
 
 from ..types import (
     EventFilter,
@@ -112,12 +111,12 @@ async def _load_with_json5_fallback(
     events: EventFilter,
 ) -> Transcript:
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
-    if is_async_iterable(sample_bytes):
+    if hasattr(sample_bytes, "__aiter__"):
         io_source: IO[bytes] = io.BytesIO()
         async for chunk in sample_bytes:
             io_source.write(chunk)
     else:
-        io_source = sample_bytes  # type: ignore[assignment]
+        io_source = sample_bytes
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
 

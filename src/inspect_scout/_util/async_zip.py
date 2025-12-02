@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from typing import Any
 
 import anyio
-from typing_extensions import Self
 from anyio.abc import ByteReceiveStream
 from inspect_ai._util.asyncfiles import AsyncFilesystem
+from typing_extensions import Self
 
 # Default chunk size for streaming compressed data (1MB)
 DEFAULT_CHUNK_SIZE = 1024 * 1024

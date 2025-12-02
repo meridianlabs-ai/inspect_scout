@@ -10,9 +10,10 @@ import struct
 import zlib
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Any
 
 import anyio
+from typing_extensions import Self
 from anyio.abc import ByteReceiveStream
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 

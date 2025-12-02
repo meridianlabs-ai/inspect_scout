@@ -38,6 +38,9 @@ export const ScanResultsBody: FC = () => {
   const hasScanner = (columnTable?.numRows() || 0) > 0;
   const error = useStore((state) => state.scopedErrors["dataframe"]);
   const dataframeWrapText = useStore((state) => state.dataframeWrapText);
+  const setVisibleScannerResultsCount = useStore(
+    (state) => state.setVisibleScannerResultsCount
+  );
 
   // Navigation setup
   const navigate = useNavigate();
@@ -78,6 +81,7 @@ export const ScanResultsBody: FC = () => {
                   void navigate(route);
                 }
               }}
+              onVisibleRowCountChanged={setVisibleScannerResultsCount}
             />
           )}
         </div>

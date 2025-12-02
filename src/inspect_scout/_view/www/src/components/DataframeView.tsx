@@ -1,5 +1,8 @@
 import {
   AllCommunityModule,
+  FilterChangedEvent,
+  FirstDataRenderedEvent,
+  GridApi,
   ModuleRegistry,
   themeBalham,
   type ColDef,
@@ -24,6 +27,7 @@ interface DataframeViewProps {
   columnTable?: ColumnTable;
   sortedColumns?: string[];
   onRowDoubleClicked?: (rowData: object) => void;
+  onVisibleRowCountChanged?: (count: number) => void;
   options?: {
     maxStrLen?: number;
   };
@@ -36,6 +40,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
   columnTable,
   sortedColumns,
   onRowDoubleClicked,
+  onVisibleRowCountChanged,
   options,
   enableKeyboardNavigation = true,
   showRowNumbers = false,
@@ -259,6 +264,14 @@ export const DataframeView: FC<DataframeViewProps> = ({
     handleEnter,
   ]);
 
+  const updateVisibleRowCount = useCallback(
+    (api: GridApi) => {
+      const displayedRowCount = api.getDisplayedRowCount();
+      onVisibleRowCountChanged?.(displayedRowCount);
+    },
+    [onVisibleRowCountChanged]
+  );
+
   return (
     <div className={styles.gridWrapper}>
       <AgGridReact<object>
@@ -277,11 +290,19 @@ export const DataframeView: FC<DataframeViewProps> = ({
         theme={themeBalham}
         enableCellTextSelection={true}
         initialState={gridState}
-        onFirstDataRendered={() => {
-          gridRef.current?.api.sizeColumnsToFit();
+        onFirstDataRendered={(e: FirstDataRenderedEvent) => {
+          // Resize the columns
+          e.api.sizeColumnsToFit();
+
+          // update the visible row count
+          updateVisibleRowCount(e.api);
         }}
         onStateUpdated={(e: StateUpdatedEvent) => {
           setGridState(GRID_STATE_NAME, e.state);
+        }}
+        onFilterChanged={(e: FilterChangedEvent) => {
+          // update the visible row count
+          updateVisibleRowCount(e.api);
         }}
         autoSizeStrategy={{
           type: "fitCellContents",

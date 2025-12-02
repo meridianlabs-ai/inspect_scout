@@ -68,6 +68,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const setVisibleScannerResults = useStore(
     (state) => state.setVisibleScannerResults
   );
+  const setVisibleScannerResultsCount = useStore(
+    (state) => state.setVisibleScannerResultsCount
+  );
   const setSelectedScanResult = useStore(
     (state) => state.setSelectedScanResult
   );
@@ -317,7 +320,12 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   useEffect(() => {
     setVisibleScannerResults(filteredSummaries);
-  }, [filteredSummaries, setVisibleScannerResults]);
+    setVisibleScannerResultsCount(filteredSummaries.length);
+  }, [
+    filteredSummaries,
+    setVisibleScannerResults,
+    setVisibleScannerResultsCount,
+  ]);
 
   const selectedItemIndex = useMemo(() => {
     if (selectedScanResult) {

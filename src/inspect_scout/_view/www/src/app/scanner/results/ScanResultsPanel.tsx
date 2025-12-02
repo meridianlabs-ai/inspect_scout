@@ -9,7 +9,9 @@ import { ScanResultsOutline } from "./ScanResultsOutline";
 import styles from "./ScanResultsPanel.module.css";
 
 export const ScanResultsPanel: FC = () => {
-  const visibleItems = useStore((state) => state.visibleScannerResults);
+  const visibleItemsCount = useStore(
+    (state) => state.visibleScannerResultsCount
+  );
   return (
     <div className={clsx(styles.container)}>
       <ScanResultsOutline />
@@ -17,7 +19,7 @@ export const ScanResultsPanel: FC = () => {
       <Footer
         id={""}
         className={styles.footer}
-        itemCount={visibleItems.length}
+        itemCount={visibleItemsCount}
         paginated={false}
         labels={{
           singular: "result",

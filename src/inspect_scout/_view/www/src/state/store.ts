@@ -41,6 +41,7 @@ interface StoreState {
 
   // Scanner
   visibleScannerResults: ScannerCore[];
+  visibleScannerResultsCount: number;
 
   // Dataframes
   selectedScanResult?: string;
@@ -107,6 +108,7 @@ interface StoreState {
     scanner?: string
   ) => ScannerCore[] | undefined;
   setVisibleScannerResults: (results: ScannerCore[]) => void;
+  setVisibleScannerResultsCount: (count: number) => void;
 
   // Clearing state
   clearScanState: () => void;
@@ -211,6 +213,7 @@ export const createStore = (api: ScanApi) =>
           transcriptCollapsedEvents: {},
           scopedErrors: {} as Record<ErrorScope, string>,
           visibleScannerResults: [],
+          visibleScannerResultsCount: 0,
           highlightLabeled: false,
 
           // Actions
@@ -310,6 +313,11 @@ export const createStore = (api: ScanApi) =>
           setVisibleScannerResults: (results: ScannerCore[]) => {
             set((state) => {
               state.visibleScannerResults = results;
+            });
+          },
+          setVisibleScannerResultsCount(count: number) {
+            set((state) => {
+              state.visibleScannerResultsCount = count;
             });
           },
           setSelectedScanResultPreviews: (

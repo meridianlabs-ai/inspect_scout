@@ -133,7 +133,8 @@ def multi_process_strategy(
             )
         _active = True
         # Create Manager and parent registry for cross-process semaphore coordination
-        manager = multiprocessing.Manager()
+        spawn_ctx = multiprocessing.get_context("spawn")
+        manager = spawn_ctx.Manager()
         parent_registry = ParentSemaphoreRegistry(manager)
 
         # Initialize parent's concurrency system with cross-process registry
@@ -286,7 +287,6 @@ def multi_process_strategy(
             from ._mp_subprocess import subprocess_main
 
             # Start worker processes directly
-            spawn_ctx = multiprocessing.get_context("spawn")
             processes: list[SpawnProcess] = []
             for worker_id in range(max_processes):
                 task_count_for_worker = base_tasks + (

@@ -200,10 +200,9 @@ def subprocess_main(
         ipc_ctx.upstream_queue.put(LoggingItem(record))
 
     def _initialize_subprocess() -> None:
-        # Set up sys.path with plugin directories before any user imports
-        for plugin_dir in ipc_ctx.plugin_dirs:
-            if plugin_dir not in sys.path:
-                sys.path.insert(0, plugin_dir)
+        # Set up sys.path with plugin directory before any user imports
+        if ipc_ctx.plugin_dir is not None and ipc_ctx.plugin_dir not in sys.path:
+            sys.path.insert(0, ipc_ctx.plugin_dir)
 
         top_level_async_init(ipc_ctx.log_level, main_process=False)
 

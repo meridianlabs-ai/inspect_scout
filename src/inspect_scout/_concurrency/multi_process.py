@@ -43,7 +43,7 @@ from ._mp_common import (
     WorkerReady,
     get_log_level,
     get_model_context,
-    get_plugin_directories,
+    get_plugin_directory,
     run_sync_on_thread,
 )
 from ._mp_logging import find_inspect_log_handler
@@ -165,7 +165,7 @@ def multi_process_strategy(
                 workers_ready_event=manager.Event(),
                 semaphore_registry=parent_registry.sync_manager_dict,
                 semaphore_condition=parent_registry.sync_manager_condition,
-                plugin_dirs=get_plugin_directories(),
+                plugin_dir=get_plugin_directory(),
                 log_level=get_log_level(),
                 model_context=get_model_context(),
             )

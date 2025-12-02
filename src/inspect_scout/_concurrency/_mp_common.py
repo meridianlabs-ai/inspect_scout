@@ -7,7 +7,7 @@ subprocesses. State is serialized and passed to spawned workers via IPCContext.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from logging import LogRecord
+from logging import LogRecord, getLogger
 from multiprocessing.managers import DictProxy
 from multiprocessing.queues import Queue
 from threading import Condition, Event
@@ -22,6 +22,7 @@ from typing import (
 
 import anyio
 import dill  # type: ignore
+from inspect_ai._util.logger import warn_once
 from inspect_ai.model import GenerateConfig, Model, ModelConfig
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -248,8 +249,8 @@ class IPCContext:
     and works across processes despite the threading.Condition type.
     """
 
-    plugin_dirs: set[str]
-    """Plugin directories to add to sys.path in subprocesses."""
+    plugin_dir: str | None
+    """Plugin directory to add to sys.path in subprocesses."""
 
     log_level: str | None
     """Log level for subprocess initialization."""
@@ -289,17 +290,24 @@ async def run_sync_on_thread(
 
 # Deferred config for spawn-based subprocess initialization.
 # Set early during scan setup, retrieved later if multi-process.
-_plugin_directories: set[str] = set()
+_plugin_directory: str | None = None
 _log_level: str | None = None
 _model_context: ModelContext | None = None
 
 
 def register_plugin_directory(directory: str) -> None:
-    _plugin_directories.add(directory)
+    global _plugin_directory
+    if _plugin_directory is not None:
+        warn_once(
+            getLogger(__name__),
+            "WARNING: Plugin directory has already been registered",
+        )
+    else:
+        _plugin_directory = directory
 
 
-def get_plugin_directories() -> set[str]:
-    return _plugin_directories.copy()
+def get_plugin_directory() -> str | None:
+    return _plugin_directory
 
 
 def set_log_level(level: str | None) -> None:

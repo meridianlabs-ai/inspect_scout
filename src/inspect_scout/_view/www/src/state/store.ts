@@ -7,7 +7,7 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
-import { ErrorScope, ScannerCore, SortColumn } from "../app/types";
+import { ErrorScope, ResultGroup, ScannerCore, SortColumn } from "../app/types";
 import { Status } from "../types";
 import { debounce } from "../utils/sync";
 
@@ -60,7 +60,7 @@ interface StoreState {
   selectedResultsView?: string;
   selectedFilter?: string;
   showingRefPopover?: string;
-  groupResultsBy?: "source" | "label" | "none";
+  groupResultsBy?: ResultGroup;
   sortResults?: SortColumn[];
   scansSearchText?: string;
   highlightLabeled?: boolean;
@@ -161,7 +161,7 @@ interface StoreState {
   setSelectedFilter: (filter: string) => void;
   setShowingRefPopover: (popoverKey: string) => void;
   clearShowingRefPopover: () => void;
-  setGroupResultsBy: (groupBy: "source" | "label" | "none") => void;
+  setGroupResultsBy: (groupBy: ResultGroup) => void;
   setSortResults: (sortColumns?: SortColumn[]) => void;
   setScansSearchText: (text: string) => void;
   setHighlightLabeled: (highlight: boolean) => void;
@@ -546,7 +546,7 @@ export const createStore = (api: ScanApi) =>
               state.showingRefPopover = undefined;
             });
           },
-          setGroupResultsBy: (groupBy: "source" | "label" | "none") => {
+          setGroupResultsBy: (groupBy: ResultGroup) => {
             set((state) => {
               state.groupResultsBy = groupBy;
             });

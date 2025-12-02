@@ -155,7 +155,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       return filteredSummaries;
     }
 
-    const groups = new Map<string, ScannerCore[]>();
+    const groups = new Map<string | number, ScannerCore[]>();
 
     for (const item of filteredSummaries) {
       // Insert group header when group changes
@@ -164,7 +164,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
           ? basename(resultLog(item) || "") || "Unknown"
           : groupResultsBy === "label"
             ? item.label || "Unlabeled"
-            : resultIdentifierStr(item) || "Unknown";
+            : groupResultsBy === "epoch"
+              ? (item.transcriptMetadata.epoch as number)
+              : resultIdentifierStr(item) || "Unknown";
 
       // Insert group header when group changes
       if (!groups.has(groupKey)) {
@@ -173,12 +175,21 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       groups.get(groupKey)?.push(item);
     }
 
-    // Sort group keys alphabetically and emit
-    const sortedGroupKeys = Array.from(groups.keys()).sort();
+    // Sort group keys (numerically if they're numbers, alphabetically otherwise)
+    const sortedGroupKeys = Array.from(groups.keys()).sort((a, b) => {
+      // If both are numbers, sort numerically
+      if (typeof a === "number" && typeof b === "number") {
+        return a - b;
+      }
+      // Otherwise, sort as strings
+      return String(a).localeCompare(String(b));
+    });
     const result: Array<ResultGroup | ScannerCore> = [];
 
     for (const groupKey of sortedGroupKeys) {
-      result.push({ type: "group", label: groupKey });
+      const label =
+        groupResultsBy === "epoch" ? `Epoch ${groupKey}` : String(groupKey);
+      result.push({ type: "group", label: label });
       result.push(...(groups.get(groupKey) || []));
     }
 
@@ -493,8 +504,15 @@ const optimalColumnLayout = (
       const maxKeyLen = Object.keys(obj).reduce((max, key) => {
         return Math.max(max, key.length);
       }, 0);
+
+      // measure the length of the longest value
+      const maxValueLen = Object.values(obj).reduce((max, val) => {
+        const valStr = val !== undefined && val !== null ? String(val) : "";
+        return Math.max(max, valStr.length);
+      }, 0);
+
       gridColParts.push(
-        `minmax(${Math.min(Math.max(maxKeyLen * 6, 135), 400)}px, 2fr)`
+        `minmax(${Math.min(Math.max((maxKeyLen + maxValueLen) * 10, 135), 400)}px, 2fr)`
       );
     } else {
       gridColParts.push("3fr");

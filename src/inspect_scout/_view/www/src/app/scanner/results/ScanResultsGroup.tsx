@@ -2,11 +2,12 @@ import clsx from "clsx";
 import { ChangeEvent, FC, useCallback } from "react";
 
 import { useStore } from "../../../state/store";
+import { ResultGroup } from "../../types";
 
 import styles from "./ScanResultsGroup.module.css";
 
 interface ScanResultsGroupProps {
-  options: Array<"source" | "label" | "id" | "none">;
+  options: Array<ResultGroup>;
 }
 
 export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
@@ -18,7 +19,7 @@ export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLSelectElement>) => {
       const sel = e.target as HTMLSelectElement;
-      setGroupResultsBy(sel.value as "source" | "label" | "none");
+      setGroupResultsBy(sel.value as ResultGroup);
     },
     [setGroupResultsBy]
   );
@@ -27,6 +28,7 @@ export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
     { label: "Source", value: "source" },
     { label: "Label", value: "label" },
     { label: "Id", value: "id" },
+    { label: "Epoch", value: "epoch" },
   ].filter((opt) => options.includes(toVal(opt.value)));
   if (groupByOpts.length === 0) {
     return null;
@@ -65,13 +67,15 @@ export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
   );
 };
 
-const toVal = (v: string | null): "source" | "label" | "id" | "none" => {
+const toVal = (v: string | null): ResultGroup => {
   if (v === "source") {
     return "source";
   } else if (v === "label") {
     return "label";
   } else if (v === "id") {
     return "id";
+  } else if (v === "epoch") {
+    return "epoch";
   } else {
     return "none";
   }

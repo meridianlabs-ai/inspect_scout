@@ -16,6 +16,8 @@ export interface SortColumn {
 
 export type ErrorScope = "scanjobs" | "scanner" | "dataframe";
 
+export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
+
 export type ScannerCore =
   | ScannerCoreTranscript
   | ScannerCoreMessage

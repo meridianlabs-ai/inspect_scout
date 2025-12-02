@@ -120,25 +120,25 @@ async def _load_with_json5_fallback(
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
 
-    # Build unfiltered transcript with resolved attachments
-    attachments: dict[str, str] = data.get("attachments", {})
-    raw = RawTranscript(
-        id=t.transcript_id,
-        source_type=t.source_type,
-        source_id=t.source_id,
-        source_uri=t.source_uri,
-        metadata=(
-            t.metadata.copy() | {"sample_metadata": data.get("metadata", {})}
-            if data.get("metadata")
-            else t.metadata
+    return filter_transcript(
+        _resolve_attachments(
+            RawTranscript(
+                id=t.transcript_id,
+                source_type=t.source_type,
+                source_id=t.source_id,
+                source_uri=t.source_uri,
+                metadata=(
+                    t.metadata.copy() | {"sample_metadata": data.get("metadata", {})}
+                    if data.get("metadata")
+                    else t.metadata
+                ),
+                messages=data.get("messages", []),
+                events=data.get("events", []),
+            ),
+            data.get("attachments", {}),
         ),
-        messages=data.get("messages", []),
-        events=data.get("events", []),
+        TranscriptContent(messages, events),
     )
-    full_transcript = _resolve_attachments(raw, attachments)
-
-    # Apply filtering
-    return filter_transcript(full_transcript, TranscriptContent(messages, events))
 
 
 async def _parse_and_filter(

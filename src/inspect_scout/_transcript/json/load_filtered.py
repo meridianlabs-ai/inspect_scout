@@ -184,15 +184,15 @@ async def _parse_and_filter(
             else:
                 current_section = _SECTION_OTHER
 
-            # Dispatch to coroutines (optimized to avoid redundant None checks)
-            if current_section == _SECTION_MESSAGES and messages_coro:
-                messages_coro.send((prefix, event, value))
-            elif current_section == _SECTION_EVENTS and events_coro:
-                events_coro.send((prefix, event, value))
-            elif current_section == _SECTION_ATTACHMENTS:
-                attachments_coro.send((prefix, event, value))
-            elif current_section == _SECTION_METADATA:
-                metadata_coro.send((prefix, event, value))
+        # Dispatch to coroutines (optimized to avoid redundant None checks)
+        if current_section == _SECTION_MESSAGES and messages_coro:
+            messages_coro.send((prefix, event, value))
+        elif current_section == _SECTION_EVENTS and events_coro:
+            events_coro.send((prefix, event, value))
+        elif current_section == _SECTION_ATTACHMENTS:
+            attachments_coro.send((prefix, event, value))
+        elif current_section == _SECTION_METADATA:
+            metadata_coro.send((prefix, event, value))
 
     return (
         RawTranscript(

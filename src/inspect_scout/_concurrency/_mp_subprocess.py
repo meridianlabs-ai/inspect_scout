@@ -177,9 +177,6 @@ def subprocess_main(
 
         print_diagnostics("Worker main", "exiting")
 
-    # Run the async event loop in this worker process
-    anyio.run(_worker_main)
-
     def print_diagnostics(actor_name: str, *message_parts: object) -> None:
         if ipc_ctx.diagnostics:
             running_time = f"+{time.time() - ipc_ctx.overall_start_time:.3f}s"
@@ -203,8 +200,6 @@ def subprocess_main(
         ipc_ctx.upstream_queue.put(LoggingItem(record))
 
     def _initialize_subprocess() -> None:
-        patch_inspect_log_handler(_log_in_parent)
-
         # Set up sys.path with plugin directories before any user imports
         for plugin_dir in ipc_ctx.plugin_dirs:
             if plugin_dir not in sys.path:
@@ -218,6 +213,8 @@ def subprocess_main(
             config=ipc_ctx.model_context.config,
         )
 
+        patch_inspect_log_handler(_log_in_parent)
+
         # Initialize concurrency with cross-process semaphore registry
         # This allows workers to request semaphores from the parent via IPC
         init_concurrency(
@@ -227,3 +224,6 @@ def subprocess_main(
                 ipc_ctx.upstream_queue,
             )
         )
+
+    # Run the async event loop in this worker process
+    anyio.run(_worker_main)

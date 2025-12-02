@@ -78,7 +78,7 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
       </div>
 
       <LabeledValue
-        label="Results"
+        label="Positive Results"
         layout="row"
         className={clsx("text-size-smallest")}
       >

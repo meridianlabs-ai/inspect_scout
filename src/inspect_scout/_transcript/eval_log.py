@@ -376,7 +376,7 @@ class EvalLogTranscriptsDB:
             "Scout Eval Log Read",
             f"Reading from {t.source_uri} ({sample_file_name})",
         ):
-            async with zip_reader.open_member(sample_file_name) as json_iterable:
+            async with await zip_reader.open_member(sample_file_name) as json_iterable:
                 return await load_filtered_transcript(
                     json_iterable,
                     t,

@@ -510,7 +510,7 @@ async def test_s3_eval_assistant_tool_filter() -> None:
 
     async with AsyncFilesystem() as fs:
         start = time.time()
-        async with AsyncZipReader(fs, s3_path).open_member(member_name) as stream:
+        async with await AsyncZipReader(fs, s3_path).open_member(member_name) as stream:
             result = await load_filtered_transcript(
                 stream,
                 info,

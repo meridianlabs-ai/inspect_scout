@@ -1,12 +1,14 @@
+import io
+import json
 import re
 from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from typing import IO, Any, Callable
 
 import ijson  # type: ignore
-import json5
 
 from inspect_scout._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
+from inspect_scout._util.type_guards import is_async_iterable
 
 from ..types import (
     EventFilter,
@@ -110,18 +112,14 @@ async def _load_with_json5_fallback(
     events: EventFilter,
 ) -> Transcript:
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
-    # Re-read bytes from source
-    if hasattr(sample_bytes, "read"):
-        io_source: IO[bytes] = sample_bytes  # type: ignore[assignment]
-        io_source.seek(0)
-        all_bytes = io_source.read()
+    if is_async_iterable(sample_bytes):
+        io_source: IO[bytes] = io.BytesIO()
+        async for chunk in sample_bytes:
+            io_source.write(chunk)
     else:
-        # AsyncIterable - create fresh iterator
-        async_source: AsyncIterable[bytes] = sample_bytes
-        chunks = [chunk async for chunk in async_source]
-        all_bytes = b"".join(chunks)
-
-    data = json5.loads(all_bytes.decode())
+        io_source = sample_bytes  # type: ignore[assignment]
+    io_source.seek(0)
+    data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
 
     # Build unfiltered transcript with resolved attachments
     attachments: dict[str, str] = data.get("attachments", {})

@@ -1,7 +1,9 @@
 from collections.abc import AsyncIterable, AsyncIterator
-from typing import IO, Protocol, TypeGuard, cast
+from typing import IO, Protocol, cast
 
 import anyio
+
+from inspect_scout._util.type_guards import is_async_iterable
 
 
 class AsyncBytesReader(Protocol):
@@ -19,16 +21,10 @@ class AsyncBytesReader(Protocol):
     async def read(self, size: int) -> bytes: ...
 
 
-def _is_async_iterable(
-    io_or_iter: IO[bytes] | AsyncIterable[bytes],
-) -> TypeGuard[AsyncIterable[bytes]]:
-    return hasattr(io_or_iter, "__aiter__")
-
-
 def adapt_to_reader(io_or_iter: IO[bytes] | AsyncIterable[bytes]) -> AsyncBytesReader:
     return (
         _BytesIterableReader(io_or_iter)
-        if _is_async_iterable(io_or_iter)
+        if is_async_iterable(io_or_iter)
         else _BytesIOReader(cast(IO[bytes], io_or_iter))
     )
 

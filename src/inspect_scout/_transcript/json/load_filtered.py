@@ -1,6 +1,7 @@
 import re
+from collections.abc import AsyncIterable
 from dataclasses import dataclass
-from typing import IO, Any, AsyncIterator, Callable
+from typing import IO, Any, Callable
 
 import ijson  # type: ignore
 
@@ -62,7 +63,7 @@ class RawTranscript:
 
 
 async def load_filtered_transcript(
-    sample_bytes: IO[bytes] | AsyncIterator[bytes],
+    sample_bytes: IO[bytes] | AsyncIterable[bytes],
     t: TranscriptInfo,
     messages: MessageFilter,
     events: EventFilter,

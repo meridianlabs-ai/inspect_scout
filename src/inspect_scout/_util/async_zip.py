@@ -4,15 +4,18 @@ Supports reading individual members from large ZIP archives (including ZIP64)
 stored locally or remotely (e.g., S3) using async range requests.
 """
 
+from __future__ import annotations
+
 import struct
 import zlib
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import Any
 
 import anyio
 from anyio.abc import ByteReceiveStream
 from inspect_ai._util.asyncfiles import AsyncFilesystem
+from typing_extensions import Self
 
 # Default chunk size for streaming compressed data (1MB)
 DEFAULT_CHUNK_SIZE = 1024 * 1024
@@ -317,6 +320,54 @@ async def _parse_central_directory(
     return entries
 
 
+class _ZipMemberBytes:
+    """AsyncIterable + AsyncContextManager for zip member data.
+
+    Each iteration creates a fresh decompression stream, enabling re-reads:
+
+        async with await zip_reader.open_member("file.json") as member:
+            async for chunk in member:  # first read
+                process(chunk)
+
+            async for chunk in member:  # second read (e.g., retry on error)
+                process_differently(chunk)
+    """
+
+    def __init__(
+        self,
+        filesystem: AsyncFilesystem,
+        filename: str,
+        range_and_method: tuple[int, int, int],
+    ):
+        self._filesystem = filesystem
+        self._filename = filename
+        self._offset, self._end, self._method = range_and_method
+        self._active_streams: set[_DecompressStream] = set()
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        stream = _DecompressStream(
+            await self._filesystem.read_file_bytes(
+                self._filename, self._offset, self._end
+            ),
+            self._method,
+        )
+        self._active_streams.add(stream)
+        try:
+            async for chunk in stream:
+                yield chunk
+        finally:
+            self._active_streams.discard(stream)
+            await stream.aclose()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *_args: Any) -> None:
+        for stream in list(self._active_streams):
+            await stream.aclose()
+        self._active_streams.clear()
+
+
 class AsyncZipReader:
     """Async ZIP reader that supports streaming decompression of individual members.
 
@@ -324,11 +375,12 @@ class AsyncZipReader:
     the necessary portions of the ZIP file (central directory + requested member).
     Supports ZIP64 archives and streams decompressed data incrementally.
 
-    Example:
+    For example:
+
         async with AsyncFilesystem() as fs:
             reader = AsyncZipReader(fs, "s3://bucket/large-archive.zip")
-            async with reader.open_member("trajectory_001.json") as stream:
-                async for chunk in stream:
+            async with await reader.open_member("trajectory_001.json") as iterable:
+                async for chunk in iterable:
                     process(chunk)
     """
 
@@ -358,38 +410,32 @@ class AsyncZipReader:
             raise KeyError(member_name)
         return entry
 
-    @asynccontextmanager
-    async def open_member(
-        self, member: str | ZipEntry
-    ) -> AsyncIterator[_DecompressStream]:
+    async def open_member(self, member: str | ZipEntry) -> _ZipMemberBytes:
         """Open a ZIP member and stream its decompressed contents.
 
         Must be used as an async context manager to ensure proper cleanup.
+        Can be re-iterated within the same context manager scope.
 
         Args:
             member: Name or ZipEntry of the member file within the archive
 
-        Yields:
-            AsyncIterator of decompressed data chunks
+        Returns:
+            AsyncIterable of decompressed data chunks
 
         Raises:
             KeyError: If member_name not found in archive
             NotImplementedError: If compression method is not supported
 
         Example:
-            async with zip_reader.open_member("file.json") as stream:
+            async with await zip_reader.open_member("file.json") as stream:
                 async for chunk in stream:
                     process(chunk)
         """
-        offset, end, method = await self._get_member_range_and_method(member)
-        stream = _DecompressStream(
-            await self._filesystem.read_file_bytes(self._filename, offset, end),
-            method,
+        return _ZipMemberBytes(
+            self._filesystem,
+            self._filename,
+            await self._get_member_range_and_method(member),
         )
-        try:
-            yield stream
-        finally:
-            await stream.aclose()
 
     async def _get_member_range_and_method(
         self, member: str | ZipEntry

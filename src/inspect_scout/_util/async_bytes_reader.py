@@ -1,4 +1,5 @@
-from typing import IO, AsyncIterator, Protocol, TypeGuard, cast
+from collections.abc import AsyncIterable, AsyncIterator
+from typing import IO, Protocol, TypeGuard, cast
 
 import anyio
 
@@ -18,17 +19,16 @@ class AsyncBytesReader(Protocol):
     async def read(self, size: int) -> bytes: ...
 
 
-def _is_async_iterator(
-    io_or_iter: IO[bytes] | AsyncIterator[bytes],
-) -> TypeGuard[AsyncIterator[bytes]]:
-    return hasattr(io_or_iter, "__anext__")
+def _is_async_iterable(
+    io_or_iter: IO[bytes] | AsyncIterable[bytes],
+) -> TypeGuard[AsyncIterable[bytes]]:
+    return hasattr(io_or_iter, "__aiter__")
 
 
-def adapt_to_reader(io_or_iter: IO[bytes] | AsyncIterator[bytes]) -> AsyncBytesReader:
+def adapt_to_reader(io_or_iter: IO[bytes] | AsyncIterable[bytes]) -> AsyncBytesReader:
     return (
-        _BytesIteratorReader(io_or_iter)
-        if _is_async_iterator(io_or_iter)
-        # Oh Python!?
+        _BytesIterableReader(io_or_iter)
+        if _is_async_iterable(io_or_iter)
         else _BytesIOReader(cast(IO[bytes], io_or_iter))
     )
 
@@ -53,11 +53,11 @@ class _BytesIOReader(AsyncBytesReader):
             return await anyio.to_thread.run_sync(self._sync_io.read, size)
 
 
-class _BytesIteratorReader(AsyncBytesReader):
-    """AsyncBytesReader implementation that reads from an AsyncIterator[bytes]."""
+class _BytesIterableReader(AsyncBytesReader):
+    """AsyncBytesReader implementation that reads from an AsyncIterable[bytes]."""
 
-    def __init__(self, async_iter: AsyncIterator[bytes]):
-        self._async_iter = async_iter
+    def __init__(self, async_iterable: AsyncIterable[bytes]):
+        self._async_iter: AsyncIterator[bytes] = aiter(async_iterable)
         self._current_chunk: bytes = b""
         self._offset = 0
 

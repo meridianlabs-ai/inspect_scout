@@ -1,4 +1,3 @@
-import io
 import json
 import os
 import shutil
@@ -232,8 +231,8 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
         accumulated.clear()
         accumulated_bytes = 0
 
-    # Create an in-memory buffer
-    buffer = io.BytesIO()
+    # Create an in-memory buffer (use PyArrow's native type for efficiency)
+    buffer = pa.BufferOutputStream()
     writer = pq.ParquetWriter(
         buffer,
         schema,
@@ -275,9 +274,13 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
     flush_accumulated(writer)
     writer.close()
 
-    # rewind bytes and write
-    buffer.seek(0)
-    return buffer.getvalue()
+    # TODO: If we changed the signature of this function from:
+    #   bytes | None
+    #     to
+    #   pa.Buffer | None
+    # We could avoid the copy (that to_pybytes does) altogether.
+    # Keep in mind that the previous BytesIO.getvalue() made a copy too.
+    return buffer.getvalue().to_pybytes()
 
 
 def cleanup_buffer_dir(buffer_dir: UPath) -> None:

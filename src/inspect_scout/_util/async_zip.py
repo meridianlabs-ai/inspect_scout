@@ -336,30 +336,33 @@ class _ZipMemberBytes:
     def __init__(self, zip_reader: AsyncZipReader, member: str | ZipEntry):
         self._zip_reader = zip_reader
         self._member = member
-        self._current_stream: _DecompressStream | None = None
+        self._active_streams: set[_DecompressStream] = set()
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        if self._current_stream:
-            await self._current_stream.aclose()
-
         offset, end, method = await self._zip_reader._get_member_range_and_method(
             self._member
         )
-        self._current_stream = _DecompressStream(
+        stream = _DecompressStream(
             await self._zip_reader._filesystem.read_file_bytes(
                 self._zip_reader._filename, offset, end
             ),
             method,
         )
-        async for chunk in self._current_stream:
-            yield chunk
+        self._active_streams.add(stream)
+        try:
+            async for chunk in stream:
+                yield chunk
+        finally:
+            self._active_streams.discard(stream)
+            await stream.aclose()
 
     async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *_args: Any) -> None:
-        if self._current_stream:
-            await self._current_stream.aclose()
+        for stream in list(self._active_streams):
+            await stream.aclose()
+        self._active_streams.clear()
 
 
 class AsyncZipReader:

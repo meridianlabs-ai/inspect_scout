@@ -1,3 +1,5 @@
+import io
+import json
 import re
 from collections.abc import AsyncIterable
 from dataclasses import dataclass
@@ -11,8 +13,10 @@ from ..types import (
     EventFilter,
     MessageFilter,
     Transcript,
+    TranscriptContent,
     TranscriptInfo,
 )
+from ..util import filter_transcript
 from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENTS_PREFIX,
@@ -75,6 +79,8 @@ async def load_filtered_transcript(
     1. Stream parse and filter messages/events while collecting attachment references
     2. Resolve attachment references with actual values
 
+    Falls back to non-streaming json5 parser if streaming fails (e.g., NaN/Inf values).
+
     Args:
         sample_bytes: Byte stream of JSON sample data
         t: TranscriptInfo representing the transcript to load
@@ -86,13 +92,53 @@ async def load_filtered_transcript(
     Returns:
         Transcript object with filtered messages and events, resolved attachments
     """
-    # Phase 1: Parse, filter, and collect attachment references
-    transcript, attachment_refs = await _parse_and_filter(
-        adapt_to_reader(sample_bytes), t, messages, events
-    )
+    try:
+        # Phase 1: Parse, filter, and collect attachment references
+        transcript, attachment_refs = await _parse_and_filter(
+            adapt_to_reader(sample_bytes), t, messages, events
+        )
+        # Phase 2: Resolve attachment references
+        return _resolve_attachments(transcript, attachment_refs)
+    except ijson.JSONError:
+        # Fallback to json5 for JSON5 features (NaN, Inf, etc.)
+        return await _load_with_json5_fallback(sample_bytes, t, messages, events)
 
-    # Phase 2: Resolve attachment references
-    return _resolve_attachments(transcript, attachment_refs)
+
+async def _load_with_json5_fallback(
+    sample_bytes: IO[bytes] | AsyncIterable[bytes],
+    t: TranscriptInfo,
+    messages: MessageFilter,
+    events: EventFilter,
+) -> Transcript:
+    """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
+    if hasattr(sample_bytes, "__aiter__"):
+        io_source: IO[bytes] = io.BytesIO()
+        async for chunk in sample_bytes:
+            io_source.write(chunk)
+    else:
+        io_source = sample_bytes
+    io_source.seek(0)
+    data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
+
+    return filter_transcript(
+        _resolve_attachments(
+            RawTranscript(
+                id=t.transcript_id,
+                source_type=t.source_type,
+                source_id=t.source_id,
+                source_uri=t.source_uri,
+                metadata=(
+                    t.metadata.copy() | {"sample_metadata": data.get("metadata", {})}
+                    if data.get("metadata")
+                    else t.metadata
+                ),
+                messages=data.get("messages", []),
+                events=data.get("events", []),
+            ),
+            data.get("attachments", {}),
+        ),
+        TranscriptContent(messages, events),
+    )
 
 
 async def _parse_and_filter(

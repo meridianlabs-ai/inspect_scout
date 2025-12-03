@@ -1,6 +1,8 @@
 """Tests for transcript caching."""
 
+import io
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Iterator
 from unittest.mock import Mock, patch
 
@@ -8,8 +10,15 @@ import pandas as pd
 import pytest
 from inspect_ai._util.file import FileInfo
 from inspect_ai._util.kvstore import KVStore
+from inspect_ai.analysis import samples_df
+from inspect_ai.analysis._dataframe.samples.table import (
+    _read_samples_df_serial,
+)
 from inspect_ai.log._file import EvalLogInfo
 from inspect_scout._transcript.caching import samples_df_with_caching
+from inspect_scout._transcript.eval_log import TranscriptColumns
+
+LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 
 
 def create_evalloginfo(name: str) -> EvalLogInfo:
@@ -346,3 +355,24 @@ def test_cache_version_invalidation(
         result4 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
         assert mock_reader.call_count == 2
         pd.testing.assert_frame_equal(result3, result4, check_dtype=False)
+
+
+def test_dataframe_cache_roundtrip() -> None:
+    """Cache roundtrip preserves realistic DataFrame with pyarrow dtypes."""
+    from unittest.mock import MagicMock
+
+    from inspect_scout._transcript.caching import _get_cached_df, _put_cached_df
+
+    fresh = samples_df([LOGS_DIR.as_posix()], TranscriptColumns)
+
+    kvstore = MagicMock()
+    stored: dict[str, str] = {}
+    kvstore.put = lambda k, v: stored.__setitem__(k, v)
+    kvstore.get = lambda k: stored.get(k)
+
+    _put_cached_df(kvstore, "test", "etag", fresh)
+    cached = _get_cached_df(kvstore, "test", "etag")
+
+    assert cached
+
+    pd.testing.assert_frame_equal(cached, fresh, check_dtype=False)

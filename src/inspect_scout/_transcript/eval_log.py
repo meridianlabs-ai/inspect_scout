@@ -93,7 +93,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         self,
         logs: Logs | pd.DataFrame,
         query: TranscriptsQuery,
-        files_cache: LocalFilesCache,
+        files_cache: LocalFilesCache | None = None,
     ) -> None:
         self._db = EvalLogTranscriptsDB(logs, files_cache)
         self._query = query
@@ -272,14 +272,9 @@ class EvalLogTranscriptsDB:
         if self._conn is not None:
             return
         self._conn = sqlite3.connect(":memory:")
-
-        # Convert datetime columns to strings for SQLite compatibility
-        df_to_write = self._transcripts_df.copy()
-        for col in df_to_write.columns:
-            if pd.api.types.is_datetime64_any_dtype(df_to_write[col]):
-                df_to_write[col] = df_to_write[col].astype(str)
-
-        df_to_write.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")
+        self._transcripts_df.to_sql(
+            TRANSCRIPTS, self._conn, index=False, if_exists="replace"
+        )
 
     async def query(
         self,

@@ -181,7 +181,9 @@ def _get_cached_df(
         if cached_etag != current_etag:
             return None
 
-        result = pd.read_json(io.StringIO(cached_data.get("table")), orient="table")
+        result = pd.read_json(
+            io.StringIO(cached_data.get("table")), orient="table", convert_dates=False
+        )
         return result
 
     except Exception:

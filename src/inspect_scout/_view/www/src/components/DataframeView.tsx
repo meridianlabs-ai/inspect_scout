@@ -283,7 +283,11 @@ export const DataframeView: FC<DataframeViewProps> = ({
           filter: true,
           resizable: true,
         }}
-        rowSelection="single"
+        rowSelection={{
+          mode: "singleRow",
+          enableClickSelection: true,
+          checkboxes: false,
+        }}
         animateRows={false}
         suppressColumnMoveAnimation={true}
         suppressCellFocus={true}

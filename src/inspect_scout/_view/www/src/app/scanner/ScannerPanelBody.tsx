@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { ReactNode, useEffect, useMemo } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import JSONPanel from "../../components/JsonPanel";
@@ -11,6 +11,8 @@ import { ResultGroup } from "../types";
 import { resultIdentifierStr, resultLog } from "../utils/results";
 
 import { ScanInfo } from "./info/ScanInfo";
+import { ScanDataframeColumnsPopover } from "./results/ScanDataframeColumnsPopover";
+import { ScanDataframeFilterColumnsButton } from "./results/ScanDataframeFilterColumnsButton";
 import { ScanDataframeWrapTextButton } from "./results/ScanDataframeWrapTextButton";
 import { ScanResultsFilter } from "./results/ScanResultsFilter";
 import { ScanResultsGroup } from "./results/ScanResultsGroup";
@@ -37,6 +39,17 @@ export const ScannerPanelBody: React.FC = () => {
   const visibleScannerResults = useStore(
     (state) => state.visibleScannerResults
   );
+
+  const chooseColumnnsRef = useRef<HTMLButtonElement | null>(null);
+  const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(
+    null
+  );
+
+  // Use a callback ref to capture the button element and trigger re-renders
+  const buttonRefCallback = (element: HTMLButtonElement | null) => {
+    chooseColumnnsRef.current = element;
+    setButtonElement(element);
+  };
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -120,7 +133,18 @@ export const ScannerPanelBody: React.FC = () => {
     }
 
     if (selectedResultsView === kSegmentDataframe) {
-      tools.push(<ScanDataframeWrapTextButton />);
+      tools.push(
+        <ScanDataframeWrapTextButton key="scan-dataframe-wrap-text" />
+      );
+    }
+
+    if (selectedResultsView === kSegmentDataframe) {
+      tools.push(
+        <ScanDataframeFilterColumnsButton
+          key="scan-dataframe-filter-columns"
+          ref={buttonRefCallback}
+        />
+      );
     }
 
     if (selectedResultsView === kSegmentList && groupOptions.length > 0) {
@@ -156,50 +180,55 @@ export const ScannerPanelBody: React.FC = () => {
   }
 
   return (
-    <TabSet
-      id={"scan-detail-tabs"}
-      type="pills"
-      tabPanelsClassName={clsx(styles.tabSet)}
-      tabControlsClassName={clsx(styles.tabControl)}
-      className={clsx(styles.tabs)}
-      tools={tools}
-    >
-      <TabPanel
-        id={kTabIdScans}
-        selected={selectedTab === kTabIdScans || selectedTab === undefined}
-        title="Results"
-        onSelected={() => {
-          handleTabChange(kTabIdScans);
-        }}
+    <>
+      <TabSet
+        id={"scan-detail-tabs"}
+        type="pills"
+        tabPanelsClassName={clsx(styles.tabSet)}
+        tabControlsClassName={clsx(styles.tabControl)}
+        className={clsx(styles.tabs)}
+        tools={tools}
       >
-        <ScanResultsPanel />
-      </TabPanel>
+        <TabPanel
+          id={kTabIdScans}
+          selected={selectedTab === kTabIdScans || selectedTab === undefined}
+          title="Results"
+          onSelected={() => {
+            handleTabChange(kTabIdScans);
+          }}
+        >
+          <ScanResultsPanel />
+        </TabPanel>
 
-      <TabPanel
-        id={kTabIdInfo}
-        selected={selectedTab === kTabIdInfo}
-        title="Info"
-        onSelected={() => {
-          handleTabChange(kTabIdInfo);
-        }}
-      >
-        <ScanInfo />
-      </TabPanel>
-      <TabPanel
-        id={kTabIdJson}
-        selected={selectedTab === kTabIdJson}
-        title="JSON"
-        onSelected={() => {
-          handleTabChange(kTabIdJson);
-        }}
-        scrollable={true}
-      >
-        <JSONPanel
-          id="task-json-contents"
-          data={selectedStatus}
-          simple={true}
-        />
-      </TabPanel>
-    </TabSet>
+        <TabPanel
+          id={kTabIdInfo}
+          selected={selectedTab === kTabIdInfo}
+          title="Info"
+          onSelected={() => {
+            handleTabChange(kTabIdInfo);
+          }}
+        >
+          <ScanInfo />
+        </TabPanel>
+        <TabPanel
+          id={kTabIdJson}
+          selected={selectedTab === kTabIdJson}
+          title="JSON"
+          onSelected={() => {
+            handleTabChange(kTabIdJson);
+          }}
+          scrollable={true}
+        >
+          <JSONPanel
+            id="task-json-contents"
+            data={selectedStatus}
+            simple={true}
+          />
+        </TabPanel>
+      </TabSet>
+      {selectedResultsView === kSegmentDataframe && buttonElement && (
+        <ScanDataframeColumnsPopover positionEl={buttonElement} />
+      )}
+    </>
   );
 };

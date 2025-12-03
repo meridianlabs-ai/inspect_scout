@@ -17,6 +17,7 @@ import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
 import styles from "./ScanResultsBody.module.css";
+import { defaultColumns } from "./types";
 
 const columnOrder = ["transcript_id", "value", "explanation", "metadata"];
 
@@ -49,12 +50,14 @@ export const ScanResultsBody: FC = () => {
   const relativePath = getRelativePathFromParams(params);
   const { scanPath } = parseScanResultPath(relativePath);
 
+  const dataframeFilterColumns = useStore(
+    (state) => state.dataframeFilterColumns
+  );
+
   const sortedColumns = useMemo(() => {
-    if (!columnTable) {
-      return [];
-    }
-    return columnTable.columnNames().sort(sortColumns);
-  }, [columnTable]);
+    const cols = dataframeFilterColumns || defaultColumns;
+    return [...cols].sort(sortColumns);
+  }, [dataframeFilterColumns]);
 
   return (
     <div className={clsx(styles.scrollContainer)}>

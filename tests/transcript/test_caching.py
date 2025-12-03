@@ -11,9 +11,6 @@ import pytest
 from inspect_ai._util.file import FileInfo
 from inspect_ai._util.kvstore import KVStore
 from inspect_ai.analysis import samples_df
-from inspect_ai.analysis._dataframe.samples.table import (
-    _read_samples_df_serial,
-)
 from inspect_ai.log._file import EvalLogInfo
 from inspect_scout._transcript.caching import samples_df_with_caching
 from inspect_scout._transcript.eval_log import TranscriptColumns

@@ -1,19 +1,17 @@
-import secrets
 from pathlib import Path
 
 import pandas as pd
 import pytest
-from inspect_ai._util.kvstore import inspect_kvstore
 from inspect_ai.analysis import samples_df
-from inspect_scout._transcript.caching import (
-    samples_df_with_caching,
-)
+from inspect_scout._transcript.caching import samples_df_with_caching
 from inspect_scout._transcript.eval_log import (
     EvalLogTranscriptsReader,
     TranscriptColumns,
 )
 from inspect_scout._transcript.log import log_metadata as lm
 from inspect_scout._transcript.transcripts import TranscriptsQuery
+
+from tests.helpers import temp_kvstore
 
 LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 LOG_1 = LOGS_DIR / "2025-09-23T08-09-58-04-00_popularity_DN2wbX2ZvACsBpjwptzBRo.eval"
@@ -33,8 +31,7 @@ async def test_integration() -> None:
     def _sample_reader(path: str) -> pd.DataFrame:
         return samples_df([path], TranscriptColumns)
 
-    kvstore_name = f"__testing_{secrets.token_hex(4)}__"
-    try:
+    with temp_kvstore() as kvstore_name:
         df_1 = _sample_reader(LOG_1.as_posix())
 
         # Put LOG_1 into the cache
@@ -71,11 +68,6 @@ async def test_integration() -> None:
             assert t.metadata["sample_id"] == REFERENCE_SAMPLE_ID
             assert t.metadata["eval_created"] == REFERENCE_EVAL_CREATED
             assert t.metadata["working_time"] == REFERENCE_WORKING_TIME
-
-    finally:
-        with inspect_kvstore(kvstore_name) as kvstore:
-            path = kvstore.filename
-        Path(path).unlink()
 
 
 def _validate_df(df: pd.DataFrame) -> None:

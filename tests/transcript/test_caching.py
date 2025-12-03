@@ -278,51 +278,6 @@ def test_samples_df_with_caching_directory_input(
     assert len(result) == 2
 
 
-def test_cached_dataframe_loses_datetime_dtype(mock_kvstore: Mock) -> None:
-    """Cache roundtrip should preserve datetime dtype."""
-    from inspect_scout._transcript.caching import _get_cached_df, _put_cached_df
-
-    # Create DataFrame with datetime column
-    original_df = pd.DataFrame(
-        {
-            "eval_id": ["eval_001"],
-            "eval_created": [pd.Timestamp("2024-01-01T10:00:00")],
-            "score": [0.85],
-        }
-    )
-    assert original_df["eval_created"].dtype == "datetime64[ns]"
-
-    # Roundtrip through cache
-    path = "test.json"
-    etag = "test_etag"
-
-    # Use the mock kvstore directly
-    from unittest.mock import MagicMock
-
-    kvstore = MagicMock()
-    stored_value = None
-
-    def mock_put(key: str, value: str) -> None:
-        nonlocal stored_value
-        stored_value = value
-
-    def mock_get(key: str) -> str | None:
-        return stored_value
-
-    kvstore.put = mock_put
-    kvstore.get = mock_get
-
-    _put_cached_df(kvstore, path, etag, original_df)
-    cached_df = _get_cached_df(kvstore, path, etag)
-
-    # Cached DataFrame should preserve datetime dtype
-    assert cached_df is not None
-    assert cached_df["eval_created"].dtype == "datetime64[ns]"
-
-    # Values should be preserved
-    pd.testing.assert_frame_equal(cached_df, original_df)
-
-
 def test_cache_version_invalidation(
     mock_kvstore: Mock, mock_filesystem: Mock, mock_reader: Mock
 ) -> None:
@@ -353,22 +308,14 @@ def test_cache_version_invalidation(
         pd.testing.assert_frame_equal(result3, result4, check_dtype=False)
 
 
-def test_dataframe_cache_roundtrip() -> None:
+def test_dataframe_cache_roundtrip(mock_filesystem: Mock) -> None:
     """Cache roundtrip preserves realistic DataFrame with pyarrow dtypes."""
-    from unittest.mock import MagicMock
-
-    from inspect_scout._transcript.caching import _get_cached_df, _put_cached_df
-
     fresh = samples_df([LOGS_DIR.as_posix()], TranscriptColumns)
+    reader = Mock(return_value=fresh)
 
-    kvstore = MagicMock()
-    stored: dict[str, str] = {}
-    kvstore.put = lambda k, v: stored.__setitem__(k, v)
-    kvstore.get = lambda k: stored.get(k)
+    first = samples_df_with_caching(reader, "s3://bucket/log.json")
+    second = samples_df_with_caching(reader, "s3://bucket/log.json")
 
-    _put_cached_df(kvstore, "test", "etag", fresh)
-    cached = _get_cached_df(kvstore, "test", "etag")
-
-    assert cached
-
-    pd.testing.assert_frame_equal(cached, fresh, check_dtype=False)
+    assert reader.call_count == 1
+    pd.testing.assert_frame_equal(first, fresh, check_dtype=False)
+    pd.testing.assert_frame_equal(second, fresh, check_dtype=False)

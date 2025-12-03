@@ -93,7 +93,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         self,
         logs: Logs | pd.DataFrame,
         query: TranscriptsQuery,
-        files_cache: LocalFilesCache,
+        files_cache: LocalFilesCache | None = None,
     ) -> None:
         self._db = EvalLogTranscriptsDB(logs, files_cache)
         self._query = query

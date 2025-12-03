@@ -1,6 +1,5 @@
 """Tests for transcript caching."""
 
-import io
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator

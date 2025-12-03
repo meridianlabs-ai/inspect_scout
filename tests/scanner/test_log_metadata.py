@@ -12,23 +12,19 @@ from inspect_scout._transcript.log import LogMetadata
 from inspect_scout._transcript.log import log_metadata as lm
 from inspect_scout._transcript.metadata import metadata as m
 
-LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
-LOG_1 = (
-    LOGS_DIR
-    / "2025-11-07T10-59-47-05-00_websearch-addition-problem_LqPDntDnkk4h2fSqQ8i6CE.eval"
-)
-LOG_2 = LOGS_DIR / "2025-09-23T08-09-58-04-00_popularity_DN2wbX2ZvACsBpjwptzBRo.eval"
 
-
-def create_log_dataframe(num_samples: int = 10) -> pd.DataFrame:
+def create_log_dataframe() -> pd.DataFrame:
     """Load test DataFrame from real .eval file."""
+    LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
     return samples_df(
         [
-            LOG_1,
-            LOG_2,
+            LOGS_DIR
+            / "2025-11-07T10-59-47-05-00_websearch-addition-problem_LqPDntDnkk4h2fSqQ8i6CE.eval",
+            LOGS_DIR
+            / "2025-09-23T08-09-58-04-00_popularity_DN2wbX2ZvACsBpjwptzBRo.eval",
         ],
         TranscriptColumns,
-    ).head(num_samples)
+    )
 
 
 def get_property_doc(prop: Any) -> str:
@@ -47,8 +43,7 @@ def get_property_doc(prop: Any) -> str:
 @pytest_asyncio.fixture
 async def db() -> Any:
     """Create and connect to a test database."""
-    df = create_log_dataframe(40)
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsDB(create_log_dataframe())
     await db.connect()
     yield db
     await db.disconnect()
@@ -439,16 +434,20 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
     """Test complex database queries using typed properties."""
     # Complex condition with multiple typed properties
     conditions = [
-        (lm.model.in_(["gpt-4", "claude-3"])) & (lm.epoch > 1),
-        lm.solver == "cot",
+        (lm.model.in_(["openai/gpt-4o-mini", "anthropic/claude-sonnet-4-5"]))
+        & (lm.working_time > 1.5),
+        lm.target == " Yes",
     ]
 
     results = [item async for item in db.query(where=conditions)]
     assert len(results) > 0
     for result in results:
-        assert result.metadata["model"] in ["gpt-4", "claude-3"]
-        assert cast(int, result.metadata["epoch"]) > 1
-        assert result.metadata["solver"] == "cot"
+        assert result.metadata["model"] in [
+            "openai/gpt-4o-mini",
+            "anthropic/claude-sonnet-4-5",
+        ]
+        assert cast(int, result.metadata["working_time"]) > 1.5
+        assert result.metadata["target"] == " Yes"
 
 
 # ============================================================================
@@ -457,47 +456,36 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
 
 
 @pytest.mark.asyncio
-async def test_transcripts_with_log_metadata() -> None:
+async def test_transcripts_with_log_metadata(db: EvalLogTranscriptsDB) -> None:
     """Test using LogMetadata with the Transcripts API."""
-    df = create_log_dataframe(20)
-    db = EvalLogTranscriptsDB(df)
-    await db.connect()
-
     try:
-        # Simple filter
-        conditions = [lm.model == "gpt-4"]
-
         # Chain multiple filters
         conditions = [
-            lm.model == "gpt-4",
-            lm.epoch > 1,
-            lm.solver == "cot",
+            lm.model == "openai/gpt-4o-mini",
+            lm.working_time > 1.5,
+            lm.target == " Yes",
         ]
 
         # Collect and verify results
         results = [item async for item in db.query(conditions)]
         assert len(results) > 0
         for result in results:
-            assert result.metadata["model"] == "gpt-4"
-            assert cast(int, result.metadata["epoch"]) > 1
-            assert result.metadata["solver"] == "cot"
+            assert result.metadata["model"] == "openai/gpt-4o-mini"
+            assert cast(int, result.metadata["working_time"]) > 1.5
+            assert result.metadata["target"] == " Yes"
     finally:
         await db.disconnect()
 
 
 @pytest.mark.asyncio
-async def test_transcripts_complex_filtering() -> None:
+async def test_transcripts_complex_filtering(db: EvalLogTranscriptsDB) -> None:
     """Test complex filtering scenarios with Transcripts and LogMetadata."""
-    df = create_log_dataframe(30)
-    db = EvalLogTranscriptsDB(df)
-    await db.connect()
-
     try:
         # Complex multi-condition filter
         conditions = [
-            ((lm.model == "gpt-4") & (lm.total_tokens > 150))
-            | ((lm.model == "claude-3") & (lm.total_tokens > 160)),
-            lm.limit.is_null(),
+            ((lm.model == "openai/gpt-4o-mini") & (lm.total_tokens > 50))
+            | ((lm.model == "anthropic/claude-sonnet-4-5") & (lm.total_tokens > 500)),
+            lm.solver.is_null(),
         ]
 
         # Verify results match conditions
@@ -507,36 +495,32 @@ async def test_transcripts_complex_filtering() -> None:
             meta = result.metadata
 
             # Check the OR condition
-            if meta["model"] == "gpt-4":
-                assert cast(int, meta["total_tokens"]) > 150
-            elif meta["model"] == "claude-3":
-                assert cast(int, meta["total_tokens"]) > 160
+            if meta["model"] == "openai/gpt-4o-mini":
+                assert cast(int, meta["total_tokens"]) > 50
+            elif meta["model"] == "anthropic/claude-sonnet-4-5":
+                assert cast(int, meta["total_tokens"]) > 500
             else:
                 pytest.fail(f"Unexpected model: {meta['model']}")
 
-            # Check limit is null/not present
-            assert meta.get("limit") is None
+            # Check solver is null/not present
+            assert meta.get("solver") is None
     finally:
         await db.disconnect()
 
 
 @pytest.mark.asyncio
-async def test_transcripts_with_shuffle_and_limit() -> None:
+async def test_transcripts_with_shuffle_and_limit(db: EvalLogTranscriptsDB) -> None:
     """Test that shuffle and limit work with LogMetadata filters."""
-    df = create_log_dataframe(20)
-    db = EvalLogTranscriptsDB(df)
-    await db.connect()
-
     try:
         # Apply filter with shuffle and limit
-        conditions = [lm.model == "gpt-4"]
+        conditions = [lm.model == "openai/gpt-4o-mini"]
 
         # Query with shuffle and limit
         results = [item async for item in db.query(conditions, limit=5, shuffle=42)]
         assert len(results) > 0
 
         for result in results:
-            assert result.metadata["model"] == "gpt-4"
+            assert result.metadata["model"] == "openai/gpt-4o-mini"
 
         assert len(results) <= 5
     finally:
@@ -544,32 +528,25 @@ async def test_transcripts_with_shuffle_and_limit() -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_json_metadata_fields() -> None:
+async def test_query_json_metadata_fields(db: EvalLogTranscriptsDB) -> None:
     """Test querying nested JSON fields in metadata columns."""
-    df = create_log_dataframe(20)
-    db = EvalLogTranscriptsDB(df)
-    await db.connect()
-
     try:
         # Query by nested eval_metadata field
-        conditions = [lm["eval_metadata.version"] == "1.0"]
+        conditions = [lm["sample_metadata.label_confidence"] >= 0.9]
         results = [item async for item in db.query(conditions)]
-        assert len(results) > 0
-
-        # Query by nested sample_metadata field
-        conditions = [lm["sample_metadata.custom"].like("value_%")]
-        results = [item async for item in db.query(conditions)]
-        assert len(results) > 0
+        assert len(results) == 4
 
         # Complex query combining regular and JSON fields
         conditions = [
-            (lm.model == "gpt-4") & (lm["eval_metadata.experiment"].like("exp_%"))
+            (lm.model == "openai/gpt-4o-mini")
+            & (lm["sample_metadata.label_confidence"] >= 0.9)
         ]
         results = [item async for item in db.query(conditions)]
         assert len(results) > 0
 
         for result in results:
-            assert result.metadata["model"] == "gpt-4"
+            assert result.metadata["model"] == "openai/gpt-4o-mini"
+            assert result.metadata["sample_metadata"]["label_confidence"] >= 0.9
 
     finally:
         await db.disconnect()
@@ -640,8 +617,9 @@ def test_chaining_operations() -> None:
 @pytest.mark.asyncio
 async def test_empty_dataframe_with_log_metadata() -> None:
     """Test LogMetadata works with empty DataFrames."""
-    df = pd.DataFrame(columns=["sample_id", "id", "eval_id", "log", "model", "epoch"])
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsDB(
+        pd.DataFrame(columns=["sample_id", "id", "eval_id", "log", "model", "epoch"])
+    )
     await db.connect()
 
     # Query with typed properties on empty DB

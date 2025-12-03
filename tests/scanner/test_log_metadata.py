@@ -1,66 +1,34 @@
 """Tests for the LogMetadata typed interface for transcript queries."""
 
-import json
-import uuid
+from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
 import pytest
 import pytest_asyncio
-from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB
+from inspect_ai.analysis import samples_df
+from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB, TranscriptColumns
 from inspect_scout._transcript.log import LogMetadata
 from inspect_scout._transcript.log import log_metadata as lm
 from inspect_scout._transcript.metadata import metadata as m
 
+LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
+LOG_1 = (
+    LOGS_DIR
+    / "2025-11-07T10-59-47-05-00_websearch-addition-problem_LqPDntDnkk4h2fSqQ8i6CE.eval"
+)
+LOG_2 = LOGS_DIR / "2025-09-23T08-09-58-04-00_popularity_DN2wbX2ZvACsBpjwptzBRo.eval"
+
 
 def create_log_dataframe(num_samples: int = 10) -> pd.DataFrame:
-    """Create a test DataFrame with Inspect log columns."""
-    data = []
-    for i in range(num_samples):
-        data.append(
-            {
-                # ID columns
-                "sample_id": f"sample_{i:03d}_{uuid.uuid4().hex[:8]}",
-                "eval_id": f"eval_{uuid.uuid4().hex[:8]}",
-                "log": f"/path/to/log_{i:03d}.json",
-                # Eval info
-                "eval_created": f"2024-01-{(i % 28) + 1:02d}T10:00:00",
-                "eval_tags": json.dumps(
-                    ["prod", "test", "dev"][i % 3]
-                ),  # Serialize list to JSON
-                "eval_metadata": json.dumps(
-                    {"experiment": f"exp_{i}", "version": "1.0"}
-                ),  # Serialize dict to JSON
-                # Task configuration
-                "task_name": ["math_problem", "code_gen", "reasoning"][i % 3],
-                "task_args": json.dumps({"temperature": 0.7 + (i % 3) * 0.1}),
-                "solver": ["cot", "react", "basic"][i % 3],
-                "solver_args": json.dumps({"steps": i % 5 + 1}),  # Serialize dict
-                # Model configuration
-                "model": ["gpt-4", "claude-3", "gemini-pro"][i % 3],
-                "generate_config": json.dumps({"temperature": 0.7}),  # Serialize dict
-                "model_roles": json.dumps(
-                    {"assistant": {"model": "gpt-3.5"}}
-                ),  # Serialize dict
-                # Sample-level data
-                "id": i,  # Sample id within eval
-                "epoch": (i % 2) + 1,
-                "sample_metadata": json.dumps({"custom": f"value_{i}"}),
-                "score": 0.7 + (i % 10) * 0.03,
-                # Dynamic score columns
-                "score_accuracy": 0.7 + (i % 10) * 0.03,
-                "score_f1": 0.65 + (i % 10) * 0.03,
-                "total_tokens": 150 + i * 15,
-                "total_time": 10.5 + i * 0.5,
-                "working_time": 8.2 + i * 0.4,
-                "limit": "token" if i % 4 == 3 else None,
-                "messages": f"[Message history for sample {i}]",
-                # Custom metadata fields
-                "metadata_custom": f"custom_value_{i}",
-                "metadata_experiment_id": f"exp_{i:03d}",
-            }
-        )
-    return pd.DataFrame(data)
+    """Load test DataFrame from real .eval file."""
+    return samples_df(
+        [
+            LOG_1,
+            LOG_2,
+        ],
+        TranscriptColumns,
+    ).head(num_samples)
 
 
 def get_property_doc(prop: Any) -> str:
@@ -79,7 +47,7 @@ def get_property_doc(prop: Any) -> str:
 @pytest_asyncio.fixture
 async def db() -> Any:
     """Create and connect to a test database."""
-    df = create_log_dataframe(20)
+    df = create_log_dataframe(40)
     db = EvalLogTranscriptsDB(df)
     await db.connect()
     yield db
@@ -448,16 +416,22 @@ def test_mixing_log_and_base_metadata() -> None:
 async def test_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     """Test database queries using typed properties."""
     # Filter by model
-    async for result in db.query(where=[lm.model == "gpt-4"]):
-        assert result.metadata["model"] == "gpt-4"
+    results = [r async for r in db.query(where=[lm.model == "openai/gpt-4o-mini"])]
+    assert len(results) > 0
+    for result in results:
+        assert result.metadata["model"] == "openai/gpt-4o-mini"
 
     # Filter by epoch
-    async for result in db.query(where=[lm.epoch > 1]):
-        assert cast(int, result.metadata["epoch"]) > 1
+    results = [r async for r in db.query(where=[lm.working_time > 1.5])]
+    assert len(results) > 0
+    for result in results:
+        assert cast(int, result.metadata["working_time"]) > 1.5
 
     # Filter by total tokens range
-    async for result in db.query(where=[lm.total_tokens.between(150, 300)]):
-        assert 150 <= cast(int, result.metadata["total_tokens"]) <= 300
+    results = [r async for r in db.query(where=[lm.total_tokens.between(50, 69)])]
+    assert len(results) > 0
+    for result in results:
+        assert 50 <= cast(int, result.metadata["total_tokens"]) <= 69
 
 
 @pytest.mark.asyncio
@@ -470,6 +444,7 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
     ]
 
     results = [item async for item in db.query(where=conditions)]
+    assert len(results) > 0
     for result in results:
         assert result.metadata["model"] in ["gpt-4", "claude-3"]
         assert cast(int, result.metadata["epoch"]) > 1
@@ -501,6 +476,7 @@ async def test_transcripts_with_log_metadata() -> None:
 
         # Collect and verify results
         results = [item async for item in db.query(conditions)]
+        assert len(results) > 0
         for result in results:
             assert result.metadata["model"] == "gpt-4"
             assert cast(int, result.metadata["epoch"]) > 1
@@ -526,6 +502,7 @@ async def test_transcripts_complex_filtering() -> None:
 
         # Verify results match conditions
         results = [item async for item in db.query(conditions, limit=10)]
+        assert len(results) > 0
         for result in results:
             meta = result.metadata
 
@@ -556,6 +533,7 @@ async def test_transcripts_with_shuffle_and_limit() -> None:
 
         # Query with shuffle and limit
         results = [item async for item in db.query(conditions, limit=5, shuffle=42)]
+        assert len(results) > 0
 
         for result in results:
             assert result.metadata["model"] == "gpt-4"
@@ -576,16 +554,19 @@ async def test_query_json_metadata_fields() -> None:
         # Query by nested eval_metadata field
         conditions = [lm["eval_metadata.version"] == "1.0"]
         results = [item async for item in db.query(conditions)]
+        assert len(results) > 0
 
         # Query by nested sample_metadata field
         conditions = [lm["sample_metadata.custom"].like("value_%")]
         results = [item async for item in db.query(conditions)]
+        assert len(results) > 0
 
         # Complex query combining regular and JSON fields
         conditions = [
             (lm.model == "gpt-4") & (lm["eval_metadata.experiment"].like("exp_%"))
         ]
         results = [item async for item in db.query(conditions)]
+        assert len(results) > 0
 
         for result in results:
             assert result.metadata["model"] == "gpt-4"

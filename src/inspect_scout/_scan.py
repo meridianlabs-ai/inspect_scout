@@ -80,10 +80,12 @@ logger = getLogger(__name__)
 
 
 def scan(
-    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-    | dict[str, Scanner[Any]]
-    | ScanJob
-    | ScanJobConfig,
+    scanners: (
+        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]]
+        | ScanJob
+        | ScanJobConfig
+    ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
@@ -164,10 +166,12 @@ def scan(
 
 
 async def scan_async(
-    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-    | dict[str, Scanner[Any]]
-    | ScanJob
-    | ScanJobConfig,
+    scanners: (
+        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]]
+        | ScanJob
+        | ScanJobConfig
+    ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
@@ -261,7 +265,9 @@ async def scan_async(
 
     # derive max_connections if not specified
     scanjob._generate_config = (
-        model_config or scanjob._generate_config or GenerateConfig()
+        scanjob._generate_config.merge(model_config)
+        if scanjob._generate_config and model_config
+        else model_config or scanjob._generate_config or GenerateConfig()
     )
     if scanjob._generate_config.max_connections is None:
         scanjob._generate_config.max_connections = scanjob._max_transcripts
@@ -269,7 +275,7 @@ async def scan_async(
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
         model=model or scanjob._model,
-        model_config=model_config or scanjob._generate_config,
+        model_config=scanjob._generate_config,
         model_base_url=model_base_url or scanjob._model_base_url,
         model_args=model_args or scanjob._model_base_url,
         model_roles=model_roles or scanjob._model_roles,

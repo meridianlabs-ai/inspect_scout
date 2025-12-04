@@ -225,9 +225,14 @@ export const useScannerData = (
   columnTable?: ColumnTable,
   scanResultUuid?: string
 ) => {
+  const api = useApi();
   const [scannerData, setScannerData] = useState<ScannerData | undefined>(
     undefined
   );
+  const [input, setInput] = useState<any | undefined>(
+    undefined
+  );
+  const [isLoadingInput, setIsLoadingInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const filtered = useMemo((): ColumnTable | undefined => {
@@ -255,8 +260,40 @@ export const useScannerData = (
     return filtered;
   }, [columnTable, scanResultUuid]);
 
+  const params = useParams<{ "*": string }>();
+  const relativePath = getRelativePathFromParams(params);
+  const { scanPath } = parseScanResultPath(relativePath);
+  const resultsDir = useStore((state) => state.resultsDir);
+  const selectedScanner = useSelectedScanner();
+
+
+  useEffect(()=> {
+    if (isLoadingInput || input){
+      return;
+    }
+    if (!scanPath || !selectedScanner || !scanResultUuid) {
+      return;
+    }
+    const fetchInput = async () => {
+      let location = scanPath;
+      if (resultsDir) {
+        location = join(scanPath, resultsDir);
+      }
+      const field = await api.getScannerField(
+        location,
+        selectedScanner,
+        scanResultUuid,
+        "input"
+      );
+      setInput(field);
+      setIsLoadingInput(false);
+    };
+    void fetchInput();
+    setIsLoadingInput(true);
+  }, [api, input, isLoadingInput, scanResultUuid, selectedScanner])
+
   useEffect(() => {
-    if (!filtered) {
+    if (!filtered || !input) {
       setScannerData(undefined);
       setIsLoading(false);
       return;
@@ -302,7 +339,6 @@ export const useScannerData = (
 
         const [
           eventReferences,
-          input,
           inputIds,
           messageReferences,
           metadata,
@@ -317,7 +353,6 @@ export const useScannerData = (
           value,
         ] = await Promise.all([
           parse(filtered.get("event_references", 0) as string),
-          parse(filtered.get("input", 0) as string),
           parse(filtered.get("input_ids", 0) as string),
           parse(filtered.get("message_references", 0) as string),
           parse(filtered.get("metadata", 0) as string),
@@ -466,7 +501,7 @@ export const useScannerData = (
     return () => {
       cancelled = true;
     };
-  }, [filtered]);
+  }, [filtered, input]);
 
   return { data: scannerData, isLoading };
 };
@@ -567,7 +602,6 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               transcriptMetadata,
               eventReferences,
               messageReferences,
-              input,
               value,
             ] = await Promise.all([
               parse(r.validation_result as string),
@@ -575,7 +609,6 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               parse<Record<string, unknown>>(r.transcript_metadata as string),
               parse(r.event_references as string),
               parse(r.message_references as string),
-              parse(r.input as string),
               simpleValue(r.value, valueType),
             ]);
 
@@ -618,35 +651,35 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
                 typedPreview = {
                   ...basePreview,
                   inputType: "transcript",
-                  input: input as Transcript,
+                  input: undefined as unknown as Transcript,
                 };
                 break;
               case "message":
                 typedPreview = {
                   ...basePreview,
                   inputType: "message",
-                  input: input as MessageType,
+                  input: undefined as unknown as MessageType,
                 };
                 break;
               case "messages":
                 typedPreview = {
                   ...basePreview,
                   inputType: "messages",
-                  input: input as MessageType[],
+                  input: undefined as unknown as MessageType[],
                 };
                 break;
               case "event":
                 typedPreview = {
                   ...basePreview,
                   inputType: "event",
-                  input: input as EventType,
+                  input: undefined as unknown as EventType,
                 };
                 break;
               case "events":
                 typedPreview = {
                   ...basePreview,
                   inputType: "events",
-                  input: input as EventType[],
+                  input: undefined as unknown as EventType[],
                 };
                 break;
             }

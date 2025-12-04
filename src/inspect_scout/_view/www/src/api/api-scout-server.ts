@@ -1,5 +1,4 @@
 import { Scans, Status } from "../types";
-import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
 import { serverRequestApi } from "./request.ts";
@@ -17,11 +16,11 @@ export const apiScoutServer = (
   const requestApi = serverRequestApi(apiBaseUrl || "/api", headerProvider);
   return {
     getScan: async (scanLocation: string): Promise<Status> => {
-      const result = await requestApi.fetchString(
+      const result = await requestApi.fetchType<Status>(
         "GET",
-        `/scan/${encodeURIComponent(scanLocation)}?status_only=true`
+        `/scan/${encodeURIComponent(scanLocation)}?status_only=true`,
       );
-      return asyncJsonParse<Status>(result.raw);
+      return result.parsed;
     },
 
     getScans: async (): Promise<Scans> => {
@@ -39,8 +38,19 @@ export const apiScoutServer = (
         "GET",
         `/scanner_df/${encodeURIComponent(
           scanLocation
-        )}?scanner=${encodeURIComponent(scanner)}`
+        )}?scanner=${encodeURIComponent(scanner)}&exclude_columns=input`
       );
+    },
+    getScannerField: async (
+      scanLocation: string,
+      scanner: string,
+      row: string,
+      column: string,
+    ): Promise<any> => {
+      return (await requestApi.fetchType<any>(
+        "GET",
+        `/scanner/${encodeURIComponent(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(row)}/${encodeURIComponent(column)}`
+      )).parsed;
     },
     storage: NoPersistence,
   };

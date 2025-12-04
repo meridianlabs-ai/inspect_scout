@@ -11,6 +11,12 @@ export interface ScanApi {
     scanLocation: string,
     scanner: string
   ): Promise<ArrayBuffer | Uint8Array>;
+  getScannerField(
+      scanLocation: string,
+      scanner: string,
+      row: string,
+      column: string,
+    ): Promise<any>;
   storage: ClientStorage;
 }
 

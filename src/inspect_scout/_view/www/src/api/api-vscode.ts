@@ -52,6 +52,9 @@ export const apiVscode = (
         );
       }
     },
+    getScannerField(_scanLocation:string, _scanner:string, _row:string, _column:string):Promise<any> {
+      throw new Error("Method not implemented.");
+    },
     storage: createVSCodeStore(vscodeApi),
   };
 };

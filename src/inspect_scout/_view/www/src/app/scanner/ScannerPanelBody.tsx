@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { GRID_STATE_NAME } from "../../components/DataframeView";
 import JSONPanel from "../../components/JsonPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
@@ -11,6 +12,7 @@ import { ResultGroup } from "../types";
 import { resultIdentifierStr, resultLog } from "../utils/results";
 
 import { ScanInfo } from "./info/ScanInfo";
+import { ScanDataframeClearFiltersButton } from "./results/ScanDataframeClearFiltersButton";
 import { ScanDataframeColumnsPopover } from "./results/ScanDataframeColumnsPopover";
 import { ScanDataframeFilterColumnsButton } from "./results/ScanDataframeFilterColumnsButton";
 import { ScanDataframeWrapTextButton } from "./results/ScanDataframeWrapTextButton";
@@ -43,6 +45,10 @@ export const ScannerPanelBody: React.FC = () => {
   const chooseColumnnsRef = useRef<HTMLButtonElement | null>(null);
   const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(
     null
+  );
+
+  const gridFilter = useStore(
+    (state) => state.gridStates[GRID_STATE_NAME]?.filter
   );
 
   // Use a callback ref to capture the button element and trigger re-renders
@@ -145,6 +151,10 @@ export const ScannerPanelBody: React.FC = () => {
           ref={buttonRefCallback}
         />
       );
+    }
+
+    if (selectedResultsView === kSegmentDataframe && gridFilter) {
+      tools.push(<ScanDataframeClearFiltersButton />);
     }
 
     if (selectedResultsView === kSegmentList && groupOptions.length > 0) {

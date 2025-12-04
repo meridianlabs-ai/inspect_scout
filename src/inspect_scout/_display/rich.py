@@ -32,7 +32,7 @@ from inspect_scout._display.util import (
     scan_config,
     scan_errors_message,
     scan_interrupted_message,
-    scan_title,
+    scan_title, exception_to_rich_traceback,
 )
 from inspect_scout._recorder.summary import Summary, add_model_usage
 from inspect_scout._scanspec import ScanSpec
@@ -77,9 +77,12 @@ class DisplayRich(Display):
             yield scan_display
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
-        if message:
-            self.print(message)
+    def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
+        if message_or_exc:
+            if isinstance(message_or_exc, Exception):
+                self.print(exception_to_rich_traceback(message_or_exc))
+            else:
+                self.print(message_or_exc)
         panel = scan_panel(
             spec=status.spec,
             summary=status.summary,

@@ -20,7 +20,7 @@ class DisplayNone(Display):
         pass
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
+    def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
         pass
 
     @override

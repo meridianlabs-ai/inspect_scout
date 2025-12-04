@@ -3,9 +3,11 @@ import shlex
 from inspect_ai._display.core.rich import rich_theme
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.registry import is_model_dict, is_registry_dict
+from inspect_ai._util.rich import rich_traceback
 from inspect_ai._util.text import truncate_text
 from rich.console import RenderableType
 from rich.text import Text
+from rich.traceback import Traceback
 
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._scanspec import ScanSpec
@@ -94,3 +96,9 @@ def scan_config_str(spec: ScanSpec) -> str:
         config_str.append(f"{name}: {value}")
 
     return ", ".join(config_str)
+
+
+def exception_to_rich_traceback(ex: Exception) -> RenderableType:
+    rich_tb = rich_traceback(type(ex), ex, ex.__traceback__)
+
+    return rich_tb

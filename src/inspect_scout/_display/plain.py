@@ -19,7 +19,7 @@ from .util import (
     scan_config,
     scan_errors_message,
     scan_interrupted_message,
-    scan_title,
+    scan_title, exception_to_rich_traceback,
 )
 
 
@@ -52,8 +52,11 @@ class DisplayPlain(Display):
         yield ScanDisplayPlain(scan, summary, total, skipped, self.print)
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
-        self.print(message)
+    def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
+        if isinstance(message_or_exc, Exception):
+            self.print(exception_to_rich_traceback(message_or_exc))
+        else:
+            self.print(message_or_exc)
         self.print(scan_interrupted_message(status))
 
     @override

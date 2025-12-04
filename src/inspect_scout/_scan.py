@@ -18,7 +18,6 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
-from inspect_ai._util.rich import rich_traceback
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
 from inspect_ai.model._model_config import (
@@ -30,7 +29,6 @@ from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
-from rich.console import RenderableType
 
 from inspect_scout._concurrency._mp_common import set_log_level, set_model_context
 from inspect_scout._transcript.database.parquet import ParquetTranscripts
@@ -129,7 +127,7 @@ def scan(
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
-        display: Display type: "rich", "plain", or "none" (defaults to "rich").
+        display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
         log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
@@ -297,7 +295,7 @@ def scan_resume(
 
     Args:
        scan_location: Scan location to resume from.
-       display: Display type: "rich", "plain", or "none" (defaults to "rich").
+       display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
        fail_on_error: Re-raise exceptions instead of capturing them in results.
@@ -368,7 +366,7 @@ def scan_complete(
 
     Args:
        scan_location: Scan location to complete.
-       display: Display type: "rich", "plain", or "none" (defaults to "rich").
+       display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
 
@@ -737,11 +735,7 @@ async def _scan_async_inner(
         return scan_status
 
     except Exception as ex:
-        type, value, tb = sys.exc_info()
-        type = type if type else BaseException
-        value = value if value else ex
-        rich_tb = rich_traceback(type, value, tb)
-        return await handle_scan_interrupted(rich_tb, scan.spec, recorder)
+        return await handle_scan_interrupted(ex, scan.spec, recorder)
 
     except anyio.get_cancelled_exc_class():
         return await handle_scan_interrupted("Aborted!", scan.spec, recorder)
@@ -814,10 +808,10 @@ def init_scan_model_context(
 
 
 async def handle_scan_interrupted(
-    message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
+    message_or_exc: str|Exception, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
     scan_status = await recorder.sync(await recorder.location(), complete=False)
-    display().scan_interrupted(message, scan_status)
+    display().scan_interrupted(message_or_exc, scan_status)
     return scan_status
 
 

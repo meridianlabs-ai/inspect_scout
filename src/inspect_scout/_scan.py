@@ -269,7 +269,6 @@ async def scan_async(
         if scanjob._generate_config and model_config
         else model_config or scanjob._generate_config or GenerateConfig()
     )
-
     if scanjob._generate_config.max_connections is None:
         scanjob._generate_config.max_connections = scanjob._max_transcripts
 

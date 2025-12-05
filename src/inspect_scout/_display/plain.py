@@ -2,12 +2,12 @@ import contextlib
 import time
 from typing import Any, Callable, Iterator, Sequence
 
+import rich
 from inspect_ai._util.format import format_progress_time
 from inspect_ai.util import throttle
 from rich.console import RenderableType
 from typing_extensions import override
 
-import rich
 from inspect_scout._recorder.summary import Summary
 
 from .._concurrency.common import ScanMetrics

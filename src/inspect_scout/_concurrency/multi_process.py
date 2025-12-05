@@ -199,9 +199,11 @@ def multi_process_strategy(
                     async for item in parse_jobs:
                         await run_sync_on_thread(parse_job_queue.put, item)
                 finally:
-                    # Send sentinel values to signal worker tasks to stop (one per task)
-                    # This runs even if cancelled, allowing graceful shutdown
-                    for _ in range(task_count):
+                    # Send sentinel values to signal worker processes to stop (one per process).
+                    # Each process's iterator_from_queue consumes one sentinel, then the shared
+                    # parse_jobs_exhausted flag propagates termination to all workers in that process.
+                    # This runs even if cancelled, allowing graceful shutdown.
+                    for _ in range(max_processes):
                         await run_sync_on_thread(parse_job_queue.put, None)
 
             async def _upstream_collector() -> None:

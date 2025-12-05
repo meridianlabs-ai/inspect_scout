@@ -5,6 +5,7 @@ from types import TracebackType
 from typing import Any, Iterator, Sequence
 
 import psutil
+import rich
 from inspect_ai._display.core.footer import task_counters, task_resources
 from inspect_ai._display.core.results import model_usage_summary
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
@@ -27,7 +28,6 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import override
 
-import rich
 from inspect_scout._display.protocol import Display, ScanDisplay, TextProgress
 from inspect_scout._display.util import (
     scan_complete_message,

@@ -42,15 +42,9 @@ class SerializedAsyncIterator(Generic[T]):
         return self
 
 
-async def iterator_from_queue(
-    queue: Queue[T], *, sentinel: object
-) -> AsyncIterator[T]:
-    """Adapts a multi-process queue to an AsyncIterator.
-
-    Yields items from the queue until the sentinel value is received. The iterator
-    MUST terminate on sentinel receipt to ensure each process consuming from a shared
-    queue receives exactly one sentinel (preventing one process from consuming
-    sentinels intended for other processes).
-    """
-    while (item := await run_sync_on_thread(queue.get)) is not sentinel:
+async def iterator_from_queue(queue: Queue[T | None]) -> AsyncIterator[T]:
+    """Adapts a multi-process queue to an AsyncIterator."""
+    while True:
+        if (item := await run_sync_on_thread(queue.get)) is None:
+            break
         yield item

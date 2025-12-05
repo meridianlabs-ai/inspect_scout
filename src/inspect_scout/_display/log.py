@@ -6,8 +6,6 @@ from typing_extensions import override
 from .._recorder.recorder import Status
 from .plain import DisplayPlain
 
-logger = logging.getLogger(__name__)
-
 
 class DisplayLog(DisplayPlain):
     @override

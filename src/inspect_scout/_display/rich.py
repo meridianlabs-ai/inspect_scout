@@ -267,8 +267,7 @@ def scan_panel(
             resources.add_row()
             resources.add_row("[bold]batch processing[/bold]", "", style=theme.meta)
             batch_age = int(time.time() - metrics.batch_oldest_created)
-            resources.add_row("requests:", f"{metrics.batch_pending:,}")
-            metrics.batch_failures = 666
+            resources.add_row("pending requests:", f"{metrics.batch_pending:,}")
             if metrics.batch_failures:
                 resources.add_row(
                     "failures:",

@@ -106,6 +106,7 @@ def single_process_strategy(
                 metrics.batch_pending = status.pending_requests
                 metrics.batch_failures = status.failed_requests
                 metrics.batch_oldest_created = status.oldest_created_at
+                _update_metrics()
 
             def _on_batch_log(msg: str) -> None:
                 # suppress the detailed logging

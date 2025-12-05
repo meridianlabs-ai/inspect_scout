@@ -95,6 +95,28 @@ def single_process_strategy(
         scanner_job_deque: deque[ScannerJob] = deque()
         process = psutil.Process()
 
+        try:
+            from inspect_ai.model._providers.util.batch_log import (
+                BatchStatus,
+                set_batch_log_callback,
+                set_batch_status_callback,
+            )
+
+            def _on_batch_status(status: BatchStatus) -> None:
+                metrics.batch_pending = status.pending_requests
+                metrics.batch_failures = status.failed_requests
+                metrics.batch_oldest_created = status.oldest_created_at
+                _update_metrics()
+
+            def _on_batch_log(msg: str) -> None:
+                # suppress the detailed logging
+                pass
+
+            set_batch_status_callback(_on_batch_status)
+            set_batch_log_callback(_on_batch_log)
+        except ImportError:
+            pass
+
         # CRITICAL: Serialize access to the parse_jobs iterator.
         #
         # This strategy spawns multiple concurrent worker tasks. When multiple workers
@@ -302,6 +324,7 @@ def single_process_strategy(
         except Exception as ex:
             raise inner_exception(ex) from None
         finally:
+            set_batch_status_callback(None)
             metrics.process_count = 0
             metrics.tasks_parsing = 0
             metrics.tasks_scanning = 0

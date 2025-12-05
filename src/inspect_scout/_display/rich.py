@@ -1,4 +1,5 @@
 import contextlib
+import time
 from functools import lru_cache
 from types import TracebackType
 from typing import Any, Iterator, Sequence
@@ -9,6 +10,7 @@ from inspect_ai._display.core.footer import task_counters, task_resources
 from inspect_ai._display.core.results import model_usage_summary
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
 from inspect_ai._util.constants import CONSOLE_DISPLAY_WIDTH
+from inspect_ai._util.format import format_progress_time
 from inspect_ai.model import ModelUsage
 from inspect_ai.util import throttle
 from rich.console import Group, RenderableType
@@ -255,12 +257,21 @@ def scan_panel(
         resources.add_row("parsing:", f"{metrics.tasks_parsing:,}")
         resources.add_row("scanning:", f"{metrics.tasks_scanning:,}")
         resources.add_row("idle:", f"{metrics.tasks_idle:,}")
-        resources.add_row()
-        resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
         resources.add_row(
-            "memory",
+            "memory:",
             f"{bytes_to_gigabytes(metrics.memory_usage)}/{bytes_to_gigabytes(total_memory())} GB",
         )
+        if metrics.batch_oldest_created is not None:
+            resources.add_row()
+            resources.add_row("[bold]batch processing[/bold]", "", style=theme.meta)
+            batch_age = int(time.time() - metrics.batch_oldest_created)
+            resources.add_row("pending requests:", f"{metrics.batch_pending:,}")
+            if metrics.batch_failures:
+                resources.add_row(
+                    "failures:",
+                    f"[bold red]{metrics.batch_failures:,}[/bold red]",
+                )
+            resources.add_row("max age:", format_progress_time(batch_age))
 
     # scanners
     scanners = Table.grid(expand=True)
@@ -290,9 +301,11 @@ def scan_panel(
             validation or NONE,
             f"{results.results:,}" if results.results else NONE,
             f"{results.errors:,}" if results.errors else NONE,
-            f"{results.tokens // results.scans:,}"
-            if results.tokens and results.scans
-            else NONE,
+            (
+                f"{results.tokens // results.scans:,}"
+                if results.tokens and results.scans
+                else NONE
+            ),
             "",
             f"{results.tokens:,}" if results.tokens else NONE,
         )

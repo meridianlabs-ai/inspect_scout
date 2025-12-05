@@ -95,11 +95,9 @@ class DisplayRich(Display):
         panel = scan_panel(
             spec=status.spec,
             summary=status.summary,
-            message=(
-                scan_complete_message(status)
-                if status.complete
-                else scan_errors_message(status)
-            ),
+            message=scan_complete_message(status)
+            if status.complete
+            else scan_errors_message(status),
             model_usage=True,
         )
         self.print(panel)

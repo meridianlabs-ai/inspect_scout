@@ -5,7 +5,6 @@ from types import TracebackType
 from typing import Any, Iterator, Sequence
 
 import psutil
-import rich
 from inspect_ai._display.core.footer import task_counters, task_resources
 from inspect_ai._display.core.results import model_usage_summary
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
@@ -28,6 +27,7 @@ from rich.table import Table
 from rich.text import Text
 from typing_extensions import override
 
+import rich
 from inspect_scout._display.protocol import Display, ScanDisplay, TextProgress
 from inspect_scout._display.util import (
     scan_complete_message,
@@ -259,21 +259,22 @@ def scan_panel(
         resources.add_row("parsing:", f"{metrics.tasks_parsing:,}")
         resources.add_row("scanning:", f"{metrics.tasks_scanning:,}")
         resources.add_row("idle:", f"{metrics.tasks_idle:,}")
-        resources.add_row("pending:", f"{metrics.batch_pending:,}")
-        resources.add_row("failed:", f"{metrics.batch_failures:,}")
-        batch_age = (
-            int(time.time() - metrics.batch_oldest_created)
-            if metrics.batch_oldest_created
-            else 0
-        )
-        foo = format_progress_time(batch_age) if batch_age else "yo"
-        resources.add_row("max batch age:", f"{foo}")
-        resources.add_row()
-        resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
         resources.add_row(
-            "memory",
+            "memory:",
             f"{bytes_to_gigabytes(metrics.memory_usage)}/{bytes_to_gigabytes(total_memory())} GB",
         )
+        if metrics.batch_oldest_created is not None:
+            resources.add_row()
+            resources.add_row("[bold]batch processing[/bold]", "", style=theme.meta)
+            batch_age = int(time.time() - metrics.batch_oldest_created)
+            resources.add_row("requests:", f"{metrics.batch_pending:,}")
+            metrics.batch_failures = 666
+            if metrics.batch_failures:
+                resources.add_row(
+                    "failures:",
+                    f"[bold red]{metrics.batch_failures:,}[/bold red]",
+                )
+            resources.add_row("max age:", format_progress_time(batch_age))
 
     # scanners
     scanners = Table.grid(expand=True)

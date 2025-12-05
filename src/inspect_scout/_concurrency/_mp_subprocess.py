@@ -129,7 +129,9 @@ def subprocess_main(
                     try:
                         await strategy(
                             record_results=_record_to_queue,
-                            parse_jobs=iterator_from_queue(ipc_ctx.parse_job_queue),
+                            parse_jobs=iterator_from_queue(
+                                ipc_ctx.parse_job_queue, sentinel=None
+                            ),
                             parse_function=ipc_ctx.parse_function,
                             scan_function=ipc_ctx.scan_function,
                             update_metrics=_update_worker_metrics,

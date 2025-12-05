@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from functools import reduce
 from typing import (
     AbstractSet,
@@ -30,7 +30,6 @@ class ScanMetrics:
     completed_scans: int = 0
     # RSS for now, but we can revisit
     memory_usage: int = 0
-    # Batch status fields (from inspect_ai BatchStatusCallback)
     batch_pending: int = 0
     batch_failures: int = 0
     batch_oldest_created: int | None = None
@@ -40,23 +39,20 @@ def _min_or_value(a: int | None, b: int | None) -> int | None:
     return b if a is None else a if b is None else min(a, b)
 
 
+_MIN_FIELDS = {"batch_oldest_created"}
+
+
 def sum_metrics(metrics_list: Iterable[ScanMetrics]) -> ScanMetrics:
     def combine_metrics(a: ScanMetrics, b: ScanMetrics) -> ScanMetrics:
-        return ScanMetrics(
-            process_count=a.process_count + b.process_count,
-            task_count=a.task_count + b.task_count,
-            tasks_idle=a.tasks_idle + b.tasks_idle,
-            tasks_parsing=a.tasks_parsing + b.tasks_parsing,
-            tasks_scanning=a.tasks_scanning + b.tasks_scanning,
-            buffered_scanner_jobs=a.buffered_scanner_jobs + b.buffered_scanner_jobs,
-            completed_scans=a.completed_scans + b.completed_scans,
-            memory_usage=a.memory_usage + b.memory_usage,
-            batch_pending=a.batch_pending + b.batch_pending,
-            batch_failures=a.batch_failures + b.batch_failures,
-            batch_oldest_created=_min_or_value(
-                a.batch_oldest_created, b.batch_oldest_created
-            ),
-        )
+        combined: dict[str, Any] = {
+            f.name: (
+                _min_or_value(getattr(a, f.name), getattr(b, f.name))
+                if f.name in _MIN_FIELDS
+                else getattr(a, f.name) + getattr(b, f.name)
+            )
+            for f in fields(ScanMetrics)
+        }
+        return ScanMetrics(**combined)
 
     return reduce(combine_metrics, metrics_list, ScanMetrics())
 

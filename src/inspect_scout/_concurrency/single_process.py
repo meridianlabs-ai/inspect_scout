@@ -5,6 +5,11 @@ from typing import AsyncIterator, Awaitable, Callable, Literal
 import anyio
 import psutil
 from anyio import create_task_group
+from inspect_ai.model._providers.util.batch_log import (
+    BatchStatus,
+    set_batch_log_callback,
+    set_batch_status_callback,
+)
 from inspect_ai.util import throttle
 from inspect_ai.util._anyio import inner_exception
 
@@ -94,6 +99,18 @@ def single_process_strategy(
 
         scanner_job_deque: deque[ScannerJob] = deque()
         process = psutil.Process()
+
+        def _on_batch_status(status: BatchStatus) -> None:
+            metrics.batch_pending = status.pending_requests
+            metrics.batch_failures = status.failed_requests
+            metrics.batch_oldest_created = status.oldest_created_at
+
+        def _on_batch_log(msg: str) -> None:
+            # suppress the detailed logging
+            pass
+
+        set_batch_status_callback(_on_batch_status)
+        set_batch_log_callback(_on_batch_log)
 
         # CRITICAL: Serialize access to the parse_jobs iterator.
         #
@@ -302,6 +319,7 @@ def single_process_strategy(
         except Exception as ex:
             raise inner_exception(ex) from None
         finally:
+            set_batch_status_callback(None)
             metrics.process_count = 0
             metrics.tasks_parsing = 0
             metrics.tasks_scanning = 0

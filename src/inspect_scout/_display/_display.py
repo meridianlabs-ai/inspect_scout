@@ -5,8 +5,8 @@ from typing import Literal, cast
 from inspect_ai._display.core.rich import rich_initialise
 from inspect_ai._util.thread import is_main_thread
 
-from .log import DisplayLog
 from .._util.constants import DEFAULT_DISPLAY
+from .log import DisplayLog
 from .none import DisplayNone
 from .plain import DisplayPlain
 from .protocol import Display

@@ -3,7 +3,6 @@ from typing import Any, Callable, Iterator, Sequence
 
 import rich
 from inspect_ai.util import throttle
-from rich.console import RenderableType
 from typing_extensions import override
 
 from inspect_scout._recorder.summary import Summary
@@ -15,11 +14,12 @@ from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from .protocol import Display, ScanDisplay, TextProgress
 from .util import (
+    exception_to_rich_traceback,
     scan_complete_message,
     scan_config,
     scan_errors_message,
     scan_interrupted_message,
-    scan_title, exception_to_rich_traceback,
+    scan_title,
 )
 
 

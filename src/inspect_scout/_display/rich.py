@@ -28,11 +28,12 @@ from typing_extensions import override
 
 from inspect_scout._display.protocol import Display, ScanDisplay, TextProgress
 from inspect_scout._display.util import (
+    exception_to_rich_traceback,
     scan_complete_message,
     scan_config,
     scan_errors_message,
     scan_interrupted_message,
-    scan_title, exception_to_rich_traceback,
+    scan_title,
 )
 from inspect_scout._recorder.summary import Summary, add_model_usage
 from inspect_scout._scanspec import ScanSpec

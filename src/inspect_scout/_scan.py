@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 import traceback
 from logging import getLogger
 from pathlib import Path
@@ -808,7 +807,7 @@ def init_scan_model_context(
 
 
 async def handle_scan_interrupted(
-    message_or_exc: str|Exception, spec: ScanSpec, recorder: ScanRecorder
+    message_or_exc: str | Exception, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
     scan_status = await recorder.sync(await recorder.location(), complete=False)
     display().scan_interrupted(message_or_exc, scan_status)

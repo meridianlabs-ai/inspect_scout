@@ -7,7 +7,6 @@ from inspect_ai._util.rich import rich_traceback
 from inspect_ai._util.text import truncate_text
 from rich.console import RenderableType
 from rich.text import Text
-from rich.traceback import Traceback
 
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._scanspec import ScanSpec

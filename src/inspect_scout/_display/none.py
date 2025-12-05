@@ -1,6 +1,5 @@
 from typing import Any
 
-from rich.console import RenderableType
 from typing_extensions import override
 
 from .._recorder.recorder import Status

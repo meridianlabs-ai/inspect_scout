@@ -1,11 +1,13 @@
 import contextlib
+import time
 from typing import Any, Callable, Iterator, Sequence
 
-import rich
+from inspect_ai._util.format import format_progress_time
 from inspect_ai.util import throttle
 from rich.console import RenderableType
 from typing_extensions import override
 
+import rich
 from inspect_scout._recorder.summary import Summary
 
 from .._concurrency.common import ScanMetrics
@@ -91,6 +93,9 @@ class ScanDisplayPlain(ScanDisplay):
         self._skipped_scans = skipped
         self._completed_scans = self._skipped_scans
         self._parsing = self._scanning = self._idle = self._buffered = 0
+        self._batch_oldest_created: int | None = None
+        self._batch_pending = 0
+        self._batch_failures = 0
 
     @override
     def results(
@@ -105,13 +110,22 @@ class ScanDisplayPlain(ScanDisplay):
         self._scanning = metrics.tasks_scanning
         self._idle = metrics.tasks_idle
         self._buffered = metrics.buffered_scanner_jobs
+        self._batch_oldest_created = metrics.batch_oldest_created
+        self._batch_pending = metrics.batch_pending
+        self._batch_failures = metrics.batch_failures
         self._update_throttled()
 
     def _update(self) -> None:
         percent = 100.0 * self._completed_scans / self._total_scans
-        self._print(
-            f"scanning: {percent:3.0f}% ({self._completed_scans:,}/{self._total_scans:,}) {self._parsing}/{self._scanning}/{self._idle} ({self._buffered})"
-        )
+        msg = f"scanning: {percent:3.0f}% ({self._completed_scans:,}/{self._total_scans:,}) {self._parsing}/{self._scanning}/{self._idle} ({self._buffered})"
+        if self._batch_oldest_created is not None:
+            batch_age = int(time.time() - self._batch_oldest_created)
+            batch_info = f" batch: {self._batch_pending}/"
+            if self._batch_failures:
+                batch_info += f"{self._batch_failures}/"
+            batch_info += f"{format_progress_time(batch_age, pad_hours=False)}"
+            msg += batch_info
+        self._print(msg)
 
     @throttle(5)
     def _update_throttled(self) -> None:

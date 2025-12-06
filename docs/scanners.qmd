@@ -275,10 +275,10 @@ inspect score --scorer scanners.py@confusion logfile.eval
 
 ### Metrics
 
-The metrics used for the scorer will default to `accuracy()` and `stderr()`---however, you can also explicitly specify metrics on the `@scanner` decorator:
+The metrics used for the scorer will default to `mean()` and `stderr()`---however, you can also explicitly specify metrics on the `@scanner` decorator:
 
 ``` python
-@scanner(messages="all", metrics=[accuracy(), bootstrap_stderr()])
+@scanner(messages="all", metrics=[mean(), bootstrap_stderr()])
 def confusion() -> Scanner[Transcript]: ...
 ```
 
@@ -299,14 +299,14 @@ eval(ctf_task(scorer=as_scorer(confusion())))
 If your scanner yields [multiple results](#multiple-results) you can still use it as a scorer, but you will want to provide a dictionary of metrics corresponding to the labels used by your results. For example, if you have a scanner that can yield results with `label="deception"` or `label="misconfiguration"`, you might declare your metrics like this:
 
 ``` python
-@scanner(messages="all", metrics=[{ "deception": [accuracy(), stderr()], "misconfiguration": [accuracy(), stderr()] }])
+@scanner(messages="all", metrics=[{ "deception": [mean(), stderr()], "misconfiguration": [mean(), stderr()] }])
 def my_scanner() -> Scanner[Transcript]: ...
 ```
 
 Or you can use a glob (\*) to use the same metrics for all labels:
 
 ``` python
-@scanner(messages="all", metrics=[{ "*": [accuracy(), stderr()] }])
+@scanner(messages="all", metrics=[{ "*": [mean(), stderr()] }])
 def my_scanner() -> Scanner[Transcript]: ...
 ```
 

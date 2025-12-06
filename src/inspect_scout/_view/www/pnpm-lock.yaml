@@ -68,6 +68,9 @@ importers:
       react-popper:
         specifier: ^2.3.0
         version: 2.3.0(@popperjs/core@2.11.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      react-router-dom:
+        specifier: ^7.9.4
+        version: 7.9.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react-virtuoso:
         specifier: ^4.14.1
         version: 4.14.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -141,9 +144,6 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
-      react-router-dom:
-        specifier: ^7.9.4
-        version: 7.9.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       typed-css-modules:
         specifier: ^0.9.1
         version: 0.9.1

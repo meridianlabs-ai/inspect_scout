@@ -420,6 +420,7 @@ def scan_command(
         tags=scan_tags,
         metadata=scan_metadata,
         fail_on_error=common["fail_on_error"],
+        log_level=common["log_level"],
     )
 
 

@@ -10,7 +10,7 @@ from inspect_scout._util.constants import DEFAULT_DISPLAY
 
 
 class CommonOptions(TypedDict):
-    display: Literal["rich", "plain", "none"]
+    display: Literal["rich", "plain", "log", "none"]
     log_level: str
     debug: bool
     debug_port: int
@@ -21,7 +21,7 @@ def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
     @click.option(
         "--display",
         type=click.Choice(
-            ["rich", "plain", "none"],
+            ["rich", "plain", "log", "none"],
             case_sensitive=False,
         ),
         default=DEFAULT_DISPLAY,

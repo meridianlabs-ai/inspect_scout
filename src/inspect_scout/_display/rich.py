@@ -30,6 +30,7 @@ from typing_extensions import override
 
 from inspect_scout._display.protocol import Display, ScanDisplay, TextProgress
 from inspect_scout._display.util import (
+    exception_to_rich_traceback,
     scan_complete_message,
     scan_config,
     scan_errors_message,
@@ -79,9 +80,12 @@ class DisplayRich(Display):
             yield scan_display
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
-        if message:
-            self.print(message)
+    def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
+        if message_or_exc:
+            if isinstance(message_or_exc, Exception):
+                self.print(exception_to_rich_traceback(message_or_exc))
+            else:
+                self.print(message_or_exc)
         panel = scan_panel(
             spec=status.spec,
             summary=status.summary,

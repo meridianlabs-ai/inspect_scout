@@ -2,7 +2,6 @@ import abc
 import contextlib
 from typing import Any, Iterator, Sequence
 
-from rich.console import RenderableType
 from typing_extensions import override
 
 from inspect_scout._concurrency.common import ScanMetrics
@@ -40,7 +39,9 @@ class Display(abc.ABC):
         yield ScanDisplayNone()
 
     @abc.abstractmethod
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None: ...
+    def scan_interrupted(
+        self, message_or_exc: str | Exception, status: Status
+    ) -> None: ...
 
     @abc.abstractmethod
     def scan_complete(self, status: Status) -> None: ...

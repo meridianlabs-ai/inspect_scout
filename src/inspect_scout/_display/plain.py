@@ -5,7 +5,6 @@ from typing import Any, Callable, Iterator, Sequence
 import rich
 from inspect_ai._util.format import format_progress_time
 from inspect_ai.util import throttle
-from rich.console import RenderableType
 from typing_extensions import override
 
 from inspect_scout._recorder.summary import Summary
@@ -17,6 +16,7 @@ from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from .protocol import Display, ScanDisplay, TextProgress
 from .util import (
+    exception_to_rich_traceback,
     scan_complete_message,
     scan_config,
     scan_errors_message,
@@ -54,8 +54,11 @@ class DisplayPlain(Display):
         yield ScanDisplayPlain(scan, summary, total, skipped, self.print)
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
-        self.print(message)
+    def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
+        if isinstance(message_or_exc, Exception):
+            self.print(exception_to_rich_traceback(message_or_exc))
+        else:
+            self.print(message_or_exc)
         self.print(scan_interrupted_message(status))
 
     @override

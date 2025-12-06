@@ -529,20 +529,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <section id="metadata" class="level4">
 <h4 class="anchored" data-anchor-id="metadata">Metadata</h4>
-<p>You can include arbitrary other fields in your database which will be made available as <code>Transcript.metadata</code>. These fields can then be used for filtering in calls to <code>Transcripts.where()</code>.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>Metadata fields are intended as targets for <code>.where()</code> filtering operations and are also forwarded into the results database for scans (<code>transcript_metadata</code>). Therefore, you should be careful not to include large amounts of data in these columns. To optimize query and scanning performance, all <code>metadata</code> fields are materialized into memory as a DuckDB TABLE when reading from the database.</p>
-</div>
-</div>
+<p>You can include arbitrary other fields in your database which will be made available as <code>Transcript.metadata</code>. These fields can then be used for filtering in calls to <code>Transcripts.where()</code>. Note that <code>metadata</code> columns are forwarded into the results database for scans (<code>transcript_metadata</code>) so it is generally a good practice to not include large amounts of data in these columns.</p>
 </section>
 <section id="messages" class="level4">
 <h4 class="anchored" data-anchor-id="messages">Messages</h4>

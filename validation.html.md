@@ -41,11 +41,11 @@ set:
 **scanning.py**
 
 ``` python
-from inspect_scout import scan, validation_set
+from inspect_scout import scan, transcripts_from, validation_set
 
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
-    transcripts="./logs",
+    transcripts=transcripts_from("./logs"),
     validation={
         "ctf_environment": validation_set("ctf-validation.csv")
     }

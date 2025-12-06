@@ -228,16 +228,10 @@ metadata) which are then queryable using the `Transcripts` API.
 
 You can include arbitrary other fields in your database which will be
 made available as `Transcript.metadata`. These fields can then be used
-for filtering in calls to `Transcripts.where()`.
-
-> [!NOTE]
->
-> Metadata fields are intended as targets for `.where()` filtering
-> operations and are also forwarded into the results database for scans
-> (`transcript_metadata`). Therefore, you should be careful not to
-> include large amounts of data in these columns. To optimize query and
-> scanning performance, all `metadata` fields are materialized into
-> memory as a DuckDB TABLE when reading from the database.
+for filtering in calls to `Transcripts.where()`. Note that `metadata`
+columns are forwarded into the results database for scans
+(`transcript_metadata`) so it is generally a good practice to not
+include large amounts of data in these columns.
 
 #### Messages
 

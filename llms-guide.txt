@@ -17,10 +17,10 @@ from any source) or by directly reading Inspect AI eval logs.
 
 ### Installation
 
-Install the `inspect_scout` package from GitHub with:
+Install the `inspect_scout` package from PyPI with:
 
 ``` bash
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
+pip install inspect_scout
 ```
 
 You should also be sure to install the [Inspect AI VS Code
@@ -698,16 +698,10 @@ metadata) which are then queryable using the `Transcripts` API.
 
 You can include arbitrary other fields in your database which will be
 made available as `Transcript.metadata`. These fields can then be used
-for filtering in calls to `Transcripts.where()`.
-
-> [!NOTE]
->
-> Metadata fields are intended as targets for `.where()` filtering
-> operations and are also forwarded into the results database for scans
-> (`transcript_metadata`). Therefore, you should be careful not to
-> include large amounts of data in these columns. To optimize query and
-> scanning performance, all `metadata` fields are materialized into
-> memory as a DuckDB TABLE when reading from the database.
+for filtering in calls to `Transcripts.where()`. Note that `metadata`
+columns are forwarded into the results database for scans
+(`transcript_metadata`) so it is generally a good practice to not
+include large amounts of data in these columns.
 
 #### Messages
 
@@ -1913,11 +1907,11 @@ set:
 **scanning.py**
 
 ``` python
-from inspect_scout import scan, validation_set
+from inspect_scout import scan, transcripts_from, validation_set
 
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
-    transcripts="./logs",
+    transcripts=transcripts_from("./logs"),
     validation={
         "ctf_environment": validation_set("ctf-validation.csv")
     }

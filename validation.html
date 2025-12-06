@@ -108,15 +108,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript Analysis for AI Agents">
-<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/sample-uuid.png">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/validation.png">
 <meta property="og:site_name" content="Inspect Scout">
-<meta property="og:image:height" content="562">
-<meta property="og:image:width" content="1862">
+<meta property="og:image:height" content="1502">
+<meta property="og:image:width" content="2314">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript Analysis for AI Agents">
-<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/sample-uuid.png">
-<meta name="twitter:image-height" content="562">
-<meta name="twitter:image-width" content="1862">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/validation.png">
+<meta name="twitter:image-height" content="1502">
+<meta name="twitter:image-width" content="2314">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 
@@ -285,7 +285,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
   <li><a href="#validation-basics" id="toc-validation-basics" class="nav-link" data-scroll-target="#validation-basics">Validation Basics</a>
   <ul class="collapse">
-  <li><a href="#validation-results" id="toc-validation-results" class="nav-link" data-scroll-target="#validation-results">Validation Results</a></li>
+  <li><a href="#development" id="toc-development" class="nav-link" data-scroll-target="#development">Development</a></li>
+  <li><a href="#scanning" id="toc-scanning" class="nav-link" data-scroll-target="#scanning">Scanning</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   </ul></li>
   <li><a href="#filtering-transcripts" id="toc-filtering-transcripts" class="nav-link" data-scroll-target="#filtering-transcripts">Filtering Transcripts</a></li>
   <li><a href="#ids-and-targets" id="toc-ids-and-targets" class="nav-link" data-scroll-target="#ids-and-targets">IDs and Targets</a>
@@ -322,11 +324,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some “ground truth” regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.</p>
+<p>When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.</p>
+<p>When you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):</p>
+<p><img src="images/validation.png" class="border img-fluid"></p>
+<p>Note that the overall validation score is also displayed in the left panel summarizing the scan. Below we’ll go step by step through how to create a validation set and apply it to your scanners.</p>
 </section>
 <section id="validation-basics" class="level2">
 <h2 class="anchored" data-anchor-id="validation-basics">Validation Basics</h2>
-<p>A <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationset">ValidationSet</a></span> contains a list of <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationcase">ValidationCase</a></span>, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and <code>value</code> that the scanner should have returned. For example:</p>
+<p>A <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationset">ValidationSet</a></span> contains a list of <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationcase">ValidationCase</a></span>, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and <code>value</code> that the scanner should have returned.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Transcript ID</th>
+<th>Expected Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Fg3KBpgFr6RSsEWmHBUqeo</td>
+<td>true</td>
+</tr>
+<tr class="even">
+<td>VFkCH7gXWpJYUYonvfHxrG</td>
+<td>false</td>
+</tr>
+</tbody>
+</table>
+<p>Note that values can be of any type returned by a scanner, and it is also possible to do greater than / less than checks or write custom predicates.</p>
+<section id="development" class="level3">
+<h3 class="anchored" data-anchor-id="development">Development</h3>
+<p>How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.</p>
+<p>Use the <strong>Copy</strong> button to copy the UUID for the transcript you are reviewing:</p>
+<p><img src="images/sample-uuid.png" class="border img-fluid" width="720"></p>
+<p>As you review transcript and find good examples, build up a list of transcript IDs and expected values. For example, here is a CSV file of that form:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>ctf-validation.csv</strong></pre>
@@ -335,9 +365,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, false</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB, true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<p>How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.</p>
-<p>Use the <strong>Copy UUID</strong> button to copy the ID for the transcript you are reviewing:</p>
-<p><img src="images/sample-uuid.png" class="border-bottom img-fluid"></p>
+</section>
+<section id="scanning" class="level3">
+<h3 class="anchored" data-anchor-id="scanning">Scanning</h3>
 <p>You’ll typically create a distinct validation set for each scanner, and then pass the validation sets to <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> as a dict mapping scanner to set:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
@@ -356,9 +386,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>You can also specify validation sets on the command line. If the above scan was defined in a <code>@scanjob</code> you could add a validation set from the CLI using the <code>-V</code> option as follows:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanning.py <span class="at">-V</span> ctf_environment:ctf_environment.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This example uses the simplest possible id and target pair (transcript _id =&gt; boolean). Other variations are possible, see the <a href="#ids-and-targets">IDs and Targets</a> section below for details. You can also use other file formats for validation sets (e.g.&nbsp;YAML), see <a href="#validation-files">Validation Files</a> for details.</p>
-<section id="validation-results" class="level3">
-<h3 class="anchored" data-anchor-id="validation-results">Validation Results</h3>
-<p>Validation results are reported in two ways:</p>
+</section>
+<section id="results" class="level3">
+<h3 class="anchored" data-anchor-id="results">Results</h3>
+<p>Validation results are reported in three ways:</p>
 <ul>
 <li><p>The scan status/summary UI provides a running tabulation of the percentage of matching validations.</p></li>
 <li><p>The data frame produced for each scanner includes columns for the validation:</p>
@@ -366,6 +397,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p><code>validation_target</code>: Ideal scanner result</p></li>
 <li><p><code>validation_result</code>: Result of comparing scanner <code>value</code> against <code>validation_target</code></p></li>
 </ul></li>
+<li><p>Scout View includes a visual indication of the validation status for each transcript:</p>
+<p><img src="images/validation-scan.png" class="border img-fluid"></p></li>
 </ul>
 </section>
 </section>
@@ -437,7 +470,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="validation-semantics" class="level4">
 <h4 class="anchored" data-anchor-id="validation-semantics">Validation Semantics</h4>
 <p>Label-based validation uses “at least one” logic: if any result with a given label matches the expected value, validation passes for that label. For example, if a scanner returns multiple deception results for a transcript and at least one has <code>value==True</code>, then validation passes if the expected value is true.</p>
-<p>Missing labels are treated as negative/absent values. If your validation set expects label_phishing: false but the scanner returns no results with <code>label=="phishing"</code>, the validation passes because the absence is treated as False.</p>
+<p>Missing labels are treated as negative/absent values. If your validation set expects <code>label_phishing: false</code> but the scanner returns no results with <code>label=="phishing"</code>, the validation passes because the absence is treated as False.</p>
 </section>
 </section>
 <section id="comparison-predicates" class="level3">
@@ -447,7 +480,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="value-dictionary" class="level3">
 <h3 class="anchored" data-anchor-id="value-dictionary">Value Dictionary</h3>
-<p>If our scanner produces a <code>dict</code> of values, we can also build a validation dataset which provides ground truth for each distinct field in the <code>dict</code>. To do this, we introduce column names as follows:</p>
+<p>If our scanner produces a <code>dict</code> of values, we can also build a validation dataset which provides ground truth for each distinct field in the <code>dict</code>. To do this, we introduce <code>target_*</code> column names as follows:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>validation.csv</strong></pre>

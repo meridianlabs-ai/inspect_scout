@@ -425,6 +425,7 @@ TranscriptColumns: list[Column] = (
     EvalId
     + EvalLogPath
     + [
+        EvalColumn("status", path="status", required=True),
         EvalColumn("eval_created", path="eval.created", type=datetime, required=True),
         EvalColumn("eval_tags", path="eval.tags", default="", value=list_as_str),
         EvalColumn("eval_metadata", path="eval.metadata", default={}),

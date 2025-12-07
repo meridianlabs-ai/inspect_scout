@@ -119,7 +119,9 @@ def test_resultset_single_result() -> None:
 
 def test_resultset_multiple_unique_labels() -> None:
     """Test that a resultset with multiple unique labels produces correct dict."""
-    task = Task(scorer=as_scorer(multiple_unique_labels_scanner(), metrics={"*": [mean()]}))
+    task = Task(
+        scorer=as_scorer(multiple_unique_labels_scanner(), metrics={"*": [mean()]})
+    )
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
     assert log.samples is not None

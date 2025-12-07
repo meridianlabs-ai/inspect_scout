@@ -2,6 +2,7 @@
 title: "Inspect Scout"
 description: "Transcript Analysis for AI Agents"
 tbl-colwidths: [30,70]
+lightbox: true
 ---
 
 ## Welcome
@@ -29,11 +30,11 @@ You should also be sure to install the [Inspect AI VS Code Extension](https://in
 
 Below we'll provide some simple examples of creating and using Scout scanners. Some core components we'll make use of here include:
 
--   `Transcript` --- LLM conversation to analyze (e.g. an agent rollout or a sample from an Inspect eval).
+-   **Transcript** --- LLM conversation to analyze (e.g. an agent rollout or a sample from an Inspect eval).
 
--   `Scanner` --- Function that takes an input from a `Transcript` and returns a `Result` (conceptually very similar to an Inspect `Scorer`).
+-   **Scanner** --- Function that takes an input from a `Transcript` and returns a `Result` (conceptually very similar to an Inspect `Scorer`).
 
--   `Results` --- Data frame(s) that includes the results of scanners applied to transcripts.
+-   **Results** --- Data frame(s) that includes the results of scanners applied to transcripts.
 
 ### Creating a Scanner
 
@@ -94,9 +95,29 @@ def ctf_environment() -> Scanner[Transcript]:
 
 Above we used only the `messages` field from the `transcript`, but `Transcript` includes many other fields with additional context. See [Transcript Fields](transcripts.qmd#transcript-fields) for additional details.
 
+### LLM Scanner
+
+The example scanner above repeats several steps quite common to LLM-driven scanners (prompting, message history, answer extraction, etc.). There is a higher-level `llm_scanner()` function that includes these things automatically and provides several ways to configure its behavior. For example, we could re-write our scanner above as follows:
+
+``` {.python filename="scanner.py"}
+from inspect_scout import Transcript, llm_scanner, scanner
+
+@scanner(messages="all")
+def ctf_environment() -> Scanner[Transcript]:
+    
+    return llm_scanner(
+        question = "In the transcript above do you detect any " +
+            "instances of environment misconfiguration " +
+            "preventing the agent from completing it's task?"
+        answer="boolean"
+    )
+```
+
+For additional details on using this scanner, see the [LLM Scanner](llm_scanner.qmd) article.
+
 ### Running a Scan
 
-We can now run that scanner on our transcripts. The `Scanner` will be called once for each sample trajectory in the log (total samples \* epochs):
+Use the `scout scan` command to run one or more scanners on a set of transcripts. The `Scanner` will be called once for `Transcript`:
 
 ``` bash
 scout scan scanner.py -T ./logs --model openai/gpt-5
@@ -122,26 +143,6 @@ Then you could shorten the above command to:
 ``` bash
 scout scan scanner.py 
 ```
-
-### LLM Scanner
-
-The example scanner above repeats several steps quite common to LLM-driven scanners (prompting, message history, answer extraction, etc.). There is a higher-level `llm_scanner()` function that includes these things automatically and provides several ways to configure its behavior. For example, we could re-write our scanner above as follows:
-
-``` {.python filename="scanner.py"}
-from inspect_scout import Transcript, llm_scanner, scanner
-
-@scanner(messages="all")
-def ctf_environment() -> Scanner[Transcript]:
-    
-    return llm_scanner(
-        question = "In the transcript above do you detect any " +
-            "instances of environment misconfiguration " +
-            "preventing the agent from completing it's task?"
-        answer="boolean"
-    )
-```
-
-For additional details on using this scanner, see the [LLM Scanner](llm_scanner.qmd) article.
 
 ### Event Scanner
 
@@ -176,6 +177,8 @@ Scout includes a viewer application for looking at scan results in depth. Run th
 ``` bash
 scout view
 ```
+
+![](images/scout-view.png){.border}
 
 By default this will view the scan results in the `./scans` directory of the current working directory (of the location pointed to the by the `SCOUT_SCAN_RESULTS` environment variable). Specify an alternate results location with:
 
@@ -231,7 +234,7 @@ scout scan scan.yaml
 
 ## Scan Results
 
-By default, the results of scans are written into the `./scans` directory. You can override this using the `--results` option---both file paths and S3 buckets are supported.
+By default, the results of scans are written into the `./scans` directory. You can override this using the `--results` option---both local file paths remove filesystems (e.g. `s3://`) are supported.
 
 Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results as a dict of Pandas data frames using the `scan_results_df()` function:
 
@@ -312,20 +315,20 @@ status = scan(
 )
 ```
 
-The `metadata` object (aliased to `m`) provides a convenient way to specified `where()` clauses for filtering transcripts.
+The `metadata` object (aliased to `m`) provides a convenient way to specify `where()` clauses for filtering transcripts.
 
 Note that doing this query required us to switch to the Python `scan()` API. We can still use the CLI if we wrap our transcript query in a `ScanJob`:
 
 {{< include _scanjob-transcripts.md >}}
 
-See the article on [Transcripts](transcripts.qmd) to learn more about the various ways to create, read, filter transcripts.
+See the article on [Transcripts](transcripts.qmd) to learn more about the various ways to create, read, and filter transcripts.
 
 ## Parallelism
 
 The Scout scanning pipeline is optimized for parallel reading and scanning as well as minimal memory consumption. There are a few options you can use to tune parallelism:
 
 | Option | Description |
-|--------------------------|----------------------------------------------|
+|---------------------------|---------------------------------------------|
 | `--max-transcripts` | The maximum number of transcripts to scan in parallel (defaults to 25). You can set this higher if your model API endpoint can handle larger numbers of concurrent requests. |
 | `--max-connections` | The maximum number of concurrent requests to the model provider (defaults to `--max-transcripts`). |
 | `--max-processes` | The maximum number of processes to use for parsing and scanning (defaults to 1). |

@@ -645,38 +645,53 @@ class ParquetTranscriptsDB(TranscriptsDB):
             row: Row dict from _transcript_to_row().
 
         Returns:
-            Estimated size in bytes.
+            Estimated size in bytes (accounting for compression).
         """
-        size = 0
+        json_array_size = 0  # messages, events - compress very well
+        other_size = 0  # metadata fields - compress modestly
 
-        for value in row.values():
+        for key, value in row.items():
             if value is None:
                 continue  # NULL values have minimal overhead
             elif isinstance(value, str):
-                size += len(
-                    value
-                )  # Already serialized (messages, events, JSON metadata)
+                if key in ("messages", "events"):
+                    json_array_size += len(value)
+                else:
+                    other_size += len(value)
             elif isinstance(value, bool):
-                size += 1  # Boolean stored as 1 byte
+                other_size += 1  # Boolean stored as 1 byte
             elif isinstance(value, (int, float)):
-                size += 8  # 64-bit numeric types
+                other_size += 8  # 64-bit numeric types
 
-        # Add overhead for Parquet columnar format (conservative 1.2x)
-        return int(size * 1.2)
+        # JSON arrays (messages/events) compress extremely well (~25x with zstd)
+        # Metadata fields compress more modestly (~5x)
+        return int(json_array_size * 0.04 + other_size * 0.2)
 
     def _estimate_batch_size(self, batch: pa.RecordBatch) -> int:
         """Estimate size of Arrow batch in bytes.
 
-        Uses batch.nbytes as primary estimate with 1.2x overhead factor
-        to match existing _estimate_row_size behavior.
+        Estimates compressed size by applying different compression factors
+        to JSON array columns (messages/events) vs other columns.
 
         Args:
             batch: PyArrow RecordBatch to estimate size for.
 
         Returns:
-            Estimated size in bytes.
+            Estimated size in bytes (accounting for compression).
         """
-        return int(batch.nbytes * 1.2)
+        json_array_size = 0
+        other_size = 0
+
+        for i, name in enumerate(batch.schema.names):
+            col_size = batch.column(i).nbytes
+            if name in ("messages", "events"):
+                json_array_size += col_size
+            else:
+                other_size += col_size
+
+        # JSON arrays (messages/events) compress extremely well (~25x with zstd)
+        # Metadata fields compress more modestly (~5x)
+        return int(json_array_size * 0.04 + other_size * 0.2)
 
     def _validate_record_batch_schema(self, schema: pa.Schema) -> None:
         """Validate that RecordBatch schema meets requirements.

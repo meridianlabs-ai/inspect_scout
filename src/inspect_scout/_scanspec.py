@@ -92,11 +92,11 @@ class ScanTranscripts(BaseModel):
     location: str | None = Field(default=None)
     """Location of transcript collection (e.g. database location)."""
 
-    fields: list[TranscriptField]
-    """Data types of transcripts fields."""
-
     count: int = Field(default=0)
     """Trancript count."""
+
+    fields: list[TranscriptField]
+    """Data types of transcripts fields."""
 
     data: str
     """Transcript data as a csv."""

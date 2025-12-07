@@ -192,3 +192,9 @@ class Transcripts(abc.ABC):
     def reader(self) -> TranscriptsReader:
         """Read the selected transcripts."""
         ...
+
+    @staticmethod
+    @abc.abstractmethod
+    def from_snapshot(snapshot: ScanTranscripts) -> "Transcripts":
+        """Restore transcripts from a snapshot."""
+        ...

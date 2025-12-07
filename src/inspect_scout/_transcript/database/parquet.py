@@ -21,6 +21,8 @@ from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._display._display import display
+from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 
@@ -1282,6 +1284,12 @@ class ParquetTranscripts(Transcripts):
         """
         db = ParquetTranscriptsDB(self._location, query=self._query)
         return TranscriptsDBReader(db)
+
+    @staticmethod
+    @override
+    def from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+        """Restore transcripts from a snapshot."""
+        return transcripts_from_db_snapshot(snapshot)
 
 
 def _validate_metadata_keys(metadata: dict[str, Any]) -> None:

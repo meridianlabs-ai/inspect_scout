@@ -87,6 +87,12 @@ class EvalLogTranscripts(Transcripts):
     def reader(self) -> TranscriptsReader:
         return EvalLogTranscriptsReader(self._logs, self._query, self._files_cache)
 
+    @staticmethod
+    @override
+    def from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+        """Restore transcripts from a snapshot."""
+        return EvalLogTranscripts(snapshot)
+
 
 class EvalLogTranscriptsReader(TranscriptsReader):
     def __init__(

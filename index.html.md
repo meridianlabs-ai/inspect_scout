@@ -32,13 +32,13 @@ features for viewing and debugging Scout scans.
 Below we’ll provide some simple examples of creating and using Scout
 scanners. Some core components we’ll make use of here include:
 
-- `Transcript` — LLM conversation to analyze (e.g. an agent rollout or a
-  sample from an Inspect eval).
+- **Transcript** — LLM conversation to analyze (e.g. an agent rollout or
+  a sample from an Inspect eval).
 
-- `Scanner` — Function that takes an input from a `Transcript` and
+- **Scanner** — Function that takes an input from a `Transcript` and
   returns a `Result` (conceptually very similar to an Inspect `Scorer`).
 
-- `Results` — Data frame(s) that includes the results of scanners
+- **Results** — Data frame(s) that includes the results of scanners
   applied to transcripts.
 
 ### Creating a Scanner
@@ -118,11 +118,37 @@ Above we used only the `messages` field from the `transcript`, but
 [Transcript Fields](transcripts.qmd#transcript-fields) for additional
 details.
 
+### LLM Scanner
+
+The example scanner above repeats several steps quite common to
+LLM-driven scanners (prompting, message history, answer extraction,
+etc.). There is a higher-level `llm_scanner()` function that includes
+these things automatically and provides several ways to configure its
+behavior. For example, we could re-write our scanner above as follows:
+
+**scanner.py**
+
+``` python
+from inspect_scout import Transcript, llm_scanner, scanner
+
+@scanner(messages="all")
+def ctf_environment() -> Scanner[Transcript]:
+    
+    return llm_scanner(
+        question = "In the transcript above do you detect any " +
+            "instances of environment misconfiguration " +
+            "preventing the agent from completing it's task?"
+        answer="boolean"
+    )
+```
+
+For additional details on using this scanner, see the [LLM
+Scanner](llm_scanner.qmd) article.
+
 ### Running a Scan
 
-We can now run that scanner on our transcripts. The `Scanner` will be
-called once for each sample trajectory in the log (total samples \*
-epochs):
+Use the `scout scan` command to run one or more scanners on a set of
+transcripts. The `Scanner` will be called once for `Transcript`:
 
 ``` bash
 scout scan scanner.py -T ./logs --model openai/gpt-5
@@ -157,33 +183,6 @@ Then you could shorten the above command to:
 ``` bash
 scout scan scanner.py 
 ```
-
-### LLM Scanner
-
-The example scanner above repeats several steps quite common to
-LLM-driven scanners (prompting, message history, answer extraction,
-etc.). There is a higher-level `llm_scanner()` function that includes
-these things automatically and provides several ways to configure its
-behavior. For example, we could re-write our scanner above as follows:
-
-**scanner.py**
-
-``` python
-from inspect_scout import Transcript, llm_scanner, scanner
-
-@scanner(messages="all")
-def ctf_environment() -> Scanner[Transcript]:
-    
-    return llm_scanner(
-        question = "In the transcript above do you detect any " +
-            "instances of environment misconfiguration " +
-            "preventing the agent from completing it's task?"
-        answer="boolean"
-    )
-```
-
-For additional details on using this scanner, see the [LLM
-Scanner](llm_scanner.qmd) article.
 
 ### Event Scanner
 
@@ -225,6 +224,8 @@ depth. Run the viewer with:
 ``` bash
 scout view
 ```
+
+![](images/scout-view.png)
 
 By default this will view the scan results in the `./scans` directory of
 the current working directory (of the location pointed to the by the
@@ -296,8 +297,8 @@ scout scan scan.yaml
 ## Scan Results
 
 By default, the results of scans are written into the `./scans`
-directory. You can override this using the `--results` option—both file
-paths and S3 buckets are supported.
+directory. You can override this using the `--results` option—both local
+file paths remove filesystems (e.g. `s3://`) are supported.
 
 Each scan is stored in its own directory and has both metadata about the
 scan (configuration, errors, summary of results) as well as parquet
@@ -402,7 +403,7 @@ status = scan(
 ```
 
 The `metadata` object (aliased to `m`) provides a convenient way to
-specified `where()` clauses for filtering transcripts.
+specify `where()` clauses for filtering transcripts.
 
 Note that doing this query required us to switch to the Python `scan()`
 API. We can still use the CLI if we wrap our transcript query in a
@@ -439,7 +440,7 @@ The `-S` argument enables you to pass arguments to the `@scanjob`
 function (in this case determining what directory to read logs from).
 
 See the article on [Transcripts](transcripts.qmd) to learn more about
-the various ways to create, read, filter transcripts.
+the various ways to create, read, and filter transcripts.
 
 ## Parallelism
 

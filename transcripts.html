@@ -359,7 +359,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="transcript-fields" class="level2">
 <h2 class="anchored" data-anchor-id="transcript-fields">Transcript Fields</h2>
-<p>Here are the available <code>Transcript</code> fields:</p>
+<p>Here are the available <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> fields:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
@@ -484,7 +484,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Scout can analyze transcripts from any source (e.g.&nbsp;Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
 <p>If you have an existing source of transcript data there are several ways to create a transcript database (<code>TranscriptDB</code>):</p>
 <ol type="1">
-<li><p><a href="#transcript-api">Transcript API</a>: Read and parse transcripts into <code>Transcript</code> objects and use the <code>TranscriptsDB.insert()</code> function to add them to the database.</p></li>
+<li><p><a href="#transcript-api">Transcript API</a>: Read and parse transcripts into <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> objects and use the <code>TranscriptsDB.insert()</code> function to add them to the database.</p></li>
 <li><p><a href="#arrow-import">Arrow Import</a>: Read an existing set of transcripts stored in Arrow/Parquet and pass them to <code>TranscriptsDB.insert()</code> as a PyArrow <code>RecordBatchReader</code>.</p></li>
 <li><p><a href="#parquet-data-lake">Parquet Data Lake</a>: Point the <code>TranscriptDB</code> at an existing data lake (ensuring that the records adhere to the transcript database schema).</p></li>
 </ol>
@@ -570,7 +570,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="transcript-api" class="level3">
 <h3 class="anchored" data-anchor-id="transcript-api">Transcript API</h3>
-<p>To create a transcripts database, use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> function to get a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcriptsdb">TranscriptsDB</a></span> interface and then insert <code>Transcript</code> objects. In this example imagine we have a <code>read_weave_transcripts()</code> function which can read transcripts from an external JSON transcript format:</p>
+<p>To create a transcripts database, use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> function to get a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcriptsdb">TranscriptsDB</a></span> interface and then insert <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> objects. In this example imagine we have a <code>read_weave_transcripts()</code> function which can read transcripts from an external JSON transcript format:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .readers <span class="im">import</span> read_json_transcripts</span>

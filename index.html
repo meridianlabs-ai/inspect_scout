@@ -78,6 +78,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-58f3f7d8222792c3c3a2edf9e2d9a6e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -109,15 +112,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript Analysis for AI Agents">
-<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/validation.png">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scout-view.png">
 <meta property="og:site_name" content="Inspect Scout">
-<meta property="og:image:height" content="1502">
-<meta property="og:image:width" content="2314">
+<meta property="og:image:height" content="1106">
+<meta property="og:image:width" content="1700">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript Analysis for AI Agents">
-<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/validation.png">
-<meta name="twitter:image-height" content="1502">
-<meta name="twitter:image-width" content="2314">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/scout-view.png">
+<meta name="twitter:image-height" content="1106">
+<meta name="twitter:image-width" content="1700">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 
@@ -290,8 +293,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#scout-basics" id="toc-scout-basics" class="nav-link" data-scroll-target="#scout-basics">Scout Basics</a>
   <ul class="collapse">
   <li><a href="#creating-a-scanner" id="toc-creating-a-scanner" class="nav-link" data-scroll-target="#creating-a-scanner">Creating a Scanner</a></li>
-  <li><a href="#running-a-scan" id="toc-running-a-scan" class="nav-link" data-scroll-target="#running-a-scan">Running a Scan</a></li>
   <li><a href="#llm-scanner" id="toc-llm-scanner" class="nav-link" data-scroll-target="#llm-scanner">LLM Scanner</a></li>
+  <li><a href="#running-a-scan" id="toc-running-a-scan" class="nav-link" data-scroll-target="#running-a-scan">Running a Scan</a></li>
   <li><a href="#event-scanner" id="toc-event-scanner" class="nav-link" data-scroll-target="#event-scanner">Event Scanner</a></li>
   </ul></li>
   <li><a href="#scout-view" id="toc-scout-view" class="nav-link" data-scroll-target="#scout-view">Scout View</a></li>
@@ -353,9 +356,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="scout-basics">Scout Basics</h2>
 <p>Below we’ll provide some simple examples of creating and using Scout scanners. Some core components we’ll make use of here include:</p>
 <ul>
-<li><p><code>Transcript</code> — LLM conversation to analyze (e.g.&nbsp;an agent rollout or a sample from an Inspect eval).</p></li>
-<li><p><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> — Function that takes an input from a <code>Transcript</code> and returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> (conceptually very similar to an Inspect <code>Scorer</code>).</p></li>
-<li><p><code>Results</code> — Data frame(s) that includes the results of scanners applied to transcripts.</p></li>
+<li><p><strong>Transcript</strong> — LLM conversation to analyze (e.g.&nbsp;an agent rollout or a sample from an Inspect eval).</p></li>
+<li><p><strong>Scanner</strong> — Function that takes an input from a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> and returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> (conceptually very similar to an Inspect <code>Scorer</code>).</p></li>
+<li><p><strong>Results</strong> — Data frame(s) that includes the results of scanners applied to transcripts.</p></li>
 </ul>
 <section id="creating-a-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="creating-a-scanner">Creating a Scanner</h3>
@@ -425,26 +428,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span data-code-cell="annotated-cell-2" data-code-lines="34,35,36,37,38" data-code-annotation="4">As with scorers, results also include additional context (here the extracted answer and full model completion).</span>
 </dd>
 </dl>
-<p>Above we used only the <code>messages</code> field from the <code>transcript</code>, but <code>Transcript</code> includes many other fields with additional context. See <a href="./transcripts.html#transcript-fields">Transcript Fields</a> for additional details.</p>
-</section>
-<section id="running-a-scan" class="level3">
-<h3 class="anchored" data-anchor-id="running-a-scan">Running a Scan</h3>
-<p>We can now run that scanner on our transcripts. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> will be called once for each sample trajectory in the log (total samples * epochs):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The <code>-T</code> argument indicates which transcripts to scan (in this case a local Inspect log directory). You can also scan from a <a href="./transcripts.html#transcripts-database">transcripts database</a> that is either local or on S3. For example, here we scan some W&amp;B Weave transcripts stored on S3:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="dt">\</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>   <span class="at">-T</span> s3://weave-rollouts/cybench <span class="dt">\</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>As with Inspect AI, Inspect Scout will read your <code>.env</code> file for <a href="https://inspect.aisi.org.uk/options.html#env-files">environmental options</a>. So if your <code>.env</code> contained the following:</p>
-<div class="code-with-filename">
-<div class="code-with-filename-file">
-<pre><strong>.env</strong></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-filename=".env"><pre class="sourceCode makefile code-with-copy"><code class="sourceCode makefile"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="dt">SCOUT_SCAN_TRANSCRIPTS</span><span class="ch">=</span><span class="st">s3://weave-rollouts/cybench</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="dt">SCOUT_SCAN_MODEL</span><span class="ch">=</span><span class="st">openai/gpt-5</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<p>Then you could shorten the above command to:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Above we used only the <code>messages</code> field from the <code>transcript</code>, but <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> includes many other fields with additional context. See <a href="./transcripts.html#transcript-fields">Transcript Fields</a> for additional details.</p>
 </section>
 <section id="llm-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="llm-scanner">LLM Scanner</h3>
@@ -453,19 +437,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-with-filename-file">
 <pre><strong>scanner.py</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="scanner.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript, llm_scanner, scanner</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ctf_environment() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>        question <span class="op">=</span> <span class="st">"In the transcript above do you detect any "</span> <span class="op">+</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>            <span class="st">"instances of environment misconfiguration "</span> <span class="op">+</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>            <span class="st">"preventing the agent from completing it's task?"</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" data-filename="scanner.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript, llm_scanner, scanner</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ctf_environment() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        question <span class="op">=</span> <span class="st">"In the transcript above do you detect any "</span> <span class="op">+</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            <span class="st">"instances of environment misconfiguration "</span> <span class="op">+</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            <span class="st">"preventing the agent from completing it's task?"</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>For additional details on using this scanner, see the <a href="./llm_scanner.html">LLM Scanner</a> article.</p>
+</section>
+<section id="running-a-scan" class="level3">
+<h3 class="anchored" data-anchor-id="running-a-scan">Running a Scan</h3>
+<p>Use the <code>scout scan</code> command to run one or more scanners on a set of transcripts. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> will be called once for <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>-T</code> argument indicates which transcripts to scan (in this case a local Inspect log directory). You can also scan from a <a href="./transcripts.html#transcripts-database">transcripts database</a> that is either local or on S3. For example, here we scan some W&amp;B Weave transcripts stored on S3:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="dt">\</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>   <span class="at">-T</span> s3://weave-rollouts/cybench <span class="dt">\</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>As with Inspect AI, Inspect Scout will read your <code>.env</code> file for <a href="https://inspect.aisi.org.uk/options.html#env-files">environmental options</a>. So if your <code>.env</code> contained the following:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>.env</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename=".env"><pre class="sourceCode makefile code-with-copy"><code class="sourceCode makefile"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="dt">SCOUT_SCAN_TRANSCRIPTS</span><span class="ch">=</span><span class="st">s3://weave-rollouts/cybench</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="dt">SCOUT_SCAN_MODEL</span><span class="ch">=</span><span class="st">openai/gpt-5</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Then you could shorten the above command to:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="event-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="event-scanner">Event Scanner</h3>
@@ -483,7 +486,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>)</span>
 <span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>       </span>
 <span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Note that we specify <code>events=["tool"]</code> to constrain reading to only tool events, and that our function takes an individual event rather than a <code>Transcript</code>.</p>
+<p>Note that we specify <code>events=["tool"]</code> to constrain reading to only tool events, and that our function takes an individual event rather than a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>.</p>
 <p>If you add this scanner to the same source file as the <code>ctf_environment()</code> scanner then <code>scout scan</code> will run both of the scanners using the same <code>scout scan scanner.py</code> command,</p>
 <p>See the <a href="./scanners.html">Scanners</a> article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.</p>
 </section>
@@ -492,6 +495,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="scout-view">Scout View</h2>
 <p>Scout includes a viewer application for looking at scan results in depth. Run the viewer with:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> view</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><a href="images/scout-view.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1"><img src="images/scout-view.png" class="border img-fluid"></a></p>
 <p>By default this will view the scan results in the <code>./scans</code> directory of the current working directory (of the location pointed to the by the <code>SCOUT_SCAN_RESULTS</code> environment variable). Specify an alternate results location with:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> view <span class="at">--results</span> s3://my-scan-results</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The Inspect AI VS Code Extension also includes integrated support for Scout view (e.g.&nbsp;viewing results by clicking links in the terminal, Scout activity bar, etc.).</p>
@@ -536,7 +540,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="scan-results" class="level2">
 <h2 class="anchored" data-anchor-id="scan-results">Scan Results</h2>
-<p>By default, the results of scans are written into the <code>./scans</code> directory. You can override this using the <code>--results</code> option—both file paths and S3 buckets are supported.</p>
+<p>By default, the results of scans are written into the <code>./scans</code> directory. You can override this using the <code>--results</code> option—both local file paths remove filesystems (e.g.&nbsp;<code>s3://</code>) are supported.</p>
 <p>Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results as a dict of Pandas data frames using the <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> function:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># results as pandas data frames</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan_results_df(<span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span>)</span>
@@ -564,7 +568,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    }</span>
 <span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Validation results are reported both in the scan status/summary UI, within columns in the data frame produced for each scanner, as well as displayed in Scout View:</p>
-<p><img src="images/validation.png" class="border img-fluid"></p>
+<p><a href="images/validation.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2"><img src="images/validation.png" class="border img-fluid"></a></p>
 <p>To learn more about building and using validation sets see the article on <a href="./validation.html">Validation</a>.</p>
 </section>
 <section id="handling-errors" class="level2">
@@ -572,7 +576,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime error, you can resume the scan from where it left off using the <code>scan resume</code> command. For example:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan resume <span class="st">"scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>By default, if errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with <code>scan resume</code> or complete the scan (ignoring errors) with <code>scan complete</code>:</p>
-<p><img src="images/scan-resume.png" class="img-fluid"></p>
+<p><a href="images/scan-resume.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3"><img src="images/scan-resume.png" class="img-fluid"></a></p>
 <p>If you prefer to fail immediately when an error occurs rather than capturing errors in results, use the <code>--fail-on-error</code> flag:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--fail-on-error</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>With this flag, any exception will cause the entire scan to terminate immediately. This can be valuable when developing a scanner.</p>
@@ -593,7 +597,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    scanners <span class="op">=</span> [ctf_environment(), tool_errors()],</span>
 <span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts</span>
 <span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The <code>metadata</code> object (aliased to <code>m</code>) provides a convenient way to specified <code>where()</code> clauses for filtering transcripts.</p>
+<p>The <code>metadata</code> object (aliased to <code>m</code>) provides a convenient way to specify <code>where()</code> clauses for filtering transcripts.</p>
 <p>Note that doing this query required us to switch to the Python <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> API. We can still use the CLI if we wrap our transcript query in a <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scanjob">ScanJob</a></span>:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
@@ -619,7 +623,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Then from the CLI:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The <code>-S</code> argument enables you to pass arguments to the <code>@scanjob</code> function (in this case determining what directory to read logs from).</p>
-<p>See the article on <a href="./transcripts.html">Transcripts</a> to learn more about the various ways to create, read, filter transcripts.</p>
+<p>See the article on <a href="./transcripts.html">Transcripts</a> to learn more about the various ways to create, read, and filter transcripts.</p>
 </section>
 <section id="parallelism" class="level2">
 <h2 class="anchored" data-anchor-id="parallelism">Parallelism</h2>
@@ -1159,6 +1163,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     </div>
   </div>
 </footer>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

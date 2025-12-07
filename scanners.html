@@ -325,12 +325,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types (<code>Transcript</code>, <code>ChatMessage</code>, or <code>Event</code>) as well as creating custom loaders which enable scanning of lists of events or messages.</p>
+<p>Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types (<span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>, <code>ChatMessage</code>, or <code>Event</code>) as well as creating custom loaders which enable scanning of lists of events or messages.</p>
 <p>You can also use scanners directly as Inspect scorers (see <a href="#scanners-as-scorers">Scanners as Scorers</a> for details).</p>
 </section>
 <section id="scanner-basics" class="level2">
 <h2 class="anchored" data-anchor-id="scanner-basics">Scanner Basics</h2>
-<p>A <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> is a function that takes a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scannerinput">ScannerInput</a></span> (typically a <code>Transcript</code>, but possibly an <code>Event</code>, <code>ChatMessage</code>, or list of events or messages) and returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span>.</p>
+<p>A <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> is a function that takes a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scannerinput">ScannerInput</a></span> (typically a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>, but possibly an <code>Event</code>, <code>ChatMessage</code>, or list of events or messages) and returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span>.</p>
 <p>The result includes a <code>value</code> which can be of any type—this might be <code>True</code> to indicate that something was found but might equally be a number to indicate a count. More elaborate scanner values (<code>dict</code> or <code>list</code>) are also possible.</p>
 <p>Here is a simple scanner that uses a model to look for agent “confusion”—whether or not it finds confusion, it still returns the model completion as an <code>explanation</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
@@ -378,11 +378,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="input-types" class="level3">
 <h3 class="anchored" data-anchor-id="input-types">Input Types</h3>
-<p><code>Transcript</code> is the most common <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scannerinput">ScannerInput</a></span> however several other types are possible:</p>
+<p><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> is the most common <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scannerinput">ScannerInput</a></span> however several other types are possible:</p>
 <ul>
 <li><p><code>Event</code> — Single event from the transcript (e.g.&nbsp;<code>ModelEvent</code>, <code>ToolEvent</code>, etc.).</p></li>
 <li><p><code>ChatMessage</code> — Single chat message from the transcript message history.</p></li>
-<li><p><code>list[Event]</code> or <code>list[ChatMessage]</code> — Arbitrary sets of events or messages extracted from the <code>Transcript</code> (see <a href="#loaders">Loaders</a> below for details).</p></li>
+<li><p><code>list[Event]</code> or <code>list[ChatMessage]</code> — Arbitrary sets of events or messages extracted from the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> (see <a href="#loaders">Loaders</a> below for details).</p></li>
 </ul>
 <p>See the sections on <a href="#transcripts">Transcripts</a>, <a href="#events">Events</a>, <a href="#messages">Messages</a>, and <a href="#loaders">Loaders</a> below for additional details on handling various input types.</p>
 </section>
@@ -411,10 +411,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="transcripts" class="level2">
 <h2 class="anchored" data-anchor-id="transcripts">Transcripts</h2>
-<p>Transcripts are the most common input to scanners. If you are reading from Inspect eval logs, each log will have <code>samples * epochs</code> transcripts. If you are reading from another source, each agent trace will yield a single <code>Transcript</code>.</p>
+<p>Transcripts are the most common input to scanners. If you are reading from Inspect eval logs, each log will have <code>samples * epochs</code> transcripts. If you are reading from another source, each agent trace will yield a single <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>.</p>
 <section id="transcript-fields" class="level3">
 <h3 class="anchored" data-anchor-id="transcript-fields">Transcript Fields</h3>
-<p>Here are the available <code>Transcript</code> fields:</p>
+<p>Here are the available <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> fields:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
@@ -606,7 +606,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="loaders" class="level2">
 <h2 class="anchored" data-anchor-id="loaders">Custom Loaders</h2>
-<p>When you want to process multiple discrete items from a <code>Transcript</code> this might not always fall neatly into single messages or events. For example, you might want to process pairs of user/assistant messages. To do this, create a custom <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#loader">Loader</a></span> that yields the content as required.</p>
+<p>When you want to process multiple discrete items from a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> this might not always fall neatly into single messages or events. For example, you might want to process pairs of user/assistant messages. To do this, create a custom <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#loader">Loader</a></span> that yields the content as required.</p>
 <p>For example, here is a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#loader">Loader</a></span> that yields user/assistant message pairs:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="at">@loader</span>(messages<span class="op">=</span>[<span class="st">"user"</span>, <span class="st">"assistant"</span>])</span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> conversation_turns():</span>

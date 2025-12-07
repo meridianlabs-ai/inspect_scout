@@ -102,7 +102,11 @@ class ScanDisplayPlain(ScanDisplay):
 
     @override
     def results(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None:
         pass
 

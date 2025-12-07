@@ -107,7 +107,7 @@ async def test_render_basic_prompt() -> None:
         (
             "Mean: {{ metadata.scores.mean }}, Fluency: {{ metadata.scores.fluency }}",
             {"metadata": {"scores": {"mean": 0.9, "fluency": 0.8}}},
-            ["Meab: 0.9", "Fluency: 0.8"],
+            ["Mean: 0.9", "Fluency: 0.8"],
         ),
         # Mixed: metadata fields including score and named scores
         (

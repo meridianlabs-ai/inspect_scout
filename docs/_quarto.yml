@@ -42,6 +42,12 @@ website:
                 - href: llm_scanner.qmd
                 - href: results.qmd
                 - href: validation.qmd
+          - text: "Transcripts"
+            menu:
+                - href: db_overview.qmd
+                - href: db_schema.qmd
+                - href: db_importing.qmd
+                - href: db_publishing.qmd
           - text: "Reference"
             href: reference/index.qmd
 
@@ -69,6 +75,19 @@ website:
                 - href: llm_scanner.qmd
                 - href: results.qmd
                 - href: validation.qmd
+           - text: Transcripts Database
+             href: db_overview.qmd
+             contents:
+                - text: Overview
+                  href: db_overview.qmd
+                - text: Schema
+                  href: db_schema.qmd
+                - text: Importing
+                  href: db_importing.qmd
+                - text: Publishing
+                  href: db_publishing.qmd
+  
+                  
           
    page-footer:
       left:

@@ -347,4 +347,6 @@ See the following articles to learn more about using Scout:
 
 -   [Validation](validation.qmd): Validation of scanner results against ground truth target values.
 
+-   [Transcripts Database](db_overview.qmd): Creating, populating, and managing transcript databases.
+
 -   [Reference](reference/index.qmd): Detailed documentation on the Scout Python API and CLI commands.

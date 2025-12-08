@@ -220,7 +220,9 @@ class TestEncryptDatabase:
     def test_encrypts_parquet_files(self, source_db: Path, tmp_path: Path) -> None:
         output_dir = tmp_path / "encrypted"
 
-        encrypt_database(str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        encrypt_database(
+            str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Check encrypted files were created
         enc_files = list(output_dir.glob("*.enc.parquet"))
@@ -238,7 +240,9 @@ class TestEncryptDatabase:
     ) -> None:
         output_dir = tmp_path / "encrypted"
 
-        encrypt_database(str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        encrypt_database(
+            str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Should be readable with the correct key
         conn = duckdb.connect(":memory:")
@@ -263,7 +267,9 @@ class TestEncryptDatabase:
         (output_dir / "existing.txt").write_text("test")
 
         with pytest.raises(FileExistsError) as exc_info:
-            encrypt_database(str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+            encrypt_database(
+                str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+            )
 
         assert "--overwrite" in str(exc_info.value)
 
@@ -273,7 +279,9 @@ class TestEncryptDatabase:
         old_file = output_dir / "old.txt"
         old_file.write_text("old")
 
-        encrypt_database(str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=True)
+        encrypt_database(
+            str(source_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=True
+        )
 
         assert not old_file.exists()
         assert len(list(output_dir.glob("*.enc.parquet"))) == 2
@@ -292,7 +300,9 @@ class TestEncryptDatabase:
         (src_dir / "config.json").write_text('{"key": "value"}')
 
         output_dir = tmp_path / "encrypted"
-        encrypt_database(str(src_dir), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        encrypt_database(
+            str(src_dir), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Check all files exist
         assert (output_dir / "transcripts_test.enc.parquet").exists()
@@ -316,7 +326,9 @@ class TestEncryptDatabase:
         conn.close()
 
         output_dir = tmp_path / "encrypted"
-        encrypt_database(str(src_dir), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        encrypt_database(
+            str(src_dir), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         assert (output_dir / "transcripts_test1.enc.parquet").exists()
         assert (output_dir / "subdir" / "transcripts_test2.enc.parquet").exists()
@@ -347,7 +359,9 @@ class TestDecryptDatabase:
     def test_decrypts_encrypted_files(self, encrypted_db: Path, tmp_path: Path) -> None:
         output_dir = tmp_path / "decrypted"
 
-        decrypt_database(str(encrypted_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        decrypt_database(
+            str(encrypted_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Check decrypted file exists with correct extension
         dec_files = list(output_dir.glob("*.parquet"))
@@ -359,7 +373,9 @@ class TestDecryptDatabase:
     ) -> None:
         output_dir = tmp_path / "decrypted"
 
-        decrypt_database(str(encrypted_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        decrypt_database(
+            str(encrypted_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Should be readable without any encryption key
         conn = duckdb.connect(":memory:")
@@ -377,7 +393,9 @@ class TestDecryptDatabase:
         (output_dir / "existing.txt").write_text("test")
 
         with pytest.raises(FileExistsError):
-            decrypt_database(str(encrypted_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+            decrypt_database(
+                str(encrypted_db), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+            )
 
     def test_preserves_data_integrity(self, tmp_path: Path) -> None:
         """Test that encrypt -> decrypt roundtrip preserves data."""
@@ -397,11 +415,15 @@ class TestDecryptDatabase:
 
         # Encrypt
         enc_dir = tmp_path / "encrypted"
-        encrypt_database(str(src_dir), str(enc_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        encrypt_database(
+            str(src_dir), str(enc_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Decrypt
         dec_dir = tmp_path / "decrypted"
-        decrypt_database(str(enc_dir), str(dec_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        decrypt_database(
+            str(enc_dir), str(dec_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Verify data integrity
         conn = duckdb.connect(":memory:")
@@ -436,7 +458,9 @@ class TestDecryptDatabase:
         (enc_dir / "readme.txt").write_text("readme content")
 
         output_dir = tmp_path / "decrypted"
-        decrypt_database(str(enc_dir), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        decrypt_database(
+            str(enc_dir), str(output_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         assert (output_dir / "transcripts_test.parquet").exists()
         assert (output_dir / "readme.txt").exists()
@@ -472,7 +496,9 @@ class TestEncryptDecryptRoundtrip:
 
         # Encrypt
         enc_dir = tmp_path / "encrypted"
-        encrypt_database(str(src_dir), str(enc_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        encrypt_database(
+            str(src_dir), str(enc_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Verify encrypted state
         assert len(list(enc_dir.glob("**/*.enc.parquet"))) == 3
@@ -480,7 +506,9 @@ class TestEncryptDecryptRoundtrip:
 
         # Decrypt
         dec_dir = tmp_path / "decrypted"
-        decrypt_database(str(enc_dir), str(dec_dir), TEST_ENCRYPTION_KEY, overwrite=False)
+        decrypt_database(
+            str(enc_dir), str(dec_dir), TEST_ENCRYPTION_KEY, overwrite=False
+        )
 
         # Verify decrypted state
         assert len(list(dec_dir.glob("**/*.parquet"))) == 3
@@ -589,7 +617,9 @@ class TestParquetDBEncryptedAccess:
 
         # Create encrypted parquet files
         conn = duckdb.connect(":memory:")
-        conn.execute(f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{TEST_ENCRYPTION_KEY}')")
+        conn.execute(
+            f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{TEST_ENCRYPTION_KEY}')"
+        )
 
         # Create test data matching transcript schema
         conn.execute("""
@@ -671,7 +701,9 @@ class TestParquetDBEncryptedAccess:
         finally:
             await db.disconnect()
 
-    async def test_missing_key_raises_error(self, encrypted_db_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_missing_key_raises_error(
+        self, encrypted_db_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that missing encryption key raises PrerequisiteError."""
         from inspect_ai._util.error import PrerequisiteError
         from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB

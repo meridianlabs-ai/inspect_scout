@@ -76,12 +76,10 @@ def scan_config_str(spec: ScanSpec) -> str:
 
     scan_options = spec.options.model_dump(
         exclude_none=True,
-        exclude=(
-            "max_transcripts"
-            if batch_in_use
+        exclude={
+            "max_transcripts": batch_in_use
             and spec.options.max_transcripts == DEFAULT_MAX_CONNECTIONS_BATCH
-            else None
-        ),
+        },
     )
 
     config = scan_args | scan_options
@@ -89,8 +87,7 @@ def scan_config_str(spec: ScanSpec) -> str:
     if spec.model:
         config = config | dict(
             spec.model.config.model_dump(
-                exclude_none=True,
-                exclude="max_connections" if batch_in_use else None,
+                exclude_none=True, exclude={"max_connections": batch_in_use}
             )
         )
         config["model"] = spec.model.model

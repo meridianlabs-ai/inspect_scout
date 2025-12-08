@@ -13,6 +13,7 @@ from inspect_ai._eval.context import init_model_context
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
+from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
@@ -248,7 +249,13 @@ async def scan_async(
 
     # initialize scan config
     scanjob._max_transcripts = (
-        max_transcripts or scanjob._max_transcripts or DEFAULT_MAX_TRANSCRIPTS
+        max_transcripts
+        or scanjob._max_transcripts
+        or (
+            DEFAULT_MAX_TRANSCRIPTS
+            if scanjob.generate_config is None or not scanjob.generate_config.batch
+            else DEFAULT_MAX_CONNECTIONS_BATCH
+        )
     )
     scanjob._max_processes = max_processes or scanjob._max_processes
     scanjob._limit = limit or scanjob._limit
@@ -664,8 +671,8 @@ async def _scan_async_inner(
                     return results
 
                 prefetch_multiple = 1.0
-                max_tasks = (scan.spec.options.max_transcripts or 25) * len(
-                    scan.scanners
+                max_tasks = min(
+                    total_scans, scan.spec.options.max_transcripts * len(scan.scanners)
                 )
 
                 diagnostics = os.getenv("SCOUT_DIAGNOSTICS", "false").lower() in (

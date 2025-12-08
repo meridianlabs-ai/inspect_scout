@@ -17,8 +17,8 @@ extract them into a Scout database for a given analysis project.
 
 This documentation covers how to create transcript databases, import
 your transcripts into them, and publish them for use by others. If you
-just want to read existing transcripts see the general article on
-[Transcripts](transcripts.qmd),
+just want to read existing transcript databases see the general article
+on [Transcripts](transcripts.qmd),
 
 ## Creating a Database
 
@@ -27,8 +27,8 @@ straightforward to import it into a Scout database. Transcript databases
 have very few required fields (minimally just `transcript_id` and
 `messages`) but there are other fields that identify the source of the
 transcript that you’ll likely want to populate. You can also include
-arbitrary other columns in the database which can be used to filter
-transcripts.
+arbitrary other columns in the database (`metadata`) which can be used
+for transcript filtering.
 
 Use the `transcripts_db()` async context manager to open a connection to
 a database (which can be stored in a local file path or remote file
@@ -41,29 +41,13 @@ async with transcripts_db("s3://my-transcripts") as db:
     # TODO: insert transcripts into db
 ```
 
-To insert transcripts, you’ll need to pick one of the supported
-insertion formats and then understand the [Database
-Schema](db_schema.qmd) so you can properly map your data source into the
-database.
+To popualte the database you’ll need to:
 
-Once you understand the schema and have an idea for how you want to map
-your data into it, use one of the following methods to create the
-database:
+1.  Understand the [Database Schema](db_schema.qmd) and decide how you
+    want to map your data source into it; and
 
-1.  [Transcript API](db_importing.qmd#transcript-api): Read and parse
-    transcripts into `Transcript` objects and use the
-    `TranscriptsDB.insert()` function to add them to the database.
-
-2.  [Arrow Import](db_importing.qmd#arrow-import): Read an existing set
-    of transcripts stored in Arrow/Parquet and pass them to
-    `TranscriptsDB.insert()` as a PyArrow `RecordBatchReader`.
-
-3.  [Parquet Data Lake](db_importing.qmd#parquet-data-lake): Point the
-    `TranscriptDB` at an existing data lake (ensuring that the records
-    adhere to the transcript database schema).
-
-4.  [Inspect Logs](db_importing.qmd#inspect-logs): Import Inspect AI
-    eval logs from a log directory.
+2.  Pick a method for [Importing Transcripts](db_importing.qmd) and
+    implement the logic for inserting your data.
 
 ## Publishing Transcripts
 

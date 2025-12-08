@@ -367,23 +367,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
 <p>Scout can analyze transcripts from any source (e.g.&nbsp;Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
 <p>The purpose of transcript databases is to provide a common baseline format for scanners to read from. You might use transcript databases as your cannonical storage for transcripts, or you might alternatively store them in another system entirely (e.g.&nbsp;a Postgress database) and extract them into a Scout database for a given analysis project.</p>
-<p>This documentation covers how to create transcript databases, import your transcripts into them, and publish them for use by others. If you just want to read existing transcripts see the general article on <a href="./transcripts.html">Transcripts</a>,</p>
+<p>This documentation covers how to create transcript databases, import your transcripts into them, and publish them for use by others. If you just want to read existing transcript databases see the general article on <a href="./transcripts.html">Transcripts</a>,</p>
 </section>
 <section id="creating-a-database" class="level2">
 <h2 class="anchored" data-anchor-id="creating-a-database">Creating a Database</h2>
-<p>If you have some existing source of transcript data it is straightforward to import it into a Scout database. Transcript databases have very few required fields (minimally just <code>transcript_id</code> and <code>messages</code>) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database which can be used to filter transcripts.</p>
+<p>If you have some existing source of transcript data it is straightforward to import it into a Scout database. Transcript databases have very few required fields (minimally just <code>transcript_id</code> and <code>messages</code>) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database (<code>metadata</code>) which can be used for transcript filtering.</p>
 <p>Use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> async context manager to open a connection to a database (which can be stored in a local file path or remote file system like S3):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># </span><span class="al">TODO</span><span class="co">: insert transcripts into db</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>To insert transcripts, you’ll need to pick one of the supported insertion formats and then understand the <a href="./db_schema.html">Database Schema</a> so you can properly map your data source into the database.</p>
-<p>Once you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database:</p>
+<p>To popualte the database you’ll need to:</p>
 <ol type="1">
-<li><p><a href="./db_importing.html#transcript-api">Transcript API</a>: Read and parse transcripts into <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> objects and use the <code>TranscriptsDB.insert()</code> function to add them to the database.</p></li>
-<li><p><a href="./db_importing.html#arrow-import">Arrow Import</a>: Read an existing set of transcripts stored in Arrow/Parquet and pass them to <code>TranscriptsDB.insert()</code> as a PyArrow <code>RecordBatchReader</code>.</p></li>
-<li><p><a href="./db_importing.html#parquet-data-lake">Parquet Data Lake</a>: Point the <code>TranscriptDB</code> at an existing data lake (ensuring that the records adhere to the transcript database schema).</p></li>
-<li><p><a href="./db_importing.html#inspect-logs">Inspect Logs</a>: Import Inspect AI eval logs from a log directory.</p></li>
+<li><p>Understand the <a href="./db_schema.html">Database Schema</a> and decide how you want to map your data source into it; and</p></li>
+<li><p>Pick a method for <a href="./db_importing.html">Importing Transcripts</a> and implement the logic for inserting your data.</p></li>
 </ol>
 </section>
 <section id="publishing-transcripts" class="level2">

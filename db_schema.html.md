@@ -42,7 +42,7 @@ providers to the Inspect `ChatMessage` format:
 For many straightforward transcripts the list of `messages` will be all
 that is needed for analysis.
 
-## Events
+### Events
 
 The `events` field is a JSON encoded string of `list[Event]`. Note that
 if your scanners deal entirely in `messages` rather than `events` (as a
@@ -78,3 +78,24 @@ converting raw model API payloads to `ChatMessage`.
 > The `events` field is only important if you have scanners that will be
 > doing event analysis. Note that the default `llm_scanner()` provided
 > within Scout looks only at `messages` not `events`.
+
+## Importing Data
+
+Now that you understand the schema and have an idea for how you want to
+map your data into it, use one of the following methods to create the
+database:
+
+1.  [Transcript API](db_importing.qmd#transcript-api): Read and parse
+    transcripts into `Transcript` objects and use the
+    `TranscriptsDB.insert()` function to add them to the database.
+
+2.  [Arrow Import](db_importing.qmd#arrow-import): Read an existing set
+    of transcripts stored in Arrow/Parquet and pass them to
+    `TranscriptsDB.insert()` as a PyArrow `RecordBatchReader`.
+
+3.  [Parquet Data Lake](db_importing.qmd#parquet-data-lake): Point the
+    `TranscriptDB` at an existing data lake (ensuring that the records
+    adhere to the transcript database schema).
+
+4.  [Inspect Logs](db_importing.qmd#inspect-logs): Import Inspect AI
+    eval logs from a log directory.

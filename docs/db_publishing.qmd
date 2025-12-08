@@ -12,25 +12,13 @@ In this article we'll cover recommended ways to publish transcript databases for
 
 We'll cover both of these scenarios in detail below.
 
-## S3
-
-Publishing transcripst databases to AWS [S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html) enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the [documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-management.html) for further details). 
-
-After you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the `s3://` protocol. For example:
-
-```bash
-scout scan scanner.py -T s3://my-transcript-databases/database-name
-```
-
-See [Encryption](#encryption) below for details on adding encyption to database files as an additional measure of protection from crawlers.
-
 ## Hugging Face
 
 Publishing transcript databases as a [Hugging Face Dataset](https://huggingface.co/datasets) is useful when you want to share with a broader audience. Benefits of using Hugging Face include:
 
 1. You can make access private to only your account or organization.
 
-2. You can create a [Gated Dataset](https://huggingface.co/docs/hub/datasets-gated) that requires users to share contact and optionally other information to obtain access.
+2. You can create a [Gated Dataset](https://huggingface.co/docs/hub/datasets-gated) that requires users to provide contact information and optionally abide by a usage agreement and share other information to obtain access.
 
 See the Hugging Face documentation on [uploading datasets](https://huggingface.co/docs/hub/datasets-adding) for details on how to create datasets. For transcript databases, you can just upload the parquet file(s) into the root of the dataset repository.
 
@@ -55,6 +43,19 @@ To access a dataset on Hugging Face:
     ```
 
 See [Encryption](#encryption) below for details on adding encyption to database files as an additional measure of protection from crawlers.
+
+## S3
+
+Publishing transcripst databases to AWS [S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html) enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the [documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-management.html) for further details). 
+
+After you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the `s3://` protocol. For example:
+
+```bash
+scout scan scanner.py -T s3://my-transcript-databases/database-name
+```
+
+See [Encryption](#encryption) below for details on adding encyption to database files as an additional measure of protection from crawlers.
+
 
 ## Encryption
 

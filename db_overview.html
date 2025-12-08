@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Reference – Inspect Scout</title>
+<title>Transcripts Database – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,28 +20,64 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
-<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="../site_libs/quarto-nav/headroom.min.js"></script>
-<script src="../site_libs/clipboard/clipboard.min.js"></script>
-<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="../site_libs/quarto-search/fuse.min.js"></script>
-<script src="../site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="../">
-<link href="../reference/scanning.html" rel="next">
-<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
-<script src="../site_libs/quarto-html/popper.min.js"></script>
-<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="../site_libs/quarto-html/anchor.min.js"></script>
-<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-58f3f7d8222792c3c3a2edf9e2d9a6e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./db_schema.html" rel="next">
+<link href="./validation.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-58f3f7d8222792c3c3a2edf9e2d9a6e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -86,9 +122,9 @@ ul.task-list li input[type="checkbox"] {
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <a href="./index.html" class="navbar-brand navbar-brand-logo">
     </a>
-    <a class="navbar-brand" href="../index.html">
+    <a class="navbar-brand" href="./index.html">
     <span class="navbar-title">Inspect Scout</span>
     </a>
   </div>
@@ -99,7 +135,7 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../index.html" aria-current="page"> 
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
   <li class="nav-item dropdown ">
@@ -108,23 +144,23 @@ ul.task-list li input[type="checkbox"] {
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
         <li>
-    <a class="dropdown-item" href="../transcripts.html">
+    <a class="dropdown-item" href="./transcripts.html">
  <span class="dropdown-text">Transcripts</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../scanners.html">
+    <a class="dropdown-item" href="./scanners.html">
  <span class="dropdown-text">Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../llm_scanner.html">
+    <a class="dropdown-item" href="./llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../results.html">
+    <a class="dropdown-item" href="./results.html">
  <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../validation.html">
+    <a class="dropdown-item" href="./validation.html">
  <span class="dropdown-text">Validation</span></a>
   </li>  
     </ul>
@@ -135,25 +171,25 @@ ul.task-list li input[type="checkbox"] {
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-transcripts">    
         <li>
-    <a class="dropdown-item" href="../db_overview.html">
+    <a class="dropdown-item" href="./db_overview.html">
  <span class="dropdown-text">Transcripts Database</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../db_schema.html">
+    <a class="dropdown-item" href="./db_schema.html">
  <span class="dropdown-text">Database Schema</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../db_importing.html">
+    <a class="dropdown-item" href="./db_importing.html">
  <span class="dropdown-text">Importing Transcripts</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../db_publishing.html">
+    <a class="dropdown-item" href="./db_publishing.html">
  <span class="dropdown-text">Publishing Transcripts</span></a>
   </li>  
     </ul>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
+    <a class="nav-link" href="./reference/index.html"> 
 <span class="menu-text">Reference</span></a>
   </li>  
 </ul>
@@ -174,491 +210,117 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Reference</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
   </nav>
 </header>
 <!-- content -->
-<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
     <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
-      <a href="../index.html" class="sidebar-logo-link">
+      <a href="./index.html" class="sidebar-logo-link">
       </a>
       </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/index.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Reference</span></a>
-  </div>
-</li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Python API</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Getting Started</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanning</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan</span></a>
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_resume" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_complete" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanjob</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJob</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJobConfig</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerspec" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerSpec</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerwork" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerWork</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Status</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanoptions" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanOptions</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanrevision" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanRevision</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scantranscripts" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanTranscripts</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#transcriptfield" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptField</span></a>
+  <a href="./index.html#scout-basics" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scout Basics</span></a>
   </div>
 </li>
       </ul>
   </li>
-          <li class="sidebar-item sidebar-item-section">
+        <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/results.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">results</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <a href="./transcripts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Using Scout</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_list" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_list</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_status</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Status</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#summary" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Summary</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_results_df" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_df</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scanresultsdf" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanResultsDF</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_results_arrow" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_arrow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scanresultsarrow" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanResultsArrow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validation_set" class="sidebar-item-text sidebar-link">
- <span class="menu-text">validation_set</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validationset" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ValidationSet</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validationcase" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ValidationCase</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validationpredicate" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ValidationPredicate</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/transcript.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcript</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_from" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_from</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcript" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcript</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
+  <a href="./transcripts.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Transcripts</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsreader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsReader</span></a>
+  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanners</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_db" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_db</span></a>
+  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LLM Scanner</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsdb" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsDB</span></a>
+  <a href="./results.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Results</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptssource" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsSource</span></a>
+  <a href="./validation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Validation</span></a>
   </div>
 </li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#column" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Column</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#condition" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Condition</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#metadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Metadata</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#metadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">metadata</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#logmetadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LogMetadata</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#log_metadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">log_metadata</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanner</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#scanner" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#scannerinput" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerInput</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#result" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Result</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#reference" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Reference</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#error" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Error</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#loader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Loader</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#llm_scanner" class="sidebar-item-text sidebar-link">
- <span class="menu-text">llm_scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#answermultilabel" class="sidebar-item-text sidebar-link">
- <span class="menu-text">AnswerMultiLabel</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messages_as_str" class="sidebar-item-text sidebar-link">
- <span class="menu-text">messages_as_str</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messageformatoptions" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessageFormatOptions</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messagespreprocessor" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessagesPreprocessor</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messagetype" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessageType</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#eventtype" class="sidebar-item-text sidebar-link">
- <span class="menu-text">EventType</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#refusalerror" class="sidebar-item-text sidebar-link">
- <span class="menu-text">RefusalError</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#scanner" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#loader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">loader</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#as_scorer" class="sidebar-item-text sidebar-link">
- <span class="menu-text">as_scorer</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/async.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">async</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_resume_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_complete_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_list_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_list_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_status_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_status_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_results_df_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_df_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_results_arrow_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_arrow_async</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scout CLI</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a href="./db_overview.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Transcripts Database</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout scan</span></a>
+  <a href="./db_overview.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Overview</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout view</span></a>
+  <a href="./db_schema.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Schema</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_trace.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout trace</span></a>
+  <a href="./db_importing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Importing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./db_publishing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Publishing</span></a>
   </div>
 </li>
       </ul>
@@ -669,26 +331,27 @@ ul.task-list li input[type="checkbox"] {
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
+        <nav id="TOC" role="doc-toc" class="toc-active">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#python-api" id="toc-python-api" class="nav-link active" data-scroll-target="#python-api">Python API</a></li>
-  <li><a href="#scount-cli" id="toc-scount-cli" class="nav-link" data-scroll-target="#scount-cli">Scount CLI</a></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#creating-a-database" id="toc-creating-a-database" class="nav-link" data-scroll-target="#creating-a-database">Creating a Database</a></li>
+  <li><a href="#publishing-transcripts" id="toc-publishing-transcripts" class="nav-link" data-scroll-target="#publishing-transcripts">Publishing Transcripts</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content column-body" id="quarto-document-content">
+<main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Reference</h1>
+<h1 class="title">Transcripts Database</h1>
 </div>
 
 
 
-<div class="quarto-title-meta column-body">
+<div class="quarto-title-meta">
 
     
   
@@ -700,67 +363,32 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="python-api" class="level4">
-<h4 class="anchored" data-anchor-id="python-api">Python API</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 75%">
-</colgroup>
-<tbody>
-<tr class="odd">
-<td><a href="../reference/scanning.html">Scanning</a></td>
-<td>Scan transcripts and manage scan jobs.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/results.html">Results</a></td>
-<td>Status and results of scan jobs.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/transcript.html">Transcripts</a></td>
-<td>Read and filter transcripts.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/scanner.html">Scanners</a></td>
-<td>Implement scanners and loaders.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/async.html">Async</a></td>
-<td>Async functions for scanning.</td>
-</tr>
-</tbody>
-</table>
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>Scout can analyze transcripts from any source (e.g.&nbsp;Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
+<p>The purpose of transcript databases is to provide a common baseline format for scanners to read from. You might use transcript databases as your cannonical storage for transcripts, or you might alternatively store them in another system entirely (e.g.&nbsp;a Postgress database) and extract them into a Scout database for a given analysis project.</p>
+<p>This documentation covers how to create transcript databases, import your transcripts into them, and publish them for use by others. If you just want to read existing transcripts see the general article on <a href="./transcripts.html">Transcripts</a>,</p>
 </section>
-<section id="scount-cli" class="level4">
-<h4 class="anchored" data-anchor-id="scount-cli">Scount CLI</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 75%">
-</colgroup>
-<tbody>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html">scout scan</a></td>
-<td>Scan transcripts.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/scout_scan.html#scout-scan-resume">scout scan resume</a></td>
-<td>Resume a scan which is incomplete due to interruption or errors.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html#scout-scan-complete">scout scan complete</a></td>
-<td>Complete a scan which is incomplete due to errors (errors are not retried).</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/scout_scan.html#scout-scan-resume">scout scan list</a></td>
-<td>List the scans within a scan results directory.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html#scout-scan-status">scout scan status</a></td>
-<td>Print the status of a scan.</td>
-</tr>
-</tbody>
-</table>
+<section id="creating-a-database" class="level2">
+<h2 class="anchored" data-anchor-id="creating-a-database">Creating a Database</h2>
+<p>If you have some existing source of transcript data it is straightforward to import it into a Scout database. Transcript databases have very few required fields (minimally just <code>transcript_id</code> and <code>messages</code>) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database which can be used to filter transcripts.</p>
+<p>Use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> async context manager to open a connection to a database (which can be stored in a local file path or remote file system like S3):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># </span><span class="al">TODO</span><span class="co">: insert transcripts into db</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To insert transcripts, you’ll need to pick one of the supported insertion formats and then understand the <a href="./db_schema.html">Database Schema</a> so you can properly map your data source into the database.</p>
+<p>Once you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database:</p>
+<ol type="1">
+<li><p><a href="./db_importing.html#transcript-api">Transcript API</a>: Read and parse transcripts into <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> objects and use the <code>TranscriptsDB.insert()</code> function to add them to the database.</p></li>
+<li><p><a href="./db_importing.html#arrow-import">Arrow Import</a>: Read an existing set of transcripts stored in Arrow/Parquet and pass them to <code>TranscriptsDB.insert()</code> as a PyArrow <code>RecordBatchReader</code>.</p></li>
+<li><p><a href="./db_importing.html#parquet-data-lake">Parquet Data Lake</a>: Point the <code>TranscriptDB</code> at an existing data lake (ensuring that the records adhere to the transcript database schema).</p></li>
+<li><p><a href="./db_importing.html#inspect-logs">Inspect Logs</a>: Import Inspect AI eval logs from a log directory.</p></li>
+</ol>
+</section>
+<section id="publishing-transcripts" class="level2">
+<h2 class="anchored" data-anchor-id="publishing-transcripts">Publishing Transcripts</h2>
+<p>If you want to publish transcripts for use by others, it’s important to take precautions to ensure that the transcripts are not unintentionally read by web crawlers. Some techniques for doing this include using protected S3 buckets or permissioned HuggingFace datasets, as well as encryping the Parquet files that hold the transcripts. The article on <a href="./db_publishing.html">Publishing Transcripts</a> includes additional details on how to do this.</p>
 
 
 </section>
@@ -1207,12 +835,15 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
-<nav class="page-navigation column-body">
+<nav class="page-navigation">
   <div class="nav-page nav-page-previous">
+      <a href="./validation.html" class="pagination-link" aria-label="Validation">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Validation</span>
+      </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/scanning.html" class="pagination-link" aria-label="Python API">
-        <span class="nav-page-text">Python API</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./db_schema.html" class="pagination-link" aria-label="Schema">
+        <span class="nav-page-text">Schema</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

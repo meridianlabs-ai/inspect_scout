@@ -21,12 +21,20 @@
     <lastmod>2025-11-25T15:15:38.319Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/validation.html</loc>
-    <lastmod>2025-12-06T18:03:49.724Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/transcripts.html</loc>
+    <lastmod>2025-12-08T21:04:39.835Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_importing.html</loc>
+    <lastmod>2025-12-08T21:04:39.834Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>
+    <lastmod>2025-12-07T12:23:09.059Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
-    <lastmod>2025-12-07T12:37:59.793Z</lastmod>
+    <lastmod>2025-12-08T21:04:39.835Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html</loc>
@@ -37,12 +45,20 @@
     <lastmod>2025-11-23T12:13:27.524Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>
-    <lastmod>2025-12-07T12:23:09.059Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_schema.html</loc>
+    <lastmod>2025-12-08T21:04:39.835Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/transcripts.html</loc>
-    <lastmod>2025-11-29T13:37:40.248Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/validation.html</loc>
+    <lastmod>2025-12-06T18:03:49.724Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_publishing.html</loc>
+    <lastmod>2025-12-08T21:04:39.834Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_overview.html</loc>
+    <lastmod>2025-12-08T21:04:39.834Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/scout_view.html</loc>

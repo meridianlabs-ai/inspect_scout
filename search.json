@@ -198,75 +198,271 @@
     ]
   },
   {
-    "objectID": "validation.html",
-    "href": "validation.html",
-    "title": "Validation",
+    "objectID": "transcripts.html",
+    "href": "transcripts.html",
+    "title": "Transcripts",
     "section": "",
-    "text": "When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.\nWhen you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):\n\nNote that the overall validation score is also displayed in the left panel summarizing the scan. Below we’ll go step by step through how to create a validation set and apply it to your scanners.",
+    "text": "Transcripts are the fundamental input to scanners. The Transcripts class represents a collection of transcripts that has been selected for scanning, and supports various filtering operations to refine the collection.",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Validation"
+      "Using Scout"
     ]
   },
   {
-    "objectID": "validation.html#overview",
-    "href": "validation.html#overview",
-    "title": "Validation",
+    "objectID": "transcripts.html#overview",
+    "href": "transcripts.html#overview",
+    "title": "Transcripts",
     "section": "",
-    "text": "When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.\nWhen you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):\n\nNote that the overall validation score is also displayed in the left panel summarizing the scan. Below we’ll go step by step through how to create a validation set and apply it to your scanners.",
+    "text": "Transcripts are the fundamental input to scanners. The Transcripts class represents a collection of transcripts that has been selected for scanning, and supports various filtering operations to refine the collection.",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Validation"
+      "Using Scout"
     ]
   },
   {
-    "objectID": "validation.html#validation-basics",
-    "href": "validation.html#validation-basics",
-    "title": "Validation",
-    "section": "Validation Basics",
-    "text": "Validation Basics\nA ValidationSet contains a list of ValidationCase, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and value that the scanner should have returned.\n\n\n\nTranscript ID\nExpected Value\n\n\n\n\nFg3KBpgFr6RSsEWmHBUqeo\ntrue\n\n\nVFkCH7gXWpJYUYonvfHxrG\nfalse\n\n\n\nNote that values can be of any type returned by a scanner, and it is also possible to do greater than / less than checks or write custom predicates.\n\nDevelopment\nHow would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.\nUse the Copy button to copy the UUID for the transcript you are reviewing:\n\nAs you review transcript and find good examples, build up a list of transcript IDs and expected values. For example, here is a CSV file of that form:\n\n\nctf-validation.csv\n\nFg3KBpgFr6RSsEWmHBUqeo, true\nVFkCH7gXWpJYUYonvfHxrG, false\nSiEXpECj7U9nNAvM3H7JqB, true\n\n\n\nScanning\nYou’ll typically create a distinct validation set for each scanner, and then pass the validation sets to scan() as a dict mapping scanner to set:\n\n\nscanning.py\n\nfrom inspect_scout import scan, transcripts_from, validation_set\n\nscan(\n    scanners=[ctf_environment(), java_tool_usages()],\n    transcripts=transcripts_from(\"./logs\"),\n    validation={\n        \"ctf_environment\": validation_set(\"ctf-validation.csv\")\n    }\n)\n\nYou can also specify validation sets on the command line. If the above scan was defined in a @scanjob you could add a validation set from the CLI using the -V option as follows:\nscout scan scanning.py -V ctf_environment:ctf_environment.csv\nThis example uses the simplest possible id and target pair (transcript _id =&gt; boolean). Other variations are possible, see the IDs and Targets section below for details. You can also use other file formats for validation sets (e.g. YAML), see Validation Files for details.\n\n\nResults\nValidation results are reported in three ways:\n\nThe scan status/summary UI provides a running tabulation of the percentage of matching validations.\nThe data frame produced for each scanner includes columns for the validation:\n\nvalidation_target: Ideal scanner result\nvalidation_result: Result of comparing scanner value against validation_target\n\nScout View includes a visual indication of the validation status for each transcript:",
+    "objectID": "transcripts.html#reading-transcripts",
+    "href": "transcripts.html#reading-transcripts",
+    "title": "Transcripts",
+    "section": "Reading Transcripts",
+    "text": "Reading Transcripts\nUse the transcripts_from() function to read a collection of Transcripts:\nfrom inspect_scout import transcripts_from\n\n# read from a transcript database on S3\ntranscripts = transcripts_from(\"s3://weave-rollouts/cybench\")\n\n# read from an Inspect log directory\ntranscripts = transcripts_from(\"./logs\")\nThe transcripts_from() function can read transcripts from either:\n\nA transcript database that contains transcripts you have imported from a variety of sources (Agent traces, RL rollouts, Inspect logs, etc.); or\nOne or more Inspect log directories that contain Inspect .eval logs.\n\nSee the sections below on the Transcripts Database and Inspect Eval Logs for additional details on working with each.",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Validation"
+      "Using Scout"
     ]
   },
   {
-    "objectID": "validation.html#filtering-transcripts",
-    "href": "validation.html#filtering-transcripts",
-    "title": "Validation",
+    "objectID": "transcripts.html#filtering-transcripts",
+    "href": "transcripts.html#filtering-transcripts",
+    "title": "Transcripts",
     "section": "Filtering Transcripts",
-    "text": "Filtering Transcripts\nYour validation set will typically be only a subset of all of the transcripts you are scanning, and is intended to provide a rough heuristic on how prompt changes are impacting results. In some cases you will want to only evaluate transcript content that is included in the validation set. The Transcript class includes a filtering function to do this. For example:\nfrom inspect_scout import scan, transcripts_from, validation_set\n\nvalidation = {\n    \"ctf_environment\": validation_set(\"ctf-validation.csv\")\n}\n\ntranscripts = transcripts_from(\"./logs\")\ntranscripts = transcripts.for_validation(validation)\n\nscan(\n    scanners=[ctf_environment(), java_tool_usages()],\n    transcripts=transcripts,\n    validation=validation\n)",
+    "text": "Filtering Transcripts\nIf you want to scan only a subset of transcripts, you can use the .where() method to narrow down the collection. For example:\nfrom inspect_scout import transcripts_from, metadata as m\n\ntranscripts = (\n    transcripts_from(\"./logs\")\n    .where(m.task_name == \"cybench\")\n    .where(m.model.like(\"openai/%\"))\n)\nSee the Column documentation for additional details on supported filtering operations.\nYou can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don’t want to process all transcripts). For example:\nfrom inspect_scout import transcripts_from, log_metadata as m\n\ntranscripts = (\n    transcripts_from(\"./logs\")\n    .limit(10)\n    .shuffle(42)\n)",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Validation"
+      "Using Scout"
     ]
   },
   {
-    "objectID": "validation.html#ids-and-targets",
-    "href": "validation.html#ids-and-targets",
-    "title": "Validation",
-    "section": "IDs and Targets",
-    "text": "IDs and Targets\nIn the above examples, we provided a validation set of transcript_id =&gt; boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom Loader). You can also use any valid JSON value as the target\nFor example, imagine we have a scanner that counts the incidences of “backtracking” in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =&gt; number:\n\n\nbacktracking.csv\n\nFg3KBpgFr6RSsEWmHBUqeo, 2\nVFkCH7gXWpJYUYonvfHxrG, 0\nSiEXpECj7U9nNAvM3H7JqB, 3\n\nIn the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:\n\n\nvalidation.csv\n\n\"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG\", true\n\n\nResult Set Validation\nWhen a scanner returns a list of multiple results (see Multiple Results), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.\n\nFormat\nFor CSV files, use label_* columns instead of target_* columns:\n\n\nsecurity-validation.csv\n\nid, label_deception, label_jailbreak, label_misconfig\nFg3KBpgFr6RSsEWmHBUqeo, true, false, false\nVFkCH7gXWpJYUYonvfHxrG, false, true, false\nSiEXpECj7U9nNAvM3H7JqB, false, false, true\n\nFor YAML/JSON files, use a labels key instead of target:\n- id: Fg3KBpgFr6RSsEWmHBUqeo \n  labels: \n    deception: true \n    jailbreak: false \n    misconfig: false\n\n- id: VFkCH7gXWpJYUYonvfHxrG \n  labels: \n    deception: false \n    jailbreak: true \n    misconfig: false\n\n\nValidation Semantics\nLabel-based validation uses “at least one” logic: if any result with a given label matches the expected value, validation passes for that label. For example, if a scanner returns multiple deception results for a transcript and at least one has value==True, then validation passes if the expected value is true.\nMissing labels are treated as negative/absent values. If your validation set expects label_phishing: false but the scanner returns no results with label==\"phishing\", the validation passes because the absence is treated as False.\n\n\n\nComparison Predicates\nThe examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. “gt”, “gte”, “contains”) or with a custom function. Specify the ValidationPredicate as a parameter to the validation_set() function:\nvalidation_set(cases=\"validation.csv\", predicate=\"gte\")\n\n\nValue Dictionary\nIf our scanner produces a dict of values, we can also build a validation dataset which provides ground truth for each distinct field in the dict. To do this, we introduce target_* column names as follows:\n\n\nvalidation.csv\n\nid, target_deception, target_backtracks\nFg3KBpgFr6RSsEWmHBUqeo, true, 2\nVFkCH7gXWpJYUYonvfHxrG, false, 0",
+    "objectID": "transcripts.html#transcript-fields",
+    "href": "transcripts.html#transcript-fields",
+    "title": "Transcripts",
+    "section": "Transcript Fields",
+    "text": "Transcript Fields\nHere are the available Transcript fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\ntranscript_id\nstr\nGlobally unique identifier for a transcript (maps to EvalSample.uuid in Inspect logs).\n\n\nsource_type\nstr\nType of transcript source (e.g. “eval_log”, “weave”, etc.).\n\n\nsource_id\nstr\nGlobally unique identifier for a transcript source (maps to eval_id in Inspect logs)\n\n\nsource_uri\nstr\nURI for source data (e.g. full path to the Inspect log file).\n\n\nmetadata\ndict[str, JsonValue]\nTranscript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.).\n\n\nmessages\nlist[ChatMessage]\nMessage history.\n\n\nevents\nlist[Event]\nEvent history (e.g. model events, tool events, etc.)",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Validation"
+      "Using Scout"
     ]
   },
   {
-    "objectID": "validation.html#validation-files",
-    "href": "validation.html#validation-files",
-    "title": "Validation",
-    "section": "File Formats",
-    "text": "File Formats\nYou can specify a ValidationSet either in code, as a CSV, or as a YAML or JSON file. We’ve demonstrated CSV above, here is what as equivalent YAML file would look like for a single target:\n\n\nvalidation.yaml\n\n- id: Fg3KBpgFr6RSsEWmHBUqeo\n  target: true\n\n- id: VFkCH7gXWpJYUYonvfHxrG\n  target: false\n\nAnd for multiple targets:\n\n\nvalidation.yaml\n\n- id: Fg3KBpgFr6RSsEWmHBUqeo\n  target:\n     deception: true\n     backtracks: 2\n\n- id: VFkCH7gXWpJYUYonvfHxrG\n  target:\n     deception: false\n     backtracks: 0",
+    "objectID": "transcripts.html#scanning-transcripts",
+    "href": "transcripts.html#scanning-transcripts",
+    "title": "Transcripts",
+    "section": "Scanning Transcripts",
+    "text": "Scanning Transcripts\nOnce you have established your list of transcripts to scan, just pass them to the scan() function:\nfrom inspect_scout import scan, transcripts_from\n\nfrom .scanners import ctf_environment, java_tool_calls\n\nscan(\n    scanners = [ctf_environment(), java_tool_calls()],\n    transcripts = transcripts_from(\"./logs\")\n)\nIf you want to do transcript filtering and then invoke your scan from the CLI using scout scan, then perform the filtering inside a @scanjob. For example:\n\n\ncybench_scan.py\n\nfrom inspect_scout (\n    import ScanJob, scanjob, transcripts_from, metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\n@scanjob\ndef cybench_job(logs: str = \"./logs\") -&gt; ScanJob:\n\n    transcripts = transcripts_from(logs)\n    transcripts = transcripts.where(m.task_name == \"cybench\")\n\n    return ScanJob(\n        scanners = [deception(), java_tool_usages()],\n        transcripts = transcripts\n    )\n\nThen from the CLI:\nscout scan cybench.py -S logs=./logs --model openai/gpt-5\nThe -S argument enables you to pass arguments to the @scanjob function (in this case determining what directory to read logs from).",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout"
+    ]
+  },
+  {
+    "objectID": "transcripts.html#inspect-eval-logs",
+    "href": "transcripts.html#inspect-eval-logs",
+    "title": "Transcripts",
+    "section": "Inspect Eval Logs",
+    "text": "Inspect Eval Logs\nThe transcripts_from() function can read a collection of transcripts directly from an Inspect log directory. You can specify one or more directories and/or individual log files. For example:\n# read from a log directory\ntranscripts = transcripts_from(\"./logs\")\n\n# read multiple log directories\ntranscripts = transcripts_from([\"./logs\", \"./logs2\"])\n\n# read from one or more log files\ntranscripts = transcripts_from(\n    [\"logs/cybench.eval\", \"logs/swebench.eval\"]\n)\nFor Inspect logs, the metadata field within TranscriptInfo includes fields from eval sample metadata. For example:\ntranscript.metadata[\"sample_id\"]        # sample uuid \ntranscript.metadata[\"id\"]               # dataset sample id \ntranscript.metadata[\"epoch\"]            # sample epoch\ntranscript.metadata[\"eval_metadata\"]    # eval metadata\ntranscript.metadata[\"sample_metadata\"]  # sample metadata\ntranscript.metadata[\"score\"]            # main sample score \ntranscript.metadata[\"score_&lt;scorer&gt;\"]   # named sample scores\nSee the LogMetadata class for details on all of the fields included in transcript.metadata. Use log_metadata (aliased to m below) to do typesafe filtering for Inspect logs:\nfrom inspect_scout import transcripts_from, log_metadata as m\n\ntranscripts = (\n    transcripts_from(\"./logs\")\n    .where(m.task_name == \"cybench\")\n    .where(m.model.like(\"openai/%\"))\n)",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout"
+    ]
+  },
+  {
+    "objectID": "transcripts.html#transcripts-database",
+    "href": "transcripts.html#transcripts-database",
+    "title": "Transcripts",
+    "section": "Transcripts Database",
+    "text": "Transcripts Database\nScout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use Parquet files for storage and can be located in the local filesystem or remote systems like S3.\nYou can read from a transcript database using the transcripts_from() function. For example:\nfrom inspect_scout import transcripts_from\n\n# read from a transcript database on S3\ntranscripts = transcripts_from(\"s3://weave-rollouts/cybench\")\nSee the Transcripts Database documentation for additional details on creating, managing, and publishing transcript databases.",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout"
+    ]
+  },
+  {
+    "objectID": "db_importing.html",
+    "href": "db_importing.html",
+    "title": "Importing Transcripts",
+    "section": "",
+    "text": "You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:\n\nTranscript API: Python API for creating and inserting transcripts;\nArrow Import: Efficient direct insertion using RecordBatchReader;\nParquet Data Lake: Use an existing data lake not created using Inspect Scout; and\nInspect Logs: Read transcript data from Inspect eval log files.\n\nWe’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the Database Schema and make a plan for how you want to map your data into it.",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Importing"
+    ]
+  },
+  {
+    "objectID": "db_importing.html#overview",
+    "href": "db_importing.html#overview",
+    "title": "Importing Transcripts",
+    "section": "",
+    "text": "You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:\n\nTranscript API: Python API for creating and inserting transcripts;\nArrow Import: Efficient direct insertion using RecordBatchReader;\nParquet Data Lake: Use an existing data lake not created using Inspect Scout; and\nInspect Logs: Read transcript data from Inspect eval log files.\n\nWe’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the Database Schema and make a plan for how you want to map your data into it.",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Importing"
+    ]
+  },
+  {
+    "objectID": "db_importing.html#transcript-api",
+    "href": "db_importing.html#transcript-api",
+    "title": "Importing Transcripts",
+    "section": "Transcript API",
+    "text": "Transcript API\nTo create a transcripts database, use the transcripts_db() function to get a TranscriptsDB interface and then insert Transcript objects. In this example imagine we have a read_weave_transcripts() function which can read transcripts from an external JSON transcript format:\nfrom inspect_scout import transcripts_db\n\nfrom .readers import read_json_transcripts\n\n# create/open database\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n\n    # read transcripts to insert\n    transcripts = read_json_transcripts()\n\n    # insert into database\n    await db.insert(transcripts)\nOnce you’ve created a database and populated it with transcripts, you can read from it using transcripts_from():\nfrom inspect_scout import scan, transcripts_from\n\nscan(\n    scanners=[...],\n    transcripts=transcripts_from(\"s3://my-transcripts\")\n)\n\nStreaming\nEach call to db.insert() will minimally create one Parquet file, but will break transcripts across multiple files as required (typically of size 75-100MB). This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator to yield transcripts rather than making many calls to db.insert() (which is likely to result in more Parquet files than is ideal).\nFor example, we might implement read_json_transcripts() like this:\nfrom pathlib import Path\nfrom typing import AsyncIterator\nfrom inspect_scout import Transcript\n\nasync def read_json_transcripts(dir: Path) -&gt; AsyncIterator[Transcript]:\n    json_files = list(dir.rglob(\"*.json\"))\n    for json_file in json_files:\n        yield await json_to_transcript(json_file)\n\nasync def json_to_transcript(json_file: Path) -&gt; Transcript:\n    # convert json_file to Transcript\n    return Transcript(...)\nWe can then pass this generator function directly to db.insert():\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n    await db.insert(read_json_transcripts())\nNote that transcript insertion is idempotent—once a transcript with a given ID has been inserted it will not be inserted again. This means that you can safely resume imports that are interrupted, and only new transcripts will be added.\n\n\nTranscripts\nHere is how we might implement json_to_transcript():\nfrom pathlib import Path\nfrom typing import AsyncIterator\nfrom inspect_ai.model import (\n    messages_from_openai, model_output_from_openai\n)\nfrom inspect_scout import Transcript\n\nasync def json_to_transcript(json_file: Path) -&gt; Transcript:\n    with open(json_file, \"r\") as f:\n        json_data: dict[str,Any] = json.loads(f.read())\n        return Transcript(\n            transcript_id = json_data[\"trace_id\"],\n            source_type=\"abracadabra\",\n            source_id=json_data[\"project_id\"],\n            metadata=json_data[\"attributes\"],\n            messages=await json_to_messages(\n                input=json_data[\"inputs\"][\"messages\"], \n                output=json_data[\"output\"]\n            )\n        )\n    \n# convert raw model input and output to inspect messages\nasync def json_to_messages(\n    input: list[dict[str, Any]], output: dict[str, Any]\n) -&gt; list[ChatMessage]:\n    # start with input messages\n    messages = await messages_from_openai(input)\n\n    # extract and append assistant message from output\n    output = await model_output_from_openai(output)\n    messages.append(output.message)\n\n    # return full message history for transcript\n    return messages\nNote that we use the messages_from_openai() and model_output_from_openai() function from inspect_ai to convert the raw model payloads in the trace data to the correct types for the transcript database.\nThe most important fields to populate are transcript_id and messages. The source_* fields are also useful for providing additional context. The metadata field, while not required, is a convenient way to provide additional transcript attributes which may be useful for filtering or analysis. The events field is not required and useful primarily for more complex multi-agent transcripts.",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Importing"
+    ]
+  },
+  {
+    "objectID": "db_importing.html#arrow-import",
+    "href": "db_importing.html#arrow-import",
+    "title": "Importing Transcripts",
+    "section": "Arrow Import",
+    "text": "Arrow Import\nIn some cases you may already have arrow-accessible data (e.g. from Parquet files or a database that supports yielding arrow batches) that you want to insert directly into a transcript database. So long as your data conforms to the schema, you can do this by passing a PyArrow RecordBatchReader to db.insert().\nFor example, to read from existing Parquet files using the PyArrow dataset API:\nimport pyarrow.dataset as ds\nfrom inspect_scout import transcripts_db\n\n# read from existing parquet files\ndataset = ds.dataset(\"path/to/parquet/files\", format=\"parquet\")\nreader = dataset.scanner().to_reader()\n\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n    await db.insert(reader)\nYou can also use DuckDB to query and transform data before import:\nimport duckdb\nfrom inspect_scout import transcripts_db\n\nconn = duckdb.connect(\"my_database.db\")\nreader = conn.execute(\"\"\"\n    SELECT\n        trace_id as transcript_id,\n        messages,\n        'myapp' as source_type,\n        project_id as source_id\n    FROM traces\n\"\"\").fetch_record_batch()\n\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n    await db.insert(reader)",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Importing"
+    ]
+  },
+  {
+    "objectID": "db_importing.html#parquet-data-lake",
+    "href": "db_importing.html#parquet-data-lake",
+    "title": "Importing Transcripts",
+    "section": "Parquet Data Lake",
+    "text": "Parquet Data Lake\nIf you have transcripts already stored in Parquet format you don’t need to use db.insert() at all. So long as your Parquet files conform to the transcript database schema then you can read them directly using transcripts_from(). For example:\nfrom inspect_scout import transcripts_from\n\n# read from an existing parquet data lake\ntranscripts = transcripts_from(\n    \"s3://my-transcripts-data-lake/cyber\"\n)",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Importing"
+    ]
+  },
+  {
+    "objectID": "db_importing.html#inspect-logs",
+    "href": "db_importing.html#inspect-logs",
+    "title": "Importing Transcripts",
+    "section": "Inspect Logs",
+    "text": "Inspect Logs\nIf you prefer to keep all of your transcripts (including ones from Inspect evals) in a transcript database, you can easily import Inspect logs as follows:\nfrom inspect_scout import transcripts_db, transcripts_from\n\nasync with transcripts_db(\"s3://my-transcript-db/\") as db:\n    await db.insert(transcripts_from(\"./logs\"))\nYou could also insert a filtered list of transcripts:\nasync with transcripts_db(\"s3://my-transcript-db/\") as db:\n\n    transcripts = (\n        transcripts_from(\"./logs\")\n        .where(m.task_name == \"cybench\")\n        .where(m.model.like(\"openai/%\"))\n    )\n\n    await db.insert(transcripts)",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Importing"
+    ]
+  },
+  {
+    "objectID": "scanners.html",
+    "href": "scanners.html",
+    "title": "Scanners",
+    "section": "",
+    "text": "Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types (Transcript, ChatMessage, or Event) as well as creating custom loaders which enable scanning of lists of events or messages.\nYou can also use scanners directly as Inspect scorers (see Scanners as Scorers for details).",
     "crumbs": [
       "Getting Started",
       "Using Scout",
-      "Validation"
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#overview",
+    "href": "scanners.html#overview",
+    "title": "Scanners",
+    "section": "",
+    "text": "Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types (Transcript, ChatMessage, or Event) as well as creating custom loaders which enable scanning of lists of events or messages.\nYou can also use scanners directly as Inspect scorers (see Scanners as Scorers for details).",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#scanner-basics",
+    "href": "scanners.html#scanner-basics",
+    "title": "Scanners",
+    "section": "Scanner Basics",
+    "text": "Scanner Basics\nA Scanner is a function that takes a ScannerInput (typically a Transcript, but possibly an Event, ChatMessage, or list of events or messages) and returns a Result.\nThe result includes a value which can be of any type—this might be True to indicate that something was found but might equally be a number to indicate a count. More elaborate scanner values (dict or list) are also possible.\nHere is a simple scanner that uses a model to look for agent “confusion”—whether or not it finds confusion, it still returns the model completion as an explanation:\n@scanner(messages=\"all\")\ndef confusion() -&gt; Scanner[Transcript]:\n    \n    async def scan(transcript: Transcript) -&gt; Result:\n\n        # call model\n        output = await get_model().generate(\n            \"Here is a transcript of an LLM agent \" +\n            \"solving a puzzle:\\n\\n\" +\n            \"===================================\" +\n            await messages_as_str(transcript) +\n            \"===================================\\n\\n\" +\n            \"In the transcript above do you see the \" +\n            \"agent becoming confused? Respond \" +\n            \"beginning with 'Yes' or 'No', followed \" +\n            \"by an explanation.\"\n        )\n\n        # extract the first word\n        match = re.match(r\"^\\w+\", output.completion.strip())\n\n        # return result\n        if match:\n            answer = match.group(0)\n            return Result(\n                value=answer.lower() == \"yes\",\n                answer=answer,\n                explanation=output.completion,\n            )\n        else:\n            return Result(value=False, explanation=output.completion)\n\n    return scan\nThis scanner illustrates some of the lower-level mechanics of building custom scanners. You can also use the higher level llm_scanner() to implement this in far fewer lines of code:\nfrom inspect_scout import Transcript, llm_scanner, scanner\n\n@scanner(messages=\"all\")\ndef confusion() -&gt; Scanner[Transcript]:\n    return llm_scanner(\n        question=\"In the transcript above do you see \" +\n            \"the agent becoming confused?\"\n        answer=\"boolean\"\n    )\n\nInput Types\nTranscript is the most common ScannerInput however several other types are possible:\n\nEvent — Single event from the transcript (e.g. ModelEvent, ToolEvent, etc.).\nChatMessage — Single chat message from the transcript message history.\nlist[Event] or list[ChatMessage] — Arbitrary sets of events or messages extracted from the Transcript (see Loaders below for details).\n\nSee the sections on Transcripts, Events, Messages, and Loaders below for additional details on handling various input types.\n\n\nInput Filtering\nOne important principle of the Inspect Scout transcript pipeline is that only the precise data to be scanned should be read, and nothing more. This can dramatically improve performance as messages and events that won’t be seen by scanners are never deserialized. Scanner input filters are specified as arguments to the @scanner decorator (you may have noticed the messages=\"all\" attached to the scanner decorator in the example above).\nFor example, here we are looking for instances of assistants swearing—for this task we only need to look at assistant messages so we specify messages=[\"assistant\"]\n@scanner(messages=[\"assistant\"])\ndef assistant_swearing() -&gt; Scanner[Transcript]:\n\n    async def scan(transcript: Transcript) -&gt; Result:\n        swear_words = [\n            word \n            for m in transcript.messages \n            for word in extract_swear_words(m.text)\n        ]\n        return Result(\n            value=len(swear_words),\n            explanation=\",\".join(swear_words)\n        )\n\n    return scan\nWith this filter, only assistant messages (and no events at all) will be loaded from transcripts during scanning.\nNote that by default, no filters are active, so if you don’t specify values for messages and/or events your scanner will not be called!",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#transcripts",
+    "href": "scanners.html#transcripts",
+    "title": "Scanners",
+    "section": "Transcripts",
+    "text": "Transcripts\nTranscripts are the most common input to scanners. If you are reading from Inspect eval logs, each log will have samples * epochs transcripts. If you are reading from another source, each agent trace will yield a single Transcript.\n\nTranscript Fields\nHere are the available Transcript fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\ntranscript_id\nstr\nGlobally unique identifier for a transcript (maps to EvalSample.uuid in Inspect logs).\n\n\nsource_type\nstr\nType of transcript source (e.g. “eval_log”, “weave”, etc.).\n\n\nsource_id\nstr\nGlobally unique identifier for a transcript source (maps to eval_id in Inspect logs)\n\n\nsource_uri\nstr\nURI for source data (e.g. full path to the Inspect log file).\n\n\nmetadata\ndict[str, JsonValue]\nTranscript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.).\n\n\nmessages\nlist[ChatMessage]\nMessage history.\n\n\nevents\nlist[Event]\nEvent history (e.g. model events, tool events, etc.)\n\n\n\n\n\nContent Filtering\nNote that the messages and events fields will not be populated unless you specify a messages or events filter on your scanner. For example, this scanner will see all messages and events:\n@scanner(messages=\"all\", events=\"all\")\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nThis scanner will see only model and tool events:\n@scanner(events=[\"model\", \"tool\"])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nThis scanner will see only assistant messages:\n@scanner(messages=[\"assistant\"])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\n\n\nPresenting Messages\nWhen processing transcripts, you will often want to present an entire message history to model for analysis. Above, we used the messages_as_str() function to do this:\n# call model\nresult = await get_model().generate(\n    \"Here is a transcript of an LLM agent \" +\n    \"solving a puzzle:\\n\\n\" +\n    \"===================================\" +\n    await messages_as_str(transcript) +\n    \"===================================\\n\\n\" +\n    \"In the transcript above do you see the agent \" +\n    \"becoming confused? Respond beginning with 'Yes' \" +\n    \"or 'No', followed by an explanation.\"\n)\nThe messages_as_str() function takes a Transcript | list[ChatMessage] and will by default remove system messages from the message list. See MessagesPreprocessor for other available options.",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#multiple-results",
+    "href": "scanners.html#multiple-results",
+    "title": "Scanners",
+    "section": "Multiple Results",
+    "text": "Multiple Results\nScanners can return multiple results as a list. For example:\nreturn [\n    Result(label=\"deception\", value=True, explanation=\"...\"),\n    Result(label=\"misconfiguration\", value=True, explanation=\"...\")\n]\nThis is useful when a scanner is capable of making several types of observation. In this case it’s also important to indicate the origin of the result (i.e. which class of observation is is), which you can do using the label field (note that label can repeat multiple times in a set, so e.g. you could have multiple results with label=\"deception\").\nWhen a list is returned, each individual result will yield its own row in the results data frame.\nWhen validating scanners that return lists of results, you can use result set validation to specify expected values for each label independently.",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#events",
+    "href": "scanners.html#events",
+    "title": "Scanners",
+    "section": "Event Scanners",
+    "text": "Event Scanners\nTo write a scanner that targets events, write a function that takes the event type(s) you want to process. For example, this scanner will see only model events:\n@scanner\ndef my_scanner() -&gt; Scanner[ModelEvent]:\n    def scan(event: ModelEvent) -&gt; Result: \n        ...\n\n    return scan\nNote that the events=\"model\" filter was not required since we had already declared our scanner to take only model events. If we wanted to take both model and tool events we’d do this:\n@scanner\ndef my_scanner() -&gt; Scanner[ModelEvent | ToolEvent]:\n    def scan(event: ModelEvent | ToolEvent) -&gt; Result: \n        ...\n\n    return scan",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#messages",
+    "href": "scanners.html#messages",
+    "title": "Scanners",
+    "section": "Message Scanners",
+    "text": "Message Scanners\nTo write a scanner that targets messages, write a function that takes the message type(s) you want to process. For example, this scanner will only see tool messages:\n@scanner\ndef my_scanner() -&gt; Scanner[ChatMessageTool]:\n    def scan(message: ChatMessageTool) -&gt; Result: \n        ...\n\n    return scan\nThis scanner will see only user and assistant messages:\n@scanner\ndef my_scanner() -&gt; Scanner[ChatMessageUser | ChatMessageAssistant]:\n    def scan(message: ChatMessageUser | ChatMessageAssistant) -&gt; Result: \n        ...\n\n    return scan",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#scanners-as-scorers",
+    "href": "scanners.html#scanners-as-scorers",
+    "title": "Scanners",
+    "section": "Scanners as Scorers",
+    "text": "Scanners as Scorers\nYou may have noticed that scanners are very similar to Inspect Scorers. This is by design, and it is actually possible to use scanners directly as Inspect scorers.\nFor example, for the confusion() scorer we implemented above:\n@scanner(messages=\"all\")\ndef confusion() -&gt; Scanner[Transcript]:\n    \n    async def scan(transcript: Transcript) -&gt; Result:\n\n        # model call eluded for brevity\n        output = get_model(...)\n\n        # extract the first word\n        match = re.match(r\"^\\w+\", output.completion.strip())\n\n        # return result\n        if match:\n            answer = match.group(0)\n            return Result(\n                value=answer.lower() == \"yes\",\n                answer=answer,\n                explanation=output.completion,\n            )\n        else:\n            return Result(value=False, explanation=output.completion)\n\n    return scan\nWe can use this directly in an Inspect Task as follows:\nfrom .scanners import confusion\n\n@task\ndef mytask():\n    return Task(\n        ...,\n        scorer = confusion()\n    )\nWe can also use it with the inspect score command:\ninspect score --scorer scanners.py@confusion logfile.eval\n\nMetrics\nThe metrics used for the scorer will default to accuracy() and stderr()—however, you can also explicitly specify metrics on the @scanner decorator:\n@scanner(messages=\"all\", metrics=[accuracy(), bootstrap_stderr()])\ndef confusion() -&gt; Scanner[Transcript]: ...\nIf you are interfacing with code that expects only Scorer instances, you can also use the as_scorer() function from Inspect Scout to explicitly convert your scanner to a scorer:\nfrom inspect_ai import eval\nfrom inspect_scout import as_scorer\n\nfrom .mytasks import ctf_task\nfrom .scanners import confusion\n\neval(ctf_task(scorer=as_scorer(confusion())))\n\n\nResult Sets\nIf your scanner yields multiple results you can still use it as a scorer, but you will want to provide a dictionary of metrics corresponding to the labels used by your results. For example, if you have a scanner that can yield results with label=\"deception\" or label=\"misconfiguration\", you might declare your metrics like this:\n@scanner(messages=\"all\", metrics=[{ \"deception\": [accuracy(), stderr()], \"misconfiguration\": [accuracy(), stderr()] }])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nOr you can use a glob (*) to use the same metrics for all labels:\n@scanner(messages=\"all\", metrics=[{ \"*\": [accuracy(), stderr()] }])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nYou should also be sure to return a result for each supported label (so that metrics can be computed correctly on each row).",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
+    "objectID": "scanners.html#loaders",
+    "href": "scanners.html#loaders",
+    "title": "Scanners",
+    "section": "Custom Loaders",
+    "text": "Custom Loaders\nWhen you want to process multiple discrete items from a Transcript this might not always fall neatly into single messages or events. For example, you might want to process pairs of user/assistant messages. To do this, create a custom Loader that yields the content as required.\nFor example, here is a Loader that yields user/assistant message pairs:\n@loader(messages=[\"user\", \"assistant\"])\ndef conversation_turns():\n    async def load(\n        transcript: Transcript\n    ) -&gt; AsyncIterator[list[ChatMessage], None]:\n        \n        for user,assistant in message_pairs(transcript.messages):\n            yield [user, assistant]\n\n    return load\nNote that just like with scanners, the loader still needs to provide a messages=[\"user\", \"assistant\"] in order to see those messages.\nWe can now use this loader in a scanner that looks for refusals:\n@scanner(loader=conversation_turns())\ndef assistant_refusals() -&gt; Scanner[list[ChatMessage]]:\n\n    async def scan(messages: list[ChatMessage]) -&gt; Result:\n        user, assistant = messages\n        return Result(\n            value=is_refusal(assistant.text), \n            explanation=messages_as_str(messages)\n        )\n\n    return scan",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
     ]
   },
   {
@@ -374,7 +570,7 @@
     "href": "index.html#learning-more",
     "title": "Inspect Scout",
     "section": "Learning More",
-    "text": "Learning More\nSee the following articles to learn more about using Scout:\n\nTranscripts: Reading and filtering transcripts for scanning.\nScanners: Implementing custom scanners and loaders.\nLLM Scanner: Customizable LLM scanner for model evaluation of transcripts.\nResults: Collecting and analyzing scanner results.\nValidation: Validation of scanner results against ground truth target values.\nReference: Detailed documentation on the Scout Python API and CLI commands.",
+    "text": "Learning More\nSee the following articles to learn more about using Scout:\n\nTranscripts: Reading and filtering transcripts for scanning.\nScanners: Implementing custom scanners and loaders.\nLLM Scanner: Customizable LLM scanner for model evaluation of transcripts.\nResults: Collecting and analyzing scanner results.\nValidation: Validation of scanner results against ground truth target values.\nTranscripts Database: Creating, populating, and managing transcript databases.\nReference: Detailed documentation on the Scout Python API and CLI commands.",
     "crumbs": [
       "Getting Started"
     ]
@@ -536,199 +732,215 @@
     ]
   },
   {
-    "objectID": "scanners.html",
-    "href": "scanners.html",
-    "title": "Scanners",
+    "objectID": "db_schema.html",
+    "href": "db_schema.html",
+    "title": "Database Schema",
     "section": "",
-    "text": "Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types (Transcript, ChatMessage, or Event) as well as creating custom loaders which enable scanning of lists of events or messages.\nYou can also use scanners directly as Inspect scorers (see Scanners as Scorers for details).",
+    "text": "In a transcript database, the only strictly required field is transcript_id (although you’ll almost always want to also include a messages field as that’s the main thing targeted by most scanners).\nYou can also include source_* fields as a reference to where the transcript originated as well as arbitrary other fields (trancript metadata) which are then queryable using the Transcripts API.\n\n\n\nField\nDescription\n\n\n\n\ntranscript_id\nRequired. A globally unique identifier for a transcript.\n\n\nsource_type\nOptional. Type of transcript source (e.g. “weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the metadata field.\n\n\nsource_id\nOptional. Globally unique identifier for a transcript source (e.g. a project id).\n\n\nsource_uri\nOptional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).\n\n\nmessages\nOptional. List of ChatMessage with message history.\n\n\nevents\nOptional. List of Event with event history (e.g. model events, tool events, etc.)\n\n\n\n\n\nYou can include arbitrary other fields in your database which will be made available as Transcript.metadata. These fields can then be used for filtering in calls to Transcripts.where().\nNote that metadata columns are forwarded into the results database for scans (transcript_metadata) so it is generally a good practice to not include large amounts of data in these columns.\n\n\n\nThe messages field is a JSON encoded string of list[ChatMessage]. There are several helper functions available within the inspect_ai package to assist in converting from the raw message formats of various providers to the Inspect ChatMessage format:\n\n\n\nProvider API\nFunctions\n\n\n\n\nOpenAI Chat Completions\nmessages_from_openai()\nmodel_output_from_openai()\n\n\nOpenAI Responses\nmessages_from_openai_responses()\nmodel_output_from_openai_responses()\n\n\nAnthropic Messages\nmessages_from_anthropic()\nmodel_output_from_anthropic()\n\n\nGoogle Generate Content\nmessages_from_google()\nmodel_output_from_google()\n\n\n\nFor many straightforward transcripts the list of messages will be all that is needed for analysis.",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Scanners"
+      "Transcripts Database",
+      "Schema"
     ]
   },
   {
-    "objectID": "scanners.html#overview",
-    "href": "scanners.html#overview",
-    "title": "Scanners",
+    "objectID": "db_schema.html#overview",
+    "href": "db_schema.html#overview",
+    "title": "Database Schema",
     "section": "",
-    "text": "Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types (Transcript, ChatMessage, or Event) as well as creating custom loaders which enable scanning of lists of events or messages.\nYou can also use scanners directly as Inspect scorers (see Scanners as Scorers for details).",
+    "text": "In a transcript database, the only strictly required field is transcript_id (although you’ll almost always want to also include a messages field as that’s the main thing targeted by most scanners).\nYou can also include source_* fields as a reference to where the transcript originated as well as arbitrary other fields (trancript metadata) which are then queryable using the Transcripts API.\n\n\n\nField\nDescription\n\n\n\n\ntranscript_id\nRequired. A globally unique identifier for a transcript.\n\n\nsource_type\nOptional. Type of transcript source (e.g. “weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the metadata field.\n\n\nsource_id\nOptional. Globally unique identifier for a transcript source (e.g. a project id).\n\n\nsource_uri\nOptional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).\n\n\nmessages\nOptional. List of ChatMessage with message history.\n\n\nevents\nOptional. List of Event with event history (e.g. model events, tool events, etc.)\n\n\n\n\n\nYou can include arbitrary other fields in your database which will be made available as Transcript.metadata. These fields can then be used for filtering in calls to Transcripts.where().\nNote that metadata columns are forwarded into the results database for scans (transcript_metadata) so it is generally a good practice to not include large amounts of data in these columns.\n\n\n\nThe messages field is a JSON encoded string of list[ChatMessage]. There are several helper functions available within the inspect_ai package to assist in converting from the raw message formats of various providers to the Inspect ChatMessage format:\n\n\n\nProvider API\nFunctions\n\n\n\n\nOpenAI Chat Completions\nmessages_from_openai()\nmodel_output_from_openai()\n\n\nOpenAI Responses\nmessages_from_openai_responses()\nmodel_output_from_openai_responses()\n\n\nAnthropic Messages\nmessages_from_anthropic()\nmodel_output_from_anthropic()\n\n\nGoogle Generate Content\nmessages_from_google()\nmodel_output_from_google()\n\n\n\nFor many straightforward transcripts the list of messages will be all that is needed for analysis.",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Scanners"
+      "Transcripts Database",
+      "Schema"
     ]
   },
   {
-    "objectID": "scanners.html#scanner-basics",
-    "href": "scanners.html#scanner-basics",
-    "title": "Scanners",
-    "section": "Scanner Basics",
-    "text": "Scanner Basics\nA Scanner is a function that takes a ScannerInput (typically a Transcript, but possibly an Event, ChatMessage, or list of events or messages) and returns a Result.\nThe result includes a value which can be of any type—this might be True to indicate that something was found but might equally be a number to indicate a count. More elaborate scanner values (dict or list) are also possible.\nHere is a simple scanner that uses a model to look for agent “confusion”—whether or not it finds confusion, it still returns the model completion as an explanation:\n@scanner(messages=\"all\")\ndef confusion() -&gt; Scanner[Transcript]:\n    \n    async def scan(transcript: Transcript) -&gt; Result:\n\n        # call model\n        output = await get_model().generate(\n            \"Here is a transcript of an LLM agent \" +\n            \"solving a puzzle:\\n\\n\" +\n            \"===================================\" +\n            await messages_as_str(transcript) +\n            \"===================================\\n\\n\" +\n            \"In the transcript above do you see the \" +\n            \"agent becoming confused? Respond \" +\n            \"beginning with 'Yes' or 'No', followed \" +\n            \"by an explanation.\"\n        )\n\n        # extract the first word\n        match = re.match(r\"^\\w+\", output.completion.strip())\n\n        # return result\n        if match:\n            answer = match.group(0)\n            return Result(\n                value=answer.lower() == \"yes\",\n                answer=answer,\n                explanation=output.completion,\n            )\n        else:\n            return Result(value=False, explanation=output.completion)\n\n    return scan\nThis scanner illustrates some of the lower-level mechanics of building custom scanners. You can also use the higher level llm_scanner() to implement this in far fewer lines of code:\nfrom inspect_scout import Transcript, llm_scanner, scanner\n\n@scanner(messages=\"all\")\ndef confusion() -&gt; Scanner[Transcript]:\n    return llm_scanner(\n        question=\"In the transcript above do you see \" +\n            \"the agent becoming confused?\"\n        answer=\"boolean\"\n    )\n\nInput Types\nTranscript is the most common ScannerInput however several other types are possible:\n\nEvent — Single event from the transcript (e.g. ModelEvent, ToolEvent, etc.).\nChatMessage — Single chat message from the transcript message history.\nlist[Event] or list[ChatMessage] — Arbitrary sets of events or messages extracted from the Transcript (see Loaders below for details).\n\nSee the sections on Transcripts, Events, Messages, and Loaders below for additional details on handling various input types.\n\n\nInput Filtering\nOne important principle of the Inspect Scout transcript pipeline is that only the precise data to be scanned should be read, and nothing more. This can dramatically improve performance as messages and events that won’t be seen by scanners are never deserialized. Scanner input filters are specified as arguments to the @scanner decorator (you may have noticed the messages=\"all\" attached to the scanner decorator in the example above).\nFor example, here we are looking for instances of assistants swearing—for this task we only need to look at assistant messages so we specify messages=[\"assistant\"]\n@scanner(messages=[\"assistant\"])\ndef assistant_swearing() -&gt; Scanner[Transcript]:\n\n    async def scan(transcript: Transcript) -&gt; Result:\n        swear_words = [\n            word \n            for m in transcript.messages \n            for word in extract_swear_words(m.text)\n        ]\n        return Result(\n            value=len(swear_words),\n            explanation=\",\".join(swear_words)\n        )\n\n    return scan\nWith this filter, only assistant messages (and no events at all) will be loaded from transcripts during scanning.\nNote that by default, no filters are active, so if you don’t specify values for messages and/or events your scanner will not be called!",
+    "objectID": "db_schema.html#events",
+    "href": "db_schema.html#events",
+    "title": "Database Schema",
+    "section": "Events",
+    "text": "Events\nThe events field is a JSON encoded string of list[Event]. Note that if your scanners deal entirely in messages rather than events (as a great many do) then it is not necessary to provide events.\nEvents are typically important when you are either analyzing complex multi-agent transcripts or doing very granular scanning for specific phenomena (e.g. tool calling errors).\nWhile you can include any of the event types in defined in inspect_ai.event, there is a subset that is both likely to be of interest and that maps on to data provided by observability platforms and/or OTEL traces. These include:\n\n\n\n\n\n\n\nEvent\nDescription\n\n\n\n\nModelEvent\nGeneration call to a model.\n\n\nToolEvent\nTool call made by a model.\n\n\nErrorEvent\nRuntime error aborting transcript.\n\n\nSpanBeginEvent\nMark the beginning of a transcript span (e.g. agent execution, tool call, custom block, etc.)\n\n\nSpanEndEvent\nMark the end of a transcript scan\n\n\n\nMost observability systems will have some equivalent of the above in their traces. When reconstructing model events you will also likely want to use the helper functions mentioned above in Messages for converting raw model API payloads to ChatMessage.\n\n\n\n\n\n\nNoteNot Required\n\n\n\nThe events field is only important if you have scanners that will be doing event analysis. Note that the default llm_scanner() provided within Scout looks only at messages not events.",
     "crumbs": [
       "Getting Started",
-      "Using Scout",
-      "Scanners"
+      "Transcripts Database",
+      "Schema"
     ]
   },
   {
-    "objectID": "scanners.html#transcripts",
-    "href": "scanners.html#transcripts",
-    "title": "Scanners",
-    "section": "Transcripts",
-    "text": "Transcripts\nTranscripts are the most common input to scanners. If you are reading from Inspect eval logs, each log will have samples * epochs transcripts. If you are reading from another source, each agent trace will yield a single Transcript.\n\nTranscript Fields\nHere are the available Transcript fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\ntranscript_id\nstr\nGlobally unique identifier for a transcript (maps to EvalSample.uuid in Inspect logs).\n\n\nsource_type\nstr\nType of transcript source (e.g. “eval_log”, “weave”, etc.).\n\n\nsource_id\nstr\nGlobally unique identifier for a transcript source (maps to eval_id in Inspect logs)\n\n\nsource_uri\nstr\nURI for source data (e.g. full path to the Inspect log file).\n\n\nmetadata\ndict[str, JsonValue]\nTranscript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.).\n\n\nmessages\nlist[ChatMessage]\nMessage history.\n\n\nevents\nlist[Event]\nEvent history (e.g. model events, tool events, etc.)\n\n\n\n\n\nContent Filtering\nNote that the messages and events fields will not be populated unless you specify a messages or events filter on your scanner. For example, this scanner will see all messages and events:\n@scanner(messages=\"all\", events=\"all\")\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nThis scanner will see only model and tool events:\n@scanner(events=[\"model\", \"tool\"])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nThis scanner will see only assistant messages:\n@scanner(messages=[\"assistant\"])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\n\n\nPresenting Messages\nWhen processing transcripts, you will often want to present an entire message history to model for analysis. Above, we used the messages_as_str() function to do this:\n# call model\nresult = await get_model().generate(\n    \"Here is a transcript of an LLM agent \" +\n    \"solving a puzzle:\\n\\n\" +\n    \"===================================\" +\n    await messages_as_str(transcript) +\n    \"===================================\\n\\n\" +\n    \"In the transcript above do you see the agent \" +\n    \"becoming confused? Respond beginning with 'Yes' \" +\n    \"or 'No', followed by an explanation.\"\n)\nThe messages_as_str() function takes a Transcript | list[ChatMessage] and will by default remove system messages from the message list. See MessagesPreprocessor for other available options.",
-    "crumbs": [
-      "Getting Started",
-      "Using Scout",
-      "Scanners"
-    ]
-  },
-  {
-    "objectID": "scanners.html#multiple-results",
-    "href": "scanners.html#multiple-results",
-    "title": "Scanners",
-    "section": "Multiple Results",
-    "text": "Multiple Results\nScanners can return multiple results as a list. For example:\nreturn [\n    Result(label=\"deception\", value=True, explanation=\"...\"),\n    Result(label=\"misconfiguration\", value=True, explanation=\"...\")\n]\nThis is useful when a scanner is capable of making several types of observation. In this case it’s also important to indicate the origin of the result (i.e. which class of observation is is), which you can do using the label field (note that label can repeat multiple times in a set, so e.g. you could have multiple results with label=\"deception\").\nWhen a list is returned, each individual result will yield its own row in the results data frame.\nWhen validating scanners that return lists of results, you can use result set validation to specify expected values for each label independently.",
-    "crumbs": [
-      "Getting Started",
-      "Using Scout",
-      "Scanners"
-    ]
-  },
-  {
-    "objectID": "scanners.html#events",
-    "href": "scanners.html#events",
-    "title": "Scanners",
-    "section": "Event Scanners",
-    "text": "Event Scanners\nTo write a scanner that targets events, write a function that takes the event type(s) you want to process. For example, this scanner will see only model events:\n@scanner\ndef my_scanner() -&gt; Scanner[ModelEvent]:\n    def scan(event: ModelEvent) -&gt; Result: \n        ...\n\n    return scan\nNote that the events=\"model\" filter was not required since we had already declared our scanner to take only model events. If we wanted to take both model and tool events we’d do this:\n@scanner\ndef my_scanner() -&gt; Scanner[ModelEvent | ToolEvent]:\n    def scan(event: ModelEvent | ToolEvent) -&gt; Result: \n        ...\n\n    return scan",
-    "crumbs": [
-      "Getting Started",
-      "Using Scout",
-      "Scanners"
-    ]
-  },
-  {
-    "objectID": "scanners.html#messages",
-    "href": "scanners.html#messages",
-    "title": "Scanners",
-    "section": "Message Scanners",
-    "text": "Message Scanners\nTo write a scanner that targets messages, write a function that takes the message type(s) you want to process. For example, this scanner will only see tool messages:\n@scanner\ndef my_scanner() -&gt; Scanner[ChatMessageTool]:\n    def scan(message: ChatMessageTool) -&gt; Result: \n        ...\n\n    return scan\nThis scanner will see only user and assistant messages:\n@scanner\ndef my_scanner() -&gt; Scanner[ChatMessageUser | ChatMessageAssistant]:\n    def scan(message: ChatMessageUser | ChatMessageAssistant) -&gt; Result: \n        ...\n\n    return scan",
-    "crumbs": [
-      "Getting Started",
-      "Using Scout",
-      "Scanners"
-    ]
-  },
-  {
-    "objectID": "scanners.html#scanners-as-scorers",
-    "href": "scanners.html#scanners-as-scorers",
-    "title": "Scanners",
-    "section": "Scanners as Scorers",
-    "text": "Scanners as Scorers\nYou may have noticed that scanners are very similar to Inspect Scorers. This is by design, and it is actually possible to use scanners directly as Inspect scorers.\nFor example, for the confusion() scorer we implemented above:\n@scanner(messages=\"all\")\ndef confusion() -&gt; Scanner[Transcript]:\n    \n    async def scan(transcript: Transcript) -&gt; Result:\n\n        # model call eluded for brevity\n        output = get_model(...)\n\n        # extract the first word\n        match = re.match(r\"^\\w+\", output.completion.strip())\n\n        # return result\n        if match:\n            answer = match.group(0)\n            return Result(\n                value=answer.lower() == \"yes\",\n                answer=answer,\n                explanation=output.completion,\n            )\n        else:\n            return Result(value=False, explanation=output.completion)\n\n    return scan\nWe can use this directly in an Inspect Task as follows:\nfrom .scanners import confusion\n\n@task\ndef mytask():\n    return Task(\n        ...,\n        scorer = confusion()\n    )\nWe can also use it with the inspect score command:\ninspect score --scorer scanners.py@confusion logfile.eval\n\nMetrics\nThe metrics used for the scorer will default to accuracy() and stderr()—however, you can also explicitly specify metrics on the @scanner decorator:\n@scanner(messages=\"all\", metrics=[accuracy(), bootstrap_stderr()])\ndef confusion() -&gt; Scanner[Transcript]: ...\nIf you are interfacing with code that expects only Scorer instances, you can also use the as_scorer() function from Inspect Scout to explicitly convert your scanner to a scorer:\nfrom inspect_ai import eval\nfrom inspect_scout import as_scorer\n\nfrom .mytasks import ctf_task\nfrom .scanners import confusion\n\neval(ctf_task(scorer=as_scorer(confusion())))\n\n\nResult Sets\nIf your scanner yields multiple results you can still use it as a scorer, but you will want to provide a dictionary of metrics corresponding to the labels used by your results. For example, if you have a scanner that can yield results with label=\"deception\" or label=\"misconfiguration\", you might declare your metrics like this:\n@scanner(messages=\"all\", metrics=[{ \"deception\": [accuracy(), stderr()], \"misconfiguration\": [accuracy(), stderr()] }])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nOr you can use a glob (*) to use the same metrics for all labels:\n@scanner(messages=\"all\", metrics=[{ \"*\": [accuracy(), stderr()] }])\ndef my_scanner() -&gt; Scanner[Transcript]: ...\nYou should also be sure to return a result for each supported label (so that metrics can be computed correctly on each row).",
-    "crumbs": [
-      "Getting Started",
-      "Using Scout",
-      "Scanners"
-    ]
-  },
-  {
-    "objectID": "scanners.html#loaders",
-    "href": "scanners.html#loaders",
-    "title": "Scanners",
-    "section": "Custom Loaders",
-    "text": "Custom Loaders\nWhen you want to process multiple discrete items from a Transcript this might not always fall neatly into single messages or events. For example, you might want to process pairs of user/assistant messages. To do this, create a custom Loader that yields the content as required.\nFor example, here is a Loader that yields user/assistant message pairs:\n@loader(messages=[\"user\", \"assistant\"])\ndef conversation_turns():\n    async def load(\n        transcript: Transcript\n    ) -&gt; AsyncIterator[list[ChatMessage], None]:\n        \n        for user,assistant in message_pairs(transcript.messages):\n            yield [user, assistant]\n\n    return load\nNote that just like with scanners, the loader still needs to provide a messages=[\"user\", \"assistant\"] in order to see those messages.\nWe can now use this loader in a scanner that looks for refusals:\n@scanner(loader=conversation_turns())\ndef assistant_refusals() -&gt; Scanner[list[ChatMessage]]:\n\n    async def scan(messages: list[ChatMessage]) -&gt; Result:\n        user, assistant = messages\n        return Result(\n            value=is_refusal(assistant.text), \n            explanation=messages_as_str(messages)\n        )\n\n    return scan",
-    "crumbs": [
-      "Getting Started",
-      "Using Scout",
-      "Scanners"
-    ]
-  },
-  {
-    "objectID": "transcripts.html",
-    "href": "transcripts.html",
-    "title": "Transcripts",
+    "objectID": "validation.html",
+    "href": "validation.html",
+    "title": "Validation",
     "section": "",
-    "text": "Transcripts are the fundamental input to scanners. The Transcripts class represents a collection of transcripts that has been selected for scanning, and supports various filtering operations to refine the collection.",
+    "text": "When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.\nWhen you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):\n\nNote that the overall validation score is also displayed in the left panel summarizing the scan. Below we’ll go step by step through how to create a validation set and apply it to your scanners.",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Using Scout",
+      "Validation"
     ]
   },
   {
-    "objectID": "transcripts.html#overview",
-    "href": "transcripts.html#overview",
-    "title": "Transcripts",
+    "objectID": "validation.html#overview",
+    "href": "validation.html#overview",
+    "title": "Validation",
     "section": "",
-    "text": "Transcripts are the fundamental input to scanners. The Transcripts class represents a collection of transcripts that has been selected for scanning, and supports various filtering operations to refine the collection.",
+    "text": "When developing scanners and scanner prompts, it’s often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.\nWhen you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):\n\nNote that the overall validation score is also displayed in the left panel summarizing the scan. Below we’ll go step by step through how to create a validation set and apply it to your scanners.",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Using Scout",
+      "Validation"
     ]
   },
   {
-    "objectID": "transcripts.html#reading-transcripts",
-    "href": "transcripts.html#reading-transcripts",
-    "title": "Transcripts",
-    "section": "Reading Transcripts",
-    "text": "Reading Transcripts\nUse the transcripts_from() function to read a collection of Transcripts:\nfrom inspect_scout import transcripts_from\n\n# read from a transcript database on S3\ntranscripts = transcripts_from(\"s3://weave-rollouts/cybench\")\n\n# read from an Inspect log directory\ntranscripts = transcripts_from(\"./logs\")\nThe transcripts_from() function can read transcripts from either:\n\nA transcript database that contains transcripts you have imported from a variety of sources (Agent traces, RL rollouts, Inspect logs, etc.); or\nOne or more Inspect log directories that contain Inspect .eval logs.\n\nSee the sections below on the Transcripts Database and Inspect Eval Logs for additional details on working with each.",
+    "objectID": "validation.html#validation-basics",
+    "href": "validation.html#validation-basics",
+    "title": "Validation",
+    "section": "Validation Basics",
+    "text": "Validation Basics\nA ValidationSet contains a list of ValidationCase, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and value that the scanner should have returned.\n\n\n\nTranscript ID\nExpected Value\n\n\n\n\nFg3KBpgFr6RSsEWmHBUqeo\ntrue\n\n\nVFkCH7gXWpJYUYonvfHxrG\nfalse\n\n\n\nNote that values can be of any type returned by a scanner, and it is also possible to do greater than / less than checks or write custom predicates.\n\nDevelopment\nHow would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.\nUse the Copy button to copy the UUID for the transcript you are reviewing:\n\nAs you review transcript and find good examples, build up a list of transcript IDs and expected values. For example, here is a CSV file of that form:\n\n\nctf-validation.csv\n\nFg3KBpgFr6RSsEWmHBUqeo, true\nVFkCH7gXWpJYUYonvfHxrG, false\nSiEXpECj7U9nNAvM3H7JqB, true\n\n\n\nScanning\nYou’ll typically create a distinct validation set for each scanner, and then pass the validation sets to scan() as a dict mapping scanner to set:\n\n\nscanning.py\n\nfrom inspect_scout import scan, transcripts_from, validation_set\n\nscan(\n    scanners=[ctf_environment(), java_tool_usages()],\n    transcripts=transcripts_from(\"./logs\"),\n    validation={\n        \"ctf_environment\": validation_set(\"ctf-validation.csv\")\n    }\n)\n\nYou can also specify validation sets on the command line. If the above scan was defined in a @scanjob you could add a validation set from the CLI using the -V option as follows:\nscout scan scanning.py -V ctf_environment:ctf_environment.csv\nThis example uses the simplest possible id and target pair (transcript _id =&gt; boolean). Other variations are possible, see the IDs and Targets section below for details. You can also use other file formats for validation sets (e.g. YAML), see Validation Files for details.\n\n\nResults\nValidation results are reported in three ways:\n\nThe scan status/summary UI provides a running tabulation of the percentage of matching validations.\nThe data frame produced for each scanner includes columns for the validation:\n\nvalidation_target: Ideal scanner result\nvalidation_result: Result of comparing scanner value against validation_target\n\nScout View includes a visual indication of the validation status for each transcript:",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Using Scout",
+      "Validation"
     ]
   },
   {
-    "objectID": "transcripts.html#filtering-transcripts",
-    "href": "transcripts.html#filtering-transcripts",
-    "title": "Transcripts",
+    "objectID": "validation.html#filtering-transcripts",
+    "href": "validation.html#filtering-transcripts",
+    "title": "Validation",
     "section": "Filtering Transcripts",
-    "text": "Filtering Transcripts\nIf you want to scan only a subset of transcripts, you can use the .where() method to narrow down the collection. For example:\nfrom inspect_scout import transcripts_from, metadata as m\n\ntranscripts = (\n    transcripts_from(\"./logs\")\n    .where(m.task_name == \"cybench\")\n    .where(m.model.like(\"openai/%\"))\n)\nSee the Column documentation for additional details on supported filtering operations.\nYou can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don’t want to process all transcripts). For example:\nfrom inspect_scout import transcripts_from, log_metadata as m\n\ntranscripts = (\n    transcripts_from(\"./logs\")\n    .limit(10)\n    .shuffle(42)\n)",
+    "text": "Filtering Transcripts\nYour validation set will typically be only a subset of all of the transcripts you are scanning, and is intended to provide a rough heuristic on how prompt changes are impacting results. In some cases you will want to only evaluate transcript content that is included in the validation set. The Transcript class includes a filtering function to do this. For example:\nfrom inspect_scout import scan, transcripts_from, validation_set\n\nvalidation = {\n    \"ctf_environment\": validation_set(\"ctf-validation.csv\")\n}\n\ntranscripts = transcripts_from(\"./logs\")\ntranscripts = transcripts.for_validation(validation)\n\nscan(\n    scanners=[ctf_environment(), java_tool_usages()],\n    transcripts=transcripts,\n    validation=validation\n)",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Using Scout",
+      "Validation"
     ]
   },
   {
-    "objectID": "transcripts.html#transcript-fields",
-    "href": "transcripts.html#transcript-fields",
-    "title": "Transcripts",
-    "section": "Transcript Fields",
-    "text": "Transcript Fields\nHere are the available Transcript fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\ntranscript_id\nstr\nGlobally unique identifier for a transcript (maps to EvalSample.uuid in Inspect logs).\n\n\nsource_type\nstr\nType of transcript source (e.g. “eval_log”, “weave”, etc.).\n\n\nsource_id\nstr\nGlobally unique identifier for a transcript source (maps to eval_id in Inspect logs)\n\n\nsource_uri\nstr\nURI for source data (e.g. full path to the Inspect log file).\n\n\nmetadata\ndict[str, JsonValue]\nTranscript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.).\n\n\nmessages\nlist[ChatMessage]\nMessage history.\n\n\nevents\nlist[Event]\nEvent history (e.g. model events, tool events, etc.)",
+    "objectID": "validation.html#ids-and-targets",
+    "href": "validation.html#ids-and-targets",
+    "title": "Validation",
+    "section": "IDs and Targets",
+    "text": "IDs and Targets\nIn the above examples, we provided a validation set of transcript_id =&gt; boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom Loader). You can also use any valid JSON value as the target\nFor example, imagine we have a scanner that counts the incidences of “backtracking” in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =&gt; number:\n\n\nbacktracking.csv\n\nFg3KBpgFr6RSsEWmHBUqeo, 2\nVFkCH7gXWpJYUYonvfHxrG, 0\nSiEXpECj7U9nNAvM3H7JqB, 3\n\nIn the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:\n\n\nvalidation.csv\n\n\"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG\", true\n\n\nResult Set Validation\nWhen a scanner returns a list of multiple results (see Multiple Results), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.\n\nFormat\nFor CSV files, use label_* columns instead of target_* columns:\n\n\nsecurity-validation.csv\n\nid, label_deception, label_jailbreak, label_misconfig\nFg3KBpgFr6RSsEWmHBUqeo, true, false, false\nVFkCH7gXWpJYUYonvfHxrG, false, true, false\nSiEXpECj7U9nNAvM3H7JqB, false, false, true\n\nFor YAML/JSON files, use a labels key instead of target:\n- id: Fg3KBpgFr6RSsEWmHBUqeo \n  labels: \n    deception: true \n    jailbreak: false \n    misconfig: false\n\n- id: VFkCH7gXWpJYUYonvfHxrG \n  labels: \n    deception: false \n    jailbreak: true \n    misconfig: false\n\n\nValidation Semantics\nLabel-based validation uses “at least one” logic: if any result with a given label matches the expected value, validation passes for that label. For example, if a scanner returns multiple deception results for a transcript and at least one has value==True, then validation passes if the expected value is true.\nMissing labels are treated as negative/absent values. If your validation set expects label_phishing: false but the scanner returns no results with label==\"phishing\", the validation passes because the absence is treated as False.\n\n\n\nComparison Predicates\nThe examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. “gt”, “gte”, “contains”) or with a custom function. Specify the ValidationPredicate as a parameter to the validation_set() function:\nvalidation_set(cases=\"validation.csv\", predicate=\"gte\")\n\n\nValue Dictionary\nIf our scanner produces a dict of values, we can also build a validation dataset which provides ground truth for each distinct field in the dict. To do this, we introduce target_* column names as follows:\n\n\nvalidation.csv\n\nid, target_deception, target_backtracks\nFg3KBpgFr6RSsEWmHBUqeo, true, 2\nVFkCH7gXWpJYUYonvfHxrG, false, 0",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Using Scout",
+      "Validation"
     ]
   },
   {
-    "objectID": "transcripts.html#scanning-transcripts",
-    "href": "transcripts.html#scanning-transcripts",
-    "title": "Transcripts",
-    "section": "Scanning Transcripts",
-    "text": "Scanning Transcripts\nOnce you have established your list of transcripts to scan, just pass them to the scan() function:\nfrom inspect_scout import scan, transcripts_from\n\nfrom .scanners import ctf_environment, java_tool_calls\n\nscan(\n    scanners = [ctf_environment(), java_tool_calls()],\n    transcripts = transcripts_from(\"./logs\")\n)\nIf you want to do transcript filtering and then invoke your scan from the CLI using scout scan, then perform the filtering inside a @scanjob. For example:\n\n\ncybench_scan.py\n\nfrom inspect_scout (\n    import ScanJob, scanjob, transcripts_from, metadata as m\n)\n\nfrom .scanners import deception, tool_errors\n\n@scanjob\ndef cybench_job(logs: str = \"./logs\") -&gt; ScanJob:\n\n    transcripts = transcripts_from(logs)\n    transcripts = transcripts.where(m.task_name == \"cybench\")\n\n    return ScanJob(\n        scanners = [deception(), java_tool_usages()],\n        transcripts = transcripts\n    )\n\nThen from the CLI:\nscout scan cybench.py -S logs=./logs --model openai/gpt-5\nThe -S argument enables you to pass arguments to the @scanjob function (in this case determining what directory to read logs from).",
+    "objectID": "validation.html#validation-files",
+    "href": "validation.html#validation-files",
+    "title": "Validation",
+    "section": "File Formats",
+    "text": "File Formats\nYou can specify a ValidationSet either in code, as a CSV, or as a YAML or JSON file. We’ve demonstrated CSV above, here is what as equivalent YAML file would look like for a single target:\n\n\nvalidation.yaml\n\n- id: Fg3KBpgFr6RSsEWmHBUqeo\n  target: true\n\n- id: VFkCH7gXWpJYUYonvfHxrG\n  target: false\n\nAnd for multiple targets:\n\n\nvalidation.yaml\n\n- id: Fg3KBpgFr6RSsEWmHBUqeo\n  target:\n     deception: true\n     backtracks: 2\n\n- id: VFkCH7gXWpJYUYonvfHxrG\n  target:\n     deception: false\n     backtracks: 0",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Using Scout",
+      "Validation"
     ]
   },
   {
-    "objectID": "transcripts.html#inspect-eval-logs",
-    "href": "transcripts.html#inspect-eval-logs",
-    "title": "Transcripts",
-    "section": "Inspect Eval Logs",
-    "text": "Inspect Eval Logs\nThe transcripts_from() function can read a collection of transcripts directly from an Inspect log directory. You can specify one or more directories and/or individual log files. For example:\n# read from a log directory\ntranscripts = transcripts_from(\"./logs\")\n\n# read multiple log directories\ntranscripts = transcripts_from([\"./logs\", \"./logs2\"])\n\n# read from one or more log files\ntranscripts = transcripts_from(\n    [\"logs/cybench.eval\", \"logs/swebench.eval\"]\n)\nFor Inspect logs, the metadata field within TranscriptInfo includes fields from eval sample metadata. For example:\ntranscript.metadata[\"sample_id\"]        # sample uuid \ntranscript.metadata[\"id\"]               # dataset sample id \ntranscript.metadata[\"epoch\"]            # sample epoch\ntranscript.metadata[\"eval_metadata\"]    # eval metadata\ntranscript.metadata[\"sample_metadata\"]  # sample metadata\ntranscript.metadata[\"score\"]            # main sample score \ntranscript.metadata[\"score_&lt;scorer&gt;\"]   # named sample scores\nSee the LogMetadata class for details on all of the fields included in transcript.metadata. Use log_metadata (aliased to m below) to do typesafe filtering for Inspect logs:\nfrom inspect_scout import transcripts_from, log_metadata as m\n\ntranscripts = (\n    transcripts_from(\"./logs\")\n    .where(m.task_name == \"cybench\")\n    .where(m.model.like(\"openai/%\"))\n)",
+    "objectID": "db_publishing.html",
+    "href": "db_publishing.html",
+    "title": "Publishing Transcripts",
+    "section": "",
+    "text": "In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigations available for this are:\n\nMaking access to the transcripts authenticated (e.g. S3 or Hugging Face); and\nEncrypting the transcript database files so that if they are republished in an unauthenticated context that crawlers won’t be able to read them.\n\nWe’ll cover both of these scenarios in detail below.",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Transcripts Database",
+      "Publishing"
     ]
   },
   {
-    "objectID": "transcripts.html#transcripts-database",
-    "href": "transcripts.html#transcripts-database",
-    "title": "Transcripts",
-    "section": "Transcripts Database",
-    "text": "Transcripts Database\nScout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use Parquet files for storage and can be located in the local filesystem or remote systems like S3.\nIf you have an existing source of transcript data there are several ways to create a transcript database (TranscriptDB):\n\nTranscript API: Read and parse transcripts into Transcript objects and use the TranscriptsDB.insert() function to add them to the database.\nArrow Import: Read an existing set of transcripts stored in Arrow/Parquet and pass them to TranscriptsDB.insert() as a PyArrow RecordBatchReader.\nParquet Data Lake: Point the TranscriptDB at an existing data lake (ensuring that the records adhere to the transcript database schema).\n\nWe’ll cover each of these scenarios below. First though, we’ll provide a review of the transcript database schema.\n\nDatabase Schema\nIn a transcript database, the only strictly required field is transcript_id (although you’ll almost always want to also include a messages field as that’s the main thing targeted by most scanners).\nYou can also include source_* fields as a reference to where the transcript originated as well as arbitrary other fields (trancript metadata) which are then queryable using the Transcripts API.\n\n\n\nField\nDescription\n\n\n\n\ntranscript_id\nRequired. A globally unique identifier for a transcript.\n\n\nsource_type\nOptional. Type of transcript source (e.g. “weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the metadata field.\n\n\nsource_id\nOptional. Globally unique identifier for a transcript source (e.g. a project id).\n\n\nsource_uri\nOptional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).\n\n\nmessages\nOptional. List of ChatMessage with message history.\n\n\nevents\nOptional. List of Event with event history (e.g. model events, tool events, etc.)\n\n\n\n\nMetadata\nYou can include arbitrary other fields in your database which will be made available as Transcript.metadata. These fields can then be used for filtering in calls to Transcripts.where(). Note that metadata columns are forwarded into the results database for scans (transcript_metadata) so it is generally a good practice to not include large amounts of data in these columns.\n\n\nMessages\nThe messages field is a JSON encoded string of list[ChatMessage]. There are several helper functions available within the inspect_ai package to assist in converting from the raw message formats of various providers to the Inspect ChatMessage format:\n\n\n\nProvider API\nFunctions\n\n\n\n\nOpenAI Chat Completions\nmessages_from_openai()\nmodel_output_from_openai()\n\n\nOpenAI Responses\nmessages_from_openai_responses()\nmodel_output_from_openai_responses()\n\n\nAnthropic Messages\nmessages_from_anthropic()\nmodel_output_from_anthropic()\n\n\nGoogle Generate Content\nmessages_from_google()\nmodel_output_from_google()\n\n\n\nThe events field is less commonly used by scanners so less important to provide. It is a JSON-encded list of Inspect AI events (e.g. ModelEvent, ToolEvxent, etc.).\nBelow we’ll cover the three main ways to populate a transcript database: the Transcript API, Arrow Import, and using an existing Parquet Data Lake.\n\n\n\nTranscript API\nTo create a transcripts database, use the transcripts_db() function to get a TranscriptsDB interface and then insert Transcript objects. In this example imagine we have a read_weave_transcripts() function which can read transcripts from an external JSON transcript format:\nfrom inspect_scout import transcripts_db\n\nfrom .readers import read_json_transcripts\n\n# create/open database\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n\n    # read transcripts to insert\n    transcripts = read_json_transcripts()\n\n    # insert into database\n    await db.insert(transcripts)\nOnce you’ve created a database and populated it with transcripts, you can read from it using transcripts_from():\nfrom inspect_scout import scan, transcripts_from\n\nscan(\n    scanners=[...],\n    transcripts=transcripts_from(\"s3://my-transcripts\")\n)\n\nStreaming\nEach call to db.insert() will minimally create one Parquet file, but will break transcripts across multiple files as required, limiting the size of files to 100MB. This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator to yield transcripts rather than making many calls to db.insert() (which is likely to result in more Parquet files than is ideal).\nFor example, we might implement read_json_transcripts() like this:\nfrom pathlib import Path\nfrom typing import AsyncIterator\nfrom inspect_scout import Transcript\n\nasync def read_json_transcripts(dir: Path) -&gt; AsyncIterator[Transcript]:\n    json_files = list(dir.rglob(\"*.json\"))\n    for json_file in json_files:\n        yield await json_to_transcript(json_file)\n\nasync def json_to_transcript(json_file: Path) -&gt; Transcript:\n    # convert json_file to Transcript\n    return Transcript(...)\nWe can then pass this generator function directly to db.insert():\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n    await db.insert(read_json_transcripts())\nNote that transcript insertion is idempotent—once a transcript with a given ID has been inserted it will not be inserted again. This means that you can safely resume imports that are interrupted, and only new transcripts will be added.\n\n\nTranscripts\nHere is how we might implement json_to_transcript():\nfrom pathlib import Path\nfrom typing import AsyncIterator\nfrom inspect_ai.model import (\n    messages_from_openai, model_output_from_openai\n)\nfrom inspect_scout import Transcript\n\nasync def json_to_transcript(json_file: Path) -&gt; Transcript:\n    with open(json_file, \"r\") as f:\n        json_data: dict[str,Any] = json.loads(f.read())\n        return Transcript(\n            transcript_id = json_data[\"trace_id\"],\n            source_type=\"abracadabra\",\n            source_id=json_data[\"project_id\"],\n            metadata=json_data[\"attributes\"],\n            messages=await json_to_messages(\n                input=json_data[\"inputs\"][\"messages\"], \n                output=json_data[\"output\"]\n            )\n        )\n    \n# convert raw model input and output to inspect messages\nasync def json_to_messages(\n    input: list[dict[str, Any]], output: dict[str, Any]\n) -&gt; list[ChatMessage]:\n    # start with input messages\n    messages = await messages_from_openai(input)\n\n    # extract and append assistant message from output\n    output = await model_output_from_openai(output)\n    messages.append(output.message)\n\n    # return full message history for transcript\n    return messages\nNote that we use the messages_from_openai() and model_output_from_openai() function from inspect_ai to convert the raw model payloads in the trace data to the correct types for the transcript database.\nThe most important fields to populate are transcript_id and messages. The source_* fields are also useful for providing additional context. The metadata field, while not required, is a convenient way to provide additional transcript attributes which may be useful for filtering or analysis. The events field is not required and useful primarily for more complex multi-agent transcripts.\n\n\n\nArrow Import\nIn some cases you may already have arrow-accessible data (e.g. from Parquet files or a database that supports yielding arrow batches) that you want to insert directly into a transcript database. So long as your data conforms to the schema described above, you can do this by passing a PyArrow RecordBatchReader to db.insert().\nFor example, to read from existing Parquet files using the PyArrow dataset API:\nimport pyarrow.dataset as ds\nfrom inspect_scout import transcripts_db\n\n# read from existing parquet files\ndataset = ds.dataset(\"path/to/parquet/files\", format=\"parquet\")\nreader = dataset.scanner().to_reader()\n\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n    await db.insert(reader)\nYou can also use DuckDB to query and transform data before import:\nimport duckdb\nfrom inspect_scout import transcripts_db\n\nconn = duckdb.connect(\"my_database.db\")\nreader = conn.execute(\"\"\"\n    SELECT\n        trace_id as transcript_id,\n        messages,\n        'myapp' as source_type,\n        project_id as source_id\n    FROM traces\n\"\"\").fetch_record_batch()\n\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n    await db.insert(reader)\n\n\nParquet Data Lake\nIf you have transcripts already stored in Parquet format you don’t need to use db.insert() at all. So long as your Parquet files conform to the transcript database schema described above then you can read them directly using transcripts_from(). For example:\nfrom inspect_scout import transcripts_from\n\n# read from an existing parquet data lake\ntranscripts = transcripts_from(\n    \"s3://my-transcripts-data-lake/cyber\"\n)\n\n\nImporting Logs\nIf you prefer to keep all of your transcripts (including ones from Inspect evals) in a transcript database, you can easily import Inspect logs as follows:\nfrom inspect_scout import transcripts_db, transcripts_from\n\nasync with transcripts_db(\"s3://my-transcript-db/\") as db:\n    await db.insert(transcripts_from(\"./logs\"))\nYou could also insert a filtered list of transcripts:\nasync with transcripts_db(\"s3://my-transcript-db/\") as db:\n\n    transcripts = (\n        transcripts_from(\"./logs\")\n        .where(m.task_name == \"cybench\")\n        .where(m.model.like(\"openai/%\"))\n    )\n\n    await db.insert(transcripts)",
+    "objectID": "db_publishing.html#overview",
+    "href": "db_publishing.html#overview",
+    "title": "Publishing Transcripts",
+    "section": "",
+    "text": "In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigations available for this are:\n\nMaking access to the transcripts authenticated (e.g. S3 or Hugging Face); and\nEncrypting the transcript database files so that if they are republished in an unauthenticated context that crawlers won’t be able to read them.\n\nWe’ll cover both of these scenarios in detail below.",
     "crumbs": [
       "Getting Started",
-      "Using Scout"
+      "Transcripts Database",
+      "Publishing"
+    ]
+  },
+  {
+    "objectID": "db_publishing.html#hugging-face",
+    "href": "db_publishing.html#hugging-face",
+    "title": "Publishing Transcripts",
+    "section": "Hugging Face",
+    "text": "Hugging Face\nPublishing transcript databases as a Hugging Face Dataset is useful when you want to share with a broader audience. Benefits of using Hugging Face include:\n\nYou can make access private to only your account or organization.\nYou can create a Gated Dataset that requires users to provide contact information and optionally abide by a usage agreement and share other information to obtain access.\n\nSee the Hugging Face documentation on uploading datasets for details on how to create datasets. For transcript databases, you can just upload the parquet file(s) into the root of the dataset repository.\nTo access a dataset on Hugging Face:\n\nInstall the huggingface_hub Python package:\npip install huggingface_hub\nConfigure credentials either by setting the HF_TOKEN environment variable or via login:\nhf auth login\nRefer to your dataset in a scout scan using the hf:// protocol. For example:\nscout scan scanner.py -T hf://datasets/account-name/dataset-name\n\nSee Encryption below for details on adding encryption to database files as an additional measure of protection from crawlers.",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Publishing"
+    ]
+  },
+  {
+    "objectID": "db_publishing.html#s3",
+    "href": "db_publishing.html#s3",
+    "title": "Publishing Transcripts",
+    "section": "S3",
+    "text": "S3\nPublishing transcripst databases to AWS S3 enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the documentation for further details).\nAfter you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the s3:// protocol. For example:\nscout scan scanner.py -T s3://my-transcript-databases/database-name\nSee Encryption below for details on adding encryption to database files as an additional measure of protection from crawlers.",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Publishing"
+    ]
+  },
+  {
+    "objectID": "db_publishing.html#encryption",
+    "href": "db_publishing.html#encryption",
+    "title": "Publishing Transcripts",
+    "section": "Encryption",
+    "text": "Encryption\nYou can optionally use encryption to provide further protection for transcript databases. To encrypt a database, use the scout db encrypt command, passing it a valid AES encryption key (16, 24, or 32 bytes). For example:\nscout db encrypt /path/to/my/database \\\n   --output-dir /path/to/my/database-enc \\\n   --key 0123456789abcdef\nIf you don’t want to include the key in a script, you can also pass it via stdin (--key -) or pass it via the SCOUT_DB_ENCRYPTION_KEY environment variable.\n\nReading Encrypted Databases\nWhen using an encrypted database during a scan, you should set the SCOUT_DB_ENCRYPTION_KEY environment variable to the appropriate key. For example:\nexport SCOUT_DB_ENCRYPTION_KEY=0123456789abcdef\nscout scan scanner.py -T /path/to/my/database-enc\nYou can also decrypt the database using the scout db decrypt command:\nscout db decrypt /path/to/my/database-enc \\\n    --output-dir /path/to/my/database \\\n    --key 0123456789abcdef\n\n\nLimitations\nScout uses DuckDB Parquet Encryption to implement encryption. While this will provide additional protection for data, there are some drawbacks:\n\nIt is not currently compatible with the encryption of, e.g., PyArrow, so encrypted Parquet files will currently only be readable with DuckDB.\nCompression ratios for encrypted Parquet are much lower than for unencrypted (e.g. database files might be 5-8 times larger).\nRead performance may be a bit slower due to decryption (but it’s unlikely this will matter as most time in scanning is spent on inference not reading).",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Publishing"
+    ]
+  },
+  {
+    "objectID": "db_overview.html",
+    "href": "db_overview.html",
+    "title": "Transcripts Database",
+    "section": "",
+    "text": "Scout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use Parquet files for storage and can be located in the local filesystem or remote systems like S3.\nThe purpose of transcript databases is to provide a common baseline format for scanners to read from. You might use transcript databases as your cannonical storage for transcripts, or you might alternatively store them in another system entirely (e.g. a Postgress database) and extract them into a Scout database for a given analysis project.\nThis documentation covers how to create transcript databases, import your transcripts into them, and publish them for use by others. If you just want to read existing transcripts see the general article on Transcripts,",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database"
+    ]
+  },
+  {
+    "objectID": "db_overview.html#overview",
+    "href": "db_overview.html#overview",
+    "title": "Transcripts Database",
+    "section": "",
+    "text": "Scout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use Parquet files for storage and can be located in the local filesystem or remote systems like S3.\nThe purpose of transcript databases is to provide a common baseline format for scanners to read from. You might use transcript databases as your cannonical storage for transcripts, or you might alternatively store them in another system entirely (e.g. a Postgress database) and extract them into a Scout database for a given analysis project.\nThis documentation covers how to create transcript databases, import your transcripts into them, and publish them for use by others. If you just want to read existing transcripts see the general article on Transcripts,",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database"
+    ]
+  },
+  {
+    "objectID": "db_overview.html#creating-a-database",
+    "href": "db_overview.html#creating-a-database",
+    "title": "Transcripts Database",
+    "section": "Creating a Database",
+    "text": "Creating a Database\nIf you have some existing source of transcript data it is straightforward to import it into a Scout database. Transcript databases have very few required fields (minimally just transcript_id and messages) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database which can be used to filter transcripts.\nUse the transcripts_db() async context manager to open a connection to a database (which can be stored in a local file path or remote file system like S3):\nfrom inspect_scout import transcripts_db\n\nasync with transcripts_db(\"s3://my-transcripts\") as db:\n    # TODO: insert transcripts into db\nTo insert transcripts, you’ll need to pick one of the supported insertion formats and then understand the Database Schema so you can properly map your data source into the database.\nOnce you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database:\n\nTranscript API: Read and parse transcripts into Transcript objects and use the TranscriptsDB.insert() function to add them to the database.\nArrow Import: Read an existing set of transcripts stored in Arrow/Parquet and pass them to TranscriptsDB.insert() as a PyArrow RecordBatchReader.\nParquet Data Lake: Point the TranscriptDB at an existing data lake (ensuring that the records adhere to the transcript database schema).\nInspect Logs: Import Inspect AI eval logs from a log directory.",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database"
+    ]
+  },
+  {
+    "objectID": "db_overview.html#publishing-transcripts",
+    "href": "db_overview.html#publishing-transcripts",
+    "title": "Transcripts Database",
+    "section": "Publishing Transcripts",
+    "text": "Publishing Transcripts\nIf you want to publish transcripts for use by others, it’s important to take precautions to ensure that the transcripts are not unintentionally read by web crawlers. Some techniques for doing this include using protected S3 buckets or permissioned HuggingFace datasets, as well as encryping the Parquet files that hold the transcripts. The article on Publishing Transcripts includes additional details on how to do this.",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database"
     ]
   },
   {
@@ -748,7 +960,7 @@
     "href": "reference/transcript.html",
     "title": "Transcript API",
     "section": "",
-    "text": "Read transcripts for scanning.\nTranscripts may be stored in a TranscriptDB or may be Inspect eval logs.\n\nSource\n\ndef transcripts_from(location: str | Logs) -&gt; Transcripts\n\nlocation str | Logs\n\nTranscripts location. Either a path to a transcript database or path(s) to Inspect eval logs.\n\n\n\n\n\nTranscript info and transcript content (messages and events).\n\nSource\n\nclass Transcript(TranscriptInfo)\n\n\n\nmessages list[ChatMessage]\n\nMain message thread.\n\nevents list[Event]\n\nEvents from transcript.\n\n\n\n\n\n\nCollection of transcripts for scanning.\nTranscript collections can be filtered using the where(), limit(), and ’shuffle()` methods. The transcripts are not modified in place so the filtered transcripts should be referenced via the return value. For example:\nfrom inspect_scout import transcripts, log_metadata as m\n\ntranscripts = transcripts_from(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nSource\n\nclass Transcripts(abc.ABC)\n\n\n\nwhere\n\nFilter the transcript collection by a Condition.\n\nSource\n\ndef where(self, condition: Condition) -&gt; \"Transcripts\"\n\ncondition Condition\n\nFilter condition.\n\n\n\nfor_validation\n\nFilter transcripts to only those with IDs matching validation cases.\n\nSource\n\ndef for_validation(\n    self, validation: ValidationSet | dict[str, ValidationSet]\n) -&gt; \"Transcripts\"\n\nvalidation ValidationSet | dict[str, ValidationSet]\n\nValidation object containing cases with target IDs.\n\n\n\nlimit\n\nLimit the number of transcripts processed.\n\nSource\n\ndef limit(self, n: int) -&gt; \"Transcripts\"\n\nn int\n\nLimit on transcripts.\n\n\n\nshuffle\n\nShuffle the order of transcripts.\n\nSource\n\ndef shuffle(self, seed: int | None = None) -&gt; \"Transcripts\"\n\nseed int | None\n\nRandom seed for shuffling.\n\n\n\nreader\n\nRead the selected transcripts.\n\nSource\n\n@abc.abstractmethod\ndef reader(self) -&gt; TranscriptsReader\n\n\n\n\n\n\n\n\n\nRead transcripts based on a TranscriptsQuery.\n\nSource\n\nclass TranscriptsReader(abc.ABC)\n\n\n\nindex\n\nIndex of TranscriptInfo for the collection.\n\nSource\n\n@abc.abstractmethod\ndef index(self) -&gt; AsyncIterator[TranscriptInfo]\n\n\n\n\nread\n\nRead transcript content.\n\nSource\n\n@abc.abstractmethod\nasync def read(\n    self, transcript: TranscriptInfo, content: TranscriptContent\n) -&gt; Transcript\n\ntranscript TranscriptInfo\n\nTranscript to read.\n\ncontent TranscriptContent\n\nContent to read (e.g. specific message types, etc.)",
+    "text": "Read transcripts for scanning.\nTranscripts may be stored in a TranscriptDB or may be Inspect eval logs.\n\nSource\n\ndef transcripts_from(location: str | Logs) -&gt; Transcripts\n\nlocation str | Logs\n\nTranscripts location. Either a path to a transcript database or path(s) to Inspect eval logs.\n\n\n\n\n\nTranscript info and transcript content (messages and events).\n\nSource\n\nclass Transcript(TranscriptInfo)\n\n\n\nmessages list[ChatMessage]\n\nMain message thread.\n\nevents list[Event]\n\nEvents from transcript.\n\n\n\n\n\n\nCollection of transcripts for scanning.\nTranscript collections can be filtered using the where(), limit(), and ’shuffle()` methods. The transcripts are not modified in place so the filtered transcripts should be referenced via the return value. For example:\nfrom inspect_scout import transcripts, log_metadata as m\n\ntranscripts = transcripts_from(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nSource\n\nclass Transcripts(abc.ABC)\n\n\n\nwhere\n\nFilter the transcript collection by a Condition.\n\nSource\n\ndef where(self, condition: Condition) -&gt; \"Transcripts\"\n\ncondition Condition\n\nFilter condition.\n\n\n\nfor_validation\n\nFilter transcripts to only those with IDs matching validation cases.\n\nSource\n\ndef for_validation(\n    self, validation: ValidationSet | dict[str, ValidationSet]\n) -&gt; \"Transcripts\"\n\nvalidation ValidationSet | dict[str, ValidationSet]\n\nValidation object containing cases with target IDs.\n\n\n\nlimit\n\nLimit the number of transcripts processed.\n\nSource\n\ndef limit(self, n: int) -&gt; \"Transcripts\"\n\nn int\n\nLimit on transcripts.\n\n\n\nshuffle\n\nShuffle the order of transcripts.\n\nSource\n\ndef shuffle(self, seed: int | None = None) -&gt; \"Transcripts\"\n\nseed int | None\n\nRandom seed for shuffling.\n\n\n\nreader\n\nRead the selected transcripts.\n\nSource\n\n@abc.abstractmethod\ndef reader(self) -&gt; TranscriptsReader\n\n\n\n\nfrom_snapshot\n\nRestore transcripts from a snapshot.\n\nSource\n\n@staticmethod\n@abc.abstractmethod\ndef from_snapshot(snapshot: ScanTranscripts) -&gt; \"Transcripts\"\n\nsnapshot ScanTranscripts\n\n\n\n\n\n\n\n\n\n\nRead transcripts based on a TranscriptsQuery.\n\nSource\n\nclass TranscriptsReader(abc.ABC)\n\n\n\nindex\n\nIndex of TranscriptInfo for the collection.\n\nSource\n\n@abc.abstractmethod\ndef index(self) -&gt; AsyncIterator[TranscriptInfo]\n\n\n\n\nread\n\nRead transcript content.\n\nSource\n\n@abc.abstractmethod\nasync def read(\n    self, transcript: TranscriptInfo, content: TranscriptContent\n) -&gt; Transcript\n\ntranscript TranscriptInfo\n\nTranscript to read.\n\ncontent TranscriptContent\n\nContent to read (e.g. specific message types, etc.)",
     "crumbs": [
       "Reference",
       "Python API",
@@ -760,7 +972,7 @@
     "href": "reference/transcript.html#reading",
     "title": "Transcript API",
     "section": "",
-    "text": "Read transcripts for scanning.\nTranscripts may be stored in a TranscriptDB or may be Inspect eval logs.\n\nSource\n\ndef transcripts_from(location: str | Logs) -&gt; Transcripts\n\nlocation str | Logs\n\nTranscripts location. Either a path to a transcript database or path(s) to Inspect eval logs.\n\n\n\n\n\nTranscript info and transcript content (messages and events).\n\nSource\n\nclass Transcript(TranscriptInfo)\n\n\n\nmessages list[ChatMessage]\n\nMain message thread.\n\nevents list[Event]\n\nEvents from transcript.\n\n\n\n\n\n\nCollection of transcripts for scanning.\nTranscript collections can be filtered using the where(), limit(), and ’shuffle()` methods. The transcripts are not modified in place so the filtered transcripts should be referenced via the return value. For example:\nfrom inspect_scout import transcripts, log_metadata as m\n\ntranscripts = transcripts_from(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nSource\n\nclass Transcripts(abc.ABC)\n\n\n\nwhere\n\nFilter the transcript collection by a Condition.\n\nSource\n\ndef where(self, condition: Condition) -&gt; \"Transcripts\"\n\ncondition Condition\n\nFilter condition.\n\n\n\nfor_validation\n\nFilter transcripts to only those with IDs matching validation cases.\n\nSource\n\ndef for_validation(\n    self, validation: ValidationSet | dict[str, ValidationSet]\n) -&gt; \"Transcripts\"\n\nvalidation ValidationSet | dict[str, ValidationSet]\n\nValidation object containing cases with target IDs.\n\n\n\nlimit\n\nLimit the number of transcripts processed.\n\nSource\n\ndef limit(self, n: int) -&gt; \"Transcripts\"\n\nn int\n\nLimit on transcripts.\n\n\n\nshuffle\n\nShuffle the order of transcripts.\n\nSource\n\ndef shuffle(self, seed: int | None = None) -&gt; \"Transcripts\"\n\nseed int | None\n\nRandom seed for shuffling.\n\n\n\nreader\n\nRead the selected transcripts.\n\nSource\n\n@abc.abstractmethod\ndef reader(self) -&gt; TranscriptsReader\n\n\n\n\n\n\n\n\n\nRead transcripts based on a TranscriptsQuery.\n\nSource\n\nclass TranscriptsReader(abc.ABC)\n\n\n\nindex\n\nIndex of TranscriptInfo for the collection.\n\nSource\n\n@abc.abstractmethod\ndef index(self) -&gt; AsyncIterator[TranscriptInfo]\n\n\n\n\nread\n\nRead transcript content.\n\nSource\n\n@abc.abstractmethod\nasync def read(\n    self, transcript: TranscriptInfo, content: TranscriptContent\n) -&gt; Transcript\n\ntranscript TranscriptInfo\n\nTranscript to read.\n\ncontent TranscriptContent\n\nContent to read (e.g. specific message types, etc.)",
+    "text": "Read transcripts for scanning.\nTranscripts may be stored in a TranscriptDB or may be Inspect eval logs.\n\nSource\n\ndef transcripts_from(location: str | Logs) -&gt; Transcripts\n\nlocation str | Logs\n\nTranscripts location. Either a path to a transcript database or path(s) to Inspect eval logs.\n\n\n\n\n\nTranscript info and transcript content (messages and events).\n\nSource\n\nclass Transcript(TranscriptInfo)\n\n\n\nmessages list[ChatMessage]\n\nMain message thread.\n\nevents list[Event]\n\nEvents from transcript.\n\n\n\n\n\n\nCollection of transcripts for scanning.\nTranscript collections can be filtered using the where(), limit(), and ’shuffle()` methods. The transcripts are not modified in place so the filtered transcripts should be referenced via the return value. For example:\nfrom inspect_scout import transcripts, log_metadata as m\n\ntranscripts = transcripts_from(\"./logs\")\ntranscripts = transcripts.where(m.task_name == \"cybench\")\n\nSource\n\nclass Transcripts(abc.ABC)\n\n\n\nwhere\n\nFilter the transcript collection by a Condition.\n\nSource\n\ndef where(self, condition: Condition) -&gt; \"Transcripts\"\n\ncondition Condition\n\nFilter condition.\n\n\n\nfor_validation\n\nFilter transcripts to only those with IDs matching validation cases.\n\nSource\n\ndef for_validation(\n    self, validation: ValidationSet | dict[str, ValidationSet]\n) -&gt; \"Transcripts\"\n\nvalidation ValidationSet | dict[str, ValidationSet]\n\nValidation object containing cases with target IDs.\n\n\n\nlimit\n\nLimit the number of transcripts processed.\n\nSource\n\ndef limit(self, n: int) -&gt; \"Transcripts\"\n\nn int\n\nLimit on transcripts.\n\n\n\nshuffle\n\nShuffle the order of transcripts.\n\nSource\n\ndef shuffle(self, seed: int | None = None) -&gt; \"Transcripts\"\n\nseed int | None\n\nRandom seed for shuffling.\n\n\n\nreader\n\nRead the selected transcripts.\n\nSource\n\n@abc.abstractmethod\ndef reader(self) -&gt; TranscriptsReader\n\n\n\n\nfrom_snapshot\n\nRestore transcripts from a snapshot.\n\nSource\n\n@staticmethod\n@abc.abstractmethod\ndef from_snapshot(snapshot: ScanTranscripts) -&gt; \"Transcripts\"\n\nsnapshot ScanTranscripts\n\n\n\n\n\n\n\n\n\n\nRead transcripts based on a TranscriptsQuery.\n\nSource\n\nclass TranscriptsReader(abc.ABC)\n\n\n\nindex\n\nIndex of TranscriptInfo for the collection.\n\nSource\n\n@abc.abstractmethod\ndef index(self) -&gt; AsyncIterator[TranscriptInfo]\n\n\n\n\nread\n\nRead transcript content.\n\nSource\n\n@abc.abstractmethod\nasync def read(\n    self, transcript: TranscriptInfo, content: TranscriptContent\n) -&gt; Transcript\n\ntranscript TranscriptInfo\n\nTranscript to read.\n\ncontent TranscriptContent\n\nContent to read (e.g. specific message types, etc.)",
     "crumbs": [
       "Reference",
       "Python API",
@@ -865,7 +1077,7 @@
     "href": "reference/scanning.html#status",
     "title": "Scanning",
     "section": "Status",
-    "text": "Status\n\nStatus\nStatus of scan job.\n\nSource\n\n@dataclass\nclass Status\n\nAttributes\n\ncomplete bool\n\nIs the job complete (all transcripts scanned).\n\nspec ScanSpec\n\nScan spec (transcripts, scanners, options).\n\nlocation str\n\nLocation of scan directory.\n\nsummary Summary\n\nSummary of scan (results, errors, tokens, etc.)\n\nerrors list[Error]\n\nErrors during last scan attempt.\n\n\n\n\n\nScanOptions\nOptions used for scan.\n\nSource\n\nclass ScanOptions(BaseModel)\n\nAttributes\n\nmax_transcripts int\n\nMaximum number of concurrent transcripts (defaults to 25).\n\nmax_processes int | None\n\nNumber of worker processes. Defaults to 1.\n\nlimit int | None\n\nTranscript limit (maximum number of transcripts to read).\n\nshuffle bool | int | None\n\nShuffle order of transcripts.\n\n\n\n\n\nScanRevision\nGit revision for scan.\n\nSource\n\nclass ScanRevision(BaseModel)\n\nAttributes\n\ntype Literal['git']\n\nType of revision (currently only “git”)\n\norigin str\n\nRevision origin server\n\nversion str\n\nRevision version (based on tags).\n\ncommit str\n\nRevision commit.\n\n\n\n\n\nScanTranscripts\nTranscripts targeted by a scan.\n\nSource\n\nclass ScanTranscripts(BaseModel)\n\nAttributes\n\ntype Literal['eval_log', 'database']\n\nTranscripts backing store type (‘eval_log’ or ‘database’).\n\nlocation str | None\n\nLocation of transcript collection (e.g. database location).\n\nfields list[TranscriptField]\n\nData types of transcripts fields.\n\ncount int\n\nTrancript count.\n\ndata str\n\nTranscript data as a csv.\n\n\n\n\n\nTranscriptField\nField in transcript data frame.\n\nSource\n\nclass TranscriptField(TypedDict, total=False)\n\nAttributes\n\nname Required[str]\n\nField name.\n\ntype Required[str]\n\nField type (“integer”, “number”, “boolean”, “string”, or “datetime”)\n\ntz NotRequired[str]\n\nTimezone (for “datetime” fields).",
+    "text": "Status\n\nStatus\nStatus of scan job.\n\nSource\n\n@dataclass\nclass Status\n\nAttributes\n\ncomplete bool\n\nIs the job complete (all transcripts scanned).\n\nspec ScanSpec\n\nScan spec (transcripts, scanners, options).\n\nlocation str\n\nLocation of scan directory.\n\nsummary Summary\n\nSummary of scan (results, errors, tokens, etc.)\n\nerrors list[Error]\n\nErrors during last scan attempt.\n\n\n\n\n\nScanOptions\nOptions used for scan.\n\nSource\n\nclass ScanOptions(BaseModel)\n\nAttributes\n\nmax_transcripts int\n\nMaximum number of concurrent transcripts (defaults to 25).\n\nmax_processes int | None\n\nNumber of worker processes. Defaults to 1.\n\nlimit int | None\n\nTranscript limit (maximum number of transcripts to read).\n\nshuffle bool | int | None\n\nShuffle order of transcripts.\n\n\n\n\n\nScanRevision\nGit revision for scan.\n\nSource\n\nclass ScanRevision(BaseModel)\n\nAttributes\n\ntype Literal['git']\n\nType of revision (currently only “git”)\n\norigin str\n\nRevision origin server\n\nversion str\n\nRevision version (based on tags).\n\ncommit str\n\nRevision commit.\n\n\n\n\n\nScanTranscripts\nTranscripts targeted by a scan.\n\nSource\n\nclass ScanTranscripts(BaseModel)\n\nAttributes\n\ntype Literal['eval_log', 'database']\n\nTranscripts backing store type (‘eval_log’ or ‘database’).\n\nlocation str | None\n\nLocation of transcript collection (e.g. database location).\n\ncount int\n\nTrancript count.\n\nfields list[TranscriptField]\n\nData types of transcripts fields.\n\ndata str\n\nTranscript data as a csv.\n\n\n\n\n\nTranscriptField\nField in transcript data frame.\n\nSource\n\nclass TranscriptField(TypedDict, total=False)\n\nAttributes\n\nname Required[str]\n\nField name.\n\ntype Required[str]\n\nField type (“integer”, “number”, “boolean”, “string”, or “datetime”)\n\ntz NotRequired[str]\n\nTimezone (for “datetime” fields).",
     "crumbs": [
       "Reference",
       "Python API"

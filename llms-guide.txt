@@ -471,6 +471,9 @@ See the following articles to learn more about using Scout:
 - [Validation](validation.qmd): Validation of scanner results against
   ground truth target values.
 
+- [Transcripts Database](db_overview.qmd): Creating, populating, and
+  managing transcript databases.
+
 - [Reference](reference/index.qmd): Detailed documentation on the Scout
   Python API and CLI commands.
 
@@ -663,280 +666,19 @@ transcripts database. Transcript databases use
 [Parquet](https://parquet.apache.org) files for storage and can be
 located in the local filesystem or remote systems like S3.
 
-If you have an existing source of transcript data there are several ways
-to create a transcript database (`TranscriptDB`):
-
-1.  [Transcript API](#transcript-api): Read and parse transcripts into
-    `Transcript` objects and use the `TranscriptsDB.insert()` function
-    to add them to the database.
-
-2.  [Arrow Import](#arrow-import): Read an existing set of transcripts
-    stored in Arrow/Parquet and pass them to `TranscriptsDB.insert()` as
-    a PyArrow `RecordBatchReader`.
-
-3.  [Parquet Data Lake](#parquet-data-lake): Point the `TranscriptDB` at
-    an existing data lake (ensuring that the records adhere to the
-    transcript database schema).
-
-We’ll cover each of these scenarios below. First though, we’ll provide a
-review of the transcript database schema.
-
-### Database Schema
-
-In a transcript database, the only strictly required field is
-`transcript_id` (although you’ll almost always want to also include a
-`messages` field as that’s the main thing targeted by most scanners).
-
-You can also include `source_*` fields as a reference to where the
-transcript originated as well as arbitrary other fields (trancript
-metadata) which are then queryable using the `Transcripts` API.
-
-| Field | Description |
-|----|----|
-| `transcript_id` | Required. A globally unique identifier for a transcript. |
-| `source_type` | Optional. Type of transcript source (e.g. “weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the `metadata` field. |
-| `source_id` | Optional. Globally unique identifier for a transcript source (e.g. a project id). |
-| `source_uri` | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript). |
-| `messages` | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history. |
-| `events` | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.) |
-
-#### Metadata
-
-You can include arbitrary other fields in your database which will be
-made available as `Transcript.metadata`. These fields can then be used
-for filtering in calls to `Transcripts.where()`. Note that `metadata`
-columns are forwarded into the results database for scans
-(`transcript_metadata`) so it is generally a good practice to not
-include large amounts of data in these columns.
-
-#### Messages
-
-The `messages` field is a JSON encoded string of `list[ChatMessage]`.
-There are several helper functions available within the `inspect_ai`
-package to assist in converting from the raw message formats of various
-providers to the Inspect `ChatMessage` format:
-
-[TABLE]
-
-The `events` field is less commonly used by scanners so less important
-to provide. It is a JSON-encded list of Inspect AI events
-(e.g. `ModelEvent`, `ToolEvxent`, etc.).
-
-Below we’ll cover the three main ways to populate a transcript database:
-the [Transcript API](#transcript-api), [Arrow Import](#arrow-import),
-and using an existing [Parquet Data Lake](#parquet-data-lake).
-
-### Transcript API
-
-To create a transcripts database, use the `transcripts_db()` function to
-get a `TranscriptsDB` interface and then insert `Transcript` objects. In
-this example imagine we have a `read_weave_transcripts()` function which
-can read transcripts from an external JSON transcript format:
-
-``` python
-from inspect_scout import transcripts_db
-
-from .readers import read_json_transcripts
-
-# create/open database
-async with transcripts_db("s3://my-transcripts") as db:
-
-    # read transcripts to insert
-    transcripts = read_json_transcripts()
-
-    # insert into database
-    await db.insert(transcripts)
-```
-
-Once you’ve created a database and populated it with transcripts, you
-can read from it using `transcripts_from()`:
-
-``` python
-from inspect_scout import scan, transcripts_from
-
-scan(
-    scanners=[...],
-    transcripts=transcripts_from("s3://my-transcripts")
-)
-```
-
-#### Streaming
-
-Each call to `db.insert()` will minimally create one Parquet file, but
-will break transcripts across multiple files as required, limiting the
-size of files to 100MB. This will create a storage layout optimized for
-fast queries and content reading. Consequently, when importing a large
-number of transcripts you should always write a generator to yield
-transcripts rather than making many calls to `db.insert()` (which is
-likely to result in more Parquet files than is ideal).
-
-For example, we might implement `read_json_transcripts()` like this:
-
-``` python
-from pathlib import Path
-from typing import AsyncIterator
-from inspect_scout import Transcript
-
-async def read_json_transcripts(dir: Path) -> AsyncIterator[Transcript]:
-    json_files = list(dir.rglob("*.json"))
-    for json_file in json_files:
-        yield await json_to_transcript(json_file)
-
-async def json_to_transcript(json_file: Path) -> Transcript:
-    # convert json_file to Transcript
-    return Transcript(...)
-```
-
-We can then pass this generator function directly to `db.insert()`:
-
-``` python
-async with transcripts_db("s3://my-transcripts") as db:
-    await db.insert(read_json_transcripts())
-```
-
-Note that transcript insertion is idempotent—once a transcript with a
-given ID has been inserted it will not be inserted again. This means
-that you can safely resume imports that are interrupted, and only new
-transcripts will be added.
-
-#### Transcripts
-
-Here is how we might implement `json_to_transcript()`:
-
-``` python
-from pathlib import Path
-from typing import AsyncIterator
-from inspect_ai.model import (
-    messages_from_openai, model_output_from_openai
-)
-from inspect_scout import Transcript
-
-async def json_to_transcript(json_file: Path) -> Transcript:
-    with open(json_file, "r") as f:
-        json_data: dict[str,Any] = json.loads(f.read())
-        return Transcript(
-            transcript_id = json_data["trace_id"],
-            source_type="abracadabra",
-            source_id=json_data["project_id"],
-            metadata=json_data["attributes"],
-            messages=await json_to_messages(
-                input=json_data["inputs"]["messages"], 
-                output=json_data["output"]
-            )
-        )
-    
-# convert raw model input and output to inspect messages
-async def json_to_messages(
-    input: list[dict[str, Any]], output: dict[str, Any]
-) -> list[ChatMessage]:
-    # start with input messages
-    messages = await messages_from_openai(input)
-
-    # extract and append assistant message from output
-    output = await model_output_from_openai(output)
-    messages.append(output.message)
-
-    # return full message history for transcript
-    return messages
-```
-
-Note that we use the `messages_from_openai()` and
-`model_output_from_openai()` function from `inspect_ai` to convert the
-raw model payloads in the trace data to the correct types for the
-transcript database.
-
-The most important fields to populate are `transcript_id` and
-`messages`. The `source_*` fields are also useful for providing
-additional context. The `metadata` field, while not required, is a
-convenient way to provide additional transcript attributes which may be
-useful for filtering or analysis. The `events` field is not required and
-useful primarily for more complex multi-agent transcripts.
-
-### Arrow Import
-
-In some cases you may already have arrow-accessible data (e.g. from
-Parquet files or a database that supports yielding arrow batches) that
-you want to insert directly into a transcript database. So long as your
-data conforms to the [schema](#database-schema) described above, you can
-do this by passing a PyArrow `RecordBatchReader` to `db.insert()`.
-
-For example, to read from existing Parquet files using the PyArrow
-dataset API:
-
-``` python
-import pyarrow.dataset as ds
-from inspect_scout import transcripts_db
-
-# read from existing parquet files
-dataset = ds.dataset("path/to/parquet/files", format="parquet")
-reader = dataset.scanner().to_reader()
-
-async with transcripts_db("s3://my-transcripts") as db:
-    await db.insert(reader)
-```
-
-You can also use DuckDB to query and transform data before import:
-
-``` python
-import duckdb
-from inspect_scout import transcripts_db
-
-conn = duckdb.connect("my_database.db")
-reader = conn.execute("""
-    SELECT
-        trace_id as transcript_id,
-        messages,
-        'myapp' as source_type,
-        project_id as source_id
-    FROM traces
-""").fetch_record_batch()
-
-async with transcripts_db("s3://my-transcripts") as db:
-    await db.insert(reader)
-```
-
-### Parquet Data Lake
-
-If you have transcripts already stored in Parquet format you don’t need
-to use `db.insert()` at all. So long as your Parquet files conform to
-the [transcript database schema](#database-schema) described above then
-you can read them directly using `transcripts_from()`. For example:
+You can read from a transcript database using the `transcripts_from()`
+function. For example:
 
 ``` python
 from inspect_scout import transcripts_from
 
-# read from an existing parquet data lake
-transcripts = transcripts_from(
-    "s3://my-transcripts-data-lake/cyber"
-)
+# read from a transcript database on S3
+transcripts = transcripts_from("s3://weave-rollouts/cybench")
 ```
 
-### Importing Logs
-
-If you prefer to keep all of your transcripts (including ones from
-Inspect evals) in a transcript database, you can easily import Inspect
-logs as follows:
-
-``` python
-from inspect_scout import transcripts_db, transcripts_from
-
-async with transcripts_db("s3://my-transcript-db/") as db:
-    await db.insert(transcripts_from("./logs"))
-```
-
-You could also insert a filtered list of transcripts:
-
-``` python
-async with transcripts_db("s3://my-transcript-db/") as db:
-
-    transcripts = (
-        transcripts_from("./logs")
-        .where(m.task_name == "cybench")
-        .where(m.model.like("openai/%"))
-    )
-
-    await db.insert(transcripts)
-```
+See the [Transcripts Database](db_overview.qmd) documentation for
+additional details on creating, managing, and publishing transcript
+databases.
 
 # Scanners
 
@@ -2147,4 +1889,536 @@ And for multiple targets:
      deception: false
      backtracks: 0
 ```
+
+# Transcripts Database
+
+
+## Overview
+
+Scout can analyze transcripts from any source (e.g. Agent traces, RL
+rollouts, etc.) so long as the transcripts have been organized into a
+transcripts database. Transcript databases use
+[Parquet](https://parquet.apache.org) files for storage and can be
+located in the local filesystem or remote systems like S3.
+
+The purpose of transcript databases is to provide a common baseline
+format for scanners to read from. You might use transcript databases as
+your cannonical storage for transcripts, or you might alternatively
+store them in another system entirely (e.g. a Postgress database) and
+extract them into a Scout database for a given analysis project.
+
+This documentation covers how to create transcript databases, import
+your transcripts into them, and publish them for use by others. If you
+just want to read existing transcripts see the general article on
+[Transcripts](transcripts.qmd),
+
+## Creating a Database
+
+If you have some existing source of transcript data it is
+straightforward to import it into a Scout database. Transcript databases
+have very few required fields (minimally just `transcript_id` and
+`messages`) but there are other fields that identify the source of the
+transcript that you’ll likely want to populate. You can also include
+arbitrary other columns in the database which can be used to filter
+transcripts.
+
+Use the `transcripts_db()` async context manager to open a connection to
+a database (which can be stored in a local file path or remote file
+system like S3):
+
+``` python
+from inspect_scout import transcripts_db
+
+async with transcripts_db("s3://my-transcripts") as db:
+    # TODO: insert transcripts into db
+```
+
+To insert transcripts, you’ll need to pick one of the supported
+insertion formats and then understand the [Database
+Schema](db_schema.qmd) so you can properly map your data source into the
+database.
+
+Once you understand the schema and have an idea for how you want to map
+your data into it, use one of the following methods to create the
+database:
+
+1.  [Transcript API](db_importing.qmd#transcript-api): Read and parse
+    transcripts into `Transcript` objects and use the
+    `TranscriptsDB.insert()` function to add them to the database.
+
+2.  [Arrow Import](db_importing.qmd#arrow-import): Read an existing set
+    of transcripts stored in Arrow/Parquet and pass them to
+    `TranscriptsDB.insert()` as a PyArrow `RecordBatchReader`.
+
+3.  [Parquet Data Lake](db_importing.qmd#parquet-data-lake): Point the
+    `TranscriptDB` at an existing data lake (ensuring that the records
+    adhere to the transcript database schema).
+
+4.  [Inspect Logs](db_importing.qmd#inspect-logs): Import Inspect AI
+    eval logs from a log directory.
+
+## Publishing Transcripts
+
+If you want to publish transcripts for use by others, it’s important to
+take precautions to ensure that the transcripts are not unintentionally
+read by web crawlers. Some techniques for doing this include using
+protected S3 buckets or permissioned HuggingFace datasets, as well as
+encryping the Parquet files that hold the transcripts. The article on
+[Publishing Transcripts](db_publishing.qmd) includes additional details
+on how to do this.
+
+# Database Schema
+
+
+## Overview
+
+In a transcript database, the only strictly required field is
+`transcript_id` (although you’ll almost always want to also include a
+`messages` field as that’s the main thing targeted by most scanners).
+
+You can also include `source_*` fields as a reference to where the
+transcript originated as well as arbitrary other fields (trancript
+metadata) which are then queryable using the `Transcripts` API.
+
+| Field | Description |
+|----|----|
+| `transcript_id` | Required. A globally unique identifier for a transcript. |
+| `source_type` | Optional. Type of transcript source (e.g. “weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the `metadata` field. |
+| `source_id` | Optional. Globally unique identifier for a transcript source (e.g. a project id). |
+| `source_uri` | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript). |
+| `messages` | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history. |
+| `events` | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.) |
+
+### Metadata
+
+You can include arbitrary other fields in your database which will be
+made available as `Transcript.metadata`. These fields can then be used
+for filtering in calls to `Transcripts.where()`.
+
+Note that `metadata` columns are forwarded into the results database for
+scans (`transcript_metadata`) so it is generally a good practice to not
+include large amounts of data in these columns.
+
+### Messages
+
+The `messages` field is a JSON encoded string of `list[ChatMessage]`.
+There are several helper functions available within the `inspect_ai`
+package to assist in converting from the raw message formats of various
+providers to the Inspect `ChatMessage` format:
+
+[TABLE]
+
+For many straightforward transcripts the list of `messages` will be all
+that is needed for analysis.
+
+## Events
+
+The `events` field is a JSON encoded string of `list[Event]`. Note that
+if your scanners deal entirely in `messages` rather than `events` (as a
+great many do) then it is not necessary to provide events.
+
+Events are typically important when you are either analyzing complex
+multi-agent transcripts or doing very granular scanning for specific
+phenomena (e.g. tool calling errors).
+
+While you can include any of the event types in defined in
+[inspect_ai.event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html),
+there is a subset that is both likely to be of interest and that maps on
+to data provided by observability platforms and/or OTEL traces. These
+include:
+
+| Event | Description |
+|----|----|
+| [ModelEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent) | Generation call to a model. |
+| [ToolEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#toolevent) | Tool call made by a model. |
+| [ErrorEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#errorevent) | Runtime error aborting transcript. |
+| [SpanBeginEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#spanbeginevent) | Mark the beginning of a transcript span (e.g. agent execution, tool call, custom block, etc.) |
+| [SpanEndEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#spanendevent) | Mark the end of a transcript scan |
+
+Most observability systems will have some equivalent of the above in
+their traces. When reconstructing model events you will also likely want
+to use the helper functions mentioned above in [Messages](#messages) for
+converting raw model API payloads to `ChatMessage`.
+
+> [!NOTE]
+>
+> ### Not Required
+>
+> The `events` field is only important if you have scanners that will be
+> doing event analysis. Note that the default `llm_scanner()` provided
+> within Scout looks only at `messages` not `events`.
+
+# Importing Transcripts
+
+
+## Overview
+
+You can populate a transcript database in a variety of ways depending on
+where your transcript data lives and how it is managed:
+
+1.  [Transcript API](#transcript-api): Python API for creating and
+    inserting transcripts;
+
+2.  [Arrow Import](#arrow-import): Efficient direct insertion using
+    `RecordBatchReader`;
+
+3.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake
+    not created using Inspect Scout; and
+
+4.  [Inspect Logs](#inspect-logs): Read transcript data from Inspect
+    eval log files.
+
+We’ll cover each of these in turn below. Before proceeding though you
+should be sure to familiarize yourself with the [Database
+Schema](db_schema.qmd) and make a plan for how you want to map your data
+into it.
+
+## Transcript API
+
+To create a transcripts database, use the `transcripts_db()` function to
+get a `TranscriptsDB` interface and then insert `Transcript` objects. In
+this example imagine we have a `read_weave_transcripts()` function which
+can read transcripts from an external JSON transcript format:
+
+``` python
+from inspect_scout import transcripts_db
+
+from .readers import read_json_transcripts
+
+# create/open database
+async with transcripts_db("s3://my-transcripts") as db:
+
+    # read transcripts to insert
+    transcripts = read_json_transcripts()
+
+    # insert into database
+    await db.insert(transcripts)
+```
+
+Once you’ve created a database and populated it with transcripts, you
+can read from it using `transcripts_from()`:
+
+``` python
+from inspect_scout import scan, transcripts_from
+
+scan(
+    scanners=[...],
+    transcripts=transcripts_from("s3://my-transcripts")
+)
+```
+
+### Streaming
+
+Each call to `db.insert()` will minimally create one Parquet file, but
+will break transcripts across multiple files as required (typically of
+size 75-100MB). This will create a storage layout optimized for fast
+queries and content reading. Consequently, when importing a large number
+of transcripts you should always write a generator to yield transcripts
+rather than making many calls to `db.insert()` (which is likely to
+result in more Parquet files than is ideal).
+
+For example, we might implement `read_json_transcripts()` like this:
+
+``` python
+from pathlib import Path
+from typing import AsyncIterator
+from inspect_scout import Transcript
+
+async def read_json_transcripts(dir: Path) -> AsyncIterator[Transcript]:
+    json_files = list(dir.rglob("*.json"))
+    for json_file in json_files:
+        yield await json_to_transcript(json_file)
+
+async def json_to_transcript(json_file: Path) -> Transcript:
+    # convert json_file to Transcript
+    return Transcript(...)
+```
+
+We can then pass this generator function directly to `db.insert()`:
+
+``` python
+async with transcripts_db("s3://my-transcripts") as db:
+    await db.insert(read_json_transcripts())
+```
+
+Note that transcript insertion is idempotent—once a transcript with a
+given ID has been inserted it will not be inserted again. This means
+that you can safely resume imports that are interrupted, and only new
+transcripts will be added.
+
+### Transcripts
+
+Here is how we might implement `json_to_transcript()`:
+
+``` python
+from pathlib import Path
+from typing import AsyncIterator
+from inspect_ai.model import (
+    messages_from_openai, model_output_from_openai
+)
+from inspect_scout import Transcript
+
+async def json_to_transcript(json_file: Path) -> Transcript:
+    with open(json_file, "r") as f:
+        json_data: dict[str,Any] = json.loads(f.read())
+        return Transcript(
+            transcript_id = json_data["trace_id"],
+            source_type="abracadabra",
+            source_id=json_data["project_id"],
+            metadata=json_data["attributes"],
+            messages=await json_to_messages(
+                input=json_data["inputs"]["messages"], 
+                output=json_data["output"]
+            )
+        )
+    
+# convert raw model input and output to inspect messages
+async def json_to_messages(
+    input: list[dict[str, Any]], output: dict[str, Any]
+) -> list[ChatMessage]:
+    # start with input messages
+    messages = await messages_from_openai(input)
+
+    # extract and append assistant message from output
+    output = await model_output_from_openai(output)
+    messages.append(output.message)
+
+    # return full message history for transcript
+    return messages
+```
+
+Note that we use the `messages_from_openai()` and
+`model_output_from_openai()` function from `inspect_ai` to convert the
+raw model payloads in the trace data to the correct types for the
+transcript database.
+
+The most important fields to populate are `transcript_id` and
+`messages`. The `source_*` fields are also useful for providing
+additional context. The `metadata` field, while not required, is a
+convenient way to provide additional transcript attributes which may be
+useful for filtering or analysis. The `events` field is not required and
+useful primarily for more complex multi-agent transcripts.
+
+## Arrow Import
+
+In some cases you may already have arrow-accessible data (e.g. from
+Parquet files or a database that supports yielding arrow batches) that
+you want to insert directly into a transcript database. So long as your
+data conforms to the [schema](db_schema.qmd), you can do this by passing
+a PyArrow `RecordBatchReader` to `db.insert()`.
+
+For example, to read from existing Parquet files using the PyArrow
+dataset API:
+
+``` python
+import pyarrow.dataset as ds
+from inspect_scout import transcripts_db
+
+# read from existing parquet files
+dataset = ds.dataset("path/to/parquet/files", format="parquet")
+reader = dataset.scanner().to_reader()
+
+async with transcripts_db("s3://my-transcripts") as db:
+    await db.insert(reader)
+```
+
+You can also use DuckDB to query and transform data before import:
+
+``` python
+import duckdb
+from inspect_scout import transcripts_db
+
+conn = duckdb.connect("my_database.db")
+reader = conn.execute("""
+    SELECT
+        trace_id as transcript_id,
+        messages,
+        'myapp' as source_type,
+        project_id as source_id
+    FROM traces
+""").fetch_record_batch()
+
+async with transcripts_db("s3://my-transcripts") as db:
+    await db.insert(reader)
+```
+
+## Parquet Data Lake
+
+If you have transcripts already stored in Parquet format you don’t need
+to use `db.insert()` at all. So long as your Parquet files conform to
+the [transcript database schema](db_schema.qmd) then you can read them
+directly using `transcripts_from()`. For example:
+
+``` python
+from inspect_scout import transcripts_from
+
+# read from an existing parquet data lake
+transcripts = transcripts_from(
+    "s3://my-transcripts-data-lake/cyber"
+)
+```
+
+## Inspect Logs
+
+If you prefer to keep all of your transcripts (including ones from
+Inspect evals) in a transcript database, you can easily import Inspect
+logs as follows:
+
+``` python
+from inspect_scout import transcripts_db, transcripts_from
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(transcripts_from("./logs"))
+```
+
+You could also insert a filtered list of transcripts:
+
+``` python
+async with transcripts_db("s3://my-transcript-db/") as db:
+
+    transcripts = (
+        transcripts_from("./logs")
+        .where(m.task_name == "cybench")
+        .where(m.model.like("openai/%"))
+    )
+
+    await db.insert(transcripts)
+```
+
+# Publishing Transcripts
+
+
+## Overview
+
+In this article we’ll cover recommended ways to publish transcript
+databases for use by others. Whenever publishing transcripts you should
+be mindful to do everything you can to prevent them from entering the
+training data of models (as this may “leak” benchmark datasets). The
+main mitigations available for this are:
+
+1.  Making access to the transcripts authenticated (e.g. S3 or Hugging
+    Face); and
+
+2.  Encrypting the transcript database files so that if they are
+    republished in an unauthenticated context that crawlers won’t be
+    able to read them.
+
+We’ll cover both of these scenarios in detail below.
+
+## Hugging Face
+
+Publishing transcript databases as a [Hugging Face
+Dataset](https://huggingface.co/datasets) is useful when you want to
+share with a broader audience. Benefits of using Hugging Face include:
+
+1.  You can make access private to only your account or organization.
+
+2.  You can create a [Gated
+    Dataset](https://huggingface.co/docs/hub/datasets-gated) that
+    requires users to provide contact information and optionally abide
+    by a usage agreement and share other information to obtain access.
+
+See the Hugging Face documentation on [uploading
+datasets](https://huggingface.co/docs/hub/datasets-adding) for details
+on how to create datasets. For transcript databases, you can just upload
+the parquet file(s) into the root of the dataset repository.
+
+To access a dataset on Hugging Face:
+
+1.  Install the `huggingface_hub` Python package:
+
+    ``` bash
+    pip install huggingface_hub
+    ```
+
+2.  Configure credentials either by setting the `HF_TOKEN` environment
+    variable or via login:
+
+    ``` bash
+    hf auth login
+    ```
+
+3.  Refer to your dataset in a scout scan using the `hf://` protocol.
+    For example:
+
+    ``` bash
+    scout scan scanner.py -T hf://datasets/account-name/dataset-name
+    ```
+
+See [Encryption](#encryption) below for details on adding encryption to
+database files as an additional measure of protection from crawlers.
+
+## S3
+
+Publishing transcripst databases to AWS
+[S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html)
+enables you to configure authenticated access using S3 credentials. S3
+buckets support a wide variety of options for authorization (see the
+[documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-management.html)
+for further details).
+
+After you have uploaded the parquet file(s) for your transcript database
+to an S3 bucket, you can refer to it in a scout scan using the `s3://`
+protocol. For example:
+
+``` bash
+scout scan scanner.py -T s3://my-transcript-databases/database-name
+```
+
+See [Encryption](#encryption) below for details on adding encryption to
+database files as an additional measure of protection from crawlers.
+
+## Encryption
+
+You can optionally use encryption to provide further protection for
+transcript databases. To encrypt a database, use the `scout db encrypt`
+command, passing it a valid AES encryption key (16, 24, or 32 bytes).
+For example:
+
+``` bash
+scout db encrypt /path/to/my/database \
+   --output-dir /path/to/my/database-enc \
+   --key 0123456789abcdef
+```
+
+If you don’t want to include the key in a script, you can also pass it
+via stdin (`--key -`) or pass it via the `SCOUT_DB_ENCRYPTION_KEY`
+environment variable.
+
+### Reading Encrypted Databases
+
+When using an encrypted database during a scan, you should set the
+`SCOUT_DB_ENCRYPTION_KEY` environment variable to the appropriate key.
+For example:
+
+``` bash
+export SCOUT_DB_ENCRYPTION_KEY=0123456789abcdef
+scout scan scanner.py -T /path/to/my/database-enc
+```
+
+You can also decrypt the database using the `scout db decrypt` command:
+
+``` bash
+scout db decrypt /path/to/my/database-enc \
+    --output-dir /path/to/my/database \
+    --key 0123456789abcdef
+```
+
+### Limitations
+
+Scout uses DuckDB [Parquet
+Encryption](https://duckdb.org/docs/stable/data/parquet/encryption) to
+implement encryption. While this will provide additional protection for
+data, there are some drawbacks:
+
+1.  It is not currently compatible with the encryption of, e.g.,
+    PyArrow, so encrypted Parquet files will currently only be readable
+    with DuckDB.
+
+2.  Compression ratios for encrypted Parquet are much lower than for
+    unencrypted (e.g. database files might be 5-8 times larger).
+
+3.  Read performance may be a bit slower due to decryption (but it’s
+    unlikely this will matter as most time in scanning is spent on
+    inference not reading).
 

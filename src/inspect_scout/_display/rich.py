@@ -61,7 +61,7 @@ class DisplayRich(Display):
         console.print(*objects, sep=sep, end=end, markup=markup, highlight=False)
 
     @contextlib.contextmanager
-    def text_progress(self, caption: str, count: bool) -> Iterator[TextProgress]:
+    def text_progress(self, caption: str, count: bool | int) -> Iterator[TextProgress]:
         with TextProgressRich(caption, count) as progress:
             yield progress
 
@@ -200,16 +200,21 @@ class TextProgressRich(TextProgress):
     def __init__(
         self,
         caption: str,
-        count: bool,
+        count: bool | int,
     ):
         self._caption = caption
         self._count = count
         text_column_fmt = "[blue]{task.description}:[/blue] [meta]{task.fields[text]}"
         if self._count:
             text_column_fmt = text_column_fmt + " - {task.completed:,}"
+            if not isinstance(self._count, bool):
+                text_column_fmt = text_column_fmt + "/{task.total:,}"
+
         text_column_fmt = text_column_fmt + "[/meta]"
         self._progress = Progress(SpinnerColumn(), TextColumn(text_column_fmt))
-        self._task_id = self._progress.add_task(caption, total=None, text="(preparing)")
+        self._task_id = self._progress.add_task(
+            caption, total=count if isinstance(count, int) else None, text="(preparing)"
+        )
         self._started = False
 
     def __enter__(self) -> "TextProgress":

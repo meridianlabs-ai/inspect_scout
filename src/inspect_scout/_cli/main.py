@@ -3,6 +3,7 @@ from inspect_ai._util.error import set_exception_hook
 
 from .. import __version__
 from .._scan import init_environment
+from .db import db_command
 from .info import info_command
 from .scan import scan_command
 from .scan_complete import scan_complete_command
@@ -43,6 +44,7 @@ scan_command.add_command(scan_status_command)
 scout.add_command(view_command)
 scout.add_command(trace_command)
 scout.add_command(info_command)
+scout.add_command(db_command)
 
 
 def main() -> None:

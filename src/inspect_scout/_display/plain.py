@@ -39,7 +39,7 @@ class DisplayPlain(Display):
         console.print(*objects, sep=sep, end=end, markup=markup, highlight=False)
 
     @contextlib.contextmanager
-    def text_progress(self, caption: str, count: bool) -> Iterator[TextProgress]:
+    def text_progress(self, caption: str, count: bool | int) -> Iterator[TextProgress]:
         yield TextProgressPlain(caption, count, self.print)
 
     @contextlib.contextmanager
@@ -139,7 +139,7 @@ class TextProgressPlain(TextProgress):
     def __init__(
         self,
         caption: str,
-        count: bool,
+        count: bool | int,
         print: Callable[..., None],
     ):
         self._caption = caption
@@ -151,7 +151,9 @@ class TextProgressPlain(TextProgress):
         self._total += 1
         msg = f"{self._caption}: {text}"
         if self._count:
-            msg = f"{msg} - {self._total}"
+            msg = f"{msg} - {(self._total,)}"
+            if not isinstance(self._count, bool):
+                msg = f"{msg}/{(self._count,)}"
         if self._total == 1:
             self._print(msg)
         else:

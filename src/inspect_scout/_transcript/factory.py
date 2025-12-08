@@ -12,6 +12,7 @@ from inspect_scout._util.constants import (
     TRANSCRIPT_SOURCE_DATABASE,
     TRANSCRIPT_SOURCE_EVAL_LOG,
 )
+from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 
 def transcripts_from(location: str | Logs) -> Transcripts:
@@ -67,6 +68,9 @@ def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "databa
         otherwise "eval_log"
     """
     from inspect_scout._transcript.database.parquet import PARQUET_TRANSCRIPTS_GLOB
+
+    # ensure any filesystem depenencies (as we'll be probing the fs w/ UPath)
+    ensure_filesystem_dependencies(str(location))
 
     location_path = UPath(location)
 

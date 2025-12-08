@@ -3,6 +3,7 @@
 import glob
 import hashlib
 import json
+import os
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -25,6 +26,7 @@ from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
+from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import init_task_files_cache
@@ -114,25 +116,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Initialize filesystem and cache
             assert self._location is not None
-            if self._location.startswith("s3://"):
+            if self._is_s3() or self._is_hf():
+                # will use to enumerate files
+                self._fs = AsyncFilesystem()
+
                 # Install httpfs extension for S3 support
                 self._conn.execute("INSTALL httpfs")
                 self._conn.execute("LOAD httpfs")
-
-                # Create secret that automatically picks up credentials from environment
-                self._conn.execute("""
-                    CREATE SECRET (
-                        TYPE S3,
-                        PROVIDER credential_chain
-                    )
-                """)
 
                 # Enable DuckDB's HTTP/S3 caching features for better performance
                 self._conn.execute("SET enable_http_metadata_cache=true")
                 self._conn.execute("SET http_keep_alive=true")
                 self._conn.execute("SET http_timeout=30000")  # 30 seconds
 
-                self._fs = AsyncFilesystem()
+                # auth
+                if self._is_s3():
+                    self._init_s3_auth()
+                if self._is_hf():
+                    self._init_hf_auth()
 
         # Discover and register Parquet files
         await self._create_transcripts_table()
@@ -1164,7 +1165,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             List of file paths (local or S3 URIs).
         """
         assert self._location is not None
-        if self._location.startswith("s3://"):
+        if self._is_s3() or self._is_hf():
             assert self._fs is not None
             assert self._cache is not None
 
@@ -1268,6 +1269,39 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return _iter()
 
+    def _is_s3(self) -> bool:
+        return self._location is not None and self._location.startswith("s3://")
+
+    def _init_s3_auth(self) -> None:
+        assert self._conn is not None
+        self._conn.execute("""
+            CREATE SECRET (
+                TYPE S3,
+                PROVIDER credential_chain
+            )
+        """)
+
+    def _is_hf(self) -> bool:
+        return self._location is not None and self._location.startswith("hf://")
+
+    def _init_hf_auth(self) -> None:
+        assert self._conn is not None
+        hf_token = os.environ.get("HF_TOKEN", None)
+        if hf_token:
+            self._conn.execute(f"""
+                CREATE SECRET hf_token (
+                    TYPE huggingface,
+                    TOKEN '{hf_token}'
+                )
+            """)
+        else:
+            self._conn.execute("""
+                CREATE SECRET hf_token (
+                    TYPE huggingface,
+                    PROVIDER credential_chain
+                )
+            """)
+
 
 class ParquetTranscripts(Transcripts):
     """Collection of transcripts stored in Parquet files.
@@ -1289,6 +1323,9 @@ class ParquetTranscripts(Transcripts):
         super().__init__()
         self._location = location
         self._db: ParquetTranscriptsDB | None = None
+
+        # ensure any filesystem depenencies
+        ensure_filesystem_dependencies(location)
 
     @override
     def reader(self) -> TranscriptsReader:

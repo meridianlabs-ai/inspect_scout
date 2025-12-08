@@ -13,6 +13,7 @@ from inspect_ai._eval.context import init_model_context
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
+from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
@@ -22,7 +23,6 @@ from inspect_ai.model._model import Model, init_model_usage, model_usage, resolv
 from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
-    model_to_model_config,
 )
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
@@ -42,7 +42,6 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
-from ._concurrency._mp_common import ModelContext
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -251,7 +250,13 @@ async def scan_async(
 
     # initialize scan config
     scanjob._max_transcripts = (
-        max_transcripts or scanjob._max_transcripts or DEFAULT_MAX_TRANSCRIPTS
+        max_transcripts
+        or scanjob._max_transcripts
+        or (
+            DEFAULT_MAX_TRANSCRIPTS
+            if scanjob.generate_config is None or not scanjob.generate_config.batch
+            else DEFAULT_MAX_CONNECTIONS_BATCH
+        )
     )
     scanjob._max_processes = max_processes or scanjob._max_processes
     scanjob._limit = limit or scanjob._limit
@@ -670,8 +675,8 @@ async def _scan_async_inner(
                     return results
 
                 prefetch_multiple = 1.0
-                max_tasks = (scan.spec.options.max_transcripts or 25) * len(
-                    scan.scanners
+                max_tasks = min(
+                    total_scans, scan.spec.options.max_transcripts * len(scan.scanners)
                 )
 
                 diagnostics = os.getenv("SCOUT_DIAGNOSTICS", "false").lower() in (
@@ -816,14 +821,6 @@ def init_scan_model_context(
     resolved_model_roles = resolve_model_roles(model_roles)
     if not model_config:
         model_config = GenerateConfig()
-
-    set_model_context(
-        ModelContext(
-            model_config=model_to_model_config(model),
-            model_roles=resolved_model_roles,
-            config=model_config,
-        )
-    )
 
     init_model_context(
         model=model,

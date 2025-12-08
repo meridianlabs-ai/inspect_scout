@@ -427,21 +427,26 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
     else:
         # add scanjob directory to sys.path for imports
         scanjob_dir = scanjob_path.parent.as_posix()
-        _mp_common.register_plugin_directory(scanjob_dir)
 
         with add_to_syspath(scanjob_dir):
             load_module(scanjob_path)
-            scanjob_decorators = parse_decorators(scanjob_path, "scanjob")
-            if job is not None and job in [deco[0] for deco in scanjob_decorators]:
-                return scanjob_create(job, scanjob_args)
-            elif len(scanjob_decorators) > 1:
+            decorator_names = [
+                deco[0] for deco in parse_decorators(scanjob_path, "scanjob")
+            ]
+
+            if job is not None and job in decorator_names:
+                job_name = job
+            elif len(decorator_names) > 1:
                 raise PrerequisiteError(
                     f"More than one @scanjob decorated function found in '{file}. Please use file@job to designate a specific job"
                 )
-            elif job is None and len(scanjob_decorators) == 1:
-                return scanjob_create(scanjob_decorators[0][0], scanjob_args)
+            elif job is None and len(decorator_names) == 1:
+                job_name = decorator_names[0]
             else:
                 return None
+
+            _mp_common.register_plugin_directory(scanjob_dir)
+            return scanjob_create(job_name, scanjob_args)
 
 
 def scanjob_create(name: str, params: dict[str, Any]) -> ScanJob:

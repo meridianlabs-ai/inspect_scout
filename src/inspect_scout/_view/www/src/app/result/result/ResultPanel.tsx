@@ -5,9 +5,11 @@ import { ChatView } from "../../../chat/ChatView";
 import { messagesFromEvents } from "../../../chat/messages";
 import { Card, CardBody } from "../../../components/Card";
 import { LabeledValue } from "../../../components/LabeledValue";
+import { MarkdownReference } from "../../../components/MarkdownDivWithReferences";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
 import { ScannerData } from "../../types";
+import { useMarkdownRefs } from "../../utils/refs";
 import { Explanation } from "../../values/Explanation";
 import { ValidationResult } from "../../values/ValidationResult";
 import { Value } from "../../values/Value";
@@ -25,6 +27,8 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
     }
     return [];
   }, [result?.scanEvents]);
+
+  const refs: MarkdownReference[] = useMarkdownRefs(result);
 
   return (
     result && (
@@ -56,6 +60,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
                 style="block"
                 maxTableSize={1000}
                 interactive={true}
+                references={refs}
               />
               {result.validationResult !== undefined ? (
                 <div className={clsx(styles.validation)}>
@@ -77,7 +82,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
               Explanation
             </div>
             <div>
-              <Explanation result={result} />
+              <Explanation result={result} references={refs} />
             </div>
             {result.metadata && Object.keys(result.metadata).length > 0 && (
               <>
@@ -87,7 +92,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
                   Metadata
                 </div>
                 <div>
-                  <MetaDataGrid entries={result.metadata} />
+                  <MetaDataGrid entries={result.metadata} references={refs} />
                 </div>
               </>
             )}

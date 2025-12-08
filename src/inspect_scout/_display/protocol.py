@@ -24,7 +24,9 @@ class Display(abc.ABC):
     ) -> None: ...
 
     @contextlib.contextmanager
-    def text_progress(self, caption: str, count: bool) -> Iterator["TextProgress"]:
+    def text_progress(
+        self, caption: str, count: bool | int
+    ) -> Iterator["TextProgress"]:
         yield TextProgressNone()
 
     @contextlib.contextmanager

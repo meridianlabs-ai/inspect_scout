@@ -59,7 +59,7 @@ export const MarkdownDivWithReferences = forwardRef<
       references?.forEach((ref) => {
         // Escape special regex characters in the cite text
         const escapedCite = ref.cite.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regex = new RegExp(escapedCite, "g");
+        const regex = new RegExp(`${escapedCite}(?![a-zA-Z0-9])`, "g");
 
         const href = ref.citeUrl || "javascript:void(0)";
         const replacement = `<a href="${href}" class="${styles.cite}" data-ref-id="${ref.id}">${ref.cite}</a>`;

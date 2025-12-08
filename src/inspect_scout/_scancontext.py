@@ -22,8 +22,6 @@ from inspect_ai.model._model_config import (
 )
 
 from inspect_scout._scanspec import ScanTranscripts
-from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
-from inspect_scout._transcript.eval_log import EvalLogTranscripts
 from inspect_scout._util.constants import (
     DEFAULT_MAX_TRANSCRIPTS,
     PKG_NAME,
@@ -218,8 +216,12 @@ def job_args(scanjob: ScanJob) -> dict[str, Any] | None:
 
 async def _transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
     if snapshot.type == TRANSCRIPT_SOURCE_EVAL_LOG:
-        return EvalLogTranscripts(snapshot)
+        from inspect_scout._transcript.eval_log import EvalLogTranscripts
+
+        return EvalLogTranscripts.from_snapshot(snapshot)
     elif snapshot.type == TRANSCRIPT_SOURCE_DATABASE:
-        return transcripts_from_db_snapshot(snapshot)
+        from inspect_scout._transcript.database.parquet import ParquetTranscripts
+
+        return ParquetTranscripts.from_snapshot(snapshot)
     else:
         raise ValueError(f"Unrecognized transcript type '{snapshot.type}")

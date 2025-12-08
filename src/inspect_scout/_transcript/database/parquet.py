@@ -3,6 +3,7 @@
 import glob
 import hashlib
 import json
+import os
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -16,13 +17,17 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._display._display import display
+from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
+from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import init_task_files_cache
@@ -34,6 +39,12 @@ from ..transcripts import (
 )
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
+from .encryption import (
+    ENCRYPTION_KEY_ENV,
+    ENCRYPTION_KEY_NAME,
+    get_encryption_key_from_env,
+    validate_encryption_key,
+)
 from .reader import TranscriptsDBReader
 from .source import TranscriptsSource
 
@@ -91,6 +102,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._file_columns_cache: dict[str, set[str]] = {}
         self._parquet_pattern: str | None = None
         self._exclude_clause: str = ""
+        self._is_encrypted: bool = False
 
     @override
     async def connect(self) -> None:
@@ -112,25 +124,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Initialize filesystem and cache
             assert self._location is not None
-            if self._location.startswith("s3://"):
+            if self._is_s3() or self._is_hf():
+                # will use to enumerate files
+                self._fs = AsyncFilesystem()
+
                 # Install httpfs extension for S3 support
                 self._conn.execute("INSTALL httpfs")
                 self._conn.execute("LOAD httpfs")
-
-                # Create secret that automatically picks up credentials from environment
-                self._conn.execute("""
-                    CREATE SECRET (
-                        TYPE S3,
-                        PROVIDER credential_chain
-                    )
-                """)
 
                 # Enable DuckDB's HTTP/S3 caching features for better performance
                 self._conn.execute("SET enable_http_metadata_cache=true")
                 self._conn.execute("SET http_keep_alive=true")
                 self._conn.execute("SET http_timeout=30000")  # 30 seconds
 
-                self._fs = AsyncFilesystem()
+                # auth
+                if self._is_s3():
+                    self._init_s3_auth()
+                if self._is_hf():
+                    self._init_hf_auth()
 
         # Discover and register Parquet files
         await self._create_transcripts_table()
@@ -358,8 +369,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             filename = filename_result[0]
 
             # Try optimistic read first (fast path for files with all columns)
+            enc_config = self._read_parquet_encryption_config()
             try:
-                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
                 result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
                 columns_read = columns  # All requested columns were available
             except duckdb.BinderException:
@@ -378,7 +390,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     )
 
                 # Retry with only available columns
-                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
                 result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
 
             if not result:
@@ -643,38 +655,53 @@ class ParquetTranscriptsDB(TranscriptsDB):
             row: Row dict from _transcript_to_row().
 
         Returns:
-            Estimated size in bytes.
+            Estimated size in bytes (accounting for compression).
         """
-        size = 0
+        json_array_size = 0  # messages, events - compress very well
+        other_size = 0  # metadata fields - compress modestly
 
-        for value in row.values():
+        for key, value in row.items():
             if value is None:
                 continue  # NULL values have minimal overhead
             elif isinstance(value, str):
-                size += len(
-                    value
-                )  # Already serialized (messages, events, JSON metadata)
+                if key in ("messages", "events"):
+                    json_array_size += len(value)
+                else:
+                    other_size += len(value)
             elif isinstance(value, bool):
-                size += 1  # Boolean stored as 1 byte
+                other_size += 1  # Boolean stored as 1 byte
             elif isinstance(value, (int, float)):
-                size += 8  # 64-bit numeric types
+                other_size += 8  # 64-bit numeric types
 
-        # Add overhead for Parquet columnar format (conservative 1.2x)
-        return int(size * 1.2)
+        # JSON arrays (messages/events) compress extremely well (~25x with zstd)
+        # Metadata fields compress more modestly (~5x)
+        return int(json_array_size * 0.04 + other_size * 0.2)
 
     def _estimate_batch_size(self, batch: pa.RecordBatch) -> int:
         """Estimate size of Arrow batch in bytes.
 
-        Uses batch.nbytes as primary estimate with 1.2x overhead factor
-        to match existing _estimate_row_size behavior.
+        Estimates compressed size by applying different compression factors
+        to JSON array columns (messages/events) vs other columns.
 
         Args:
             batch: PyArrow RecordBatch to estimate size for.
 
         Returns:
-            Estimated size in bytes.
+            Estimated size in bytes (accounting for compression).
         """
-        return int(batch.nbytes * 1.2)
+        json_array_size = 0
+        other_size = 0
+
+        for i, name in enumerate(batch.schema.names):
+            col_size = batch.column(i).nbytes
+            if name in ("messages", "events"):
+                json_array_size += col_size
+            else:
+                other_size += col_size
+
+        # JSON arrays (messages/events) compress extremely well (~25x with zstd)
+        # Metadata fields compress more modestly (~5x)
+        return int(json_array_size * 0.04 + other_size * 0.2)
 
     def _validate_record_batch_schema(self, schema: pa.Schema) -> None:
         """Validate that RecordBatch schema meets requirements.
@@ -753,8 +780,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         if filename not in self._file_columns_cache:
             assert self._conn is not None
+            enc_config = self._read_parquet_encryption_config()
             schema_result = self._conn.execute(
-                "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
+                f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?{enc_config}))",
                 [filename],
             ).fetchall()
             self._file_columns_cache[filename] = {row[0] for row in schema_result}
@@ -975,6 +1003,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Discover Parquet files
             file_paths = await self._discover_parquet_files()
 
+            # Check for encrypted files and register key if needed
+            if file_paths:
+                self._is_encrypted = self._check_encryption_status(file_paths)
+                if self._is_encrypted:
+                    key = get_encryption_key_from_env()
+                    if not key:
+                        raise PrerequisiteError(
+                            f"Encrypted database detected but no encryption key provided. "
+                            f"Set the {ENCRYPTION_KEY_ENV} environment variable."
+                        )
+                    try:
+                        validate_encryption_key(key)
+                    except ValueError as e:
+                        raise PrerequisiteError(str(e)) from e
+                    self._conn.execute(
+                        f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')"
+                    )
+
             if not file_paths:
                 # Create empty structures with minimal schema
                 self._conn.execute("""
@@ -1009,10 +1055,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # 1. Create small index table (just transcript_id + filename)
             # Apply pre-filter if provided (WHERE/SHUFFLE/LIMIT)
+            enc_config = self._read_parquet_encryption_config()
             index_sql = f"""
                 CREATE TABLE transcript_index AS
                 SELECT transcript_id, filename
-                FROM read_parquet({pattern}, union_by_name=true, filename=true)
+                FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
             """
             params: list[Any] = []
 
@@ -1063,8 +1110,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
+        enc_config = self._read_parquet_encryption_config()
         schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'))"
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'{enc_config}))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
@@ -1089,8 +1137,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
+        enc_config = self._read_parquet_encryption_config()
         schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true{enc_config}))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
@@ -1112,6 +1161,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
+        enc_config = self._read_parquet_encryption_config()
+
         # Build VIEW SQL based on whether pre-filter was applied
         def build_view_sql(exclude_clause: str) -> str:
             if self._query and (
@@ -1121,7 +1172,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT p.*{exclude_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true) p
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config}) p
                     INNER JOIN transcript_index i ON p.transcript_id = i.transcript_id
                 """
             else:
@@ -1129,7 +1180,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT *{exclude_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true)
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
                 """
 
         # Try with exclude clause from first file (fast path)
@@ -1147,7 +1198,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             List of file paths (local or S3 URIs).
         """
         assert self._location is not None
-        if self._location.startswith("s3://"):
+        if self._is_s3() or self._is_hf():
             assert self._fs is not None
             assert self._cache is not None
 
@@ -1187,6 +1238,40 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     str(location_path / "**" / PARQUET_TRANSCRIPTS_GLOB), recursive=True
                 )
             )
+
+    def _check_encryption_status(self, file_paths: list[str]) -> bool:
+        """Check if database files are encrypted and validate consistency.
+
+        Args:
+            file_paths: List of parquet file paths.
+
+        Returns:
+            True if all files are encrypted, False if all unencrypted.
+
+        Raises:
+            ValueError: If database contains a mix of encrypted and unencrypted files.
+        """
+        encrypted_count = sum(1 for f in file_paths if f.endswith(".enc.parquet"))
+        unencrypted_count = len(file_paths) - encrypted_count
+
+        if encrypted_count > 0 and unencrypted_count > 0:
+            raise ValueError(
+                f"Database contains mixed encrypted ({encrypted_count}) and "
+                f"unencrypted ({unencrypted_count}) parquet files. "
+                "All files must be either encrypted or unencrypted."
+            )
+
+        return encrypted_count > 0
+
+    def _read_parquet_encryption_config(self) -> str:
+        """Get encryption config string for read_parquet calls.
+
+        Returns:
+            Empty string if not encrypted, or encryption config parameter.
+        """
+        if self._is_encrypted:
+            return f", encryption_config={{footer_key: '{ENCRYPTION_KEY_NAME}'}}"
+        return ""
 
     def _have_transcript(self, transcript_id: str) -> bool:
         return transcript_id in (self._transcript_ids or set())
@@ -1251,6 +1336,39 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return _iter()
 
+    def _is_s3(self) -> bool:
+        return self._location is not None and self._location.startswith("s3://")
+
+    def _init_s3_auth(self) -> None:
+        assert self._conn is not None
+        self._conn.execute("""
+            CREATE SECRET (
+                TYPE S3,
+                PROVIDER credential_chain
+            )
+        """)
+
+    def _is_hf(self) -> bool:
+        return self._location is not None and self._location.startswith("hf://")
+
+    def _init_hf_auth(self) -> None:
+        assert self._conn is not None
+        hf_token = os.environ.get("HF_TOKEN", None)
+        if hf_token:
+            self._conn.execute(f"""
+                CREATE SECRET hf_token (
+                    TYPE huggingface,
+                    TOKEN '{hf_token}'
+                )
+            """)
+        else:
+            self._conn.execute("""
+                CREATE SECRET hf_token (
+                    TYPE huggingface,
+                    PROVIDER credential_chain
+                )
+            """)
+
 
 class ParquetTranscripts(Transcripts):
     """Collection of transcripts stored in Parquet files.
@@ -1273,6 +1391,9 @@ class ParquetTranscripts(Transcripts):
         self._location = location
         self._db: ParquetTranscriptsDB | None = None
 
+        # ensure any filesystem depenencies
+        ensure_filesystem_dependencies(location)
+
     @override
     def reader(self) -> TranscriptsReader:
         """Get a reader for querying transcripts.
@@ -1282,6 +1403,12 @@ class ParquetTranscripts(Transcripts):
         """
         db = ParquetTranscriptsDB(self._location, query=self._query)
         return TranscriptsDBReader(db)
+
+    @staticmethod
+    @override
+    def from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+        """Restore transcripts from a snapshot."""
+        return transcripts_from_db_snapshot(snapshot)
 
 
 def _validate_metadata_keys(metadata: dict[str, Any]) -> None:

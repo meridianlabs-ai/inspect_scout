@@ -225,3 +225,6 @@ src/inspect_scout/_version.py
 
 # dist builds
 /src/inspect_scout/_view/www/*.tgz
+
+# test data
+/examples/test-db

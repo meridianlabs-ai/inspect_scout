@@ -1,6 +1,7 @@
 import shlex
 
 from inspect_ai._display.core.rich import rich_theme
+from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.registry import is_model_dict, is_registry_dict
 from inspect_ai._util.rich import rich_traceback
@@ -71,12 +72,26 @@ def scan_config_str(spec: ScanSpec) -> str:
         if is_model_dict(value):
             scan_args[key] = value["model"]
 
-    scan_options = spec.options.model_dump(exclude_none=True)
+    batch_in_use = spec.model.config.batch is not None if spec.model else False
+    hide_max_connections = batch_in_use
+    hide_max_transcripts = (
+        batch_in_use and spec.options.max_transcripts == DEFAULT_MAX_CONNECTIONS_BATCH
+    )
+
+    scan_options = spec.options.model_dump(
+        exclude_none=True,
+        exclude="max_transcripts" if hide_max_transcripts else None,
+    )
 
     config = scan_args | scan_options
 
     if spec.model:
-        config = config | dict(spec.model.config.model_dump(exclude_none=True))
+        config = config | dict(
+            spec.model.config.model_dump(
+                exclude_none=True,
+                exclude="max_connections" if hide_max_connections else None,
+            )
+        )
         config["model"] = spec.model.model
 
     if spec.tags:

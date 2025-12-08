@@ -2,12 +2,14 @@ import clsx from "clsx";
 import { FC, memo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
+import { MarkdownReference } from "../../../../components/MarkdownDivWithReferences";
 import {
   getRelativePathFromParams,
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { ScannerCore } from "../../../types";
+import { useMarkdownRefs } from "../../../utils/refs";
 import { Error } from "../../../values/Error";
 import { Explanation } from "../../../values/Explanation";
 import { Identifier } from "../../../values/Identifier";
@@ -50,6 +52,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const hasErrors = gridDescriptor.columns.includes("error");
   const hasValidations = gridDescriptor.columns.includes("validations");
 
+  // refs
+  const refs: MarkdownReference[] = useMarkdownRefs(entry);
+
   const grid = (
     <div
       style={gridDescriptor.gridStyle}
@@ -70,7 +75,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
       </div>
       {hasExplanation && (
         <div className={clsx(styles.explanation, "text-size-smaller")}>
-          <Explanation result={entry} />
+          <Explanation result={entry} references={refs} />
         </div>
       )}
       {hasLabel && (
@@ -89,7 +94,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
       )}
 
       <div className={clsx(styles.value, "text-size-smaller")}>
-        {!entry.scanError && <Value result={entry} style="inline" />}
+        {!entry.scanError && (
+          <Value result={entry} style="inline" references={refs} />
+        )}
       </div>
       {hasValidations && (
         <div className={clsx("text-size-smaller")}>

@@ -29,7 +29,7 @@ from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 
-from inspect_scout._concurrency._mp_common import set_log_level, set_model_context
+from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.database.parquet import ParquetTranscripts
 from inspect_scout._transcript.local_files_cache import (

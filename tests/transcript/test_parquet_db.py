@@ -701,8 +701,9 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
 
     # Create database with specific size targets for predictable partitioning
     # Use very small sizes to ensure multiple files and row groups
-    target_file_size_mb = 0.05  # 50KB per file
-    row_group_size_mb = 0.02  # 20KB per row group
+    # (sizes account for compression-aware estimation in ParquetTranscriptsDB)
+    target_file_size_mb = 0.002  # 2KB per file
+    row_group_size_mb = 0.001  # 1KB per row group
     parquet_db = ParquetTranscriptsDB(
         str(test_location),
         target_file_size_mb=target_file_size_mb,

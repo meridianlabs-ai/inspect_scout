@@ -22,14 +22,13 @@ from inspect_ai.model._model import Model, init_model_usage, model_usage, resolv
 from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
-    model_to_model_config,
 )
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 
-from inspect_scout._concurrency._mp_common import set_log_level, set_model_context
+from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._transcript.database.parquet import ParquetTranscripts
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
@@ -41,7 +40,6 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
-from ._concurrency._mp_common import ModelContext
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -794,14 +792,6 @@ def init_scan_model_context(
     resolved_model_roles = resolve_model_roles(model_roles)
     if not model_config:
         model_config = GenerateConfig()
-
-    set_model_context(
-        ModelContext(
-            model_config=model_to_model_config(model),
-            model_roles=resolved_model_roles,
-            config=model_config,
-        )
-    )
 
     init_model_context(
         model=model,

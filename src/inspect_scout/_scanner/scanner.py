@@ -415,7 +415,6 @@ def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[
 
     # add file directory to sys.path for imports
     scanner_dir = scanner_path.parent.as_posix()
-    register_plugin_directory(scanner_dir)
 
     with add_to_syspath(scanner_dir):
         # create scanners
@@ -437,6 +436,8 @@ def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[
             scanner = scanner_create(decorator, scanner_params)
             scanners.append(scanner)
 
+        if scanners:
+            register_plugin_directory(scanner_dir)
         return scanners
 
 

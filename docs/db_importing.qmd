@@ -48,7 +48,7 @@ scan(
 
 ### Streaming
 
-Each call to `db.insert()` will minimally create one Parquet file, but will break transcripts across multiple files as required, limiting the size of files to 100MB. This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator to yield transcripts rather than making many calls to `db.insert()` (which is likely to result in more Parquet files than is ideal).
+Each call to `db.insert()` will minimally create one Parquet file, but will break transcripts across multiple files as required (typically of size 75-100MB). This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator to yield transcripts rather than making many calls to `db.insert()` (which is likely to result in more Parquet files than is ideal).
 
 For example, we might implement `read_json_transcripts()` like this:
 

@@ -46,6 +46,7 @@ dev = [
     "ruff",
     "pytest",
     "anthropic",
+    "huggingface_hub",
     "openai",
     "pytest-dotenv",
     "pytest-asyncio",

@@ -148,24 +148,6 @@ UpstreamQueueItem: TypeAlias = (
 
 
 @dataclass
-class ModelContext:
-    """Model configuration shared between main process and workers.
-
-    This captures the model setup required for scanner operations so that
-    worker subprocesses can reconstruct the same model configuration.
-
-    Attributes:
-        model_config: Configuration specifying which model provider and settings to use.
-        model_roles: Optional mapping of role names to specific Model instances.
-        config: Generation parameters (temperature, max_tokens, etc.) for model calls.
-    """
-
-    model_config: ModelConfig
-    model_roles: dict[str, Model] | None
-    config: GenerateConfig
-
-
-@dataclass
 class IPCContext:
     """
     Shared state for IPC between main process and spawned workers.
@@ -255,8 +237,14 @@ class IPCContext:
     log_level: str | None
     """Log level for subprocess initialization."""
 
-    model_context: ModelContext
-    """Model configuration for scanner operations in worker subprocesses."""
+    model_config: ModelConfig
+    """Configuration specifying which model provider and settings to use."""
+
+    model_roles: dict[str, Model] | None
+    """Optional mapping of role names to specific Model instances."""
+
+    generate_config: GenerateConfig
+    """Generation parameters (temperature, max_tokens, etc.) for model calls."""
 
 
 T_Retval = TypeVar("T_Retval")
@@ -292,7 +280,6 @@ async def run_sync_on_thread(
 # Set early during scan setup, retrieved later if multi-process.
 _plugin_directory: str | None = None
 _log_level: str | None = None
-_model_context: ModelContext | None = None
 
 
 def register_plugin_directory(directory: str) -> None:
@@ -317,13 +304,3 @@ def set_log_level(level: str | None) -> None:
 
 def get_log_level() -> str | None:
     return _log_level
-
-
-def set_model_context(ctx: ModelContext) -> None:
-    global _model_context
-    _model_context = ctx
-
-
-def get_model_context() -> ModelContext:
-    assert _model_context is not None, "model_context not set"
-    return _model_context

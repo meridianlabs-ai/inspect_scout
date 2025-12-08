@@ -2,3 +2,8 @@
 title: Publishing Transcripts
 ---
 
+## Overview
+
+If you want to publish transcripts for use by others, it's important to take precautions to ensure that the transcripts are not unintentionally read by web crawlers. Some techniques for doing this include using protected S3 buckets or permissioned HuggingFace datasets, as well as encryping the Parquet files that hold the transcripts. 
+
+

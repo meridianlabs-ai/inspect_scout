@@ -24,6 +24,9 @@ from typing import AsyncIterator, Awaitable, Callable
 
 import anyio
 from anyio import create_task_group
+from inspect_ai.model._generate_config import active_generate_config
+from inspect_ai.model._model import active_model, model_roles
+from inspect_ai.model._model_config import model_to_model_config
 from inspect_ai.util._anyio import inner_exception
 from inspect_ai.util._concurrency import init_concurrency
 
@@ -42,7 +45,6 @@ from ._mp_common import (
     WorkerComplete,
     WorkerReady,
     get_log_level,
-    get_model_context,
     get_plugin_directory,
     run_sync_on_thread,
 )
@@ -168,7 +170,9 @@ def multi_process_strategy(
                 semaphore_condition=parent_registry.sync_manager_condition,
                 plugin_dir=get_plugin_directory(),
                 log_level=get_log_level(),
-                model_context=get_model_context(),
+                model_config=model_to_model_config(active_model()),  # type: ignore[arg-type]
+                model_roles=model_roles(),
+                generate_config=active_generate_config(),
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:

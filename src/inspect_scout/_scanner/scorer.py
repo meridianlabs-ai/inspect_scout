@@ -8,16 +8,16 @@ from inspect_ai.scorer import (
     Score,
     Scorer,
     Target,
-    Value,
-    accuracy,
+    mean,
     scorer,
     stderr,
 )
 from inspect_ai.solver import TaskState
 from pydantic import JsonValue
 
+from inspect_scout._scanner.metrics import as_score_value, metrics_for_scanner
 from inspect_scout._scanner.result import Result, as_resultset
-from inspect_scout._scanner.scanner import Scanner, metrics_for_scanner
+from inspect_scout._scanner.scanner import Scanner
 from inspect_scout._transcript.eval_log import EVAL_LOG_SOURCE_TYPE
 from inspect_scout._transcript.types import Transcript
 
@@ -32,7 +32,7 @@ def as_scorer(
 
     Args:
        scanner: Scanner to convert (must take a `Transcript`).
-       metrics: Metrics for scorer. Defaults to `metrics` specified on the `@scanner` decorator (or `[accuracy(), stderr()]` if none were specified).
+       metrics: Metrics for scorer. Defaults to `metrics` specified on the `@scanner` decorator (or `[mean(), stderr()]` if none were specified).
 
     Returns:
        Scorer from scanner.
@@ -45,7 +45,7 @@ def as_scorer(
     scanner_name = registry_unqualified_name(scanner)
 
     # determine metrics (passed, declared on scanner, or default)
-    metrics = metrics or metrics_for_scanner(scanner) or [accuracy(), stderr()]
+    metrics = metrics or metrics_for_scanner(scanner) or [mean(), stderr()]
 
     @scorer(name=scanner_name, metrics=metrics)
     def scanner_to_scorer() -> Scorer:
@@ -93,7 +93,7 @@ def as_scorer(
                 return Score(value=results_dict)
             else:
                 return Score(
-                    value=_as_score_value(result.value),
+                    value=as_score_value(result.value),
                     answer=result.answer,
                     explanation=result.explanation,
                     metadata=_metadata_from_result(result),
@@ -125,22 +125,3 @@ def _metadata_from_result(result: Result) -> dict[str, Any] | None:
         return metadata
     else:
         return None
-
-
-def _as_score_value(value: JsonValue) -> Value:
-    if isinstance(value, list):
-        return [
-            v if isinstance(v, str | int | float | bool) else to_json_str_safe(v)
-            for v in value
-        ]
-    elif isinstance(value, dict):
-        return {
-            k: v
-            if isinstance(v, str | int | float | bool | None)
-            else to_json_str_safe(v)
-            for k, v in value.items()
-        }
-    elif isinstance(value, str | int | float | bool):
-        return value
-    else:
-        raise AssertionError("None should not be passed to as_score_value")

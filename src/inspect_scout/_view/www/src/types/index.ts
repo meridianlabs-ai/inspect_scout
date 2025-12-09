@@ -88,6 +88,7 @@ export interface ScannerSummary {
   tokens: number;
   model_usage: Record<string, ModelUsage>;
   validations: Array<boolean | Record<string, boolean>>;
+  metrics: Record<string, Record<string, number>>;
 }
 
 export interface ModelUsage {

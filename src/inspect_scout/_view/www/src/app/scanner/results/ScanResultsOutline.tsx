@@ -8,7 +8,7 @@ import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
-import { formatPercent } from "../../../utils/format";
+import { formatPercent, formatPrettyDecimal } from "../../../utils/format";
 import { ApplicationIcons } from "../../appearance/icons";
 import { useSelectedScanner } from "../../hooks";
 
@@ -80,16 +80,30 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
       <LabeledValue
         label="Positive Results"
         layout="row"
-        className={clsx("text-size-smallest")}
+        className={clsx("text-size-smallest", styles.contents)}
       >
         {entry.results}
       </LabeledValue>
+
+      {Object.keys(entry.metrics).map((key) => {
+        return (
+          <LabeledValue
+            label={key}
+            layout="row"
+            className={clsx("text-size-smallest", styles.contents)}
+          >
+            {entry.metrics[key] !== undefined
+              ? formatPrettyDecimal(entry.metrics[key])
+              : "n/a"}
+          </LabeledValue>
+        );
+      })}
 
       {!!entry.errors && (
         <LabeledValue
           label="Errors"
           layout="row"
-          className={clsx("text-size-smallest")}
+          className={clsx("text-size-smallest", styles.contents)}
         >
           {entry.errors}
         </LabeledValue>
@@ -99,12 +113,15 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
         <LabeledValue
           label="Validations"
           layout={typeof entry.validations === "number" ? "row" : "column"}
-          className={clsx("text-size-smallest")}
+          className={clsx("text-size-smallest", styles.validations)}
         >
           {typeof entry.validations === "number" ? (
             formatPercent(entry.validations)
           ) : (
-            <ValidationTable validations={entry.validations} />
+            <NumericResultsTable
+              results={entry.validations}
+              formatter={formatPercent}
+            />
           )}
         </LabeledValue>
       )}
@@ -121,6 +138,7 @@ interface ScanResultsOutlineEntry {
   validations?: number | Record<string, number>;
   errors?: number;
   params?: string[];
+  metrics: Record<string, number>;
 }
 
 const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
@@ -147,6 +165,11 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
       ? resolveValidations(summary.validations)
       : undefined;
 
+    const metrics =
+      summary && Object.keys(summary?.metrics || {}).includes(scanner)
+        ? summary.metrics[scanner]!
+        : {};
+
     entries.push({
       icon: ApplicationIcons.scorer,
       title: scanner,
@@ -156,6 +179,7 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
       errors: summary?.errors,
       params: formattedParams,
       validations: validations,
+      metrics,
     });
   }
   return entries;
@@ -196,16 +220,18 @@ const resolveValidations = (
   }
 };
 
-const ValidationTable: FC<{
-  validations: Record<string, number>;
-}> = ({ validations }) => {
+const NumericResultsTable: FC<{
+  results: Record<string, number>;
+  maxrows?: number;
+  formatter?: (value: number) => string;
+}> = ({ results: validations, formatter, maxrows = 4 }) => {
   return (
-    <div className={clsx(styles.validationTable)}>
+    <div className={clsx(styles.numericResultTable)}>
       {Object.entries(validations).map(([key, value]) => (
         <Fragment key={key}>
-          <div className={clsx(styles.validationKey)}>{key}</div>
-          <div className={clsx(styles.validationValue)}>
-            {formatPercent(value)}
+          <div className={clsx(styles.numericResultKey)}>{key}</div>
+          <div className={clsx(styles.numericResultValue)}>
+            {formatter ? formatter(value) : value}
           </div>
         </Fragment>
       ))}

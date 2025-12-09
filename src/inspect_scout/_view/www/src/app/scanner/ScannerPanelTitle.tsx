@@ -3,22 +3,17 @@ import { FC } from "react";
 
 import { CopyButton } from "../../components/CopyButton";
 import { useStore } from "../../state/store";
+import { Status } from "../../types";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";
+import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScannerPanelTitle.module.css";
 
 export const ScannerPanelTitle: FC = () => {
   const selectedStatus = useStore((state) => state.selectedScanStatus);
   const resultsDir = useStore((state) => state.resultsDir);
-  const errorCount = selectedStatus?.errors.length || 0;
-  const status =
-    selectedStatus === undefined
-      ? ""
-      : selectedStatus.complete
-        ? "Complete"
-        : "Incomplete";
   const scanJobName =
     selectedStatus?.spec.scan_name === "job"
       ? "scan"
@@ -41,25 +36,54 @@ export const ScannerPanelTitle: FC = () => {
           )}
         </div>
         <div></div>
-        <h3 className={clsx(styles.subtitle, "text-style-secondary")}>
-          {selectedStatus?.spec.timestamp
-            ? formatDateTime(new Date(selectedStatus?.spec.timestamp))
-            : ""}
-        </h3>
-      </div>
-
-      <div className={clsx(styles.rightColumn, "text-size-smaller")}>
-        <div>{transcriptCount} Transcripts</div>
-
-        <div>{status}</div>
-        <div>
-          {errorCount === 1
-            ? `${errorCount} Error`
-            : errorCount > 1
-              ? `${errorCount} Errors`
+        <div className={clsx(styles.subtitle, "text-style-secondary")}>
+          <StatusDisplay status={selectedStatus} />
+          <div>—</div>
+          <div>{transcriptCount} Transcripts </div>
+          <div>—</div>
+          <div>
+            {selectedStatus?.spec.timestamp
+              ? formatDateTime(new Date(selectedStatus?.spec.timestamp))
               : ""}
+          </div>
         </div>
       </div>
+
+      <div className={clsx(styles.rightColumn, "text-size-smaller")}></div>
+    </div>
+  );
+};
+
+const StatusDisplay: FC<{ status?: Status }> = ({ status }) => {
+  const errorCount = status?.errors.length || 0;
+
+  if (errorCount > 0) {
+    const errorStr =
+      errorCount === 1
+        ? `${errorCount} Error`
+        : errorCount > 1
+          ? `${errorCount} Errors`
+          : "";
+
+    return (
+      <div>
+        <i className={ApplicationIcons.error} /> {errorStr}
+      </div>
+    );
+  }
+
+  const statusStr =
+    status === undefined ? "" : status.complete ? "Complete" : "Incomplete";
+  const statusIcon =
+    status === undefined
+      ? ApplicationIcons.running
+      : status.complete
+        ? ApplicationIcons.successSubtle
+        : ApplicationIcons.pendingTaskSubtle;
+
+  return (
+    <div>
+      <i className={statusIcon} /> {statusStr}
     </div>
   );
 };

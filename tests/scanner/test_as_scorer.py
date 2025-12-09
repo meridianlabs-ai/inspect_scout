@@ -1,4 +1,5 @@
 from inspect_ai import Task, eval
+from inspect_ai.scorer import mean
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, scanner
 from inspect_scout._scanner.scorer import as_scorer
@@ -104,7 +105,7 @@ def unlabeled_result_scanner() -> Scanner[Transcript]:
 
 def test_resultset_single_result() -> None:
     """Test that a resultset with a single result produces a dict-valued score."""
-    task = Task(scorer=as_scorer(single_result_scanner()))
+    task = Task(scorer=as_scorer(single_result_scanner(), metrics={"*": [mean()]}))
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
     # Check that the score value is a dict with the expected label
@@ -118,7 +119,9 @@ def test_resultset_single_result() -> None:
 
 def test_resultset_multiple_unique_labels() -> None:
     """Test that a resultset with multiple unique labels produces correct dict."""
-    task = Task(scorer=as_scorer(multiple_unique_labels_scanner()))
+    task = Task(
+        scorer=as_scorer(multiple_unique_labels_scanner(), metrics={"*": [mean()]})
+    )
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
     assert log.samples is not None
@@ -135,7 +138,7 @@ def test_resultset_multiple_unique_labels() -> None:
 
 def test_resultset_duplicate_labels_takes_first() -> None:
     """Test that duplicate labels take the first occurrence."""
-    task = Task(scorer=as_scorer(duplicate_labels_scanner()))
+    task = Task(scorer=as_scorer(duplicate_labels_scanner(), metrics={"*": [mean()]}))
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
     assert log.samples is not None
@@ -152,7 +155,7 @@ def test_resultset_duplicate_labels_takes_first() -> None:
 
 def test_resultset_complex_values_serialized() -> None:
     """Test that complex values (lists, dicts) are JSON-serialized."""
-    task = Task(scorer=as_scorer(complex_values_scanner()))
+    task = Task(scorer=as_scorer(complex_values_scanner(), metrics={"*": [mean()]}))
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
     assert log.samples is not None
@@ -171,7 +174,7 @@ def test_resultset_complex_values_serialized() -> None:
 
 def test_resultset_empty() -> None:
     """Test that an empty resultset produces an empty dict."""
-    task = Task(scorer=as_scorer(empty_resultset_scanner()))
+    task = Task(scorer=as_scorer(empty_resultset_scanner(), metrics={"*": [mean()]}))
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
     assert log.samples is not None

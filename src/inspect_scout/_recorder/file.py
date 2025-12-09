@@ -124,9 +124,21 @@ class FileRecorder(ScanRecorder):
 
     @override
     async def record(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        await self._scan_buffer.record(transcript, scanner, results)
+        await self._scan_buffer.record(transcript, scanner, results, metrics)
+
+    @override
+    async def record_metrics(
+        self,
+        scanner: str,
+        metrics: dict[str, dict[str, float]] | None,
+    ) -> None:
+        await self._scan_buffer.record_metrics(scanner, metrics)
 
     @override
     async def flush(self) -> None:

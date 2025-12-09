@@ -388,21 +388,6 @@ def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
 
 
-def metrics_for_scanner(
-    scanner: Scanner[Any],
-) -> (
-    Sequence[Metric | Mapping[str, Sequence[Metric]]]
-    | Mapping[str, Sequence[Metric]]
-    | None
-):
-    return cast(
-        Sequence[Metric | Mapping[str, Sequence[Metric]]]
-        | Mapping[str, Sequence[Metric]]
-        | None,
-        registry_info(scanner).metadata.get(SCANNER_METRICS, None),
-    )
-
-
 def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[Any]]:
     file, job = split_spec(file)
 

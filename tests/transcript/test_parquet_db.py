@@ -61,7 +61,7 @@ def create_test_transcripts(count: int = 10) -> list[Transcript]:
                     "temperature": 0.5 + (i % 5) * 0.1,
                     "index": i,
                     "score": 0.5 + (i % 10) * 0.05,  # Moved to metadata
-                    "accuracy": 0.8,  # Moved to metadata
+                    "mean": 0.8,  # Moved to metadata
                     "completeness": 0.9,  # Moved to metadata
                     "var_a": i,  # Moved to metadata
                     "var_b": f"value_{i}",  # Moved to metadata
@@ -178,7 +178,7 @@ async def test_insert_multiple_batches(test_location: Path) -> None:
                         "temperature": 0.5 + (i % 5) * 0.1,
                         "index": i,
                         "score": 0.5 + (i % 10) * 0.05,
-                        "accuracy": 0.8,
+                        "mean": 0.8,
                         "completeness": 0.9,
                         "var_a": i,
                         "var_b": f"value_{i}",

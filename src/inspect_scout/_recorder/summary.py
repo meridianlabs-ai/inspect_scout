@@ -22,6 +22,9 @@ class ScannerSummary(BaseModel):
     validations: list[bool | dict[str, bool]] = Field(default_factory=list)
     """Results for validation cases."""
 
+    metrics: dict[str, dict[str, float]] | None = Field(default=None)
+    """Metrics computed for scanners with metrics."""
+
     tokens: int = Field(default=0)
     """Total tokens used for scanner."""
 
@@ -44,7 +47,11 @@ class Summary(BaseModel):
             super().__init__(scanners=scanners, **data)
 
     def _report(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None:
         # aggregate over all results
         agg_results = ScannerSummary()
@@ -77,6 +84,7 @@ class Summary(BaseModel):
         tot_results = self.scanners[scanner]
         tot_results.scans += 1
         tot_results.results += agg_results.results
+        tot_results.metrics = metrics
         tot_results.validations.extend(agg_results.validations)
         tot_results.errors += agg_results.errors
         tot_results.tokens += agg_results.tokens
@@ -86,6 +94,15 @@ class Summary(BaseModel):
             tot_results.model_usage[model] = add_model_usage(
                 tot_results.model_usage[model], usage
             )
+
+    def _report_metrics(
+        self,
+        scanner: str,
+        metrics: dict[str, dict[str, float]] | None,
+    ) -> None:
+        if scanner not in self.scanners:
+            self.scanners[scanner] = ScannerSummary()
+        self.scanners[scanner].metrics = metrics
 
     def __getitem__(self, scanner: str) -> ScannerSummary:
         return self.scanners[scanner]
@@ -99,6 +116,6 @@ def add_model_usage(a: ModelUsage, b: ModelUsage) -> ModelUsage:
         input_tokens_cache_write=(a.input_tokens_cache_write or 0)
         + (b.input_tokens_cache_write or 0),
         input_tokens_cache_read=(a.input_tokens_cache_read or 0)
-        + (b.input_tokens_cache_write or 0),
+        + (b.input_tokens_cache_read or 0),
         reasoning_tokens=(a.reasoning_tokens or 0) + (b.reasoning_tokens or 0),
     )

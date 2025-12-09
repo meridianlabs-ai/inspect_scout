@@ -30,6 +30,7 @@ from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 
 from inspect_scout._concurrency._mp_common import set_log_level
+from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.database.parquet import ParquetTranscripts
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
@@ -541,6 +542,9 @@ async def _scan_async_inner(
                     ]
                 )
 
+                # create metrics accumulator
+                metrics_accum = metrics_accumulators(scan.scanners)
+
                 # initialized on demand in child processes
                 transcripts_reader: TranscriptsReader | None = None
 
@@ -712,13 +716,25 @@ async def _scan_async_inner(
                 if single_process:
                     transcripts_reader = tr
 
+                def accumulate_metrics(
+                    scanner: str, results: Sequence[ResultReport]
+                ) -> dict[str, dict[str, float]] | None:
+                    if scanner in metrics_accum:
+                        for result in results:
+                            if result.result is not None:
+                                metrics_accum[scanner].add_result(result.result.value)
+                        return metrics_accum[scanner].compute_metrics_throttled()
+                    else:
+                        return None
+
                 async def record_results(
                     transcript: TranscriptInfo,
                     scanner: str,
                     results: Sequence[ResultReport],
                 ) -> None:
-                    await recorder.record(transcript, scanner, results)
-                    scan_display.results(transcript, scanner, results)
+                    metrics = accumulate_metrics(scanner, results)
+                    await recorder.record(transcript, scanner, results, metrics)
+                    scan_display.results(transcript, scanner, results, metrics)
 
                 await strategy(
                     parse_jobs=_parse_jobs(scan, recorder, tr),
@@ -728,6 +744,12 @@ async def _scan_async_inner(
                     update_metrics=scan_display.metrics,
                     scan_completed=_scan_completed_function,
                 )
+
+                # we've been throttle metrics calculation, now report it all
+                for scanner in metrics_accum:
+                    await recorder.record_metrics(
+                        scanner, metrics_accum[scanner].compute_metrics()
+                    )
 
                 # report status
                 errors = await recorder.errors()

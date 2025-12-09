@@ -153,7 +153,11 @@ function castColumns(table: ColumnTable): ColumnTable {
   if (hasScanRefusal) {
     derivations.scan_error_refusal = escape(
       (d: { scan_error_refusal: string }) => {
-        return d.scan_error_refusal?.toLowerCase() === "true";
+        if (typeof d.scan_error_refusal === "string") {
+          return d.scan_error_refusal?.toLowerCase() === "true";
+        }
+
+        return !!d.scan_error_refusal;
       }
     );
   }

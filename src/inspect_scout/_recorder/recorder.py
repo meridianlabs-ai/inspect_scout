@@ -199,7 +199,16 @@ class ScanRecorder(abc.ABC):
 
     @abc.abstractmethod
     async def record(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
+    ) -> None: ...
+
+    @abc.abstractmethod
+    async def record_metrics(
+        self, scanner: str, metrics: dict[str, dict[str, float]]
     ) -> None: ...
 
     @abc.abstractmethod

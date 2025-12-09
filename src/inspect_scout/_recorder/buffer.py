@@ -54,7 +54,7 @@ class RecorderBuffer:
         if not scan_summary_file.exists():
             self._scan_summary = Summary(list(spec.scanners.keys()))
             with open(scan_summary_file.as_posix(), "w") as f:
-                f.write(self._scan_summary.model_dump_json())
+                f.write(self._scan_summary.model_dump_json(indent=2))
         else:
             self._scan_summary = read_scan_summary(self._buffer_dir, spec)
 
@@ -64,7 +64,11 @@ class RecorderBuffer:
             pass  # truncates existing file
 
     async def record(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None:
         import pyarrow.parquet as pq
 
@@ -126,15 +130,25 @@ class RecorderBuffer:
         os.replace(tmp_path.as_posix(), final_path.as_posix())
 
         # update and write summary
-        self._scan_summary._report(transcript, scanner, results)
+        self._scan_summary._report(transcript, scanner, results, metrics)
         with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-            f.write(self._scan_summary.model_dump_json())
+            f.write(self._scan_summary.model_dump_json(indent=2))
 
         # record errors
         for result in results:
             if result.error is not None:
                 with open(str(self._error_file), "at") as f:
                     f.write(result.error.model_dump_json(warnings=False) + "\n")
+
+    async def record_metrics(
+        self,
+        scanner: str,
+        metrics: dict[str, dict[str, float]] | None,
+    ) -> None:
+        # update and write summary
+        self._scan_summary._report_metrics(scanner, metrics)
+        with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
+            f.write(self._scan_summary.model_dump_json(indent=2))
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"

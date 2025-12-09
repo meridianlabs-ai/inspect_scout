@@ -4512,23 +4512,31 @@ button._segment_19z32_10 {
 ._scrollContainer_94id2_15 {
   overflow-y: auto;
 }
-._container_1a0yr_1 {
+._container_1ov9x_1 {
   border-right: solid 1px var(--bs-border-color);
 }
 
-._entry_1a0yr_5 {
+._entry_1ov9x_5 {
   padding: 0.5em;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.5rem;
 }
 
-._entry_1a0yr_5._selected_1a0yr_9 {
+._entry_1ov9x_5._selected_1ov9x_12 {
   background-color: var(--bs-secondary-bg);
 }
 
-._titleBlock_1a0yr_13 {
+._titleBlock_1ov9x_16 {
   margin-bottom: 0.1rem;
+  grid-column: 1 / -1;
 }
 
-._subTitle_1a0yr_17 {
+._validations_1ov9x_21 {
+  grid-column: 1 / -1;
+}
+
+._subTitle_1ov9x_25 {
   margin-top: -0.2rem;
   max-height: 2rem;
   overflow: hidden;
@@ -4538,20 +4546,24 @@ button._segment_19z32_10 {
   word-wrap: break-word;
 }
 
-._selected_1a0yr_9 ._title_1a0yr_13 {
+._selected_1ov9x_12 ._title_1ov9x_16 {
   font-weight: 600;
 }
 
-._entry_1a0yr_5:hover {
+._entry_1ov9x_5:hover {
   color: var(--bs-link-hover-color);
   cursor: pointer;
 }
 
-._validationTable_1a0yr_36 {
+._numericResultTable_1ov9x_44 {
   display: grid;
   grid-template-columns: auto auto;
   column-gap: 0.5rem;
   row-gap: 0;
+}
+
+._contents_1ov9x_51 {
+  display: contents;
 }
 ._container_1db6h_1 {
   display: grid;
@@ -4620,7 +4632,7 @@ button._segment_19z32_10 {
 ._tabControl_10t9t_10 {
   padding: 0.3em 1em !important;
 }
-._scanTitleView_1vka4_1 {
+._scanTitleView_1ayz3_1 {
   display: grid;
   grid-template-columns: max-content max-content;
   justify-content: space-between;
@@ -4629,7 +4641,7 @@ button._segment_19z32_10 {
   padding: 0.5em;
 }
 
-._leftColumn_1vka4_10 {
+._leftColumn_1ayz3_10 {
   display: grid;
   grid-template-columns: max-content max-content 1fr;
   align-items: baseline;
@@ -4637,37 +4649,37 @@ button._segment_19z32_10 {
   column-gap: 0.3rem;
 }
 
-._rightColumn_1vka4_18 {
+._rightColumn_1ayz3_18 {
 }
 
-._scanTitleView_1vka4_1 h1 {
+._scanTitleView_1ayz3_1 h1 {
   margin: 0;
   font-weight: 600;
   font-size: 1.3em;
 }
 
-._scanTitleView_1vka4_1 h2 {
+._scanTitleView_1ayz3_1 h2 {
   margin: 0;
   font-weight: 500;
   font-size: 1em;
   color: var(--bs-secondary-text-color);
 }
 
-._scanTitleView_1vka4_1 ._secondaryRow_1vka4_34 {
+._scanTitleView_1ayz3_1 ._secondaryRow_1ayz3_34 {
   display: grid;
   grid-template-columns: max-content max-content;
   column-gap: 0.2rem;
 }
 
-._scanTitleView_1vka4_1 h3 {
+._subtitle_1ayz3_40 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: max-content max-content max-content max-content max-content;
+  column-gap: 0.1rem;
   margin: 0;
   font-size: 0.8em;
   font-weight: 400;
   color: var(--bs-secondary-text-color);
-}
-
-._subtitle_1vka4_47 {
-  grid-column: 1 / -1;
 }
 /**
  * prism.js default theme for JavaScript, CSS and HTML

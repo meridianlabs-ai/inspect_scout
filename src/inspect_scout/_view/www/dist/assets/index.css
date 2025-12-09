@@ -4616,7 +4616,7 @@ button._segment_19z32_10 {
 ._tabControl_10t9t_10 {
   padding: 0.3em 1em !important;
 }
-._scanTitleView_1vka4_1 {
+._scanTitleView_1ayz3_1 {
   display: grid;
   grid-template-columns: max-content max-content;
   justify-content: space-between;
@@ -4625,7 +4625,7 @@ button._segment_19z32_10 {
   padding: 0.5em;
 }
 
-._leftColumn_1vka4_10 {
+._leftColumn_1ayz3_10 {
   display: grid;
   grid-template-columns: max-content max-content 1fr;
   align-items: baseline;
@@ -4633,37 +4633,37 @@ button._segment_19z32_10 {
   column-gap: 0.3rem;
 }
 
-._rightColumn_1vka4_18 {
+._rightColumn_1ayz3_18 {
 }
 
-._scanTitleView_1vka4_1 h1 {
+._scanTitleView_1ayz3_1 h1 {
   margin: 0;
   font-weight: 600;
   font-size: 1.3em;
 }
 
-._scanTitleView_1vka4_1 h2 {
+._scanTitleView_1ayz3_1 h2 {
   margin: 0;
   font-weight: 500;
   font-size: 1em;
   color: var(--bs-secondary-text-color);
 }
 
-._scanTitleView_1vka4_1 ._secondaryRow_1vka4_34 {
+._scanTitleView_1ayz3_1 ._secondaryRow_1ayz3_34 {
   display: grid;
   grid-template-columns: max-content max-content;
   column-gap: 0.2rem;
 }
 
-._scanTitleView_1vka4_1 h3 {
+._subtitle_1ayz3_40 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: max-content max-content max-content max-content max-content;
+  column-gap: 0.1rem;
   margin: 0;
   font-size: 0.8em;
   font-weight: 400;
   color: var(--bs-secondary-text-color);
-}
-
-._subtitle_1vka4_47 {
-  grid-column: 1 / -1;
 }
 /**
  * prism.js default theme for JavaScript, CSS and HTML

@@ -33,7 +33,7 @@
   cursor: pointer;
 }
 
-.validationTable {
+.numericResultTable {
   display: grid;
   grid-template-columns: auto auto;
   column-gap: 0.5rem;

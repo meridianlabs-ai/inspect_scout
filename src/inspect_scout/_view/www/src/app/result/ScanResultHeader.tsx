@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
+import { Status } from "../../types";
 import { filename } from "../../utils/path";
 import { ScannerData } from "../types";
 
@@ -8,6 +9,7 @@ import styles from "./ScanResultHeader.module.css";
 
 interface ScanResultHeaderProps {
   result?: ScannerData;
+  status?: Status;
 }
 
 interface Column {
@@ -16,8 +18,12 @@ interface Column {
   className?: string | string[];
 }
 
-export const ScanResultHeader: FC<ScanResultHeaderProps> = ({ result }) => {
-  const columns = colsForResult(result) || [];
+export const ScanResultHeader: FC<ScanResultHeaderProps> = ({
+  result,
+  status,
+}) => {
+  const columns = colsForResult(result, status) || [];
+
   return (
     <div className={clsx(styles.header, classForCols(columns.length))}>
       {columns.map((col) => {
@@ -61,20 +67,23 @@ const classForCols = (numCols: number) => {
           ? styles.threeCol
           : numCols === 4
             ? styles.fourCol
-            : styles.fiveCol
+            : numCols === 5
+              ? styles.fiveCol
+              : styles.sixCol
   );
 };
 
-const colsForResult: (result?: ScannerData) => Column[] | undefined = (
-  result
-) => {
+const colsForResult: (
+  result?: ScannerData,
+  status?: Status
+) => Column[] | undefined = (result, status) => {
   if (!result) {
     return [];
   }
   if (result.inputType === "transcript") {
-    return transcriptCols(result);
+    return transcriptCols(result, status);
   } else if (result.inputType === "message") {
-    return messageCols(result);
+    return messageCols(result, status);
   } else if (result.inputType === "messages") {
     return messagesCols(result);
   } else if (result.inputType === "event") {
@@ -86,9 +95,9 @@ const colsForResult: (result?: ScannerData) => Column[] | undefined = (
   }
 };
 
-const transcriptCols = (result: ScannerData) => {
+const transcriptCols = (result: ScannerData, status?: Status) => {
   if (result.inputType === "transcript") {
-    return [
+    const cols = [
       {
         label: "Log",
         value: filename(result.input.metadata.log) as ReactNode,
@@ -109,10 +118,18 @@ const transcriptCols = (result: ScannerData) => {
         value: result.input.metadata.model as ReactNode,
       },
     ];
+
+    if (status?.spec.model.model) {
+      cols.push({
+        label: "Monitoring Model",
+        value: status.spec.model.model as ReactNode,
+      });
+    }
+    return cols;
   }
 };
 
-const messageCols = (result: ScannerData) => {
+const messageCols = (result: ScannerData, status?: Status) => {
   if (result.inputType === "message") {
     const cols = [
       {
@@ -134,6 +151,13 @@ const messageCols = (result: ScannerData) => {
       cols.push({
         label: "Role",
         value: result.input.role as ReactNode,
+      });
+    }
+
+    if (status?.spec.model.model) {
+      cols.push({
+        label: "Monitoring Model",
+        value: status.spec.model.model as ReactNode,
       });
     }
 

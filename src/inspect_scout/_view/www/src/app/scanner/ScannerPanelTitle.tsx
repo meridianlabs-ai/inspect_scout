@@ -19,6 +19,8 @@ export const ScannerPanelTitle: FC = () => {
       ? "scan"
       : selectedStatus?.spec.scan_name;
 
+  const scannerModel = selectedStatus?.spec.model.model;
+
   const transcriptCount = selectedStatus?.spec.transcripts?.count || 0;
   return (
     <div className={clsx(styles.scanTitleView)}>
@@ -27,9 +29,11 @@ export const ScannerPanelTitle: FC = () => {
         <div className={clsx(styles.secondaryRow)}>
           <h2>
             {toRelativePath(selectedStatus?.location || "", resultsDir || "")}
+            {scannerModel ? ` (${scannerModel})` : ""}
           </h2>
           {selectedStatus?.location && (
             <CopyButton
+              title="Copy Scan Path"
               className={clsx("text-size-small")}
               value={prettyDirUri(selectedStatus?.location)}
             />

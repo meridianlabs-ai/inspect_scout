@@ -80,16 +80,30 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
       <LabeledValue
         label="Positive Results"
         layout="row"
-        className={clsx("text-size-smallest")}
+        className={clsx("text-size-smallest", styles.contents)}
       >
         {entry.results}
       </LabeledValue>
+
+      {Object.keys(entry.metrics).map((key) => {
+        return (
+          <LabeledValue
+            label={key}
+            layout="row"
+            className={clsx("text-size-smallest", styles.contents)}
+          >
+            {entry.metrics[key] !== undefined
+              ? formatPrettyDecimal(entry.metrics[key])
+              : "n/a"}
+          </LabeledValue>
+        );
+      })}
 
       {!!entry.errors && (
         <LabeledValue
           label="Errors"
           layout="row"
-          className={clsx("text-size-smallest")}
+          className={clsx("text-size-smallest", styles.contents)}
         >
           {entry.errors}
         </LabeledValue>
@@ -99,7 +113,7 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
         <LabeledValue
           label="Validations"
           layout={typeof entry.validations === "number" ? "row" : "column"}
-          className={clsx("text-size-smallest")}
+          className={clsx("text-size-smallest", styles.validations)}
         >
           {typeof entry.validations === "number" ? (
             formatPercent(entry.validations)
@@ -109,19 +123,6 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
               formatter={formatPercent}
             />
           )}
-        </LabeledValue>
-      )}
-
-      {Object.keys(entry.metrics).length > 0 && (
-        <LabeledValue
-          label="Metrics"
-          layout="column"
-          className={clsx("text-size-smallest")}
-        >
-          <NumericResultsTable
-            results={entry.metrics}
-            formatter={formatPrettyDecimal}
-          />
         </LabeledValue>
       )}
     </div>

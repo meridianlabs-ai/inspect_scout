@@ -223,6 +223,7 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
           live={running}
           showProgress={running}
           components={{ Item }}
+          animation={false}
         />
       );
     }

@@ -120,6 +120,11 @@ export const MarkdownDivWithReferences = forwardRef<
     };
 
     const handleClick = (e: MouseEvent): void => {
+      // Cancel the popover if one is pending or showing
+      clearShowingRefPopover();
+      setCurrentRef(null);
+      setPositionEl(null);
+
       // Stop propagation to prevent parent Link components from handling the click
       e.stopPropagation();
     };
@@ -147,6 +152,7 @@ export const MarkdownDivWithReferences = forwardRef<
     setPositionEl,
     setCurrentRef,
     setShowingRefPopover,
+    clearShowingRefPopover,
   ]);
 
   const key = currentRef
@@ -169,7 +175,7 @@ export const MarkdownDivWithReferences = forwardRef<
             }
           }}
           placement="auto"
-          hoverDelay={200}
+          hoverDelay={1000}
           showArrow={true}
         >
           {(currentRef.citePreview && currentRef.citePreview()) || (

@@ -224,7 +224,7 @@ const NumericResultsTable: FC<{
   results: Record<string, number>;
   maxrows?: number;
   formatter?: (value: number) => string;
-}> = ({ results: validations, formatter, maxrows = 4 }) => {
+}> = ({ results: validations, formatter }) => {
   return (
     <div className={clsx(styles.numericResultTable)}>
       {Object.entries(validations).map(([key, value]) => (

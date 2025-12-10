@@ -10,6 +10,7 @@ export const Buckets = {
 
 export interface RenderOptions {
   renderString: "pre" | "markdown";
+  previewRefsOnHover?: boolean;
 }
 
 export interface ContentRenderer {

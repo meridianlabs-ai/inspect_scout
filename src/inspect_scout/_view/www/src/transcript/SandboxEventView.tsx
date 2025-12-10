@@ -74,7 +74,7 @@ const ExecView: FC<ExecViewProps> = ({ id, event }) => {
             <EventSection title={`Options`}>
               <MetaDataGrid
                 entries={options as Record<string, unknown>}
-                plain={true}
+                options={{ plain: true }}
               />
             </EventSection>
           ) : undefined}

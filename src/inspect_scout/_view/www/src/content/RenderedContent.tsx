@@ -173,7 +173,11 @@ const contentRenderers: (
         if (options.renderString === "markdown") {
           return {
             rendered: (
-              <RenderedText markdown={rendered} references={references} />
+              <RenderedText
+                markdown={rendered}
+                references={references}
+                options={{ previewRefsOnHover: options.previewRefsOnHover }}
+              />
             ),
           };
         } else {
@@ -220,7 +224,7 @@ const contentRenderers: (
             id={id}
             className={"font-size-small"}
             entries={arrayMap}
-            plain={true}
+            options={{ plain: true }}
           />
         );
         return { rendered: arrayRendered };
@@ -331,7 +335,7 @@ const contentRenderers: (
                 id={id}
                 className={"font-size-small"}
                 entries={entry.value as Record<string, unknown>}
-                plain={true}
+                options={{ plain: true }}
               />
             ),
           };

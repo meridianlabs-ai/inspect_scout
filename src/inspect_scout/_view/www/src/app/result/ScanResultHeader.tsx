@@ -121,7 +121,7 @@ const transcriptCols = (result: ScannerData, status?: Status) => {
 
     if (status?.spec.model.model) {
       cols.push({
-        label: "Monitoring Model",
+        label: "Scanning Model",
         value: status.spec.model.model as ReactNode,
       });
     }
@@ -156,7 +156,7 @@ const messageCols = (result: ScannerData, status?: Status) => {
 
     if (status?.spec.model.model) {
       cols.push({
-        label: "Monitoring Model",
+        label: "Scanning Model",
         value: status.spec.model.model as ReactNode,
       });
     }

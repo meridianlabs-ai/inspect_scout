@@ -109,7 +109,7 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
               title="Configuration"
               className={styles.tableSelection}
             >
-              <MetaDataGrid entries={entries} plain={true} />
+              <MetaDataGrid entries={entries} options={{ plain: true }} />
             </EventSection>
           )}
 

@@ -27,6 +27,9 @@ interface ValueProps {
   style: "inline" | "block";
   maxTableSize?: number;
   interactive?: boolean;
+  options?: {
+    previewRefsOnHover?: boolean;
+  };
 }
 
 // TODO: Implement popover viewer for object and list values
@@ -36,12 +39,14 @@ export const Value: FC<ValueProps> = ({
   style,
   maxTableSize = 5,
   interactive = false,
+  options,
 }): ReactNode => {
   if (isStringValue(result)) {
     return (
       <MarkdownDivWithReferences
         markdown={result.value}
         references={references}
+        options={options}
       />
     );
   } else if (isNumberValue(result) && result.value !== null) {

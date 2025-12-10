@@ -37,9 +37,9 @@ export const useMarkdownRefs = (result?: ScannerCore) => {
   const refs: MarkdownReference[] = result
     ? toMarkdownRefs(result, (refId: string, type: "message" | "event") => {
         if (type === "message") {
-          return buildUrl(`tab=Input&message=${encodeURIComponent(refId)}`);
+          return buildUrl(`tab=Result&message=${encodeURIComponent(refId)}`);
         } else {
-          return buildUrl(`tab=Input&event=${encodeURIComponent(refId)}`);
+          return buildUrl(`tab=Result&event=${encodeURIComponent(refId)}`);
         }
       })
     : [];

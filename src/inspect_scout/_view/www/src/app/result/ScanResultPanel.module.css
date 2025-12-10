@@ -13,7 +13,7 @@
 .tabSet {
   max-height: 100%;
   border-top: solid 1px var(--bs-border-color);
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .tabControl {
@@ -22,4 +22,8 @@
 
 .tabs {
   margin-right: 1rem;
+}
+
+.fullHeight {
+  height: 100%;
 }

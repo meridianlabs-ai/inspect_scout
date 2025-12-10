@@ -882,6 +882,9 @@ a._citationLink_1ggvf_9:hover {
 ._container_76qrl_7 {
   padding: 0.5rem;
 }
+._container_5gpfz_1 {
+  padding: 1rem;
+}
 ._progressContainer_1cjjr_1 {
   width: 100%;
   display: flex;
@@ -3946,10 +3949,27 @@ span.ap-marker-container:hover span.ap-marker {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
-._container_kyylo_1 {
-  padding: 0.5rem 1rem;
+._header_189zi_1 {
+  background-color: var(--bs-light-bg-subtle);
+  border-bottom: solid 1px var(--bs-border-color);
+  width: 100%;
+  padding-left: 0.5rem;
+}
+._container_1fgdb_1 {
   height: 100%;
+  overflow-y: hidden;
+}
+
+._scrollable_1fgdb_6 {
+  padding: 0.5rem;
   overflow-y: auto;
+  height: 100%;
+}
+._container_u4d55_1 {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  overflow-y: hidden;
+  height: 100%;
 }
 ._result_f18wg_1 {
   display: inline-flex;
@@ -4016,38 +4036,47 @@ span.ap-marker-container:hover span.ap-marker {
 pre._value_1uivt_24 {
   margin: 0;
 }
-._container_15a30_1 {
+._sidebar_ruino_1 {
+  border-right: solid 1px var(--bs-border-color);
   padding: 1rem;
+  overflow-y: auto;
 }
 
-._colspan_15a30_5 {
+._container_ruino_7 {
+  display: inline-grid;
+  grid-template-columns: 1fr 2fr;
+  align-self: start;
+  row-gap: 0.5rem;
+}
+
+._colspan_ruino_14 {
   grid-column: span 2;
 }
 
-._explanation_15a30_9 {
+._explanation_ruino_18 {
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 1rem;
   row-gap: 0.75rem;
 }
 
-._scanValue_15a30_16 {
+._scanValue_ruino_25 {
   padding-right: 0.5rem;
 }
 
-._values_15a30_20 {
+._values_ruino_29 {
   display: grid;
   grid-template-columns: max-content auto;
   column-gap: 0.5rem;
 }
 
-._validation_15a30_26 {
+._validation_ruino_35 {
   margin-left: 1rem;
   display: grid;
   grid-template-columns: max-content max-content;
 }
 
-._validationLabel_15a30_32 {
+._validationLabel_ruino_41 {
   padding-right: 0.5rem;
   margin-top: 2px;
 }
@@ -4101,30 +4130,34 @@ pre._value_1uivt_24 {
   opacity: 0.5;
   pointer-events: none;
 }
-._root_12il0_1 {
+._root_1ewhq_1 {
   height: 100vh;
   display: grid;
   grid-template-rows: max-content max-content max-content max-content 1fr;
 }
 
-._scroller_12il0_7 {
+._scroller_1ewhq_7 {
   height: 100%;
   width: 100%;
   overflow-y: auto;
 }
 
-._tabSet_12il0_13 {
+._tabSet_1ewhq_13 {
   max-height: 100%;
   border-top: solid 1px var(--bs-border-color);
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
-._tabControl_12il0_19 {
+._tabControl_1ewhq_19 {
   margin: 0.2rem;
 }
 
-._tabs_12il0_23 {
+._tabs_1ewhq_23 {
   margin-right: 1rem;
+}
+
+._fullHeight_1ewhq_27 {
+  height: 100%;
 }
 ._container_g5onx_1 {
   overflow-y: auto;

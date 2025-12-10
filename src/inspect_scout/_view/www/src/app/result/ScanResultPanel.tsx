@@ -25,7 +25,7 @@ import { Navbar } from "../navbar/Navbar";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
-import { InputPanel } from "./input/InputPanel";
+import { MetadataPanel } from "./metadata/MetadataPanel";
 import { ResultPanel } from "./result/ResultPanel";
 import { ScanResultHeader } from "./ScanResultHeader";
 import { ScanResultNav } from "./ScanResultNav";
@@ -38,6 +38,7 @@ const kTabIdInput = "Input";
 const kTabIdInfo = "Info";
 const kTabIdJson = "JSON";
 const kTabIdTranscript = "transcript";
+const kTabIdMetadata = "Metadata";
 
 export const ScanResultPanel: FC = () => {
   // Url data
@@ -179,23 +180,15 @@ export const ScanResultPanel: FC = () => {
                   (!hasError && selectedTab === undefined)
                 }
                 title="Result"
+                scrollable={false}
                 onSelected={() => {
                   handleTabChange(kTabIdResult);
                 }}
+                className={styles.fullHeight}
               >
                 <ResultPanel result={selectedResult} />
               </TabPanel>
             ) : undefined}
-            <TabPanel
-              id={kTabIdInput}
-              selected={selectedTab === kTabIdInput}
-              title="Input"
-              onSelected={() => {
-                handleTabChange(kTabIdInput);
-              }}
-            >
-              <InputPanel result={selectedResult} />
-            </TabPanel>
             {showEvents ? (
               <TabPanel
                 id={kTabIdTranscript}
@@ -212,6 +205,16 @@ export const ScanResultPanel: FC = () => {
                 />
               </TabPanel>
             ) : undefined}
+            <TabPanel
+              id={kTabIdMetadata}
+              selected={selectedTab === kTabIdMetadata}
+              title="Metadata"
+              onSelected={() => {
+                handleTabChange(kTabIdMetadata);
+              }}
+            >
+              <MetadataPanel result={selectedResult} />
+            </TabPanel>
             <TabPanel
               id={kTabIdInfo}
               selected={selectedTab === kTabIdInfo}

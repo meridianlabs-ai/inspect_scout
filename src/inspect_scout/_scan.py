@@ -61,8 +61,8 @@ from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.util import get_input_type_and_ids
-from ._scanspec import ScannerWork, ScanSpec
-from ._transcript.transcripts import Transcripts, TranscriptsReader
+from ._scanspec import ScanSpec, Worklist
+from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -113,7 +113,7 @@ def scan(
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
-        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
+        worklist: Transcripts too process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file with same.
         validation: Validation cases to evaluate for scanners.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
@@ -221,17 +221,13 @@ async def scan_async(
     """
     top_level_async_init(log_level)
 
-    # resolve worklist
-    if isinstance(worklist, str | Path):
-        worklist = _worklist_from(worklist)
-
     # resolve scanjob
     if isinstance(scanners, ScanJob):
         scanjob = scanners
     elif isinstance(scanners, ScanJobConfig):
         scanjob = ScanJob.from_config(scanners)
     else:
-        scanjob = ScanJob(scanners=scanners, worklist=worklist)
+        scanjob = ScanJob(scanners=scanners, worklist=await _resolve_worklist(worklist))
 
     # see if we are overriding the scanjob with additional args
     scanjob._transcripts = transcripts or scanjob.transcripts
@@ -930,23 +926,47 @@ def _reports_for_parse_error(
     ]
 
 
-def _worklist_from(file: str | Path) -> list[ScannerWork]:
-    with open(file, "r") as f:
-        contents = f.read().strip()
+async def _resolve_worklist(
+    worklist: Sequence[ScannerWork] | str | Path | None,
+) -> list[Worklist] | None:
+    if worklist is None:
+        return None
+    elif isinstance(worklist, str | Path):
+        with open(worklist, "r") as f:
+            contents = f.read().strip()
 
-    if contents.startswith("["):
-        data = json.loads(contents)
+        if contents.startswith("["):
+            data = json.loads(contents)
+        else:
+            data = yaml.safe_load(contents)
+
+        if not isinstance(data, list):
+            raise PrerequisiteError(
+                f"Worklist data from JSON or YAML file must be a list (found type {type(data)})"
+            )
+
+        # validate with pydantic and return
+        adapter = TypeAdapter[list[Worklist]](list[Worklist])
+        return adapter.validate_python(data)
     else:
-        data = yaml.safe_load(contents)
+        # resolve transcript queries
+        resolved: list[Worklist] = []
+        for work in worklist:
+            if isinstance(work.transcripts, Transcripts):
+                async with work.transcripts.reader() as tr:
+                    snapshot = await tr.snapshot()
+                    resolved.append(
+                        Worklist(
+                            scanner=work.scanner,
+                            transcripts=list(snapshot.transcript_ids.keys()),
+                        )
+                    )
+            else:
+                resolved.append(
+                    Worklist(scanner=work.scanner, transcripts=work.transcripts)
+                )
 
-    if not isinstance(data, list):
-        raise PrerequisiteError(
-            f"Worklist data from JSON or YAML file must be a list (found type {type(data)})"
-        )
-
-    # validate with pydantic
-    adapter = TypeAdapter[list[ScannerWork]](list[ScannerWork])
-    return adapter.validate_python(data)
+        return resolved
 
 
 def _resolve_validation(

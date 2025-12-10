@@ -27,7 +27,7 @@ from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
 from pydantic import BaseModel, ConfigDict, Field
 
-from inspect_scout._scanspec import ScannerSpec, ScannerWork
+from inspect_scout._scanspec import ScannerSpec, Worklist
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
@@ -49,7 +49,7 @@ class ScanJobConfig(BaseModel):
     scanners: list[ScannerSpec] | dict[str, ScannerSpec] | None = Field(default=None)
     """Scanners to apply to transcripts."""
 
-    worklist: list[ScannerWork] | None = Field(default=None)
+    worklist: list[Worklist] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
     validation: dict[str, ValidationSet] | None = Field(default=None)
@@ -114,7 +114,7 @@ class ScanJob:
         transcripts: Transcripts | None = None,
         scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
         | dict[str, Scanner[Any]],
-        worklist: Sequence[ScannerWork] | None = None,
+        worklist: Sequence[Worklist] | None = None,
         validation: dict[str, ValidationSet] | None = None,
         results: str | None = None,
         model: str | Model | None = None,
@@ -218,7 +218,7 @@ class ScanJob:
         return self._transcripts
 
     @property
-    def worklist(self) -> Sequence[ScannerWork] | None:
+    def worklist(self) -> Sequence[Worklist] | None:
         """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
         return self._worklist
 

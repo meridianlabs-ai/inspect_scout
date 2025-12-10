@@ -113,13 +113,8 @@ class ScanTranscripts(BaseModel):
     """Transcript data as a csv (deprecated)"""
 
 
-class ScannerWork(BaseModel):
-    """Definition of work to perform for a scanner.
-
-    By default scanners process all transcripts passed to `scan()`.
-    You can alternately pass a list of `ScannerWork` to specify that
-    only particular scanners and transcripts should be processed.
-    """
+class Worklist(BaseModel):
+    """List of transcript ids to process for a scanner."""
 
     scanner: str
     """Scanner name."""
@@ -175,7 +170,7 @@ class ScanSpec(BaseModel):
     scanners: dict[str, ScannerSpec]
     """Scanners to apply to transcripts."""
 
-    worklist: list[ScannerWork] | None = Field(default=None)
+    worklist: list[Worklist] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
     validation: dict[str, ValidationSet] | None = Field(default=None)

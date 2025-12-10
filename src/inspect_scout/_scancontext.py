@@ -39,9 +39,9 @@ from ._scanner.scanner import (
 )
 from ._scanspec import (
     ScannerSpec,
-    ScannerWork,
     ScanOptions,
     ScanSpec,
+    Worklist,
 )
 from ._transcript.transcripts import Transcripts
 
@@ -57,7 +57,7 @@ class ScanContext:
     scanners: dict[str, Scanner[Any]]
     """Scanners to apply to transcripts."""
 
-    worklist: Sequence[ScannerWork] | None
+    worklist: Sequence[Worklist] | None
     """Transcript ids to process for each scanner."""
 
     validation: dict[str, ValidationSet] | None

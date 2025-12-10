@@ -204,3 +204,22 @@ class Transcripts(abc.ABC):
     def from_snapshot(snapshot: ScanTranscripts) -> "Transcripts":
         """Restore transcripts from a snapshot."""
         ...
+
+
+class ScannerWork:
+    """Definition of work to perform for a scanner.
+
+    By default scanners process all transcripts passed to `scan()`.
+    You can alternately pass a list of `ScannerWork` to specify that
+    only particular scanners and transcripts should be processed.
+    """
+
+    def __init__(self, scanner: str, transcripts: list[str] | Transcripts) -> None:
+        self.scanner = scanner
+        self.transcripts = transcripts
+
+    scanner: str
+    """Scanner name."""
+
+    transcripts: "list[str] | Transcripts"
+    """Transcripts."""

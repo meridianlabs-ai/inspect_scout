@@ -18,13 +18,6 @@ export type ErrorScope = "scanjobs" | "scanner" | "dataframe";
 
 export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
 
-export type ScannerCore =
-  | ScannerCoreTranscript
-  | ScannerCoreMessage
-  | ScannerCoreMessages
-  | ScannerCoreEvent
-  | ScannerCoreEvents;
-
 export type ValueType =
   | "boolean"
   | "number"
@@ -33,7 +26,7 @@ export type ValueType =
   | "object"
   | "null";
 
-export interface ScannerCoreBase {
+export interface ScannerCore {
   uuid?: string;
   inputType: "transcript" | "message" | "messages" | "event" | "events";
   explanation?: string;
@@ -50,38 +43,6 @@ export interface ScannerCoreBase {
   scanErrorRefusal?: boolean;
 }
 
-interface ScannerCoreTranscript extends ScannerCoreBase {
-  inputType: "transcript";
-  input: Transcript;
-}
-
-interface ScannerCoreMessage extends ScannerCoreBase {
-  inputType: "message";
-  input: MessageType;
-}
-
-interface ScannerCoreMessages extends ScannerCoreBase {
-  inputType: "messages";
-  input: MessageType[];
-}
-
-interface ScannerCoreEvent extends ScannerCoreBase {
-  inputType: "event";
-  input: EventType;
-}
-
-interface ScannerCoreEvents extends ScannerCoreBase {
-  inputType: "events";
-  input: EventType[];
-}
-
-export type ScannerData =
-  | ScannerDataTranscript
-  | ScannerDataMessage
-  | ScannerDataMessages
-  | ScannerDataEvent
-  | ScannerDataEvents;
-
 export interface ScannerReference {
   type: "message" | "event";
   id: string;
@@ -95,7 +56,7 @@ export type MessageType =
   | ChatMessageTool;
 
 // Base interface with common properties
-interface ScannerDataBase extends ScannerCoreBase {
+export interface ScannerData extends ScannerCore {
   answer?: string;
   inputIds: string[];
   metadata: Record<string, JsonValue>;
@@ -114,53 +75,6 @@ interface ScannerDataBase extends ScannerCoreBase {
   scannerParams: Record<string, JsonValue>;
   transcriptId: string;
   transcriptSourceUri: string;
-}
-
-interface ScannerDataTranscript extends ScannerDataBase {
-  inputType: "transcript";
-  input: Transcript;
-}
-
-interface ScannerDataMessage extends ScannerDataBase {
-  inputType: "message";
-  input: MessageType;
-}
-
-interface ScannerDataMessages extends ScannerDataBase {
-  inputType: "messages";
-  input: MessageType[];
-}
-
-interface ScannerDataEvent extends ScannerDataBase {
-  inputType: "event";
-  input: EventType;
-}
-
-interface ScannerDataEvents extends ScannerDataBase {
-  inputType: "events";
-  input: EventType[];
-}
-
-export function isTranscriptData(
-  data: ScannerData
-): data is ScannerDataTranscript {
-  return data.inputType === "transcript";
-}
-
-export function isMessageData(data: ScannerData): data is ScannerDataMessage {
-  return data.inputType === "message";
-}
-
-export function isMessagesData(data: ScannerData): data is ScannerDataMessages {
-  return data.inputType === "messages";
-}
-
-export function isEventData(data: ScannerData): data is ScannerDataEvent {
-  return data.inputType === "event";
-}
-
-export function isEventsData(data: ScannerData): data is ScannerDataEvents {
-  return data.inputType === "events";
 }
 
 // Type guard functions for value types

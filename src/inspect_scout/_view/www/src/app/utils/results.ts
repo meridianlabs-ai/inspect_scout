@@ -40,14 +40,14 @@ export const resultIdentifier = (scannerCore?: ScannerCore): IdentifierInfo => {
   } else if (scannerCore.inputType === "message") {
     const sampleIdentifier = getSampleIdentifier(scannerCore);
     return {
-      id: scannerCore.input.id || "null",
+      id: scannerCore.transcriptSourceId,
       secondaryId: sampleIdentifier ? sampleIdentifier.id : undefined,
       epoch: sampleIdentifier ? sampleIdentifier.epoch : undefined,
     };
   } else if (scannerCore.inputType === "event") {
     const sampleIdentifier = getSampleIdentifier(scannerCore);
     return {
-      id: scannerCore.input.uuid || "null",
+      id: scannerCore.transcriptSourceId,
       secondaryId: sampleIdentifier ? sampleIdentifier.id : undefined,
       epoch: sampleIdentifier ? sampleIdentifier.epoch : undefined,
     };

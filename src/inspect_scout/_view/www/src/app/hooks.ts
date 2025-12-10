@@ -4,19 +4,13 @@ import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
 import { useApi, useStore } from "../state/store";
-import { EventType } from "../transcript/types";
-import { Transcript, ModelUsage } from "../types";
+import { ModelUsage } from "../types";
 import { JsonValue, Events } from "../types/log";
 import { decodeArrowBytes } from "../utils/arrow";
 import { asyncJsonParse } from "../utils/json-worker";
 import { join } from "../utils/uri";
 
-import {
-  MessageType,
-  ScannerData,
-  ScannerCore,
-  ScannerReference,
-} from "./types";
+import { ScannerData, ScannerCore, ScannerReference } from "./types";
 import { expandResultsetRows } from "./utils/arrow";
 
 export const useSelectedScanner = () => {
@@ -302,7 +296,6 @@ export const useScannerData = (
 
         const [
           eventReferences,
-          input,
           inputIds,
           messageReferences,
           metadata,
@@ -317,7 +310,6 @@ export const useScannerData = (
           value,
         ] = await Promise.all([
           parse(filtered.get("event_references", 0) as string),
-          parse(filtered.get("input", 0) as string),
           parse(filtered.get("input_ids", 0) as string),
           parse(filtered.get("message_references", 0) as string),
           parse(filtered.get("metadata", 0) as string),
@@ -417,35 +409,30 @@ export const useScannerData = (
             typedData = {
               ...baseData,
               inputType: "transcript",
-              input: input as Transcript,
             };
             break;
           case "message":
             typedData = {
               ...baseData,
               inputType: "message",
-              input: input as MessageType,
             };
             break;
           case "messages":
             typedData = {
               ...baseData,
               inputType: "messages",
-              input: input as MessageType[],
             };
             break;
           case "event":
             typedData = {
               ...baseData,
               inputType: "event",
-              input: input as EventType,
             };
             break;
           case "events":
             typedData = {
               ...baseData,
               inputType: "events",
-              input: input as EventType[],
             };
             break;
         }
@@ -567,7 +554,6 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               transcriptMetadata,
               eventReferences,
               messageReferences,
-              input,
               value,
             ] = await Promise.all([
               parse(r.validation_result as string),
@@ -575,7 +561,6 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               parse<Record<string, unknown>>(r.transcript_metadata as string),
               parse(r.event_references as string),
               parse(r.message_references as string),
-              parse(r.input as string),
               simpleValue(r.value, valueType),
             ]);
 
@@ -618,35 +603,30 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
                 typedPreview = {
                   ...basePreview,
                   inputType: "transcript",
-                  input: input as Transcript,
                 };
                 break;
               case "message":
                 typedPreview = {
                   ...basePreview,
                   inputType: "message",
-                  input: input as MessageType,
                 };
                 break;
               case "messages":
                 typedPreview = {
                   ...basePreview,
                   inputType: "messages",
-                  input: input as MessageType[],
                 };
                 break;
               case "event":
                 typedPreview = {
                   ...basePreview,
                   inputType: "event",
-                  input: input as EventType,
                 };
                 break;
               case "events":
                 typedPreview = {
                   ...basePreview,
                   inputType: "events",
-                  input: input as EventType[],
                 };
                 break;
             }

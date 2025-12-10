@@ -166,8 +166,8 @@ class IPCContext:
     scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]
     """Function that executes a scanner job and returns results."""
 
-    scan_completed: Callable[[], Awaitable[None]]
-    """Function to indicate the scan is complete."""
+    completed: Callable[[], Awaitable[None]]
+    """Function to indicate the stragegy is complete."""
 
     prefetch_multiple: float | None
     """Multiplier for scanner job queue size (base=task_count)."""

@@ -13,7 +13,7 @@ from typing_extensions import override
 class MockTranscripts(Transcripts, TranscriptsReader):
     """Mock implementation of Transcripts for testing."""
 
-    def reader(self) -> TranscriptsReader:
+    def reader(self, snapshot: ScanTranscripts | None = None) -> TranscriptsReader:
         return self
 
     async def __aenter__(self) -> "MockTranscripts":

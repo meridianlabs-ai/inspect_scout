@@ -1136,9 +1136,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._query:
             # Apply WHERE conditions
             if self._query.where:
-                where_clause, where_params = self._build_where_clause(
-                    self._query.where
-                )
+                where_clause, where_params = self._build_where_clause(self._query.where)
                 index_sql += where_clause
                 params.extend(where_params)
 

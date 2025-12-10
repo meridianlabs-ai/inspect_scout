@@ -1485,6 +1485,62 @@ async def test_snapshot_legacy_format_restoration(test_location: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_snapshot_based_index_creation(test_location: Path) -> None:
+    """Test that snapshot can be used to create index without parquet crawl."""
+    from inspect_scout._scanspec import ScanTranscripts
+    from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
+
+    # First, create a database with some transcripts
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        transcripts = [
+            create_sample_transcript(id=f"snap-{i:03d}", metadata={"index": i})
+            for i in range(3)
+        ]
+        await db.insert(transcripts)
+
+        # Get transcript_ids with filenames
+        transcript_ids = await db.transcript_ids()
+        assert len(transcript_ids) == 3
+
+        # All should have filenames
+        for filename in transcript_ids.values():
+            assert filename is not None
+            assert filename.endswith(".parquet")
+    finally:
+        await db.disconnect()
+
+    # Now create a new DB instance with the snapshot - this should use the fast path
+    snapshot = ScanTranscripts(
+        type=TRANSCRIPT_SOURCE_DATABASE,
+        location=str(test_location),
+        transcript_ids=transcript_ids,
+    )
+
+    db2 = ParquetTranscriptsDB(str(test_location), snapshot=snapshot)
+    await db2.connect()
+
+    try:
+        # Should be able to read transcripts using snapshot-based index
+        for tid in transcript_ids:
+            info = TranscriptInfo(
+                transcript_id=tid,
+                source_type="test",
+                source_id="source-001",
+                source_uri="test://uri",
+                metadata={},
+            )
+            content = TranscriptContent(messages="all", events=None)
+            transcript = await db2.read(info, content)
+            assert transcript.transcript_id == tid
+            assert len(transcript.messages) > 0
+    finally:
+        await db2.disconnect()
+
+
+@pytest.mark.asyncio
 async def test_exclude_clause_first_file_has_content(test_location: Path) -> None:
     """Test that exclude clause works when first file HAS content columns.
 

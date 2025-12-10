@@ -74,6 +74,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         target_file_size_mb: float = 100,
         row_group_size_mb: float = 32,
         query: TranscriptsQuery | None = None,
+        snapshot: ScanTranscripts | None = None,
     ) -> None:
         """Initialize Parquet transcript database.
 
@@ -86,11 +87,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 If provided, WHERE conditions are pushed down to Parquet scan,
                 and SHUFFLE/LIMIT are applied during table creation.
                 Query-time filters are additive (AND combination).
+            snapshot: Snapshot info. This is a mapping of transcript_id => filename
+                which we can use to avoid crawling.
         """
         super().__init__(location)
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
         self._query = query
+        self._snapshot = snapshot
 
         # Note: Bloom filter support for transcript_id would be beneficial for point
         # lookups, but PyArrow doesn't yet support writing bloom filters (as of v21.0.0).
@@ -1012,101 +1016,142 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._conn.execute("DROP TABLE IF EXISTS transcript_index")
             self._conn.execute("DROP VIEW IF EXISTS transcripts")
 
-            # Discover Parquet files
-            file_paths = await self._discover_parquet_files()
+            # Get file paths - either from snapshot or by discovering parquet files
+            if self._snapshot and self._snapshot.transcript_ids:
+                # Fast path: extract filenames from snapshot (no crawl needed)
+                file_paths = sorted(
+                    {f for f in self._snapshot.transcript_ids.values() if f is not None}
+                )
+            else:
+                # Standard path: discover parquet files
+                file_paths = await self._discover_parquet_files()
 
-            # Check for encrypted files and register key if needed
-            if file_paths:
-                self._is_encrypted = self._check_encryption_status(file_paths)
-                if self._is_encrypted:
-                    key = get_encryption_key_from_env()
-                    if not key:
-                        raise PrerequisiteError(
-                            f"Encrypted database detected but no encryption key provided. "
-                            f"Set the {ENCRYPTION_KEY_ENV} environment variable."
-                        )
-                    try:
-                        validate_encryption_key(key)
-                    except ValueError as e:
-                        raise PrerequisiteError(str(e)) from e
-                    self._conn.execute(
-                        f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')"
-                    )
-
+            # Handle empty case
             if not file_paths:
-                # Create empty structures with minimal schema
-                self._conn.execute("""
-                    CREATE TABLE transcript_index AS
-                    SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
-                    WHERE FALSE
-                """)
-                self._conn.execute("""
-                    CREATE VIEW transcripts AS
-                    SELECT
-                        ''::VARCHAR AS transcript_id,
-                        ''::VARCHAR AS source_type,
-                        ''::VARCHAR AS source_id,
-                        ''::VARCHAR AS source_uri,
-                        ''::VARCHAR AS filename
-                    WHERE FALSE
-                """)
+                self._create_empty_structures()
                 return
 
-            # Build file list for read_parquet
-            if len(file_paths) == 1:
-                pattern = f"'{file_paths[0]}'"
-            else:
-                pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
+            # Setup encryption if needed
+            self._setup_encryption(file_paths)
 
-            # Store pattern for potential future use
+            # Build pattern for read_parquet
+            pattern = self._build_parquet_pattern(file_paths)
             self._parquet_pattern = pattern
 
-            # Infer exclude clause from first file (fast - reads one footer only)
-            # If schema differs across files, we'll fall back to full scan later
+            # Infer exclude clause from first file
             self._exclude_clause = self._infer_exclude_clause(file_paths[0])
 
-            # 1. Create small index table (just transcript_id + filename)
-            # Apply pre-filter if provided (WHERE/SHUFFLE/LIMIT)
-            enc_config = self._read_parquet_encryption_config()
-            index_sql = f"""
-                CREATE TABLE transcript_index AS
-                SELECT transcript_id, filename
-                FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
-            """
-            params: list[Any] = []
-
-            # Apply pre-filter query if provided
-            if self._query:
-                # Apply WHERE conditions
-                if self._query.where:
-                    where_clause, where_params = self._build_where_clause(
-                        self._query.where
-                    )
-                    index_sql += where_clause
-                    params.extend(where_params)
-
-                # Apply SHUFFLE (register UDF first)
-                if self._query.shuffle:
-                    seed = 0 if self._query.shuffle is True else self._query.shuffle
-                    self._register_shuffle_function(seed)
-                    index_sql += " ORDER BY shuffle_hash(transcript_id)"
-
-                # Apply LIMIT
-                if self._query.limit:
-                    index_sql += " LIMIT ?"
-                    params.append(self._query.limit)
-
-            self._conn.execute(index_sql, params)
+            # Create index table
+            if self._snapshot and self._snapshot.transcript_ids:
+                # Fast path: create directly from snapshot data
+                self._create_index_from_snapshot()
+            else:
+                # Standard path: query parquet files
+                self._create_index_from_parquet(pattern)
 
             # Create index on transcript_id for fast lookups
             self._conn.execute(
                 "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
             )
 
-            # 2. Create VIEW for metadata queries
-            # Try with exclude clause inferred from first file; if schema differs
-            # across files, fall back to full schema scan
+            # Create VIEW for metadata queries
             self._create_transcripts_view(pattern)
+
+    def _create_empty_structures(self) -> None:
+        """Create empty transcript_index table and transcripts VIEW."""
+        assert self._conn is not None
+        self._conn.execute("""
+            CREATE TABLE transcript_index AS
+            SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
+            WHERE FALSE
+        """)
+        self._conn.execute("""
+            CREATE VIEW transcripts AS
+            SELECT
+                ''::VARCHAR AS transcript_id,
+                ''::VARCHAR AS source_type,
+                ''::VARCHAR AS source_id,
+                ''::VARCHAR AS source_uri,
+                ''::VARCHAR AS filename
+            WHERE FALSE
+        """)
+
+    def _setup_encryption(self, file_paths: list[str]) -> None:
+        """Detect and configure encryption if needed."""
+        assert self._conn is not None
+
+        # Check encryption status (validates no mixed encrypted/unencrypted)
+        self._is_encrypted = self._check_encryption_status(file_paths)
+
+        if self._is_encrypted:
+            key = get_encryption_key_from_env()
+            if not key:
+                raise PrerequisiteError(
+                    f"Encrypted database detected but no encryption key provided. "
+                    f"Set the {ENCRYPTION_KEY_ENV} environment variable."
+                )
+            try:
+                validate_encryption_key(key)
+            except ValueError as e:
+                raise PrerequisiteError(str(e)) from e
+            self._conn.execute(
+                f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')"
+            )
+
+    def _build_parquet_pattern(self, file_paths: list[str]) -> str:
+        """Build DuckDB pattern string for read_parquet."""
+        if len(file_paths) == 1:
+            return f"'{file_paths[0]}'"
+        else:
+            return "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
+
+    def _create_index_from_snapshot(self) -> None:
+        """Create transcript_index table directly from snapshot data."""
+        assert self._conn is not None
+        assert self._snapshot is not None
+
+        ids = list(self._snapshot.transcript_ids.keys())
+        filenames = [self._snapshot.transcript_ids[tid] for tid in ids]
+        arrow_table = pa.table({"transcript_id": ids, "filename": filenames})
+        self._conn.register("snapshot_data", arrow_table)
+        self._conn.execute("""
+            CREATE TABLE transcript_index AS
+            SELECT * FROM snapshot_data
+        """)
+        self._conn.unregister("snapshot_data")
+
+    def _create_index_from_parquet(self, pattern: str) -> None:
+        """Create transcript_index table by querying parquet files."""
+        assert self._conn is not None
+
+        enc_config = self._read_parquet_encryption_config()
+        index_sql = f"""
+            CREATE TABLE transcript_index AS
+            SELECT transcript_id, filename
+            FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
+        """
+        params: list[Any] = []
+
+        # Apply pre-filter query if provided
+        if self._query:
+            # Apply WHERE conditions
+            if self._query.where:
+                where_clause, where_params = self._build_where_clause(self._query.where)
+                index_sql += where_clause
+                params.extend(where_params)
+
+            # Apply SHUFFLE (register UDF first)
+            if self._query.shuffle:
+                seed = 0 if self._query.shuffle is True else self._query.shuffle
+                self._register_shuffle_function(seed)
+                index_sql += " ORDER BY shuffle_hash(transcript_id)"
+
+            # Apply LIMIT
+            if self._query.limit:
+                index_sql += " LIMIT ?"
+                params.append(self._query.limit)
+
+        self._conn.execute(index_sql, params)
 
     def _infer_exclude_clause(self, file_path: str) -> str:
         """Infer EXCLUDE clause from a single file's schema.
@@ -1177,8 +1222,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build VIEW SQL based on whether pre-filter was applied
         def build_view_sql(exclude_clause: str) -> str:
-            if self._query and (
-                self._query.where or self._query.shuffle or self._query.limit
+            if self._snapshot or (
+                self._query
+                and (self._query.where or self._query.shuffle or self._query.limit)
             ):
                 # VIEW joins with pre-filtered index table
                 return f"""
@@ -1407,13 +1453,15 @@ class ParquetTranscripts(Transcripts):
         ensure_filesystem_dependencies(location)
 
     @override
-    def reader(self) -> TranscriptsReader:
-        """Get a reader for querying transcripts.
+    def reader(self, snapshot: ScanTranscripts | None = None) -> TranscriptsReader:
+        """Read the selected transcripts.
 
-        Returns:
-            TranscriptsReader configured with current query parameters.
+        Args:
+            snapshot: An optional snapshot which provides hints to make the
+                reader more efficient (e.g. by preventing a full scan to find
+                transcript_id => filename mappings)
         """
-        db = ParquetTranscriptsDB(self._location, query=self._query)
+        db = ParquetTranscriptsDB(self._location, query=self._query, snapshot=snapshot)
         return TranscriptsDBReader(db)
 
     @staticmethod

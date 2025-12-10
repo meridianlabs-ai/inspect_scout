@@ -83,7 +83,14 @@ class EvalLogTranscripts(Transcripts):
             self._logs = logs
 
     @override
-    def reader(self) -> TranscriptsReader:
+    def reader(self, snapshot: ScanTranscripts | None = None) -> TranscriptsReader:
+        """Read the selected transcripts.
+
+        Args:
+            snapshot: An optional snapshot which provides hints to make the
+                reader more efficient (e.g. by preventing a full scan to find
+                transcript_id => filename mappings). Not used by EvalLogTranscripts.
+        """
         return EvalLogTranscriptsReader(self._logs, self._query, self._files_cache)
 
     @staticmethod

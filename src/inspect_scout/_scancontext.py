@@ -21,12 +21,10 @@ from inspect_ai.model._model_config import (
     model_roles_to_model_roles_config,
 )
 
-from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.factory import transcripts_from_snapshot
 from inspect_scout._util.constants import (
     DEFAULT_MAX_TRANSCRIPTS,
     PKG_NAME,
-    TRANSCRIPT_SOURCE_DATABASE,
-    TRANSCRIPT_SOURCE_EVAL_LOG,
 )
 from inspect_scout._util.revision import scan_revision
 from inspect_scout._validation.types import ValidationSet
@@ -134,7 +132,7 @@ async def resume_scan(scan_location: str) -> ScanContext:
     spec = status.spec
     if spec.transcripts is None:
         raise RuntimeError("Cannot resume scan because it has no transcripts snapshot.")
-    transcripts = await _transcripts_from_snapshot(spec.transcripts)
+    transcripts = await transcripts_from_snapshot(spec.transcripts)
     scanners = _scanners_from_spec(spec.scanners)
     return ScanContext(
         spec=spec,
@@ -212,16 +210,3 @@ def job_args(scanjob: ScanJob) -> dict[str, Any] | None:
         return dict(registry_params(scanjob))
     else:
         return None
-
-
-async def _transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
-    if snapshot.type == TRANSCRIPT_SOURCE_EVAL_LOG:
-        from inspect_scout._transcript.eval_log import EvalLogTranscripts
-
-        return EvalLogTranscripts.from_snapshot(snapshot)
-    elif snapshot.type == TRANSCRIPT_SOURCE_DATABASE:
-        from inspect_scout._transcript.database.parquet import ParquetTranscripts
-
-        return ParquetTranscripts.from_snapshot(snapshot)
-    else:
-        raise ValueError(f"Unrecognized transcript type '{snapshot.type}")

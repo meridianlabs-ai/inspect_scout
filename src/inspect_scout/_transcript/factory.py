@@ -5,6 +5,7 @@ from inspect_ai.log import EvalLogInfo
 from typing_extensions import Literal
 from upath import UPath
 
+from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db
 from inspect_scout._transcript.eval_log import Logs, transcripts_from_logs
 from inspect_scout._transcript.transcripts import Transcripts
@@ -55,6 +56,19 @@ def transcripts_from(location: str | Logs) -> Transcripts:
                 "Only one transcript database location may be specified."
             )
         return transcripts_from_logs(locations_str)
+
+
+async def transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+    if snapshot.type == TRANSCRIPT_SOURCE_EVAL_LOG:
+        from inspect_scout._transcript.eval_log import EvalLogTranscripts
+
+        return EvalLogTranscripts.from_snapshot(snapshot)
+    elif snapshot.type == TRANSCRIPT_SOURCE_DATABASE:
+        from inspect_scout._transcript.database.parquet import ParquetTranscripts
+
+        return ParquetTranscripts.from_snapshot(snapshot)
+    else:
+        raise ValueError(f"Unrecognized transcript type '{snapshot.type}")
 
 
 def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "database"]:

@@ -69,7 +69,7 @@ def process_common_options(options: CommonOptions) -> None:
 
     # attach debugger if requested
     if options["debug"]:
-        import debugpy  # type: ignore
+        import debugpy
 
         debugpy.listen(options["debug_port"])
         display().print("Waiting for debugger attach")

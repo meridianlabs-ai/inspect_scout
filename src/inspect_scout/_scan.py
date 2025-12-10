@@ -504,7 +504,7 @@ async def _scan_async_inner(
             )
 
         async with transcripts.reader() as tr:
-            # get the snapshot and list of ids
+            # get the snapshot
             snapshot = await tr.snapshot()
             scan.spec.transcripts = snapshot
 
@@ -551,7 +551,9 @@ async def _scan_async_inner(
                 async def _transcripts_reader() -> TranscriptsReader:
                     nonlocal transcripts_reader
                     if transcripts_reader is None:
-                        transcripts_reader = await transcripts.reader().__aenter__()
+                        transcripts_reader = await transcripts.reader(
+                            snapshot
+                        ).__aenter__()
                     return transcripts_reader
 
                 async def _scan_completed_function() -> None:

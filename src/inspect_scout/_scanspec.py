@@ -92,14 +92,25 @@ class ScanTranscripts(BaseModel):
     location: str | None = Field(default=None)
     """Location of transcript collection (e.g. database location)."""
 
+    transcript_ids: dict[str, str | None] = Field(default_factory=dict)
+    """IDs of transcripts mapped to optional location hints.
+
+    The location value depends on the backing store:
+    - For parquet databases: the parquet filename containing the transcript
+    - For eval logs: the log file path containing the transcript
+    - For other stores (e.g., relational DB): may be None if ID alone suffices
+    """
+
+    # deprecated fields
+
     count: int = Field(default=0)
-    """Trancript count."""
+    """Trancript count (deprecated)."""
 
-    fields: list[TranscriptField]
-    """Data types of transcripts fields."""
+    fields: list[TranscriptField] | None = Field(default=None)
+    """Data types of transcripts fields (deprecated)"""
 
-    data: str
-    """Transcript data as a csv."""
+    data: str | None = Field(default=None)
+    """Transcript data as a csv (deprecated)"""
 
 
 class ScannerWork(BaseModel):

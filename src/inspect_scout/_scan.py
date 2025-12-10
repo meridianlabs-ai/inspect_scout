@@ -505,7 +505,7 @@ async def _scan_async_inner(
 
         async with transcripts.reader() as tr:
             # get the snapshot and list of ids
-            snapshot, transcript_ids = await tr.snapshot()
+            snapshot = await tr.snapshot()
             scan.spec.transcripts = snapshot
 
             # write the snapshot
@@ -515,7 +515,7 @@ async def _scan_async_inner(
             scanner_names_list = list(scan.scanners.keys())
             total_scans = 0
             skipped_scans = 0
-            for transcript_id in transcript_ids:
+            for transcript_id in snapshot.transcript_ids.keys():
                 for name in scanner_names_list:
                     if await recorder.is_recorded(transcript_id, name):
                         skipped_scans += 1

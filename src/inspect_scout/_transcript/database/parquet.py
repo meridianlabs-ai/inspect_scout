@@ -54,6 +54,12 @@ logger = getLogger(__name__)
 PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 
 
+class ParquetTranscriptInfo(TranscriptInfo):
+    """TranscriptInfo with parquet filename for efficient content lookup."""
+
+    filename: str
+
+
 class ParquetTranscriptsDB(TranscriptsDB):
     """DuckDB-based transcript database using Parquet file storage.
 
@@ -246,6 +252,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 transcript_source_type = row_dict.get("source_type")
                 transcript_source_id = row_dict.get("source_id")
                 transcript_source_uri = row_dict.get("source_uri")
+                transcript_filename = row_dict.get("filename")
 
                 # Reconstruct metadata from all non-reserved columns
                 # Use LazyJSONDict to defer JSON parsing until values are accessed
@@ -258,12 +265,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
                 # Use model_construct to bypass Pydantic validation which would
                 # convert LazyJSONDict to a plain dict, defeating lazy parsing
-                yield TranscriptInfo.model_construct(
+                yield ParquetTranscriptInfo.model_construct(
                     transcript_id=transcript_id,
                     source_type=transcript_source_type,
                     source_id=transcript_source_id,
                     source_uri=transcript_source_uri,
                     metadata=metadata,
+                    filename=transcript_filename,
                 )
 
     @override
@@ -272,7 +280,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-    ) -> list[str]:
+    ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
         Optimized implementation that queries directly from the index table
@@ -284,13 +292,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             shuffle: Randomly shuffle results (pass `int` for reproducible seed).
 
         Returns:
-            List of transcript IDs.
+            Dict of transcript IDs and parquet filenames
         """
         assert self._conn is not None
 
         if not where:
             # No conditions - query index table directly (faster, in-memory)
-            sql = "SELECT transcript_id FROM transcript_index"
+            sql = "SELECT transcript_id, filename FROM transcript_index"
 
             # Add ORDER BY for shuffle
             if shuffle:
@@ -305,11 +313,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 params.append(limit)
 
             result = self._conn.execute(sql, params).fetchall()
-            return [row[0] for row in result]
+            return {row[0]: row[1] for row in result}
         else:
             # Has conditions - need to query VIEW for metadata filtering
-            # Fall back to default implementation
-            return await super().transcript_ids(where, limit, shuffle)
+            transcript_ids: dict[str, str | None] = {}
+            async for info in self.select(where, limit, shuffle):
+                parquet_info = cast(ParquetTranscriptInfo, info)
+                transcript_ids[parquet_info.transcript_id] = parquet_info.filename
+
+            return transcript_ids
 
     @override
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:

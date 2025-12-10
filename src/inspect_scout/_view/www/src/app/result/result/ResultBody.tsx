@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { ChatViewVirtualList } from "../../../chat/ChatViewVirtualList";
 import { useStore } from "../../../state/store";
 import { TranscriptView } from "../../../transcript/TranscriptView";
+import { ColumnHeader } from "../../components/ColumnHeader";
 import { ScannerData } from "../../types";
 
 import styles from "./ResultBody.module.css";
@@ -24,14 +25,17 @@ export const ResultBody: FC<ResultBodyProps> = ({ result }) => {
   const highlightLabeled = useStore((state) => state.highlightLabeled);
 
   return (
-    <div ref={scrollRef} className={clsx(styles.container)}>
-      <InputRenderer
-        result={result}
-        scrollRef={scrollRef}
-        initialMessageId={initialMessageId}
-        initialEventId={initialEventId}
-        highlightLabeled={highlightLabeled}
-      />
+    <div className={styles.container}>
+      <ColumnHeader label="Input" />
+      <div ref={scrollRef} className={clsx(styles.scrollable)}>
+        <InputRenderer
+          result={result}
+          scrollRef={scrollRef}
+          initialMessageId={initialMessageId}
+          initialEventId={initialEventId}
+          highlightLabeled={highlightLabeled}
+        />
+      </div>
     </div>
   );
 };

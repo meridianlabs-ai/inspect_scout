@@ -25,6 +25,9 @@ export interface MarkdownReference {
 interface MarkdownDivWithReferencesProps {
   markdown: string;
   references?: MarkdownReference[];
+  options?: {
+    previewRefsOnHover?: boolean;
+  };
   className?: string | string[];
   style?: React.CSSProperties;
   omitMedia?: boolean;
@@ -33,7 +36,7 @@ interface MarkdownDivWithReferencesProps {
 export const MarkdownDivWithReferences = forwardRef<
   HTMLDivElement,
   MarkdownDivWithReferencesProps
->(({ markdown, references, className, style, omitMedia }, ref) => {
+>(({ markdown, references, options, className, style, omitMedia }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [positionEl, setPositionEl] = useState<HTMLElement | null>(null);
   const [currentRef, setCurrentRef] = useState<MarkdownReference | null>(null);
@@ -92,6 +95,11 @@ export const MarkdownDivWithReferences = forwardRef<
   useEffect(() => {
     const container = containerRef.current;
     if (!container) {
+      return;
+    }
+
+    // Don't enable popover / preview on hover
+    if (options?.previewRefsOnHover === false) {
       return;
     }
 
@@ -175,7 +183,7 @@ export const MarkdownDivWithReferences = forwardRef<
             }
           }}
           placement="auto"
-          hoverDelay={1000}
+          hoverDelay={400}
           showArrow={true}
         >
           {(currentRef.citePreview && currentRef.citePreview()) || (

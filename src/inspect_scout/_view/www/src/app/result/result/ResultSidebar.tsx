@@ -11,6 +11,7 @@ import { ValidationResult } from "../../values/ValidationResult";
 import { Value } from "../../values/Value";
 
 import styles from "./ResultSidebar.module.css";
+
 interface ResultSidebarProps {
   result?: ScannerData;
 }
@@ -47,6 +48,7 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ result }) => {
             maxTableSize={1000}
             interactive={true}
             references={refs}
+            options={{ previewRefsOnHover: false }}
           />
           {result.validationResult !== undefined ? (
             <div className={clsx(styles.validation)}>
@@ -68,7 +70,11 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ result }) => {
           <div className={clsx("text-style-label", "text-style-secondary")}>
             Explanation
           </div>
-          <Explanation result={result} references={refs} />
+          <Explanation
+            result={result}
+            references={refs}
+            options={{ previewRefsOnHover: false }}
+          />
         </div>
         {result.metadata && Object.keys(result.metadata).length > 0 && (
           <>
@@ -76,7 +82,11 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ result }) => {
               Metadata
             </div>
             <div>
-              <MetaDataGrid entries={result.metadata} references={refs} />
+              <MetaDataGrid
+                entries={result.metadata}
+                references={refs}
+                options={{ previewRefsOnHover: false }}
+              />
             </div>
           </>
         )}

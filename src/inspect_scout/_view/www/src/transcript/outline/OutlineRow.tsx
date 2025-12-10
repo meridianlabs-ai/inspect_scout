@@ -202,7 +202,7 @@ export const summarizeNode = (node: EventNode): ReactNode => {
   return (
     <MetaDataGrid
       entries={entries}
-      size="mini"
+      options={{ size: "mini" }}
       className={clsx(styles.popover, "text-size-smallest")}
     />
   );

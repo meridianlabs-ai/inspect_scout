@@ -11,9 +11,12 @@ interface MetadataGridProps {
   className?: string | string[];
   references?: MarkdownReference[];
   style?: CSSProperties;
-  size?: "mini" | "small";
   entries: Record<string, unknown>;
-  plain?: boolean;
+  options?: {
+    size?: "mini" | "small";
+    plain?: boolean;
+    previewRefsOnHover?: boolean;
+  };
 }
 
 /**
@@ -24,13 +27,12 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
   entries,
   className,
   references,
-  size,
   style,
-  plain,
+  options,
 }) => {
   const baseId = "metadata-grid";
   const fontStyle =
-    size === "mini" ? "text-size-smallest" : "text-size-smaller";
+    options?.size === "mini" ? "text-size-smallest" : "text-size-smaller";
 
   const entryEls = entryRecords(entries).map((entry, index) => {
     const id = `${baseId}-value-${index}`;
@@ -40,7 +42,7 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
           <div
             style={{
               gridColumn: "1 / -1",
-              borderBottom: `${!plain ? "solid 1px var(--bs-light-border-subtle" : ""}`,
+              borderBottom: `${!options?.plain ? "solid 1px var(--bs-light-border-subtle" : ""}`,
             }}
           ></div>
         ) : undefined}
@@ -61,14 +63,17 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
               id={id}
               entry={entry}
               references={references}
+              renderOptions={{
+                renderString: "markdown",
+                previewRefsOnHover: options?.previewRefsOnHover,
+              }}
               renderObject={(obj: any) => {
                 return (
                   <MetaDataGrid
                     id={id}
                     className={clsx(styles.nested)}
                     entries={obj}
-                    size={size}
-                    plain={plain}
+                    options={options}
                     references={references}
                   />
                 );

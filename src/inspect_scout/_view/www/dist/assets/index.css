@@ -3949,10 +3949,21 @@ span.ap-marker-container:hover span.ap-marker {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
-._container_kyylo_1 {
-  padding: 0.5rem 1rem;
+._header_189zi_1 {
+  background-color: var(--bs-light-bg-subtle);
+  border-bottom: solid 1px var(--bs-border-color);
+  width: 100%;
+  padding-left: 0.5rem;
+}
+._container_1fgdb_1 {
   height: 100%;
+  overflow-y: hidden;
+}
+
+._scrollable_1fgdb_6 {
+  padding: 0.5rem;
   overflow-y: auto;
+  height: 100%;
 }
 ._container_u4d55_1 {
   display: grid;

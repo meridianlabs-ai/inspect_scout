@@ -38,9 +38,9 @@ class LogMetadata(Metadata):
         return Column("eval_id")
 
     @property
-    def status(self) -> Column:
+    def eval_status(self) -> Column:
         """Status of eval."""
-        return Column("status")
+        return Column("eval_status")
 
     @property
     def log(self) -> Column:

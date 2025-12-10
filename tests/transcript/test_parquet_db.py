@@ -1059,8 +1059,7 @@ async def test_insert_record_batch_reader_batch_size_splitting(
         assert len(parquet_files) > 1
 
         # Verify all data is queryable
-        transcript_ids = await db.transcript_ids([], None)
-        assert len(transcript_ids) == 100
+        assert len(await db.transcript_ids([], None)) == 100
     finally:
         await db.disconnect()
 
@@ -1412,26 +1411,17 @@ async def test_snapshot_returns_transcript_ids(test_location: Path) -> None:
 
         # Create reader and get snapshot
         reader = TranscriptsDBReader(db)
-        scan_transcripts, transcript_ids = await reader.snapshot()
+        scan_transcripts = await reader.snapshot()
 
         # Verify ScanTranscripts structure
         assert scan_transcripts.type == TRANSCRIPT_SOURCE_DATABASE
         assert scan_transcripts.location == str(test_location)
-        assert scan_transcripts.count == 5
 
-        # Verify fields
-        assert len(scan_transcripts.fields) == 1
-        assert scan_transcripts.fields[0]["name"] == "transcript_id"
-        assert scan_transcripts.fields[0]["type"] == "string"
+        assert len(scan_transcripts.transcript_ids) == 5
+        assert set(scan_transcripts.transcript_ids.keys()) == {
+            f"snap-{i:03d}" for i in range(5)
+        }
 
-        # Verify transcript IDs list
-        assert len(transcript_ids) == 5
-        assert set(transcript_ids) == {f"snap-{i:03d}" for i in range(5)}
-
-        # Verify CSV data contains all IDs
-        assert "transcript_id" in scan_transcripts.data  # Header
-        for tid in transcript_ids:
-            assert tid in scan_transcripts.data
     finally:
         await db.disconnect()
 
@@ -1446,15 +1436,108 @@ async def test_snapshot_empty_database(test_location: Path) -> None:
 
     try:
         reader = TranscriptsDBReader(db)
-        scan_transcripts, transcript_ids = await reader.snapshot()
+        scan_transcripts = await reader.snapshot()
 
         # Verify empty results
         assert scan_transcripts.type == TRANSCRIPT_SOURCE_DATABASE
-        assert scan_transcripts.count == 0
-        assert len(transcript_ids) == 0
-        assert "transcript_id" in scan_transcripts.data  # Header still present
+        assert len(scan_transcripts.transcript_ids) == 0
     finally:
         await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_legacy_format_restoration(test_location: Path) -> None:
+    """Test that legacy snapshot format (with CSV data) is correctly restored."""
+    from inspect_scout._scanspec import ScanTranscripts
+    from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
+    from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Insert test transcripts
+        transcripts = [
+            create_sample_transcript(id=f"legacy-{i:03d}", metadata={"index": i})
+            for i in range(3)
+        ]
+        await db.insert(transcripts)
+
+        # Create a legacy-format snapshot (simulating old saved snapshot)
+        legacy_snapshot = ScanTranscripts(
+            type=TRANSCRIPT_SOURCE_DATABASE,
+            location=str(test_location),
+            count=3,
+            fields=[{"name": "transcript_id", "type": "string"}],
+            data="transcript_id\nlegacy-000\nlegacy-001\nlegacy-002\n",
+        )
+
+        # Restore transcripts from legacy snapshot
+        restored = transcripts_from_db_snapshot(legacy_snapshot)
+
+        # Verify restoration works - should get exactly those 3 transcripts
+        async with restored.reader() as reader:
+            restored_ids = [info.transcript_id async for info in reader.index()]
+
+        assert set(restored_ids) == {"legacy-000", "legacy-001", "legacy-002"}
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_based_index_creation(test_location: Path) -> None:
+    """Test that snapshot can be used to create index without parquet crawl."""
+    from inspect_scout._scanspec import ScanTranscripts
+    from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
+
+    # First, create a database with some transcripts
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        transcripts = [
+            create_sample_transcript(id=f"snap-{i:03d}", metadata={"index": i})
+            for i in range(3)
+        ]
+        await db.insert(transcripts)
+
+        # Get transcript_ids with filenames
+        transcript_ids = await db.transcript_ids()
+        assert len(transcript_ids) == 3
+
+        # All should have filenames
+        for filename in transcript_ids.values():
+            assert filename is not None
+            assert filename.endswith(".parquet")
+    finally:
+        await db.disconnect()
+
+    # Now create a new DB instance with the snapshot - this should use the fast path
+    snapshot = ScanTranscripts(
+        type=TRANSCRIPT_SOURCE_DATABASE,
+        location=str(test_location),
+        transcript_ids=transcript_ids,
+    )
+
+    db2 = ParquetTranscriptsDB(str(test_location), snapshot=snapshot)
+    await db2.connect()
+
+    try:
+        # Should be able to read transcripts using snapshot-based index
+        for tid in transcript_ids:
+            info = TranscriptInfo(
+                transcript_id=tid,
+                source_type="test",
+                source_id="source-001",
+                source_uri="test://uri",
+                metadata={},
+            )
+            content = TranscriptContent(messages="all", events=None)
+            transcript = await db2.read(info, content)
+            assert transcript.transcript_id == tid
+            assert len(transcript.messages) > 0
+    finally:
+        await db2.disconnect()
 
 
 @pytest.mark.asyncio

@@ -67,9 +67,13 @@ def transcripts_from_db_snapshot(snapshot: ScanTranscripts) -> Transcripts:
     # create transcripts
     transcripts: Transcripts = ParquetTranscripts(snapshot.location)
 
-    # parse IDs from snapshot CSV
-    df = pd.read_csv(io.StringIO(snapshot.data))
-    sample_ids = df["transcript_id"].tolist()
+    # read legacy snapshot format
+    if snapshot.data:
+        # parse IDs from snapshot CSV
+        df = pd.read_csv(io.StringIO(snapshot.data))
+        sample_ids = df["transcript_id"].tolist()
+    else:
+        sample_ids = list(snapshot.transcript_ids.keys())
 
     # filter to only the transcripts in the snapshot
     transcripts = transcripts.where(Column("transcript_id").in_(sample_ids))

@@ -1,13 +1,11 @@
 """TranscriptsReader implementation for TranscriptDB backends."""
 
-import io
 from types import TracebackType
 from typing import AsyncIterator
 
-import pandas as pd
 from typing_extensions import override
 
-from inspect_scout._scanspec import ScanTranscripts, TranscriptField
+from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
 from ..transcripts import TranscriptsReader
@@ -67,30 +65,14 @@ class TranscriptsDBReader(TranscriptsReader):
         return await self._db.read(transcript, content)
 
     @override
-    async def snapshot(self) -> tuple[ScanTranscripts, list[str]]:
+    async def snapshot(self) -> ScanTranscripts:
         """Create snapshot of database contents.
 
         Returns:
             ScanTranscripts snapshot for serialization.
         """
-        # Collect all transcript IDs (uses optimized path when available)
-        transcript_ids = await self._db.transcript_ids()
-
-        # Create minimal DataFrame with IDs
-        df = pd.DataFrame({"transcript_id": transcript_ids})
-
-        # Convert to CSV
-        buffer = io.StringIO()
-        df.to_csv(buffer, index=False)
-        data = buffer.getvalue()
-
-        # Create field definitions
-        fields: list[TranscriptField] = [{"name": "transcript_id", "type": "string"}]
-
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_DATABASE,
             location=self._db._location,
-            fields=fields,
-            count=len(transcript_ids),
-            data=data,
-        ), transcript_ids
+            transcript_ids=await self._db.transcript_ids(),
+        )

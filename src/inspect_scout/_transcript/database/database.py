@@ -64,12 +64,13 @@ class TranscriptsDB(abc.ABC):
         """
         ...
 
+    @abc.abstractmethod
     async def transcript_ids(
         self,
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-    ) -> list[str]:
+    ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
         Optimized method that returns only transcript IDs without loading
@@ -82,9 +83,9 @@ class TranscriptsDB(abc.ABC):
             shuffle: Randomly shuffle results (pass `int` for reproducible seed).
 
         Returns:
-            List of transcript IDs.
+            Dict of transcript IDs => location | None
         """
-        return [info.transcript_id async for info in self.select(where, limit, shuffle)]
+        ...
 
     @abc.abstractmethod
     def select(

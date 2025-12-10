@@ -50,7 +50,7 @@ class TranscriptsReader(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def snapshot(self) -> tuple[ScanTranscripts, list[str]]: ...
+    async def snapshot(self) -> ScanTranscripts: ...
 
 
 @dataclass
@@ -189,8 +189,14 @@ class Transcripts(abc.ABC):
         return transcripts
 
     @abc.abstractmethod
-    def reader(self) -> TranscriptsReader:
-        """Read the selected transcripts."""
+    def reader(self, snapshot: ScanTranscripts | None = None) -> TranscriptsReader:
+        """Read the selected transcripts.
+
+        Args:
+            snapshot: An optional snapshot which provides hints to make the
+                reader more efficient (e.g. by preventing a full scan to find
+                transcript_id => filename mappings)
+        """
         ...
 
     @staticmethod

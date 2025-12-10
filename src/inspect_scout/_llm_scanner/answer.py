@@ -164,13 +164,15 @@ class _LabelsAnswer(Answer):
     def format(self) -> str:
         if not self.labels:
             raise ValueError("Must have labels")
-        _, letters = _answer_options(self.labels)
+        formatted_choices, letters = _answer_options(self.labels)
         format_template = (
             LABELS_ANSWER_FORMAT_MULTI
             if self.multi_classification
             else LABELS_ANSWER_FORMAT_SINGLE
         )
-        return Template(format_template).render(letters=letters)
+        return Template(format_template).render(
+            letters=letters, formatted_choices=formatted_choices
+        )
 
     def result_for_answer(
         self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]

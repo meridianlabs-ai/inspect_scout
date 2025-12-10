@@ -34,14 +34,14 @@ def _dummy_extract_references(text: str) -> list[Reference]:
         (
             _LabelsAnswer(labels=["Choice A", "Choice B", "Choice C"]),
             "Answer the following multiple choice question about the transcript above:",
-            "'ANSWER: $LETTER' (without quotes) where $LETTER is one of A,B,C.",
+            "'ANSWER: $LETTER' (without quotes) where $LETTER is one of A,B,C representing:\nA) Choice A\nB) Choice B\nC) Choice C",
         ),
         (
             _LabelsAnswer(
                 labels=["Choice A", "Choice B", "Choice C"], multi_classification=True
             ),
             "Answer the following multiple choice question about the transcript above:",
-            "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from A,B,C.",
+            "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from A,B,C representing:\nA) Choice A\nB) Choice B\nC) Choice C",
         ),
         (
             _StrAnswer(),

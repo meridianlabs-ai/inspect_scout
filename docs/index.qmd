@@ -338,4 +338,4 @@ Above we provided a high-level tour of Scout features. See the following article
 
 -   [Workflow](workflow.qmd): Workflow for the stages of a transcript analysis project.
 
-There is also more in depth documentation available on [Scanners](scanners.qmd), [Results](results.qmd), [Validation](validation.qmd) and [Transcript Databases](transcript_databases.qmd).
+There is also more in depth documentation available on [Scanners](scanners.qmd), [Results](results.qmd), [Validation](validation.qmd) and [Transcript Databases](db_overview.qmd).

@@ -215,6 +215,8 @@ scout scan cybench_scan.py
 
 {{< include _parallelism.md >}}
 
+For some scanning work you won't get any benefit from increasing max processes (because all of the time is spent waiting for remote LLM calls). However, if you have scanners that are CPU intensive (e.g. they query transcript content with regexes) or have transcripts that are very large (and thus expensive to read) then increasing max processes may provide improved throughput. 
+
 ### Batch Mode
 
 Inspect AI supports calling the batch processing APIs for the [OpenAI](https://platform.openai.com/docs/guides/batch), [Anthropic](https://platform.claude.com/docs/en/build-with-claude/batch-processing), [Google](https://ai.google.dev/gemini-api/docs/batch-api?batch=file), and [Together AI](https://docs.together.ai/docs/batch-inference) providers. Batch processing has lower token costs (typically 50% of normal costs) and higher rate limits, but also substantially longer processing times—batched generations typically complete within an hour but can take much longer (up to 24 hours).

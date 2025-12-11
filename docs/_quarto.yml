@@ -53,6 +53,8 @@ website:
             href: reference/index.qmd
 
       right:
+          - text: Changelog
+            href: CHANGELOG.md
           - icon: github
             href: https://github.com/meridianlabs-ai/inspect_scout
 
@@ -69,7 +71,7 @@ website:
                 - text: Scout Basics
                   href: index.qmd#scout-basics
            - text: Using Scout
-             href: transcripts.qmd
+             href: workflow.qmd
              contents:
                 - href: workflow.qmd
                 - href: transcripts.qmd

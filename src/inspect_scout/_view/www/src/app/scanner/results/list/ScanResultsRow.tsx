@@ -8,7 +8,7 @@ import {
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
-import { ScannerCore } from "../../../types";
+import { ScanResultSummary } from "../../../types";
 import { useMarkdownRefs } from "../../../utils/refs";
 import { Error } from "../../../values/Error";
 import { Explanation } from "../../../values/Explanation";
@@ -21,12 +21,12 @@ import styles from "./ScanResultsRow.module.css";
 
 interface ScanResultsRowProps {
   index: number;
-  entry: ScannerCore;
+  summary: ScanResultSummary;
   gridDescriptor: GridDescriptor;
 }
 
 const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
-  entry,
+  summary,
   gridDescriptor,
 }) => {
   // Path information
@@ -41,9 +41,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   );
 
   // Generate the route to the scan result using the current scan path and the entry's uuid
-  const isNavigable = entry.uuid !== undefined;
+  const isNavigable = summary.uuid !== undefined;
   const scanResultUrl = isNavigable
-    ? scanResultRoute(relativePath, entry.uuid, searchParams)
+    ? scanResultRoute(relativePath, summary.uuid, searchParams)
     : "";
 
   // Information about the row
@@ -53,7 +53,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const hasValidations = gridDescriptor.columns.includes("validations");
 
   // refs
-  const refs: MarkdownReference[] = useMarkdownRefs(entry);
+  const refs: MarkdownReference[] = useMarkdownRefs(summary);
 
   const grid = (
     <div
@@ -61,21 +61,21 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
       className={clsx(
         styles.row,
         !isNavigable ? styles.disabled : "",
-        selectedScanResult === entry.uuid ? styles.selected : "",
+        selectedScanResult === summary.uuid ? styles.selected : "",
         hasExplanation ? "" : styles.noExplanation
       )}
       onClick={() => {
-        if (entry.uuid) {
-          setSelectedScanResult(entry.uuid);
+        if (summary.uuid) {
+          setSelectedScanResult(summary.uuid);
         }
       }}
     >
       <div className={clsx(styles.id, "text-size-smaller")}>
-        <Identifier result={entry} />
+        <Identifier summary={summary} />
       </div>
       {hasExplanation && (
         <div className={clsx(styles.explanation, "text-size-smaller")}>
-          <Explanation result={entry} references={refs} />
+          <Explanation summary={summary} references={refs} />
         </div>
       )}
       {hasLabel && (
@@ -87,28 +87,28 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
             "text-style-secondary"
           )}
         >
-          {entry.label || (
+          {summary.label || (
             <span className={clsx("text-style-secondary")}>—</span>
           )}
         </div>
       )}
 
       <div className={clsx(styles.value, "text-size-smaller")}>
-        {!entry.scanError && (
-          <Value result={entry} style="inline" references={refs} />
+        {!summary.scanError && (
+          <Value summary={summary} style="inline" references={refs} />
         )}
       </div>
       {hasValidations && (
         <div className={clsx("text-size-smaller")}>
-          <ValidationResult result={entry.validationResult} />
+          <ValidationResult result={summary.validationResult} />
         </div>
       )}
       {hasErrors && (
         <div className={clsx(styles.error, "text-size-smallest")}>
-          {entry.scanError && (
+          {summary.scanError && (
             <Error
-              error={entry.scanError || "unknown error"}
-              refusal={!!entry.scanErrorRefusal}
+              error={summary.scanError || "unknown error"}
+              refusal={!!summary.scanErrorRefusal}
             />
           )}
         </div>

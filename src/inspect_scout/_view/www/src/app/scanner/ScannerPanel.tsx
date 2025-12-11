@@ -6,12 +6,12 @@ import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
+import { Navbar } from "../navbar/Navbar";
 import {
   useServerScanner,
   useServerScannerDataframe,
   useServerScans,
-} from "../hooks";
-import { Navbar } from "../navbar/Navbar";
+} from "../server/hooks";
 
 import styles from "./ScannerPanel.module.css";
 import { ScannerPanelBody } from "./ScannerPanelBody";

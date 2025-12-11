@@ -4,10 +4,10 @@ import {
   MarkdownDivWithReferences,
   MarkdownReference,
 } from "../../components/MarkdownDivWithReferences";
-import { ScannerCore } from "../types";
+import { ScanResultSummary } from "../types";
 
 interface ExplanationProps {
-  result?: ScannerCore;
+  summary?: ScanResultSummary;
   references?: MarkdownReference[];
   options?: {
     previewRefsOnHover?: boolean;
@@ -15,13 +15,13 @@ interface ExplanationProps {
 }
 
 export const Explanation: FC<ExplanationProps> = ({
-  result,
+  summary,
   references,
   options,
 }): ReactNode => {
   return (
     <MarkdownDivWithReferences
-      markdown={result?.explanation || ""}
+      markdown={summary?.explanation || ""}
       references={references}
       options={options}
     />

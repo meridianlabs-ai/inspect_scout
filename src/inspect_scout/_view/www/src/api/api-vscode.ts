@@ -1,5 +1,6 @@
 import JSON5 from "json5";
 
+import { ScanResultInputData } from "../app/types";
 import { Scans, Status } from "../types";
 import { VSCodeApi } from "../utils/vscode";
 
@@ -7,6 +8,7 @@ import { ClientStorage, ScanApi } from "./api";
 import {
   kMethodGetScan,
   kMethodGetScannerDataframe,
+  kMethodGetScannerDataframeInput,
   kMethodGetScans,
 } from "./jsonrpc";
 
@@ -52,8 +54,18 @@ export const apiVscode = (
         );
       }
     },
-    getScannerDataframeInput(_scanLocation, _scanner, _uuid) {
-      throw new Error("Not implemented");
+    getScannerDataframeInput: async (scanLocation, scanner, uuid) => {
+      const response = (await rpcClient(kMethodGetScannerDataframeInput, [
+        scanLocation,
+        scanner,
+        uuid,
+      ])) as string;
+
+      if (response) {
+        return JSON5.parse<ScanResultInputData>(response);
+      } else {
+        throw new Error("Invalid response for getScans");
+      }
     },
     storage: createVSCodeStore(vscodeApi),
   };

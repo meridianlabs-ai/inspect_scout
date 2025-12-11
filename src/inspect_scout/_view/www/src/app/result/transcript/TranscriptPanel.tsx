@@ -3,19 +3,19 @@ import { FC, useRef } from "react";
 
 import { TranscriptView } from "../../../transcript/TranscriptView";
 import { EventNode, EventType } from "../../../transcript/types";
-import { ScannerData } from "../../types";
+import { ScanResultData } from "../../types";
 
 import styles from "./TranscriptPanel.module.css";
 
 interface TranscriptPanelProps {
   id: string;
-  result?: ScannerData;
+  resultData?: ScanResultData;
   nodeFilter?: (node: EventNode<EventType>[]) => EventNode<EventType>[];
 }
 
 export const TranscriptPanel: FC<TranscriptPanelProps> = ({
   id,
-  result,
+  resultData,
   nodeFilter,
 }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -24,7 +24,7 @@ export const TranscriptPanel: FC<TranscriptPanelProps> = ({
     <div ref={scrollRef} className={clsx(styles.container)}>
       <TranscriptView
         id={id}
-        events={result?.scanEvents || []}
+        events={resultData?.scanEvents || []}
         scrollRef={scrollRef}
         nodeFilter={nodeFilter}
       />

@@ -14,8 +14,8 @@ import {
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { basename } from "../../../../utils/path";
-import { useScannerPreviews } from "../../../hooks";
-import { ScannerCore, SortColumn } from "../../../types";
+import { useScannerCores } from "../../../hooks";
+import { ScanResultSummary, SortColumn } from "../../../types";
 import {
   resultIdentifier,
   resultIdentifierStr,
@@ -52,7 +52,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const { scanPath } = parseScanResultPath(relativePath);
 
   // Data
-  const { data: scannerSummaries, isLoading } = useScannerPreviews(columnTable);
+  const { data: scannerSummaries, isLoading } = useScannerCores(columnTable);
   const isLoadingData = useStore((state) => state.loadingData);
   const busy = isLoading || isLoadingData;
 
@@ -147,18 +147,18 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   // Type guard to check if entry is a ResultGroup
   const isResultGroup = (
-    entry: ResultGroup | ScannerCore
+    entry: ResultGroup | ScanResultSummary
   ): entry is ResultGroup => {
     return "type" in entry && entry.type === "group";
   };
 
-  const rows: Array<ResultGroup | ScannerCore> = useMemo(() => {
+  const rows: Array<ResultGroup | ScanResultSummary> = useMemo(() => {
     // No grouping
     if (!groupResultsBy || groupResultsBy === "none") {
       return filteredSummaries;
     }
 
-    const groups = new Map<string | number, ScannerCore[]>();
+    const groups = new Map<string | number, ScanResultSummary[]>();
 
     for (const item of filteredSummaries) {
       // Insert group header when group changes
@@ -187,7 +187,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       // Otherwise, sort as strings
       return String(a).localeCompare(String(b));
     });
-    const result: Array<ResultGroup | ScannerCore> = [];
+    const result: Array<ResultGroup | ScanResultSummary> = [];
 
     for (const groupKey of sortedGroupKeys) {
       const label =
@@ -350,7 +350,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   }, [selectedItemIndex]);
 
   const renderRow = useCallback(
-    (index: number, entry: ScannerCore | ResultGroup) => {
+    (index: number, entry: ScanResultSummary | ResultGroup) => {
       if (isResultGroup(entry)) {
         return <ScanResultGroup group={entry.label} />;
       }
@@ -359,7 +359,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       return (
         <ScanResultsRow
           index={index}
-          entry={entry}
+          summary={entry}
           gridDescriptor={gridDescriptor}
         />
       );
@@ -387,7 +387,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
       <ActivityBar animating={isLoading} />
       {noContentMessage && <NoContentsPanel text={noContentMessage} />}
       {!busy && filteredSummaries.length > 0 && (
-        <LiveVirtualList<ScannerCore | ResultGroup>
+        <LiveVirtualList<ScanResultSummary | ResultGroup>
           id={id}
           listHandle={listHandle}
           data={rows}
@@ -403,8 +403,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 // Sorts scan results by multiple columns and directions.
 // Applies sorting rules in order, falling back to the next rule if values are equal.
 const sortByColumns = (
-  a: ScannerCore,
-  b: ScannerCore,
+  a: ScanResultSummary,
+  b: ScanResultSummary,
   sortColumns: SortColumn[]
 ): number => {
   for (const sortCol of sortColumns) {
@@ -468,7 +468,7 @@ const sortByColumns = (
 };
 
 const optimalColumnLayout = (
-  scannerSummaries: ScannerCore[]
+  scannerSummaries: ScanResultSummary[]
 ): GridDescriptor => {
   const columns: string[] = [];
   const gridColParts: string[] = [];

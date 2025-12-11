@@ -1,4 +1,4 @@
-import { ScannerCore } from "../types";
+import { ScanResultSummary } from "../types";
 
 export interface IdentifierInfo {
   id: string;
@@ -7,9 +7,9 @@ export interface IdentifierInfo {
 }
 
 export const resultIdentifierStr = (
-  scannerCore?: ScannerCore
+  summary?: ScanResultSummary
 ): string | undefined => {
-  const identifier = resultIdentifier(scannerCore);
+  const identifier = resultIdentifier(summary);
   if (!identifier) {
     return undefined;
   }
@@ -25,48 +25,47 @@ export const resultIdentifierStr = (
   }
 };
 
-export const resultIdentifier = (scannerCore?: ScannerCore): IdentifierInfo => {
-  if (!scannerCore) {
+export const resultIdentifier = (
+  summary?: ScanResultSummary
+): IdentifierInfo => {
+  if (!summary) {
     return {
       id: "unknown",
     };
   }
-  if (scannerCore.inputType === "transcript") {
+  if (summary.inputType === "transcript") {
     // Look in the metadata for a sample identifier
-    const sampleIdentifier = getSampleIdentifier(scannerCore);
+    const sampleIdentifier = getSampleIdentifier(summary);
     if (sampleIdentifier) {
       return sampleIdentifier;
     }
-  } else if (scannerCore.inputType === "message") {
-    const sampleIdentifier = getSampleIdentifier(scannerCore);
+  } else if (summary.inputType === "message") {
+    const sampleIdentifier = getSampleIdentifier(summary);
     return {
-      id: scannerCore.transcriptSourceId,
+      id: summary.transcriptSourceId,
       secondaryId: sampleIdentifier ? sampleIdentifier.id : undefined,
       epoch: sampleIdentifier ? sampleIdentifier.epoch : undefined,
     };
-  } else if (scannerCore.inputType === "event") {
-    const sampleIdentifier = getSampleIdentifier(scannerCore);
+  } else if (summary.inputType === "event") {
+    const sampleIdentifier = getSampleIdentifier(summary);
     return {
-      id: scannerCore.transcriptSourceId,
+      id: summary.transcriptSourceId,
       secondaryId: sampleIdentifier ? sampleIdentifier.id : undefined,
       epoch: sampleIdentifier ? sampleIdentifier.epoch : undefined,
     };
   }
 
   return {
-    id: scannerCore.transcriptSourceId,
+    id: summary.transcriptSourceId,
   };
 };
 
 const getSampleIdentifier = (
-  scannerCore: ScannerCore
+  summary: ScanResultSummary
 ): { id: string; epoch: string } | undefined => {
-  if (
-    scannerCore.transcriptMetadata["id"] &&
-    scannerCore.transcriptMetadata["epoch"]
-  ) {
-    const id = String(scannerCore.transcriptMetadata["id"]);
-    const epoch = String(scannerCore.transcriptMetadata["epoch"]);
+  if (summary.transcriptMetadata["id"] && summary.transcriptMetadata["epoch"]) {
+    const id = String(summary.transcriptMetadata["id"]);
+    const epoch = String(summary.transcriptMetadata["epoch"]);
     return {
       id,
       epoch,
@@ -75,9 +74,9 @@ const getSampleIdentifier = (
   return undefined;
 };
 
-export const resultLog = (scannerCore: ScannerCore): string | undefined => {
-  if (scannerCore.inputType === "transcript") {
-    return scannerCore.transcriptMetadata["log"] as string;
+export const resultLog = (summary: ScanResultSummary): string | undefined => {
+  if (summary.inputType === "transcript") {
+    return summary.transcriptMetadata["log"] as string;
   }
   return undefined;
 };

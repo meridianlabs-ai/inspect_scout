@@ -6,15 +6,24 @@ import { ChatViewVirtualList } from "../../../chat/ChatViewVirtualList";
 import { useStore } from "../../../state/store";
 import { TranscriptView } from "../../../transcript/TranscriptView";
 import { ColumnHeader } from "../../components/ColumnHeader";
-import { ScannerData } from "../../types";
+import {
+  ScanResultInputData,
+  isEventInput,
+  isEventsInput,
+  isMessageInput,
+  isMessagesInput,
+  isTranscriptInput,
+  ScanResultData,
+} from "../../types";
 
 import styles from "./ResultBody.module.css";
 
 export interface ResultBodyProps {
-  result?: ScannerData;
+  resultData?: ScanResultData;
+  inputData?: ScanResultInputData;
 }
 
-export const ResultBody: FC<ResultBodyProps> = ({ result }) => {
+export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [searchParams] = useSearchParams();
 
@@ -29,7 +38,8 @@ export const ResultBody: FC<ResultBodyProps> = ({ result }) => {
       <ColumnHeader label="Input" />
       <div ref={scrollRef} className={clsx(styles.scrollable)}>
         <InputRenderer
-          result={result}
+          resultData={resultData}
+          inputData={inputData}
           scrollRef={scrollRef}
           initialMessageId={initialMessageId}
           initialEventId={initialEventId}
@@ -42,7 +52,8 @@ export const ResultBody: FC<ResultBodyProps> = ({ result }) => {
 
 interface InputRendererProps {
   className?: string | string[];
-  result?: ScannerData;
+  resultData?: ScanResultData;
+  inputData?: ScanResultInputData;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   initialMessageId?: string | null;
   initialEventId?: string | null;
@@ -50,58 +61,33 @@ interface InputRendererProps {
 }
 
 const InputRenderer: FC<InputRendererProps> = ({
-  result,
+  resultData,
+  inputData,
   className,
   scrollRef,
   initialMessageId,
   initialEventId,
   highlightLabeled,
 }) => {
-  switch (result?.inputType) {
-    case "transcript": {
-      if (result.input.messages.length > 0) {
-        const labels = result?.messageReferences.reduce(
-          (acc, ref) => {
-            if (ref.cite) {
-              acc[ref.id] = ref.cite;
-            }
-            return acc;
-          },
-          {} as Record<string, string>
-        );
+  if (!inputData) {
+    return <div>No Input Available</div>;
+  }
 
-        return (
-          <ChatViewVirtualList
-            messages={result.input.messages}
-            allowLinking={false}
-            id={"scan-input-virtual-list"}
-            toolCallStyle={"complete"}
-            indented={true}
-            className={className}
-            scrollRef={scrollRef}
-            initialMessageId={initialMessageId}
-            showLabels={true}
-            highlightLabeled={highlightLabeled}
-            labels={labels}
-          />
-        );
-      } else if (result.input.events.length > 0) {
-        return (
-          <TranscriptView
-            id={"scan-input-transcript"}
-            events={result.input.events}
-            scrollRef={scrollRef}
-            initialEventId={initialEventId}
-          />
-        );
-      } else {
-        return <div>No Transcript Input Available</div>;
-      }
-    }
-    case "messages": {
+  if (isTranscriptInput(inputData)) {
+    if (inputData.input.messages.length > 0) {
+      const labels = resultData?.messageReferences.reduce(
+        (acc, ref) => {
+          if (ref.cite) {
+            acc[ref.id] = ref.cite;
+          }
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+
       return (
         <ChatViewVirtualList
-          messages={result.input}
+          messages={inputData.input.messages}
           allowLinking={false}
           id={"scan-input-virtual-list"}
           toolCallStyle={"complete"}
@@ -109,44 +95,68 @@ const InputRenderer: FC<InputRendererProps> = ({
           className={className}
           scrollRef={scrollRef}
           initialMessageId={initialMessageId}
+          showLabels={true}
+          highlightLabeled={highlightLabeled}
+          labels={labels}
         />
       );
-    }
-    case "message": {
-      return (
-        <ChatViewVirtualList
-          messages={[result.input]}
-          allowLinking={false}
-          id={"scan-input-virtual-list"}
-          toolCallStyle={"complete"}
-          indented={true}
-          className={className}
-          scrollRef={scrollRef}
-          initialMessageId={initialMessageId}
-        />
-      );
-    }
-    case "events": {
+    } else if (inputData.input.events.length > 0) {
       return (
         <TranscriptView
           id={"scan-input-transcript"}
-          events={result.input}
+          events={inputData.input.events}
           scrollRef={scrollRef}
           initialEventId={initialEventId}
         />
       );
+    } else {
+      return <div>No Transcript Input Available</div>;
     }
-    case "event": {
-      return (
-        <TranscriptView
-          id={"scan-input-transcript"}
-          events={[result.input]}
-          scrollRef={scrollRef}
-          initialEventId={initialEventId}
-        />
-      );
-    }
-    default:
-      return <div>Unknown Input Type</div>;
+  } else if (isMessagesInput(inputData)) {
+    return (
+      <ChatViewVirtualList
+        messages={inputData.input}
+        allowLinking={false}
+        id={"scan-input-virtual-list"}
+        toolCallStyle={"complete"}
+        indented={true}
+        className={className}
+        scrollRef={scrollRef}
+        initialMessageId={initialMessageId}
+      />
+    );
+  } else if (isMessageInput(inputData)) {
+    return (
+      <ChatViewVirtualList
+        messages={[inputData.input]}
+        allowLinking={false}
+        id={"scan-input-virtual-list"}
+        toolCallStyle={"complete"}
+        indented={true}
+        className={className}
+        scrollRef={scrollRef}
+        initialMessageId={initialMessageId}
+      />
+    );
+  } else if (isEventsInput(inputData)) {
+    return (
+      <TranscriptView
+        id={"scan-input-transcript"}
+        events={inputData.input}
+        scrollRef={scrollRef}
+        initialEventId={initialEventId}
+      />
+    );
+  } else if (isEventInput(inputData)) {
+    return (
+      <TranscriptView
+        id={"scan-input-transcript"}
+        events={[inputData.input]}
+        scrollRef={scrollRef}
+        initialEventId={initialEventId}
+      />
+    );
+  } else {
+    return <div>Unsupported Input Type</div>;
   }
 };

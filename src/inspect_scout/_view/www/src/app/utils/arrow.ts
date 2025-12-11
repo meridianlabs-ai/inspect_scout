@@ -2,7 +2,7 @@ import { ColumnTable, from } from "arquero";
 import JSON5 from "json5";
 
 import { asyncJsonParse } from "../../utils/json-worker";
-import { ScannerReference, ValueType } from "../types";
+import { ScanResultReference, ValueType } from "../types";
 
 interface Result {
   uuid?: string | null;
@@ -12,7 +12,7 @@ interface Result {
   answer?: string | null;
   explanation?: string | null;
   metadata?: Record<string, unknown> | null;
-  references?: ScannerReference[];
+  references?: ScanResultReference[];
 }
 
 // Expand rows where value_type == "resultset" into multiple rows.

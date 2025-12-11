@@ -10,7 +10,7 @@ import { printArray } from "../../utils/array";
 import { formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
 import {
-  ScannerCore,
+  ScanResultSummary,
   isStringValue,
   isNumberValue,
   isBooleanValue,
@@ -22,7 +22,7 @@ import {
 import styles from "./Value.module.css";
 
 interface ValueProps {
-  result: ScannerCore;
+  summary: ScanResultSummary;
   references: MarkdownReference[];
   style: "inline" | "block";
   maxTableSize?: number;
@@ -34,7 +34,7 @@ interface ValueProps {
 
 // TODO: Implement popover viewer for object and list values
 export const Value: FC<ValueProps> = ({
-  result,
+  summary: result,
   references,
   style,
   maxTableSize = 5,
@@ -68,7 +68,7 @@ export const Value: FC<ValueProps> = ({
     return (
       <ValueList
         value={result.value}
-        result={result}
+        summary={result}
         references={references}
         style={style}
         maxListSize={maxTableSize}
@@ -79,7 +79,7 @@ export const Value: FC<ValueProps> = ({
     return (
       <ValueTable
         value={result.value}
-        result={result}
+        summary={result}
         references={references}
         style={style}
         maxTableSize={maxTableSize}
@@ -93,12 +93,19 @@ export const Value: FC<ValueProps> = ({
 
 const ValueList: FC<{
   value: unknown[];
-  result: ScannerCore;
+  summary: ScanResultSummary;
   maxListSize: number;
   interactive: boolean;
   references: MarkdownReference[];
   style: "inline" | "block";
-}> = ({ value, result, maxListSize, interactive, references, style }) => {
+}> = ({
+  value,
+  summary: result,
+  maxListSize,
+  interactive,
+  references,
+  style,
+}) => {
   // Display only maxListSize rows
   const itemsToDisplay = value.slice(0, maxListSize);
 
@@ -140,12 +147,19 @@ const ValueList: FC<{
 
 const ValueTable: FC<{
   value: object;
-  result: ScannerCore;
+  summary: ScanResultSummary;
   maxTableSize: number;
   interactive: boolean;
   references: MarkdownReference[];
   style: "inline" | "block";
-}> = ({ value, result, maxTableSize, interactive, references, style }) => {
+}> = ({
+  value,
+  summary: result,
+  maxTableSize,
+  interactive,
+  references,
+  style,
+}) => {
   // Display only 5 rows
   const keys = Object.keys(value);
   const keysToDisplay = keys.slice(0, maxTableSize);
@@ -190,7 +204,7 @@ const ValueTable: FC<{
 const renderValue = (
   index: number,
   val: unknown,
-  result: ScannerCore,
+  summary: ScanResultSummary,
   references: MarkdownReference[],
   interactive: boolean
 ): ReactNode => {
@@ -213,7 +227,7 @@ const renderValue = (
       printObject(val, 35)
     ) : (
       <RecordTree
-        id={`value-record-${result.uuid}-${index}`}
+        id={`value-record-${summary.uuid}-${index}`}
         record={val as Record<string, unknown>}
       />
     );

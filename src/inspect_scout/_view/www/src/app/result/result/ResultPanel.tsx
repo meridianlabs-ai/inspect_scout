@@ -1,22 +1,25 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { ScannerData } from "../../types";
+import { useSelectedScanResultInputData } from "../../hooks";
+import { ScanResultData } from "../../types";
 
 import { ResultBody } from "./ResultBody";
 import styles from "./ResultPanel.module.css";
 import { ResultSidebar } from "./ResultSidebar";
 
 interface ResultPanelProps {
-  result?: ScannerData;
+  resultData?: ScanResultData;
 }
 
-export const ResultPanel: FC<ResultPanelProps> = ({ result }) => {
+export const ResultPanel: FC<ResultPanelProps> = ({ resultData }) => {
+  const dfInput = useSelectedScanResultInputData();
+
   return (
-    result && (
+    resultData && (
       <div className={clsx(styles.container, "text-size-base")}>
-        <ResultSidebar result={result} />
-        <ResultBody result={result} />
+        <ResultSidebar resultData={resultData} />
+        <ResultBody resultData={resultData} inputData={dfInput} />
       </div>
     )
   );

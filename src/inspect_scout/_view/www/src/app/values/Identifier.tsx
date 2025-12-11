@@ -1,17 +1,17 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
-import { ScannerCore } from "../types";
+import { ScanResultSummary } from "../types";
 import { resultIdentifier } from "../utils/results";
 
 import styles from "./Identifier.module.css";
 
 interface IndentifierProps {
-  result: ScannerCore;
+  summary: ScanResultSummary;
 }
 
-export const Identifier: FC<IndentifierProps> = ({ result }): ReactNode => {
-  const identifier = resultIdentifier(result);
+export const Identifier: FC<IndentifierProps> = ({ summary }): ReactNode => {
+  const identifier = resultIdentifier(summary);
   if (identifier.epoch) {
     const id = identifier.id;
     const epoch = identifier.epoch;

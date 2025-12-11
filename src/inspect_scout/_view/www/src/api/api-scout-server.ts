@@ -1,4 +1,4 @@
-import { DataFrameInput, InputType } from "../app/types.ts";
+import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import { Scans, Status } from "../types";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
@@ -48,9 +48,9 @@ export const apiScoutServer = (
       scanLocation: string,
       scanner: string,
       uuid: string
-    ): Promise<DataFrameInput> => {
+    ): Promise<ScanResultInputData> => {
       // Fetch the data
-      const response = await requestApi.fetchType<InputType>(
+      const response = await requestApi.fetchType<Input>(
         "GET",
         `/scanner_df_input/${encodeURIComponent(
           scanLocation
@@ -72,7 +72,7 @@ export const apiScoutServer = (
       }
 
       // Return the DataFrameInput
-      return { input, inputType: inputType as DataFrameInput["inputType"] };
+      return { input, inputType: inputType as InputType };
     },
     storage: NoPersistence,
   };

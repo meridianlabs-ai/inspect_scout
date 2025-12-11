@@ -16,12 +16,16 @@ import { EventNode, EventType } from "../../transcript/types";
 import { ApplicationIcons } from "../appearance/icons";
 import { ToolButton } from "../components/ToolButton";
 import {
+  useSelectedResultsRow,
+  useSelectedScanResultInputData,
+} from "../hooks";
+import { Navbar } from "../navbar/Navbar";
+import {
   useServerScans,
   useServerScanner,
   useServerScannerDataframe,
-  useSelectedResultsRow,
-} from "../hooks";
-import { Navbar } from "../navbar/Navbar";
+  useServerScannerDataframeInput,
+} from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -51,6 +55,7 @@ export const ScanResultPanel: FC = () => {
   useServerScans();
   useServerScanner();
   useServerScannerDataframe();
+  useServerScannerDataframeInput();
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
@@ -72,6 +77,7 @@ export const ScanResultPanel: FC = () => {
     useSelectedResultsRow(scanResultUuid);
 
   const status = useStore((state) => state.selectedScanStatus);
+  const dfInput = useSelectedScanResultInputData();
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -144,7 +150,7 @@ export const ScanResultPanel: FC = () => {
     <div className={clsx(styles.root)}>
       <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
       <ActivityBar animating={!!loading || resultLoading} />
-      <ScanResultHeader result={selectedResult} status={status} />
+      <ScanResultHeader inputData={dfInput} status={status} />
       {selectedResult && (
         <ExtendedFindProvider>
           <TabSet
@@ -186,7 +192,7 @@ export const ScanResultPanel: FC = () => {
                 }}
                 className={styles.fullHeight}
               >
-                <ResultPanel result={selectedResult} />
+                <ResultPanel resultData={selectedResult} />
               </TabPanel>
             ) : undefined}
             {showEvents ? (
@@ -200,7 +206,7 @@ export const ScanResultPanel: FC = () => {
               >
                 <TranscriptPanel
                   id="scan-transcript"
-                  result={selectedResult}
+                  resultData={selectedResult}
                   nodeFilter={skipScanSpan}
                 />
               </TabPanel>
@@ -213,7 +219,7 @@ export const ScanResultPanel: FC = () => {
                 handleTabChange(kTabIdMetadata);
               }}
             >
-              <MetadataPanel result={selectedResult} />
+              <MetadataPanel resultData={selectedResult} />
             </TabPanel>
             <TabPanel
               id={kTabIdInfo}
@@ -223,7 +229,7 @@ export const ScanResultPanel: FC = () => {
                 handleTabChange(kTabIdInfo);
               }}
             >
-              <InfoPanel result={selectedResult} />
+              <InfoPanel resultData={selectedResult} />
             </TabPanel>
             <TabPanel
               id={kTabIdJson}

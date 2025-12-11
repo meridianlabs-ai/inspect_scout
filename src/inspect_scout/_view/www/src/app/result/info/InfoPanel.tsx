@@ -7,32 +7,32 @@ import { RecordTree } from "../../../content/RecordTree";
 import { ModelUsage, ModelUsage2 } from "../../../types/log";
 import { ModelTokenTable } from "../../../usage/ModelTokenTable";
 import { formatNumber } from "../../../utils/format";
-import { ScannerData } from "../../types";
+import { ScanResultData } from "../../types";
 
 import styles from "./InfoPanel.module.css";
 
 interface InfoPanelProps {
-  result?: ScannerData;
+  resultData?: ScanResultData;
 }
 
-export const InfoPanel: FC<InfoPanelProps> = ({ result }) => {
+export const InfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
   return (
-    result && (
+    resultData && (
       <div className={clsx(styles.container)}>
         <Card>
           <CardHeader label="Scanner Info" type="modern" />
           <CardBody>
-            <ScannerInfoPanel result={result} />
+            <ScannerInfoPanel resultData={resultData} />
           </CardBody>
         </Card>
-        {result?.scanModelUsage &&
-          Object.keys(result?.scanModelUsage).length > 0 && (
+        {resultData?.scanModelUsage &&
+          Object.keys(resultData?.scanModelUsage).length > 0 && (
             <Card>
               <CardHeader label="Model Usage" type="modern" />
               <CardBody>
                 <ModelTokenTable
                   model_usage={
-                    result?.scanModelUsage as unknown as
+                    resultData?.scanModelUsage as unknown as
                       | ModelUsage2
                       | ModelUsage
                   }
@@ -40,14 +40,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({ result }) => {
               </CardBody>
             </Card>
           )}
-        {result?.scanMetadata &&
-          Object.keys(result.scanMetadata).length > 0 && (
+        {resultData?.scanMetadata &&
+          Object.keys(resultData.scanMetadata).length > 0 && (
             <Card>
               <CardHeader label="Metadata" type="modern" />
               <CardBody>
                 <RecordTree
-                  id={`scan-metadata-${result?.uuid}`}
-                  record={result?.scanMetadata || {}}
+                  id={`scan-metadata-${resultData?.uuid}`}
+                  record={resultData?.scanMetadata || {}}
                 />
               </CardBody>
             </Card>
@@ -57,33 +57,33 @@ export const InfoPanel: FC<InfoPanelProps> = ({ result }) => {
   );
 };
 
-export const ScannerInfoPanel: FC<InfoPanelProps> = ({ result }) => {
+export const ScannerInfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
   return (
     <div className={clsx("text-size-small")}>
       <div className={clsx(styles.scanInfo)}>
-        <LabeledValue label="Name">{result?.scannerName}</LabeledValue>
-        {result?.scannerFile && result.scannerFile !== null && (
-          <LabeledValue label="File">{result?.scannerFile}</LabeledValue>
+        <LabeledValue label="Name">{resultData?.scannerName}</LabeledValue>
+        {resultData?.scannerFile && resultData.scannerFile !== null && (
+          <LabeledValue label="File">{resultData?.scannerFile}</LabeledValue>
         )}
-        {(result?.scanTotalTokens || 0) > 0 && (
+        {(resultData?.scanTotalTokens || 0) > 0 && (
           <LabeledValue label="Tokens">
-            {result?.scanTotalTokens
-              ? formatNumber(result.scanTotalTokens)
+            {resultData?.scanTotalTokens
+              ? formatNumber(resultData.scanTotalTokens)
               : ""}
           </LabeledValue>
         )}
       </div>
-      {result?.scanTags && result.scanTags.length > 0 && (
+      {resultData?.scanTags && resultData.scanTags.length > 0 && (
         <LabeledValue label="Tags">
-          {(result?.scanTags || []).join(", ")}
+          {(resultData?.scanTags || []).join(", ")}
         </LabeledValue>
       )}
-      {result?.scannerParams &&
-        Object.keys(result.scannerParams).length > 0 && (
+      {resultData?.scannerParams &&
+        Object.keys(resultData.scannerParams).length > 0 && (
           <LabeledValue label="Params">
             <RecordTree
-              id={`scanner-params-${result?.uuid}`}
-              record={result?.scannerParams}
+              id={`scanner-params-${resultData?.uuid}`}
+              record={resultData?.scannerParams}
             />
           </LabeledValue>
         )}

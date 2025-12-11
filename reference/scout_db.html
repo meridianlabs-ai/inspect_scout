@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Reference – Inspect Scout</title>
+<title>scout db – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -30,7 +30,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/scanning.html" rel="next">
+<link href="../reference/scout_trace.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -178,14 +178,14 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Reference</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_db.html">scout db</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
   </nav>
 </header>
 <!-- content -->
-<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
     <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
@@ -196,7 +196,7 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/index.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reference</span></a>
   </div>
 </li>
@@ -673,7 +673,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_db.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/scout_db.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">scout db</span></a>
   </div>
 </li>
@@ -689,22 +689,22 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#python-api" id="toc-python-api" class="nav-link active" data-scroll-target="#python-api">Python API</a></li>
-  <li><a href="#scount-cli" id="toc-scount-cli" class="nav-link" data-scroll-target="#scount-cli">Scount CLI</a></li>
+  <li><a href="#scout-db-encrypt" id="toc-scout-db-encrypt" class="nav-link active" data-scroll-target="#scout-db-encrypt">scout db encrypt</a></li>
+  <li><a href="#scout-db-decrypt" id="toc-scout-db-decrypt" class="nav-link" data-scroll-target="#scout-db-decrypt">scout db decrypt</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content column-body" id="quarto-document-content">
+<main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_db.html">scout db</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Reference</h1>
+<h1 class="title">scout db</h1>
 </div>
 
 
 
-<div class="quarto-title-meta column-body">
+<div class="quarto-title-meta">
 
     
   
@@ -716,69 +716,184 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="python-api" class="level4">
-<h4 class="anchored" data-anchor-id="python-api">Python API</h4>
-<table class="caption-top table">
+
+
+<p>Scout transcript database management.</p>
+<section id="usage" class="level4">
+<h4 class="anchored" data-anchor-id="usage">Usage</h4>
+<pre class="text"><code>scout db [OPTIONS] COMMAND [ARGS]...</code></pre>
+</section>
+<section id="options" class="level4">
+<h4 class="anchored" data-anchor-id="options">Options</h4>
+<table class="table-sm table-borderless small caption-top table">
 <colgroup>
 <col style="width: 25%">
-<col style="width: 75%">
+<col style="width: 15%">
+<col style="width: 50%">
+<col style="width: 10%">
 </colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
 <tbody>
 <tr class="odd">
-<td><a href="../reference/scanning.html">Scanning</a></td>
-<td>Scan transcripts and manage scan jobs.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/results.html">Results</a></td>
-<td>Status and results of scan jobs.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/transcript.html">Transcripts</a></td>
-<td>Read and filter transcripts.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/scanner.html">Scanners</a></td>
-<td>Implement scanners and loaders.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/async.html">Async</a></td>
-<td>Async functions for scanning.</td>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="scount-cli" class="level4">
-<h4 class="anchored" data-anchor-id="scount-cli">Scount CLI</h4>
-<table class="caption-top table">
+<section id="subcommands" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands">Subcommands</h4>
+<table class="table-borderless caption-top table">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 75%">
+<col style="width: 35%">
+<col style="width: 65%">
 </colgroup>
 <tbody>
 <tr class="odd">
-<td><a href="../reference/scout_scan.html">scout scan</a></td>
-<td>Scan transcripts.</td>
+<td><a href="#scout-db-encrypt">encrypt</a></td>
+<td>Encrypt a transcript database.</td>
 </tr>
 <tr class="even">
-<td><a href="../reference/scout_scan.html#scout-scan-resume">scout scan resume</a></td>
-<td>Resume a scan which is incomplete due to interruption or errors.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html#scout-scan-complete">scout scan complete</a></td>
-<td>Complete a scan which is incomplete due to errors (errors are not retried).</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/scout_scan.html#scout-scan-resume">scout scan list</a></td>
-<td>List the scans within a scan results directory.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html#scout-scan-status">scout scan status</a></td>
-<td>Print the status of a scan.</td>
+<td><a href="#scout-db-decrypt">decrypt</a></td>
+<td>Decrypt a transcript database.</td>
 </tr>
 </tbody>
 </table>
+</section>
+<section id="scout-db-encrypt" class="level2" data-toc-label="encrypt">
+<h2 data-toc-label="encrypt" class="anchored" data-anchor-id="scout-db-encrypt">scout db encrypt</h2>
+<p>Encrypt a transcript database.</p>
+<section id="usage-1" class="level4">
+<h4 class="anchored" data-anchor-id="usage-1">Usage</h4>
+<pre class="text"><code>scout db encrypt [OPTIONS] DATABASE_LOCATION</code></pre>
+</section>
+<section id="options-1" class="level4">
+<h4 class="anchored" data-anchor-id="options-1">Options</h4>
+<table class="table-sm table-borderless small caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 15%">
+<col style="width: 50%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--output-dir</code></td>
+<td>text</td>
+<td>Directory to write encrypted database files to.</td>
+<td>_required</td>
+</tr>
+<tr class="even">
+<td><code>--key</code></td>
+<td>text</td>
+<td>Encryption key (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>--overwrite</code></td>
+<td>boolean</td>
+<td>Overwrite files in the output directory.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="subcommands-1" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands-1">Subcommands</h4>
+<table class="table-borderless caption-top">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
 
+</table>
+</section>
+</section>
+<section id="scout-db-decrypt" class="level2" data-toc-label="decrypt">
+<h2 data-toc-label="decrypt" class="anchored" data-anchor-id="scout-db-decrypt">scout db decrypt</h2>
+<p>Decrypt a transcript database.</p>
+<section id="usage-2" class="level4">
+<h4 class="anchored" data-anchor-id="usage-2">Usage</h4>
+<pre class="text"><code>scout db decrypt [OPTIONS] DATABASE_LOCATION</code></pre>
+</section>
+<section id="options-2" class="level4">
+<h4 class="anchored" data-anchor-id="options-2">Options</h4>
+<table class="table-sm table-borderless small caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 15%">
+<col style="width: 50%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--output-dir</code></td>
+<td>text</td>
+<td>Directory to write decrypted database files to.</td>
+<td>_required</td>
+</tr>
+<tr class="even">
+<td><code>--key</code></td>
+<td>text</td>
+<td>Encryption key (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>--overwrite</code></td>
+<td>boolean</td>
+<td>Overwrite files in the output directory.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="subcommands-2" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands-2">Subcommands</h4>
+<table class="table-borderless caption-top">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
 
+</table>
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -1223,13 +1338,13 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
-<nav class="page-navigation column-body">
+<nav class="page-navigation">
   <div class="nav-page nav-page-previous">
+      <a href="../reference/scout_trace.html" class="pagination-link" aria-label="scout trace">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">scout trace</span>
+      </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/scanning.html" class="pagination-link" aria-label="Python API">
-        <span class="nav-page-text">Python API</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->

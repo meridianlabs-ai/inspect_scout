@@ -66,7 +66,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./llm_scanner.html" rel="next">
-<link href="./transcripts.html" rel="prev">
+<link href="./workflow.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -143,6 +143,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">Using</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="./workflow.html">
+ <span class="dropdown-text">Workflow</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="./transcripts.html">
  <span class="dropdown-text">Transcripts</span></a>
@@ -258,6 +262,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           </a> 
       </div>
       <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Workflow</span></a>
+  </div>
+</li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./transcripts.html" class="sidebar-item-text sidebar-link">
@@ -611,7 +621,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, metrics<span class="op">=</span>[mean()])</span>
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> efficiency() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
 <span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"On a scale of 1 to 10, how "</span> <span class="op">+</span> <span class="st">"efficiently did the assistant perform"</span>,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"On a scale of 1 to 10, how efficiently did the assistant perform?"</span>,</span>
 <span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"numeric"</span>,</span>
 <span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Note that we import the <code>mean</code> metric from <code>inspect_ai</code>. You can use any standard Inspect metric or create custom metrics, and can optionally include more than one metric (e.g.&nbsp;<code>stderr</code>).</p>
@@ -1156,8 +1166,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./transcripts.html" class="pagination-link" aria-label="Using Scout">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Using Scout</span>
+      <a href="./workflow.html" class="pagination-link" aria-label="Workflow">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Workflow</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

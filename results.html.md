@@ -88,7 +88,7 @@ metadata about the scan as well as the scanner data frames:
 | `complete` | bool | Is the job complete? (all transcripts scanned) |
 | `spec` | ScanSpec | Scan specification (transcripts, scanners, options, etc.) |
 | `location` | str | Location of scan directory |
-| `summary` | Summary | Summary of scan (results, errors, tokens, etc.) |
+| `summary` | Summary | Summary of scan (results, metrics, errors, tokens, etc.) |
 | `errors` | list\[Error\] | Errors during last scan attempt. |
 | `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#data-frames) for details) |
 

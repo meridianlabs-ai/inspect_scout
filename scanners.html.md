@@ -303,7 +303,7 @@ from inspect_ai.scorer import mean
 @scanner(messages="all", metrics=[mean()])
 def efficiency() -> Scanner[Transcript]:
     return llm_scanner(
-        question="On a scale of 1 to 10, how " + "efficiently did the assistant perform",
+        question="On a scale of 1 to 10, how efficiently did the assistant perform?",
         answer="numeric",
     )
 ```

@@ -682,7 +682,6 @@ async def _scan_async_inner(
                 single_process = (
                     total_scans == 1
                     or scan.spec.options.limit == 1
-                    or scan.spec.options.max_processes is None
                     or scan.spec.options.max_processes == 1
                     or os.name == "nt"
                 )

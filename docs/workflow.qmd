@@ -169,19 +169,136 @@ See the article on [Validation](validation.qmd) for complete details on how to c
 
 {{< include _scanner_metrics.md >}}
 
-
 ## Running Scanners {#running-scanners}
 
-Once you've developed, refined, and validated your scanner you are ready to run it against larger sets of transcripts. 
+Once you've developed, refined, and validated your scanner you are ready to run it against larger sets of transcripts. This section covers some techniques and best practices for doing this.
 
--   Scout Jobs
--   Error Handling
--   Parallelism
--   Batch mode
--   Online (scanner as scorer)
+### Scout Jobs
+
+We discussed scout jobs above in the context of scanner development—job definitions are even more valuable for production scanning as they endure reproducibility of scanning inputs and options. We demonstrated defining jobs in a YAML file, here is a job defined in Python:
+
+``` {.python filename="cybench_scan.py"}
+from inspect_scout (
+    import ScanJob, scanjob, transcripts_from, metadata as m
+)
+
+from .scanners import deception, tool_errors
+
+@scanjob
+def cybench_job(logs: str = "./logs") -> ScanJob:
+
+    transcripts = transcripts_from(logs)
+    transcripts = transcripts.where(m.task_name == "cybench")
+
+    return ScanJob(
+        transcripts = transcripts,
+        scanners = [deception(), java_tool_usages()],
+        model = "openai/gpt-5",
+        max_transcripts = 50,
+        max_processes = 8
+    )
+```
+
+There are a few things to note about this example:
+
+1.  We do some filtering on the transcripts to only process cybench logs
+2.  We import and run multiple scanners.
+3.  We include additional options controlling parallelism.
+
+We can invoke this scan job from the CLI by just referencing it's Python script:
+
+``` bash
+scout scan cybench_scan.py
+```
+
+### Parallelism
+
+{{< include _parallelism.md >}}
+
+### Batch Mode
+
+Inspect AI supports calling the batch processing APIs for the [OpenAI](https://platform.openai.com/docs/guides/batch), [Anthropic](https://platform.claude.com/docs/en/build-with-claude/batch-processing), [Google](https://ai.google.dev/gemini-api/docs/batch-api?batch=file), and [Together AI](https://docs.together.ai/docs/batch-inference) providers. Batch processing has lower token costs (typically 50% of normal costs) and higher rate limits, but also substantially longer processing times—batched generations typically complete within an hour but can take much longer (up to 24 hours).
+
+Use batch processing by passing the `--batch` CLI argument or the `batch` option from `GenerateConfig`. For example:
+
+``` bash
+scout scan cybench_scan.py --batch
+```
+
+If you don't require immediate results then batch processing can be an excellent way to save inference costs. A few notes about using batch mode with scanning:
+
+-   Batch processing can often take several hours so please be patient!. The scan status display shows the number of batches in flight and the average total time take per batch.
+
+-   The optimal processing flow for batch mode is to send *all of your transcripts* in a single batch group so that they all complete together. Therefore, when running in batch mode `--max-transcripts` is automatically set to a very high value (10,000). You may need to lower this if holding that many transcripts in memory is problematic.
+
+See the Inspect AI documentation on [Batch Mode](https://inspect.aisi.org.uk/models-batch.html) for additional details on batching as well as notes on provider specific behavior and configuration.
+
+### Error Handling
+
+By default, if errors occur during a scan they are caught and reported and the overall scan operation is not aborted. In that case the scan is not yet marked "complete". You can then choose to retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
+
+![](images/scan-resume.png)
+
+Generally you should use Scout View to review errors in more details to determine if they are fundamental problems (e.g. bugs in your code) or transient infrastructure errors that it might be acceptable to exclude from scan results.
+
+If you prefer to fail immediately when an error occurs rather than capturing errors in results, use the `--fail-on-error` flag:
+
+``` bash
+scout scan scanner.py -T ./logs --fail-on-error
+```
+
+With this flag, any exception will cause the entire scan to terminate immediately. This can be valuable when developing a scanner.
+
+### Online Scanning
+
+Once you have developed a scanner that you find produces good results across a variety of transcripts, you may want run it "online" as part of evaluations. You can do this by using your `Scanner` directly as an Inspect `Scorer`.
+
+For example, if we wanted to run the reward hacking scanner from above as a scorer we could do this:
+
+``` python
+from .scanners import reward_hacking
+
+@task
+def mytask():
+    return Task(
+        ...,
+        scorer = [match(), reward_hacking()]
+    )
+```
+
+We can also use it with the `inspect score` command to add scores to existing logs:
+
+``` bash
+inspect score --scorer scanners.py@reward_hacking logfile.eval
+```
 
 ## Analyzing Results {#analyzing-results}
 
--   Metrics
+The `scout scan` command will print its status at the end of its run. If all of the scanners complete without errors you'll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:
 
--   Data frame
+![](images/scan-complete.png)
+
+To get programmatic access to the results, pass the scan directory to the `scan_results_df()` function:
+
+``` python
+from inspect_scout import scan_results_df
+
+results = scan_results_df("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
+deception_df = results.scanners["deception"]
+tool_errors_df = results.scanners["tool_errors"]
+```
+
+The `Results` object returned from `scan_results_df()` includes both metadata about the scan as well as the scanner data frames:
+
+| Field | Type | Description |
+|-------------------|-------------------|----------------------------------|
+| `complete` | bool | Is the job complete? (all transcripts scanned) |
+| `spec` | ScanSpec | Scan specification (transcripts, scanners, options, etc.) |
+| `location` | str | Location of scan directory |
+| `summary` | Summary | Summary of scan (results, metrics, errors, tokens, etc.) |
+| `errors` | list\[Error\] | Errors during last scan attempt. |
+| `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#data-frames) for details) |
+
+: {tbl-colwidths=\[20,20,60\]}
+
+{{< include _results-data-frame.md >}}

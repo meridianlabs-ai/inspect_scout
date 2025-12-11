@@ -512,6 +512,7 @@ async def test_validation_failing_cases_e2e() -> None:
             validation=validation,
             results=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
+            max_processes=1,  # hash() is not stable across processes
         )
 
         # Get results

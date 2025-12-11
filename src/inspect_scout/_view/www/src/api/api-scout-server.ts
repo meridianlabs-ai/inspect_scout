@@ -1,3 +1,4 @@
+import { DataFrameInput, InputType } from "../app/types.ts";
 import { Scans, Status } from "../types";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
@@ -21,6 +22,7 @@ export const apiScoutServer = (
         "GET",
         `/scan/${encodeURIComponent(scanLocation)}?status_only=true`
       );
+
       return asyncJsonParse<Status>(result.raw);
     },
 
@@ -41,6 +43,36 @@ export const apiScoutServer = (
           scanLocation
         )}?scanner=${encodeURIComponent(scanner)}`
       );
+    },
+    getScannerDataframeInput: async (
+      scanLocation: string,
+      scanner: string,
+      uuid: string
+    ): Promise<DataFrameInput> => {
+      // Fetch the data
+      const response = await requestApi.fetchType<InputType>(
+        "GET",
+        `/scanner_df_input/${encodeURIComponent(
+          scanLocation
+        )}?scanner=${encodeURIComponent(scanner)}&uuid=${encodeURIComponent(uuid)}`
+      );
+      const input = response.parsed;
+
+      // Read header to determine the input type
+      const inputType = response.headers.get("X-Input-Type");
+      if (!inputType) {
+        throw new Error("Missing input type from server");
+      }
+      if (
+        !["transcript", "message", "messages", "event", "events"].includes(
+          inputType
+        )
+      ) {
+        throw new Error(`Unknown input type from server: ${inputType}`);
+      }
+
+      // Return the DataFrameInput
+      return { input, inputType: inputType as DataFrameInput["inputType"] };
     },
     storage: NoPersistence,
   };

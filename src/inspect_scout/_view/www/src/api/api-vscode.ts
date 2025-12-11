@@ -52,6 +52,9 @@ export const apiVscode = (
         );
       }
     },
+    getScannerDataframeInput(_scanLocation, _scanner, _uuid) {
+      throw new Error("Not implemented");
+    },
     storage: createVSCodeStore(vscodeApi),
   };
 };

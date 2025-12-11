@@ -4,12 +4,12 @@ import { FC } from "react";
 import { MarkdownReference } from "../../../components/MarkdownDivWithReferences";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
+import { Explanation } from "../../components/Explanation";
+import { ValidationResult } from "../../components/ValidationResult";
+import { Value } from "../../components/Value";
 import { useSelectedScanResultInputData } from "../../hooks";
 import { ScanResultData } from "../../types";
 import { useMarkdownRefs } from "../../utils/refs";
-import { Explanation } from "../../values/Explanation";
-import { ValidationResult } from "../../values/ValidationResult";
-import { Value } from "../../values/Value";
 
 import styles from "./ResultSidebar.module.css";
 

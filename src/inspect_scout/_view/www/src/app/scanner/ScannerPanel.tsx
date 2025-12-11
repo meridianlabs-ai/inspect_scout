@@ -6,7 +6,7 @@ import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
-import { Navbar } from "../navbar/Navbar";
+import { Navbar } from "../components/Navbar";
 import {
   useServerScanner,
   useServerScannerDataframe,

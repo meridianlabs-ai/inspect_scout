@@ -14,12 +14,12 @@ import {
 import { useStore } from "../../state/store";
 import { EventNode, EventType } from "../../transcript/types";
 import { ApplicationIcons } from "../appearance/icons";
+import { Navbar } from "../components/Navbar";
 import { ToolButton } from "../components/ToolButton";
 import {
   useSelectedResultsRow,
   useSelectedScanResultInputData,
 } from "../hooks";
-import { Navbar } from "../navbar/Navbar";
 import {
   useServerScans,
   useServerScanner,

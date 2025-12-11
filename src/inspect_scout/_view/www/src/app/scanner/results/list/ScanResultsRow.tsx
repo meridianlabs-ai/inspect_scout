@@ -8,13 +8,13 @@ import {
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
+import { Error } from "../../../components/Error";
+import { Explanation } from "../../../components/Explanation";
+import { Identifier } from "../../../components/Identifier";
+import { ValidationResult } from "../../../components/ValidationResult";
+import { Value } from "../../../components/Value";
 import { ScanResultSummary } from "../../../types";
 import { useMarkdownRefs } from "../../../utils/refs";
-import { Error } from "../../../values/Error";
-import { Explanation } from "../../../values/Explanation";
-import { Identifier } from "../../../values/Identifier";
-import { ValidationResult } from "../../../values/ValidationResult";
-import { Value } from "../../../values/Value";
 
 import { GridDescriptor } from "./ScanResultsList";
 import styles from "./ScanResultsRow.module.css";

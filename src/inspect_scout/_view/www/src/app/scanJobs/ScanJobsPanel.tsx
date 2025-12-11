@@ -6,7 +6,7 @@ import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
-import { Navbar } from "../navbar/Navbar";
+import { Navbar } from "../components/Navbar";
 import { useServerScans } from "../server/hooks";
 
 import { ScanJobGrid } from "./ScanJobGrid";

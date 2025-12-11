@@ -102,28 +102,6 @@
   padding-left: 0.7em;
   padding-right: 0.7em;
 }
-.btn._toolButton_1y0d0_1 {
-  background-color: var(--bs-light-border-subtle);
-}
-
-._toolButton_1y0d0_1 i {
-  margin-right: 0.5em;
-}
-
-._toolButton_1y0d0_1:focus {
-  outline: none;
-  box-shadow:
-    0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-._latched_1y0d0_17,
-._latched_1y0d0_17:hover {
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
 ._header_oy6cz_1 {
   background: var(--bs-light);
   display: grid;
@@ -189,6 +167,28 @@
   border-left: solid var(--bs-border-color) 1px;
   padding-left: 0.5rem;
   margin-left: 0.5rem;
+}
+.btn._toolButton_1y0d0_1 {
+  background-color: var(--bs-light-border-subtle);
+}
+
+._toolButton_1y0d0_1 i {
+  margin-right: 0.5em;
+}
+
+._toolButton_1y0d0_1:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+._latched_1y0d0_17,
+._latched_1y0d0_17:hover {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 .ansi-display {
   font-family: monospace;

@@ -51,7 +51,7 @@ def _resolve_key(key: str | None) -> str:
 
 @click.group("db")
 def db_command() -> None:
-    """Scout transcript databases."""
+    """Scout transcript database management."""
     return None
 
 

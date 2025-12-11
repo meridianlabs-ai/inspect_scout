@@ -406,7 +406,7 @@ export const useScannerData = (
           validationTarget: validationTarget as
             | boolean
             | Record<string, boolean>,
-          value: value || null,
+          value: value ?? null,
           valueType,
         };
 

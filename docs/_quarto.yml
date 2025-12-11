@@ -37,6 +37,7 @@ website:
             href: index.qmd
           - text: "Using"
             menu:
+                - href: workflow.qmd
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd
@@ -70,6 +71,7 @@ website:
            - text: Using Scout
              href: transcripts.qmd
              contents:
+                - href: workflow.qmd
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd

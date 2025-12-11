@@ -551,9 +551,6 @@ async def _scan_async_inner(
                 async def _strategy_completed() -> None:
                     global _process_transcripts_reader
                     if _process_transcripts_reader is not None:
-                        logger.warning(
-                            f" transcript_reader instance - pid:{os.getpid()}"
-                        )
                         await _process_transcripts_reader.__aexit__(None, None, None)
                         _process_transcripts_reader = None
 

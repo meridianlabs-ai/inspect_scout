@@ -10,10 +10,11 @@ from inspect_ai._cli.util import (
     parse_model_role_cli_args,
 )
 from inspect_ai._util.config import resolve_args
+from inspect_ai._util.constants import DEFAULT_CACHE_DAYS
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai.log._file import list_eval_logs
-from inspect_ai.model import BatchConfig, GenerateConfig
+from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig
 from typing_extensions import Unpack
 
 from inspect_scout._validation import validation_set
@@ -38,20 +39,55 @@ class ScanGroup(click.Group):
             # Let the parent handle subcommand parsing
             return super().parse_args(ctx, args)
 
-        # Reorder args to put options before positional arguments
+        # Normalize optional-value flags (--shuffle, --cache, --batch) by inserting
+        # "true" after them if they don't have a value. This prevents the reordering
+        # logic from incorrectly consuming positional args as their values.
+        optional_value_flags = {"--shuffle", "--cache", "--batch"}
+
+        def _looks_like_optional_flag_value(value: str) -> bool:
+            """Check if value looks like a valid value for optional-value flags."""
+            if value.startswith("-"):
+                return False
+            lower = value.lower()
+            if lower in ("true", "false"):
+                return True
+            try:
+                int(value)
+                return True
+            except ValueError:
+                pass
+            # Config files for --cache and --batch
+            if lower.endswith((".yaml", ".yml", ".json")):
+                return True
+            return False
+
+        # First pass: normalize optional-value flags by inserting "true" if needed
+        normalized_args: list[str] = []
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            normalized_args.append(arg)
+            i += 1
+            # Check if this is an optional-value flag without an explicit value
+            if arg in optional_value_flags:
+                # If no next arg, or next arg doesn't look like a valid value, insert "true"
+                if i >= len(args) or not _looks_like_optional_flag_value(args[i]):
+                    normalized_args.append("true")
+
+        # Second pass: reorder args to put options before positional arguments
         # This allows: scout scan file.py -T ./logs to work correctly
         file_args = []
         option_args = []
         i = 0
-        while i < len(args):
-            arg = args[i]
+        while i < len(normalized_args):
+            arg = normalized_args[i]
             # Check if this is an option (starts with -)
             if arg.startswith("-"):
                 option_args.append(arg)
                 i += 1
                 # For options that take values, check if next arg exists and is not a flag
-                if i < len(args) and not args[i].startswith("-"):
-                    option_args.append(args[i])
+                if i < len(normalized_args) and not normalized_args[i].startswith("-"):
+                    option_args.append(normalized_args[i])
                     i += 1
             else:
                 file_args.append(arg)
@@ -195,6 +231,15 @@ class ScanGroup(click.Group):
     envvar="SCOUT_SCAN_METADATA",
 )
 @click.option(
+    "--cache",
+    is_flag=False,
+    flag_value="true",
+    default=None,
+    callback=int_bool_or_str_flag_callback(DEFAULT_CACHE_DAYS, None),
+    help="Policy for caching of model generations. Specify --cache to cache with 7 day expiration (7D). Specify an explicit duration (e.g. (e.g. 1h, 3d, 6M) to set the expiration explicitly (durations can be expressed as s, m, h, D, W, M, or Y). Alternatively, pass the file path to a YAML or JSON config file with a full `CachePolicy` configuration.",
+    envvar="SCOUT_SCAN_CACHE",
+)
+@click.option(
     "--batch",
     is_flag=False,
     flag_value="true",
@@ -295,6 +340,7 @@ def scan_command(
     shuffle: int | None,
     tags: str | None,
     metadata: tuple[str, ...] | None,
+    cache: int | str | None,
     batch: int | str | None,
     max_retries: int | None,
     timeout: int | None,
@@ -377,6 +423,20 @@ def scan_command(
     # parse validation
     scan_validation = _parse_validation(validation)
 
+    # resolve cache
+    cache_config: bool | CachePolicy | None = None
+    match cache:
+        case str():
+            policy = CachePolicy.from_string(cache)
+            if policy is not None:
+                cache_config = policy
+            else:
+                cache_config = CachePolicy.model_validate(resolve_args(cache))
+        case int():
+            cache_config = CachePolicy(expiry=f"{cache}D")
+        case _:
+            cache_config = cache
+
     # resolve batch
     if isinstance(batch, str):
         batch_config: bool | int | BatchConfig | None = BatchConfig.model_validate(
@@ -390,6 +450,7 @@ def scan_command(
         max_retries=max_retries,
         timeout=timeout,
         max_connections=max_connections,
+        cache=cache_config,
         batch=batch_config,
         max_tokens=max_tokens,
         temperature=temperature,

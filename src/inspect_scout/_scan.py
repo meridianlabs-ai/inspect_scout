@@ -272,11 +272,11 @@ async def scan_async(
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
-        model=model or scanjob._model,
+        model=scanjob._model or model,
         model_config=scanjob._generate_config,
         model_base_url=model_base_url or scanjob._model_base_url,
-        model_args=model_args or scanjob._model_base_url,
-        model_roles=model_roles or scanjob._model_roles,
+        model_args=scanjob._model_args or model_args,
+        model_roles=scanjob._model_roles or model_roles,
     )
     scanjob._model = resolved_model
     scanjob._model_args = resolved_model_args

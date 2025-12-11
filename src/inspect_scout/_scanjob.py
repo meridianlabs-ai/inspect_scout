@@ -65,10 +65,16 @@ class ScanJobConfig(BaseModel):
     """
 
     model_base_url: str | None = Field(default=None)
-    """Base URL for communicating with the model API."""
+    """Base URL for communicating with the model API.
+
+    If not specified use the value of the SCOUT_SCAN_MODEL_BASE_URL environment variable.
+    """
 
     model_args: dict[str, Any] | str | None = Field(default=None)
-    """Model creation args (as a dictionary or as a path to a JSON or YAML config file)."""
+    """Model creation args (as a dictionary or as a path to a JSON or YAML config file).
+
+    If not specified use the value of the SCOUT_SCAN_MODEL_ARGS environment variable.
+    """
 
     generate_config: GenerateConfig | None = Field(default=None)
     """`GenerationConfig` for calls to the model."""
@@ -199,6 +205,12 @@ class ScanJob:
         # realize transcripts
         if config.transcripts is not None:
             kwargs["transcripts"] = transcripts_from(config.transcripts)
+
+        # realize generate_config
+        if config.generate_config is not None:
+            kwargs["generate_config"] = GenerateConfig.model_validate(
+                config.generate_config
+            )
 
         return ScanJob(**kwargs)
 

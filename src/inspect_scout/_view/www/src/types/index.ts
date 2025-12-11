@@ -52,9 +52,8 @@ export interface Model {
 
 export interface Transcript {
   type: string;
-  count: number;
-  data: string;
-  fields: Array<Record<string, string>>;
+  location?: string;
+  transcript_ids: Record<string, string | null>;
 }
 
 export interface ScanSpec {

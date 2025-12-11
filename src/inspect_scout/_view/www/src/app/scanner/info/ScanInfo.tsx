@@ -28,10 +28,6 @@ export const ScanInfo: FC = () => {
         className={clsx(styles.container)}
         selectedStatus={selectedStatus}
       />
-      <TranscriptsInfoCard
-        className={clsx(styles.container)}
-        selectedStatus={selectedStatus}
-      />
     </>
   );
 };
@@ -96,42 +92,6 @@ const ScanMetadataCard: FC<ScanMetadataCardProps> = ({
   return (
     <InfoCard title={"Metadata"} className={className}>
       <RecordTree id="scan-metadata" record={selectedStatus.spec.metadata} />
-    </InfoCard>
-  );
-};
-
-interface TranscriptsInfoCardProps {
-  selectedStatus: Status;
-  className?: string | string[];
-}
-
-const TranscriptsInfoCard: FC<TranscriptsInfoCardProps> = ({
-  selectedStatus,
-  className,
-}) => {
-  const fieldsDict = selectedStatus.spec.transcripts?.fields.reduce(
-    (acc, curr) => {
-      const name = curr["name"];
-      const type = curr["type"];
-      if (name && type) {
-        acc[name] = type;
-      }
-
-      return acc;
-    },
-    {} as Record<string, string>
-  );
-  return (
-    <InfoCard title={"Transcripts"} className={className}>
-      <MetaDataGrid
-        key={`plan-md-task`}
-        className={"text-size-small"}
-        entries={{
-          Type: selectedStatus.spec.transcripts?.type,
-          Count: selectedStatus.spec.transcripts?.count,
-          Fields: fieldsDict,
-        }}
-      />
     </InfoCard>
   );
 };

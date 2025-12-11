@@ -394,7 +394,6 @@ def view_server_app(
     async def scan(
         request: Request,
         scan: str,
-        status_only: bool | None = Query(None, alias="status_only"),
     ) -> Response:
         # convert to absolute path
         scan_path = UPath(await _map_file(request, scan))
@@ -411,32 +410,23 @@ def view_server_app(
         # read the results and return
         result = await scan_results_df_async(str(scan_path), rows="transcripts")
 
-        # convert the dataframes to their serializable form (omit
-        # if status_only is true)
-        serializable_scanners: dict[str, IPCDataFrame] = {}
-        if not status_only:
-            for scanner in result.scanners:
-                df = result.scanners[scanner]
-                serializable_scanners[scanner] = df_to_ipc(df)
-
         # clear the transcript data
         if result.spec.transcripts:
             result.spec.transcripts = result.spec.transcripts.model_copy(
                 update={"data": None}
             )
 
-        # create the serializable result
-        serializable_result = IPCSerializableResults(
+        # create the status
+        status = Status(
             complete=result.complete,
             spec=result.spec,
             location=await _unmap_file(request, result.location),
             summary=result.summary,
             errors=result.errors,
-            scanners=serializable_scanners,
         )
 
         return InspectPydanticJSONResponse(
-            content=serializable_result, media_type="application/json"
+            content=status, media_type="application/json"
         )
 
     @app.get("/scan-delete/{scan:path}")

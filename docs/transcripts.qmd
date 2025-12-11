@@ -126,7 +126,7 @@ Scout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, e
 
 You can read from a transcript database using the `transcripts_from()` function. For example:
 
-```python
+``` python
 from inspect_scout import transcripts_from
 
 # read from a transcript database on S3

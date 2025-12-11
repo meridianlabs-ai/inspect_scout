@@ -5,6 +5,7 @@
 ## Using Scout
 
 - [Welcome](https://meridianlabs-ai.github.io/inspect_scout/index.html.md): Installation and tutorial on basic usage.
+- [Workflow](https://meridianlabs-ai.github.io/inspect_scout/workflow.html.md): End to end workflow for transcript analysis projects.
 - [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/transcripts.html.md): Reading and filtering transcripts for scanning.
 - [Scanners](https://meridianlabs-ai.github.io/inspect_scout/scanners.html.md): Implementing custom scanners and loaders.
 - [LLM Scanner](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html.md): Customizable LLM scanner for model evaluation of transcripts.

@@ -122,13 +122,57 @@ scout scan scanner.py -T ./transcripts --limit 20 --shuffle --cache
 
 ### Reviewing Results
 
+Use Scout View to see a list of results for your scan. If you are in VS Code you can click on the link in the terminal to open the results in a tab. In other environments, use `scout view` to open a browser with the viewer.
+
+![](images/view-resultlist.png){.border}
+
+When you click into a result you'll see the model's explanation along with references to related messages. Click the messages IDs to navigate to the message contents:
+
+![](images/view-result.png){.border}
+
 ### Defining a Scan Job
+
+Above we provided a variety of options to the scout scan command. If you accumulate enough of these options you might want to consider defining a [Scan Job](index.qmd#scan-jobs) to bundle these options together, do transcript filtering, and provide a validation set (described in the section below).
+
+Scan jobs can be provide as YAML configuration or defined in code. For example, here's a scan job definition for the commands we were executing above:
+
+``` {.yaml filename="scan.yaml"}
+transcripts: ./transcripts
+
+scanners:
+  - name: reward_hacking
+    file: scanner.py
+
+model: openai/gpt-5
+
+generate_config:
+   cache: true
+```
+
+You can then run the scan by referencing the scan job (you can also continue to pass options like `--limit`):
+
+``` bash
+scout scan scan.yaml --limit 20 
+```
 
 ### Scanner Validation
 
+When developing scanners and scanner prompts, it's often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.
+
+When you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):
+
+![](images/validation.png){.border}
+
+See the article on [Validation](validation.qmd) for complete details on how to create validation sets for various types of scanners.
+
 ### Scanner Metrics
 
+{{< include _scanner_metrics.md >}}
+
+
 ## Running Scanners {#running-scanners}
+
+Once you've developed, refined, and validated your scanner you are ready to run it against larger sets of transcripts. 
 
 -   Scout Jobs
 -   Error Handling

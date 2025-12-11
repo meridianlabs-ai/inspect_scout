@@ -54,6 +54,9 @@ export interface Transcript {
   type: string;
   location?: string;
   transcript_ids: Record<string, string | null>;
+
+  // deprecated value for compatibility with old scans
+  count?: number;
 }
 
 export interface ScanSpec {

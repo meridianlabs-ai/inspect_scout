@@ -21,9 +21,13 @@ export const ScannerPanelTitle: FC = () => {
 
   const scannerModel = selectedStatus?.spec.model.model;
 
-  const transcriptCount = Object.keys(
+  // Awesome
+  const deprecatedCount = selectedStatus?.spec.transcripts?.count || 0;
+  const modernCorrectCount = Object.keys(
     selectedStatus?.spec.transcripts?.transcript_ids || {}
   ).length;
+  const transcriptCount = Math.max(deprecatedCount, modernCorrectCount);
+
   return (
     <div className={clsx(styles.scanTitleView)}>
       <div className={clsx(styles.leftColumn)}>

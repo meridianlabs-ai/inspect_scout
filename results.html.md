@@ -34,7 +34,13 @@ directory where results are stored:
 
 If you are running in VS Code, you can click the scan directory to view
 the results in Scout View. If you are using another editor, execute
-`scout view` from the terminal to launch the viewer.
+`scout view` from the terminal to launch the viewer:
+
+``` bash
+scout view
+```
+
+![](images/scout-view.png)
 
 To get programmatic access to the results, pass the scan directory to
 the `scan_results_df()` function:

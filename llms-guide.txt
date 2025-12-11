@@ -692,8 +692,12 @@ various types (`Transcript`, `ChatMessage`, or `Event`) as well as
 creating custom loaders which enable scanning of lists of events or
 messages.
 
-You can also use scanners directly as Inspect scorers (see [Scanners as
-Scorers](#scanners-as-scorers) for details).
+This article goes in depth on custom scanner development. If you are
+looking for a straightforward high-level way to create an LLM-based
+scanner see the [LLM Scanner](llm_scanner.qmd) documentation.
+
+Notet that you can also use scanners directly as Inspect scorers (see
+[Scanners as Scorers](#scanners-as-scorers) for details).
 
 ## Scanner Basics
 
@@ -969,6 +973,56 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
     return scan
 ```
 
+## Scanner Metrics
+
+You can add metrics to scanners to aggregate result values. Metrics are
+computed during scanning and available as part of the scan results. For
+example:
+
+``` python
+from inspect_ai.scorer import mean
+
+@scanner(messages="all", metrics=[mean()])
+def efficiency() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="On a scale of 1 to 10, how " + "efficiently did the assistant perform",
+        answer="numeric",
+    )
+```
+
+Note that we import the `mean` metric from `inspect_ai`. You can use any
+standard Inspect metric or create custom metrics, and can optionally
+include more than one metric (e.g. `stderr`).
+
+See the Inspect documentation on [Built in
+Metrics](https://inspect.aisi.org.uk/scorers.html#built-in-metrics) and
+[Custom
+Metrics](https://inspect.aisi.org.uk/scorers.html#custom-metrics) for
+additional details.
+
+### Result Sets
+
+If your scanner yields [multiple results](#multiple-results) you can
+still use it as a scorer, but you will want to provide a dictionary of
+metrics corresponding to the labels used by your results. For example,
+if you have a scanner that can yield results with `label="deception"` or
+`label="misconfiguration"`, you might declare your metrics like this:
+
+``` python
+@scanner(messages="all", metrics=[{ "deception": [mean(), stderr()], "misconfiguration": [mean(), stderr()] }])
+def my_scanner() -> Scanner[Transcript]: ...
+```
+
+Or you can use a glob (\*) to use the same metrics for all labels:
+
+``` python
+@scanner(messages="all", metrics=[{ "*": [mean(), stderr()] }])
+def my_scanner() -> Scanner[Transcript]: ...
+```
+
+You should also be sure to return a result for each supported label (so
+that metrics can be computed correctly on each row).
+
 ## Scanners as Scorers
 
 You may have noticed that scanners are very similar to Inspect
@@ -1024,12 +1078,12 @@ inspect score --scorer scanners.py@confusion logfile.eval
 
 ### Metrics
 
-The metrics used for the scorer will default to `accuracy()` and
+The metrics used for the scorer will default to `mean()` and
 `stderr()`—however, you can also explicitly specify metrics on the
 `@scanner` decorator:
 
 ``` python
-@scanner(messages="all", metrics=[accuracy(), bootstrap_stderr()])
+@scanner(messages="all", metrics=[mean(), bootstrap_stderr()])
 def confusion() -> Scanner[Transcript]: ...
 ```
 
@@ -1047,28 +1101,9 @@ from .scanners import confusion
 eval(ctf_task(scorer=as_scorer(confusion())))
 ```
 
-### Result Sets
-
-If your scanner yields [multiple results](#multiple-results) you can
-still use it as a scorer, but you will want to provide a dictionary of
-metrics corresponding to the labels used by your results. For example,
-if you have a scanner that can yield results with `label="deception"` or
-`label="misconfiguration"`, you might declare your metrics like this:
-
-``` python
-@scanner(messages="all", metrics=[{ "deception": [accuracy(), stderr()], "misconfiguration": [accuracy(), stderr()] }])
-def my_scanner() -> Scanner[Transcript]: ...
-```
-
-Or you can use a glob (\*) to use the same metrics for all labels:
-
-``` python
-@scanner(messages="all", metrics=[{ "*": [accuracy(), stderr()] }])
-def my_scanner() -> Scanner[Transcript]: ...
-```
-
-You should also be sure to return a result for each supported label (so
-that metrics can be computed correctly on each row).
+If your scanner yields [multiple results](#multiple-results) see the
+discussion above on [Result Sets](#result-sets) for details on how to
+specify metrics for this case.
 
 ## Custom Loaders
 
@@ -1485,7 +1520,13 @@ directory where results are stored:
 
 If you are running in VS Code, you can click the scan directory to view
 the results in Scout View. If you are using another editor, execute
-`scout view` from the terminal to launch the viewer.
+`scout view` from the terminal to launch the viewer:
+
+``` bash
+scout view
+```
+
+![](images/scout-view.png)
 
 To get programmatic access to the results, pass the scan directory to
 the `scan_results_df()` function:

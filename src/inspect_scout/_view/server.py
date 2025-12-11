@@ -225,7 +225,7 @@ def view_server_app(
             media_type="application/json",
         )
 
-    @app.get("/scanner_input/{scan:path}")
+    @app.get("/scanner_df_input/{scan:path}")
     async def scanner_input(
         request: Request,
         scan: str,
@@ -266,15 +266,18 @@ def view_server_app(
                 detail=f"Scanner '{query_scanner}' not found in scan results",
             )
 
-        # Search for the row with matching uuid and extract the input column
+        # Search for the row with matching uuid and extract input and inputType columns
         input_value: str | None = None
+        input_type: str | None = None
         with result.reader(query_scanner) as reader:
             for batch in reader:
-                # Check if uuid and input columns exist
-                if "uuid" not in batch.schema.names or "input" not in batch.schema.names:
+                # Check if required columns exist
+                required_cols = {"uuid", "input", "input_type"}
+                missing_cols = required_cols - set(batch.schema.names)
+                if missing_cols:
                     raise HTTPException(
                         status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Required columns 'uuid' or 'input' not found in scanner data",
+                        detail=f"Required columns missing: {', '.join(missing_cols)}",
                     )
 
                 # Use PyArrow compute to filter for matching UUID (more efficient than pandas)
@@ -283,10 +286,10 @@ def view_server_app(
 
                 # Check if any rows match
                 if pc.sum(pc.cast(mask, pa.int32())).as_py() > 0:
-                    # Filter the batch and get the input column
+                    # Filter the batch and get the input and inputType columns
                     filtered_batch = batch.filter(mask)
-                    input_column = filtered_batch.column("input")
-                    input_value = input_column[0].as_py()
+                    input_value = filtered_batch.column("input")[0].as_py()
+                    input_type = filtered_batch.column("input_type")[0].as_py()
                     break
 
         if input_value is None:
@@ -295,9 +298,11 @@ def view_server_app(
                 detail=f"No row found with uuid '{query_uuid}' in scanner '{query_scanner}'",
             )
 
+        # Return raw input as body with inputType in header (more efficient for large text)
         return Response(
             content=input_value,
             media_type="text/plain",
+            headers={"X-Input-Type": input_type or ""},
         )
 
     @app.get("/scanner_df/{scan:path}")

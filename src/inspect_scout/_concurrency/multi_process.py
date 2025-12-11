@@ -60,7 +60,11 @@ from .common import (
     sum_metrics,
 )
 
-MAX_PROCESS = 8
+# If no explicit number of processes is presented, we'll limit process concurrency
+# to this number regardless of the number of CPUs. We may raise this as we see real
+# world data suggesting that even more concurrency actually reduces the wall clock
+# time of a scan.
+DEFAULT_MAX_PROCESS = 4
 
 # Maximum number of ParseJobs to prefetch into the queue.
 # Provides backpressure to prevent buffering hundreds of thousands of ParseJobs
@@ -112,7 +116,9 @@ def multi_process_strategy(
         )
 
     if max_processes is None:
-        max_processes = min(MAX_PROCESS, multiprocessing.cpu_count(), total_scans)
+        max_processes = min(
+            DEFAULT_MAX_PROCESS, multiprocessing.cpu_count(), total_scans
+        )
 
     async def the_func(
         *,

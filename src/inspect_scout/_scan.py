@@ -122,7 +122,7 @@ def scan(
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
         model_roles: Named roles for use in `get_model()`.
         max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
-        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 1.
+        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
         tags: One or more tags for this scan.
@@ -207,7 +207,7 @@ async def scan_async(
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
         model_roles: Named roles for use in `get_model()`.
         max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
-        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 1.
+        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
         tags: One or more tags for this scan.
@@ -682,7 +682,6 @@ async def _scan_async_inner(
                 single_process = (
                     total_scans == 1
                     or scan.spec.options.limit == 1
-                    or scan.spec.options.max_processes is None
                     or scan.spec.options.max_processes == 1
                     or os.name == "nt"
                 )

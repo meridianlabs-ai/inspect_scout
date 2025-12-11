@@ -22,7 +22,13 @@ The `scout scan` command will print its status at the end of its run. If all of 
 
 ![](images/scan-complete.png)
 
-If you are running in VS Code, you can click the scan directory to view the results in Scout View. If you are using another editor, execute `scout view` from the terminal to launch the viewer.
+If you are running in VS Code, you can click the scan directory to view the results in Scout View. If you are using another editor, execute `scout view` from the terminal to launch the viewer:
+
+```bash
+scout view
+```
+
+![](images/scout-view.png){.border}
 
 To get programmatic access to the results, pass the scan directory to the `scan_results_df()` function:
 

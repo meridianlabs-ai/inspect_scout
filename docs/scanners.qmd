@@ -6,7 +6,9 @@ title: Scanners
 
 Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we'll cover the basic scanning concepts, and then drill into creating scanners that target various types (`Transcript`, `ChatMessage`, or `Event`) as well as creating custom loaders which enable scanning of lists of events or messages.
 
-You can also use scanners directly as Inspect scorers (see [Scanners as Scorers](#scanners-as-scorers) for details).
+This article goes in depth on custom scanner development. If you are looking for a straightforward high-level way to create an LLM-based scanner see the [LLM Scanner](llm_scanner.qmd) documentation.
+
+Notet that you can also use scanners directly as Inspect scorers (see [Scanners as Scorers](#scanners-as-scorers) for details).
 
 ## Scanner Basics
 

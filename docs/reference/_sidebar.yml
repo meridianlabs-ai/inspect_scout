@@ -27,6 +27,8 @@ website:
           href: reference/scanning.qmd#scannerspec
         - text: ScannerWork
           href: reference/scanning.qmd#scannerwork
+        - text: Worklist
+          href: reference/scanning.qmd#worklist
         - text: Status
           href: reference/scanning.qmd#status
         - text: ScanOptions

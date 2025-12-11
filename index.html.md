@@ -452,7 +452,7 @@ you can use to tune parallelism:
 |----|----|
 | `--max-transcripts` | The maximum number of transcripts to scan in parallel (defaults to 25). You can set this higher if your model API endpoint can handle larger numbers of concurrent requests. |
 | `--max-connections` | The maximum number of concurrent requests to the model provider (defaults to `--max-transcripts`). |
-| `--max-processes` | The maximum number of processes to use for parsing and scanning (defaults to 1). |
+| `--max-processes` | The maximum number of processes to use for parsing and scanning (defaults to 4). |
 
 ## Learning More
 
@@ -471,4 +471,4 @@ articles to learn more about using Scout:
 There is also more in depth documentation available on
 [Scanners](scanners.qmd), [Results](results.qmd),
 [Validation](validation.qmd) and [Transcript
-Databases](transcript_databases.qmd).
+Databases](db_overview.qmd).

@@ -286,7 +286,7 @@
     "href": "workflow.html",
     "title": "Workflow",
     "section": "",
-    "text": "In this article we’ll enumerate the phases of an end-to-end transcript analysis workflow and describe the features and techniques which support each phase. We’ll divide the workflow into the following steps:\n\nBuilding a Dataset — Filtering transcripts into a corpus for analysis.\nInitial Exploration — Building intuitions about transcript content.\nBuilding a Scanner — Authoring, debugging, and testing a scanner.\nScanner Validation — Validating scanners against human labeled results.\nAnalyzing Results — Visualizing and analyzing scanner data frames.\nRunning Scanners — Best practices for running scanners in production.",
+    "text": "In this article we’ll enumerate the phases of an end-to-end transcript analysis workflow and describe the features and techniques which support each phase. We’ll divide the workflow into the following steps:\n\n\n\n\n\n\n\nBuilding a Dataset\nFiltering transcripts into a corpus for analysis.\n\n\nInitial Exploration\nBuilding intuitions about transcript content.\n\n\nBuilding a Scanner\nAuthoring, debugging, and testing a scanner.\n\n\nScanner Validation\nValidating scanners against human labeled results.\n\n\nAnalyzing Results\nVisualizing and analyzing scanner data frames.\n\n\nRunning Scanners\nBest practices for running scanners in production.",
     "crumbs": [
       "Getting Started",
       "Using Scout"
@@ -297,7 +297,7 @@
     "href": "workflow.html#overview",
     "title": "Workflow",
     "section": "",
-    "text": "In this article we’ll enumerate the phases of an end-to-end transcript analysis workflow and describe the features and techniques which support each phase. We’ll divide the workflow into the following steps:\n\nBuilding a Dataset — Filtering transcripts into a corpus for analysis.\nInitial Exploration — Building intuitions about transcript content.\nBuilding a Scanner — Authoring, debugging, and testing a scanner.\nScanner Validation — Validating scanners against human labeled results.\nAnalyzing Results — Visualizing and analyzing scanner data frames.\nRunning Scanners — Best practices for running scanners in production.",
+    "text": "In this article we’ll enumerate the phases of an end-to-end transcript analysis workflow and describe the features and techniques which support each phase. We’ll divide the workflow into the following steps:\n\n\n\n\n\n\n\nBuilding a Dataset\nFiltering transcripts into a corpus for analysis.\n\n\nInitial Exploration\nBuilding intuitions about transcript content.\n\n\nBuilding a Scanner\nAuthoring, debugging, and testing a scanner.\n\n\nScanner Validation\nValidating scanners against human labeled results.\n\n\nAnalyzing Results\nVisualizing and analyzing scanner data frames.\n\n\nRunning Scanners\nBest practices for running scanners in production.",
     "crumbs": [
       "Getting Started",
       "Using Scout"

@@ -482,23 +482,14 @@ In this article we’ll enumerate the phases of an end-to-end transcript
 analysis workflow and describe the features and techniques which support
 each phase. We’ll divide the workflow into the following steps:
 
-1.  [Building a Dataset](#building-a-dataset) — Filtering transcripts
-    into a corpus for analysis.
-
-2.  [Initial Exploration](#initial-exploration) — Building intuitions
-    about transcript content.
-
-3.  [Building a Scanner](#building-a-scanner) — Authoring, debugging,
-    and testing a scanner.
-
-4.  [Scanner Validation](#scanner-validation) — Validating scanners
-    against human labeled results.
-
-5.  [Analyzing Results](#analyzing-results) — Visualizing and analyzing
-    scanner data frames.
-
-6.  [Running Scanners](#running-scanners) — Best practices for running
-    scanners in production.
+|  |  |
+|----|----|
+| [Building a Dataset](#building-a-dataset) | Filtering transcripts into a corpus for analysis. |
+| [Initial Exploration](#initial-exploration) | Building intuitions about transcript content. |
+| [Building a Scanner](#building-a-scanner) | Authoring, debugging, and testing a scanner. |
+| [Scanner Validation](#scanner-validation) | Validating scanners against human labeled results. |
+| [Analyzing Results](#analyzing-results) | Visualizing and analyzing scanner data frames. |
+| [Running Scanners](#running-scanners) | Best practices for running scanners in production. |
 
 ## Building a Dataset
 

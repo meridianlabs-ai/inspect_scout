@@ -1,3 +1,6 @@
+## Unreleased
+- Scanning: Switch from `dill` to `cloudpickle` and restore default `max_processes` to 4 after resolving multiprocessing serialization issues.
+
 ## 0.4.1 (12 December 2025)
 
 - Scan jobs: Correct resolution order for options (CLI, then scanjob config, then environment variables).

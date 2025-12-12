@@ -86,7 +86,7 @@ class ScanJobConfig(BaseModel):
     """The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25."""
 
     max_processes: int | None = Field(default=None)
-    """The maximum number of concurrent processes (for multiproccesing). Defaults to 1."""
+    """The maximum number of concurrent processes (for multiproccesing). Defaults to 4."""
 
     limit: int | None = Field(default=None)
     """Limit the number of transcripts processed."""
@@ -284,7 +284,7 @@ class ScanJob:
 
     @property
     def max_processes(self) -> int | None:
-        """The maximum number of concurrent processes (for multiproccesing). Defaults to 1."""
+        """The maximum number of concurrent processes (for multiproccesing). Defaults to 4."""
         return self._max_processes
 
     @property

@@ -21,7 +21,7 @@ from typing import (
 )
 
 import anyio
-import dill  # type: ignore
+import cloudpickle  # type:ignore
 from inspect_ai._util.logger import warn_once
 from inspect_ai.model import GenerateConfig, Model, ModelConfig
 from typing_extensions import TypeVarTuple, Unpack
@@ -49,7 +49,7 @@ class DillCallable:
         Args:
             func: The callable to wrap (can be closure, lambda, etc)
         """
-        self._pickled_func: bytes = dill.dumps(func)
+        self._pickled_func: bytes = cloudpickle.dumps(func)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Call the wrapped function.
@@ -61,7 +61,7 @@ class DillCallable:
         Returns:
             Result from calling the wrapped function
         """
-        func = dill.loads(self._pickled_func)
+        func = cloudpickle.loads(self._pickled_func)
         return func(*args, **kwargs)
 
     def __getstate__(self) -> bytes:

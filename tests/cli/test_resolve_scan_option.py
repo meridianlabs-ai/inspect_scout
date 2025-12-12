@@ -367,27 +367,21 @@ class TestOptionResolutionScenarios:
         # Neither -M nor --model-config from CLI
         set_source(mock_ctx, "m", ParameterSource.DEFAULT)
         set_source(mock_ctx, "model_config", ParameterSource.DEFAULT)
-        assert (
-            resolve_scan_option_multi(
-                mock_ctx,
-                ["m", "model_config"],
-                {"timeout": 30},
-                {"timeout": 60},
-            )
-            == {"timeout": 60}
-        )
+        assert resolve_scan_option_multi(
+            mock_ctx,
+            ["m", "model_config"],
+            {"timeout": 30},
+            {"timeout": 60},
+        ) == {"timeout": 60}
 
         # -M from CLI
         set_source(mock_ctx, "m", ParameterSource.COMMANDLINE)
-        assert (
-            resolve_scan_option_multi(
-                mock_ctx,
-                ["m", "model_config"],
-                {"timeout": 30},
-                {"timeout": 60},
-            )
-            == {"timeout": 30}
-        )
+        assert resolve_scan_option_multi(
+            mock_ctx,
+            ["m", "model_config"],
+            {"timeout": 30},
+            {"timeout": 60},
+        ) == {"timeout": 30}
 
         # --model-config from env, -M from default
         set_source(mock_ctx, "m", ParameterSource.DEFAULT)
@@ -400,7 +394,6 @@ class TestOptionResolutionScenarios:
                 {"timeout": 60},
             )
             == {"timeout": 60}  # scanjob wins because no CLI option
-
         )
 
     def test_generate_config_options(self, mock_ctx: MagicMock) -> None:

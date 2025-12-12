@@ -428,7 +428,10 @@ def scan_command(
         ctx, "model_base_url", model_base_url, scanjob.model_base_url
     )
     scan_model_args = resolve_scan_option_multi(
-        ctx, ["m", "model_config"], parse_cli_config(m, model_config), scanjob.model_args
+        ctx,
+        ["m", "model_config"],
+        parse_cli_config(m, model_config),
+        scanjob.model_args,
     )
     scan_model_roles = cast(
         dict[str, str | Model] | None,
@@ -542,9 +545,7 @@ def scan_command(
         scan_shuffle = None
     else:
         scan_shuffle = shuffle
-    scan_shuffle = resolve_scan_option(
-        ctx, "shuffle", scan_shuffle, scanjob.shuffle
-    )
+    scan_shuffle = resolve_scan_option(ctx, "shuffle", scan_shuffle, scanjob.shuffle)
 
     # tags and metadata
     scan_tags = resolve_scan_option(

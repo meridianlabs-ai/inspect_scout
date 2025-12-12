@@ -7,6 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
 import { ScannerPanel } from "./app/scans/ScannerPanel";
@@ -121,7 +122,9 @@ const AppLayout = () => {
 
   return (
     <AppErrorBoundary>
-      <Outlet />
+      <ActivityBarLayout>
+        <Outlet />
+      </ActivityBarLayout>
     </AppErrorBoundary>
   );
 };

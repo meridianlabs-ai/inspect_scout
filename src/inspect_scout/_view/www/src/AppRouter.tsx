@@ -10,6 +10,7 @@ import {
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
 import { ScannerPanel } from "./app/scans/ScannerPanel";
+import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
   kScansRouteUrlPattern,
@@ -18,6 +19,7 @@ import {
   isValidScanPath,
   getRelativePathFromParams,
   parseScanResultPath,
+  kTranscriptsRouteUrlPattern,
 } from "./router/url";
 import { useStore } from "./state/store";
 import { getEmbeddedScanState } from "./utils/embeddedState";
@@ -167,6 +169,10 @@ export const AppRouter = createHashRouter(
         {
           path: kScanRouteUrlPattern,
           element: <ScanOrScanResultsRoute />,
+        },
+        {
+          path: kTranscriptsRouteUrlPattern,
+          element: <TranscriptsPanel />,
         },
       ],
     },

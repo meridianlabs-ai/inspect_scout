@@ -1,0 +1,4 @@
+.panel {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+}

@@ -3,6 +3,7 @@ export const kScansRouteUrlPattern = "/scans";
 export const kScansWithPathRouteUrlPattern = "/scans/*";
 export const kScanRouteUrlPattern = "/scan/*";
 export const kScanResultRouteUrlPattern = "/scan/*/*";
+export const kTranscriptsRouteUrlPattern = "/transcripts";
 
 // Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
 export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;

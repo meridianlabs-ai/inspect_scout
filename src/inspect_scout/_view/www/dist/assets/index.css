@@ -4718,6 +4718,51 @@ button._segment_19z32_10 {
   font-weight: 400;
   color: var(--bs-secondary-text-color);
 }
+._activityBar_cblaa_1 {
+  height: 100vh;
+  width: 78px;
+  border-right: solid 1px var(--bs-border-color);
+}
+
+._activityHost_cblaa_7 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  display: grid;
+  justify-content: center;
+  grid-auto-rows: max-content;
+  row-gap: 1rem;
+}
+
+._activity_cblaa_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 1;
+  padding: 0.3rem;
+  border-radius: var(--bs-border-radius);
+}
+
+._activity_cblaa_1:hover {
+  background-color: var(--bs-light);
+  cursor: pointer;
+}
+
+._activity_cblaa_1._selected_cblaa_30 {
+  background-color: var(--bs-primary-bg-subtle);
+}
+
+._icon_cblaa_34 {
+  font-size: 1.1rem;
+}
+
+._label_cblaa_38 {
+  font-size: 0.5rem;
+  text-transform: uppercase;
+}
+._panel_1csdc_1 {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+}
 /**
  * prism.js default theme for JavaScript, CSS and HTML
  * Based on dabblet (http://dabblet.com)

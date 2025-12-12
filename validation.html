@@ -356,12 +356,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
-  <li><a href="#validation-basics" id="toc-validation-basics" class="nav-link" data-scroll-target="#validation-basics">Validation Basics</a>
-  <ul class="collapse">
-  <li><a href="#development" id="toc-development" class="nav-link" data-scroll-target="#development">Development</a></li>
-  <li><a href="#scanning" id="toc-scanning" class="nav-link" data-scroll-target="#scanning">Scanning</a></li>
-  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
-  </ul></li>
+  <li><a href="#validation-basics" id="toc-validation-basics" class="nav-link" data-scroll-target="#validation-basics">Validation Basics</a></li>
   <li><a href="#filtering-transcripts" id="toc-filtering-transcripts" class="nav-link" data-scroll-target="#filtering-transcripts">Filtering Transcripts</a></li>
   <li><a href="#ids-and-targets" id="toc-ids-and-targets" class="nav-link" data-scroll-target="#ids-and-targets">IDs and Targets</a>
   <ul class="collapse">
@@ -424,8 +419,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>Note that values can be of any type returned by a scanner, and it is also possible to do greater than / less than checks or write custom predicates.</p>
-<section id="development" class="level3">
-<h3 class="anchored" data-anchor-id="development">Development</h3>
+<section id="development" class="level4">
+<h4 class="anchored" data-anchor-id="development">Development</h4>
 <p>How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.</p>
 <p>Use the <strong>Copy</strong> button to copy the UUID for the transcript you are reviewing:</p>
 <p><img src="images/sample-uuid.png" class="border img-fluid" width="720"></p>
@@ -439,8 +434,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB, true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="scanning" class="level3">
-<h3 class="anchored" data-anchor-id="scanning">Scanning</h3>
+<section id="scanning" class="level4">
+<h4 class="anchored" data-anchor-id="scanning">Scanning</h4>
 <p>You’ll typically create a distinct validation set for each scanner, and then pass the validation sets to <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> as a dict mapping scanner to set:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
@@ -460,8 +455,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanning.py <span class="at">-V</span> ctf_environment:ctf_environment.csv</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This example uses the simplest possible id and target pair (transcript _id =&gt; boolean). Other variations are possible, see the <a href="#ids-and-targets">IDs and Targets</a> section below for details. You can also use other file formats for validation sets (e.g.&nbsp;YAML), see <a href="#validation-files">Validation Files</a> for details.</p>
 </section>
-<section id="results" class="level3">
-<h3 class="anchored" data-anchor-id="results">Results</h3>
+<section id="results" class="level4">
+<h4 class="anchored" data-anchor-id="results">Results</h4>
 <p>Validation results are reported in three ways:</p>
 <ul>
 <li><p>The scan status/summary UI provides a running tabulation of the percentage of matching validations.</p></li>

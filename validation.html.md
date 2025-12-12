@@ -32,7 +32,7 @@ Note that values can be of any type returned by a scanner, and it is
 also possible to do greater than / less than checks or write custom
 predicates.
 
-### Development
+#### Development
 
 How would you develop a validation set like this? Typically, you will
 review some of your existing transcripts using Inspect View, decide
@@ -57,7 +57,7 @@ VFkCH7gXWpJYUYonvfHxrG, false
 SiEXpECj7U9nNAvM3H7JqB, true
 ```
 
-### Scanning
+#### Scanning
 
 You’ll typically create a distinct validation set for each scanner, and
 then pass the validation sets to `scan()` as a dict mapping scanner to
@@ -91,7 +91,7 @@ Targets](#ids-and-targets) section below for details. You can also use
 other file formats for validation sets (e.g. YAML), see [Validation
 Files](#validation-files) for details.
 
-### Results
+#### Results
 
 Validation results are reported in three ways:
 

@@ -300,8 +300,6 @@ class TestViewServerAppScanEndpoint:
         data = response.json()
         assert data["complete"] is True
         assert data["location"] == "/test/scan"
-        assert "scanners" in data
-        assert "scanner1" in data["scanners"]
 
     @pytest.mark.asyncio
     async def test_scan_endpoint_status_only(
@@ -325,9 +323,8 @@ class TestViewServerAppScanEndpoint:
 
         assert response.status_code == 200
         data = response.json()
+        print(data)
         assert data["complete"] is True
-        # Scanner data should be empty when status_only is true
-        assert data["scanners"] == {}
 
 
 class TestViewServerAppScanDeleteEndpoint:

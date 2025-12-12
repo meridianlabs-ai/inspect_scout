@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
-import { ActivityBar } from "../../components/ActivityBar";
+import { LoadingBar } from "../../components/LoadingBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import JSONPanel from "../../components/JsonPanel";
 import { TabPanel, TabSet } from "../../components/TabSet";
@@ -149,8 +149,8 @@ export const ScanResultPanel: FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
-      <ActivityBar animating={!!loading || resultLoading} />
-      <ScanResultHeader inputData={dfInput} status={status} />
+      <LoadingBar loading={!!loading || resultLoading} />
+      <ScanResultHeader result={selectedResult} status={status} />
       {selectedResult && (
         <ExtendedFindProvider>
           <TabSet

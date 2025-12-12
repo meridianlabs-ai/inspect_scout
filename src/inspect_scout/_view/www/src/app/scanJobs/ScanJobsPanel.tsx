@@ -1,7 +1,7 @@
 import { clsx } from "clsx";
 import { FC, useEffect } from "react";
 
-import { ActivityBar } from "../../components/ActivityBar";
+import { LoadingBar } from "../../components/LoadingBar";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { useStore } from "../../state/store";
@@ -28,7 +28,7 @@ export const ScanJobsPanel: FC = () => {
   return (
     <div className={clsx(styles.container)}>
       <Navbar bordered={false} />
-      <ActivityBar animating={!!loading} />
+      <LoadingBar loading={!!loading} />
       <ExtendedFindProvider>
         {error && (
           <ErrorPanel title="Error Loading Scans" error={{ message: error }} />

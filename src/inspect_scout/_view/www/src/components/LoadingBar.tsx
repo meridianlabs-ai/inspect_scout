@@ -1,13 +1,13 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import styles from "./ActivityBar.module.css";
+import styles from "./LoadingBar.module.css";
 
-interface ActivityBarProps {
-  animating: boolean;
+interface LoadingBarProps {
+  loading: boolean;
 }
 
-export const ActivityBar: FC<ActivityBarProps> = ({ animating }) => {
+export const LoadingBar: FC<LoadingBarProps> = ({ loading }) => {
   return (
     <div className={clsx(styles.wrapper)}>
       <div
@@ -18,7 +18,7 @@ export const ActivityBar: FC<ActivityBarProps> = ({ animating }) => {
         aria-valuemin={0}
         aria-valuemax={100}
       >
-        {animating && <div className={styles.animate} />}
+        {loading && <div className={styles.animate} />}
       </div>
     </div>
   );

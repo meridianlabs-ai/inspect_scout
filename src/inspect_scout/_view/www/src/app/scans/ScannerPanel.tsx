@@ -2,7 +2,7 @@ import clsx from "clsx";
 import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { ActivityBar } from "../../components/ActivityBar";
+import { LoadingBar } from "../../components/LoadingBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
@@ -45,7 +45,7 @@ export const ScannerPanel: React.FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <Navbar />
-      <ActivityBar animating={!!loading} />
+      <LoadingBar loading={!!loading} />
       {selectedStatus && (
         <>
           <ScannerPanelTitle />

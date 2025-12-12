@@ -200,7 +200,7 @@ class ScanGroup(click.Group):
 @click.option(
     "--max-processes",
     type=int,
-    help="Number of worker processes. Defaults to 4.",
+    help="Number of worker processes. Defaults to 1.",
     envvar="SCOUT_SCAN_MAX_PROCESSES",
 )
 @click.option(

@@ -45,53 +45,53 @@ export const useMarkdownRefs = (
     };
   }, [summary?.uuid, params]);
 
-  const refs: MarkdownReference[] =
-    summary && inputData
-      ? toMarkdownRefs(
-          summary,
-          inputData,
-          (refId: string, type: "message" | "event") => {
-            if (type === "message") {
-              return buildUrl(
-                `tab=Result&message=${encodeURIComponent(refId)}`
-              );
-            } else {
-              return buildUrl(`tab=Result&event=${encodeURIComponent(refId)}`);
-            }
+  const refs: MarkdownReference[] = summary
+    ? toMarkdownRefs(
+        summary,
+        (refId: string, type: "message" | "event") => {
+          if (type === "message") {
+            return buildUrl(`tab=Result&message=${encodeURIComponent(refId)}`);
+          } else {
+            return buildUrl(`tab=Result&event=${encodeURIComponent(refId)}`);
           }
-        )
-      : [];
+        },
+        inputData
+      )
+    : [];
   return refs;
 };
 
 export const toMarkdownRefs = (
-  core: ScanResultSummary,
-  inputData: ScanResultInputData,
-  makeReferenceUrl: MakeReferenceUrl
+  summary: ScanResultSummary,
+  makeReferenceUrl: MakeReferenceUrl,
+  inputData?: ScanResultInputData
 ) => {
   const refLookup = referenceTable(inputData);
 
   const refs: MarkdownReference[] = [];
-  for (const ref of core.messageReferences) {
+  for (const ref of summary.messageReferences) {
     const renderPreview = refLookup[ref.id];
-    if (ref.cite && renderPreview) {
+    const refUrl = makeReferenceUrl(ref.id, "message");
+    console.log({ renderPreview, refUrl });
+    if (ref.cite && (renderPreview || refUrl)) {
       refs.push({
         id: ref.id,
         cite: ref.cite,
         citePreview: renderPreview,
-        citeUrl: makeReferenceUrl(ref.id, "message"),
+        citeUrl: refUrl,
       });
     }
   }
 
-  for (const ref of core.eventReferences) {
+  for (const ref of summary.eventReferences) {
     const renderPreview = refLookup[ref.id];
-    if (ref.cite && renderPreview) {
+    const refUrl = makeReferenceUrl(ref.id, "event");
+    if (ref.cite && (renderPreview || refUrl)) {
       refs.push({
         id: ref.id,
         cite: ref.cite,
         citePreview: renderPreview,
-        citeUrl: makeReferenceUrl(ref.id, "event"),
+        citeUrl: refUrl,
       });
     }
   }

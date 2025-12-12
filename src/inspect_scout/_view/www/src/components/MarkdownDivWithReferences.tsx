@@ -120,6 +120,10 @@ export const MarkdownDivWithReferences = forwardRef<
         return;
       }
 
+      if (!ref.citePreview) {
+        return;
+      }
+
       // Just set which cite we're tracking
       // PopOver will handle all show/hide logic including hover delays
       setPositionEl(el);

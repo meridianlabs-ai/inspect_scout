@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useStore } from "../state/store";
 
@@ -53,6 +54,25 @@ export const MarkdownDivWithReferences = forwardRef<
     [references]
   );
 
+  const navigate = useNavigate();
+
+  const handleLinkClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (anchor) {
+        const href = anchor.getAttribute("href");
+        // If this is a has, forward on to react-router
+        // so it can see this navigate
+        if (href?.startsWith("#/")) {
+          e.preventDefault();
+          // Remove '#' and navigate
+          void navigate(href.slice(1));
+        }
+      }
+    },
+    [navigate]
+  );
+
   // Post-process the rendered HTML to inject reference links
   const postProcess = useCallback(
     (html: string): string => {
@@ -65,6 +85,7 @@ export const MarkdownDivWithReferences = forwardRef<
         const regex = new RegExp(`${escapedCite}(?![a-zA-Z0-9])`, "g");
 
         const href = ref.citeUrl || "javascript:void(0)";
+
         const replacement = `<a href="${href}" class="${styles.cite}" data-ref-id="${ref.id}">${ref.cite}</a>`;
 
         processedHtml = processedHtml.replace(regex, replacement);
@@ -86,6 +107,7 @@ export const MarkdownDivWithReferences = forwardRef<
         className={className}
         style={style}
         omitMedia={omitMedia}
+        onClick={handleLinkClick}
       />
     ),
     [markdown, postProcess]

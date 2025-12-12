@@ -84,7 +84,7 @@ def scan(
     ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
-    worklist: Sequence[ScannerWork] | str | Path | None = None,
+    worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
     validation: ValidationSet | dict[str, ValidationSet] | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
@@ -170,7 +170,7 @@ async def scan_async(
     ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
-    worklist: Sequence[ScannerWork] | str | Path | None = None,
+    worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
     validation: ValidationSet | dict[str, ValidationSet] | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
@@ -258,8 +258,8 @@ async def scan_async(
     scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
 
     # tags and metadata
-    scanjob._tags = tags
-    scanjob._metadata = metadata
+    scanjob._tags = tags or scanjob._tags
+    scanjob._metadata = metadata or scanjob._metadata
 
     # derive max_connections if not specified
     scanjob._generate_config = (
@@ -272,11 +272,11 @@ async def scan_async(
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
-        model=scanjob._model or model,
+        model=model or scanjob._model,
         model_config=scanjob._generate_config,
         model_base_url=model_base_url or scanjob._model_base_url,
-        model_args=scanjob._model_args or model_args,
-        model_roles=scanjob._model_roles or model_roles,
+        model_args=model_args or scanjob._model_args,
+        model_roles=model_roles or scanjob._model_roles,
     )
     scanjob._model = resolved_model
     scanjob._model_args = resolved_model_args
@@ -923,7 +923,7 @@ def _reports_for_parse_error(
 
 
 async def _resolve_worklist(
-    worklist: Sequence[ScannerWork] | str | Path | None,
+    worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None,
 ) -> list[Worklist] | None:
     if worklist is None:
         return None

@@ -13,7 +13,7 @@ license = { text = "MIT License" }
 dependencies = [
     "anyio>=4.8.0",
     "click>=8.1.3,!=8.2.0,<8.2.2",
-    "dill>=0.4.0",
+    "cloudpickle>=3.0.0",
     "duckdb>=1.4.0",
     "fastapi",
     "ijson>=3.2.0",

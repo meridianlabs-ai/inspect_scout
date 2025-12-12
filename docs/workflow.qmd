@@ -10,11 +10,13 @@ In this article we'll enumerate the phases of an end-to-end transcript analysis 
 
 2.  [Initial Exploration](#initial-exploration) — Building intuitions about transcript content.
 
-3.  [Building a Scanner](#building-a-scanner) — Authoring, testing, and validating a scanner.
+3.  [Building a Scanner](#building-a-scanner) — Authoring, debugging, and testing a scanner.
 
-4.  [Running Scanners](#running-scanners) — Best practices for running scanners.
+4.  [Scanner Validation](#scanner-validation) — Validating scanners against human labeled results.
 
 5.  [Analyzing Results](#analyzing-results) — Visualizing and analyzing scanner data frames.
+
+6.  [Running Scanners](#running-scanners) — Best practices for running scanners in production.
 
 ## Building a Dataset {#building-a-dataset}
 
@@ -130,6 +132,10 @@ When you click into a result you'll see the model's explanation along with refer
 
 ![](images/view-result.png){.border}
 
+### Scanner Metrics
+
+{{< include _scanner_metrics.md >}}
+
 ### Defining a Scan Job
 
 Above we provided a variety of options to the scout scan command. If you accumulate enough of these options you might want to consider defining a [Scan Job](index.qmd#scan-jobs) to bundle these options together, do transcript filtering, and provide a validation set (described in the section below).
@@ -155,23 +161,57 @@ You can then run the scan by referencing the scan job (you can also continue to 
 scout scan scan.yaml --limit 20 
 ```
 
-### Scanner Validation
+## Scanner Validation {#scanner-validation}
 
-When developing scanners and scanner prompts, it's often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.
+{{< include _validation-overview.md >}}
 
-When you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):
+### Validation Basics
 
-![](images/validation.png){.border}
+{{< include _validation-basics.md >}}
 
-See the article on [Validation](validation.qmd) for complete details on how to create validation sets for various types of scanners.
 
-### Scanner Metrics
+### Filtering Transcripts
 
-{{< include _scanner_metrics.md >}}
+{{< include _validation-filtering.md >}}
+
+### Complex Result Values
+
+The above covers the basics of scanner validation using a simple boolean scanner---if your scanners yield more complex values (e.g. structured JSON and/or a list of results) see the additional documentation on validation [IDs and Targets](validation.qmd#ids-and-targets) to learn how to structure your validation set.
+
+## Analyzing Results {#analyzing-results}
+
+The `scout scan` command will print its status at the end of its run. If all of the scanners complete without errors you'll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:
+
+![](images/scan-complete.png)
+
+To get programmatic access to the results, pass the scan directory to the `scan_results_df()` function:
+
+``` python
+from inspect_scout import scan_results_df
+
+results = scan_results_df("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
+deception_df = results.scanners["deception"]
+tool_errors_df = results.scanners["tool_errors"]
+```
+
+The `Results` object returned from `scan_results_df()` includes both metadata about the scan as well as the scanner data frames:
+
+| Field | Type | Description |
+|-------------------|-------------------|----------------------------------|
+| `complete` | bool | Is the job complete? (all transcripts scanned) |
+| `spec` | ScanSpec | Scan specification (transcripts, scanners, options, etc.) |
+| `location` | str | Location of scan directory |
+| `summary` | Summary | Summary of scan (results, metrics, errors, tokens, etc.) |
+| `errors` | list\[Error\] | Errors during last scan attempt. |
+| `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#data-frames) for details) |
+
+: {tbl-colwidths=\[20,20,60\]}
+
+{{< include _results-data-frame.md >}}
 
 ## Running Scanners {#running-scanners}
 
-Once you've developed, refined, and validated your scanner you are ready to run it against larger sets of transcripts. This section covers some techniques and best practices for doing this.
+Once you've developed, refined, and validated your scanner you are ready to do production runs against larger sets of transcripts. This section covers some techniques and best practices for doing this.
 
 ### Scout Jobs
 
@@ -215,7 +255,7 @@ scout scan cybench_scan.py
 
 {{< include _parallelism.md >}}
 
-For some scanning work you won't get any benefit from increasing max processes (because all of the time is spent waiting for remote LLM calls). However, if you have scanners that are CPU intensive (e.g. they query transcript content with regexes) or have transcripts that are very large (and thus expensive to read) then increasing max processes may provide improved throughput. 
+For some scanning work you won't get any benefit from increasing max processes (because all of the time is spent waiting for remote LLM calls). However, if you have scanners that are CPU intensive (e.g. they query transcript content with regexes) or have transcripts that are very large (and thus expensive to read) then increasing max processes may provide improved throughput.
 
 ### Batch Mode
 
@@ -274,33 +314,4 @@ We can also use it with the `inspect score` command to add scores to existing lo
 inspect score --scorer scanners.py@reward_hacking logfile.eval
 ```
 
-## Analyzing Results {#analyzing-results}
-
-The `scout scan` command will print its status at the end of its run. If all of the scanners complete without errors you'll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:
-
-![](images/scan-complete.png)
-
-To get programmatic access to the results, pass the scan directory to the `scan_results_df()` function:
-
-``` python
-from inspect_scout import scan_results_df
-
-results = scan_results_df("scans/scan_id=3ibJe9cg7eM5zo3h5Hpbr8")
-deception_df = results.scanners["deception"]
-tool_errors_df = results.scanners["tool_errors"]
-```
-
-The `Results` object returned from `scan_results_df()` includes both metadata about the scan as well as the scanner data frames:
-
-| Field | Type | Description |
-|-------------------|-------------------|----------------------------------|
-| `complete` | bool | Is the job complete? (all transcripts scanned) |
-| `spec` | ScanSpec | Scan specification (transcripts, scanners, options, etc.) |
-| `location` | str | Location of scan directory |
-| `summary` | Summary | Summary of scan (results, metrics, errors, tokens, etc.) |
-| `errors` | list\[Error\] | Errors during last scan attempt. |
-| `scanners` | dict\[str, pd.DataFrame\] | Results data for each scanner (see [Data Frames](#data-frames) for details) |
-
-: {tbl-colwidths=\[20,20,60\]}
-
-{{< include _results-data-frame.md >}}
+##

@@ -1,6 +1,11 @@
 import clsx from "clsx";
 import { FC, memo } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
 import { MarkdownReference } from "../../../../components/MarkdownDivWithReferences";
 import {
@@ -45,6 +50,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const scanResultUrl = isNavigable
     ? scanResultRoute(relativePath, summary.uuid, searchParams)
     : "";
+  const navigate = useNavigate();
 
   // Information about the row
   const hasExplanation = gridDescriptor.columns.includes("explanation");
@@ -116,10 +122,22 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
     </div>
   );
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking an inner link
+    if ((e.target as HTMLElement).closest("a")) {
+      return;
+    }
+    void navigate(scanResultUrl);
+  };
+
   return isNavigable ? (
-    <Link to={scanResultUrl} className={clsx(styles.link)} onClick={() => {}}>
+    <div
+      className={clsx(styles.link)}
+      onClick={handleClick}
+      style={{ cursor: "pointer" }}
+    >
       {grid}
-    </Link>
+    </div>
   ) : (
     grid
   );

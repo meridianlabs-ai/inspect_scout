@@ -7,9 +7,9 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import { ScanResultPanel } from "./app/result/ScanResultPanel";
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
-import { ScannerPanel } from "./app/scanner/ScannerPanel";
+import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
+import { ScannerPanel } from "./app/scans/ScannerPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
   kScansRouteUrlPattern,

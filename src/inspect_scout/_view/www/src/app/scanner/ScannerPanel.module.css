@@ -1,5 +1,0 @@
-.root {
-  height: 100vh;
-  display: grid;
-  grid-template-rows: max-content max-content max-content max-content 1fr;
-}

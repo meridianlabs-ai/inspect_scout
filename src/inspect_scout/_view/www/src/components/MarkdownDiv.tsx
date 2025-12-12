@@ -17,10 +17,11 @@ interface MarkdownDivProps {
   style?: CSSProperties;
   className?: string | string[];
   postProcess?: (html: string) => string;
+  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
 }
 
 const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
-  ({ markdown, omitMedia, style, className, postProcess }, ref) => {
+  ({ markdown, omitMedia, style, className, postProcess, onClick }, ref) => {
     // Check cache for rendered content
     const cacheKey = `${markdown}:${omitMedia ? "1" : "0"}`;
     const cachedHtml = renderCache.get(cacheKey);
@@ -125,6 +126,7 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
         dangerouslySetInnerHTML={{ __html: renderedHtml }}
         style={style}
         className={clsx(className, "markdown-content")}
+        onClick={onClick}
       />
     );
   }

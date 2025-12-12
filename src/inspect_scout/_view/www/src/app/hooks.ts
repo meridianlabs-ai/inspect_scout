@@ -3,21 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
-import { useApi, useStore } from "../state/store";
-import { EventType } from "../transcript/types";
-import { Transcript, ModelUsage } from "../types";
+import { useStore } from "../state/store";
+import { ModelUsage } from "../types";
 import { JsonValue, Events } from "../types/log";
-import { decodeArrowBytes } from "../utils/arrow";
 import { asyncJsonParse } from "../utils/json-worker";
-import { join } from "../utils/uri";
 
 import {
-  MessageType,
-  ScannerData,
-  ScannerCore,
-  ScannerReference,
+  ScanResultData,
+  ScanResultSummary,
+  ScanResultReference,
+  ScanResultInputData,
 } from "./types";
-import { expandResultsetRows } from "./utils/arrow";
 
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
@@ -32,202 +28,13 @@ export const useSelectedScanner = () => {
   return selectedScanner || defaultScanner;
 };
 
-export const useServerScans = () => {
-  // api
-  const api = useApi();
-
-  // state
-  const resultsDir = useStore((state) => state.resultsDir);
-
-  // setters
-  const setScans = useStore((state) => state.setScans);
-  const setResultsDir = useStore((state) => state.setResultsDir);
-  const setLoading = useStore((state) => state.setLoading);
-  const setError = useStore((state) => state.setError);
-  const clearError = useStore((state) => state.clearError);
-
-  useEffect(() => {
-    const fetchScans = async () => {
-      // Update loading and error state
-      clearError("scanjobs");
-      setLoading(true);
-
-      try {
-        // Fetch the data
-        const scansInfo = await api.getScans();
-        if (scansInfo) {
-          // Update state
-          setResultsDir(scansInfo.results_dir);
-          setScans(scansInfo.scans);
-        }
-      } catch (e) {
-        // Notify app of error
-        setError("scanjobs", e?.toString());
-      } finally {
-        // Stop loading
-        setLoading(false);
-      }
-    };
-
-    // Only fetch if we don't already have data retrieved
-    if (!resultsDir) {
-      void fetchScans();
-    }
-  }, [api, resultsDir, setScans, setResultsDir]);
-};
-
-export const useServerScannerDataframe = () => {
-  // api
-  const api = useApi();
-
-  // Path information
-  const params = useParams<{ "*": string }>();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanPath } = parseScanResultPath(relativePath);
-
-  // State
-  const singleFileMode = useStore((state) => state.singleFileMode);
-  const resultsDir = useStore((state) => state.resultsDir);
-  const selectedScanner = useSelectedScanner();
-
-  // Setters
-  const setLoadingData = useStore((state) => state.setLoadingData);
-  const setSelectedScanResultData = useStore(
-    (state) => state.setSelectedScanResultData
-  );
-  const getSelectedScanResultData = useStore(
-    (state) => state.getSelectedScanResultData
-  );
-  const setError = useStore((state) => state.setError);
-  const clearError = useStore((state) => state.clearError);
-
-  useEffect(() => {
-    const fetchScannerDataframe = async () => {
-      // Clear any existing errors
-      clearError("dataframe");
-
-      // See if we already have data
-      const existingData = getSelectedScanResultData(selectedScanner);
-      if (!scanPath || !selectedScanner || existingData) {
-        return;
-      }
-
-      // Start loading (since we are going to fetch)
-      setLoadingData(true);
-      try {
-        // If resultsDir is used, send an absolute path
-        let location = scanPath;
-        if (resultsDir) {
-          location = join(scanPath, resultsDir);
-        }
-
-        // Request the raw data from the server
-        const arrayBuffer = await api.getScannerDataframe(
-          location,
-          selectedScanner
-        );
-
-        // Pre-process result set rows to explode the results
-        const table = decodeArrowBytes(arrayBuffer);
-
-        const expandedTable = await expandResultsetRows(table);
-
-        // Store in state
-        setSelectedScanResultData(selectedScanner, expandedTable);
-      } catch (e) {
-        // Notify app of error
-        setError("dataframe", e?.toString());
-      } finally {
-        // Stop progress
-        setLoadingData(false);
-      }
-    };
-    void fetchScannerDataframe();
-  }, [
-    api,
-    scanPath,
-    selectedScanner,
-    resultsDir,
-    singleFileMode,
-    setLoadingData,
-    setSelectedScanResultData,
-    getSelectedScanResultData,
-  ]);
-};
-
-export const useServerScanner = () => {
-  // api
-  const api = useApi();
-
-  // Path information
-  const params = useParams<{ "*": string }>();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanPath } = parseScanResultPath(relativePath);
-
-  // State
-  const resultsDir = useStore((state) => state.resultsDir);
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
-  const scans = useStore((state) => state.scans);
-
-  // Setters
-  const setSelectedScanLocation = useStore(
-    (state) => state.setSelectedScanLocation
-  );
-  const setSelectedScanStatus = useStore(
-    (state) => state.setSelectedScanStatus
-  );
-  const setLoading = useStore((state) => state.setLoading);
-  const setError = useStore((state) => state.setError);
-  const clearError = useStore((state) => state.clearError);
-
-  useEffect(() => {
-    if (scanPath && !selectedStatus) {
-      // Clear any existing errors
-      clearError("scanner");
-
-      // Check the list of scans that are already loaded
-      const location = join(scanPath, resultsDir);
-      const scansInfo = scans.find((s) => s.location === location);
-      if (scansInfo) {
-        // Already in store, use it
-        setSelectedScanStatus(scansInfo);
-      } else {
-        // Fetch from server if not in store
-        const fetchScan = async () => {
-          setLoading(true);
-          try {
-            const status = await api.getScan(location);
-            setSelectedScanStatus(status);
-          } catch (e) {
-            setError("scanner", e?.toString());
-          } finally {
-            setLoading(false);
-          }
-        };
-        void fetchScan();
-      }
-
-      // Select this scan
-      setSelectedScanLocation(scanPath);
-    }
-  }, [
-    relativePath,
-    api,
-    setSelectedScanStatus,
-    scanPath,
-    selectedStatus,
-    scans,
-    resultsDir,
-  ]);
-};
-
 export const useScannerData = (
   columnTable?: ColumnTable,
   scanResultUuid?: string
 ) => {
-  const [scannerData, setScannerData] = useState<ScannerData | undefined>(
-    undefined
-  );
+  const [scanResultData, setScanResultData] = useState<
+    ScanResultData | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(false);
 
   const filtered = useMemo((): ColumnTable | undefined => {
@@ -257,7 +64,7 @@ export const useScannerData = (
 
   useEffect(() => {
     if (!filtered) {
-      setScannerData(undefined);
+      setScanResultData(undefined);
       setIsLoading(false);
       return;
     }
@@ -267,7 +74,7 @@ export const useScannerData = (
 
     const parse = async <T>(text: string | null): Promise<T | undefined> => {
       return text !== null
-        ? (asyncJsonParse<ScannerCore[]>(text) as Promise<T>)
+        ? (asyncJsonParse<ScanResultSummary[]>(text) as Promise<T>)
         : undefined;
     };
 
@@ -302,7 +109,6 @@ export const useScannerData = (
 
         const [
           eventReferences,
-          input,
           inputIds,
           messageReferences,
           metadata,
@@ -317,7 +123,6 @@ export const useScannerData = (
           value,
         ] = await Promise.all([
           parse(filtered.get("event_references", 0) as string),
-          parse(filtered.get("input", 0) as string),
           parse(filtered.get("input_ids", 0) as string),
           parse(filtered.get("message_references", 0) as string),
           parse(filtered.get("metadata", 0) as string),
@@ -378,10 +183,10 @@ export const useScannerData = (
           uuid,
           answer,
           label,
-          eventReferences: eventReferences as ScannerReference[],
+          eventReferences: eventReferences as ScanResultReference[],
           explanation,
           inputIds: inputIds as string[],
-          messageReferences: messageReferences as ScannerReference[],
+          messageReferences: messageReferences as ScanResultReference[],
           metadata: metadata as Record<string, JsonValue>,
           scanError,
           scanErrorTraceback,
@@ -411,51 +216,46 @@ export const useScannerData = (
         };
 
         // Create typed data based on inputType
-        let typedData: ScannerData;
+        let typedData: ScanResultData;
         switch (inputType) {
           case "transcript":
             typedData = {
               ...baseData,
               inputType: "transcript",
-              input: input as Transcript,
             };
             break;
           case "message":
             typedData = {
               ...baseData,
               inputType: "message",
-              input: input as MessageType,
             };
             break;
           case "messages":
             typedData = {
               ...baseData,
               inputType: "messages",
-              input: input as MessageType[],
             };
             break;
           case "event":
             typedData = {
               ...baseData,
               inputType: "event",
-              input: input as EventType,
             };
             break;
           case "events":
             typedData = {
               ...baseData,
               inputType: "events",
-              input: input as EventType[],
             };
             break;
         }
 
-        setScannerData(typedData);
+        setScanResultData(typedData);
         setIsLoading(false);
       } catch (error) {
         if (!cancelled) {
           console.error("Error parsing scanner data:", error);
-          setScannerData(undefined);
+          setScanResultData(undefined);
           setIsLoading(false);
         }
       }
@@ -468,7 +268,7 @@ export const useScannerData = (
     };
   }, [filtered]);
 
-  return { data: scannerData, isLoading };
+  return { data: scanResultData, isLoading };
 };
 
 export const useSelectedResultsRow = (scanResultUuid?: string) => {
@@ -487,7 +287,23 @@ export const useSelectedResultsRow = (scanResultUuid?: string) => {
   return { data: scanData, isLoading };
 };
 
-export const useScannerPreviews = (columnTable?: ColumnTable) => {
+export const useSelectedScanResultInputData = ():
+  | ScanResultInputData
+  | undefined => {
+  const params = useParams<{ "*": string }>();
+  const relativePath = getRelativePathFromParams(params);
+  const { scanResultUuid } = parseScanResultPath(relativePath);
+
+  const getSelectedScanResultInput = useStore(
+    (state) => state.getSelectedScanResultInputData
+  );
+
+  return scanResultUuid
+    ? getSelectedScanResultInput(scanResultUuid)
+    : undefined;
+};
+
+export const useScannerCores = (columnTable?: ColumnTable) => {
   // First see if we've already decoded these
   const selectedScanner = useSelectedScanner();
   const getSelectedScanResultPreviews = useStore(
@@ -497,7 +313,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
     (state) => state.setSelectedScanResultPreviews
   );
 
-  const [scannerPreviews, setScannerPreviews] = useState<ScannerCore[]>([]);
+  const [scannerCores, setScannerCores] = useState<ScanResultSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const rowData = useMemo(() => columnTable?.objects(), [columnTable]);
@@ -505,7 +321,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
   useEffect(() => {
     // If empty, set empty and return
     if (rowData?.length === 0) {
-      setScannerPreviews([]);
+      setScannerCores([]);
       setSelectedScanResultPreviews(selectedScanner, []);
       setIsLoading(false);
       return;
@@ -514,7 +330,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
     // Use the existing previews if available
     const existingPreviews = getSelectedScanResultPreviews(selectedScanner);
     if (existingPreviews) {
-      setScannerPreviews(existingPreviews);
+      setScannerCores(existingPreviews);
       setIsLoading(false);
       return;
     }
@@ -524,7 +340,7 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
 
     const parse = async <T>(text: string | null): Promise<T | undefined> => {
       return text !== null
-        ? (asyncJsonParse<ScannerCore[]>(text) as Promise<T>)
+        ? (asyncJsonParse<ScanResultSummary[]>(text) as Promise<T>)
         : undefined;
     };
 
@@ -567,7 +383,6 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               transcriptMetadata,
               eventReferences,
               messageReferences,
-              input,
               value,
             ] = await Promise.all([
               parse(r.validation_result as string),
@@ -575,7 +390,6 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               parse<Record<string, unknown>>(r.transcript_metadata as string),
               parse(r.event_references as string),
               parse(r.message_references as string),
-              parse(r.input as string),
               simpleValue(r.value, valueType),
             ]);
 
@@ -595,8 +409,8 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
               uuid: r.uuid as string | undefined,
               label: r.label as string | undefined,
               explanation,
-              eventReferences: eventReferences as ScannerReference[],
-              messageReferences: messageReferences as ScannerReference[],
+              eventReferences: eventReferences as ScanResultReference[],
+              messageReferences: messageReferences as ScanResultReference[],
               validationResult: validationResult as
                 | boolean
                 | Record<string, boolean>,
@@ -612,41 +426,36 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
             };
 
             // Create typed preview based on inputType
-            let typedPreview: ScannerCore;
+            let typedPreview: ScanResultSummary;
             switch (inputType) {
               case "transcript":
                 typedPreview = {
                   ...basePreview,
                   inputType: "transcript",
-                  input: input as Transcript,
                 };
                 break;
               case "message":
                 typedPreview = {
                   ...basePreview,
                   inputType: "message",
-                  input: input as MessageType,
                 };
                 break;
               case "messages":
                 typedPreview = {
                   ...basePreview,
                   inputType: "messages",
-                  input: input as MessageType[],
                 };
                 break;
               case "event":
                 typedPreview = {
                   ...basePreview,
                   inputType: "event",
-                  input: input as EventType,
                 };
                 break;
               case "events":
                 typedPreview = {
                   ...basePreview,
                   inputType: "events",
-                  input: input as EventType[],
                 };
                 break;
             }
@@ -656,14 +465,14 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
         );
 
         if (!cancelled) {
-          setScannerPreviews(parsedPreviews);
+          setScannerCores(parsedPreviews);
           setSelectedScanResultPreviews(selectedScanner, parsedPreviews);
           setIsLoading(false);
         }
       } catch (error) {
         if (!cancelled) {
           console.error("Error parsing scanner previews:", error);
-          setScannerPreviews([]);
+          setScannerCores([]);
           setSelectedScanResultPreviews(selectedScanner, []);
           setIsLoading(false);
         }
@@ -682,5 +491,5 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
     setSelectedScanResultPreviews,
   ]);
 
-  return { data: scannerPreviews, isLoading };
+  return { data: scannerCores, isLoading };
 };

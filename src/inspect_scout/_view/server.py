@@ -7,6 +7,7 @@ from typing import Any, Iterable, Literal, TypeVar
 import anyio
 import pandas as pd
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.ipc as pa_ipc
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -224,6 +225,86 @@ def view_server_app(
             media_type="application/json",
         )
 
+    @app.get("/scanner_df_input/{scan:path}")
+    async def scanner_input(
+        request: Request,
+        scan: str,
+        query_scanner: str | None = Query(None, alias="scanner"),
+        query_uuid: str | None = Query(None, alias="uuid"),
+    ) -> Response:
+        if query_scanner is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="scanner query parameter is required",
+            )
+
+        if query_uuid is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="uuid query parameter is required",
+            )
+
+        # convert to absolute path
+        scan_path = UPath(await _map_file(request, scan))
+        if not scan_path.is_absolute():
+            validated_results_dir = _ensure_not_none(
+                results_dir, "results_dir is required"
+            )
+            results_path = UPath(validated_results_dir)
+            scan_path = results_path / scan_path
+
+        # validate
+        await _validate_read(request, scan_path)
+
+        # Read the input for the scanner and uuid
+        result = await scan_results_arrow_async(str(scan_path))
+
+        # ensure we have the scanner data (404 if not)
+        if query_scanner not in result.scanners:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scanner '{query_scanner}' not found in scan results",
+            )
+
+        # Search for the row with matching uuid and extract input and inputType columns
+        input_value: str | None = None
+        input_type: str | None = None
+        with result.reader(query_scanner) as reader:
+            for batch in reader:
+                # Check if required columns exist
+                required_cols = {"uuid", "input", "input_type"}
+                missing_cols = required_cols - set(batch.schema.names)
+                if missing_cols:
+                    raise HTTPException(
+                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Required columns missing: {', '.join(missing_cols)}",
+                    )
+
+                # Use PyArrow compute to filter for matching UUID (more efficient than pandas)
+                uuid_column = batch.column("uuid")
+                mask = pc.equal(uuid_column, pa.scalar(query_uuid))
+
+                # Check if any rows match
+                if pc.sum(pc.cast(mask, pa.int32())).as_py() > 0:
+                    # Filter the batch and get the input and inputType columns
+                    filtered_batch = batch.filter(mask)
+                    input_value = filtered_batch.column("input")[0].as_py()
+                    input_type = filtered_batch.column("input_type")[0].as_py()
+                    break
+
+        if input_value is None:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"No row found with uuid '{query_uuid}' in scanner '{query_scanner}'",
+            )
+
+        # Return raw input as body with inputType in header (more efficient for large text)
+        return Response(
+            content=input_value,
+            media_type="text/plain",
+            headers={"X-Input-Type": input_type or ""},
+        )
+
     @app.get("/scanner_df/{scan:path}")
     async def scan_df(
         request: Request,
@@ -271,13 +352,26 @@ def view_server_app(
             with result.reader(
                 query_scanner, streaming_batch_size=streaming_batch_size
             ) as reader:
+                # Filter input from the datastream as it can be very
+                # large and will be requested by the client separately
+                # when it is needed
+                columns_to_omit = {"input"}
+                columns_to_keep = [
+                    name for name in reader.schema.names if name not in columns_to_omit
+                ]
+                filtered_schema = pa.schema(
+                    [reader.schema.field(name) for name in columns_to_keep]
+                )
+
                 with pa_ipc.new_stream(
                     buf,
-                    reader.schema,
+                    filtered_schema,
                     options=pa_ipc.IpcWriteOptions(compression="lz4"),
                 ) as writer:
                     for batch in reader:
-                        writer.write_batch(batch)
+                        # Select only columns we want (zero-copy operation)
+                        filtered_batch = batch.select(columns_to_keep)
+                        writer.write_batch(filtered_batch)
 
                         # Flush whatever the writer just appended
                         data = buf.getvalue()
@@ -300,7 +394,6 @@ def view_server_app(
     async def scan(
         request: Request,
         scan: str,
-        status_only: bool | None = Query(None, alias="status_only"),
     ) -> Response:
         # convert to absolute path
         scan_path = UPath(await _map_file(request, scan))
@@ -317,32 +410,23 @@ def view_server_app(
         # read the results and return
         result = await scan_results_df_async(str(scan_path), rows="transcripts")
 
-        # convert the dataframes to their serializable form (omit
-        # if status_only is true)
-        serializable_scanners: dict[str, IPCDataFrame] = {}
-        if not status_only:
-            for scanner in result.scanners:
-                df = result.scanners[scanner]
-                serializable_scanners[scanner] = df_to_ipc(df)
-
         # clear the transcript data
         if result.spec.transcripts:
             result.spec.transcripts = result.spec.transcripts.model_copy(
                 update={"data": None}
             )
 
-        # create the serializable result
-        serializable_result = IPCSerializableResults(
+        # create the status
+        status = Status(
             complete=result.complete,
             spec=result.spec,
             location=await _unmap_file(request, result.location),
             summary=result.summary,
             errors=result.errors,
-            scanners=serializable_scanners,
         )
 
         return InspectPydanticJSONResponse(
-            content=serializable_result, media_type="application/json"
+            content=status, media_type="application/json"
         )
 
     @app.get("/scan-delete/{scan:path}")

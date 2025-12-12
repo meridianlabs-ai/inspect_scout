@@ -34,7 +34,7 @@ export interface ServerRequestApi {
     method: HttpMethod,
     path: string,
     request?: Request<T>
-  ) => Promise<{ raw: string; parsed: T }>;
+  ) => Promise<{ raw: string; parsed: T; headers: Headers }>;
 }
 
 export function serverRequestApi(
@@ -66,7 +66,7 @@ export function serverRequestApi(
     method: HttpMethod,
     path: string,
     request?: Request<T>
-  ): Promise<{ raw: string; parsed: T }> => {
+  ): Promise<{ raw: string; parsed: T; headers: Headers }> => {
     const url = buildApiUrl(path);
 
     const responseHeaders: HeadersInit = {
@@ -99,6 +99,7 @@ export function serverRequestApi(
         return {
           raw: response.statusText,
           parsed: errorResponse,
+          headers: response.headers,
         };
       }
 
@@ -114,6 +115,7 @@ export function serverRequestApi(
     return {
       parsed: (await parse(text)) as T,
       raw: text,
+      headers: response.headers,
     };
   };
 
@@ -122,7 +124,7 @@ export function serverRequestApi(
     path: string,
     headers?: Record<string, string>,
     body?: string
-  ): Promise<{ parsed: any; raw: string }> => {
+  ): Promise<{ parsed: any; raw: string; headers: Headers }> => {
     const url = buildApiUrl(path);
 
     const requestHeaders: HeadersInit = {
@@ -154,6 +156,7 @@ export function serverRequestApi(
       return {
         parsed: await asyncJsonParse(text),
         raw: text,
+        headers: response.headers,
       };
     }
 

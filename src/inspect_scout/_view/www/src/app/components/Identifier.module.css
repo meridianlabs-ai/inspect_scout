@@ -1,0 +1,5 @@
+.id {
+  display: grid;
+  grid-template-rows: auto auto;
+  row-gap: 0;
+}

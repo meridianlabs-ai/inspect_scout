@@ -1,6 +1,6 @@
 import JSON5 from "json5";
 
-import { ScanResultInputData } from "../app/types";
+import { Input, InputType } from "../app/types";
 import { Scans, Status } from "../types";
 import { VSCodeApi } from "../utils/vscode";
 
@@ -55,14 +55,38 @@ export const apiVscode = (
       }
     },
     getScannerDataframeInput: async (scanLocation, scanner, uuid) => {
-      const response = (await rpcClient(kMethodGetScannerDataframeInput, [
+      const response = await rpcClient(kMethodGetScannerDataframeInput, [
         scanLocation,
         scanner,
         uuid,
-      ])) as string;
+      ]);
+
+      // Ensure we have the correct response
+      if (!Array.isArray(response) || response.length !== 2) {
+        throw new Error(
+          `Invalid response for getScannerDataframeInput for scan: ${scanLocation}, scanner: ${scanner}, uuid: ${uuid}`
+        );
+      }
 
       if (response) {
-        return JSON5.parse<ScanResultInputData>(response);
+        const inputRaw = response[0];
+        const inputTypeRaw = response[1];
+
+        if (typeof inputRaw !== "string") {
+          throw new Error(
+            `Invalid input data for getScannerDataframeInput for scan: ${scanLocation}, scanner: ${scanner}, uuid: ${uuid}`
+          );
+        }
+
+        if (typeof inputTypeRaw !== "string") {
+          throw new Error(
+            `Invalid input type for getScannerDataframeInput for scan: ${scanLocation}, scanner: ${scanner}, uuid: ${uuid}`
+          );
+        }
+
+        const input = JSON5.parse<Input>(inputRaw);
+        const inputType = inputTypeRaw as InputType;
+        return { input, inputType };
       } else {
         throw new Error("Invalid response for getScans");
       }

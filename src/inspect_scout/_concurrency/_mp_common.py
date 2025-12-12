@@ -21,7 +21,7 @@ from typing import (
 )
 
 import anyio
-import cloudpickle
+import cloudpickle  # type:ignore
 from inspect_ai._util.logger import warn_once
 from inspect_ai.model import GenerateConfig, Model, ModelConfig
 from typing_extensions import TypeVarTuple, Unpack

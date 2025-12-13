@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import abc
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Literal, Mapping, Sequence
+from typing import Any, Literal, Mapping, Sequence
 
 import duckdb
 import pandas as pd
@@ -54,13 +56,21 @@ class ScanResultsArrow(Status):
 
     @abc.abstractmethod
     def reader(
-        self, scanner: str, streaming_batch_size: int = 1024
+        self,
+        scanner: str,
+        streaming_batch_size: int = 1024,
+        exclude_columns: list[str] | None = None,
     ) -> pa.RecordBatchReader:
         """Acquire a reader for the specified scanner.
 
         The return reader is a context manager that should be acquired before reading.
         """
         ...
+
+    @abc.abstractmethod
+    def get_field(
+        self, scanner: str, id_column: str, id_value: Any, target_column: str
+    ) -> pa.Scalar[Any]: ...
 
 
 @dataclass

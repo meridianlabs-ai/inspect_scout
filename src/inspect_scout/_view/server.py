@@ -2,7 +2,7 @@ import base64
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Literal, TypeVar
+from typing import Annotated, Any, Iterable, Literal, TypeVar
 
 import anyio
 import pandas as pd
@@ -228,7 +228,8 @@ def view_server_app(
     async def scan_df(
         request: Request,
         scan: str,
-        query_scanner: str | None = Query(None, alias="scanner"),
+        query_scanner: Annotated[str | None, Query(alias="scanner")] = None,
+        exclude_columns: Annotated[list[str] | None, Query(alias="exclude")] = None,
     ) -> Response:
         if query_scanner is None:
             raise HTTPException(
@@ -269,7 +270,9 @@ def view_server_app(
             # with only a moderate loss in compression ratio
             # (e.g. 40% larger in exchange for ~20x faster compression)
             with result.reader(
-                query_scanner, streaming_batch_size=streaming_batch_size
+                query_scanner,
+                streaming_batch_size=streaming_batch_size,
+                exclude_columns=exclude_columns,
             ) as reader:
                 with pa_ipc.new_stream(
                     buf,
@@ -295,6 +298,40 @@ def view_server_app(
             content=stream_as_arrow_ipc(),
             media_type="application/vnd.apache.arrow.stream; codecs=lz4",
         )
+
+    @app.get("/scanner/{scan:path}/{query_scanner}/{row_uuid}/{column}")
+    async def scanner_field(
+        request: Request,
+        scan: str,
+        query_scanner: str,
+        row_uuid: str,
+        column: str,
+    ) -> Response:
+        # convert to absolute path
+        scan_path = UPath(await _map_file(request, scan))
+        if not scan_path.is_absolute():
+            validated_results_dir = _ensure_not_none(
+                results_dir, "results_dir is required"
+            )
+            results_path = UPath(validated_results_dir)
+            scan_path = results_path / scan_path
+
+        # validate
+        await _validate_read(request, scan_path)
+
+        # get the result
+        result = await scan_results_arrow_async(str(scan_path))
+
+        # ensure we have the data (404 if not)
+        if query_scanner not in result.scanners:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scanner '{query_scanner}' not found in scan results",
+            )
+
+        field = result.get_field(query_scanner, "uuid", row_uuid, column)
+
+        return Response(content=field.as_py(), media_type="application/json")
 
     @app.get("/scan/{scan:path}")
     async def scan(

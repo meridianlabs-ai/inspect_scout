@@ -51,6 +51,7 @@ export const kMethodLogMessage = "log_message";
 export const kMethodGetScan = "get_scan";
 export const kMethodGetScans = "get_scans";
 export const kMethodGetScannerDataframe = "get_scanner_dataframe";
+export const kMethodGetScannerField = "get_scanner_field";
 
 export const kJsonRpcParseError = -32700;
 export const kJsonRpcInvalidRequest = -32600;

@@ -1,3 +1,5 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRoot } from "react-dom/client";
 
 import { ScanApi } from "./api/api";
@@ -36,15 +38,19 @@ const selectApi = (): ScanApi => {
   }
 };
 
-// Create the API and store
+// Create the API, store, and query client
 const api = selectApi();
 const store = createStore(api);
+const queryClient = new QueryClient();
 
 // Render the app
 root.render(
-  <ApiProvider value={api}>
-    <StoreProvider value={store}>
-      <App />
-    </StoreProvider>
-  </ApiProvider>
+  <QueryClientProvider client={queryClient}>
+    <ApiProvider value={api}>
+      <StoreProvider value={store}>
+        <App />
+      </StoreProvider>
+    </ApiProvider>
+    <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>
 );

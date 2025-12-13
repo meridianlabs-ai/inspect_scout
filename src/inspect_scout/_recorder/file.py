@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import io
 from collections.abc import Iterator, Mapping
-from typing import Any, Callable, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence, cast
 
 import duckdb
 import pandas as pd
@@ -255,7 +257,7 @@ class FileRecorder(ScanRecorder):
 
             def get_field(
                 self, scanner: str, id_column: str, id_value: Any, target_column: str
-            ) -> pa.Scalar:
+            ) -> pa.Scalar[Any]:
                 scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
                 dataset = ds.dataset(str(scanner_path), format="parquet")
@@ -272,7 +274,7 @@ class FileRecorder(ScanRecorder):
                         f"Multiple rows found for {id_column}={id_value!r}"
                     )
 
-                return table[target_column][0]
+                return cast(pa.Scalar[Any], table[target_column][0])
 
         # get the status
         status = await FileRecorder.status(scan_location)

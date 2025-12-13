@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 from dataclasses import dataclass
 from types import TracebackType
@@ -68,7 +70,7 @@ class ScanResultsArrow(Status):
     @abc.abstractmethod
     def get_field(
         self, scanner: str, id_column: str, id_value: Any, target_column: str
-    ) -> pa.Scalar: ...
+    ) -> pa.Scalar[Any]: ...
 
 
 @dataclass

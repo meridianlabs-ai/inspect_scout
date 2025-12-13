@@ -229,7 +229,7 @@ def view_server_app(
         request: Request,
         scan: str,
         query_scanner: Annotated[str | None, Query(alias="scanner")] = None,
-        exclude_columns: Annotated[list[str] | None, Query()] = None,
+        exclude_columns: Annotated[list[str] | None, Query(alias="exclude")] = None,
     ) -> Response:
         if query_scanner is None:
             raise HTTPException(

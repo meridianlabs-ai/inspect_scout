@@ -45,7 +45,7 @@ export const apiVscode = (
       const response = await rpcClient(kMethodGetScannerDataframe, [
         scanLocation,
         scanner,
-        excludeColumns
+        excludeColumns,
       ]);
       if (response && response instanceof Uint8Array) {
         return response;
@@ -65,7 +65,7 @@ export const apiVscode = (
         scanLocation,
         scanner,
         row,
-        column
+        column,
       ]);
       if (response && response instanceof Uint8Array) {
         return response;

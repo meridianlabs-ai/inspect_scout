@@ -125,7 +125,7 @@ export const useServerScannerDataframe = () => {
         const arrayBuffer = await api.getScannerDataframe(
           location,
           selectedScanner,
-          ['input']
+          ["input"]
         );
 
         // Pre-process result set rows to explode the results
@@ -230,9 +230,7 @@ export const useScannerData = (
   const [scannerData, setScannerData] = useState<ScannerData | undefined>(
     undefined
   );
-  const [input, setInput] = useState<any | undefined>(
-    undefined
-  );
+  const [input, setInput] = useState<any | undefined>(undefined);
   const [isLoadingInput, setIsLoadingInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -267,9 +265,8 @@ export const useScannerData = (
   const resultsDir = useStore((state) => state.resultsDir);
   const selectedScanner = useSelectedScanner();
 
-
-  useEffect(()=> {
-    if (isLoadingInput || input){
+  useEffect(() => {
+    if (isLoadingInput || input) {
       return;
     }
     if (!scanPath || !selectedScanner || !scanResultUuid) {
@@ -291,7 +288,7 @@ export const useScannerData = (
     };
     void fetchInput();
     setIsLoadingInput(true);
-  }, [api, input, isLoadingInput, scanResultUuid, selectedScanner])
+  }, [api, input, isLoadingInput, scanResultUuid, selectedScanner]);
 
   useEffect(() => {
     if (!filtered || !input) {

@@ -190,7 +190,7 @@ class FileRecorder(ScanRecorder):
                     )
 
         # sync summary and errors
-        _sync_status_files(scan_dir, scan_buffer_dir, scan_spec)
+        _sync_status_files(scan_dir, scan_buffer_dir, scan_spec, complete)
 
         # cleanup scan buffer if we are complete
         if complete:
@@ -209,17 +209,23 @@ class FileRecorder(ScanRecorder):
     async def status(scan_location: str) -> Status:
         buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         spec = _read_scan_spec(UPath(scan_location))
-        return Status(
-            complete=False if buffer_dir.exists() else True,
-            spec=spec,
-            location=scan_location,
-            summary=read_scan_summary(buffer_dir, spec)
-            if buffer_dir.exists()
-            else read_scan_summary(UPath(scan_location), spec),
-            errors=_read_scan_errors(buffer_dir)
-            if buffer_dir.exists()
-            else _read_scan_errors(UPath(scan_location)),
-        )
+        if buffer_dir.exists():
+            return Status(
+                complete=False,
+                spec=spec,
+                location=scan_location,
+                summary=read_scan_summary(buffer_dir, spec),
+                errors=_read_scan_errors(buffer_dir),
+            )
+        else:
+            summary = read_scan_summary(UPath(scan_location), spec)
+            return Status(
+                complete=summary.complete,
+                spec=spec,
+                location=scan_location,
+                summary=summary,
+                errors=_read_scan_errors(UPath(scan_location)),
+            )
 
     @override
     @staticmethod
@@ -342,6 +348,7 @@ class FileRecorder(ScanRecorder):
         return [
             await FileRecorder.status(scan_dir.as_posix())
             for scan_dir in scans_dir.rglob("scan_id=*")
+            if scan_dir.is_dir()
         ]
 
 
@@ -688,12 +695,14 @@ def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _sync_status_files(
-    scan_dir: UPath, scan_buffer_dir: UPath, scan_spec: ScanSpec
+    scan_dir: UPath, scan_buffer_dir: UPath, scan_spec: ScanSpec, complete: bool
 ) -> None:
     """Copy summary and errors from buffer to scan directory."""
-    # copy scan summary
+    # copy scan summary (update with complete status)
     with file((scan_dir / SCAN_SUMMARY).as_posix(), "w") as f:
-        f.write(read_scan_summary(scan_buffer_dir, scan_spec).model_dump_json())
+        summary = read_scan_summary(scan_buffer_dir, scan_spec)
+        summary.complete = complete
+        f.write(summary.model_dump_json())
 
     # copy errors
     with file((scan_dir / SCAN_ERRORS).as_posix(), "w") as f:

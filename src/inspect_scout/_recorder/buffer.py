@@ -52,7 +52,9 @@ class RecorderBuffer:
         # establish scan summary if required
         scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
         if not scan_summary_file.exists():
-            self._scan_summary = Summary(list(spec.scanners.keys()))
+            self._scan_summary = Summary(
+                complete=False, scanners=list(spec.scanners.keys())
+            )
             with open(scan_summary_file.as_posix(), "w") as f:
                 f.write(self._scan_summary.model_dump_json(indent=2))
         else:
@@ -387,6 +389,6 @@ def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> Summary:
             if summary:
                 return Summary.model_validate_json(summary)
             else:
-                return Summary(list(spec.scanners.keys()))
+                return Summary(complete=False, scanners=list(spec.scanners.keys()))
     except FileNotFoundError:
-        return Summary(list(spec.scanners.keys()))
+        return Summary(complete=False, scanners=list(spec.scanners.keys()))

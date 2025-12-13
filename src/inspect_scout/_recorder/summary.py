@@ -35,14 +35,19 @@ class ScannerSummary(BaseModel):
 class Summary(BaseModel):
     """Summary of scan results."""
 
+    complete: bool = Field(default=True)
+    """Is the scan complete?"""
+
     scanners: dict[str, ScannerSummary] = Field(default_factory=dict)
     """Summary for each scanner."""
 
     def __init__(
-        self, scanners: list[str] | dict[str, ScannerSummary] | None = None, **data: Any
+        self,
+        scanners: list[str] | dict[str, ScannerSummary] | None = None,
+        **data: Any,
     ):
         if isinstance(scanners, list):
-            super().__init__(scanners={k: ScannerSummary() for k in scanners})
+            super().__init__(scanners={k: ScannerSummary() for k in scanners}, **data)
         else:
             super().__init__(scanners=scanners, **data)
 

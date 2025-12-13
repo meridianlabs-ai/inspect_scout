@@ -2,9 +2,9 @@ import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
-import { LoadingBar } from "../../components/LoadingBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import JSONPanel from "../../components/JsonPanel";
+import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import {
   getRelativePathFromParams,

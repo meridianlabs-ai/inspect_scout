@@ -1,9 +1,9 @@
 import { clsx } from "clsx";
 import { FC, useEffect } from "react";
 
-import { LoadingBar } from "../../components/LoadingBar";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { Navbar } from "../components/Navbar";

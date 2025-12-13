@@ -2,8 +2,8 @@ import clsx from "clsx";
 import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { LoadingBar } from "../../components/LoadingBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { LoadingBar } from "../../components/LoadingBar";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Navbar } from "../components/Navbar";

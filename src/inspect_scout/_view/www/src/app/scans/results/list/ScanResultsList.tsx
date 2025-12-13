@@ -4,8 +4,8 @@ import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
-import { LoadingBar } from "../../../../components/LoadingBar";
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
+import { LoadingBar } from "../../../../components/LoadingBar";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
 import {
   getRelativePathFromParams,

@@ -1,17 +1,16 @@
 import abc
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Any
-from typing import Literal, Mapping, Sequence
+from typing import Any, Literal, Mapping, Sequence
 
 import duckdb
 import pandas as pd
 import pyarrow as pa
 
-from .summary import Summary
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
+from .summary import Summary
 
 
 @dataclass
@@ -55,7 +54,10 @@ class ScanResultsArrow(Status):
 
     @abc.abstractmethod
     def reader(
-        self, scanner: str, streaming_batch_size: int = 1024, exclude_columns: list[str] | None = None
+        self,
+        scanner: str,
+        streaming_batch_size: int = 1024,
+        exclude_columns: list[str] | None = None,
     ) -> pa.RecordBatchReader:
         """Acquire a reader for the specified scanner.
 
@@ -64,8 +66,9 @@ class ScanResultsArrow(Status):
         ...
 
     @abc.abstractmethod
-    def get_field(self, scanner: str, id_column: str, id_value: Any, target_column: str) -> pa.Scalar:
-        ...
+    def get_field(
+        self, scanner: str, id_column: str, id_value: Any, target_column: str
+    ) -> pa.Scalar: ...
 
 
 @dataclass

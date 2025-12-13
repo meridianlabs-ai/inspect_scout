@@ -1,7 +1,6 @@
 import io
 from collections.abc import Iterator, Mapping
-from typing import Any
-from typing import Callable, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence
 
 import duckdb
 import pandas as pd
@@ -16,13 +15,7 @@ from typing_extensions import override
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
-from .recorder import (
-    ScanRecorder,
-    ScanResultsArrow,
-    ScanResultsDB,
-    ScanResultsDF,
-    Status,
-)
+
 from .._recorder.buffer import (
     SCAN_ERRORS,
     SCAN_SUMMARY,
@@ -35,6 +28,13 @@ from .._recorder.buffer import (
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
+from .recorder import (
+    ScanRecorder,
+    ScanResultsArrow,
+    ScanResultsDB,
+    ScanResultsDF,
+    Status,
+)
 
 SCAN_JSON = "_scan.json"
 
@@ -231,20 +231,31 @@ class FileRecorder(ScanRecorder):
         class _ScanResultsArrowFiles(ScanResultsArrow):
             @override
             def reader(
-                self, scanner: str, streaming_batch_size: int = 1024, exclude_columns: list[str] | None = None
+                self,
+                scanner: str,
+                streaming_batch_size: int = 1024,
+                exclude_columns: list[str] | None = None,
             ) -> pa.RecordBatchReader:
                 scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
                 parquet = pq.ParquetFile(str(scanner_path))
-                columns = [c for c in parquet.schema.names if exclude_columns is None or c not in exclude_columns]
+                columns = [
+                    c
+                    for c in parquet.schema.names
+                    if exclude_columns is None or c not in exclude_columns
+                ]
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
                 arrow_schema = pa.schema([fields_by_name[name] for name in columns])
                 return pa.RecordBatchReader.from_batches(
                     arrow_schema,
-                    parquet.iter_batches(batch_size=streaming_batch_size, columns=columns),
+                    parquet.iter_batches(
+                        batch_size=streaming_batch_size, columns=columns
+                    ),
                 )
 
-            def get_field(self, scanner: str, id_column: str, id_value: Any, target_column: str) -> pa.Scalar:
+            def get_field(
+                self, scanner: str, id_column: str, id_value: Any, target_column: str
+            ) -> pa.Scalar:
                 scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
                 dataset = ds.dataset(str(scanner_path), format="parquet")
@@ -257,11 +268,11 @@ class FileRecorder(ScanRecorder):
                     raise KeyError(f"{id_value!r} not found in {id_column}")
 
                 if len(table) > 1:
-                    raise ValueError(f"Multiple rows found for {id_column}={id_value!r}")
+                    raise ValueError(
+                        f"Multiple rows found for {id_column}={id_value!r}"
+                    )
 
                 return table[target_column][0]
-
-
 
         # get the status
         status = await FileRecorder.status(scan_location)

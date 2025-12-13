@@ -2,7 +2,7 @@ import base64
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Literal, TypeVar
+from typing import Annotated, Any, Iterable, Literal, TypeVar
 
 import anyio
 import pandas as pd
@@ -10,7 +10,6 @@ import pyarrow as pa
 import pyarrow.ipc as pa_ipc
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
-from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import FileSystem, filesystem
@@ -229,8 +228,8 @@ def view_server_app(
     async def scan_df(
         request: Request,
         scan: str,
-        query_scanner: str | None = Query(None, alias="scanner"),
-        exclude_columns: list[str] | None = Query(None),
+        query_scanner: Annotated[str | None, Query(alias="scanner")] = None,
+        exclude_columns: Annotated[list[str] | None, Query()] = None,
     ) -> Response:
         if query_scanner is None:
             raise HTTPException(
@@ -271,7 +270,9 @@ def view_server_app(
             # with only a moderate loss in compression ratio
             # (e.g. 40% larger in exchange for ~20x faster compression)
             with result.reader(
-                query_scanner, streaming_batch_size=streaming_batch_size, exclude_columns=exclude_columns
+                query_scanner,
+                streaming_batch_size=streaming_batch_size,
+                exclude_columns=exclude_columns,
             ) as reader:
                 with pa_ipc.new_stream(
                     buf,
@@ -300,11 +301,11 @@ def view_server_app(
 
     @app.get("/scanner/{scan:path}/{query_scanner}/{row_uuid}/{column}")
     async def scanner_field(
-            request: Request,
-            scan: str,
-            query_scanner: str,
-            row_uuid: str,
-            column: str,
+        request: Request,
+        scan: str,
+        query_scanner: str,
+        row_uuid: str,
+        column: str,
     ) -> Response:
         # convert to absolute path
         scan_path = UPath(await _map_file(request, scan))

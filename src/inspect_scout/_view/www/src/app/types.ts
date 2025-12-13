@@ -52,27 +52,27 @@ export interface ScannerCoreBase {
 
 interface ScannerCoreTranscript extends ScannerCoreBase {
   inputType: "transcript";
-  input: Transcript;
+  input?: Transcript;
 }
 
 interface ScannerCoreMessage extends ScannerCoreBase {
   inputType: "message";
-  input: MessageType;
+  input?: MessageType;
 }
 
 interface ScannerCoreMessages extends ScannerCoreBase {
   inputType: "messages";
-  input: MessageType[];
+  input?: MessageType[];
 }
 
 interface ScannerCoreEvent extends ScannerCoreBase {
   inputType: "event";
-  input: EventType;
+  input?: EventType;
 }
 
 interface ScannerCoreEvents extends ScannerCoreBase {
   inputType: "events";
-  input: EventType[];
+  input?: EventType[];
 }
 
 export type ScannerData =

@@ -9,14 +9,15 @@ export interface ScanApi {
   getScan(scanLocation: string): Promise<Status>;
   getScannerDataframe(
     scanLocation: string,
-    scanner: string
+    scanner: string,
+    excludeColumns?: string[]
   ): Promise<ArrayBuffer | Uint8Array>;
   getScannerField(
-      scanLocation: string,
-      scanner: string,
-      row: string,
-      column: string,
-    ): Promise<any>;
+    scanLocation: string,
+    scanner: string,
+    row: string,
+    column: string
+  ): Promise<any>;
   storage: ClientStorage;
 }
 

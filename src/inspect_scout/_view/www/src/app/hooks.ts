@@ -124,7 +124,8 @@ export const useServerScannerDataframe = () => {
         // Request the raw data from the server
         const arrayBuffer = await api.getScannerDataframe(
           location,
-          selectedScanner
+          selectedScanner,
+          ['input']
         );
 
         // Pre-process result set rows to explode the results
@@ -651,35 +652,30 @@ export const useScannerPreviews = (columnTable?: ColumnTable) => {
                 typedPreview = {
                   ...basePreview,
                   inputType: "transcript",
-                  input: undefined as unknown as Transcript,
                 };
                 break;
               case "message":
                 typedPreview = {
                   ...basePreview,
                   inputType: "message",
-                  input: undefined as unknown as MessageType,
                 };
                 break;
               case "messages":
                 typedPreview = {
                   ...basePreview,
                   inputType: "messages",
-                  input: undefined as unknown as MessageType[],
                 };
                 break;
               case "event":
                 typedPreview = {
                   ...basePreview,
                   inputType: "event",
-                  input: undefined as unknown as EventType,
                 };
                 break;
               case "events":
                 typedPreview = {
                   ...basePreview,
                   inputType: "events",
-                  input: undefined as unknown as EventType[],
                 };
                 break;
             }

@@ -7,6 +7,7 @@ import { ClientStorage, ScanApi } from "./api";
 import {
   kMethodGetScan,
   kMethodGetScannerDataframe,
+  kMethodGetScannerField,
   kMethodGetScans,
 } from "./jsonrpc";
 
@@ -38,11 +39,13 @@ export const apiVscode = (
     },
     getScannerDataframe: async (
       scanLocation: string,
-      scanner: string
+      scanner: string,
+      excludeColumns?: string[]
     ): Promise<Uint8Array> => {
       const response = await rpcClient(kMethodGetScannerDataframe, [
         scanLocation,
         scanner,
+        excludeColumns
       ]);
       if (response && response instanceof Uint8Array) {
         return response;
@@ -52,8 +55,25 @@ export const apiVscode = (
         );
       }
     },
-    getScannerField(_scanLocation:string, _scanner:string, _row:string, _column:string):Promise<any> {
-      throw new Error("Method not implemented.");
+    getScannerField: async (
+      scanLocation: string,
+      scanner: string,
+      row: string,
+      column: string
+    ): Promise<any> => {
+      const response = await rpcClient(kMethodGetScannerField, [
+        scanLocation,
+        scanner,
+        row,
+        column
+      ]);
+      if (response && response instanceof Uint8Array) {
+        return response;
+      } else {
+        throw new Error(
+          `Invalid response for getScannerField for scan: ${scanLocation}, scanner: ${scanner}, row: ${row}, column: ${column}`
+        );
+      }
     },
     storage: createVSCodeStore(vscodeApi),
   };

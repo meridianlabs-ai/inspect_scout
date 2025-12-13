@@ -18,7 +18,7 @@ export const apiScoutServer = (
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchType<Status>(
         "GET",
-        `/scan/${encodeURIComponent(scanLocation)}?status_only=true`,
+        `/scan/${encodeURIComponent(scanLocation)}?status_only=true`
       );
       return result.parsed;
     },
@@ -32,25 +32,29 @@ export const apiScoutServer = (
     },
     getScannerDataframe: async (
       scanLocation: string,
-      scanner: string
+      scanner: string,
+      exclude?: string[]
     ): Promise<ArrayBuffer> => {
-      return await requestApi.fetchBytes(
-        "GET",
-        `/scanner_df/${encodeURIComponent(
-          scanLocation
-        )}?scanner=${encodeURIComponent(scanner)}&exclude_columns=input`
-      );
+      let query = `/scanner_df/${encodeURIComponent(scanLocation)}?scanner=${encodeURIComponent(scanner)}`;
+      if (exclude) {
+        for (const column of exclude) {
+          query += `&exclude=${column}`;
+        }
+      }
+      return await requestApi.fetchBytes("GET", query);
     },
     getScannerField: async (
       scanLocation: string,
       scanner: string,
       row: string,
-      column: string,
+      column: string
     ): Promise<any> => {
-      return (await requestApi.fetchType<any>(
-        "GET",
-        `/scanner/${encodeURIComponent(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(row)}/${encodeURIComponent(column)}`
-      )).parsed;
+      return (
+        await requestApi.fetchType<any>(
+          "GET",
+          `/scanner/${encodeURIComponent(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(row)}/${encodeURIComponent(column)}`
+        )
+      ).parsed;
     },
     storage: NoPersistence,
   };

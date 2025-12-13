@@ -63,6 +63,14 @@ export default defineConfig(({ mode }) => {
       ...baseConfig,
       mode: "development",
       base: "",
+      server: {
+        proxy: {
+          "/api": {
+            target: "http://127.0.0.1:7576",
+            changeOrigin: true,
+          },
+        },
+      },
       build: {
         outDir: "dist",
         minify: false,

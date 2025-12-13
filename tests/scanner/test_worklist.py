@@ -7,6 +7,7 @@ import pytest
 from inspect_scout import Result, Scanner, ScannerWork, scan, scanner
 from inspect_scout._scanresults import scan_results_db, scan_status
 from inspect_scout._transcript.factory import transcripts_from
+from inspect_scout._transcript.log import log_metadata as m
 from inspect_scout._transcript.types import Transcript
 
 # Test data location
@@ -623,3 +624,187 @@ async def test_worklist_with_named_scanners_dict() -> None:
         # Verify results using custom names
         verify_scanner_results(result.location, "custom_a", transcript_ids[0:2])
         verify_scanner_results(result.location, "custom_b", transcript_ids[2:4])
+
+
+# ============================================================================
+# ScannerWork with Transcripts Query Tests
+# ============================================================================
+
+
+@scanner(name="query_scanner_a", messages="all")
+def query_scanner_a_factory() -> Scanner[Transcript]:
+    """Scanner A for Transcripts query tests."""
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        return Result(
+            value=1,
+            explanation=f"query_scanner_a processed {transcript.transcript_id}",
+        )
+
+    return scan_transcript
+
+
+@scanner(name="query_scanner_b", messages="all")
+def query_scanner_b_factory() -> Scanner[Transcript]:
+    """Scanner B for Transcripts query tests."""
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        return Result(
+            value=2,
+            explanation=f"query_scanner_b processed {transcript.transcript_id}",
+        )
+
+    return scan_transcript
+
+
+@pytest.mark.asyncio
+async def test_worklist_with_scanner_work_explicit_ids() -> None:
+    """Test that ScannerWork with explicit transcript IDs works in a real scan."""
+    # Get transcript IDs
+    transcript_ids = await get_n_transcript_ids(4)
+
+    # Create worklist using ScannerWork (not Worklist) with explicit IDs
+    worklist = [
+        ScannerWork(scanner="query_scanner_a", transcripts=transcript_ids[0:2]),
+        ScannerWork(scanner="query_scanner_b", transcripts=transcript_ids[2:4]),
+    ]
+
+    # Run scan
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = scan(
+            scanners=[query_scanner_a_factory(), query_scanner_b_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            worklist=worklist,
+            results=tmpdir,
+        )
+
+        # Verify results
+        verify_scanner_results(result.location, "query_scanner_a", transcript_ids[0:2])
+        verify_scanner_results(result.location, "query_scanner_b", transcript_ids[2:4])
+
+
+@pytest.mark.asyncio
+async def test_worklist_with_transcripts_query() -> None:
+    """Test using ScannerWork with a Transcripts query (using .where())."""
+    # Create a Transcripts query that filters by task_name
+    transcripts = transcripts_from(LOGS_DIR)
+    popularity_transcripts = transcripts.where(m.task_name == "popularity")
+
+    # Create worklist using ScannerWork with a Transcripts query
+    worklist = [
+        ScannerWork(scanner="query_scanner_a", transcripts=popularity_transcripts),
+    ]
+
+    # Run scan
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = scan(
+            scanners=[query_scanner_a_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            worklist=worklist,
+            results=tmpdir,
+        )
+
+        # Get expected transcript IDs from the popularity task
+        async with popularity_transcripts.reader() as tr:
+            snapshot = await tr.snapshot()
+            expected_ids = list(snapshot.transcript_ids.keys())
+
+        # Verify the scanner only processed transcripts from the popularity task
+        verify_scanner_results(result.location, "query_scanner_a", expected_ids)
+
+
+@pytest.mark.asyncio
+async def test_worklist_with_multiple_transcripts_queries() -> None:
+    """Test the builder pattern: same base Transcripts with different .where() filters.
+
+    This tests the exact use case from the feature description:
+    ```python
+    transcripts = transcripts_from("./logs")
+    worklist = [
+        ScannerWork(scanner="foo", transcripts=transcripts.where(m.task_name == "cybench")),
+        ScannerWork(scanner="bar", transcripts=transcripts.where(m.task_name == "swe-bench")),
+    ]
+    ```
+    """
+    # Create base transcripts and filter independently (builder pattern)
+    transcripts = transcripts_from(LOGS_DIR)
+    popularity_transcripts = transcripts.where(m.task_name == "popularity")
+    security_transcripts = transcripts.where(m.task_name == "security_guide")
+
+    # Create worklist with different filters for each scanner
+    worklist = [
+        ScannerWork(scanner="query_scanner_a", transcripts=popularity_transcripts),
+        ScannerWork(scanner="query_scanner_b", transcripts=security_transcripts),
+    ]
+
+    # Run scan
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = scan(
+            scanners=[query_scanner_a_factory(), query_scanner_b_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            worklist=worklist,
+            results=tmpdir,
+        )
+
+        # Get expected transcript IDs for each task
+        async with popularity_transcripts.reader() as tr:
+            snapshot = await tr.snapshot()
+            popularity_ids = list(snapshot.transcript_ids.keys())
+
+        async with security_transcripts.reader() as tr:
+            snapshot = await tr.snapshot()
+            security_ids = list(snapshot.transcript_ids.keys())
+
+        # Verify each scanner only processed its filtered transcripts
+        verify_scanner_results(result.location, "query_scanner_a", popularity_ids)
+        verify_scanner_results(result.location, "query_scanner_b", security_ids)
+
+        # Verify the two scanners processed different transcripts
+        assert set(popularity_ids) != set(security_ids)
+
+
+@pytest.mark.asyncio
+async def test_worklist_mixed_scanner_work_and_worklist_types() -> None:
+    """Test worklist with mix of Transcripts queries and explicit IDs."""
+    # Get some explicit transcript IDs
+    explicit_ids = await get_n_transcript_ids(3)
+
+    # Create a Transcripts query
+    transcripts = transcripts_from(LOGS_DIR)
+    security_transcripts = transcripts.where(m.task_name == "security_guide")
+
+    # Create worklist with mixed types:
+    # - scanner_a uses a Transcripts query
+    # - scanner_b uses explicit IDs
+    worklist = [
+        ScannerWork(scanner="query_scanner_a", transcripts=security_transcripts),
+        ScannerWork(scanner="query_scanner_b", transcripts=explicit_ids),
+    ]
+
+    # Run scan
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = scan(
+            scanners=[query_scanner_a_factory(), query_scanner_b_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            worklist=worklist,
+            results=tmpdir,
+        )
+
+        # Get expected transcript IDs for the security task
+        async with security_transcripts.reader() as tr:
+            snapshot = await tr.snapshot()
+            security_ids = list(snapshot.transcript_ids.keys())
+
+        # Verify scanner_a processed security transcripts
+        verify_scanner_results(result.location, "query_scanner_a", security_ids)
+
+        # Verify scanner_b processed the explicit IDs
+        # (Note: some may not exist, so only check the ones that were actually processed)
+        db = scan_results_db(result.location)
+        try:
+            df = db.conn.execute("SELECT transcript_id FROM query_scanner_b").fetchdf()
+            actual_ids = set(df["transcript_id"].tolist())
+            # The actual IDs should be a subset of or equal to the explicit IDs
+            assert actual_ids <= set(explicit_ids)
+        finally:
+            db.conn.close()

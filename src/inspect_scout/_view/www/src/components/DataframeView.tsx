@@ -21,7 +21,7 @@ import styles from "./DataframeView.module.css";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Grid state holder
-const GRID_STATE_NAME = "DataframeView";
+export const GRID_STATE_NAME = "DataframeView";
 
 interface DataframeViewProps {
   columnTable?: ColumnTable;
@@ -52,13 +52,8 @@ export const DataframeView: FC<DataframeViewProps> = ({
     (state) => state.setSelectedResultRow
   );
 
-  const gridStates = useStore((state) => state.gridStates);
   const setGridState = useStore((state) => state.setGridState);
-  const gridState = useMemo(() => {
-    const savedState = gridStates[GRID_STATE_NAME];
-    // If no saved state, return undefined to use default grid state
-    return savedState;
-  }, [gridStates]);
+  const gridState = useStore((state) => state.gridStates[GRID_STATE_NAME]);
 
   const { columnDefs, rowData } = useMemo(() => {
     const columnNames = sortedColumns || columnTable?.columnNames() || [];
@@ -160,6 +155,16 @@ export const DataframeView: FC<DataframeViewProps> = ({
   ]);
 
   const gridRef = useRef<AgGridReact>(null);
+
+  // Clear filters when filter state is removed
+  useEffect(() => {
+    if (gridRef.current?.api && gridState && !gridState.filter) {
+      const currentFilterModel = gridRef.current.api.getFilterModel();
+      if (currentFilterModel && Object.keys(currentFilterModel).length > 0) {
+        gridRef.current.api.setFilterModel(null);
+      }
+    }
+  }, [gridState]);
 
   // Select row when store changes
   useEffect(() => {
@@ -283,7 +288,11 @@ export const DataframeView: FC<DataframeViewProps> = ({
           filter: true,
           resizable: true,
         }}
-        rowSelection="single"
+        rowSelection={{
+          mode: "singleRow",
+          enableClickSelection: true,
+          checkboxes: false,
+        }}
         animateRows={false}
         suppressColumnMoveAnimation={true}
         suppressCellFocus={true}

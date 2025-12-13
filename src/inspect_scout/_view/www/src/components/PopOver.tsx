@@ -344,7 +344,7 @@ export const PopOver: React.FC<PopOverProps> = ({
     opacity: state?.placement ? 1 : 0,
     transition: "opacity 0.1s",
     maxWidth: "80%",
-    maxHeight: "50%",
+    maxHeight: "80%",
     overflowY: "hidden",
   };
 

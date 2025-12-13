@@ -211,9 +211,20 @@ export const ScanJobGrid: FC = () => {
         sortable: true,
         filter: true,
         resizable: true,
-        valueGetter: (params) => {
-          const timestamp = params.data?.timestamp;
+        valueFormatter: (params) => {
+          const timestamp = params.value;
           return timestamp ? new Date(timestamp).toLocaleString() : "";
+        },
+        comparator: (valueA: string, valueB: string) => {
+          // Handle empty timestamps (directories)
+          if (!valueA) {
+            return 1;
+          }
+          if (!valueB) {
+            return -1;
+          }
+
+          return new Date(valueA).getTime() - new Date(valueB).getTime();
         },
       },
     ];

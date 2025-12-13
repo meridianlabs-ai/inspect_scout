@@ -1,6 +1,5 @@
 from typing import Any
 
-from rich.console import RenderableType
 from typing_extensions import override
 
 from .._recorder.recorder import Status
@@ -20,7 +19,7 @@ class DisplayNone(Display):
         pass
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
+    def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
         pass
 
     @override

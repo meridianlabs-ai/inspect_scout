@@ -8,15 +8,17 @@ from inspect_scout._scan import _resolve_validation
 from inspect_scout._scanjob import ScanJob
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, scanner
+from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
 from inspect_scout._validation import ValidationCase, ValidationSet
+from typing_extensions import override
 
 
 # Mock Transcripts for testing
 class MockTranscripts(Transcripts, TranscriptsReader):
     """Mock implementation of Transcripts for testing."""
 
-    def reader(self) -> TranscriptsReader:
+    def reader(self, snapshot: ScanTranscripts | None = None) -> TranscriptsReader:
         return self
 
     async def __aenter__(self) -> "MockTranscripts":
@@ -42,6 +44,12 @@ class MockTranscripts(Transcripts, TranscriptsReader):
 
     async def snapshot(self) -> Any:
         raise NotImplementedError()
+
+    @staticmethod
+    @override
+    def from_snapshot(snapshot: ScanTranscripts) -> "Transcripts":
+        """Restore transcripts from a snapshot."""
+        return MockTranscripts()
 
 
 # Sample scanners for testing

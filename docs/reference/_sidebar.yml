@@ -27,6 +27,8 @@ website:
           href: reference/scanning.qmd#scannerspec
         - text: ScannerWork
           href: reference/scanning.qmd#scannerwork
+        - text: Worklist
+          href: reference/scanning.qmd#worklist
         - text: Status
           href: reference/scanning.qmd#status
         - text: ScanOptions
@@ -67,18 +69,20 @@ website:
       - section: transcript
         href: reference/transcript.qmd
         contents:
+        - text: transcripts_from
+          href: reference/transcript.qmd#transcripts_from
+        - text: Transcript
+          href: reference/transcript.qmd#transcript
+        - text: Transcripts
+          href: reference/transcript.qmd#transcripts
+        - text: TranscriptsReader
+          href: reference/transcript.qmd#transcriptsreader
         - text: transcripts_db
           href: reference/transcript.qmd#transcripts_db
         - text: TranscriptsDB
           href: reference/transcript.qmd#transcriptsdb
         - text: TranscriptsSource
           href: reference/transcript.qmd#transcriptssource
-        - text: transcripts_from
-          href: reference/transcript.qmd#transcripts_from
-        - text: Transcripts
-          href: reference/transcript.qmd#transcripts
-        - text: TranscriptsReader
-          href: reference/transcript.qmd#transcriptsreader
         - text: Column
           href: reference/transcript.qmd#column
         - text: Condition
@@ -154,3 +158,5 @@ website:
         href: reference/scout_view.qmd
       - text: scout trace
         href: reference/scout_trace.qmd
+      - text: scout db
+        href: reference/scout_db.qmd

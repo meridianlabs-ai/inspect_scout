@@ -7,7 +7,7 @@ from inspect_ai._util.json import to_json_str_safe
 from upath import UPath
 
 from ._recorder.factory import scan_recorder_type_for_location
-from ._recorder.file import _cast_value_column
+from ._recorder.file import LazyScannerMapping, _cast_value_column
 from ._recorder.recorder import (
     ScanResultsArrow,
     ScanResultsDB,
@@ -114,12 +114,21 @@ async def scan_results_df_async(
     recorder = scan_recorder_type_for_location(scan_location)
     results = await recorder.results_df(scan_location, scanner=scanner)
 
-    # Expand resultset rows when in "results" mode
+    # Apply expansion lazily when in "results" mode
     if rows == "results":
-        for scanner_name in results.scanners:
-            results.scanners[scanner_name] = _expand_resultset_rows(
-                results.scanners[scanner_name]
-            )
+        scanners = LazyScannerMapping(
+            scanner_names=list(results.scanners.keys()),
+            loader=lambda name: results.scanners[name],
+            transformer=_expand_resultset_rows,
+        )
+        return ScanResultsDF(
+            status=results.complete,
+            spec=results.spec,
+            location=results.location,
+            summary=results.summary,
+            errors=results.errors,
+            scanners=scanners,
+        )
 
     return results
 

@@ -52,9 +52,11 @@ export interface Model {
 
 export interface Transcript {
   type: string;
-  count: number;
-  data: string;
-  fields: Array<Record<string, string>>;
+  location?: string;
+  transcript_ids: Record<string, string | null>;
+
+  // deprecated value for compatibility with old scans
+  count?: number;
 }
 
 export interface ScanSpec {
@@ -88,6 +90,7 @@ export interface ScannerSummary {
   tokens: number;
   model_usage: Record<string, ModelUsage>;
   validations: Array<boolean | Record<string, boolean>>;
+  metrics: Record<string, Record<string, number>>;
 }
 
 export interface ModelUsage {

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "inspect_scout"
 dynamic = ["version"]
-description = "AI Analysis"
+description = "Transcript Analysis for AI Agents"
 authors = [{ name = "Meridian Labs" }]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,7 @@ dependencies = [
     "fastapi",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect-ai>=0.3.151",
+    "inspect-ai>=0.3.152",
     "jinja2>=3.0.0",
     "jsonlines>=3.0.0",
     "jsonschema>3.1.1",
@@ -46,6 +46,7 @@ dev = [
     "ruff",
     "pytest",
     "anthropic",
+    "huggingface_hub",
     "openai",
     "pytest-dotenv",
     "pytest-asyncio",
@@ -71,6 +72,7 @@ dev = [
     "ruff",
     "pytest",
     "anthropic",
+    "huggingface_hub",
     "openai",
     "pytest-dotenv",
     "pytest-asyncio",

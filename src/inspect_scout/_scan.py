@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 import traceback
 from logging import getLogger
 from pathlib import Path
@@ -14,26 +13,24 @@ from inspect_ai._eval.context import init_model_context
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
+from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
-from inspect_ai._util.rich import rich_traceback
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
 from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
-    model_to_model_config,
 )
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
-from rich.console import RenderableType
 
-from inspect_scout._concurrency._mp_common import set_log_level, set_model_context
-from inspect_scout._transcript.database.parquet import ParquetTranscripts
+from inspect_scout._concurrency._mp_common import set_log_level
+from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
     init_task_files_cache,
@@ -44,7 +41,6 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
-from ._concurrency._mp_common import ModelContext
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -65,8 +61,8 @@ from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
 from ._scanner.scanner import Scanner, config_for_scanner
 from ._scanner.util import get_input_type_and_ids
-from ._scanspec import ScannerWork, ScanSpec
-from ._transcript.transcripts import Transcripts, TranscriptsReader
+from ._scanspec import ScanSpec, Worklist
+from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -80,10 +76,12 @@ logger = getLogger(__name__)
 
 
 def scan(
-    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-    | dict[str, Scanner[Any]]
-    | ScanJob
-    | ScanJobConfig,
+    scanners: (
+        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]]
+        | ScanJob
+        | ScanJobConfig
+    ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
@@ -115,7 +113,7 @@ def scan(
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
         results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
-        worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
+        worklist: Transcripts too process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file with same.
         validation: Validation cases to evaluate for scanners.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
@@ -124,12 +122,12 @@ def scan(
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
         model_roles: Named roles for use in `get_model()`.
         max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
-        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 1.
+        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
-        display: Display type: "rich", "plain", or "none" (defaults to "rich").
+        display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
         log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
@@ -164,10 +162,12 @@ def scan(
 
 
 async def scan_async(
-    scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-    | dict[str, Scanner[Any]]
-    | ScanJob
-    | ScanJobConfig,
+    scanners: (
+        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
+        | dict[str, Scanner[Any]]
+        | ScanJob
+        | ScanJobConfig
+    ),
     transcripts: Transcripts | None = None,
     results: str | None = None,
     worklist: Sequence[ScannerWork] | str | Path | None = None,
@@ -207,7 +207,7 @@ async def scan_async(
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
         model_roles: Named roles for use in `get_model()`.
         max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
-        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 1.
+        max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
         tags: One or more tags for this scan.
@@ -221,17 +221,13 @@ async def scan_async(
     """
     top_level_async_init(log_level)
 
-    # resolve worklist
-    if isinstance(worklist, str | Path):
-        worklist = _worklist_from(worklist)
-
     # resolve scanjob
     if isinstance(scanners, ScanJob):
         scanjob = scanners
     elif isinstance(scanners, ScanJobConfig):
         scanjob = ScanJob.from_config(scanners)
     else:
-        scanjob = ScanJob(scanners=scanners, worklist=worklist)
+        scanjob = ScanJob(scanners=scanners, worklist=await _resolve_worklist(worklist))
 
     # see if we are overriding the scanjob with additional args
     scanjob._transcripts = transcripts or scanjob.transcripts
@@ -249,7 +245,13 @@ async def scan_async(
 
     # initialize scan config
     scanjob._max_transcripts = (
-        max_transcripts or scanjob._max_transcripts or DEFAULT_MAX_TRANSCRIPTS
+        max_transcripts
+        or scanjob._max_transcripts
+        or (
+            DEFAULT_MAX_TRANSCRIPTS
+            if scanjob.generate_config is None or not scanjob.generate_config.batch
+            else DEFAULT_MAX_CONNECTIONS_BATCH
+        )
     )
     scanjob._max_processes = max_processes or scanjob._max_processes
     scanjob._limit = limit or scanjob._limit
@@ -261,18 +263,20 @@ async def scan_async(
 
     # derive max_connections if not specified
     scanjob._generate_config = (
-        model_config or scanjob._generate_config or GenerateConfig()
+        scanjob._generate_config.merge(model_config)
+        if scanjob._generate_config and model_config
+        else model_config or scanjob._generate_config or GenerateConfig()
     )
     if scanjob._generate_config.max_connections is None:
         scanjob._generate_config.max_connections = scanjob._max_transcripts
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
-        model=model or scanjob._model,
-        model_config=model_config or scanjob._generate_config,
+        model=scanjob._model or model,
+        model_config=scanjob._generate_config,
         model_base_url=model_base_url or scanjob._model_base_url,
-        model_args=model_args or scanjob._model_base_url,
-        model_roles=model_roles or scanjob._model_roles,
+        model_args=scanjob._model_args or model_args,
+        model_roles=scanjob._model_roles or model_roles,
     )
     scanjob._model = resolved_model
     scanjob._model_args = resolved_model_args
@@ -297,7 +301,7 @@ def scan_resume(
 
     Args:
        scan_location: Scan location to resume from.
-       display: Display type: "rich", "plain", or "none" (defaults to "rich").
+       display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
        fail_on_error: Re-raise exceptions instead of capturing them in results.
@@ -368,7 +372,7 @@ def scan_complete(
 
     Args:
        scan_location: Scan location to complete.
-       display: Display type: "rich", "plain", or "none" (defaults to "rich").
+       display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
 
@@ -495,8 +499,8 @@ async def _scan_async_inner(
             )
 
         async with transcripts.reader() as tr:
-            # get the snapshot and list of ids
-            snapshot, transcript_ids = await tr.snapshot()
+            # get the snapshot
+            snapshot = await tr.snapshot()
             scan.spec.transcripts = snapshot
 
             # write the snapshot
@@ -506,7 +510,7 @@ async def _scan_async_inner(
             scanner_names_list = list(scan.scanners.keys())
             total_scans = 0
             skipped_scans = 0
-            for transcript_id in transcript_ids:
+            for transcript_id in snapshot.transcript_ids.keys():
                 for name in scanner_names_list:
                     if await recorder.is_recorded(transcript_id, name):
                         skipped_scans += 1
@@ -533,20 +537,22 @@ async def _scan_async_inner(
                     ]
                 )
 
-                # initialized on demand in child processes
-                transcripts_reader: TranscriptsReader | None = None
+                # create metrics accumulator
+                metrics_accum = metrics_accumulators(scan.scanners)
 
                 async def _transcripts_reader() -> TranscriptsReader:
-                    nonlocal transcripts_reader
-                    if transcripts_reader is None:
-                        transcripts_reader = await transcripts.reader().__aenter__()
-                    return transcripts_reader
+                    global _process_transcripts_reader
+                    if _process_transcripts_reader is None:
+                        _process_transcripts_reader = await transcripts.reader(
+                            snapshot
+                        ).__aenter__()
+                    return _process_transcripts_reader
 
-                async def _scan_completed_function() -> None:
-                    nonlocal transcripts_reader
-                    if transcripts_reader is not None:
-                        await transcripts_reader.__aexit__(None, None, None)
-                        transcripts_reader = None
+                async def _strategy_completed() -> None:
+                    global _process_transcripts_reader
+                    if _process_transcripts_reader is not None:
+                        await _process_transcripts_reader.__aexit__(None, None, None)
+                        _process_transcripts_reader = None
 
                 async def _parse_function(job: ParseJob) -> ParseFunctionResult:
                     try:
@@ -663,8 +669,8 @@ async def _scan_async_inner(
                     return results
 
                 prefetch_multiple = 1.0
-                max_tasks = (scan.spec.options.max_transcripts or 25) * len(
-                    scan.scanners
+                max_tasks = min(
+                    total_scans, scan.spec.options.max_transcripts * len(scan.scanners)
                 )
 
                 diagnostics = os.getenv("SCOUT_DIAGNOSTICS", "false").lower() in (
@@ -675,9 +681,7 @@ async def _scan_async_inner(
                 # are we running single process?
                 single_process = (
                     total_scans == 1
-                    or isinstance(transcripts, ParquetTranscripts)
                     or scan.spec.options.limit == 1
-                    or scan.spec.options.max_processes is None
                     or scan.spec.options.max_processes == 1
                     or os.name == "nt"
                 )
@@ -702,15 +706,28 @@ async def _scan_async_inner(
                 # if we are single process then re-use the tr we are holding
                 # (otherwise this will be initialized on demand in children)
                 if single_process:
-                    transcripts_reader = tr
+                    global _process_transcripts_reader
+                    _process_transcripts_reader = tr
+
+                def accumulate_metrics(
+                    scanner: str, results: Sequence[ResultReport]
+                ) -> dict[str, dict[str, float]] | None:
+                    if scanner in metrics_accum:
+                        for result in results:
+                            if result.result is not None:
+                                metrics_accum[scanner].add_result(result.result.value)
+                        return metrics_accum[scanner].compute_metrics_throttled()
+                    else:
+                        return None
 
                 async def record_results(
                     transcript: TranscriptInfo,
                     scanner: str,
                     results: Sequence[ResultReport],
                 ) -> None:
-                    await recorder.record(transcript, scanner, results)
-                    scan_display.results(transcript, scanner, results)
+                    metrics = accumulate_metrics(scanner, results)
+                    await recorder.record(transcript, scanner, results, metrics)
+                    scan_display.results(transcript, scanner, results, metrics)
 
                 await strategy(
                     parse_jobs=_parse_jobs(scan, recorder, tr),
@@ -718,8 +735,14 @@ async def _scan_async_inner(
                     scan_function=_scan_function,
                     record_results=record_results,
                     update_metrics=scan_display.metrics,
-                    scan_completed=_scan_completed_function,
+                    completed=_strategy_completed,
                 )
+
+                # we've been throttle metrics calculation, now report it all
+                for scanner in metrics_accum:
+                    await recorder.record_metrics(
+                        scanner, metrics_accum[scanner].compute_metrics()
+                    )
 
                 # report status
                 errors = await recorder.errors()
@@ -737,11 +760,7 @@ async def _scan_async_inner(
         return scan_status
 
     except Exception as ex:
-        type, value, tb = sys.exc_info()
-        type = type if type else BaseException
-        value = value if value else ex
-        rich_tb = rich_traceback(type, value, tb)
-        return await handle_scan_interrupted(rich_tb, scan.spec, recorder)
+        return await handle_scan_interrupted(ex, scan.spec, recorder)
 
     except anyio.get_cancelled_exc_class():
         return await handle_scan_interrupted("Aborted!", scan.spec, recorder)
@@ -796,14 +815,6 @@ def init_scan_model_context(
     if not model_config:
         model_config = GenerateConfig()
 
-    set_model_context(
-        ModelContext(
-            model_config=model_to_model_config(model),
-            model_roles=resolved_model_roles,
-            config=model_config,
-        )
-    )
-
     init_model_context(
         model=model,
         model_roles=resolved_model_roles,
@@ -814,10 +825,10 @@ def init_scan_model_context(
 
 
 async def handle_scan_interrupted(
-    message: RenderableType, spec: ScanSpec, recorder: ScanRecorder
+    message_or_exc: str | Exception, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
     scan_status = await recorder.sync(await recorder.location(), complete=False)
-    display().scan_interrupted(message, scan_status)
+    display().scan_interrupted(message_or_exc, scan_status)
     return scan_status
 
 
@@ -911,23 +922,47 @@ def _reports_for_parse_error(
     ]
 
 
-def _worklist_from(file: str | Path) -> list[ScannerWork]:
-    with open(file, "r") as f:
-        contents = f.read().strip()
+async def _resolve_worklist(
+    worklist: Sequence[ScannerWork] | str | Path | None,
+) -> list[Worklist] | None:
+    if worklist is None:
+        return None
+    elif isinstance(worklist, str | Path):
+        with open(worklist, "r") as f:
+            contents = f.read().strip()
 
-    if contents.startswith("["):
-        data = json.loads(contents)
+        if contents.startswith("["):
+            data = json.loads(contents)
+        else:
+            data = yaml.safe_load(contents)
+
+        if not isinstance(data, list):
+            raise PrerequisiteError(
+                f"Worklist data from JSON or YAML file must be a list (found type {type(data)})"
+            )
+
+        # validate with pydantic and return
+        adapter = TypeAdapter[list[Worklist]](list[Worklist])
+        return adapter.validate_python(data)
     else:
-        data = yaml.safe_load(contents)
+        # resolve transcript queries
+        resolved: list[Worklist] = []
+        for work in worklist:
+            if isinstance(work.transcripts, Transcripts):
+                async with work.transcripts.reader() as tr:
+                    snapshot = await tr.snapshot()
+                    resolved.append(
+                        Worklist(
+                            scanner=work.scanner,
+                            transcripts=list(snapshot.transcript_ids.keys()),
+                        )
+                    )
+            else:
+                resolved.append(
+                    Worklist(scanner=work.scanner, transcripts=work.transcripts)
+                )
 
-    if not isinstance(data, list):
-        raise PrerequisiteError(
-            f"Worklist data from JSON or YAML file must be a list (found type {type(data)})"
-        )
-
-    # validate with pydantic
-    adapter = TypeAdapter[list[ScannerWork]](list[ScannerWork])
-    return adapter.validate_python(data)
+        return resolved
 
 
 def _resolve_validation(
@@ -988,3 +1023,7 @@ async def _validate_scan(
                 return ResultValidation(target=v_case.target, valid=valid)
     else:
         return None
+
+
+# initialized on demand in child processes
+_process_transcripts_reader: TranscriptsReader | None = None

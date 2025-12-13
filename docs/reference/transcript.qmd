@@ -3,17 +3,18 @@ title: Transcript API
 reference: "inspect_scout"
 ---
 
+## Reading
+
+### transcripts_from
+### Transcript
+### Transcripts
+### TranscriptsReader
+
 ## Database
 
 ### transcripts_db
 ### TranscriptsDB
 ### TranscriptsSource
-
-## Reading
-
-### transcripts_from
-### Transcripts
-### TranscriptsReader
 
 ## Filtering
 

@@ -30,18 +30,31 @@ class ScanMetrics:
     completed_scans: int = 0
     # RSS for now, but we can revisit
     memory_usage: int = 0
+    batch_pending: int = 0
+    batch_failures: int = 0
+    batch_oldest_created: int | None = None
+
+
+def _min_or_value(a: int | None, b: int | None) -> int | None:
+    return b if a is None else a if b is None else min(a, b)
+
+
+_MIN_FIELDS = {"batch_oldest_created"}
 
 
 def sum_metrics(metrics_list: Iterable[ScanMetrics]) -> ScanMetrics:
-    def add_metrics(a: ScanMetrics, b: ScanMetrics) -> ScanMetrics:
-        return ScanMetrics(
-            **{
-                f.name: getattr(a, f.name, 0) + getattr(b, f.name, 0)
-                for f in fields(ScanMetrics)
-            }
-        )
+    def combine_metrics(a: ScanMetrics, b: ScanMetrics) -> ScanMetrics:
+        combined: dict[str, Any] = {
+            f.name: (
+                _min_or_value(getattr(a, f.name), getattr(b, f.name))
+                if f.name in _MIN_FIELDS
+                else getattr(a, f.name) + getattr(b, f.name)
+            )
+            for f in fields(ScanMetrics)
+        }
+        return ScanMetrics(**combined)
 
-    return reduce(add_metrics, metrics_list, ScanMetrics(0))
+    return reduce(combine_metrics, metrics_list, ScanMetrics())
 
 
 class ParseJob(NamedTuple):
@@ -97,5 +110,5 @@ class ConcurrencyStrategy(Protocol):
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
         update_metrics: Callable[[ScanMetrics], None],
-        scan_completed: Callable[[], Awaitable[None]],
+        completed: Callable[[], Awaitable[None]],
     ) -> None: ...

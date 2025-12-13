@@ -3,15 +3,17 @@
 from typing import Any
 
 from inspect_scout._scanner.result import Result
+from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
 from inspect_scout._validation import ValidationCase, ValidationSet
 from pydantic import JsonValue
+from typing_extensions import override
 
 
 class MockTranscripts(Transcripts, TranscriptsReader):
     """Mock implementation of Transcripts for testing."""
 
-    def reader(self) -> TranscriptsReader:
+    def reader(self, snapshot: ScanTranscripts | None = None) -> TranscriptsReader:
         return self
 
     async def __aenter__(self) -> "MockTranscripts":
@@ -32,6 +34,12 @@ class MockTranscripts(Transcripts, TranscriptsReader):
 
     async def snapshot(self) -> Any:
         raise NotImplementedError()
+
+    @staticmethod
+    @override
+    def from_snapshot(snapshot: ScanTranscripts) -> "Transcripts":
+        """Restore transcripts from a snapshot."""
+        return MockTranscripts()
 
 
 def test_for_validation_single_id() -> None:

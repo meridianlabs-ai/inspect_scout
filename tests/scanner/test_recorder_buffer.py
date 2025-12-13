@@ -109,7 +109,7 @@ async def test_is_recorded(
     assert is_recorded is False
 
     # Record data
-    await recorder_buffer.record(sample_transcript, scanner_name, sample_results)
+    await recorder_buffer.record(sample_transcript, scanner_name, sample_results, None)
 
     # Check after recording
     is_recorded = await recorder_buffer.is_recorded(
@@ -140,7 +140,7 @@ async def test_sanitize_table_names(
     scanner_name = "test-scanner.with:special/chars"
 
     # Record with special characters in scanner name
-    await recorder_buffer.record(sample_transcript, scanner_name, sample_results)
+    await recorder_buffer.record(sample_transcript, scanner_name, sample_results, None)
 
     # Should still be able to retrieve
     scanner_table(recorder_buffer._buffer_dir, scanner_name)

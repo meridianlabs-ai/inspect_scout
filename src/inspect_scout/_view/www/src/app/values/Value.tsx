@@ -1,14 +1,11 @@
 import clsx from "clsx";
-import { FC, Fragment, ReactNode, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { FC, Fragment, ReactNode } from "react";
 
-import { MarkdownDivWithReferences } from "../../components/MarkdownDivWithReferences";
-import { RecordTree } from "../../content/RecordTree";
 import {
-  getRelativePathFromParams,
-  parseScanResultPath,
-  scanResultRoute,
-} from "../../router/url";
+  MarkdownDivWithReferences,
+  MarkdownReference,
+} from "../../components/MarkdownDivWithReferences";
+import { RecordTree } from "../../content/RecordTree";
 import { printArray } from "../../utils/array";
 import { formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
@@ -21,44 +18,37 @@ import {
   isArrayValue,
   isObjectValue,
 } from "../types";
-import { toMarkdownRefs } from "../utils/refs";
 
 import styles from "./Value.module.css";
 
 interface ValueProps {
   result: ScannerCore;
+  references: MarkdownReference[];
   style: "inline" | "block";
   maxTableSize?: number;
   interactive?: boolean;
+  options?: {
+    previewRefsOnHover?: boolean;
+  };
 }
 
 // TODO: Implement popover viewer for object and list values
 export const Value: FC<ValueProps> = ({
   result,
+  references,
   style,
   maxTableSize = 5,
   interactive = false,
+  options,
 }): ReactNode => {
-  const params = useParams<{ "*": string }>();
-
-  // Build URL to the scan result with the appropriate query parameters
-  const buildUrl = useMemo(() => {
-    if (!result?.uuid) {
-      return (queryParams: string) => `?${queryParams}`;
-    }
-
-    // Get the scan path from the current URL params
-    const relativePath = getRelativePathFromParams(params);
-    const { scanPath } = parseScanResultPath(relativePath);
-
-    return (queryParams: string) => {
-      const searchParams = new URLSearchParams(queryParams);
-      return `#${scanResultRoute(scanPath, result.uuid, searchParams)}`;
-    };
-  }, [result?.uuid, params]);
-
   if (isStringValue(result)) {
-    return `"${result.value}"`;
+    return (
+      <MarkdownDivWithReferences
+        markdown={result.value}
+        references={references}
+        options={options}
+      />
+    );
   } else if (isNumberValue(result) && result.value !== null) {
     return formatPrettyDecimal(result.value);
   } else if (isBooleanValue(result)) {
@@ -79,7 +69,7 @@ export const Value: FC<ValueProps> = ({
       <ValueList
         value={result.value}
         result={result}
-        buildUrl={buildUrl}
+        references={references}
         style={style}
         maxListSize={maxTableSize}
         interactive={interactive}
@@ -90,7 +80,7 @@ export const Value: FC<ValueProps> = ({
       <ValueTable
         value={result.value}
         result={result}
-        buildUrl={buildUrl}
+        references={references}
         style={style}
         maxTableSize={maxTableSize}
         interactive={interactive}
@@ -106,9 +96,9 @@ const ValueList: FC<{
   result: ScannerCore;
   maxListSize: number;
   interactive: boolean;
-  buildUrl: (query: string) => string | undefined;
+  references: MarkdownReference[];
   style: "inline" | "block";
-}> = ({ value, result, maxListSize, interactive, buildUrl, style }) => {
+}> = ({ value, result, maxListSize, interactive, references, style }) => {
   // Display only maxListSize rows
   const itemsToDisplay = value.slice(0, maxListSize);
 
@@ -125,7 +115,7 @@ const ValueList: FC<{
           index,
           item,
           result,
-          buildUrl,
+          references,
           interactive
         );
         return (
@@ -153,9 +143,9 @@ const ValueTable: FC<{
   result: ScannerCore;
   maxTableSize: number;
   interactive: boolean;
-  buildUrl: (query: string) => string | undefined;
+  references: MarkdownReference[];
   style: "inline" | "block";
-}> = ({ value, result, maxTableSize, interactive, buildUrl, style }) => {
+}> = ({ value, result, maxTableSize, interactive, references, style }) => {
   // Display only 5 rows
   const keys = Object.keys(value);
   const keysToDisplay = keys.slice(0, maxTableSize);
@@ -173,7 +163,7 @@ const ValueTable: FC<{
           index,
           (value as Record<string, unknown>)[key],
           result,
-          buildUrl,
+          references,
           interactive
         );
         return (
@@ -201,21 +191,11 @@ const renderValue = (
   index: number,
   val: unknown,
   result: ScannerCore,
-  buildUrl: (query: string) => string | undefined,
+  references: MarkdownReference[],
   interactive: boolean
 ): ReactNode => {
   if (typeof val === "string") {
-    const refs = toMarkdownRefs(
-      result,
-      (refId: string, type: "message" | "event") => {
-        if (type === "message") {
-          return buildUrl(`tab=Input&message=${encodeURIComponent(refId)}`);
-        } else {
-          return buildUrl(`tab=Input&event=${encodeURIComponent(refId)}`);
-        }
-      }
-    );
-    return <MarkdownDivWithReferences markdown={val} references={refs} />;
+    return <MarkdownDivWithReferences markdown={val} references={references} />;
   } else if (typeof val === "number") {
     return formatPrettyDecimal(val);
   } else if (typeof val === "boolean") {

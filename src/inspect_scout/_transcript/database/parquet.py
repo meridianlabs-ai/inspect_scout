@@ -3,6 +3,7 @@
 import glob
 import hashlib
 import json
+import os
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -16,13 +17,17 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._display._display import display
+from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
+from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import init_task_files_cache
@@ -34,6 +39,12 @@ from ..transcripts import (
 )
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsDB
+from .encryption import (
+    ENCRYPTION_KEY_ENV,
+    ENCRYPTION_KEY_NAME,
+    get_encryption_key_from_env,
+    validate_encryption_key,
+)
 from .reader import TranscriptsDBReader
 from .source import TranscriptsSource
 
@@ -41,6 +52,12 @@ logger = getLogger(__name__)
 
 
 PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
+
+
+class ParquetTranscriptInfo(TranscriptInfo):
+    """TranscriptInfo with parquet filename for efficient content lookup."""
+
+    filename: str
 
 
 class ParquetTranscriptsDB(TranscriptsDB):
@@ -57,6 +74,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         target_file_size_mb: float = 100,
         row_group_size_mb: float = 32,
         query: TranscriptsQuery | None = None,
+        snapshot: ScanTranscripts | None = None,
     ) -> None:
         """Initialize Parquet transcript database.
 
@@ -69,11 +87,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 If provided, WHERE conditions are pushed down to Parquet scan,
                 and SHUFFLE/LIMIT are applied during table creation.
                 Query-time filters are additive (AND combination).
+            snapshot: Snapshot info. This is a mapping of transcript_id => filename
+                which we can use to avoid crawling.
         """
         super().__init__(location)
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
         self._query = query
+        self._snapshot = snapshot
 
         # Note: Bloom filter support for transcript_id would be beneficial for point
         # lookups, but PyArrow doesn't yet support writing bloom filters (as of v21.0.0).
@@ -91,6 +112,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._file_columns_cache: dict[str, set[str]] = {}
         self._parquet_pattern: str | None = None
         self._exclude_clause: str = ""
+        self._is_encrypted: bool = False
 
     @override
     async def connect(self) -> None:
@@ -112,25 +134,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Initialize filesystem and cache
             assert self._location is not None
-            if self._location.startswith("s3://"):
+            if self._is_s3() or self._is_hf():
+                # will use to enumerate files
+                self._fs = AsyncFilesystem()
+
                 # Install httpfs extension for S3 support
                 self._conn.execute("INSTALL httpfs")
                 self._conn.execute("LOAD httpfs")
-
-                # Create secret that automatically picks up credentials from environment
-                self._conn.execute("""
-                    CREATE SECRET (
-                        TYPE S3,
-                        PROVIDER credential_chain
-                    )
-                """)
 
                 # Enable DuckDB's HTTP/S3 caching features for better performance
                 self._conn.execute("SET enable_http_metadata_cache=true")
                 self._conn.execute("SET http_keep_alive=true")
                 self._conn.execute("SET http_timeout=30000")  # 30 seconds
 
-                self._fs = AsyncFilesystem()
+                # auth
+                if self._is_s3():
+                    self._init_s3_auth()
+                if self._is_hf():
+                    self._init_hf_auth()
 
         # Discover and register Parquet files
         await self._create_transcripts_table()
@@ -235,6 +256,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 transcript_source_type = row_dict.get("source_type")
                 transcript_source_id = row_dict.get("source_id")
                 transcript_source_uri = row_dict.get("source_uri")
+                transcript_filename = row_dict.get("filename")
 
                 # Reconstruct metadata from all non-reserved columns
                 # Use LazyJSONDict to defer JSON parsing until values are accessed
@@ -247,12 +269,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
                 # Use model_construct to bypass Pydantic validation which would
                 # convert LazyJSONDict to a plain dict, defeating lazy parsing
-                yield TranscriptInfo.model_construct(
+                yield ParquetTranscriptInfo.model_construct(
                     transcript_id=transcript_id,
                     source_type=transcript_source_type,
                     source_id=transcript_source_id,
                     source_uri=transcript_source_uri,
                     metadata=metadata,
+                    filename=transcript_filename,
                 )
 
     @override
@@ -261,7 +284,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-    ) -> list[str]:
+    ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
         Optimized implementation that queries directly from the index table
@@ -273,13 +296,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             shuffle: Randomly shuffle results (pass `int` for reproducible seed).
 
         Returns:
-            List of transcript IDs.
+            Dict of transcript IDs and parquet filenames
         """
         assert self._conn is not None
 
         if not where:
             # No conditions - query index table directly (faster, in-memory)
-            sql = "SELECT transcript_id FROM transcript_index"
+            sql = "SELECT transcript_id, filename FROM transcript_index"
 
             # Add ORDER BY for shuffle
             if shuffle:
@@ -294,11 +317,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 params.append(limit)
 
             result = self._conn.execute(sql, params).fetchall()
-            return [row[0] for row in result]
+            return {row[0]: row[1] for row in result}
         else:
             # Has conditions - need to query VIEW for metadata filtering
-            # Fall back to default implementation
-            return await super().transcript_ids(where, limit, shuffle)
+            transcript_ids: dict[str, str | None] = {}
+            async for info in self.select(where, limit, shuffle):
+                parquet_info = cast(ParquetTranscriptInfo, info)
+                transcript_ids[parquet_info.transcript_id] = parquet_info.filename
+
+            return transcript_ids
 
     @override
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
@@ -358,8 +385,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             filename = filename_result[0]
 
             # Try optimistic read first (fast path for files with all columns)
+            enc_config = self._read_parquet_encryption_config()
             try:
-                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
                 result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
                 columns_read = columns  # All requested columns were available
             except duckdb.BinderException:
@@ -378,7 +406,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     )
 
                 # Retry with only available columns
-                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
                 result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
 
             if not result:
@@ -643,38 +671,53 @@ class ParquetTranscriptsDB(TranscriptsDB):
             row: Row dict from _transcript_to_row().
 
         Returns:
-            Estimated size in bytes.
+            Estimated size in bytes (accounting for compression).
         """
-        size = 0
+        json_array_size = 0  # messages, events - compress very well
+        other_size = 0  # metadata fields - compress modestly
 
-        for value in row.values():
+        for key, value in row.items():
             if value is None:
                 continue  # NULL values have minimal overhead
             elif isinstance(value, str):
-                size += len(
-                    value
-                )  # Already serialized (messages, events, JSON metadata)
+                if key in ("messages", "events"):
+                    json_array_size += len(value)
+                else:
+                    other_size += len(value)
             elif isinstance(value, bool):
-                size += 1  # Boolean stored as 1 byte
+                other_size += 1  # Boolean stored as 1 byte
             elif isinstance(value, (int, float)):
-                size += 8  # 64-bit numeric types
+                other_size += 8  # 64-bit numeric types
 
-        # Add overhead for Parquet columnar format (conservative 1.2x)
-        return int(size * 1.2)
+        # JSON arrays (messages/events) compress extremely well (~25x with zstd)
+        # Metadata fields compress more modestly (~5x)
+        return int(json_array_size * 0.04 + other_size * 0.2)
 
     def _estimate_batch_size(self, batch: pa.RecordBatch) -> int:
         """Estimate size of Arrow batch in bytes.
 
-        Uses batch.nbytes as primary estimate with 1.2x overhead factor
-        to match existing _estimate_row_size behavior.
+        Estimates compressed size by applying different compression factors
+        to JSON array columns (messages/events) vs other columns.
 
         Args:
             batch: PyArrow RecordBatch to estimate size for.
 
         Returns:
-            Estimated size in bytes.
+            Estimated size in bytes (accounting for compression).
         """
-        return int(batch.nbytes * 1.2)
+        json_array_size = 0
+        other_size = 0
+
+        for i, name in enumerate(batch.schema.names):
+            col_size = batch.column(i).nbytes
+            if name in ("messages", "events"):
+                json_array_size += col_size
+            else:
+                other_size += col_size
+
+        # JSON arrays (messages/events) compress extremely well (~25x with zstd)
+        # Metadata fields compress more modestly (~5x)
+        return int(json_array_size * 0.04 + other_size * 0.2)
 
     def _validate_record_batch_schema(self, schema: pa.Schema) -> None:
         """Validate that RecordBatch schema meets requirements.
@@ -753,8 +796,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         if filename not in self._file_columns_cache:
             assert self._conn is not None
+            enc_config = self._read_parquet_encryption_config()
             schema_result = self._conn.execute(
-                "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
+                f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?{enc_config}))",
                 [filename],
             ).fetchall()
             self._file_columns_cache[filename] = {row[0] for row in schema_result}
@@ -972,82 +1016,142 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._conn.execute("DROP TABLE IF EXISTS transcript_index")
             self._conn.execute("DROP VIEW IF EXISTS transcripts")
 
-            # Discover Parquet files
-            file_paths = await self._discover_parquet_files()
+            # Get file paths - either from snapshot or by discovering parquet files
+            if self._snapshot and self._snapshot.transcript_ids:
+                # Fast path: extract filenames from snapshot (no crawl needed)
+                file_paths = sorted(
+                    {f for f in self._snapshot.transcript_ids.values() if f is not None}
+                )
+            else:
+                # Standard path: discover parquet files
+                file_paths = await self._discover_parquet_files()
 
+            # Handle empty case
             if not file_paths:
-                # Create empty structures with minimal schema
-                self._conn.execute("""
-                    CREATE TABLE transcript_index AS
-                    SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
-                    WHERE FALSE
-                """)
-                self._conn.execute("""
-                    CREATE VIEW transcripts AS
-                    SELECT
-                        ''::VARCHAR AS transcript_id,
-                        ''::VARCHAR AS source_type,
-                        ''::VARCHAR AS source_id,
-                        ''::VARCHAR AS source_uri,
-                        ''::VARCHAR AS filename
-                    WHERE FALSE
-                """)
+                self._create_empty_structures()
                 return
 
-            # Build file list for read_parquet
-            if len(file_paths) == 1:
-                pattern = f"'{file_paths[0]}'"
-            else:
-                pattern = "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
+            # Setup encryption if needed
+            self._setup_encryption(file_paths)
 
-            # Store pattern for potential future use
+            # Build pattern for read_parquet
+            pattern = self._build_parquet_pattern(file_paths)
             self._parquet_pattern = pattern
 
-            # Infer exclude clause from first file (fast - reads one footer only)
-            # If schema differs across files, we'll fall back to full scan later
+            # Infer exclude clause from first file
             self._exclude_clause = self._infer_exclude_clause(file_paths[0])
 
-            # 1. Create small index table (just transcript_id + filename)
-            # Apply pre-filter if provided (WHERE/SHUFFLE/LIMIT)
-            index_sql = f"""
-                CREATE TABLE transcript_index AS
-                SELECT transcript_id, filename
-                FROM read_parquet({pattern}, union_by_name=true, filename=true)
-            """
-            params: list[Any] = []
-
-            # Apply pre-filter query if provided
-            if self._query:
-                # Apply WHERE conditions
-                if self._query.where:
-                    where_clause, where_params = self._build_where_clause(
-                        self._query.where
-                    )
-                    index_sql += where_clause
-                    params.extend(where_params)
-
-                # Apply SHUFFLE (register UDF first)
-                if self._query.shuffle:
-                    seed = 0 if self._query.shuffle is True else self._query.shuffle
-                    self._register_shuffle_function(seed)
-                    index_sql += " ORDER BY shuffle_hash(transcript_id)"
-
-                # Apply LIMIT
-                if self._query.limit:
-                    index_sql += " LIMIT ?"
-                    params.append(self._query.limit)
-
-            self._conn.execute(index_sql, params)
+            # Create index table
+            if self._snapshot and self._snapshot.transcript_ids:
+                # Fast path: create directly from snapshot data
+                self._create_index_from_snapshot()
+            else:
+                # Standard path: query parquet files
+                self._create_index_from_parquet(pattern)
 
             # Create index on transcript_id for fast lookups
             self._conn.execute(
                 "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
             )
 
-            # 2. Create VIEW for metadata queries
-            # Try with exclude clause inferred from first file; if schema differs
-            # across files, fall back to full schema scan
+            # Create VIEW for metadata queries
             self._create_transcripts_view(pattern)
+
+    def _create_empty_structures(self) -> None:
+        """Create empty transcript_index table and transcripts VIEW."""
+        assert self._conn is not None
+        self._conn.execute("""
+            CREATE TABLE transcript_index AS
+            SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
+            WHERE FALSE
+        """)
+        self._conn.execute("""
+            CREATE VIEW transcripts AS
+            SELECT
+                ''::VARCHAR AS transcript_id,
+                ''::VARCHAR AS source_type,
+                ''::VARCHAR AS source_id,
+                ''::VARCHAR AS source_uri,
+                ''::VARCHAR AS filename
+            WHERE FALSE
+        """)
+
+    def _setup_encryption(self, file_paths: list[str]) -> None:
+        """Detect and configure encryption if needed."""
+        assert self._conn is not None
+
+        # Check encryption status (validates no mixed encrypted/unencrypted)
+        self._is_encrypted = self._check_encryption_status(file_paths)
+
+        if self._is_encrypted:
+            key = get_encryption_key_from_env()
+            if not key:
+                raise PrerequisiteError(
+                    f"Encrypted database detected but no encryption key provided. "
+                    f"Set the {ENCRYPTION_KEY_ENV} environment variable."
+                )
+            try:
+                validate_encryption_key(key)
+            except ValueError as e:
+                raise PrerequisiteError(str(e)) from e
+            self._conn.execute(
+                f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')"
+            )
+
+    def _build_parquet_pattern(self, file_paths: list[str]) -> str:
+        """Build DuckDB pattern string for read_parquet."""
+        if len(file_paths) == 1:
+            return f"'{file_paths[0]}'"
+        else:
+            return "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
+
+    def _create_index_from_snapshot(self) -> None:
+        """Create transcript_index table directly from snapshot data."""
+        assert self._conn is not None
+        assert self._snapshot is not None
+
+        ids = list(self._snapshot.transcript_ids.keys())
+        filenames = [self._snapshot.transcript_ids[tid] for tid in ids]
+        arrow_table = pa.table({"transcript_id": ids, "filename": filenames})
+        self._conn.register("snapshot_data", arrow_table)
+        self._conn.execute("""
+            CREATE TABLE transcript_index AS
+            SELECT * FROM snapshot_data
+        """)
+        self._conn.unregister("snapshot_data")
+
+    def _create_index_from_parquet(self, pattern: str) -> None:
+        """Create transcript_index table by querying parquet files."""
+        assert self._conn is not None
+
+        enc_config = self._read_parquet_encryption_config()
+        index_sql = f"""
+            CREATE TABLE transcript_index AS
+            SELECT transcript_id, filename
+            FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
+        """
+        params: list[Any] = []
+
+        # Apply pre-filter query if provided
+        if self._query:
+            # Apply WHERE conditions
+            if self._query.where:
+                where_clause, where_params = self._build_where_clause(self._query.where)
+                index_sql += where_clause
+                params.extend(where_params)
+
+            # Apply SHUFFLE (register UDF first)
+            if self._query.shuffle:
+                seed = 0 if self._query.shuffle is True else self._query.shuffle
+                self._register_shuffle_function(seed)
+                index_sql += " ORDER BY shuffle_hash(transcript_id)"
+
+            # Apply LIMIT
+            if self._query.limit:
+                index_sql += " LIMIT ?"
+                params.append(self._query.limit)
+
+        self._conn.execute(index_sql, params)
 
     def _infer_exclude_clause(self, file_path: str) -> str:
         """Infer EXCLUDE clause from a single file's schema.
@@ -1063,8 +1167,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
+        enc_config = self._read_parquet_encryption_config()
         schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'))"
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'{enc_config}))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
@@ -1089,8 +1194,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
+        enc_config = self._read_parquet_encryption_config()
         schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true{enc_config}))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
@@ -1112,16 +1218,19 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
+        enc_config = self._read_parquet_encryption_config()
+
         # Build VIEW SQL based on whether pre-filter was applied
         def build_view_sql(exclude_clause: str) -> str:
-            if self._query and (
-                self._query.where or self._query.shuffle or self._query.limit
+            if self._snapshot or (
+                self._query
+                and (self._query.where or self._query.shuffle or self._query.limit)
             ):
                 # VIEW joins with pre-filtered index table
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT p.*{exclude_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true) p
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config}) p
                     INNER JOIN transcript_index i ON p.transcript_id = i.transcript_id
                 """
             else:
@@ -1129,7 +1238,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT *{exclude_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true)
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
                 """
 
         # Try with exclude clause from first file (fast path)
@@ -1147,7 +1256,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             List of file paths (local or S3 URIs).
         """
         assert self._location is not None
-        if self._location.startswith("s3://"):
+        if self._is_s3() or self._is_hf():
             assert self._fs is not None
             assert self._cache is not None
 
@@ -1187,6 +1296,40 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     str(location_path / "**" / PARQUET_TRANSCRIPTS_GLOB), recursive=True
                 )
             )
+
+    def _check_encryption_status(self, file_paths: list[str]) -> bool:
+        """Check if database files are encrypted and validate consistency.
+
+        Args:
+            file_paths: List of parquet file paths.
+
+        Returns:
+            True if all files are encrypted, False if all unencrypted.
+
+        Raises:
+            ValueError: If database contains a mix of encrypted and unencrypted files.
+        """
+        encrypted_count = sum(1 for f in file_paths if f.endswith(".enc.parquet"))
+        unencrypted_count = len(file_paths) - encrypted_count
+
+        if encrypted_count > 0 and unencrypted_count > 0:
+            raise ValueError(
+                f"Database contains mixed encrypted ({encrypted_count}) and "
+                f"unencrypted ({unencrypted_count}) parquet files. "
+                "All files must be either encrypted or unencrypted."
+            )
+
+        return encrypted_count > 0
+
+    def _read_parquet_encryption_config(self) -> str:
+        """Get encryption config string for read_parquet calls.
+
+        Returns:
+            Empty string if not encrypted, or encryption config parameter.
+        """
+        if self._is_encrypted:
+            return f", encryption_config={{footer_key: '{ENCRYPTION_KEY_NAME}'}}"
+        return ""
 
     def _have_transcript(self, transcript_id: str) -> bool:
         return transcript_id in (self._transcript_ids or set())
@@ -1251,6 +1394,39 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return _iter()
 
+    def _is_s3(self) -> bool:
+        return self._location is not None and self._location.startswith("s3://")
+
+    def _init_s3_auth(self) -> None:
+        assert self._conn is not None
+        self._conn.execute("""
+            CREATE SECRET (
+                TYPE S3,
+                PROVIDER credential_chain
+            )
+        """)
+
+    def _is_hf(self) -> bool:
+        return self._location is not None and self._location.startswith("hf://")
+
+    def _init_hf_auth(self) -> None:
+        assert self._conn is not None
+        hf_token = os.environ.get("HF_TOKEN", None)
+        if hf_token:
+            self._conn.execute(f"""
+                CREATE SECRET hf_token (
+                    TYPE huggingface,
+                    TOKEN '{hf_token}'
+                )
+            """)
+        else:
+            self._conn.execute("""
+                CREATE SECRET hf_token (
+                    TYPE huggingface,
+                    PROVIDER credential_chain
+                )
+            """)
+
 
 class ParquetTranscripts(Transcripts):
     """Collection of transcripts stored in Parquet files.
@@ -1273,15 +1449,26 @@ class ParquetTranscripts(Transcripts):
         self._location = location
         self._db: ParquetTranscriptsDB | None = None
 
-    @override
-    def reader(self) -> TranscriptsReader:
-        """Get a reader for querying transcripts.
+        # ensure any filesystem depenencies
+        ensure_filesystem_dependencies(location)
 
-        Returns:
-            TranscriptsReader configured with current query parameters.
+    @override
+    def reader(self, snapshot: ScanTranscripts | None = None) -> TranscriptsReader:
+        """Read the selected transcripts.
+
+        Args:
+            snapshot: An optional snapshot which provides hints to make the
+                reader more efficient (e.g. by preventing a full scan to find
+                transcript_id => filename mappings)
         """
-        db = ParquetTranscriptsDB(self._location, query=self._query)
+        db = ParquetTranscriptsDB(self._location, query=self._query, snapshot=snapshot)
         return TranscriptsDBReader(db)
+
+    @staticmethod
+    @override
+    def from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
+        """Restore transcripts from a snapshot."""
+        return transcripts_from_db_snapshot(snapshot)
 
 
 def _validate_metadata_keys(metadata: dict[str, Any]) -> None:

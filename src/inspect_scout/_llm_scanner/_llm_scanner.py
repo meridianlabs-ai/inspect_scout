@@ -1,7 +1,6 @@
 from typing import Any, Awaitable, Callable, Literal, overload
 
 from inspect_ai.model import (
-    GenerateConfig,
     Model,
     get_model,
 )
@@ -156,7 +155,7 @@ def llm_scanner(
                 resolved_prompt,
                 tools=[],
                 tool_choice=None,
-                config=GenerateConfig(parallel_tool_calls=False),
+                config=None,
                 retry_refusals=retry_refusals,
             )
 

@@ -2,7 +2,6 @@ import abc
 import contextlib
 from typing import Any, Iterator, Sequence
 
-from rich.console import RenderableType
 from typing_extensions import override
 
 from inspect_scout._concurrency.common import ScanMetrics
@@ -25,7 +24,9 @@ class Display(abc.ABC):
     ) -> None: ...
 
     @contextlib.contextmanager
-    def text_progress(self, caption: str, count: bool) -> Iterator["TextProgress"]:
+    def text_progress(
+        self, caption: str, count: bool | int
+    ) -> Iterator["TextProgress"]:
         yield TextProgressNone()
 
     @contextlib.contextmanager
@@ -40,7 +41,9 @@ class Display(abc.ABC):
         yield ScanDisplayNone()
 
     @abc.abstractmethod
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None: ...
+    def scan_interrupted(
+        self, message_or_exc: str | Exception, status: Status
+    ) -> None: ...
 
     @abc.abstractmethod
     def scan_complete(self, status: Status) -> None: ...
@@ -52,7 +55,11 @@ class Display(abc.ABC):
 class ScanDisplay(abc.ABC):
     @abc.abstractmethod
     def results(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None: ...
 
     @abc.abstractmethod
@@ -62,7 +69,11 @@ class ScanDisplay(abc.ABC):
 class ScanDisplayNone(ScanDisplay):
     @override
     def results(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None:
         pass
 

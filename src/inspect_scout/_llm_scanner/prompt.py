@@ -42,11 +42,11 @@ LABELS_ANSWER_PROMPT = (
 )
 LABELS_ANSWER_FORMAT_SINGLE = (
     ANSWER_FORMAT_PREAMBLE
-    + "'ANSWER: $LETTER' (without quotes) where $LETTER is one of {{ letters }}."
+    + "'ANSWER: $LETTER' (without quotes) where $LETTER is one of {{ letters }} representing:\n{{ formatted_choices }}"
 )
 LABELS_ANSWER_FORMAT_MULTI = (
     ANSWER_FORMAT_PREAMBLE
-    + "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from {{ letters }}."
+    + "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from {{ letters }} representing:\n{{ formatted_choices }}"
 )
 
 STR_ANSWER_PROMPT = "Answer the following question about the transcript above:"

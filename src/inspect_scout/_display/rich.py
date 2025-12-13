@@ -1,7 +1,8 @@
 import contextlib
+import time
 from functools import lru_cache
 from types import TracebackType
-from typing import Any, Iterator, Sequence
+from typing import Any, Iterator, Sequence, Set
 
 import psutil
 import rich
@@ -9,6 +10,7 @@ from inspect_ai._display.core.footer import task_counters, task_resources
 from inspect_ai._display.core.results import model_usage_summary
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
 from inspect_ai._util.constants import CONSOLE_DISPLAY_WIDTH
+from inspect_ai._util.format import format_progress_time
 from inspect_ai.model import ModelUsage
 from inspect_ai.util import throttle
 from rich.console import Group, RenderableType
@@ -28,13 +30,14 @@ from typing_extensions import override
 
 from inspect_scout._display.protocol import Display, ScanDisplay, TextProgress
 from inspect_scout._display.util import (
+    exception_to_rich_traceback,
     scan_complete_message,
     scan_config,
     scan_errors_message,
     scan_interrupted_message,
     scan_title,
 )
-from inspect_scout._recorder.summary import Summary, add_model_usage
+from inspect_scout._recorder.summary import ScannerSummary, Summary, add_model_usage
 from inspect_scout._scanspec import ScanSpec
 
 from .._concurrency.common import ScanMetrics
@@ -58,7 +61,7 @@ class DisplayRich(Display):
         console.print(*objects, sep=sep, end=end, markup=markup, highlight=False)
 
     @contextlib.contextmanager
-    def text_progress(self, caption: str, count: bool) -> Iterator[TextProgress]:
+    def text_progress(self, caption: str, count: bool | int) -> Iterator[TextProgress]:
         with TextProgressRich(caption, count) as progress:
             yield progress
 
@@ -77,9 +80,12 @@ class DisplayRich(Display):
             yield scan_display
 
     @override
-    def scan_interrupted(self, message: RenderableType, status: Status) -> None:
-        if message:
-            self.print(message)
+    def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
+        if message_or_exc:
+            if isinstance(message_or_exc, Exception):
+                self.print(exception_to_rich_traceback(message_or_exc))
+            else:
+                self.print(message_or_exc)
         panel = scan_panel(
             spec=status.spec,
             summary=status.summary,
@@ -159,9 +165,13 @@ class ScanDisplayRich(
 
     @override
     def results(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        self._scan_summary._report(transcript, scanner, results)
+        self._scan_summary._report(transcript, scanner, results, metrics)
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
@@ -194,16 +204,21 @@ class TextProgressRich(TextProgress):
     def __init__(
         self,
         caption: str,
-        count: bool,
+        count: bool | int,
     ):
         self._caption = caption
         self._count = count
         text_column_fmt = "[blue]{task.description}:[/blue] [meta]{task.fields[text]}"
         if self._count:
             text_column_fmt = text_column_fmt + " - {task.completed:,}"
+            if not isinstance(self._count, bool):
+                text_column_fmt = text_column_fmt + "/{task.total:,}"
+
         text_column_fmt = text_column_fmt + "[/meta]"
         self._progress = Progress(SpinnerColumn(), TextColumn(text_column_fmt))
-        self._task_id = self._progress.add_task(caption, total=None, text="(preparing)")
+        self._task_id = self._progress.add_task(
+            caption, total=count if isinstance(count, int) else None, text="(preparing)"
+        )
         self._started = False
 
     def __enter__(self) -> "TextProgress":
@@ -255,47 +270,83 @@ def scan_panel(
         resources.add_row("parsing:", f"{metrics.tasks_parsing:,}")
         resources.add_row("scanning:", f"{metrics.tasks_scanning:,}")
         resources.add_row("idle:", f"{metrics.tasks_idle:,}")
-        resources.add_row()
-        resources.add_row("[bold]resources[/bold]", "", style=theme.meta)
         resources.add_row(
-            "memory",
+            "memory:",
             f"{bytes_to_gigabytes(metrics.memory_usage)}/{bytes_to_gigabytes(total_memory())} GB",
         )
+        if metrics.batch_oldest_created is not None:
+            resources.add_row()
+            resources.add_row("[bold]batch processing[/bold]", "", style=theme.meta)
+            batch_age = int(time.time() - metrics.batch_oldest_created)
+            resources.add_row("pending requests:", f"{metrics.batch_pending:,}")
+            if metrics.batch_failures:
+                resources.add_row(
+                    "failures:",
+                    f"[bold red]{metrics.batch_failures:,}[/bold red]",
+                )
+            resources.add_row("max age:", format_progress_time(batch_age))
+
+    # check if any scanners have validation/metrics
+    have_validation = any(
+        len(summary[scanner].validations) > 0 for scanner in spec.scanners.keys()
+    )
+    have_metric = any(
+        summary[scanner].metrics is not None for scanner in spec.scanners.keys()
+    )
 
     # scanners
     scanners = Table.grid(expand=True)
     scanners.add_column()  # scanner
-    scanners.add_column(justify="right")  # validation
+    if have_metric:
+        scanners.add_column(justify="right")  # metric
+    if have_validation:
+        scanners.add_column(justify="right")  # validation
     scanners.add_column(justify="right")  # results
-    scanners.add_column(justify="right")  # erorrs
+    scanners.add_column(justify="right")  # errors
     scanners.add_column(justify="right")  # tokens/scan
     scanners.add_column()  # spacer
     scanners.add_column(justify="right")  # total tokens
-    scanners.add_row(
-        "[bold]scanner[/bold]",
-        "[bold]validation[/bold]",
-        "[bold]results[/bold]",
-        "[bold]errors[/bold]",
-        "[bold]tokens/scan[/bold]",
-        "",
-        "[bold]tokens[/bold]",
-        style=theme.meta,
+
+    # columns dynamic based on validation/metrics
+    rowdef = ["[bold]scanner[/bold]"]
+    if have_metric:
+        rowdef.append(f"[bold]{_summary_metric_label(summary.scanners)}[/bold]")
+    if have_validation:
+        rowdef.append("[bold]validation[/bold]")
+    rowdef.extend(
+        [
+            "[bold]results[/bold]",
+            "[bold]errors[/bold]",
+            "[bold]tokens/scan[/bold]",
+            "",
+            "[bold]tokens[/bold]",
+        ]
     )
+    scanners.add_row(*rowdef, style=theme.meta)
     NONE = f"[{theme.light}]-[/{theme.light}]"
     for scanner in spec.scanners.keys():
         results = summary[scanner]
         validation = _summary_validation(results.validations)
-        scanners.add_row(
-            scanner,
-            validation or NONE,
-            f"{results.results:,}" if results.results else NONE,
-            f"{results.errors:,}" if results.errors else NONE,
-            f"{results.tokens // results.scans:,}"
-            if results.tokens and results.scans
-            else NONE,
-            "",
-            f"{results.tokens:,}" if results.tokens else NONE,
+        row_data: list[str | None] = [scanner]
+        if have_metric:
+            metric = _summary_metric(results.metrics)
+            row_data.append(metric)
+        if have_validation:
+            row_data.append(validation or NONE)
+        row_data.extend(
+            [
+                f"{results.results:,}" if results.results else NONE,
+                f"{results.errors:,}" if results.errors else NONE,
+                (
+                    f"{results.tokens // results.scans:,}"
+                    if results.tokens and results.scans
+                    else NONE
+                ),
+                "",
+                f"{results.tokens:,}" if results.tokens else NONE,
+            ]
         )
+        scanners.add_row(*row_data)
 
     # body
     body = Table.grid(expand=True)
@@ -388,3 +439,35 @@ def _summary_validation(validations: list[bool | dict[str, bool]]) -> str | None
                 if v is True:
                     valid += 1.0
     return f"{valid / values:.2f}"
+
+
+def _summary_metric(metrics: dict[str, dict[str, float]] | None) -> str | None:
+    if metrics is None:
+        return None
+
+    first_nested = next(iter(metrics.values()), None)
+    if first_nested:
+        value = next(iter(first_nested.values()), None)
+        if value is None:
+            return None
+        else:
+            return f"{value:.0f}" if value == int(value) else f"{value:.2f}"
+    else:
+        return None
+
+
+def _summary_metric_label(scanners: dict[str, ScannerSummary]) -> str:
+    metric_names: Set[str] = set()
+
+    for scanner in scanners.values():
+        metrics = scanner.metrics or {}
+        first_nested = next(iter(metrics.values()), None)
+        if first_nested:
+            first_key = next(iter(first_nested.keys()), None)
+            if first_key:
+                metric_names.add(first_key)
+
+    if len(metric_names) == 1:
+        return next(iter(metric_names))
+    else:
+        return "metric"

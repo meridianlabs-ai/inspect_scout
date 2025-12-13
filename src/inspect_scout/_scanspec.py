@@ -61,7 +61,7 @@ class ScanOptions(BaseModel):
     """Maximum number of concurrent transcripts (defaults to 25)."""
 
     max_processes: int | None = Field(default=None)
-    """Number of worker processes. Defaults to 1."""
+    """Number of worker processes. Defaults to 4."""
 
     limit: int | None = Field(default=None)
     """Transcript limit (maximum number of transcripts to read)."""
@@ -92,23 +92,29 @@ class ScanTranscripts(BaseModel):
     location: str | None = Field(default=None)
     """Location of transcript collection (e.g. database location)."""
 
-    fields: list[TranscriptField]
-    """Data types of transcripts fields."""
+    transcript_ids: dict[str, str | None] = Field(default_factory=dict)
+    """IDs of transcripts mapped to optional location hints.
+
+    The location value depends on the backing store:
+    - For parquet databases: the parquet filename containing the transcript
+    - For eval logs: the log file path containing the transcript
+    - For other stores (e.g., relational DB): may be None if ID alone suffices
+    """
+
+    # deprecated fields
 
     count: int = Field(default=0)
-    """Trancript count."""
+    """Trancript count (deprecated)."""
 
-    data: str
-    """Transcript data as a csv."""
+    fields: list[TranscriptField] | None = Field(default=None)
+    """Data types of transcripts fields (deprecated)"""
+
+    data: str | None = Field(default=None)
+    """Transcript data as a csv (deprecated)"""
 
 
-class ScannerWork(BaseModel):
-    """Definition of work to perform for a scanner.
-
-    By default scanners process all transcripts passed to `scan()`.
-    You can alternately pass a list of `ScannerWork` to specify that
-    only particular scanners and transcripts should be processed.
-    """
+class Worklist(BaseModel):
+    """List of transcript ids to process for a scanner."""
 
     scanner: str
     """Scanner name."""
@@ -164,7 +170,7 @@ class ScanSpec(BaseModel):
     scanners: dict[str, ScannerSpec]
     """Scanners to apply to transcripts."""
 
-    worklist: list[ScannerWork] | None = Field(default=None)
+    worklist: list[Worklist] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
     validation: dict[str, ValidationSet] | None = Field(default=None)

@@ -1,0 +1,6 @@
+.header {
+  background-color: var(--bs-light-bg-subtle);
+  border-bottom: solid 1px var(--bs-border-color);
+  width: 100%;
+  padding-left: 0.5rem;
+}

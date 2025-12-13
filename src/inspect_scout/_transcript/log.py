@@ -38,6 +38,11 @@ class LogMetadata(Metadata):
         return Column("eval_id")
 
     @property
+    def eval_status(self) -> Column:
+        """Status of eval."""
+        return Column("eval_status")
+
+    @property
     def log(self) -> Column:
         """Location that the log file was read from."""
         return Column("log")

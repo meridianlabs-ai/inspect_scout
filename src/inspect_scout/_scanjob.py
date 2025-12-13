@@ -27,7 +27,7 @@ from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
 from pydantic import BaseModel, ConfigDict, Field
 
-from inspect_scout._scanspec import ScannerSpec, ScannerWork
+from inspect_scout._scanspec import ScannerSpec, Worklist
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
@@ -49,7 +49,7 @@ class ScanJobConfig(BaseModel):
     scanners: list[ScannerSpec] | dict[str, ScannerSpec] | None = Field(default=None)
     """Scanners to apply to transcripts."""
 
-    worklist: list[ScannerWork] | None = Field(default=None)
+    worklist: list[Worklist] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
     validation: dict[str, ValidationSet] | None = Field(default=None)
@@ -65,10 +65,16 @@ class ScanJobConfig(BaseModel):
     """
 
     model_base_url: str | None = Field(default=None)
-    """Base URL for communicating with the model API."""
+    """Base URL for communicating with the model API.
+
+    If not specified use the value of the SCOUT_SCAN_MODEL_BASE_URL environment variable.
+    """
 
     model_args: dict[str, Any] | str | None = Field(default=None)
-    """Model creation args (as a dictionary or as a path to a JSON or YAML config file)."""
+    """Model creation args (as a dictionary or as a path to a JSON or YAML config file).
+
+    If not specified use the value of the SCOUT_SCAN_MODEL_ARGS environment variable.
+    """
 
     generate_config: GenerateConfig | None = Field(default=None)
     """`GenerationConfig` for calls to the model."""
@@ -80,7 +86,7 @@ class ScanJobConfig(BaseModel):
     """The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25."""
 
     max_processes: int | None = Field(default=None)
-    """The maximum number of concurrent processes (for multiproccesing). Defaults to 1."""
+    """The maximum number of concurrent processes (for multiproccesing). Defaults to 4."""
 
     limit: int | None = Field(default=None)
     """Limit the number of transcripts processed."""
@@ -114,7 +120,7 @@ class ScanJob:
         transcripts: Transcripts | None = None,
         scanners: Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
         | dict[str, Scanner[Any]],
-        worklist: Sequence[ScannerWork] | None = None,
+        worklist: Sequence[Worklist] | None = None,
         validation: dict[str, ValidationSet] | None = None,
         results: str | None = None,
         model: str | Model | None = None,
@@ -200,6 +206,12 @@ class ScanJob:
         if config.transcripts is not None:
             kwargs["transcripts"] = transcripts_from(config.transcripts)
 
+        # realize generate_config
+        if config.generate_config is not None:
+            kwargs["generate_config"] = GenerateConfig.model_validate(
+                config.generate_config
+            )
+
         return ScanJob(**kwargs)
 
     @property
@@ -218,7 +230,7 @@ class ScanJob:
         return self._transcripts
 
     @property
-    def worklist(self) -> Sequence[ScannerWork] | None:
+    def worklist(self) -> Sequence[Worklist] | None:
         """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
         return self._worklist
 
@@ -272,7 +284,7 @@ class ScanJob:
 
     @property
     def max_processes(self) -> int | None:
-        """The maximum number of concurrent processes (for multiproccesing). Defaults to 1."""
+        """The maximum number of concurrent processes (for multiproccesing). Defaults to 4."""
         return self._max_processes
 
     @property
@@ -427,21 +439,26 @@ def scanjob_from_file(file: str, scanjob_args: dict[str, Any]) -> ScanJob | None
     else:
         # add scanjob directory to sys.path for imports
         scanjob_dir = scanjob_path.parent.as_posix()
-        _mp_common.register_plugin_directory(scanjob_dir)
 
         with add_to_syspath(scanjob_dir):
             load_module(scanjob_path)
-            scanjob_decorators = parse_decorators(scanjob_path, "scanjob")
-            if job is not None and job in [deco[0] for deco in scanjob_decorators]:
-                return scanjob_create(job, scanjob_args)
-            elif len(scanjob_decorators) > 1:
+            decorator_names = [
+                deco[0] for deco in parse_decorators(scanjob_path, "scanjob")
+            ]
+
+            if job is not None and job in decorator_names:
+                job_name = job
+            elif len(decorator_names) > 1:
                 raise PrerequisiteError(
                     f"More than one @scanjob decorated function found in '{file}. Please use file@job to designate a specific job"
                 )
-            elif job is None and len(scanjob_decorators) == 1:
-                return scanjob_create(scanjob_decorators[0][0], scanjob_args)
+            elif job is None and len(decorator_names) == 1:
+                job_name = decorator_names[0]
             else:
                 return None
+
+            _mp_common.register_plugin_directory(scanjob_dir)
+            return scanjob_create(job_name, scanjob_args)
 
 
 def scanjob_create(name: str, params: dict[str, Any]) -> ScanJob:

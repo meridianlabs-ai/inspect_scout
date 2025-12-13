@@ -1,5 +1,7 @@
 import io
-from typing import Literal, Sequence, Any
+from collections.abc import Iterator, Mapping
+from typing import Any
+from typing import Callable, Literal, Sequence
 
 import duckdb
 import pandas as pd
@@ -14,7 +16,13 @@ from typing_extensions import override
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
-
+from .recorder import (
+    ScanRecorder,
+    ScanResultsArrow,
+    ScanResultsDB,
+    ScanResultsDF,
+    Status,
+)
 from .._recorder.buffer import (
     SCAN_ERRORS,
     SCAN_SUMMARY,
@@ -27,15 +35,55 @@ from .._recorder.buffer import (
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
-from .recorder import (
-    ScanRecorder,
-    ScanResultsArrow,
-    ScanResultsDB,
-    ScanResultsDF,
-    Status,
-)
 
 SCAN_JSON = "_scan.json"
+
+
+class LazyScannerMapping(Mapping[str, pd.DataFrame]):
+    """A lazy mapping that loads DataFrames on demand (no caching).
+
+    This class implements the Mapping protocol but defers loading of pandas
+    DataFrames until they are actually accessed. Each access loads the
+    DataFrame fresh - no caching is performed since DataFrames can be large
+    and users can cache themselves if needed.
+    """
+
+    def __init__(
+        self,
+        scanner_names: list[str],
+        loader: Callable[[str], pd.DataFrame],
+        transformer: Callable[[pd.DataFrame], pd.DataFrame] | None = None,
+    ) -> None:
+        """Initialize the lazy mapping.
+
+        Args:
+            scanner_names: List of available scanner names (keys).
+            loader: Function that loads a DataFrame given a scanner name.
+            transformer: Optional function to transform DataFrame after loading.
+        """
+        self._scanner_names = scanner_names
+        self._loader = loader
+        self._transformer = transformer
+
+    def __getitem__(self, key: str) -> pd.DataFrame:
+        if key not in self._scanner_names:
+            raise KeyError(key)
+        df = self._loader(key)
+        if self._transformer is not None:
+            df = self._transformer(df)
+        return df
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._scanner_names)
+
+    def __len__(self) -> int:
+        return len(self._scanner_names)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._scanner_names
+
+    def __repr__(self) -> str:
+        return f"LazyScannerMapping(scanners={self._scanner_names})"
 
 
 class FileRecorder(ScanRecorder):
@@ -78,9 +126,21 @@ class FileRecorder(ScanRecorder):
 
     @override
     async def record(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        await self._scan_buffer.record(transcript, scanner, results)
+        await self._scan_buffer.record(transcript, scanner, results, metrics)
+
+    @override
+    async def record_metrics(
+        self,
+        scanner: str,
+        metrics: dict[str, dict[str, float]] | None,
+    ) -> None:
+        await self._scan_buffer.record_metrics(scanner, metrics)
 
     @override
     async def flush(self) -> None:
@@ -227,48 +287,29 @@ class FileRecorder(ScanRecorder):
         *,
         scanner: str | None = None,
     ) -> ScanResultsDF:
-        import pyarrow.parquet as pq
-        from upath import UPath
-
         scan_dir = UPath(scan_location)
         status = await FileRecorder.status(scan_location)
 
-        async with AsyncFilesystem() as fs:
+        # Determine available scanner names
+        if scanner is not None:
+            scanner_names = [scanner]
+        else:
+            scanner_names = [f.stem for f in sorted(scan_dir.glob("*.parquet"))]
 
-            async def scanner_df(parquet_file: UPath) -> pd.DataFrame:
-                # read table into df
-                bytes = await fs.read_file(parquet_file.as_posix())
-                table = pq.read_table(io.BytesIO(bytes))
-                df = table.to_pandas(types_mapper=pd.ArrowDtype)
+        # Create lazy mapping with a loader that reads DataFrames on demand
+        scanners = LazyScannerMapping(
+            scanner_names=scanner_names,
+            loader=lambda name: _load_scanner_df(scan_dir, name),
+        )
 
-                # cast value column to appropriate type based on value_type
-                df = _cast_value_column(df)
-
-                # return
-                return df
-
-            # read data
-            scanners: dict[str, pd.DataFrame] = {}
-
-            # single scanner
-            if scanner is not None:
-                parquet_file = scan_dir / f"{scanner}.parquet"
-                scanners[scanner] = await scanner_df(parquet_file)
-
-            # all scanners
-            else:
-                for parquet_file in sorted(scan_dir.glob("*.parquet")):
-                    name = parquet_file.stem
-                    scanners[name] = await scanner_df(parquet_file)
-
-            return ScanResultsDF(
-                status=status.complete,
-                spec=status.spec,
-                location=status.location,
-                summary=status.summary,
-                errors=status.errors,
-                scanners=scanners,
-            )
+        return ScanResultsDF(
+            status=status.complete,
+            spec=status.spec,
+            location=status.location,
+            summary=status.summary,
+            errors=status.errors,
+            scanners=scanners,
+        )
 
     @override
     @staticmethod
@@ -590,6 +631,25 @@ def _cast_value_sql(value_type: str) -> str:
     else:
         # For string, null, array, object - keep as-is
         return "value"
+
+
+def _load_scanner_df(scan_dir: UPath, scanner_name: str) -> pd.DataFrame:
+    """Load a scanner's DataFrame from a parquet file.
+
+    Args:
+        scan_dir: Directory containing the scan parquet files.
+        scanner_name: Name of the scanner (without .parquet extension).
+
+    Returns:
+        DataFrame with the scanner results, value column cast appropriately.
+    """
+    parquet_file = scan_dir / f"{scanner_name}.parquet"
+    # Use file() from inspect_ai to match original AsyncFilesystem behavior
+    with file(parquet_file.as_posix(), "rb") as f:
+        file_bytes = f.read()
+    table = pq.read_table(io.BytesIO(file_bytes))
+    df = table.to_pandas(types_mapper=pd.ArrowDtype)
+    return _cast_value_column(df)
 
 
 def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:

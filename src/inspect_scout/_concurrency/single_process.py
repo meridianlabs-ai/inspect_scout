@@ -82,7 +82,7 @@ def single_process_strategy(
         parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
-        scan_completed: Callable[[], Awaitable[None]],
+        completed: Callable[[], Awaitable[None]],
     ) -> None:
         metrics = ScanMetrics(1)
         nonlocal overall_start_time
@@ -94,6 +94,28 @@ def single_process_strategy(
 
         scanner_job_deque: deque[ScannerJob] = deque()
         process = psutil.Process()
+
+        try:
+            from inspect_ai.model._providers.util.batch_log import (
+                BatchStatus,
+                set_batch_log_callback,
+                set_batch_status_callback,
+            )
+
+            def _on_batch_status(status: BatchStatus) -> None:
+                metrics.batch_pending = status.pending_requests
+                metrics.batch_failures = status.failed_requests
+                metrics.batch_oldest_created = status.oldest_created_at
+                _update_metrics()
+
+            def _on_batch_log(msg: str) -> None:
+                # suppress the detailed logging
+                pass
+
+            set_batch_status_callback(_on_batch_status)
+            set_batch_log_callback(_on_batch_log)
+        except ImportError:
+            pass
 
         # CRITICAL: Serialize access to the parse_jobs iterator.
         #
@@ -279,8 +301,6 @@ def single_process_strategy(
                     ):
                         break
 
-                await scan_completed()
-
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",
                     f"Finished after {parses_completed} parses and {scans_completed} scans.",
@@ -297,15 +317,16 @@ def single_process_strategy(
                     worker_id_counter += 1
                     metrics.task_count += 1
                     tg.start_soon(_worker_task, worker_id_counter)
-                _update_metrics()
 
         except Exception as ex:
             raise inner_exception(ex) from None
         finally:
+            set_batch_status_callback(None)
             metrics.process_count = 0
             metrics.tasks_parsing = 0
             metrics.tasks_scanning = 0
             metrics.tasks_idle = 0
             _update_metrics()
+            await completed()
 
     return the_func

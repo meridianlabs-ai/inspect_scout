@@ -133,7 +133,7 @@ def subprocess_main(
                             parse_function=ipc_ctx.parse_function,
                             scan_function=ipc_ctx.scan_function,
                             update_metrics=_update_worker_metrics,
-                            scan_completed=ipc_ctx.scan_completed,
+                            completed=ipc_ctx.completed,
                         )
                         print_diagnostics("Worker main", "All tasks completed normally")
                     except Exception as ex:
@@ -207,9 +207,9 @@ def subprocess_main(
         top_level_async_init(ipc_ctx.log_level, main_process=False)
 
         init_model_context(
-            model=model_config_to_model(ipc_ctx.model_context.model_config),
-            model_roles=ipc_ctx.model_context.model_roles,
-            config=ipc_ctx.model_context.config,
+            model=model_config_to_model(ipc_ctx.model_config),
+            model_roles=ipc_ctx.model_roles,
+            config=ipc_ctx.generate_config,
         )
 
         patch_inspect_log_handler(_log_in_parent)

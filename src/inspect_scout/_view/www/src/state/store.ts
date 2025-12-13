@@ -67,6 +67,8 @@ interface StoreState {
   highlightLabeled?: boolean;
   selectedResultRow?: number;
   dataframeWrapText?: boolean;
+  dataframeShowFilterColumns?: boolean;
+  dataframeFilterColumns?: string[];
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -169,6 +171,8 @@ interface StoreState {
   setHighlightLabeled: (highlight: boolean) => void;
   setSelectedResultRow: (row: number) => void;
   setDataframeWrapText: (wrap: boolean) => void;
+  setDataframeFilterColumns: (columns: string[]) => void;
+  setDataframeShowFilterColumns: (show: boolean) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -582,6 +586,16 @@ export const createStore = (api: ScanApi) =>
           setDataframeWrapText: (wrap: boolean) => {
             set((state) => {
               state.dataframeWrapText = wrap;
+            });
+          },
+          setDataframeFilterColumns: (columns: string[]) => {
+            set((state) => {
+              state.dataframeFilterColumns = columns;
+            });
+          },
+          setDataframeShowFilterColumns: (show: boolean) => {
+            set((state) => {
+              state.dataframeShowFilterColumns = show;
             });
           },
         })),

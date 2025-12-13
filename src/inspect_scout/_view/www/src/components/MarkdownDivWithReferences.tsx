@@ -25,6 +25,9 @@ export interface MarkdownReference {
 interface MarkdownDivWithReferencesProps {
   markdown: string;
   references?: MarkdownReference[];
+  options?: {
+    previewRefsOnHover?: boolean;
+  };
   className?: string | string[];
   style?: React.CSSProperties;
   omitMedia?: boolean;
@@ -33,7 +36,7 @@ interface MarkdownDivWithReferencesProps {
 export const MarkdownDivWithReferences = forwardRef<
   HTMLDivElement,
   MarkdownDivWithReferencesProps
->(({ markdown, references, className, style, omitMedia }, ref) => {
+>(({ markdown, references, options, className, style, omitMedia }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [positionEl, setPositionEl] = useState<HTMLElement | null>(null);
   const [currentRef, setCurrentRef] = useState<MarkdownReference | null>(null);
@@ -59,7 +62,7 @@ export const MarkdownDivWithReferences = forwardRef<
       references?.forEach((ref) => {
         // Escape special regex characters in the cite text
         const escapedCite = ref.cite.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regex = new RegExp(escapedCite, "g");
+        const regex = new RegExp(`${escapedCite}(?![a-zA-Z0-9])`, "g");
 
         const href = ref.citeUrl || "javascript:void(0)";
         const replacement = `<a href="${href}" class="${styles.cite}" data-ref-id="${ref.id}">${ref.cite}</a>`;
@@ -95,6 +98,11 @@ export const MarkdownDivWithReferences = forwardRef<
       return;
     }
 
+    // Don't enable popover / preview on hover
+    if (options?.previewRefsOnHover === false) {
+      return;
+    }
+
     // Find all cite links
     const citeLinks = container.querySelectorAll<HTMLElement>(
       `.${styles.cite}`
@@ -120,6 +128,11 @@ export const MarkdownDivWithReferences = forwardRef<
     };
 
     const handleClick = (e: MouseEvent): void => {
+      // Cancel the popover if one is pending or showing
+      clearShowingRefPopover();
+      setCurrentRef(null);
+      setPositionEl(null);
+
       // Stop propagation to prevent parent Link components from handling the click
       e.stopPropagation();
     };
@@ -147,6 +160,7 @@ export const MarkdownDivWithReferences = forwardRef<
     setPositionEl,
     setCurrentRef,
     setShowingRefPopover,
+    clearShowingRefPopover,
   ]);
 
   const key = currentRef
@@ -169,7 +183,7 @@ export const MarkdownDivWithReferences = forwardRef<
             }
           }}
           placement="auto"
-          hoverDelay={200}
+          hoverDelay={400}
           showArrow={true}
         >
           {(currentRef.citePreview && currentRef.citePreview()) || (

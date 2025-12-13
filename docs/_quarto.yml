@@ -37,15 +37,24 @@ website:
             href: index.qmd
           - text: "Using"
             menu:
+                - href: workflow.qmd
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd
                 - href: results.qmd
                 - href: validation.qmd
+          - text: "Transcripts"
+            menu:
+                - href: db_overview.qmd
+                - href: db_schema.qmd
+                - href: db_importing.qmd
+                - href: db_publishing.qmd
           - text: "Reference"
             href: reference/index.qmd
 
       right:
+          - text: Changelog
+            href: CHANGELOG.md
           - icon: github
             href: https://github.com/meridianlabs-ai/inspect_scout
 
@@ -62,13 +71,27 @@ website:
                 - text: Scout Basics
                   href: index.qmd#scout-basics
            - text: Using Scout
-             href: transcripts.qmd
+             href: workflow.qmd
              contents:
+                - href: workflow.qmd
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd
                 - href: results.qmd
                 - href: validation.qmd
+           - text: Transcripts Database
+             href: db_overview.qmd
+             contents:
+                - text: Overview
+                  href: db_overview.qmd
+                - text: Schema
+                  href: db_schema.qmd
+                - text: Importing
+                  href: db_importing.qmd
+                - text: Publishing
+                  href: db_publishing.qmd
+  
+                  
           
    page-footer:
       left:

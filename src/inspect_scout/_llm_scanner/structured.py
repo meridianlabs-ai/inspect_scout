@@ -16,6 +16,7 @@ from inspect_ai.model import (
     ChatMessage,
     ChatMessageTool,
     ChatMessageUser,
+    GenerateConfig,
     Model,
     ModelOutput,
     execute_tools,
@@ -71,7 +72,7 @@ async def structured_generate(
             input=messages,
             tools=[answer_tooldef],
             tool_choice=ToolFunction(answer_tooldef.name),
-            config=None,
+            config=GenerateConfig(parallel_tool_calls=False),
             retry_refusals=retry_refusals,
         )
         messages.append(output.message)

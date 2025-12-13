@@ -1,16 +1,17 @@
 import abc
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Literal, Sequence, Any
+from typing import Any
+from typing import Literal, Mapping, Sequence
 
 import duckdb
 import pandas as pd
 import pyarrow as pa
 
+from .summary import Summary
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
-from .summary import Summary
 
 
 @dataclass
@@ -69,10 +70,15 @@ class ScanResultsArrow(Status):
 
 @dataclass
 class ScanResultsDF(Status):
-    """Scan results as pandas data frames."""
+    """Scan results as pandas data frames.
 
-    scanners: dict[str, pd.DataFrame]
-    """Dict of scanner name to pandas data frame."""
+    The `scanners` mapping provides lazy access to DataFrames - each DataFrame
+    is only materialized when its key is accessed. This allows efficient access
+    to specific scanner results without loading all data upfront.
+    """
+
+    scanners: Mapping[str, pd.DataFrame]
+    """Mapping of scanner name to pandas data frame (lazily loaded)."""
 
     def __init__(
         self,
@@ -81,7 +87,7 @@ class ScanResultsDF(Status):
         location: str,
         summary: Summary,
         errors: list[Error],
-        scanners: dict[str, pd.DataFrame],
+        scanners: Mapping[str, pd.DataFrame],
     ) -> None:
         super().__init__(status, spec, location, summary, errors)
         self.scanners = scanners
@@ -198,7 +204,16 @@ class ScanRecorder(abc.ABC):
 
     @abc.abstractmethod
     async def record(
-        self, transcript: TranscriptInfo, scanner: str, results: Sequence[ResultReport]
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: Sequence[ResultReport],
+        metrics: dict[str, dict[str, float]] | None,
+    ) -> None: ...
+
+    @abc.abstractmethod
+    async def record_metrics(
+        self, scanner: str, metrics: dict[str, dict[str, float]]
     ) -> None: ...
 
     @abc.abstractmethod

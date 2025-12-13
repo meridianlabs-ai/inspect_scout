@@ -1,7 +1,13 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
+import { useParams } from "react-router-dom";
 
 import { ChatView } from "../../chat/ChatView";
 import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
+import {
+  getRelativePathFromParams,
+  parseScanResultPath,
+  scanResultRoute,
+} from "../../router/url";
 import { TranscriptView } from "../../transcript/TranscriptView";
 import { ScannerCore } from "../types";
 
@@ -9,6 +15,36 @@ export type MakeReferenceUrl = (
   ref: string,
   type: "message" | "event"
 ) => string | undefined;
+
+export const useMarkdownRefs = (result?: ScannerCore) => {
+  const params = useParams<{ "*": string }>();
+  // Build URL to the scan result with the appropriate query parameters
+  const buildUrl = useMemo(() => {
+    if (!result?.uuid) {
+      return (queryParams: string) => `?${queryParams}`;
+    }
+
+    // Get the scan path from the current URL params
+    const relativePath = getRelativePathFromParams(params);
+    const { scanPath } = parseScanResultPath(relativePath);
+
+    return (queryParams: string) => {
+      const searchParams = new URLSearchParams(queryParams);
+      return `#${scanResultRoute(scanPath, result.uuid, searchParams)}`;
+    };
+  }, [result?.uuid, params]);
+
+  const refs: MarkdownReference[] = result
+    ? toMarkdownRefs(result, (refId: string, type: "message" | "event") => {
+        if (type === "message") {
+          return buildUrl(`tab=Result&message=${encodeURIComponent(refId)}`);
+        } else {
+          return buildUrl(`tab=Result&event=${encodeURIComponent(refId)}`);
+        }
+      })
+    : [];
+  return refs;
+};
 
 export const toMarkdownRefs = (
   core: ScannerCore,

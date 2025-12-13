@@ -24,6 +24,9 @@ from typing import AsyncIterator, Awaitable, Callable
 
 import anyio
 from anyio import create_task_group
+from inspect_ai.model._generate_config import active_generate_config
+from inspect_ai.model._model import active_model, model_roles
+from inspect_ai.model._model_config import model_to_model_config
 from inspect_ai.util._anyio import inner_exception
 from inspect_ai.util._concurrency import init_concurrency
 
@@ -42,7 +45,6 @@ from ._mp_common import (
     WorkerComplete,
     WorkerReady,
     get_log_level,
-    get_model_context,
     get_plugin_directory,
     run_sync_on_thread,
 )
@@ -58,7 +60,11 @@ from .common import (
     sum_metrics,
 )
 
-MAX_PROCESS = 8
+# If no explicit number of processes is presented, we'll limit process concurrency
+# to this number regardless of the number of CPUs. We may raise this as we see real
+# world data suggesting that even more concurrency actually reduces the wall clock
+# time of a scan.
+DEFAULT_MAX_PROCESS = 4
 
 # Maximum number of ParseJobs to prefetch into the queue.
 # Provides backpressure to prevent buffering hundreds of thousands of ParseJobs
@@ -110,7 +116,9 @@ def multi_process_strategy(
         )
 
     if max_processes is None:
-        max_processes = min(MAX_PROCESS, multiprocessing.cpu_count(), total_scans)
+        max_processes = min(
+            DEFAULT_MAX_PROCESS, multiprocessing.cpu_count(), total_scans
+        )
 
     async def the_func(
         *,
@@ -121,7 +129,7 @@ def multi_process_strategy(
         parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
-        scan_completed: Callable[[], Awaitable[None]],
+        completed: Callable[[], Awaitable[None]],
     ) -> None:
         all_metrics: dict[int, ScanMetrics] = {}
 
@@ -156,7 +164,7 @@ def multi_process_strategy(
             ipc_ctx = IPCContext(
                 parse_function=DillCallable(parse_function),
                 scan_function=DillCallable(scan_function),
-                scan_completed=DillCallable(scan_completed),
+                completed=DillCallable(completed),
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
@@ -168,7 +176,9 @@ def multi_process_strategy(
                 semaphore_condition=parent_registry.sync_manager_condition,
                 plugin_dir=get_plugin_directory(),
                 log_level=get_log_level(),
-                model_context=get_model_context(),
+                model_config=model_to_model_config(active_model()),  # type: ignore[arg-type]
+                model_roles=model_roles(),
+                generate_config=active_generate_config(),
             )
 
             def print_diagnostics(actor_name: str, *message_parts: object) -> None:
@@ -199,9 +209,11 @@ def multi_process_strategy(
                     async for item in parse_jobs:
                         await run_sync_on_thread(parse_job_queue.put, item)
                 finally:
-                    # Send sentinel values to signal worker tasks to stop (one per task)
-                    # This runs even if cancelled, allowing graceful shutdown
-                    for _ in range(task_count):
+                    # Send sentinel values to signal worker processes to stop (one per process).
+                    # Each process's iterator_from_queue consumes one sentinel, then the shared
+                    # parse_jobs_exhausted flag propagates termination to all workers in that process.
+                    # This runs even if cancelled, allowing graceful shutdown.
+                    for _ in range(max_processes):
                         await run_sync_on_thread(parse_job_queue.put, None)
 
             async def _upstream_collector() -> None:

@@ -4,11 +4,34 @@ title: "Validation"
 
 ## Overview
 
-When developing scanners and scanner prompts, it's often desirable to create a feedback loop based on some "ground truth" regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.
+When developing scanners and scanner prompts, it's often desirable to create a feedback loop based on some ground truth regarding the ideal results that should by yielded by scanner. You can do this by creating a validation set and applying it during your scan.
+
+When you run a scan, Scout View will show validation results alongside scanner values (sorting validated scans to the top for easy review):
+
+![](images/validation.png){.border}
+
+Note that the overall validation score is also displayed in the left panel summarizing the scan. Below we'll go step by step through how to create a validation set and apply it to your scanners.
 
 ## Validation Basics
 
-A `ValidationSet` contains a list of `ValidationCase`, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and `value` that the scanner should have returned. For example:
+A `ValidationSet` contains a list of `ValidationCase`, which are in turn composed of ids and targets. The most common validation set is a pair of transcript id and `value` that the scanner should have returned.
+
+| Transcript ID          | Expected Value |
+|------------------------|----------------|
+| Fg3KBpgFr6RSsEWmHBUqeo | true           |
+| VFkCH7gXWpJYUYonvfHxrG | false          |
+
+Note that values can be of any type returned by a scanner, and it is also possible to do greater than / less than checks or write custom predicates.
+
+### Development
+
+How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.
+
+Use the **Copy** button to copy the UUID for the transcript you are reviewing:
+
+![](images/sample-uuid.png){.border width="720" width="720"}
+
+As you review transcript and find good examples, build up a list of transcript IDs and expected values. For example, here is a CSV file of that form:
 
 ``` {.default filename="ctf-validation.csv"}
 Fg3KBpgFr6RSsEWmHBUqeo, true
@@ -16,11 +39,7 @@ VFkCH7gXWpJYUYonvfHxrG, false
 SiEXpECj7U9nNAvM3H7JqB, true
 ```
 
-How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.
-
-Use the **Copy UUID** button to copy the ID for the transcript you are reviewing:
-
-![](images/sample-uuid.png){.border-bottom}
+### Scanning
 
 You'll typically create a distinct validation set for each scanner, and then pass the validation sets to `scan()` as a dict mapping scanner to set:
 
@@ -44,9 +63,9 @@ scout scan scanning.py -V ctf_environment:ctf_environment.csv
 
 This example uses the simplest possible id and target pair (transcript \_id =\> boolean). Other variations are possible, see the [IDs and Targets](#ids-and-targets) section below for details. You can also use other file formats for validation sets (e.g. YAML), see [Validation Files](#validation-files) for details.
 
-### Validation Results
+### Results
 
-Validation results are reported in two ways:
+Validation results are reported in three ways:
 
 -   The scan status/summary UI provides a running tabulation of the percentage of matching validations.
 
@@ -55,6 +74,10 @@ Validation results are reported in two ways:
     -   `validation_target`: Ideal scanner result
 
     -   `validation_result`: Result of comparing scanner `value` against `validation_target`
+
+-   Scout View includes a visual indication of the validation status for each transcript:
+
+    ![](images/validation-scan.png){.border}
 
 ## Filtering Transcripts
 
@@ -130,7 +153,7 @@ For YAML/JSON files, use a labels key instead of target:
 
 Label-based validation uses "at least one" logic: if any result with a given label matches the expected value, validation passes for that label. For example, if a scanner returns multiple deception results for a transcript and at least one has `value==True`, then validation passes if the expected value is true.
 
-Missing labels are treated as negative/absent values. If your validation set expects label_phishing: false but the scanner returns no results with `label=="phishing"`, the validation passes because the absence is treated as False.
+Missing labels are treated as negative/absent values. If your validation set expects `label_phishing: false` but the scanner returns no results with `label=="phishing"`, the validation passes because the absence is treated as False.
 
 ### Comparison Predicates
 
@@ -142,7 +165,7 @@ validation_set(cases="validation.csv", predicate="gte")
 
 ### Value Dictionary
 
-If our scanner produces a `dict` of values, we can also build a validation dataset which provides ground truth for each distinct field in the `dict`. To do this, we introduce column names as follows:
+If our scanner produces a `dict` of values, we can also build a validation dataset which provides ground truth for each distinct field in the `dict`. To do this, we introduce `target_*` column names as follows:
 
 ``` {.default filename="validation.csv"}
 id, target_deception, target_backtracks

@@ -15,6 +15,12 @@ export interface Request<T> {
   body?: string;
   parse?: (text: string) => Promise<T>;
   handleError?: (status: number) => T | undefined;
+  /**
+   * When true, omits Cache-Control/Pragma/Expires headers to enable browser
+   * caching with ETag support. The browser will automatically handle
+   * If-None-Match headers and 304 responses.
+   */
+  enableBrowserCache?: boolean;
 }
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
@@ -69,13 +75,20 @@ export function serverRequestApi(
   ): Promise<{ raw: string; parsed: T; headers: Headers }> => {
     const url = buildApiUrl(path);
 
-    const responseHeaders: HeadersInit = {
-      Accept: "application/json",
-      Pragma: "no-cache",
-      Expires: "0",
-      "Cache-Control": "no-cache",
-      ...request?.headers,
-    };
+    // By default, disable browser caching. When enableBrowserCache is true,
+    // omit these headers to let the browser handle ETag-based caching.
+    const responseHeaders: HeadersInit = request?.enableBrowserCache
+      ? {
+          Accept: "application/json",
+          ...request?.headers,
+        }
+      : {
+          Accept: "application/json",
+          Pragma: "no-cache",
+          Expires: "0",
+          "Cache-Control": "no-cache",
+          ...request?.headers,
+        };
 
     if (getHeaders) {
       const globalHeaders = await getHeaders();

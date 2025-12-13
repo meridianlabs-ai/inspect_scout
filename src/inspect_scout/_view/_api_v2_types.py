@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from dataclasses import fields as dataclass_fields
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -52,7 +53,51 @@ class IPCSerializableResults(RecorderStatus):
         self.scanners = scanners
 
 
-RestScanStatus: TypeAlias = RecorderStatus
+class RestScanStatus(BaseModel):
+    """
+    Scan status for REST API responses.
+
+    It extends Recorder's Status type replacing completed with statue
+    """
+
+    status: Literal["running", "completed", "incomplete"] = Field(
+        description="Scan job status"
+    )
+    spec: ScanSpec
+    location: str
+    summary: Summary
+    errors: list[Error]
+
+    @staticmethod
+    def _derive_status(
+        location: str, complete: bool, running_scans: set[str]
+    ) -> Literal["running", "completed", "incomplete"]:
+        if location in running_scans:
+            return "running"
+        return "completed" if complete else "incomplete"
+
+    @classmethod
+    def from_recorder_status(
+        cls,
+        status_obj: RecorderStatus,
+        running_scans: set[str],
+    ) -> "RestScanStatus":
+        """Convert Status dataclass to RestScanStatus.
+
+        Uses dataclass introspection so new Status fields are automatically
+        included.
+        """
+        field_values = {
+            f.name: getattr(status_obj, f.name)
+            for f in dataclass_fields(status_obj)
+            if f.name != "complete"
+        }
+        return cls(
+            status=cls._derive_status(
+                status_obj.location, status_obj.complete, running_scans
+            ),
+            **field_values,
+        )
 
 
 class ScansRestResponse(BaseModel):

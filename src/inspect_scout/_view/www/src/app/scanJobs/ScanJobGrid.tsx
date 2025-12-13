@@ -80,16 +80,18 @@ export const ScanJobGrid: FC = () => {
 
     scans.forEach((scan) => {
       const relativeLocation = toRelativePath(scan.location, resultsDir || "");
-      const icon = scan.complete
-        ? ApplicationIcons.success
-        : scan.errors.length > 0
-          ? ApplicationIcons.error
-          : ApplicationIcons.pendingTask;
-      const color = scan.complete
-        ? "green"
-        : scan.errors.length > 0
-          ? "red"
-          : "yellow";
+      const icon =
+        scan.status === "completed"
+          ? ApplicationIcons.success
+          : scan.errors.length > 0
+            ? ApplicationIcons.error
+            : ApplicationIcons.pendingTask;
+      const color =
+        scan.status === "completed"
+          ? "green"
+          : scan.errors.length > 0
+            ? "red"
+            : "yellow";
 
       const dir = dirname(relativeLocation);
       if (dir === paramsRelativePath) {
@@ -106,7 +108,7 @@ export const ScanJobGrid: FC = () => {
           status:
             scan.errors.length > 1
               ? "error"
-              : scan.complete
+              : scan.status === "completed"
                 ? "complete"
                 : "incomplete",
           scanners: Object.keys(scan.spec.scanners).map((s) => s),

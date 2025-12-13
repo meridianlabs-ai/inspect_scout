@@ -81,7 +81,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const setSortResults = useStore((state) => state.setSortResults);
 
   useEffect(() => {
-    if (selectedFilter === undefined && selectedStatus?.complete === false) {
+    if (selectedFilter === undefined && selectedStatus?.status !== "completed") {
       setSelectedFilter(kFilterAllResults);
     }
   }, [selectedStatus, selectedFilter, setSelectedFilter]);

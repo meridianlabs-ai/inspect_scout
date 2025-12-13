@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 
 import {
@@ -13,47 +14,50 @@ import { expandResultsetRows } from "../utils/arrow";
 
 // Lists the available scans from the server and stores in state
 export const useServerScans = () => {
-  // api
   const api = useApi();
-
-  // state
-  const resultsDir = useStore((state) => state.resultsDir);
-
-  // setters
   const setScans = useStore((state) => state.setScans);
   const setResultsDir = useStore((state) => state.setResultsDir);
   const setLoading = useStore((state) => state.setLoading);
   const setError = useStore((state) => state.setError);
   const clearError = useStore((state) => state.clearError);
 
+  const hasSetLoading = useRef(false);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["scans"],
+    queryFn: () => api.getScans(),
+    refetchInterval: 5000,
+  });
+
+  // Handle loading state (ref-counted)
   useEffect(() => {
-    const fetchScans = async () => {
-      // Update loading and error state
-      clearError("scanjobs");
+    if (isLoading && !hasSetLoading.current) {
+      hasSetLoading.current = true;
       setLoading(true);
-
-      try {
-        // Fetch the data
-        const scansInfo = await api.getScans();
-        if (scansInfo) {
-          // Update state
-          setResultsDir(scansInfo.results_dir);
-          setScans(scansInfo.scans);
-        }
-      } catch (e) {
-        // Notify app of error
-        setError("scanjobs", e?.toString());
-      } finally {
-        // Stop loading
-        setLoading(false);
-      }
-    };
-
-    // Only fetch if we don't already have data retrieved
-    if (!resultsDir) {
-      void fetchScans();
+    } else if (!isLoading && hasSetLoading.current) {
+      hasSetLoading.current = false;
+      setLoading(false);
     }
-  }, [api, resultsDir, setScans, setResultsDir]);
+  }, [isLoading, setLoading]);
+
+  // Handle error state
+  useEffect(() => {
+    if (error) {
+      setError("scanjobs", error.toString());
+    } else {
+      clearError("scanjobs");
+    }
+  }, [error, setError, clearError]);
+
+  // Sync to zustand store
+  useEffect(() => {
+    if (data) {
+      setResultsDir(data.results_dir);
+      setScans(data.scans);
+    }
+  }, [data, setResultsDir, setScans]);
+
+  return { isLoading, error };
 };
 
 // Fetches the selected scan status from the server and stores in state

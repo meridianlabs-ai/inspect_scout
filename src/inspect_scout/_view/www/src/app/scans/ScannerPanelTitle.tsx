@@ -83,11 +83,17 @@ const StatusDisplay: FC<{ status?: Status }> = ({ status }) => {
   }
 
   const statusStr =
-    status === undefined ? "" : status.complete ? "Complete" : "Incomplete";
+    status === undefined
+      ? ""
+      : status.status === "completed"
+        ? "Complete"
+        : status.status === "running"
+          ? "Running"
+          : "Incomplete";
   const statusIcon =
     status === undefined
       ? ApplicationIcons.running
-      : status.complete
+      : status.status === "completed"
         ? ApplicationIcons.successSubtle
         : ApplicationIcons.pendingTaskSubtle;
 

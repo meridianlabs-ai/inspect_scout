@@ -49,7 +49,14 @@ export const apiScoutServer = (
       if (resultsDir) {
         query += `&results_dir=${encodeURIComponent(resultsDir)}`;
       }
-      return (await requestApi.fetchType<Scans>("GET", query)).parsed;
+      // Enable browser caching to leverage server ETag support.
+      // The browser will automatically send If-None-Match headers and
+      // handle 304 responses, reducing bandwidth when data hasn't changed.
+      return (
+        await requestApi.fetchType<Scans>("GET", query, {
+          enableBrowserCache: true,
+        })
+      ).parsed;
     },
     getScannerDataframe: async (
       scanLocation: string,

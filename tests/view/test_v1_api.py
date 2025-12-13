@@ -135,58 +135,6 @@ class TestViewServerAppScansEndpoint:
 
         assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
 
-    # @pytest.mark.asyncio
-    # async def test_scans_endpoint_returns_etag(
-    #     self, app_with_results_dir: TestClient
-    # ) -> None:
-    #     """Test that /scans returns ETag header."""
-    #     with (
-    #         patch("inspect_scout._view._api_v1.scan_list_async", return_value=[]),
-    #         patch(
-    #             "inspect_scout._view._api_v1._compute_scans_etag",
-    #             return_value="abc123",
-    #         ),
-    #     ):
-    #         response = app_with_results_dir.get("/scans")
-
-    #     assert response.status_code == 200
-    #     assert response.headers.get("etag") == '"abc123"'
-
-    # @pytest.mark.asyncio
-    # async def test_scans_endpoint_304_on_matching_etag(
-    #     self, app_with_results_dir: TestClient
-    # ) -> None:
-    #     """Test 304 returned when If-None-Match matches ETag."""
-    #     with patch(
-    #         "inspect_scout._view._api_v1._compute_scans_etag",
-    #         return_value="abc123",
-    #     ):
-    #         response = app_with_results_dir.get(
-    #             "/scans", headers={"If-None-Match": '"abc123"'}
-    #         )
-
-    #     assert response.status_code == 304
-    #     assert response.headers.get("etag") == '"abc123"'
-
-    # @pytest.mark.asyncio
-    # async def test_scans_endpoint_200_on_mismatched_etag(
-    #     self, app_with_results_dir: TestClient
-    # ) -> None:
-    #     """Test full response when If-None-Match doesn't match."""
-    #     with (
-    #         patch("inspect_scout._view._api_v1.scan_list_async", return_value=[]),
-    #         patch(
-    #             "inspect_scout._view._api_v1._compute_scans_etag",
-    #             return_value="abc123",
-    #         ),
-    #     ):
-    #         response = app_with_results_dir.get(
-    #             "/scans", headers={"If-None-Match": '"old-etag"'}
-    #         )
-
-    #     assert response.status_code == 200
-    #     assert response.headers.get("etag") == '"abc123"'
-
 
 class TestViewServerAppScanDfEndpoint:
     """Tests for the /scanner_df endpoint."""

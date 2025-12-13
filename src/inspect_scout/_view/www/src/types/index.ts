@@ -17,7 +17,7 @@ export interface Scans {
 // Scout types dervice from Python types
 // TODO: generate with schema
 export interface Status {
-  complete: boolean;
+  status: "running" | "completed" | "incomplete";
   spec: ScanSpec;
   location: string;
   summary: Summary;

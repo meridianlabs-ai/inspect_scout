@@ -3,7 +3,7 @@
 - Scanning: Switch from `dill` to `cloudpickle` and restore default `max_processes` to 4 after resolving multiprocessing serialization issues.
 - Track scan job completion status explicitly in the filesystem (vs. merely looking at whether buffer dir exists).
 - Transcript databases: Include all `.parquet` files in directory (don't require `transcripts_` prefix).
-
+- Transcript databases: Disable HF hub progress bars for databases on hf://.
 ## 0.4.1 (12 December 2025)
 
 - Scan jobs: Correct resolution order for options (CLI, then scanjob config, then environment variables).

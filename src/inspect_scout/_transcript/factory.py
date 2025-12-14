@@ -89,7 +89,7 @@ def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "databa
     location_path = UPath(location)
 
     # Check for parquet files with the database naming convention
-    parquet_files = list(location_path.glob(PARQUET_TRANSCRIPTS_GLOB))
+    parquet_files = list(location_path.rglob(PARQUET_TRANSCRIPTS_GLOB))
     if parquet_files:
         return TRANSCRIPT_SOURCE_DATABASE
 

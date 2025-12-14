@@ -2,6 +2,7 @@
 
 - Scanning: Switch from `dill` to `cloudpickle` and restore default `max_processes` to 4 after resolving multiprocessing serialization issues.
 - Track scan job completion status explicitly in the filesystem (vs. merely looking at whether buffer dir exists).
+- Transcript databases: Include all `.parquet` files in directory (don't require `transcripts_` prefix).
 
 ## 0.4.1 (12 December 2025)
 

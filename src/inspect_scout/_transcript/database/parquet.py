@@ -1270,7 +1270,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             files = []
             for f in all_files:
                 name = f.name
-                if name.endswith(".parquet") and "transcripts_" in name:
+                if name.endswith(".parquet"):
                     files.append(name)
 
             # no caching for now (downoads block initial startup and aggregate

@@ -69,8 +69,10 @@ const InputRenderer: FC<InputRendererProps> = ({
   initialEventId,
   highlightLabeled,
 }) => {
+  const loading = useStore((state) => state.loading);
+  const loadingData = useStore((state) => state.loadingData);
   if (!inputData) {
-    return <div>No Input Available</div>;
+    return loading || loadingData ? undefined : <div>No Input Available</div>;
   }
 
   if (isTranscriptInput(inputData)) {

@@ -1,11 +1,6 @@
 import clsx from "clsx";
 import { FC, memo } from "react";
-import {
-  Link,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { MarkdownReference } from "../../../../components/MarkdownDivWithReferences";
 import {

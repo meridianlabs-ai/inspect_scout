@@ -7,7 +7,6 @@ from typing import Any, Iterable, Literal, TypeVar
 import anyio
 import pandas as pd
 import pyarrow as pa
-import pyarrow.compute as pc
 import pyarrow.ipc as pa_ipc
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -266,37 +265,22 @@ def view_server_app(
                 detail=f"Scanner '{query_scanner}' not found in scan results",
             )
 
-        # Search for the row with matching uuid and extract input and inputType columns
-        input_value: str | None = None
-        input_type: str | None = None
-        with result.reader(query_scanner) as reader:
-            for batch in reader:
-                # Check if required columns exist
-                required_cols = {"uuid", "input", "input_type"}
-                missing_cols = required_cols - set(batch.schema.names)
-                if missing_cols:
-                    raise HTTPException(
-                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Required columns missing: {', '.join(missing_cols)}",
-                    )
+        # get the result
+        result = await scan_results_arrow_async(str(scan_path))
 
-                # Use PyArrow compute to filter for matching UUID (more efficient than pandas)
-                uuid_column = batch.column("uuid")
-                mask = pc.equal(uuid_column, pa.scalar(query_uuid))
-
-                # Check if any rows match
-                if pc.sum(pc.cast(mask, pa.int32())).as_py() > 0:
-                    # Filter the batch and get the input and inputType columns
-                    filtered_batch = batch.filter(mask)
-                    input_value = filtered_batch.column("input")[0].as_py()
-                    input_type = filtered_batch.column("input_type")[0].as_py()
-                    break
-
-        if input_value is None:
+        # ensure we have the data (404 if not)
+        if query_scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail=f"No row found with uuid '{query_uuid}' in scanner '{query_scanner}'",
+                detail=f"Scanner '{query_scanner}' not found in scan results",
             )
+
+        input_value = result.get_field(
+            query_scanner, "uuid", query_uuid, "input"
+        ).as_py()
+        input_type = result.get_field(
+            query_scanner, "uuid", query_uuid, "input_type"
+        ).as_py()
 
         # Return raw input as body with inputType in header (more efficient for large text)
         return Response(
@@ -350,28 +334,17 @@ def view_server_app(
             # with only a moderate loss in compression ratio
             # (e.g. 40% larger in exchange for ~20x faster compression)
             with result.reader(
-                query_scanner, streaming_batch_size=streaming_batch_size
+                query_scanner,
+                streaming_batch_size=streaming_batch_size,
+                exclude_columns=["input"],
             ) as reader:
-                # Filter input from the datastream as it can be very
-                # large and will be requested by the client separately
-                # when it is needed
-                columns_to_omit = {"input"}
-                columns_to_keep = [
-                    name for name in reader.schema.names if name not in columns_to_omit
-                ]
-                filtered_schema = pa.schema(
-                    [reader.schema.field(name) for name in columns_to_keep]
-                )
-
                 with pa_ipc.new_stream(
                     buf,
-                    filtered_schema,
+                    reader.schema,
                     options=pa_ipc.IpcWriteOptions(compression="lz4"),
                 ) as writer:
                     for batch in reader:
-                        # Select only columns we want (zero-copy operation)
-                        filtered_batch = batch.select(columns_to_keep)
-                        writer.write_batch(filtered_batch)
+                        writer.write_batch(batch)
 
                         # Flush whatever the writer just appended
                         data = buf.getvalue()

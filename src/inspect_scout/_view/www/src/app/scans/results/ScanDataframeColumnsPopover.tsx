@@ -35,7 +35,7 @@ const columnsGroups = {
     "scanner_file",
     "scanner_params",
   ],
-  Input: ["input_type", "input_ids", "input"],
+  Input: ["input_type", "input_ids"],
   Validation: ["validation_target", "validation_result"],
   Result: [
     "uuid",

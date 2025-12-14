@@ -4477,10 +4477,14 @@ button._segment_19z32_10 {
   color: var(--bs-primary) !important;
   margin-right: 0.3rem;
 }
-._id_1a3zo_1 {
+._id_3fl9e_1 {
   display: grid;
   grid-template-rows: auto auto;
   row-gap: 0;
+}
+
+._idContainer_3fl9e_7 {
+  overflow-wrap: anywhere;
 }
 ._row_diloz_1 {
   border-bottom: solid 1px var(--bs-border-color);

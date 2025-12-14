@@ -6,7 +6,12 @@ def ensure_filesystem_dependencies(location: str) -> None:
         global _hf_initialized
         if not _hf_initialized:
             try:
+                import os
                 import warnings
+
+                # disable progress bars
+                os.environ["TQDM_DISABLE"] = "1"
+                os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
                 # ensure hf:// filesystem is registered
                 import huggingface_hub  # noqa: F401

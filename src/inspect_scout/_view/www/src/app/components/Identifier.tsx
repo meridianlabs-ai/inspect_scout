@@ -17,7 +17,7 @@ export const Identifier: FC<IndentifierProps> = ({ summary }): ReactNode => {
     const epoch = identifier.epoch;
     return (
       <div className={clsx(styles.id)}>
-        <div>{id}</div>
+        <div className={clsx(styles.idContainer)}>{id}</div>
         <div className={clsx("text-size-smallest", "text-style-secondary")}>
           {identifier.secondaryId ? `${identifier.secondaryId} ` : ""}epoch{" "}
           {epoch}

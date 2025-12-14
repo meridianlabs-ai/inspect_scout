@@ -1,7 +1,8 @@
 import os
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar, cast
 
 import click
+from click.core import ParameterSource
 from inspect_ai._cli.util import (
     int_bool_or_str_flag_callback,
     int_or_bool_flag_callback,
@@ -14,7 +15,7 @@ from inspect_ai._util.constants import DEFAULT_CACHE_DAYS
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai.log._file import list_eval_logs
-from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig
+from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig, Model
 from typing_extensions import Unpack
 
 from inspect_scout._validation import validation_set
@@ -326,7 +327,7 @@ def scan_command(
     ctx: click.Context,
     s: tuple[str, ...],
     transcripts: tuple[str, ...],
-    results: str,
+    results: str | None,
     worklist: str | None,
     validation: tuple[str, ...] | None,
     model: str | None,
@@ -371,23 +372,6 @@ def scan_command(
         raise click.UsageError("Missing argument 'FILE'.")
     file = ctx.args[0]
 
-    # model args and role
-    scan_model_args = parse_cli_config(m, model_config)
-    scan_model_roles = parse_model_role_cli_args(model_role)
-
-    # tags and metadata
-    scan_tags = _parse_comma_separated(tags)
-    scan_metadata = parse_cli_args(metadata)
-
-    # shuffle
-    # resolve sample_shuffle
-    if shuffle == -1:
-        scan_suffle: Literal[True] | int | None = True
-    elif shuffle == 0:
-        scan_suffle = None
-    else:
-        scan_suffle = shuffle
-
     # resolve scanjobs
     scanjob_args = parse_cli_args(s)
 
@@ -407,7 +391,8 @@ def scan_command(
                 scanjob = ScanJob(transcripts=None, scanners=scanners)
 
     # resolve transcripts (could be from ScanJob)
-    tx = transcripts_from(transcripts) if len(transcripts) > 0 else scanjob.transcripts
+    tx = transcripts_from(transcripts) if len(transcripts) > 0 else None
+    tx = resolve_scan_option(ctx, "transcripts", tx, scanjob.transcripts)
     if tx is None:
         # see if we can auto-discover transcripts from inspect logs
         inspect_log_dir = os.environ.get("INSPECT_LOG_DIR", "./logs")
@@ -420,8 +405,43 @@ def scan_command(
             "No transcripts specified for scanning (pass as --transcripts or include in @scanjob)"
         )
 
+    # resolve some options
+    scan_results = resolve_scan_option(ctx, "results", results, scanjob.results)
+    scan_worklist = cast(
+        str | None,
+        resolve_scan_option(ctx, "worklist", worklist, scanjob.worklist),
+    )
+
     # parse validation
-    scan_validation = _parse_validation(validation)
+    parsed_validation = _parse_validation(validation)
+    scan_validation = cast(
+        ValidationSet | dict[str, ValidationSet] | None,
+        resolve_scan_option(ctx, "validation", parsed_validation, scanjob.validation),
+    )
+
+    # model
+    scan_model = cast(
+        str | None,
+        resolve_scan_option(ctx, "model", model, scanjob.model),
+    )
+    scan_model_base_url = resolve_scan_option(
+        ctx, "model_base_url", model_base_url, scanjob.model_base_url
+    )
+    scan_model_args = resolve_scan_option_multi(
+        ctx,
+        ["m", "model_config"],
+        parse_cli_config(m, model_config),
+        scanjob.model_args,
+    )
+    scan_model_roles = cast(
+        dict[str, str | Model] | None,
+        resolve_scan_option(
+            ctx,
+            "model_role",
+            parse_model_role_cli_args(model_role),
+            scanjob.model_roles,
+        ),
+    )
 
     # resolve cache
     cache_config: bool | CachePolicy | None = None
@@ -436,6 +456,13 @@ def scan_command(
             cache_config = CachePolicy(expiry=f"{cache}D")
         case _:
             cache_config = cache
+    if scanjob.generate_config is not None:
+        cache_config = cast(
+            bool | CachePolicy | None,
+            resolve_scan_option(
+                ctx, "cache", cache_config, scanjob.generate_config.cache
+            ),
+        )
 
     # resolve batch
     if isinstance(batch, str):
@@ -444,44 +471,115 @@ def scan_command(
         )
     else:
         batch_config = batch
+    if scanjob.generate_config is not None:
+        batch_config = cast(
+            bool | int | BatchConfig | None,
+            resolve_scan_option(
+                ctx, "batch", batch_config, scanjob.generate_config.batch
+            ),
+        )
 
     # resolve model config
+    scanjob_model_config = scanjob.generate_config or GenerateConfig()
     scan_model_config = GenerateConfig(
-        max_retries=max_retries,
-        timeout=timeout,
-        max_connections=max_connections,
+        max_retries=resolve_scan_option(
+            ctx, "max_retries", max_retries, scanjob_model_config.max_retries
+        ),
+        timeout=resolve_scan_option(
+            ctx, "timeout", timeout, scanjob_model_config.timeout
+        ),
+        max_connections=resolve_scan_option(
+            ctx,
+            "max_connections",
+            max_connections,
+            scanjob_model_config.max_connections,
+        ),
         cache=cache_config,
         batch=batch_config,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        reasoning_effort=reasoning_effort,
-        reasoning_tokens=reasoning_tokens,
-        reasoning_summary=reasoning_summary,
-        reasoning_history=reasoning_history,
+        max_tokens=resolve_scan_option(
+            ctx, "max_tokens", max_tokens, scanjob_model_config.max_tokens
+        ),
+        temperature=resolve_scan_option(
+            ctx, "temperature", temperature, scanjob_model_config.temperature
+        ),
+        top_p=resolve_scan_option(ctx, "top_p", top_p, scanjob_model_config.top_p),
+        top_k=resolve_scan_option(ctx, "top_k", top_k, scanjob_model_config.top_k),
+        reasoning_effort=resolve_scan_option(
+            ctx,
+            "reasoning_effort",
+            reasoning_effort,
+            scanjob_model_config.reasoning_effort,
+        ),
+        reasoning_tokens=resolve_scan_option(
+            ctx,
+            "reasoning_tokens",
+            reasoning_tokens,
+            scanjob_model_config.reasoning_tokens,
+        ),
+        reasoning_summary=resolve_scan_option(
+            ctx,
+            "reasoning_summary",
+            reasoning_summary,
+            scanjob_model_config.reasoning_summary,
+        ),
+        reasoning_history=resolve_scan_option(
+            ctx,
+            "reasoning_history",
+            reasoning_history,
+            scanjob_model_config.reasoning_history,
+        ),
+    )
+
+    scan_max_transcripts = resolve_scan_option(
+        ctx, "max_transcripts", max_transcripts, scanjob.max_transcripts
+    )
+    scan_max_processes = resolve_scan_option(
+        ctx, "max_processes", max_processes, scanjob.max_processes
+    )
+    scan_limit = resolve_scan_option(ctx, "limit", limit, scanjob.limit)
+
+    # shuffle
+    if shuffle == -1:
+        scan_shuffle: Literal[True] | int | None = True
+    elif shuffle == 0:
+        scan_shuffle = None
+    else:
+        scan_shuffle = shuffle
+    scan_shuffle = resolve_scan_option(ctx, "shuffle", scan_shuffle, scanjob.shuffle)
+
+    # tags and metadata
+    scan_tags = resolve_scan_option(
+        ctx, "tags", _parse_comma_separated(tags), scanjob.tags
+    )
+    scan_metadata = resolve_scan_option(
+        ctx, "metadata", parse_cli_args(metadata), scanjob.metadata
+    )
+
+    # log level
+    scan_log_level = resolve_scan_option(
+        ctx, "log_level", common.get("log_level", None), scanjob.log_level
     )
 
     # run scan
     scan(
         scanners=scanjob,
         transcripts=tx,
-        results=results,
-        worklist=worklist,
+        results=scan_results,
+        worklist=scan_worklist,
         validation=scan_validation,
-        model=model,
+        model=scan_model,
         model_config=scan_model_config,
-        model_base_url=model_base_url,
+        model_base_url=scan_model_base_url,
         model_args=scan_model_args,
         model_roles=scan_model_roles,
-        max_transcripts=max_transcripts,
-        max_processes=max_processes,
-        limit=limit,
-        shuffle=scan_suffle,
+        max_transcripts=scan_max_transcripts,
+        max_processes=scan_max_processes,
+        limit=scan_limit,
+        shuffle=scan_shuffle,
         tags=scan_tags,
         metadata=scan_metadata,
         fail_on_error=common["fail_on_error"],
-        log_level=common["log_level"],
+        log_level=scan_log_level,
     )
 
 
@@ -595,3 +693,35 @@ def _parse_validation(
         return single_validation
     else:
         return None
+
+
+T = TypeVar("T")
+
+
+def resolve_scan_option(
+    ctx: click.Context,
+    option: str,
+    option_value: T | None,
+    scan_job_value: T | None,
+) -> T | None:
+    if scan_job_value is not None:
+        if ctx.get_parameter_source(option) != ParameterSource.COMMANDLINE:
+            return scan_job_value
+
+    return option_value
+
+
+def resolve_scan_option_multi(
+    ctx: click.Context,
+    options: list[str],
+    option_value: T | None,
+    scan_job_value: T | None,
+) -> T | None:
+    """Resolve option when value is derived from multiple CLI options."""
+    if scan_job_value is not None:
+        if not any(
+            ctx.get_parameter_source(opt) == ParameterSource.COMMANDLINE
+            for opt in options
+        ):
+            return scan_job_value
+    return option_value

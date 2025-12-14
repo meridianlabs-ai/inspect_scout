@@ -604,25 +604,25 @@
     "href": "CHANGELOG.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Scanning: Switch from dill to cloudpickle and restore default max_processes to 4 after resolving multiprocessing serialization issues.\nTrack scan job completion status explicitly in the filesystem (vs. merely looking at whether buffer dir exists)."
-  },
-  {
-    "objectID": "CHANGELOG.html#unreleased",
-    "href": "CHANGELOG.html#unreleased",
-    "title": "Inspect Scout",
-    "section": "",
-    "text": "Scanning: Switch from dill to cloudpickle and restore default max_processes to 4 after resolving multiprocessing serialization issues.\nTrack scan job completion status explicitly in the filesystem (vs. merely looking at whether buffer dir exists)."
+    "text": "Scanning: Switch from dill to cloudpickle and restore default max_processes to 4 after resolving multiprocessing serialization issues.\nTrack scan job completion status explicitly in the filesystem (vs. merely looking at whether buffer dir exists).\nTranscript databases: Include all .parquet files in directory (don’t require transcripts_ prefix)."
   },
   {
     "objectID": "CHANGELOG.html#december-2025",
     "href": "CHANGELOG.html#december-2025",
     "title": "Inspect Scout",
-    "section": "0.4.1 (12 December 2025)",
-    "text": "0.4.1 (12 December 2025)\n\nScan jobs: Correct resolution order for options (CLI, then scanjob config, then environment variables).\nScanning: Restore default max_processes to 1 while we resolve some multiprocessing serialization issues."
+    "section": "",
+    "text": "Scanning: Switch from dill to cloudpickle and restore default max_processes to 4 after resolving multiprocessing serialization issues.\nTrack scan job completion status explicitly in the filesystem (vs. merely looking at whether buffer dir exists).\nTranscript databases: Include all .parquet files in directory (don’t require transcripts_ prefix)."
   },
   {
     "objectID": "CHANGELOG.html#december-2025-1",
     "href": "CHANGELOG.html#december-2025-1",
+    "title": "Inspect Scout",
+    "section": "0.4.1 (12 December 2025)",
+    "text": "0.4.1 (12 December 2025)\n\nScan jobs: Correct resolution order for options (CLI, then scanjob config, then environment variables).\nScanning: Restore default max_processes to 1 while we resolve some multiprocessing serialization issues."
+  },
+  {
+    "objectID": "CHANGELOG.html#december-2025-2",
+    "href": "CHANGELOG.html#december-2025-2",
     "title": "Inspect Scout",
     "section": "0.4.0 (11 December 2025)",
     "text": "0.4.0 (11 December 2025)\n\nInitial release."

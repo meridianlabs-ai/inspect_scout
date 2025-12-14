@@ -96,6 +96,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._query = query
         self._snapshot = snapshot
 
+        # could be called in a spawed worker where there are no fs deps yet
+        ensure_filesystem_dependencies(location)
+
         # Note: Bloom filter support for transcript_id would be beneficial for point
         # lookups, but PyArrow doesn't yet support writing bloom filters (as of v21.0.0).
         # PR #37400 is in progress: https://github.com/apache/arrow/pull/37400

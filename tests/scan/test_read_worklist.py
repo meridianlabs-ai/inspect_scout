@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from inspect_scout import log_metadata as m
+from inspect_scout import log_columns as c
 from inspect_scout._scan import _resolve_worklist
 from inspect_scout._scanspec import Worklist
 from inspect_scout._transcript.factory import transcripts_from
@@ -143,7 +143,7 @@ async def test_resolve_worklist_with_transcripts_query() -> None:
     """Test that ScannerWork with a Transcripts query resolves to actual IDs."""
     # Create a Transcripts query that filters by task_name
     transcripts = transcripts_from(LOGS_DIR)
-    filtered = transcripts.where(m.task_name == "popularity")
+    filtered = transcripts.where(c.task == "popularity")
 
     worklist = [
         ScannerWork(scanner="scanner_a", transcripts=filtered),
@@ -166,7 +166,7 @@ async def test_resolve_worklist_mixed() -> None:
     """Test worklist with both Transcripts queries and explicit ID lists."""
     # Create a Transcripts query
     transcripts = transcripts_from(LOGS_DIR)
-    filtered = transcripts.where(m.task_name == "popularity")
+    filtered = transcripts.where(c.task == "popularity")
 
     # Create worklist with mixed types
     explicit_ids = ["explicit_id_1", "explicit_id_2"]
@@ -200,8 +200,8 @@ async def test_resolve_worklist_multiple_transcripts_queries() -> None:
     """
     # Create base transcripts and filter independently
     transcripts = transcripts_from(LOGS_DIR)
-    popularity_transcripts = transcripts.where(m.task_name == "popularity")
-    security_transcripts = transcripts.where(m.task_name == "security_guide")
+    popularity_transcripts = transcripts.where(c.task == "popularity")
+    security_transcripts = transcripts.where(c.task == "security_guide")
 
     worklist = [
         ScannerWork(scanner="scanner_a", transcripts=popularity_transcripts),

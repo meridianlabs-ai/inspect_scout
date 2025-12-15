@@ -187,12 +187,14 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 You could also insert a filtered list of transcripts:
 
 ``` python
+from inspect_scout import log_columns as c
+
 async with transcripts_db("s3://my-transcript-db/") as db:
 
     transcripts = (
         transcripts_from("./logs")
-        .where(m.task_name == "cybench")
-        .where(m.model.like("openai/%"))
+        .where(c.task == "cybench")
+        .where(c.model.like("openai/%"))
     )
 
     await db.insert(transcripts)

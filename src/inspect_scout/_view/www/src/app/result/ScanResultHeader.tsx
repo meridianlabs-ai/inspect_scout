@@ -104,7 +104,9 @@ const transcriptCols = (result: ScannerData, status?: Status) => {
       },
       {
         label: "Task",
-        value: result.input.metadata.task_name as ReactNode,
+        value: (result.input.metadata.task_ ||
+          result.input.metadata.task_name ||
+          "") as ReactNode,
       },
 
       {

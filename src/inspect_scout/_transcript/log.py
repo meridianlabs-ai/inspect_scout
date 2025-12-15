@@ -21,14 +21,14 @@ class LogColumns(Columns):
     Metadata class methods.
 
     Usage:
-        from inspect_scout import log_metadata as m
+        from inspect_scout import log_columns as c
 
         # Typed access to standard fields
-        filter = m.model == "gpt-4"
-        filter = (m.task_name == "math") & (m.epochs > 1)
+        filter = c.model == "gpt-4"
+        filter = (c.task == "math") & (c.epochs > 1)
 
         # Dynamic access to custom fields
-        filter = m["custom_field"] > 100
+        filter = c["custom_field"] > 100
     """
 
     # ===== ID columns =====

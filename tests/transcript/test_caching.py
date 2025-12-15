@@ -36,7 +36,7 @@ def sample_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "eval_id": ["eval_001", "eval_001"],
-            "task_name": ["test_task", "test_task"],
+            "task": ["test_task", "test_task"],
             "model": ["gpt-4", "gpt-4"],
             "id": ["sample_001", "sample_002"],
             "score": [0.85, 0.92],

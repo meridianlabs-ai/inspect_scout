@@ -20,10 +20,10 @@ reference: "inspect_scout"
 
 ### Column
 ### Condition
-### Metadata
-### metadata
-### LogMetadata
-### log_metadata
+### Columns
+### columns
+### LogColumns
+### log_columns
 
 
 

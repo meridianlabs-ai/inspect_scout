@@ -1,7 +1,7 @@
 
 ``` {.python filename="cybench_scan.py"}
 from inspect_scout (
-    import ScanJob, scanjob, transcripts_from, metadata as m
+    import ScanJob, scanjob, transcripts_from, columns as c
 )
 
 from .scanners import deception, tool_errors
@@ -10,7 +10,7 @@ from .scanners import deception, tool_errors
 def cybench_job(logs: str = "./logs") -> ScanJob:
 
     transcripts = transcripts_from(logs)
-    transcripts = transcripts.where(m.task_name == "cybench")
+    transcripts = transcripts.where(c.task == "cybench")
 
     return ScanJob(
         scanners = [deception(), java_tool_usages()],

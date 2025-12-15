@@ -8,7 +8,7 @@ import pytest
 import pytest_asyncio
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
-from inspect_scout import metadata as m
+from inspect_scout import columns as c
 from inspect_scout import transcripts_from
 from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
@@ -249,7 +249,7 @@ async def test_select_all(populated_db: ParquetTranscriptsDB) -> None:
 async def test_select_with_where(populated_db: ParquetTranscriptsDB) -> None:
     """Test filtering by metadata conditions."""
     # Filter by model (now a direct column, not nested in metadata JSON)
-    condition = m.model == "gpt-4"
+    condition = c.model == "gpt-4"
     results = [info async for info in populated_db.select([condition], None, False)]
 
     # Should have ~7 results (20 total / 3 models)
@@ -294,18 +294,18 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
 async def test_metadata_dsl_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test various Condition operators."""
     # Greater than
-    results = [info async for info in populated_db.select([m.index > 15], None, False)]
+    results = [info async for info in populated_db.select([c.index > 15], None, False)]
     assert len(results) == 4  # indices 16, 17, 18, 19
 
     # Less than or equal
-    results = [info async for info in populated_db.select([m.index <= 5], None, False)]
+    results = [info async for info in populated_db.select([c.index <= 5], None, False)]
     assert len(results) == 6  # indices 0-5
 
     # IN operator
     results = [
         info
         async for info in populated_db.select(
-            [m.task.in_(["math", "coding"])], None, False
+            [c.task.in_(["math", "coding"])], None, False
         )
     ]
     assert len(results) >= 10  # At least 2/3 of results
@@ -316,7 +316,7 @@ async def test_json_path_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test querying metadata fields."""
     # Query by temperature value
     results = [
-        info async for info in populated_db.select([m.temperature > 0.7], None, False)
+        info async for info in populated_db.select([c.temperature > 0.7], None, False)
     ]
     assert len(results) > 0
 
@@ -330,7 +330,7 @@ async def test_json_path_queries(populated_db: ParquetTranscriptsDB) -> None:
 async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     """Test combining conditions with & and |."""
     # AND condition
-    condition = (m.model == "gpt-4") & (m.index < 10)
+    condition = (c.model == "gpt-4") & (c.index < 10)
     results = [info async for info in populated_db.select([condition], None, False)]
 
     for info in results:
@@ -339,7 +339,7 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
         assert isinstance(index, int) and index < 10
 
     # OR condition
-    condition = (m.index == 0) | (m.index == 19)
+    condition = (c.index == 0) | (c.index == 19)
     results = [info async for info in populated_db.select([condition], None, False)]
     assert len(results) == 2
 
@@ -429,7 +429,7 @@ async def test_arbitrary_metadata(parquet_db: ParquetTranscriptsDB) -> None:
     # Query with nested metadata (use JSON path for nested dicts)
     results = [
         info
-        async for info in parquet_db.select([m["nested.deep.value"] == 42], None, False)
+        async for info in parquet_db.select([c["nested.deep.value"] == 42], None, False)
     ]
     assert len(results) == 1
     assert results[0].transcript_id == "complex-1"
@@ -480,7 +480,7 @@ async def test_where_filtering(test_location: Path) -> None:
             await reader._db.insert(create_test_transcripts(20))
 
     # Filter
-    filtered = transcripts_obj.where(m.model == "gpt-4")
+    filtered = transcripts_obj.where(c.model == "gpt-4")
 
     async with filtered.reader() as reader:
         index = [info async for info in reader.index()]
@@ -543,7 +543,7 @@ async def test_query_no_matches(populated_db: ParquetTranscriptsDB) -> None:
     results = [
         info
         async for info in populated_db.select(
-            [m.model == "non-existent-model"], None, False
+            [c.model == "non-existent-model"], None, False
         )
     ]
     assert len(results) == 0
@@ -600,7 +600,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
 
     # Query by direct field
     results = [
-        info async for info in parquet_db.select([m.model == "gpt-4"], None, False)
+        info async for info in parquet_db.select([c.model == "gpt-4"], None, False)
     ]
     assert len(results) == 1
 
@@ -608,7 +608,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
     results = [
         info
         async for info in parquet_db.select(
-            [m["config.temperature"] > 0.6], None, False
+            [c["config.temperature"] > 0.6], None, False
         )
     ]
     assert len(results) == 1
@@ -677,7 +677,7 @@ async def test_schema_evolution(
 
     # First batch has NULL temperature
     batch1_results = [
-        info async for info in parquet_db.select([m.task == "math"], None, False)
+        info async for info in parquet_db.select([c.task == "math"], None, False)
     ]
     assert len(batch1_results) == 5
     for info in batch1_results:
@@ -686,7 +686,7 @@ async def test_schema_evolution(
 
     # Second batch has NULL task
     batch2_results = [
-        info async for info in parquet_db.select([m.model == "claude"], None, False)
+        info async for info in parquet_db.select([c.model == "claude"], None, False)
     ]
     assert len(batch2_results) == 5
     for info in batch2_results:
@@ -849,17 +849,17 @@ async def test_recursive_discovery(test_location: Path) -> None:
 
     # Verify we can filter by location
     root_results = [
-        info async for info in db_all.select([m.location == "root"], None, False)
+        info async for info in db_all.select([c.location == "root"], None, False)
     ]
     assert len(root_results) == 3
 
     subdir1_results = [
-        info async for info in db_all.select([m.location == "subdir1"], None, False)
+        info async for info in db_all.select([c.location == "subdir1"], None, False)
     ]
     assert len(subdir1_results) == 3
 
     subdir2_results = [
-        info async for info in db_all.select([m.location == "subdir2"], None, False)
+        info async for info in db_all.select([c.location == "subdir2"], None, False)
     ]
     assert len(subdir2_results) == 3
 

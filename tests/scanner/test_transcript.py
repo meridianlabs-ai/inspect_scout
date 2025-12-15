@@ -6,7 +6,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 import pytest_asyncio
-from inspect_scout import metadata as m
+from inspect_scout import columns as c
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -55,7 +55,7 @@ async def db() -> Any:
 
 def test_simple_equality() -> None:
     """Test simple equality conditions."""
-    condition = m.model == "gpt-4"
+    condition = c.model == "gpt-4"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"model" = ?'
     assert params == ["gpt-4"]
@@ -64,19 +64,19 @@ def test_simple_equality() -> None:
 def test_comparison_operators() -> None:
     """Test all comparison operators."""
     # Greater than
-    condition = m.score > 0.8
+    condition = c.score > 0.8
     sql, params = condition.to_sql("sqlite")
     assert sql == '"score" > ?'
     assert params == [0.8]
 
     # Less than or equal
-    condition = m.retries <= 3
+    condition = c.retries <= 3
     sql, params = condition.to_sql("sqlite")
     assert sql == '"retries" <= ?'
     assert params == [3]
 
     # Not equal
-    condition = m.status != "error"
+    condition = c.status != "error"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"status" != ?'
     assert params == ["error"]
@@ -84,12 +84,12 @@ def test_comparison_operators() -> None:
 
 def test_in_operator() -> None:
     """Test IN and NOT IN operators."""
-    condition = m.model.in_(["gpt-4", "claude"])
+    condition = c.model.in_(["gpt-4", "claude"])
     sql, params = condition.to_sql("sqlite")
     assert sql == '"model" IN (?, ?)'
     assert params == ["gpt-4", "claude"]
 
-    condition = m.status.not_in(["error", "timeout"])
+    condition = c.status.not_in(["error", "timeout"])
     sql, params = condition.to_sql("sqlite")
     assert sql == '"status" NOT IN (?, ?)'
     assert params == ["error", "timeout"]
@@ -98,24 +98,24 @@ def test_in_operator() -> None:
 def test_empty_in_operator() -> None:
     """Test empty IN and NOT IN operators."""
     # Empty IN should always be false (nothing can be in an empty set)
-    condition = m.model.in_([])
+    condition = c.model.in_([])
     sql, params = condition.to_sql("sqlite")
     assert sql == "1 = 0"  # Always false
     assert params == []
 
     # Empty NOT IN should always be true (everything is not in an empty set)
-    condition = m.status.not_in([])
+    condition = c.status.not_in([])
     sql, params = condition.to_sql("sqlite")
     assert sql == "1 = 1"  # Always true
     assert params == []
 
     # Test with other dialects too
-    condition = m.model.in_([])
+    condition = c.model.in_([])
     sql, params = condition.to_sql("postgres")
     assert sql == "1 = 0"
     assert params == []
 
-    condition = m.status.not_in([])
+    condition = c.status.not_in([])
     sql, params = condition.to_sql("duckdb")
     assert sql == "1 = 1"
     assert params == []
@@ -123,12 +123,12 @@ def test_empty_in_operator() -> None:
 
 def test_null_operators() -> None:
     """Test NULL and NOT NULL operators."""
-    condition = m.error_message.is_null()
+    condition = c.error_message.is_null()
     sql, params = condition.to_sql("sqlite")
     assert sql == '"error_message" IS NULL'
     assert params == []
 
-    condition = m.error_message.is_not_null()
+    condition = c.error_message.is_not_null()
     sql, params = condition.to_sql("sqlite")
     assert sql == '"error_message" IS NOT NULL'
     assert params == []
@@ -137,30 +137,30 @@ def test_null_operators() -> None:
 def test_none_comparison() -> None:
     """Test that == None and != None map to IS NULL and IS NOT NULL."""
     # == None should map to IS NULL
-    condition = m.error_message == None  # noqa: E711
+    condition = c.error_message == None  # noqa: E711
     sql, params = condition.to_sql("sqlite")
     assert sql == '"error_message" IS NULL'
     assert params == []
 
     # != None should map to IS NOT NULL
-    condition = m.error_message != None  # noqa: E711
+    condition = c.error_message != None  # noqa: E711
     sql, params = condition.to_sql("sqlite")
     assert sql == '"error_message" IS NOT NULL'
     assert params == []
 
     # Test with other dialects
-    condition = m.status == None  # noqa: E711
+    condition = c.status == None  # noqa: E711
     sql, params = condition.to_sql("postgres")
     assert sql == '"status" IS NULL'
     assert params == []
 
-    condition = m.status != None  # noqa: E711
+    condition = c.status != None  # noqa: E711
     sql, params = condition.to_sql("duckdb")
     assert sql == '"status" IS NOT NULL'
     assert params == []
 
     # Combined with other conditions
-    condition = (m.model == "gpt-4") & (m.error == None)  # noqa: E711
+    condition = (c.model == "gpt-4") & (c.error == None)  # noqa: E711
     sql, params = condition.to_sql("sqlite")
     assert sql == '("model" = ? AND "error" IS NULL)'
     assert params == ["gpt-4"]
@@ -168,12 +168,12 @@ def test_none_comparison() -> None:
 
 def test_like_operator() -> None:
     """Test LIKE and NOT LIKE operators."""
-    condition = m.error_message.like("%timeout%")
+    condition = c.error_message.like("%timeout%")
     sql, params = condition.to_sql("sqlite")
     assert sql == '"error_message" LIKE ?'
     assert params == ["%timeout%"]
 
-    condition = m.log.not_like("/tmp/%")
+    condition = c.log.not_like("/tmp/%")
     sql, params = condition.to_sql("sqlite")
     assert sql == '"log" NOT LIKE ?'
     assert params == ["/tmp/%"]
@@ -182,52 +182,52 @@ def test_like_operator() -> None:
 def test_ilike_operator() -> None:
     """Test ILIKE and NOT ILIKE operators for case-insensitive matching."""
     # PostgreSQL - native ILIKE support
-    condition = m.error_message.ilike("%TIMEOUT%")
+    condition = c.error_message.ilike("%TIMEOUT%")
     sql, params = condition.to_sql("postgres")
     assert sql == '"error_message" ILIKE $1'
     assert params == ["%TIMEOUT%"]
 
-    condition = m.log.not_ilike("/TMP/%")
+    condition = c.log.not_ilike("/TMP/%")
     sql, params = condition.to_sql("postgres")
     assert sql == '"log" NOT ILIKE $1'
     assert params == ["/TMP/%"]
 
     # SQLite - should use LOWER() for case-insensitivity
-    condition = m.error_message.ilike("%TIMEOUT%")
+    condition = c.error_message.ilike("%TIMEOUT%")
     sql, params = condition.to_sql("sqlite")
     assert sql == 'LOWER("error_message") LIKE LOWER(?)'
     assert params == ["%TIMEOUT%"]
 
-    condition = m.log.not_ilike("/TMP/%")
+    condition = c.log.not_ilike("/TMP/%")
     sql, params = condition.to_sql("sqlite")
     assert sql == 'LOWER("log") NOT LIKE LOWER(?)'
     assert params == ["/TMP/%"]
 
     # DuckDB - should also use LOWER() for case-insensitivity
-    condition = m.status.ilike("SUCCESS%")
+    condition = c.status.ilike("SUCCESS%")
     sql, params = condition.to_sql("duckdb")
     assert sql == 'LOWER("status") LIKE LOWER(?)'
     assert params == ["SUCCESS%"]
 
-    condition = m.model.not_ilike("%GPT%")
+    condition = c.model.not_ilike("%GPT%")
     sql, params = condition.to_sql("duckdb")
     assert sql == 'LOWER("model") NOT LIKE LOWER(?)'
     assert params == ["%GPT%"]
 
     # Test with JSON paths too
-    condition = m["metadata.message"].ilike("%Error%")
+    condition = c["metadata.message"].ilike("%Error%")
     sql, params = condition.to_sql("postgres")
     assert sql == """"metadata"->>'message' ILIKE $1"""
     assert params == ["%Error%"]
 
     # SQLite with JSON path
-    condition = m["metadata.message"].ilike("%Error%")
+    condition = c["metadata.message"].ilike("%Error%")
     sql, params = condition.to_sql("sqlite")
     assert sql == """LOWER(json_extract("metadata", '$.message')) LIKE LOWER(?)"""
     assert params == ["%Error%"]
 
     # DuckDB with JSON path - now uses json_extract_string with VARCHAR cast
-    condition = m["metadata.message"].ilike("%Error%")
+    condition = c["metadata.message"].ilike("%Error%")
     sql, params = condition.to_sql("duckdb")
     assert (
         sql
@@ -238,12 +238,12 @@ def test_ilike_operator() -> None:
 
 def test_between_operator() -> None:
     """Test BETWEEN and NOT BETWEEN operators."""
-    condition = m.score.between(0.5, 0.9)
+    condition = c.score.between(0.5, 0.9)
     sql, params = condition.to_sql("sqlite")
     assert sql == '"score" BETWEEN ? AND ?'
     assert params == [0.5, 0.9]
 
-    condition = m.retries.not_between(1, 3)
+    condition = c.retries.not_between(1, 3)
     sql, params = condition.to_sql("sqlite")
     assert sql == '"retries" NOT BETWEEN ? AND ?'
     assert params == [1, 3]
@@ -253,49 +253,49 @@ def test_between_with_null_bounds() -> None:
     """Test that BETWEEN properly handles NULL bounds."""
     # NULL in lower bound should raise ValueError
     with pytest.raises(ValueError, match="BETWEEN operator requires non-None bounds"):
-        m.score.between(None, 0.9)
+        c.score.between(None, 0.9)
 
     # NULL in upper bound should raise ValueError
     with pytest.raises(ValueError, match="BETWEEN operator requires non-None bounds"):
-        m.score.between(0.5, None)
+        c.score.between(0.5, None)
 
     # NULL in both bounds should raise ValueError
     with pytest.raises(ValueError, match="BETWEEN operator requires non-None bounds"):
-        m.score.between(None, None)
+        c.score.between(None, None)
 
     # Same for NOT BETWEEN
     with pytest.raises(
         ValueError, match="NOT BETWEEN operator requires non-None bounds"
     ):
-        m.retries.not_between(None, 3)
+        c.retries.not_between(None, 3)
 
     with pytest.raises(
         ValueError, match="NOT BETWEEN operator requires non-None bounds"
     ):
-        m.retries.not_between(1, None)
+        c.retries.not_between(1, None)
 
     with pytest.raises(
         ValueError, match="NOT BETWEEN operator requires non-None bounds"
     ):
-        m.retries.not_between(None, None)
+        c.retries.not_between(None, None)
 
 
 def test_logical_operators() -> None:
     """Test AND, OR, and NOT logical operators."""
     # AND
-    condition = (m.model == "gpt-4") & (m.score > 0.8)
+    condition = (c.model == "gpt-4") & (c.score > 0.8)
     sql, params = condition.to_sql("sqlite")
     assert sql == '("model" = ? AND "score" > ?)'
     assert params == ["gpt-4", 0.8]
 
     # OR
-    condition = (m.status == "error") | (m.retries > 2)
+    condition = (c.status == "error") | (c.retries > 2)
     sql, params = condition.to_sql("sqlite")
     assert sql == '("status" = ? OR "retries" > ?)'
     assert params == ["error", 2]
 
     # NOT
-    condition = ~(m.model == "gpt-3.5-turbo")
+    condition = ~(c.model == "gpt-3.5-turbo")
     sql, params = condition.to_sql("sqlite")
     assert sql == 'NOT ("model" = ?)'
     assert params == ["gpt-3.5-turbo"]
@@ -304,9 +304,9 @@ def test_logical_operators() -> None:
 def test_complex_nested_conditions() -> None:
     """Test complex nested conditions."""
     condition = (
-        ((m.model == "gpt-4") & (m.score > 0.8))
-        | ((m.model == "claude") & (m.score > 0.7))
-    ) & ~(m.error_message.is_not_null())
+        ((c.model == "gpt-4") & (c.score > 0.8))
+        | ((c.model == "claude") & (c.score > 0.7))
+    ) & ~(c.error_message.is_not_null())
 
     sql, params = condition.to_sql("sqlite")
     assert "AND" in sql
@@ -317,7 +317,7 @@ def test_complex_nested_conditions() -> None:
 
 def test_bracket_notation() -> None:
     """Test bracket notation for column access."""
-    condition = m["custom_field"] > 100
+    condition = c["custom_field"] > 100
     sql, params = condition.to_sql("sqlite")
     assert sql == '"custom_field" > ?'
     assert params == [100]
@@ -326,7 +326,7 @@ def test_bracket_notation() -> None:
 def test_nested_json_paths() -> None:
     """Test nested JSON path extraction with proper escaping."""
     # Simple nested path
-    condition = m["metadata.config.temperature"] > 0.7
+    condition = c["metadata.config.temperature"] > 0.7
 
     # SQLite
     sql, params = condition.to_sql("sqlite")
@@ -351,13 +351,13 @@ def test_nested_json_paths() -> None:
 def test_column_name_escaping() -> None:
     """Test that column names with special characters are properly escaped."""
     # Column name with double quotes
-    condition = m['col"umn'] == "value"
+    condition = c['col"umn'] == "value"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"col""umn" = ?'
     assert params == ["value"]
 
     # JSON path with single quotes - now gets quoted in SQLite due to special chars
-    condition = m["metadata.key'with'quotes"] == "value"
+    condition = c["metadata.key'with'quotes"] == "value"
     sql, params = condition.to_sql("sqlite")
     assert sql == """json_extract("metadata", '$."key''with''quotes"') = ?"""
     assert params == ["value"]
@@ -371,60 +371,60 @@ def test_column_name_escaping() -> None:
 def test_postgres_json_type_casting() -> None:
     """Test that PostgreSQL properly casts JSON values for comparisons."""
     # Integer comparison - should cast from text to bigint
-    condition = m["metadata.retries"] > 3
+    condition = c["metadata.retries"] > 3
     sql, params = condition.to_sql("postgres")
     assert sql == """("metadata"->>'retries')::text::bigint > $1"""
     assert params == [3]
 
     # Float comparison - should cast from text to double precision
-    condition = m["metadata.score"] >= 0.75
+    condition = c["metadata.score"] >= 0.75
     sql, params = condition.to_sql("postgres")
     assert sql == """("metadata"->>'score')::text::double precision >= $1"""
     assert params == [0.75]
 
     # Boolean comparison - should cast from text to boolean
-    condition = m["metadata.enabled"] == True  # noqa: E712
+    condition = c["metadata.enabled"] == True  # noqa: E712
     sql, params = condition.to_sql("postgres")
     assert sql == """("metadata"->>'enabled')::text::boolean = $1"""
     assert params == [True]
 
-    condition = m["metadata.flag"] != False  # noqa: E712
+    condition = c["metadata.flag"] != False  # noqa: E712
     sql, params = condition.to_sql("postgres")
     assert sql == """("metadata"->>'flag')::text::boolean != $1"""
     assert params == [False]
 
     # BETWEEN with numeric values - should cast from text
-    condition = m["metadata.score"].between(0.5, 0.9)
+    condition = c["metadata.score"].between(0.5, 0.9)
     sql, params = condition.to_sql("postgres")
     assert sql == """("metadata"->>'score')::text::double precision BETWEEN $1 AND $2"""
     assert params == [0.5, 0.9]
 
     # String comparison - no cast needed
-    condition = m["metadata.status"] == "active"
+    condition = c["metadata.status"] == "active"
     sql, params = condition.to_sql("postgres")
     assert sql == """"metadata"->>'status' = $1"""
     assert params == ["active"]
 
     # LIKE operator - should NOT cast (string operation)
-    condition = m["metadata.message"].like("%error%")
+    condition = c["metadata.message"].like("%error%")
     sql, params = condition.to_sql("postgres")
     assert sql == """"metadata"->>'message' LIKE $1"""
     assert params == ["%error%"]
 
     # IN operator - should NOT cast
-    condition = m["metadata.status"].in_(["active", "pending"])
+    condition = c["metadata.status"].in_(["active", "pending"])
     sql, params = condition.to_sql("postgres")
     assert sql == """"metadata"->>'status' IN ($1, $2)"""
     assert params == ["active", "pending"]
 
     # IS NULL - should NOT cast
-    condition = m["metadata.optional"].is_null()
+    condition = c["metadata.optional"].is_null()
     sql, params = condition.to_sql("postgres")
     assert sql == """"metadata"->>'optional' IS NULL"""
     assert params == []
 
     # Deep nested paths with casting
-    condition = m["metadata.config.max_retries"] < 10
+    condition = c["metadata.config.max_retries"] < 10
     sql, params = condition.to_sql("postgres")
     assert sql == """("metadata"->'config'->>'max_retries')::text::bigint < $1"""
     assert params == [10]
@@ -433,7 +433,7 @@ def test_postgres_json_type_casting() -> None:
 def test_postgres_casting_with_none() -> None:
     """Test PostgreSQL casting handles None values correctly."""
     # Comparison with None should not crash the casting logic
-    condition = m["metadata.field"] == None  # noqa: E711
+    condition = c["metadata.field"] == None  # noqa: E711
     sql, params = condition.to_sql("postgres")
     assert sql == """"metadata"->>'field' IS NULL"""
     assert params == []
@@ -445,10 +445,10 @@ def test_postgres_double_cast_correctness() -> None:
 
     # Test with various types to ensure the double cast is correct
     test_cases = [
-        (m["config.retry_count"] > 5, int, "bigint", 5),
-        (m["settings.threshold"] < 0.95, float, "double precision", 0.95),
-        (m["flags.enabled"] == True, bool, "boolean", True),  # noqa: E712
-        (m["options.active"] != False, bool, "boolean", False),  # noqa: E712
+        (c["config.retry_count"] > 5, int, "bigint", 5),
+        (c["settings.threshold"] < 0.95, float, "double precision", 0.95),
+        (c["flags.enabled"] == True, bool, "boolean", True),  # noqa: E712
+        (c["options.active"] != False, bool, "boolean", False),  # noqa: E712
     ]
 
     for condition, val_type, pg_type, expected_val in test_cases:
@@ -459,7 +459,7 @@ def test_postgres_double_cast_correctness() -> None:
         assert params == [expected_val]
 
     # Verify text comparison doesn't get double cast
-    condition = m["metadata.name"] == "test"
+    condition = c["metadata.name"] == "test"
     sql, params = condition.to_sql("postgres")
     assert "::text::" not in sql  # String comparison shouldn't have type casting
     assert params == ["test"]
@@ -468,13 +468,13 @@ def test_postgres_double_cast_correctness() -> None:
 def test_no_casting_for_non_json_columns() -> None:
     """Test that regular columns don't get cast in PostgreSQL."""
     # Regular column with integer - no casting
-    condition = m.retries > 3
+    condition = c.retries > 3
     sql, params = condition.to_sql("postgres")
     assert sql == '"retries" > $1'
     assert params == [3]
 
     # Regular column with float - no casting
-    condition = m.score >= 0.75
+    condition = c.score >= 0.75
     sql, params = condition.to_sql("postgres")
     assert sql == '"score" >= $1'
     assert params == [0.75]
@@ -482,7 +482,7 @@ def test_no_casting_for_non_json_columns() -> None:
 
 def test_deep_nested_paths() -> None:
     """Test deeply nested JSON paths."""
-    condition = m["metadata.level1.level2.level3.value"] > 10
+    condition = c["metadata.level1.level2.level3.value"] > 10
 
     # SQLite
     sql, params = condition.to_sql("sqlite")
@@ -509,46 +509,46 @@ def test_deep_nested_paths() -> None:
 def test_postgres_parameter_numbering() -> None:
     """Test that PostgreSQL parameter numbering is correct (1-based)."""
     # Single parameter - should be $1
-    condition = m.score > 0.5
+    condition = c.score > 0.5
     sql, params = condition.to_sql("postgres")
     assert sql == '"score" > $1'
     assert params == [0.5]
 
     # BETWEEN - should be $1 and $2
-    condition = m.score.between(0.3, 0.7)
+    condition = c.score.between(0.3, 0.7)
     sql, params = condition.to_sql("postgres")
     assert sql == '"score" BETWEEN $1 AND $2'
     assert params == [0.3, 0.7]
 
     # IN with multiple values - should be $1, $2, $3
-    condition = m.model.in_(["gpt-4", "claude", "gemini"])
+    condition = c.model.in_(["gpt-4", "claude", "gemini"])
     sql, params = condition.to_sql("postgres")
     assert sql == '"model" IN ($1, $2, $3)'
     assert params == ["gpt-4", "claude", "gemini"]
 
     # Combined conditions - parameters should be numbered sequentially
-    condition = (m.score > 0.5) & (m.retries < 3)
+    condition = (c.score > 0.5) & (c.retries < 3)
     sql, params = condition.to_sql("postgres")
     assert sql == '("score" > $1 AND "retries" < $2)'
     assert params == [0.5, 3]
 
     # Complex with BETWEEN in combination
-    condition = (m.model == "gpt-4") & (m.score.between(0.3, 0.7))
+    condition = (c.model == "gpt-4") & (c.score.between(0.3, 0.7))
     sql, params = condition.to_sql("postgres")
     assert sql == '("model" = $1 AND "score" BETWEEN $2 AND $3)'
     assert params == ["gpt-4", 0.3, 0.7]
 
     # Multiple IN clauses
-    condition = (m.model.in_(["gpt-4", "claude"])) & (
-        m.status.in_(["success", "pending"])
+    condition = (c.model.in_(["gpt-4", "claude"])) & (
+        c.status.in_(["success", "pending"])
     )
     sql, params = condition.to_sql("postgres")
     assert sql == '("model" IN ($1, $2) AND "status" IN ($3, $4))'
     assert params == ["gpt-4", "claude", "success", "pending"]
 
     # Complex nested with all types
-    condition = ((m.model == "gpt-4") & (m.score.between(0.3, 0.7))) | (
-        (m.status.in_(["error", "timeout"])) & (m.retries > 2)
+    condition = ((c.model == "gpt-4") & (c.score.between(0.3, 0.7))) | (
+        (c.status.in_(["error", "timeout"])) & (c.retries > 2)
     )
     sql, params = condition.to_sql("postgres")
     # Should have parameters $1, $2, $3, $4, $5, $6
@@ -597,12 +597,12 @@ async def test_query_all(db: EvalLogTranscriptsDB) -> None:
 async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
     """Test querying with filters."""
     # Filter by model
-    results = [item async for item in db.query(where=[m.model == "gpt-4"])]
+    results = [item async for item in db.query(where=[c.model == "gpt-4"])]
     for result in results:
         assert result.metadata["model"] == "gpt-4"
 
     # Filter by score range
-    results = [item async for item in db.query(where=[m.score > 0.7])]
+    results = [item async for item in db.query(where=[c.score > 0.7])]
     for result in results:
         assert cast(float, result.metadata["score"]) > 0.7
 
@@ -610,7 +610,7 @@ async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
 @pytest.mark.asyncio
 async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
     """Test querying with multiple conditions."""
-    conditions = [m.model == "gpt-4", m.score > 0.6]
+    conditions = [c.model == "gpt-4", c.score > 0.6]
     results = [item async for item in db.query(where=conditions)]
 
     for result in results:
@@ -625,7 +625,7 @@ async def test_query_with_limit(db: EvalLogTranscriptsDB) -> None:
     assert len(results) == 5
 
     # With filter and limit
-    results = [item async for item in db.query(where=[m.model == "gpt-4"], limit=2)]
+    results = [item async for item in db.query(where=[c.model == "gpt-4"], limit=2)]
     assert len(results) <= 2
 
 
@@ -654,8 +654,8 @@ async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
     """Test complex queries with multiple operators."""
     # Complex condition
     conditions = [
-        (m.model.in_(["gpt-4", "claude"])) & (m.score > 0.6),
-        m.error_message.is_null(),
+        (c.model.in_(["gpt-4", "claude"])) & (c.score > 0.6),
+        c.error_message.is_null(),
     ]
 
     results = [item async for item in db.query(where=conditions)]
@@ -685,16 +685,16 @@ async def test_metadata_extraction(db: EvalLogTranscriptsDB) -> None:
 async def test_none_comparison_in_db(db: EvalLogTranscriptsDB) -> None:
     """Test that == None and != None work correctly in database queries."""
     # Using == None (should behave same as is_null())
-    results_eq_none = [item async for item in db.query(where=[m.error_message == None])]  # noqa: E711
+    results_eq_none = [item async for item in db.query(where=[c.error_message == None])]  # noqa: E711
     results_is_null = [
-        item async for item in db.query(where=[m.error_message.is_null()])
+        item async for item in db.query(where=[c.error_message.is_null()])
     ]
     assert len(results_eq_none) == len(results_is_null)
 
     # Using != None (should behave same as is_not_null())
-    results_ne_none = [item async for item in db.query(where=[m.error_message != None])]  # noqa: E711
+    results_ne_none = [item async for item in db.query(where=[c.error_message != None])]  # noqa: E711
     results_is_not_null = [
-        item async for item in db.query(where=[m.error_message.is_not_null()])
+        item async for item in db.query(where=[c.error_message.is_not_null()])
     ]
     assert len(results_ne_none) == len(results_is_not_null)
 
@@ -706,7 +706,7 @@ async def test_none_comparison_in_db(db: EvalLogTranscriptsDB) -> None:
 async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
     """Test handling of NULL values in metadata."""
     # Query for null error_message
-    results = [item async for item in db.query(where=[m.error_message.is_null()])]
+    results = [item async for item in db.query(where=[c.error_message.is_null()])]
 
     for result in results:
         # NULL values should not appear in metadata dict
@@ -716,7 +716,7 @@ async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
         )
 
     # Query for non-null error_message
-    results = [item async for item in db.query(where=[m.error_message.is_not_null()])]
+    results = [item async for item in db.query(where=[c.error_message.is_not_null()])]
 
     for result in results:
         assert result.metadata.get("error_message") is not None
@@ -774,11 +774,11 @@ async def test_missing_required_columns() -> None:
 async def test_empty_in_clause_in_db(db: Any) -> None:
     """Test that empty IN/NOT IN work correctly in actual queries."""
     # Empty IN should return no results
-    results = [item async for item in db.query(where=[m.model.in_([])])]
+    results = [item async for item in db.query(where=[c.model.in_([])])]
     assert len(results) == 0  # Always false, no results
 
     # Empty NOT IN should return all results
-    results = [item async for item in db.query(where=[m.model.not_in([])])]
+    results = [item async for item in db.query(where=[c.model.not_in([])])]
     assert len(results) == 20  # Always true, all results
 
     # Combined with other conditions
@@ -786,13 +786,13 @@ async def test_empty_in_clause_in_db(db: Any) -> None:
         item
         async for item in db.query(
             where=[
-                m.score > 0.5,
-                m.status.not_in([]),  # This is always true, shouldn't affect results
+                c.score > 0.5,
+                c.status.not_in([]),  # This is always true, shouldn't affect results
             ]
         )
     ]
-    # Should be same as just m.score > 0.5
-    results_without = [item async for item in db.query(where=[m.score > 0.5])]
+    # Should be same as just c.score > 0.5
+    results_without = [item async for item in db.query(where=[c.score > 0.5])]
     assert len(results) == len(results_without)
 
 
@@ -807,7 +807,7 @@ async def test_large_in_clause() -> None:
     large_list = [f"model_{i}" for i in range(50)]
     large_list.append("gpt-4")  # Include one that exists
 
-    results = [item async for item in db.query(where=[m.model.in_(large_list)])]
+    results = [item async for item in db.query(where=[c.model.in_(large_list)])]
 
     # Should find some results
     assert len(results) > 0

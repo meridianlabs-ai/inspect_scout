@@ -192,7 +192,7 @@ def test_for_validation_large_id_list() -> None:
 
 def test_for_validation_combines_with_existing_conditions() -> None:
     """Test that for_validation combines with existing where conditions."""
-    from inspect_scout import metadata as m
+    from inspect_scout import columns as c
 
     validation = ValidationSet(
         cases=[
@@ -203,7 +203,7 @@ def test_for_validation_combines_with_existing_conditions() -> None:
 
     transcripts = MockTranscripts()
     # Add an existing condition
-    transcripts_filtered = transcripts.where(m.model == "gpt-4")
+    transcripts_filtered = transcripts.where(c.model == "gpt-4")
     # Add validation filter
     filtered = transcripts_filtered.for_validation(validation)
 

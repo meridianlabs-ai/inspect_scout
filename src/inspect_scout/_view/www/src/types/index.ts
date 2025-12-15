@@ -125,9 +125,10 @@ export interface TranscriptMetadata {
   epoch: number;
   eval_id: string;
   log: string;
-  eval_created: string;
+  date: string;
   eval_metadata: Record<string, unknown>;
-  task_name: string;
+  task?: string;
+  task_name?: string;
   model: string;
   score: string;
   [key: string]: unknown;

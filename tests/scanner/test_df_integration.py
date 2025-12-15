@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 from inspect_ai.analysis import samples_df
-from inspect_scout import log_metadata as lm
+from inspect_scout import log_columns as lc
 from inspect_scout._transcript.caching import samples_df_with_caching
 from inspect_scout._transcript.eval_log import (
     EvalLogTranscriptsReader,
@@ -62,7 +62,7 @@ async def test_integration() -> None:
 
         # This validates that we can properly create the in memory SQLite db
         async with EvalLogTranscriptsReader(
-            mixture, TranscriptsQuery(where=[lm.sample_id == REFERENCE_SAMPLE_ID])
+            mixture, TranscriptsQuery(where=[lc.sample_id == REFERENCE_SAMPLE_ID])
         ) as reader:
             t = await reader.index().__anext__()
             assert t.metadata["sample_id"] == REFERENCE_SAMPLE_ID

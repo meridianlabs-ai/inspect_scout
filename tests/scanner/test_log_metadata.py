@@ -1,4 +1,4 @@
-"""Tests for the LogMetadata typed interface for transcript queries."""
+"""Tests for the LogColumns typed interface for transcript queries."""
 
 from pathlib import Path
 from typing import Any, cast
@@ -7,9 +7,9 @@ import pandas as pd
 import pytest
 import pytest_asyncio
 from inspect_ai.analysis import samples_df
-from inspect_scout import LogMetadata
-from inspect_scout import log_metadata as lm
-from inspect_scout import metadata as m
+from inspect_scout import LogColumns
+from inspect_scout import columns as c
+from inspect_scout import log_columns as lc
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB, TranscriptColumns
 
 
@@ -57,46 +57,46 @@ async def db() -> Any:
 def test_typed_properties_exist() -> None:
     """Test that all typed properties exist and return Column objects."""
     # ID columns
-    assert lm.sample_id.name == "sample_id"
-    assert lm.eval_id.name == "eval_id"
-    assert lm.log.name == "log"
+    assert lc.sample_id.name == "sample_id"
+    assert lc.eval_id.name == "eval_id"
+    assert lc.log.name == "log"
 
     # Eval info columns
-    assert lm.eval_created.name == "date"
-    assert lm.eval_tags.name == "eval_tags"
-    assert lm.eval_metadata.name == "eval_metadata"
+    assert lc.date.name == "date"
+    assert lc.eval_tags.name == "eval_tags"
+    assert lc.eval_metadata.name == "eval_metadata"
 
     # Task configuration columns
-    assert lm.task_name.name == "task"
-    assert lm.task_args.name == "task_args"
-    assert lm.solver.name == "agent"
-    assert lm.solver_args.name == "agent_args"
+    assert lc.task.name == "task"
+    assert lc.task_args.name == "task_args"
+    assert lc.solver.name == "agent"
+    assert lc.solver_args.name == "agent_args"
 
     # Model configuration columns
-    assert lm.model.name == "model"
-    assert lm.generate_config.name == "generate_config"
-    assert lm.model_roles.name == "model_roles"
+    assert lc.model.name == "model"
+    assert lc.generate_config.name == "generate_config"
+    assert lc.model_roles.name == "model_roles"
 
     # Sample-level columns
-    assert lm.id.name == "id"
-    assert lm.epoch.name == "epoch"
-    assert lm.sample_metadata.name == "sample_metadata"
-    assert lm.score.name == "score"
-    assert lm.total_tokens.name == "total_tokens"
-    assert lm.total_time.name == "total_time"
-    assert lm.working_time.name == "working_time"
-    assert lm.limit.name == "limit"
+    assert lc.id.name == "id"
+    assert lc.epoch.name == "epoch"
+    assert lc.sample_metadata.name == "sample_metadata"
+    assert lc.score.name == "score"
+    assert lc.total_tokens.name == "total_tokens"
+    assert lc.total_time.name == "total_time"
+    assert lc.working_time.name == "working_time"
+    assert lc.limit.name == "limit"
 
 
 def test_typed_properties_have_docstrings() -> None:
     """Test that typed properties have meaningful docstrings."""
     # Properties are descriptors, so we need to check their fget docstrings
-    assert "Globally unique id for eval" in get_property_doc(LogMetadata.eval_id)
-    assert "Model used for eval" in get_property_doc(LogMetadata.model)
-    assert "Task name" in get_property_doc(LogMetadata.task_name)
-    assert "Headline score value" in get_property_doc(LogMetadata.score)
+    assert "Globally unique id for eval" in get_property_doc(LogColumns.eval_id)
+    assert "Model used for eval" in get_property_doc(LogColumns.model)
+    assert "Task name" in get_property_doc(LogColumns.task)
+    assert "Headline score value" in get_property_doc(LogColumns.score)
     assert "Total time that the sample was running" in get_property_doc(
-        LogMetadata.total_time
+        LogColumns.total_time
     )
 
 
@@ -108,19 +108,19 @@ def test_typed_properties_have_docstrings() -> None:
 def test_sql_generation_simple_equality() -> None:
     """Test SQL generation for simple equality using typed properties."""
     # Model equality
-    condition = lm.model == "gpt-4"
+    condition = lc.model == "gpt-4"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"model" = ?'
     assert params == ["gpt-4"]
 
     # Task name equality
-    condition = lm.task_name == "math_problem"
+    condition = lc.task == "math_problem"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"task" = ?'
     assert params == ["math_problem"]
 
     # Solver equality
-    condition = lm.solver == "cot"
+    condition = lc.solver == "cot"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"agent" = ?'
     assert params == ["cot"]
@@ -129,25 +129,25 @@ def test_sql_generation_simple_equality() -> None:
 def test_sql_generation_comparison_operators() -> None:
     """Test SQL generation for comparison operators using typed properties."""
     # Greater than
-    condition = lm.epoch > 1
+    condition = lc.epoch > 1
     sql, params = condition.to_sql("sqlite")
     assert sql == '"epoch" > ?'
     assert params == [1]
 
     # Less than or equal
-    condition = lm.total_tokens <= 1000
+    condition = lc.total_tokens <= 1000
     sql, params = condition.to_sql("sqlite")
     assert sql == '"total_tokens" <= ?'
     assert params == [1000]
 
     # Greater than or equal
-    condition = lm.score >= 0.8
+    condition = lc.score >= 0.8
     sql, params = condition.to_sql("sqlite")
     assert sql == '"score" >= ?'
     assert params == [0.8]
 
     # Not equal
-    condition = lm.solver != "cot"
+    condition = lc.solver != "cot"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"agent" != ?'
     assert params == ["cot"]
@@ -156,22 +156,22 @@ def test_sql_generation_comparison_operators() -> None:
 def test_sql_generation_complex_conditions() -> None:
     """Test SQL generation for complex conditions using typed properties."""
     # AND condition
-    condition = (lm.model == "gpt-4") & (lm.epoch > 1)
+    condition = (lc.model == "gpt-4") & (lc.epoch > 1)
     sql, params = condition.to_sql("sqlite")
     assert sql == '("model" = ? AND "epoch" > ?)'
     assert params == ["gpt-4", 1]
 
     # OR condition
-    condition = (lm.solver == "cot") | (lm.total_time > 10.0)
+    condition = (lc.solver == "cot") | (lc.total_time > 10.0)
     sql, params = condition.to_sql("sqlite")
     assert sql == '("agent" = ? OR "total_time" > ?)'
     assert params == ["cot", 10.0]
 
     # Complex nested
     condition = (
-        ((lm.model == "gpt-4") & (lm.total_tokens > 100))
-        | ((lm.model == "claude-3") & (lm.total_tokens > 50))
-    ) & (lm.score > 0.8)
+        ((lc.model == "gpt-4") & (lc.total_tokens > 100))
+        | ((lc.model == "claude-3") & (lc.total_tokens > 50))
+    ) & (lc.score > 0.8)
 
     sql, params = condition.to_sql("sqlite")
     assert "AND" in sql
@@ -182,25 +182,25 @@ def test_sql_generation_complex_conditions() -> None:
 def test_sql_generation_null_handling() -> None:
     """Test SQL generation for NULL handling using typed properties."""
     # IS NULL
-    condition = lm.limit.is_null()
+    condition = lc.limit.is_null()
     sql, params = condition.to_sql("sqlite")
     assert sql == '"limit" IS NULL'
     assert params == []
 
     # IS NOT NULL
-    condition = lm.sample_metadata.is_not_null()
+    condition = lc.sample_metadata.is_not_null()
     sql, params = condition.to_sql("sqlite")
     assert sql == '"sample_metadata" IS NOT NULL'
     assert params == []
 
     # == None should map to IS NULL
-    condition = lm.limit == None  # noqa: E711
+    condition = lc.limit == None  # noqa: E711
     sql, params = condition.to_sql("sqlite")
     assert sql == '"limit" IS NULL'
     assert params == []
 
     # != None should map to IS NOT NULL
-    condition = lm.eval_metadata != None  # noqa: E711
+    condition = lc.eval_metadata != None  # noqa: E711
     sql, params = condition.to_sql("sqlite")
     assert sql == '"eval_metadata" IS NOT NULL'
     assert params == []
@@ -209,13 +209,13 @@ def test_sql_generation_null_handling() -> None:
 def test_sql_generation_in_operators() -> None:
     """Test SQL generation for IN operators using typed properties."""
     # IN
-    condition = lm.model.in_(["gpt-4", "claude-3", "gemini-pro"])
+    condition = lc.model.in_(["gpt-4", "claude-3", "gemini-pro"])
     sql, params = condition.to_sql("sqlite")
     assert sql == '"model" IN (?, ?, ?)'
     assert params == ["gpt-4", "claude-3", "gemini-pro"]
 
     # NOT IN
-    condition = lm.solver.not_in(["cot", "react"])
+    condition = lc.solver.not_in(["cot", "react"])
     sql, params = condition.to_sql("sqlite")
     assert sql == '"agent" NOT IN (?, ?)'
     assert params == ["cot", "react"]
@@ -224,19 +224,19 @@ def test_sql_generation_in_operators() -> None:
 def test_sql_generation_like_operators() -> None:
     """Test SQL generation for LIKE operators using typed properties."""
     # LIKE
-    condition = lm.task_name.like("math%")
+    condition = lc.task.like("math%")
     sql, params = condition.to_sql("sqlite")
     assert sql == '"task" LIKE ?'
     assert params == ["math%"]
 
     # NOT LIKE
-    condition = lm.log.not_like("/tmp/%")
+    condition = lc.log.not_like("/tmp/%")
     sql, params = condition.to_sql("sqlite")
     assert sql == '"log" NOT LIKE ?'
     assert params == ["/tmp/%"]
 
     # ILIKE (case-insensitive)
-    condition = lm.model.ilike("%GPT%")
+    condition = lc.model.ilike("%GPT%")
     sql, params = condition.to_sql("sqlite")
     assert sql == 'LOWER("model") LIKE LOWER(?)'
     assert params == ["%GPT%"]
@@ -245,13 +245,13 @@ def test_sql_generation_like_operators() -> None:
 def test_sql_generation_between_operators() -> None:
     """Test SQL generation for BETWEEN operators using typed properties."""
     # BETWEEN
-    condition = lm.epoch.between(1, 5)
+    condition = lc.epoch.between(1, 5)
     sql, params = condition.to_sql("sqlite")
     assert sql == '"epoch" BETWEEN ? AND ?'
     assert params == [1, 5]
 
     # NOT BETWEEN
-    condition = lm.total_time.not_between(10.0, 20.0)
+    condition = lc.total_time.not_between(10.0, 20.0)
     sql, params = condition.to_sql("sqlite")
     assert sql == '"total_time" NOT BETWEEN ? AND ?'
     assert params == [10.0, 20.0]
@@ -259,7 +259,7 @@ def test_sql_generation_between_operators() -> None:
 
 def test_sql_generation_different_dialects() -> None:
     """Test SQL generation works across different SQL dialects."""
-    condition = (lm.model == "gpt-4") & (lm.epoch > 1)
+    condition = (lc.model == "gpt-4") & (lc.epoch > 1)
 
     # SQLite
     sql, params = condition.to_sql("sqlite")
@@ -283,36 +283,36 @@ def test_sql_generation_different_dialects() -> None:
 
 
 def test_dynamic_field_access() -> None:
-    """Test that dynamic fields work with LogMetadata."""
+    """Test that dynamic fields work with LogColumns."""
     # Access dynamic score columns
-    condition = lm["score_accuracy"] > 0.9
+    condition = lc["score_accuracy"] > 0.9
     sql, params = condition.to_sql("sqlite")
     assert sql == '"score_accuracy" > ?'
     assert params == [0.9]
 
     # Access score_f1 column
-    condition = lm["score_f1"] >= 0.7
+    condition = lc["score_f1"] >= 0.7
     sql, params = condition.to_sql("sqlite")
     assert sql == '"score_f1" >= ?'
     assert params == [0.7]
 
     # Access metadata_* columns
-    condition = lm["metadata_custom"] == "custom_value_1"
+    condition = lc["metadata_custom"] == "custom_value_1"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"metadata_custom" = ?'
     assert params == ["custom_value_1"]
 
     # Access completely custom fields
-    condition = lm["my_custom_field"] < 100
+    condition = lc["my_custom_field"] < 100
     sql, params = condition.to_sql("sqlite")
     assert sql == '"my_custom_field" < ?'
     assert params == [100]
 
 
 def test_nested_json_fields() -> None:
-    """Test accessing nested JSON fields with LogMetadata."""
+    """Test accessing nested JSON fields with LogColumns."""
     # This tests that the base Metadata functionality is preserved
-    condition = lm["config.nested.value"] > 10
+    condition = lc["config.nested.value"] > 10
 
     # SQLite - uses json_extract
     sql, params = condition.to_sql("sqlite")
@@ -328,25 +328,25 @@ def test_nested_json_fields() -> None:
 def test_json_metadata_fields() -> None:
     """Test querying nested values in eval_metadata and sample_metadata."""
     # Query nested field in eval_metadata
-    condition = lm["eval_metadata.experiment"] == "exp_5"
+    condition = lc["eval_metadata.experiment"] == "exp_5"
     sql, params = condition.to_sql("sqlite")
     assert sql == "json_extract(\"eval_metadata\", '$.experiment') = ?"
     assert params == ["exp_5"]
 
     # Query nested field in sample_metadata
-    condition = lm["sample_metadata.custom"] == "value_10"
+    condition = lc["sample_metadata.custom"] == "value_10"
     sql, params = condition.to_sql("sqlite")
     assert sql == "json_extract(\"sample_metadata\", '$.custom') = ?"
     assert params == ["value_10"]
 
     # Query nested field in task_args
-    condition = lm["task_args.temperature"] >= 0.7
+    condition = lc["task_args.temperature"] >= 0.7
     sql, params = condition.to_sql("sqlite")
     assert sql == "json_extract(\"task_args\", '$.temperature') >= ?"
     assert params == [0.7]
 
     # Complex condition with JSON fields
-    condition = (lm["eval_metadata.version"] == "1.0") & (lm.model == "gpt-4")
+    condition = (lc["eval_metadata.version"] == "1.0") & (lc.model == "gpt-4")
     sql, params = condition.to_sql("sqlite")
     assert "json_extract" in sql
     assert params == ["1.0", "gpt-4"]
@@ -358,12 +358,12 @@ def test_json_metadata_fields() -> None:
 
 
 def test_backward_compatibility_with_base_metadata() -> None:
-    """Test that LogMetadata is compatible with base Metadata."""
+    """Test that LogColumns is compatible with base Metadata."""
     # Both should generate identical SQL for the same conditions
 
     # Simple equality
-    cond_log = lm.model == "gpt-4"
-    cond_base = m.model == "gpt-4"
+    cond_log = lc.model == "gpt-4"
+    cond_base = c.model == "gpt-4"
 
     sql_log, params_log = cond_log.to_sql("sqlite")
     sql_base, params_base = cond_base.to_sql("sqlite")
@@ -372,8 +372,8 @@ def test_backward_compatibility_with_base_metadata() -> None:
     assert params_log == params_base
 
     # Complex condition
-    cond_log = (lm.epoch > 1) & (lm.total_tokens >= 100)
-    cond_base = (m.epoch > 1) & (m.total_tokens >= 100)
+    cond_log = (lc.epoch > 1) & (lc.total_tokens >= 100)
+    cond_base = (c.epoch > 1) & (c.total_tokens >= 100)
 
     sql_log, params_log = cond_log.to_sql("sqlite")
     sql_base, params_base = cond_base.to_sql("sqlite")
@@ -382,8 +382,8 @@ def test_backward_compatibility_with_base_metadata() -> None:
     assert params_log == params_base
 
     # Dynamic field access
-    cond_log = lm["custom_field"] > 50
-    cond_base = m["custom_field"] > 50
+    cond_log = lc["custom_field"] > 50
+    cond_base = c["custom_field"] > 50
 
     sql_log, params_log = cond_log.to_sql("sqlite")
     sql_base, params_base = cond_base.to_sql("sqlite")
@@ -393,9 +393,9 @@ def test_backward_compatibility_with_base_metadata() -> None:
 
 
 def test_mixing_log_and_base_metadata() -> None:
-    """Test that LogMetadata conditions can be mixed with base Metadata conditions."""
-    # Mix LogMetadata and base Metadata in the same query
-    condition = (lm.model == "gpt-4") & (m.score > 0.8)
+    """Test that LogColumns conditions can be mixed with base Metadata conditions."""
+    # Mix LogColumns and base Metadata in the same query
+    condition = (lc.model == "gpt-4") & (c.score > 0.8)
 
     sql, params = condition.to_sql("sqlite")
     assert sql == '("model" = ? AND "score" > ?)'
@@ -411,19 +411,19 @@ def test_mixing_log_and_base_metadata() -> None:
 async def test_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     """Test database queries using typed properties."""
     # Filter by model
-    results = [r async for r in db.query(where=[lm.model == "openai/gpt-4o-mini"])]
+    results = [r async for r in db.query(where=[lc.model == "openai/gpt-4o-mini"])]
     assert len(results) > 0
     for result in results:
         assert result.metadata["model"] == "openai/gpt-4o-mini"
 
     # Filter by epoch
-    results = [r async for r in db.query(where=[lm.working_time > 1.5])]
+    results = [r async for r in db.query(where=[lc.working_time > 1.5])]
     assert len(results) > 0
     for result in results:
         assert cast(int, result.metadata["working_time"]) > 1.5
 
     # Filter by total tokens range
-    results = [r async for r in db.query(where=[lm.total_tokens.between(50, 69)])]
+    results = [r async for r in db.query(where=[lc.total_tokens.between(50, 69)])]
     assert len(results) > 0
     for result in results:
         assert 50 <= cast(int, result.metadata["total_tokens"]) <= 69
@@ -434,9 +434,9 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
     """Test complex database queries using typed properties."""
     # Complex condition with multiple typed properties
     conditions = [
-        (lm.model.in_(["openai/gpt-4o-mini", "anthropic/claude-sonnet-4-5"]))
-        & (lm.working_time > 1.5),
-        lm.target == " Yes",
+        (lc.model.in_(["openai/gpt-4o-mini", "anthropic/claude-sonnet-4-5"]))
+        & (lc.working_time > 1.5),
+        lc.target == " Yes",
     ]
 
     results = [item async for item in db.query(where=conditions)]
@@ -457,13 +457,13 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
 
 @pytest.mark.asyncio
 async def test_transcripts_with_log_metadata(db: EvalLogTranscriptsDB) -> None:
-    """Test using LogMetadata with the Transcripts API."""
+    """Test using LogColumns with the Transcripts API."""
     try:
         # Chain multiple filters
         conditions = [
-            lm.model == "openai/gpt-4o-mini",
-            lm.working_time > 1.5,
-            lm.target == " Yes",
+            lc.model == "openai/gpt-4o-mini",
+            lc.working_time > 1.5,
+            lc.target == " Yes",
         ]
 
         # Collect and verify results
@@ -479,13 +479,13 @@ async def test_transcripts_with_log_metadata(db: EvalLogTranscriptsDB) -> None:
 
 @pytest.mark.asyncio
 async def test_transcripts_complex_filtering(db: EvalLogTranscriptsDB) -> None:
-    """Test complex filtering scenarios with Transcripts and LogMetadata."""
+    """Test complex filtering scenarios with Transcripts and LogColumns."""
     try:
         # Complex multi-condition filter
         conditions = [
-            ((lm.model == "openai/gpt-4o-mini") & (lm.total_tokens > 50))
-            | ((lm.model == "anthropic/claude-sonnet-4-5") & (lm.total_tokens > 500)),
-            lm.solver.is_null(),
+            ((lc.model == "openai/gpt-4o-mini") & (lc.total_tokens > 50))
+            | ((lc.model == "anthropic/claude-sonnet-4-5") & (lc.total_tokens > 500)),
+            lc.solver.is_null(),
         ]
 
         # Verify results match conditions
@@ -510,10 +510,10 @@ async def test_transcripts_complex_filtering(db: EvalLogTranscriptsDB) -> None:
 
 @pytest.mark.asyncio
 async def test_transcripts_with_shuffle_and_limit(db: EvalLogTranscriptsDB) -> None:
-    """Test that shuffle and limit work with LogMetadata filters."""
+    """Test that shuffle and limit work with LogColumns filters."""
     try:
         # Apply filter with shuffle and limit
-        conditions = [lm.model == "openai/gpt-4o-mini"]
+        conditions = [lc.model == "openai/gpt-4o-mini"]
 
         # Query with shuffle and limit
         results = [item async for item in db.query(conditions, limit=5, shuffle=42)]
@@ -532,14 +532,14 @@ async def test_query_json_metadata_fields(db: EvalLogTranscriptsDB) -> None:
     """Test querying nested JSON fields in metadata columns."""
     try:
         # Query by nested eval_metadata field
-        conditions = [lm["sample_metadata.label_confidence"] >= 0.9]
+        conditions = [lc["sample_metadata.label_confidence"] >= 0.9]
         results = [item async for item in db.query(conditions)]
         assert len(results) == 4
 
         # Complex query combining regular and JSON fields
         conditions = [
-            (lm.model == "openai/gpt-4o-mini")
-            & (lm["sample_metadata.label_confidence"] >= 0.9)
+            (lc.model == "openai/gpt-4o-mini")
+            & (lc["sample_metadata.label_confidence"] >= 0.9)
         ]
         results = [item async for item in db.query(conditions)]
         assert len(results) > 0
@@ -562,13 +562,13 @@ def test_special_column_names() -> None:
     # Columns that might conflict with Python keywords or have special chars
 
     # 'id' is a builtin but should work as a property
-    condition = lm.id > 5
+    condition = lc.id > 5
     sql, params = condition.to_sql("sqlite")
     assert sql == '"id" > ?'
     assert params == [5]
 
     # Test sample_id
-    condition = lm.sample_id == "sample_001"
+    condition = lc.sample_id == "sample_001"
     sql, params = condition.to_sql("sqlite")
     assert sql == '"sample_id" = ?'
     assert params == ["sample_001"]
@@ -578,20 +578,20 @@ def test_all_operators_with_typed_properties() -> None:
     """Test that all operators work with typed properties."""
     # Test each operator type
     operators_tests = [
-        (lm.epoch == 2, '"epoch" = ?', [2]),
-        (lm.epoch != 2, '"epoch" != ?', [2]),
-        (lm.epoch > 2, '"epoch" > ?', [2]),
-        (lm.epoch >= 2, '"epoch" >= ?', [2]),
-        (lm.epoch < 2, '"epoch" < ?', [2]),
-        (lm.epoch <= 2, '"epoch" <= ?', [2]),
-        (lm.model.in_(["a", "b"]), '"model" IN (?, ?)', ["a", "b"]),
-        (lm.model.not_in(["a", "b"]), '"model" NOT IN (?, ?)', ["a", "b"]),
-        (lm.task_name.like("math%"), '"task" LIKE ?', ["math%"]),
-        (lm.task_name.not_like("code%"), '"task" NOT LIKE ?', ["code%"]),
-        (lm.limit.is_null(), '"limit" IS NULL', []),
-        (lm.limit.is_not_null(), '"limit" IS NOT NULL', []),
-        (lm.epoch.between(1, 3), '"epoch" BETWEEN ? AND ?', [1, 3]),
-        (lm.epoch.not_between(1, 3), '"epoch" NOT BETWEEN ? AND ?', [1, 3]),
+        (lc.epoch == 2, '"epoch" = ?', [2]),
+        (lc.epoch != 2, '"epoch" != ?', [2]),
+        (lc.epoch > 2, '"epoch" > ?', [2]),
+        (lc.epoch >= 2, '"epoch" >= ?', [2]),
+        (lc.epoch < 2, '"epoch" < ?', [2]),
+        (lc.epoch <= 2, '"epoch" <= ?', [2]),
+        (lc.model.in_(["a", "b"]), '"model" IN (?, ?)', ["a", "b"]),
+        (lc.model.not_in(["a", "b"]), '"model" NOT IN (?, ?)', ["a", "b"]),
+        (lc.task.like("math%"), '"task" LIKE ?', ["math%"]),
+        (lc.task.not_like("code%"), '"task" NOT LIKE ?', ["code%"]),
+        (lc.limit.is_null(), '"limit" IS NULL', []),
+        (lc.limit.is_not_null(), '"limit" IS NOT NULL', []),
+        (lc.epoch.between(1, 3), '"epoch" BETWEEN ? AND ?', [1, 3]),
+        (lc.epoch.not_between(1, 3), '"epoch" NOT BETWEEN ? AND ?', [1, 3]),
     ]
 
     for condition, expected_sql, expected_params in operators_tests:
@@ -603,10 +603,10 @@ def test_all_operators_with_typed_properties() -> None:
 def test_chaining_operations() -> None:
     """Test that operations can be chained naturally."""
     # Build up a complex query step by step
-    condition = lm.model == "gpt-4"
-    condition = condition & (lm.epoch > 1)
-    condition = condition & (lm.total_tokens >= 100)
-    condition = condition | (lm.solver == "cot")
+    condition = lc.model == "gpt-4"
+    condition = condition & (lc.epoch > 1)
+    condition = condition & (lc.total_tokens >= 100)
+    condition = condition | (lc.solver == "cot")
 
     sql, params = condition.to_sql("sqlite")
     assert "AND" in sql
@@ -616,14 +616,14 @@ def test_chaining_operations() -> None:
 
 @pytest.mark.asyncio
 async def test_empty_dataframe_with_log_metadata() -> None:
-    """Test LogMetadata works with empty DataFrames."""
+    """Test LogColumns works with empty DataFrames."""
     db = EvalLogTranscriptsDB(
         pd.DataFrame(columns=["sample_id", "id", "eval_id", "log", "model", "epoch"])
     )
     await db.connect()
 
     # Query with typed properties on empty DB
-    results = [item async for item in db.query(where=[lm.model == "gpt-4"])]
+    results = [item async for item in db.query(where=[lc.model == "gpt-4"])]
     assert len(results) == 0
 
     await db.disconnect()
@@ -634,17 +634,17 @@ def test_type_hints_preserved() -> None:
     from inspect_scout._transcript.columns import Column
 
     # Verify that properties return Column type
-    assert isinstance(lm.model, Column)
-    assert isinstance(lm.epoch, Column)
-    assert isinstance(lm.total_tokens, Column)
+    assert isinstance(lc.model, Column)
+    assert isinstance(lc.epoch, Column)
+    assert isinstance(lc.total_tokens, Column)
 
     # Verify that operations return Condition type
     from inspect_scout._transcript.columns import Condition
 
-    condition = lm.model == "gpt-4"
+    condition = lc.model == "gpt-4"
     assert isinstance(condition, Condition)
 
-    complex_condition = (lm.epoch > 1) & (lm.solver == "cot")
+    complex_condition = (lc.epoch > 1) & (lc.solver == "cot")
     assert isinstance(complex_condition, Condition)
 
 

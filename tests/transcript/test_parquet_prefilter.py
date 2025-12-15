@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 import pytest_asyncio
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
-from inspect_scout import metadata as m
+from inspect_scout import columns as c
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.transcripts import TranscriptsQuery
 from inspect_scout._transcript.types import Transcript, TranscriptContent
@@ -103,7 +103,7 @@ async def test_prefilter_where_reduces_table_size(
     await db_no_filter.disconnect()
 
     # With pre-filter: only gpt-4 transcripts (33 out of 100)
-    query = TranscriptsQuery(where=[m.model == "gpt-4"])
+    query = TranscriptsQuery(where=[c.model == "gpt-4"])
     db_filtered = ParquetTranscriptsDB(str(test_location), query=query)
     await db_filtered.connect()
     transcript_ids_filtered = await db_filtered.transcript_ids([], None)
@@ -179,7 +179,7 @@ async def test_additive_where_filtering(
 ) -> None:
     """Test that query-time WHERE combines with pre-filter WHERE (AND)."""
     # Pre-filter: only gpt-4 (34 transcripts)
-    query = TranscriptsQuery(where=[m.model == "gpt-4"])
+    query = TranscriptsQuery(where=[c.model == "gpt-4"])
     db = ParquetTranscriptsDB(str(test_location), query=query)
     await db.connect()
 
@@ -189,14 +189,14 @@ async def test_additive_where_filtering(
 
     # Additional filter: index < 30
     # Should get gpt-4 AND index < 30
-    transcript_ids_filtered = await db.transcript_ids([m.index < 30], None)
+    transcript_ids_filtered = await db.transcript_ids([c.index < 30], None)
     assert (
         len(transcript_ids_filtered) == 10
     )  # Only 10 gpt-4 transcripts with index < 30
 
     # Verify the results
     results = []
-    async for info in db.select([m.index < 30], None, False):
+    async for info in db.select([c.index < 30], None, False):
         results.append(info)
         assert info.metadata["model"] == "gpt-4"
         assert info.metadata["index"] < 30
@@ -267,7 +267,7 @@ async def test_combined_prefilter_where_shuffle_limit(
     """Test combined WHERE + SHUFFLE + LIMIT pre-filter."""
     # Pre-filter: only gpt-4, shuffled, limit to 15
     query = TranscriptsQuery(
-        where=[m.model == "gpt-4"],
+        where=[c.model == "gpt-4"],
         shuffle=42,
         limit=15,
     )
@@ -306,7 +306,7 @@ async def test_prefilter_empty_results(
 ) -> None:
     """Test pre-filter that matches no transcripts."""
     # Filter that matches nothing
-    query = TranscriptsQuery(where=[m.model == "nonexistent-model"])
+    query = TranscriptsQuery(where=[c.model == "nonexistent-model"])
     db = ParquetTranscriptsDB(str(test_location), query=query)
     await db.connect()
 
@@ -335,7 +335,7 @@ async def test_no_prefilter_backward_compatibility(
     assert len(transcript_ids_all) == 100
 
     # Query-time filtering should work
-    transcript_ids_gpt4 = await db.transcript_ids([m.model == "gpt-4"], None)
+    transcript_ids_gpt4 = await db.transcript_ids([c.model == "gpt-4"], None)
     assert len(transcript_ids_gpt4) == 34
 
     # Query-time limit should work
@@ -359,7 +359,7 @@ async def test_read_works_with_prefiltered_db(
 ) -> None:
     """Test that read() still works correctly with pre-filtered DB."""
     # Pre-filter to gpt-4 only
-    query = TranscriptsQuery(where=[m.model == "gpt-4"])
+    query = TranscriptsQuery(where=[c.model == "gpt-4"])
     db = ParquetTranscriptsDB(str(test_location), query=query)
     await db.connect()
 
@@ -393,7 +393,7 @@ async def test_multiple_where_conditions_in_prefilter(
 ) -> None:
     """Test pre-filter with multiple WHERE conditions."""
     # Pre-filter: gpt-4 AND gsm8k dataset
-    query = TranscriptsQuery(where=[m.model == "gpt-4", m.dataset == "gsm8k"])
+    query = TranscriptsQuery(where=[c.model == "gpt-4", c.dataset == "gsm8k"])
     db = ParquetTranscriptsDB(str(test_location), query=query)
     await db.connect()
 
@@ -420,8 +420,8 @@ async def test_prefilter_with_complex_conditions(
     # Pre-filter: (gpt-4 OR claude) AND index >= 50
     query = TranscriptsQuery(
         where=[
-            (m.model == "gpt-4") | (m.model == "claude-3-opus"),
-            m.index >= 50,
+            (c.model == "gpt-4") | (c.model == "claude-3-opus"),
+            c.index >= 50,
         ]
     )
     db = ParquetTranscriptsDB(str(test_location), query=query)

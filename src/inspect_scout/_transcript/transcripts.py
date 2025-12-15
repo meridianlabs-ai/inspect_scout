@@ -76,10 +76,10 @@ class Transcripts(abc.ABC):
     referenced via the return value. For example:
 
     ```python
-    from inspect_scout import transcripts, log_metadata as m
+    from inspect_scout import transcripts, log_columns as c
 
     transcripts = transcripts_from("./logs")
-    transcripts = transcripts.where(m.task_name == "cybench")
+    transcripts = transcripts.where(c.task == "cybench")
     ```
     """
 

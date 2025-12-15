@@ -72,7 +72,6 @@ export const toMarkdownRefs = (
   for (const ref of summary.messageReferences) {
     const renderPreview = refLookup[ref.id];
     const refUrl = makeReferenceUrl(ref.id, "message");
-    console.log({ renderPreview, refUrl });
     if (ref.cite && (renderPreview || refUrl)) {
       refs.push({
         id: ref.id,

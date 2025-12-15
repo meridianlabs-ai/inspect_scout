@@ -83,7 +83,6 @@ export async function expandResultsetRows(
         const expandedRow = { ...row };
 
         // Override values
-        expandedRow.uuid = result.uuid ?? null;
         expandedRow.label = result.label ?? null;
         expandedRow.answer = result.answer ?? null;
         expandedRow.explanation = result.explanation ?? null;

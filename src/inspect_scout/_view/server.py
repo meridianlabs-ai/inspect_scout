@@ -224,6 +224,61 @@ def view_server_app(
             media_type="application/json",
         )
 
+    @app.get("/scanner_df_input/{scan:path}")
+    async def scanner_input(
+        request: Request,
+        scan: str,
+        query_scanner: str | None = Query(None, alias="scanner"),
+        query_uuid: str | None = Query(None, alias="uuid"),
+    ) -> Response:
+        if query_scanner is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="scanner query parameter is required",
+            )
+
+        if query_uuid is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="uuid query parameter is required",
+            )
+
+        # convert to absolute path
+        scan_path = UPath(await _map_file(request, scan))
+        if not scan_path.is_absolute():
+            validated_results_dir = _ensure_not_none(
+                results_dir, "results_dir is required"
+            )
+            results_path = UPath(validated_results_dir)
+            scan_path = results_path / scan_path
+
+        # validate
+        await _validate_read(request, scan_path)
+
+        # get the result
+        result = await scan_results_arrow_async(str(scan_path))
+
+        # ensure we have the data (404 if not)
+        if query_scanner not in result.scanners:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scanner '{query_scanner}' not found in scan results",
+            )
+
+        input_value = result.get_field(
+            query_scanner, "uuid", query_uuid, "input"
+        ).as_py()
+        input_type = result.get_field(
+            query_scanner, "uuid", query_uuid, "input_type"
+        ).as_py()
+
+        # Return raw input as body with inputType in header (more efficient for large text)
+        return Response(
+            content=input_value,
+            media_type="text/plain",
+            headers={"X-Input-Type": input_type or ""},
+        )
+
     @app.get("/scanner_df/{scan:path}")
     async def scan_df(
         request: Request,
@@ -269,7 +324,9 @@ def view_server_app(
             # with only a moderate loss in compression ratio
             # (e.g. 40% larger in exchange for ~20x faster compression)
             with result.reader(
-                query_scanner, streaming_batch_size=streaming_batch_size
+                query_scanner,
+                streaming_batch_size=streaming_batch_size,
+                exclude_columns=["input"],
             ) as reader:
                 with pa_ipc.new_stream(
                     buf,
@@ -300,7 +357,6 @@ def view_server_app(
     async def scan(
         request: Request,
         scan: str,
-        status_only: bool | None = Query(None, alias="status_only"),
     ) -> Response:
         # convert to absolute path
         scan_path = UPath(await _map_file(request, scan))
@@ -317,32 +373,23 @@ def view_server_app(
         # read the results and return
         result = await scan_results_df_async(str(scan_path), rows="transcripts")
 
-        # convert the dataframes to their serializable form (omit
-        # if status_only is true)
-        serializable_scanners: dict[str, IPCDataFrame] = {}
-        if not status_only:
-            for scanner in result.scanners:
-                df = result.scanners[scanner]
-                serializable_scanners[scanner] = df_to_ipc(df)
-
         # clear the transcript data
         if result.spec.transcripts:
             result.spec.transcripts = result.spec.transcripts.model_copy(
                 update={"data": None}
             )
 
-        # create the serializable result
-        serializable_result = IPCSerializableResults(
+        # create the status
+        status = Status(
             complete=result.complete,
             spec=result.spec,
             location=await _unmap_file(request, result.location),
             summary=result.summary,
             errors=result.errors,
-            scanners=serializable_scanners,
         )
 
         return InspectPydanticJSONResponse(
-            content=serializable_result, media_type="application/json"
+            content=status, media_type="application/json"
         )
 
     @app.get("/scan-delete/{scan:path}")

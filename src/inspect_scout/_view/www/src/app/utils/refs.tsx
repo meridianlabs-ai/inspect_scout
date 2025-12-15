@@ -9,18 +9,29 @@ import {
   scanResultRoute,
 } from "../../router/url";
 import { TranscriptView } from "../../transcript/TranscriptView";
-import { ScannerCore } from "../types";
+import {
+  ScanResultInputData,
+  isEventInput,
+  isEventsInput,
+  isMessageInput,
+  isMessagesInput,
+  isTranscriptInput,
+  ScanResultSummary,
+} from "../types";
 
 export type MakeReferenceUrl = (
   ref: string,
   type: "message" | "event"
 ) => string | undefined;
 
-export const useMarkdownRefs = (result?: ScannerCore) => {
+export const useMarkdownRefs = (
+  summary?: ScanResultSummary,
+  inputData?: ScanResultInputData
+) => {
   const params = useParams<{ "*": string }>();
   // Build URL to the scan result with the appropriate query parameters
   const buildUrl = useMemo(() => {
-    if (!result?.uuid) {
+    if (!summary?.uuid) {
       return (queryParams: string) => `?${queryParams}`;
     }
 
@@ -30,49 +41,56 @@ export const useMarkdownRefs = (result?: ScannerCore) => {
 
     return (queryParams: string) => {
       const searchParams = new URLSearchParams(queryParams);
-      return `#${scanResultRoute(scanPath, result.uuid, searchParams)}`;
+      return `#${scanResultRoute(scanPath, summary.uuid, searchParams)}`;
     };
-  }, [result?.uuid, params]);
+  }, [summary?.uuid, params]);
 
-  const refs: MarkdownReference[] = result
-    ? toMarkdownRefs(result, (refId: string, type: "message" | "event") => {
-        if (type === "message") {
-          return buildUrl(`tab=Result&message=${encodeURIComponent(refId)}`);
-        } else {
-          return buildUrl(`tab=Result&event=${encodeURIComponent(refId)}`);
-        }
-      })
+  const refs: MarkdownReference[] = summary
+    ? toMarkdownRefs(
+        summary,
+        (refId: string, type: "message" | "event") => {
+          if (type === "message") {
+            return buildUrl(`tab=Result&message=${encodeURIComponent(refId)}`);
+          } else {
+            return buildUrl(`tab=Result&event=${encodeURIComponent(refId)}`);
+          }
+        },
+        inputData
+      )
     : [];
   return refs;
 };
 
 export const toMarkdownRefs = (
-  core: ScannerCore,
-  makeReferenceUrl: MakeReferenceUrl
+  summary: ScanResultSummary,
+  makeReferenceUrl: MakeReferenceUrl,
+  inputData?: ScanResultInputData
 ) => {
-  const refLookup = referenceTable(core);
+  const refLookup = referenceTable(inputData);
 
   const refs: MarkdownReference[] = [];
-  for (const ref of core.messageReferences) {
+  for (const ref of summary.messageReferences) {
     const renderPreview = refLookup[ref.id];
-    if (ref.cite && renderPreview) {
+    const refUrl = makeReferenceUrl(ref.id, "message");
+    if (ref.cite && (renderPreview || refUrl)) {
       refs.push({
         id: ref.id,
         cite: ref.cite,
         citePreview: renderPreview,
-        citeUrl: makeReferenceUrl(ref.id, "message"),
+        citeUrl: refUrl,
       });
     }
   }
 
-  for (const ref of core.eventReferences) {
+  for (const ref of summary.eventReferences) {
     const renderPreview = refLookup[ref.id];
-    if (ref.cite && renderPreview) {
+    const refUrl = makeReferenceUrl(ref.id, "event");
+    if (ref.cite && (renderPreview || refUrl)) {
       refs.push({
         id: ref.id,
         cite: ref.cite,
         citePreview: renderPreview,
-        citeUrl: makeReferenceUrl(ref.id, "event"),
+        citeUrl: refUrl,
       });
     }
   }
@@ -80,65 +98,35 @@ export const toMarkdownRefs = (
 };
 
 const referenceTable = (
-  result?: ScannerCore
+  inputData?: ScanResultInputData
 ): Record<string, () => ReactNode> => {
-  if (!result) {
+  if (!inputData) {
     return {};
   }
 
-  if (!result.input) {
-    return {};
-  }
-
-  if (result.inputType === "message") {
-    if (!result.input.id) {
+  if (isMessageInput(inputData)) {
+    if (!inputData.input.id) {
       return {};
     }
     return {
-      [result.input.id]: () => {
+      [inputData.input.id]: () => {
         return (
           <ChatView
-            messages={[result.input]}
+            messages={[inputData.input]}
             resolveToolCallsIntoPreviousMessage={false}
           />
         );
       },
     };
-  } else if (result.inputType === "messages") {
-    return result.input.reduce<Record<string, () => ReactNode>>((acc, msg) => {
-      if (msg.id) {
-        acc[msg.id] = () => {
-          return (
-            <ChatView
-              messages={[msg]}
-              resolveToolCallsIntoPreviousMessage={false}
-            />
-          );
-        };
-      }
-      return acc;
-    }, {});
-  } else if (result.inputType === "event") {
-    if (!result.input.uuid) {
-      return {};
-    }
-
-    return {
-      [result.input.uuid]: () => {
-        return (
-          <TranscriptView id={"input-event-preview"} events={[result.input]} />
-        );
-      },
-    };
-  } else if (result.inputType === "events") {
-    return result.input.reduce<Record<string, () => ReactNode>>(
-      (acc, event, index) => {
-        if (event.uuid) {
-          acc[event.uuid] = () => {
+  } else if (isMessagesInput(inputData)) {
+    return inputData.input.reduce<Record<string, () => ReactNode>>(
+      (acc, msg) => {
+        if (msg.id) {
+          acc[msg.id] = () => {
             return (
-              <TranscriptView
-                id={`input-event-preview-${index}`}
-                events={result.input}
+              <ChatView
+                messages={[msg]}
+                resolveToolCallsIntoPreviousMessage={false}
               />
             );
           };
@@ -147,8 +135,40 @@ const referenceTable = (
       },
       {}
     );
-  } else if (result.inputType === "transcript") {
-    const eventRefs = result.input.events.reduce<
+  } else if (isEventInput(inputData)) {
+    if (!inputData.input.uuid) {
+      return {};
+    }
+
+    return {
+      [inputData.input.uuid]: () => {
+        return (
+          <TranscriptView
+            id={"input-event-preview"}
+            events={[inputData.input]}
+          />
+        );
+      },
+    };
+  } else if (isEventsInput(inputData)) {
+    return inputData.input.reduce<Record<string, () => ReactNode>>(
+      (acc, event, index) => {
+        if (event.uuid) {
+          acc[event.uuid] = () => {
+            return (
+              <TranscriptView
+                id={`input-event-preview-${index}`}
+                events={inputData.input}
+              />
+            );
+          };
+        }
+        return acc;
+      },
+      {}
+    );
+  } else if (isTranscriptInput(inputData)) {
+    const eventRefs = inputData.input.events.reduce<
       Record<string, () => ReactNode>
     >((acc, event) => {
       if (event.uuid) {
@@ -159,7 +179,7 @@ const referenceTable = (
       return acc;
     }, {});
 
-    const messageRefs = result.input.messages.reduce<
+    const messageRefs = inputData.input.messages.reduce<
       Record<string, () => ReactNode>
     >((acc, msg) => {
       if (msg.id) {

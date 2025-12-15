@@ -1,9 +1,0 @@
-.scanInfo {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  margin-bottom: 1rem;
-}
-
-.container {
-  padding: 0.5rem;
-}

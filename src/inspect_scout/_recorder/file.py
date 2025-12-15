@@ -1,16 +1,21 @@
 import io
 from collections.abc import Iterator, Mapping
-from typing import Callable, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
 
 import duckdb
 import pandas as pd
 import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
 from typing_extensions import override
 from upath import UPath
+
+if TYPE_CHECKING:
+    from pyarrow import Scalar
 
 from inspect_scout._recorder.summary import Summary
 
@@ -235,15 +240,49 @@ class FileRecorder(ScanRecorder):
         class _ScanResultsArrowFiles(ScanResultsArrow):
             @override
             def reader(
-                self, scanner: str, streaming_batch_size: int = 1024
+                self,
+                scanner: str,
+                streaming_batch_size: int = 1024,
+                exclude_columns: list[str] | None = None,
             ) -> pa.RecordBatchReader:
                 scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
                 parquet = pq.ParquetFile(str(scanner_path))
+                columns = [
+                    c
+                    for c in parquet.schema.names
+                    if exclude_columns is None or c not in exclude_columns
+                ]
+                fields_by_name = {f.name: f for f in parquet.schema_arrow}
+                arrow_schema = pa.schema([fields_by_name[name] for name in columns])
+
                 return pa.RecordBatchReader.from_batches(
-                    parquet.schema_arrow,
-                    parquet.iter_batches(batch_size=streaming_batch_size),
+                    arrow_schema,
+                    parquet.iter_batches(
+                        batch_size=streaming_batch_size, columns=columns
+                    ),
                 )
+
+            def get_field(
+                self, scanner: str, id_column: str, id_value: Any, target_column: str
+            ) -> "Scalar[Any]":
+                scan_path = UPath(scan_location)
+                scanner_path = scan_path / f"{scanner}.parquet"
+                dataset = ds.dataset(str(scanner_path), format="parquet")
+                table = dataset.to_table(
+                    columns=[target_column],
+                    filter=(pc.field(id_column) == id_value),
+                )
+
+                if len(table) == 0:
+                    raise KeyError(f"{id_value!r} not found in {id_column}")
+
+                if len(table) > 1:
+                    raise ValueError(
+                        f"Multiple rows found for {id_column}={id_value!r}"
+                    )
+
+                return cast("Scalar[Any]", table[target_column][0])
 
         # get the status
         status = await FileRecorder.status(scan_location)

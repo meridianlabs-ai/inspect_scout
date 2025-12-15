@@ -1,0 +1,46 @@
+.row {
+  border-bottom: solid 1px var(--bs-border-color);
+  padding: 0.5rem 1rem;
+  height: 150px;
+}
+
+.row.noExplanation {
+  height: 50px;
+}
+
+.row:hover {
+  cursor: pointer;
+}
+
+.row.disabled {
+  opacity: 0.7;
+}
+
+.row.disabled:hover {
+  cursor: default;
+}
+
+.explanation {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: calc(150px - 3em);
+}
+
+.row.selected {
+  background-color: rgba(var(--bs-secondary-rgb), 0.07);
+}
+
+.link {
+  color: var(--bs-body-color);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--bs-body-color);
+}
+
+.error {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: calc(150px - 3em);
+}

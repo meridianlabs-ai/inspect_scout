@@ -1,0 +1,9 @@
+.id {
+  display: grid;
+  grid-template-rows: auto auto;
+  row-gap: 0;
+}
+
+.idContainer {
+  overflow-wrap: anywhere;
+}

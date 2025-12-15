@@ -1,11 +1,14 @@
 import abc
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Literal, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
 
 import duckdb
 import pandas as pd
 import pyarrow as pa
+
+if TYPE_CHECKING:
+    from pyarrow import Scalar
 
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
@@ -54,13 +57,21 @@ class ScanResultsArrow(Status):
 
     @abc.abstractmethod
     def reader(
-        self, scanner: str, streaming_batch_size: int = 1024
+        self,
+        scanner: str,
+        streaming_batch_size: int = 1024,
+        exclude_columns: list[str] | None = None,
     ) -> pa.RecordBatchReader:
         """Acquire a reader for the specified scanner.
 
         The return reader is a context manager that should be acquired before reading.
         """
         ...
+
+    @abc.abstractmethod
+    def get_field(
+        self, scanner: str, id_column: str, id_value: Any, target_column: str
+    ) -> "Scalar[Any]": ...
 
 
 @dataclass

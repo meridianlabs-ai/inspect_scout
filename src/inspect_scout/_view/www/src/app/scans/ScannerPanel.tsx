@@ -6,7 +6,7 @@ import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { LoadingBar } from "../../components/LoadingBar";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
-import { Navbar } from "../components/Navbar";
+import { ScansNavbar } from "../components/ScansNavbar";
 import {
   useServerScanner,
   useServerScannerDataframe,
@@ -44,7 +44,7 @@ export const ScannerPanel: React.FC = () => {
   const selectedStatus = useStore((state) => state.selectedScanStatus);
   return (
     <div className={clsx(styles.root)}>
-      <Navbar />
+      <ScansNavbar />
       <LoadingBar loading={!!loading} />
       {selectedStatus && (
         <>

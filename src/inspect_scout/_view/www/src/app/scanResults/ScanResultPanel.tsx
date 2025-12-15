@@ -14,7 +14,7 @@ import {
 import { useStore } from "../../state/store";
 import { EventNode, EventType } from "../../transcript/types";
 import { ApplicationIcons } from "../appearance/icons";
-import { Navbar } from "../components/Navbar";
+import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
 import {
   useSelectedResultsRow,
@@ -148,7 +148,9 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
+      <ScansNavbar>
+        {visibleScannerResults.length > 0 && <ScanResultNav />}
+      </ScansNavbar>
       <LoadingBar loading={!!loading || resultLoading} />
       <ScanResultHeader result={selectedResult} status={status} />
       {selectedResult && (

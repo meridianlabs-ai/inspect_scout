@@ -6,7 +6,7 @@ import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
-import { Navbar } from "../components/Navbar";
+import { ScansNavbar } from "../components/ScansNavbar";
 import { useServerScans } from "../server/hooks";
 
 import { ScanJobGrid } from "./ScanJobGrid";
@@ -27,7 +27,7 @@ export const ScanJobsPanel: FC = () => {
 
   return (
     <div className={clsx(styles.container)}>
-      <Navbar bordered={false} />
+      <ScansNavbar bordered={false} />
       <LoadingBar loading={!!loading} />
       <ExtendedFindProvider>
         {error && (

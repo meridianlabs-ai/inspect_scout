@@ -157,21 +157,46 @@
   margin-top: -2px;
   font-size: 0.8em;
 }
-._header_oy6cz_1 {
+._header_tayqw_1 {
   background: var(--bs-light);
   display: grid;
   grid-template-columns: 1fr max-content;
   justify-content: space-between;
   padding: 0.2em 0.5em;
-  --bs-breadcrumb-divider: ">";
   overflow: hidden;
 }
 
-._header_oy6cz_1 ._bordered_oy6cz_11 {
+._header_tayqw_1 ._bordered_tayqw_10 {
   border-bottom: solid var(--bs-border-color) 1px;
 }
 
-._breadcrumbs_oy6cz_15 {
+._left_tayqw_14 {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  align-items: center;
+  column-gap: 0.75em;
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+}
+
+._right_tayqw_24 {
+  display: grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  justify-content: end;
+  align-items: center;
+  column-gap: 0.5em;
+}
+
+._hasChildren_tayqw_33 {
+  border-left: solid var(--bs-border-color) 1px;
+  padding-left: 0.5rem;
+  margin-left: 0.5rem;
+}
+._breadcrumbs_672wg_1 {
+  --bs-breadcrumb-divider: ">";
+
   border-left: solid var(--bs-border-color) 1px;
   padding-left: 0.5em !important;
   margin-bottom: 0 !important;
@@ -182,46 +207,21 @@
   flex-wrap: nowrap;
 }
 
-._ellipsis_oy6cz_26 {
+._ellipsis_672wg_14 {
   color: var(--bs-secondary);
   font-weight: normal;
 }
 
-._left_oy6cz_31 {
-  display: grid;
-  grid-template-columns: max-content max-content 1fr;
-  align-items: center;
-  column-gap: 0.75em;
-  overflow: hidden;
-  min-width: 0;
-  max-width: 100%;
-}
-
-._right_oy6cz_41 {
-  display: grid;
-  grid-auto-columns: max-content;
-  grid-auto-flow: column;
-  justify-content: end;
-  align-items: center;
-  column-gap: 0.5em;
-}
-
-._toolbarButton_oy6cz_50 {
+._toolbarButton_672wg_19 {
   color: var(--bs-body-color);
 }
 
-._toolbarButton_oy6cz_50:hover {
+._toolbarButton_672wg_19:hover {
   color: var(--bs-link-hover-color);
 }
 
-._pathContainer_oy6cz_58 {
+._pathContainer_672wg_27 {
   overflow-x: hidden;
-}
-
-._hasChildren_oy6cz_62 {
-  border-left: solid var(--bs-border-color) 1px;
-  padding-left: 0.5rem;
-  margin-left: 0.5rem;
 }
 ._gridWrapper_1jp8e_1 {
   height: 100%;

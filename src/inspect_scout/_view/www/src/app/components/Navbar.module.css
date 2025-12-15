@@ -4,28 +4,11 @@
   grid-template-columns: 1fr max-content;
   justify-content: space-between;
   padding: 0.2em 0.5em;
-  --bs-breadcrumb-divider: ">";
   overflow: hidden;
 }
 
 .header .bordered {
   border-bottom: solid var(--bs-border-color) 1px;
-}
-
-.breadcrumbs {
-  border-left: solid var(--bs-border-color) 1px;
-  padding-left: 0.5em !important;
-  margin-bottom: 0 !important;
-  min-width: 0;
-  overflow: hidden;
-  width: max-content;
-  display: flex;
-  flex-wrap: nowrap;
-}
-
-.ellipsis {
-  color: var(--bs-secondary);
-  font-weight: normal;
 }
 
 .left {
@@ -45,18 +28,6 @@
   justify-content: end;
   align-items: center;
   column-gap: 0.5em;
-}
-
-.toolbarButton {
-  color: var(--bs-body-color);
-}
-
-.toolbarButton:hover {
-  color: var(--bs-link-hover-color);
-}
-
-.pathContainer {
-  overflow-x: hidden;
 }
 
 .hasChildren {

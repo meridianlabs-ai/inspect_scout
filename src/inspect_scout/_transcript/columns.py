@@ -1,18 +1,18 @@
-"""Metadata filtering DSL for transcript queries.
+"""Column filtering DSL for transcript queries.
 
 This module provides a pythonic DSL for building WHERE clauses
-to filter metadata in SQLite, DuckDB, and PostgreSQL databases.
+to filter columns in SQLite, DuckDB, and PostgreSQL databases.
 
 Usage:
-    from inspect_scout import metadata as m
+    from inspect_scout import columns as c
 
     # Simple conditions
-    filter = m.model == "gpt-4"
-    filter = m["custom_field"] > 100
+    filter = c.model == "gpt-4"
+    filter = c["custom_field"] > 100
 
     # Combined conditions
-    filter = (m.model == "gpt-4") & (m.score > 0.8)
-    filter = (m.status == "error") | (m.retries > 3)
+    filter = (c.model == "gpt-4") & (c.score > 0.8)
+    filter = (c.status == "error") | (c.retries > 3)
 
     # Generate SQL
     sql, params = filter.to_sql("sqlite")  # or "duckdb" or "postgres"
@@ -627,13 +627,18 @@ class Column:
         return Condition(self.name, Operator.NOT_BETWEEN, (low, high))
 
 
-class Metadata:
-    """Entry point for building metadata filter expressions.
+class Columns:
+    """Entry point for building filter expressions.
 
     Supports both dot notation and bracket notation for accessing columns:
-        metadata.column_name
-        metadata["column_name"]
-        metadata["nested.json.path"]
+
+    ```python
+    from inspect_scout import columns as c
+
+    c.column_name
+    c["column_name"]
+    c["nested.json.path"]
+    ```
     """
 
     def __getattr__(self, name: str) -> Column:
@@ -649,15 +654,15 @@ class Metadata:
         return Column(name)
 
 
-metadata = Metadata()
-"""Metadata selector for where expressions.
+columns = Columns()
+"""Column selector for where expressions.
 
-Typically aliased to a more compact expression (e.g. `m`)
+Typically aliased to a more compact expression (e.g. `c`)
 for use in queries). For example:
 
 ```python
-from inspect_scout import metadata as m
-filter = m.model == "gpt-4"
-filter = (m.task_name == "math") & (m.epochs > 1)
+from inspect_scout import columns as c
+filter = c.model == "gpt-4"
+filter = (c.task == "math") & (c.epochs > 1)
 ```
 """

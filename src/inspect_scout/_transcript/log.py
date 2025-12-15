@@ -4,11 +4,17 @@ This module provides a typed subclass of Metadata that offers IDE support
 and documentation for standard Inspect log fields.
 """
 
-from .metadata import Column, Metadata
+from logging import getLogger
+
+from inspect_ai._util.logger import warn_once
+
+from .columns import Column, Columns
+
+logger = getLogger(__name__)
 
 
-class LogMetadata(Metadata):
-    """Typed metadata interface for Inspect log transcripts.
+class LogColumns(Columns):
+    """Typed column interface for Inspect log transcripts.
 
     Provides typed properties for standard Inspect log columns while
     preserving the ability to access custom fields through the base
@@ -50,9 +56,9 @@ class LogMetadata(Metadata):
     # ===== Eval Info columns =====
 
     @property
-    def eval_created(self) -> Column:
+    def date(self) -> Column:
         """Time eval was created."""
-        return Column("eval_created")
+        return Column("date")
 
     @property
     def eval_tags(self) -> Column:
@@ -67,9 +73,9 @@ class LogMetadata(Metadata):
     # ===== Eval Task columns =====
 
     @property
-    def task_name(self) -> Column:
+    def task(self) -> Column:
         """Task name."""
-        return Column("task_name")
+        return Column("task")
 
     @property
     def task_args(self) -> Column:
@@ -77,14 +83,14 @@ class LogMetadata(Metadata):
         return Column("task_args")
 
     @property
-    def solver(self) -> Column:
-        """Solver name."""
-        return Column("solver")
+    def agent(self) -> Column:
+        """Agent name."""
+        return Column("agent")
 
     @property
-    def solver_args(self) -> Column:
-        """Arguments used for invoking the solver."""
-        return Column("solver_args")
+    def agent_args(self) -> Column:
+        """Agent args."""
+        return Column("agent_args")
 
     # ===== Eval Model columns =====
 
@@ -160,21 +166,47 @@ class LogMetadata(Metadata):
         """Limit that halted the sample."""
         return Column("limit")
 
+    # ===== Deprecated columns =====
 
-log_metadata = LogMetadata()
-"""Log metadata selector for where expressions.
+    @property
+    def eval_created(self) -> Column:
+        """Time eval was created (deprecated, use 'date' instead)."""
+        warn_once(logger, "'eval_created' is deprecated, use 'date' instead")
+        return self.date
 
-Typically aliased to a more compact expression (e.g. `m`)
+    @property
+    def task_name(self) -> Column:
+        """Task name (deprecated, use 'task' instead)."""
+        warn_once(logger, "'task_name' is deprecated, use 'task' instead")
+        return self.task
+
+    @property
+    def solver(self) -> Column:
+        """Solver name (deprecated, use 'agent' instead)."""
+        warn_once(logger, "'solver' is deprecated, use 'agent' instead")
+        return self.agent
+
+    @property
+    def solver_args(self) -> Column:
+        """Arguments used for invoking the solver (deprecated, use 'agent_args' instead)."""
+        warn_once(logger, "'solver_args' is deprecated, use 'agent_args' instead")
+        return self.agent_args
+
+
+log_columns = LogColumns()
+"""Log columns selector for where expressions.
+
+Typically aliased to a more compact expression (e.g. `c`)
 for use in queries). For example:
 
 ```python
-from inspect_scout import log_metadata as m
+from inspect_scout import log_columns as c
 
 # typed access to standard fields
-filter = m.model == "gpt-4"
-filter = (m.task_name == "math") & (m.epochs > 1)
+filter = c.model == "gpt-4"
+filter = (c.task_name == "math") & (c.epochs > 1)
 
 # dynamic access to custom fields
-filter = m["custom_field"] > 100
+filter = c["custom_field"] > 100
 ```
 """

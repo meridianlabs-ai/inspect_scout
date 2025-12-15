@@ -38,12 +38,12 @@ from ._scanspec import (
     TranscriptField,
     Worklist,
 )
+from ._transcript.columns import Column, Columns, Condition, columns
 from ._transcript.database.database import TranscriptsDB
 from ._transcript.database.factory import transcripts_db
 from ._transcript.database.source import TranscriptsSource
 from ._transcript.factory import transcripts_from
-from ._transcript.log import LogMetadata, log_metadata
-from ._transcript.metadata import Column, Condition, Metadata, metadata
+from ._transcript.log import LogColumns, log_columns
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
@@ -100,10 +100,10 @@ __all__ = [
     "TranscriptInfo",
     "Column",
     "Condition",
-    "Metadata",
-    "metadata",
-    "LogMetadata",
-    "log_metadata",
+    "Columns",
+    "columns",
+    "LogColumns",
+    "log_columns",
     # scanner
     "Error",
     "Scanner",
@@ -147,5 +147,35 @@ relocated_module_attribute(
     "transcripts_from_logs",
     "inspect_scout.transcripts_from",
     _DEPRECATED_VERSION_2_2,
+    _REMOVED_IN,
+)
+
+
+_DEPRECATED_VERSION_4_2 = "0.4.2"
+relocated_module_attribute(
+    "Metadata",
+    "inspect_scout.Columns",
+    _DEPRECATED_VERSION_4_2,
+    _REMOVED_IN,
+)
+
+relocated_module_attribute(
+    "metadata",
+    "inspect_scout.columns",
+    _DEPRECATED_VERSION_4_2,
+    _REMOVED_IN,
+)
+
+relocated_module_attribute(
+    "LogMetadata",
+    "inspect_scout.LogColumns",
+    _DEPRECATED_VERSION_4_2,
+    _REMOVED_IN,
+)
+
+relocated_module_attribute(
+    "log_metadata",
+    "inspect_scout.log_columns",
+    _DEPRECATED_VERSION_4_2,
     _REMOVED_IN,
 )

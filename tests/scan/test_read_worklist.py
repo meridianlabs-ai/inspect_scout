@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 import yaml
+from inspect_scout import log_metadata as m
 from inspect_scout._scan import _resolve_worklist
 from inspect_scout._scanspec import Worklist
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.log import log_metadata as m
 from inspect_scout._transcript.transcripts import ScannerWork
 
 # Test data location

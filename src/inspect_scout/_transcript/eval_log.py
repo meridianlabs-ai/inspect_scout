@@ -52,9 +52,9 @@ from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
+from .columns import Condition
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache
-from .metadata import Condition
 from .transcripts import TranscriptsQuery, TranscriptsReader
 from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
 from .util import LazyJSONDict
@@ -435,16 +435,14 @@ TranscriptColumns: list[Column] = (
     EvalId
     + EvalLogPath
     + [
+        EvalColumn("date", path="eval.created", type=datetime, required=True),
         EvalColumn("eval_status", path="status", required=True),
-        EvalColumn("eval_created", path="eval.created", type=datetime, required=True),
         EvalColumn("eval_tags", path="eval.tags", default="", value=list_as_str),
         EvalColumn("eval_metadata", path="eval.metadata", default={}),
-        EvalColumn(
-            "task_name", path="eval.task", required=True, value=remove_namespace
-        ),
+        EvalColumn("task", path="eval.task", required=True, value=remove_namespace),
         EvalColumn("task_args", path="eval.task_args", default={}),
-        EvalColumn("solver", path="eval.solver"),
-        EvalColumn("solver_args", path="eval.solver_args", default={}),
+        EvalColumn("agent", path="eval.solver"),
+        EvalColumn("agent_args", path="eval.solver_args", default={}),
         EvalColumn("model", path="eval.model", required=True),
         EvalColumn("generate_config", path="eval.model_generate_config", default={}),
         EvalColumn("model_roles", path="eval.model_roles", default={}),

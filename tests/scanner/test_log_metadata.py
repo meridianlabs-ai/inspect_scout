@@ -7,10 +7,10 @@ import pandas as pd
 import pytest
 import pytest_asyncio
 from inspect_ai.analysis import samples_df
+from inspect_scout import LogMetadata
+from inspect_scout import log_metadata as lm
+from inspect_scout import metadata as m
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB, TranscriptColumns
-from inspect_scout._transcript.log import LogMetadata
-from inspect_scout._transcript.log import log_metadata as lm
-from inspect_scout._transcript.metadata import metadata as m
 
 
 def create_log_dataframe() -> pd.DataFrame:
@@ -62,15 +62,15 @@ def test_typed_properties_exist() -> None:
     assert lm.log.name == "log"
 
     # Eval info columns
-    assert lm.eval_created.name == "eval_created"
+    assert lm.eval_created.name == "date"
     assert lm.eval_tags.name == "eval_tags"
     assert lm.eval_metadata.name == "eval_metadata"
 
     # Task configuration columns
-    assert lm.task_name.name == "task_name"
+    assert lm.task_name.name == "task"
     assert lm.task_args.name == "task_args"
-    assert lm.solver.name == "solver"
-    assert lm.solver_args.name == "solver_args"
+    assert lm.solver.name == "agent"
+    assert lm.solver_args.name == "agent_args"
 
     # Model configuration columns
     assert lm.model.name == "model"
@@ -116,13 +116,13 @@ def test_sql_generation_simple_equality() -> None:
     # Task name equality
     condition = lm.task_name == "math_problem"
     sql, params = condition.to_sql("sqlite")
-    assert sql == '"task_name" = ?'
+    assert sql == '"task" = ?'
     assert params == ["math_problem"]
 
     # Solver equality
     condition = lm.solver == "cot"
     sql, params = condition.to_sql("sqlite")
-    assert sql == '"solver" = ?'
+    assert sql == '"agent" = ?'
     assert params == ["cot"]
 
 
@@ -149,7 +149,7 @@ def test_sql_generation_comparison_operators() -> None:
     # Not equal
     condition = lm.solver != "cot"
     sql, params = condition.to_sql("sqlite")
-    assert sql == '"solver" != ?'
+    assert sql == '"agent" != ?'
     assert params == ["cot"]
 
 
@@ -164,7 +164,7 @@ def test_sql_generation_complex_conditions() -> None:
     # OR condition
     condition = (lm.solver == "cot") | (lm.total_time > 10.0)
     sql, params = condition.to_sql("sqlite")
-    assert sql == '("solver" = ? OR "total_time" > ?)'
+    assert sql == '("agent" = ? OR "total_time" > ?)'
     assert params == ["cot", 10.0]
 
     # Complex nested
@@ -217,7 +217,7 @@ def test_sql_generation_in_operators() -> None:
     # NOT IN
     condition = lm.solver.not_in(["cot", "react"])
     sql, params = condition.to_sql("sqlite")
-    assert sql == '"solver" NOT IN (?, ?)'
+    assert sql == '"agent" NOT IN (?, ?)'
     assert params == ["cot", "react"]
 
 
@@ -226,7 +226,7 @@ def test_sql_generation_like_operators() -> None:
     # LIKE
     condition = lm.task_name.like("math%")
     sql, params = condition.to_sql("sqlite")
-    assert sql == '"task_name" LIKE ?'
+    assert sql == '"task" LIKE ?'
     assert params == ["math%"]
 
     # NOT LIKE
@@ -586,8 +586,8 @@ def test_all_operators_with_typed_properties() -> None:
         (lm.epoch <= 2, '"epoch" <= ?', [2]),
         (lm.model.in_(["a", "b"]), '"model" IN (?, ?)', ["a", "b"]),
         (lm.model.not_in(["a", "b"]), '"model" NOT IN (?, ?)', ["a", "b"]),
-        (lm.task_name.like("math%"), '"task_name" LIKE ?', ["math%"]),
-        (lm.task_name.not_like("code%"), '"task_name" NOT LIKE ?', ["code%"]),
+        (lm.task_name.like("math%"), '"task" LIKE ?', ["math%"]),
+        (lm.task_name.not_like("code%"), '"task" NOT LIKE ?', ["code%"]),
         (lm.limit.is_null(), '"limit" IS NULL', []),
         (lm.limit.is_not_null(), '"limit" IS NOT NULL', []),
         (lm.epoch.between(1, 3), '"epoch" BETWEEN ? AND ?', [1, 3]),
@@ -631,7 +631,7 @@ async def test_empty_dataframe_with_log_metadata() -> None:
 
 def test_type_hints_preserved() -> None:
     """Test that type hints are preserved and work correctly."""
-    from inspect_scout._transcript.metadata import Column
+    from inspect_scout._transcript.columns import Column
 
     # Verify that properties return Column type
     assert isinstance(lm.model, Column)
@@ -639,7 +639,7 @@ def test_type_hints_preserved() -> None:
     assert isinstance(lm.total_tokens, Column)
 
     # Verify that operations return Condition type
-    from inspect_scout._transcript.metadata import Condition
+    from inspect_scout._transcript.columns import Condition
 
     condition = lm.model == "gpt-4"
     assert isinstance(condition, Condition)

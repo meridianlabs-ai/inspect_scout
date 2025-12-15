@@ -3,12 +3,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 from inspect_ai.analysis import samples_df
+from inspect_scout import log_metadata as lm
 from inspect_scout._transcript.caching import samples_df_with_caching
 from inspect_scout._transcript.eval_log import (
     EvalLogTranscriptsReader,
     TranscriptColumns,
 )
-from inspect_scout._transcript.log import log_metadata as lm
 from inspect_scout._transcript.transcripts import TranscriptsQuery
 
 from tests.helpers import temp_kvstore
@@ -57,7 +57,7 @@ async def test_integration() -> None:
         _validate_df(mixture)
 
         row = mixture[mixture["sample_id"] == REFERENCE_SAMPLE_ID]
-        assert row["eval_created"].iloc[0] == pd.Timestamp(REFERENCE_EVAL_CREATED)
+        assert row["date"].iloc[0] == pd.Timestamp(REFERENCE_EVAL_CREATED)
         assert row["working_time"].iloc[0] == REFERENCE_WORKING_TIME
 
         # This validates that we can properly create the in memory SQLite db
@@ -66,13 +66,13 @@ async def test_integration() -> None:
         ) as reader:
             t = await reader.index().__anext__()
             assert t.metadata["sample_id"] == REFERENCE_SAMPLE_ID
-            assert t.metadata["eval_created"] == REFERENCE_EVAL_CREATED
+            assert t.metadata["date"] == REFERENCE_EVAL_CREATED
             assert t.metadata["working_time"] == REFERENCE_WORKING_TIME
 
 
 def _validate_df(df: pd.DataFrame) -> None:
     # this is a little sketchy - testing implementation details, but the flow is
     # quite fragile and easy to miss if we mess it up
-    assert df["eval_created"].dtype.name == "timestamp[ns, tz=UTC][pyarrow]"
+    assert df["date"].dtype.name == "timestamp[ns, tz=UTC][pyarrow]"
     assert df["epoch"].dtype.name == "int64[pyarrow]"
     assert df["working_time"].dtype.name == "double[pyarrow]"

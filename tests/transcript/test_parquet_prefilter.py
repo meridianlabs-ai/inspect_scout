@@ -10,8 +10,8 @@ from typing import Any
 import pytest
 import pytest_asyncio
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
+from inspect_scout import metadata as m
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
-from inspect_scout._transcript.metadata import metadata as m
 from inspect_scout._transcript.transcripts import TranscriptsQuery
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 

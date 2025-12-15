@@ -9,7 +9,7 @@ from typing import (
 from inspect_scout._validation.types import ValidationCase, ValidationSet
 
 from .._scanspec import ScanTranscripts
-from .metadata import Column, Condition
+from .columns import Column, Condition
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
 

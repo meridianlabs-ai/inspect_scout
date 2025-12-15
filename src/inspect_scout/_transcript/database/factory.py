@@ -3,8 +3,8 @@ import io
 import pandas as pd
 
 from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.columns import Column
 from inspect_scout._transcript.database.database import TranscriptsDB
-from inspect_scout._transcript.metadata import Column
 from inspect_scout._transcript.transcripts import Transcripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 

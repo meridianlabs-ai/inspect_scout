@@ -1,14 +1,12 @@
 """Comprehensive test suite for metadata filtering DSL."""
 
 import pytest
-from inspect_scout._transcript.metadata import (
+from inspect_scout import metadata as m
+from inspect_scout._transcript.columns import (
     Column,
     LogicalOperator,
     Operator,
     SQLDialect,
-)
-from inspect_scout._transcript.metadata import (
-    metadata as m,
 )
 
 

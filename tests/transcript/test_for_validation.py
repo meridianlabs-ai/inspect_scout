@@ -192,7 +192,7 @@ def test_for_validation_large_id_list() -> None:
 
 def test_for_validation_combines_with_existing_conditions() -> None:
     """Test that for_validation combines with existing where conditions."""
-    from inspect_scout._transcript.metadata import metadata as m
+    from inspect_scout import metadata as m
 
     validation = ValidationSet(
         cases=[

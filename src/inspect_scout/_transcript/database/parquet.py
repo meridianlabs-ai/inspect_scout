@@ -29,9 +29,9 @@ from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
+from ..columns import Condition
 from ..json.load_filtered import load_filtered_transcript
 from ..local_files_cache import init_task_files_cache
-from ..metadata import Condition
 from ..transcripts import (
     Transcripts,
     TranscriptsQuery,

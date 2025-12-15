@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 from inspect_scout import Result, Scanner, ScannerWork, scan, scanner
+from inspect_scout import log_metadata as m
 from inspect_scout._scanresults import scan_results_db, scan_status
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.log import log_metadata as m
 from inspect_scout._transcript.types import Transcript
 
 # Test data location

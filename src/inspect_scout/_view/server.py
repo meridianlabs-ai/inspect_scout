@@ -255,16 +255,6 @@ def view_server_app(
         # validate
         await _validate_read(request, scan_path)
 
-        # Read the input for the scanner and uuid
-        result = await scan_results_arrow_async(str(scan_path))
-
-        # ensure we have the scanner data (404 if not)
-        if query_scanner not in result.scanners:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{query_scanner}' not found in scan results",
-            )
-
         # get the result
         result = await scan_results_arrow_async(str(scan_path))
 

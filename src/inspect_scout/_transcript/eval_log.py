@@ -157,46 +157,12 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
     # read legacy format that included the full datasets
     if snapshot.fields and snapshot.data:
         # Read CSV data from snapshot
-        df = pd.read_csv(io.StringIO(snapshot.data))
+        snapshot_df = pd.read_csv(io.StringIO(snapshot.data))
 
-        # Process field definitions to apply correct dtypes
-        for field in snapshot.fields:
-            col_name = field["name"]
-            col_type = field["type"]
-
-            # Skip if column doesn't exist in DataFrame
-            if col_name not in df.columns:
-                continue
-
-            # Handle datetime columns with timezone
-            if col_type == "datetime":
-                tz = field.get("tz")
-                if tz:
-                    # Parse datetime with timezone
-                    df[col_name] = pd.to_datetime(df[col_name]).dt.tz_localize(tz)
-                else:
-                    df[col_name] = pd.to_datetime(df[col_name])
-
-            # Handle other specific types
-            elif col_type == "integer":
-                # Handle nullable integers
-                if df[col_name].isnull().any():
-                    df[col_name] = df[col_name].astype("Int64")
-                else:
-                    df[col_name] = df[col_name].astype("int64")
-
-            elif col_type == "number":
-                df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
-
-            elif col_type == "boolean":
-                df[col_name] = df[col_name].astype("bool")
-
-            elif col_type == "string":
-                df[col_name] = df[col_name].astype("string")
-
-            # For any other type, let pandas infer or keep as-is
-
-        return df
+        # determine unique logs, re-read, then filter on sample_id
+        logs = snapshot_df["log"].unique().tolist()
+        df = _index_logs(logs)
+        return df[df["sample_id"].isin(snapshot_df["sample_id"])]
 
     else:
         # re-read from index (which will be cached) then filter

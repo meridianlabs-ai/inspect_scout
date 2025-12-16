@@ -14,7 +14,7 @@ import {
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { basename } from "../../../../utils/path";
-import { useScannerCores } from "../../../hooks";
+import { useScannerSummaries } from "../../../hooks";
 import { ScanResultSummary, SortColumn } from "../../../types";
 import {
   resultIdentifier,
@@ -52,7 +52,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const { scanPath } = parseScanResultPath(relativePath);
 
   // Data
-  const { data: scannerSummaries, isLoading } = useScannerCores(columnTable);
+  const { data: scannerSummaries, isLoading } =
+    useScannerSummaries(columnTable);
   const isLoadingData = useStore((state) => state.loadingData);
   const busy = isLoading || isLoadingData;
 
@@ -355,7 +356,6 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
         return <ScanResultGroup group={entry.label} />;
       }
 
-      // TypeScript now knows entry is ScannerCore here
       return (
         <ScanResultsRow
           index={index}

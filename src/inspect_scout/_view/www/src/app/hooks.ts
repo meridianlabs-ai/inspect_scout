@@ -303,17 +303,19 @@ export const useSelectedScanResultInputData = ():
     : undefined;
 };
 
-export const useScannerCores = (columnTable?: ColumnTable) => {
+export const useScannerSummaries = (columnTable?: ColumnTable) => {
   // First see if we've already decoded these
   const selectedScanner = useSelectedScanner();
-  const getSelectedScanResultPreviews = useStore(
-    (state) => state.getSelectedScanResultPreviews
+  const getSelectedScanResultSummaries = useStore(
+    (state) => state.getSelectedScanResultSummaries
   );
-  const setSelectedScanResultPreviews = useStore(
-    (state) => state.setSelectedScanResultPreviews
+  const setSelectedScanResultSummaries = useStore(
+    (state) => state.setSelectedScanResultSummaries
   );
 
-  const [scannerCores, setScannerCores] = useState<ScanResultSummary[]>([]);
+  const [scanResultSummaries, setScanResultsSummaries] = useState<
+    ScanResultSummary[]
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const rowData = useMemo(() => columnTable?.objects(), [columnTable]);
@@ -321,16 +323,16 @@ export const useScannerCores = (columnTable?: ColumnTable) => {
   useEffect(() => {
     // If empty, set empty and return
     if (rowData?.length === 0) {
-      setScannerCores([]);
-      setSelectedScanResultPreviews(selectedScanner, []);
+      setScanResultsSummaries([]);
+      setSelectedScanResultSummaries(selectedScanner, []);
       setIsLoading(false);
       return;
     }
 
     // Use the existing previews if available
-    const existingPreviews = getSelectedScanResultPreviews(selectedScanner);
+    const existingPreviews = getSelectedScanResultSummaries(selectedScanner);
     if (existingPreviews) {
-      setScannerCores(existingPreviews);
+      setScanResultsSummaries(existingPreviews);
       setIsLoading(false);
       return;
     }
@@ -338,15 +340,17 @@ export const useScannerCores = (columnTable?: ColumnTable) => {
     let cancelled = false;
     setIsLoading(true);
 
-    const parse = async <T>(text: string | null): Promise<T | undefined> => {
+    const jsonParse = async <T>(
+      text: string | null
+    ): Promise<T | undefined> => {
       return text !== null
         ? (asyncJsonParse<ScanResultSummary[]>(text) as Promise<T>)
         : undefined;
     };
 
-    const parsePreviews = async () => {
+    const parseScanResultSummaries = async () => {
       try {
-        const parsedPreviews = await Promise.all(
+        const parsedSummaries = await Promise.all(
           (rowData || []).map(async (row) => {
             const r = row as Record<string, unknown>;
 
@@ -372,7 +376,9 @@ export const useScannerCores = (columnTable?: ColumnTable) => {
               string | number | boolean | null | unknown[] | object
             > => {
               if (valueType === "object" || valueType === "array") {
-                return (await parse<object | unknown[]>(val as string)) || null;
+                return (
+                  (await jsonParse<object | unknown[]>(val as string)) || null
+                );
               } else {
                 return Promise.resolve(val as string | number | boolean | null);
               }
@@ -385,11 +391,13 @@ export const useScannerCores = (columnTable?: ColumnTable) => {
               messageReferences,
               value,
             ] = await Promise.all([
-              parse(r.validation_result as string),
-              parse(r.validation_target as string),
-              parse<Record<string, unknown>>(r.transcript_metadata as string),
-              parse(r.event_references as string),
-              parse(r.message_references as string),
+              jsonParse(r.validation_result as string),
+              jsonParse(r.validation_target as string),
+              jsonParse<Record<string, unknown>>(
+                r.transcript_metadata as string
+              ),
+              jsonParse(r.event_references as string),
+              jsonParse(r.message_references as string),
               simpleValue(r.value, valueType),
             ]);
 
@@ -465,21 +473,21 @@ export const useScannerCores = (columnTable?: ColumnTable) => {
         );
 
         if (!cancelled) {
-          setScannerCores(parsedPreviews);
-          setSelectedScanResultPreviews(selectedScanner, parsedPreviews);
+          setScanResultsSummaries(parsedSummaries);
+          setSelectedScanResultSummaries(selectedScanner, parsedSummaries);
           setIsLoading(false);
         }
       } catch (error) {
         if (!cancelled) {
           console.error("Error parsing scanner previews:", error);
-          setScannerCores([]);
-          setSelectedScanResultPreviews(selectedScanner, []);
+          setScanResultsSummaries([]);
+          setSelectedScanResultSummaries(selectedScanner, []);
           setIsLoading(false);
         }
       }
     };
 
-    void parsePreviews();
+    void parseScanResultSummaries();
 
     return () => {
       cancelled = true;
@@ -487,9 +495,9 @@ export const useScannerCores = (columnTable?: ColumnTable) => {
   }, [
     rowData,
     selectedScanner,
-    getSelectedScanResultPreviews,
-    setSelectedScanResultPreviews,
+    getSelectedScanResultSummaries,
+    setSelectedScanResultSummaries,
   ]);
 
-  return { data: scannerCores, isLoading };
+  return { data: scanResultSummaries, isLoading };
 };

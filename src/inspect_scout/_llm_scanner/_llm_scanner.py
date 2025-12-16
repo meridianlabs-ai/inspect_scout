@@ -209,7 +209,28 @@ async def render_scanner_prompt(
             else await question(transcript),
             answer_prompt=answer.prompt,
             answer_format=answer.format,
-            metadata=transcript.metadata,
+            date=transcript.date,
+            task=transcript.task,
+            agent=transcript.agent,
+            agent_args=transcript.agent_args,
+            model=transcript.model,
+            score=transcript.score,
+            success=transcript.success,
+            total_time=transcript.total_time,
+            total_tokens=transcript.total_tokens,
+            error=transcript.error,
+            limit=transcript.limit,
+            metadata=transcript.metadata
+            # backward compatibility for existing templates
+            # TODO: remove this once users have updated
+            | {
+                "task_name": transcript.task,
+                "score": transcript.score,
+                "model": transcript.model,
+                "solver": transcript.agent,
+                "error": transcript.error,
+                "limit": transcript.limit,
+            },
             **template_variables,
         )
     )

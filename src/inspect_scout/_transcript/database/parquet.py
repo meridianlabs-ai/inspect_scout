@@ -675,7 +675,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "agent": transcript.agent,
             "agent_args": json.dumps(transcript.agent_args),
             "model": transcript.model,
-            "score": json.dumps(transcript.score),
+            "score": (
+                json.dumps(transcript.score)
+                if isinstance(transcript.score, (dict, list))
+                else (str(transcript.score) if transcript.score is not None else None)
+            ),
             "success": transcript.success,
             "total_time": transcript.total_time,
             "total_tokens": transcript.total_tokens,

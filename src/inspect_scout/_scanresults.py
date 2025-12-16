@@ -122,7 +122,7 @@ async def scan_results_df_async(
             transformer=_expand_resultset_rows,
         )
         return ScanResultsDF(
-            status=results.complete,
+            complete=results.complete,
             spec=results.spec,
             location=results.location,
             summary=results.summary,

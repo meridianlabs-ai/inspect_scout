@@ -11,7 +11,7 @@ from inspect_scout._recorder.recorder import ScanResultsArrow, ScanResultsDF, St
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanner.result import Error
 from inspect_scout._scanspec import ScanSpec
-from inspect_scout._view._api_v1 import v1_api_app
+from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
@@ -73,7 +73,7 @@ def sample_dataframe() -> pd.DataFrame:
 def app_with_results_dir(tmp_path: Path) -> TestClient:
     """Create a test app with a temporary results directory."""
     results_dir = str(tmp_path)
-    app = v1_api_app(results_dir=results_dir)
+    app = v2_api_app(results_dir=results_dir)
     return TestClient(app)
 
 
@@ -96,7 +96,7 @@ class TestViewServerAppScansEndpoint:
         ]
 
         with patch(
-            "inspect_scout._view._api_v1.scan_list_async", return_value=mock_scans
+            "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
         ):
             response = app_with_results_dir.get("/scans")
 
@@ -114,7 +114,7 @@ class TestViewServerAppScansEndpoint:
         mock_scans: list[Status] = []
 
         with patch(
-            "inspect_scout._view._api_v1.scan_list_async", return_value=mock_scans
+            "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
         ):
             response = app_with_results_dir.get("/scans?results_dir=/custom/path")
 
@@ -125,64 +125,64 @@ class TestViewServerAppScansEndpoint:
     @pytest.mark.asyncio
     async def test_scans_endpoint_no_results_dir(self) -> None:
         """Test scans endpoint without results_dir."""
-        app = v1_api_app(results_dir=None)
+        app = v2_api_app(results_dir=None)
         client = TestClient(app)
 
         response = client.get("/scans")
 
         assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
 
-    # @pytest.mark.asyncio
-    # async def test_scans_endpoint_returns_etag(
-    #     self, app_with_results_dir: TestClient
-    # ) -> None:
-    #     """Test that /scans returns ETag header."""
-    #     with (
-    #         patch("inspect_scout._view._api_v1.scan_list_async", return_value=[]),
-    #         patch(
-    #             "inspect_scout._view._api_v1._compute_scans_etag",
-    #             return_value="abc123",
-    #         ),
-    #     ):
-    #         response = app_with_results_dir.get("/scans")
+    @pytest.mark.asyncio
+    async def test_scans_endpoint_returns_etag(
+        self, app_with_results_dir: TestClient
+    ) -> None:
+        """Test that /scans returns ETag header."""
+        with (
+            patch("inspect_scout._view._api_v2.scan_list_async", return_value=[]),
+            patch(
+                "inspect_scout._view._api_v2._compute_scans_etag",
+                return_value="abc123",
+            ),
+        ):
+            response = app_with_results_dir.get("/scans")
 
-    #     assert response.status_code == 200
-    #     assert response.headers.get("etag") == '"abc123"'
+        assert response.status_code == 200
+        assert response.headers.get("etag") == '"abc123"'
 
-    # @pytest.mark.asyncio
-    # async def test_scans_endpoint_304_on_matching_etag(
-    #     self, app_with_results_dir: TestClient
-    # ) -> None:
-    #     """Test 304 returned when If-None-Match matches ETag."""
-    #     with patch(
-    #         "inspect_scout._view._api_v1._compute_scans_etag",
-    #         return_value="abc123",
-    #     ):
-    #         response = app_with_results_dir.get(
-    #             "/scans", headers={"If-None-Match": '"abc123"'}
-    #         )
+    @pytest.mark.asyncio
+    async def test_scans_endpoint_304_on_matching_etag(
+        self, app_with_results_dir: TestClient
+    ) -> None:
+        """Test 304 returned when If-None-Match matches ETag."""
+        with patch(
+            "inspect_scout._view._api_v2._compute_scans_etag",
+            return_value="abc123",
+        ):
+            response = app_with_results_dir.get(
+                "/scans", headers={"If-None-Match": '"abc123"'}
+            )
 
-    #     assert response.status_code == 304
-    #     assert response.headers.get("etag") == '"abc123"'
+        assert response.status_code == 304
+        assert response.headers.get("etag") == '"abc123"'
 
-    # @pytest.mark.asyncio
-    # async def test_scans_endpoint_200_on_mismatched_etag(
-    #     self, app_with_results_dir: TestClient
-    # ) -> None:
-    #     """Test full response when If-None-Match doesn't match."""
-    #     with (
-    #         patch("inspect_scout._view._api_v1.scan_list_async", return_value=[]),
-    #         patch(
-    #             "inspect_scout._view._api_v1._compute_scans_etag",
-    #             return_value="abc123",
-    #         ),
-    #     ):
-    #         response = app_with_results_dir.get(
-    #             "/scans", headers={"If-None-Match": '"old-etag"'}
-    #         )
+    @pytest.mark.asyncio
+    async def test_scans_endpoint_200_on_mismatched_etag(
+        self, app_with_results_dir: TestClient
+    ) -> None:
+        """Test full response when If-None-Match doesn't match."""
+        with (
+            patch("inspect_scout._view._api_v2.scan_list_async", return_value=[]),
+            patch(
+                "inspect_scout._view._api_v2._compute_scans_etag",
+                return_value="abc123",
+            ),
+        ):
+            response = app_with_results_dir.get(
+                "/scans", headers={"If-None-Match": '"old-etag"'}
+            )
 
-    #     assert response.status_code == 200
-    #     assert response.headers.get("etag") == '"abc123"'
+        assert response.status_code == 200
+        assert response.headers.get("etag") == '"abc123"'
 
 
 class TestViewServerAppScanDfEndpoint:
@@ -208,7 +208,7 @@ class TestViewServerAppScanDfEndpoint:
         mock_results.reader.return_value = mock_reader
 
         with patch(
-            "inspect_scout._view._api_v1.scan_results_arrow_async",
+            "inspect_scout._view._api_v2.scan_results_arrow_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
@@ -239,7 +239,7 @@ class TestViewServerAppScanDfEndpoint:
         mock_results.scanners = ["scanner1"]
 
         with patch(
-            "inspect_scout._view._api_v1.scan_results_arrow_async",
+            "inspect_scout._view._api_v2.scan_results_arrow_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
@@ -267,7 +267,7 @@ class TestViewServerAppScanEndpoint:
         )
 
         with patch(
-            "inspect_scout._view._api_v1.scan_results_df_async",
+            "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get("/scan/test_scan")
@@ -292,7 +292,7 @@ class TestViewServerAppScanEndpoint:
         )
 
         with patch(
-            "inspect_scout._view._api_v1.scan_results_df_async",
+            "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get("/scan/test_scan?status_only=true")
@@ -303,28 +303,12 @@ class TestViewServerAppScanEndpoint:
         assert data["complete"] is True
 
 
-class TestViewServerAppScanDeleteEndpoint:
-    """Tests for the /scan-delete endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_scan_delete_endpoint_success(
-        self, app_with_results_dir: TestClient
-    ) -> None:
-        """Test successful deletion of scan results."""
-        with patch("inspect_scout._view._api_v1.remove_scan_results") as mock_remove:
-            response = app_with_results_dir.get("/scan-delete/test_scan")
-
-        assert response.status_code == 200
-        assert response.json() is True
-        mock_remove.assert_called_once()
-
-
 class TestAuthorizationMiddleware:
     """Tests for the AuthorizationMiddleware."""
 
     def test_authorization_middleware_success(self) -> None:
         """Test successful authorization."""
-        app = v1_api_app(results_dir="/test")
+        app = v2_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
 
         # Add authorization middleware
@@ -336,7 +320,7 @@ class TestAuthorizationMiddleware:
 
         client = TestClient(main_app)
 
-        with patch("inspect_scout._view._api_v1.scan_list_async", return_value=[]):
+        with patch("inspect_scout._view._api_v2.scan_list_async", return_value=[]):
             response = client.get(
                 "/api/scans?results_dir=/test",
                 headers={"Authorization": test_auth},
@@ -346,7 +330,7 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_failure(self) -> None:
         """Test failed authorization."""
-        app = v1_api_app(results_dir="/test")
+        app = v2_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
 
         # Add authorization middleware
@@ -367,7 +351,7 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_missing_header(self) -> None:
         """Test missing authorization header."""
-        app = v1_api_app(results_dir="/test")
+        app = v2_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
 
         # Add authorization middleware
@@ -393,29 +377,14 @@ class TestAccessPolicy:
         mock_access_policy = MagicMock()
         mock_access_policy.can_read = AsyncMock(return_value=False)
 
-        app = v1_api_app(access_policy=mock_access_policy, results_dir="/test")
+        app = v2_api_app(access_policy=mock_access_policy, results_dir="/test")
         client = TestClient(app)
 
-        with patch("inspect_scout._view._api_v1.scan_results_df_async") as mock_scan:
+        with patch("inspect_scout._view._api_v2.scan_results_df_async") as mock_scan:
             response = client.get("/scan/test_scan")
 
         assert response.status_code == HTTP_403_FORBIDDEN
         mock_scan.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_access_policy_delete_forbidden(self) -> None:
-        """Test that access policy blocks unauthorized deletes."""
-        mock_access_policy = MagicMock()
-        mock_access_policy.can_delete = AsyncMock(return_value=False)
-
-        app = v1_api_app(access_policy=mock_access_policy, results_dir="/test")
-        client = TestClient(app)
-
-        with patch("inspect_scout._view._api_v1.remove_scan_results") as mock_remove:
-            response = client.get("/scan-delete/test_scan")
-
-        assert response.status_code == HTTP_403_FORBIDDEN
-        mock_remove.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_access_policy_list_forbidden(self) -> None:
@@ -423,10 +392,10 @@ class TestAccessPolicy:
         mock_access_policy = MagicMock()
         mock_access_policy.can_list = AsyncMock(return_value=False)
 
-        app = v1_api_app(access_policy=mock_access_policy, results_dir="/test")
+        app = v2_api_app(access_policy=mock_access_policy, results_dir="/test")
         client = TestClient(app)
 
-        with patch("inspect_scout._view._api_v1.scan_list_async") as mock_list:
+        with patch("inspect_scout._view._api_v2.scan_list_async") as mock_list:
             response = client.get("/scans?results_dir=/test")
 
         assert response.status_code == HTTP_403_FORBIDDEN
@@ -447,7 +416,7 @@ class TestMappingPolicy:
             side_effect=lambda req, file: file.replace("/mapped", "")
         )
 
-        app = v1_api_app(mapping_policy=mock_mapping_policy, results_dir="/test")
+        app = v2_api_app(mapping_policy=mock_mapping_policy, results_dir="/test")
         client = TestClient(app)
 
         mock_scans = [
@@ -461,7 +430,7 @@ class TestMappingPolicy:
         ]
 
         with patch(
-            "inspect_scout._view._api_v1.scan_list_async", return_value=mock_scans
+            "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
         ):
             response = client.get("/scans?results_dir=/test")
 
@@ -489,7 +458,7 @@ class TestViewServerAppEdgeCases:
         )
 
         with patch(
-            "inspect_scout._view._api_v1.scan_results_df_async",
+            "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
             # Use relative path
@@ -518,7 +487,7 @@ class TestViewServerAppEdgeCases:
         )
 
         with patch(
-            "inspect_scout._view._api_v1.scan_results_df_async",
+            "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get("/scan/test_scan?status_only=true")

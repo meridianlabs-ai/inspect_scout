@@ -88,14 +88,14 @@ class ScanResultsDF(Status):
 
     def __init__(
         self,
-        status: bool,
+        complete: bool,
         spec: ScanSpec,
         location: str,
         summary: Summary,
         errors: list[Error],
         scanners: Mapping[str, pd.DataFrame],
     ) -> None:
-        super().__init__(status, spec, location, summary, errors)
+        super().__init__(complete, spec, location, summary, errors)
         self.scanners = scanners
 
 

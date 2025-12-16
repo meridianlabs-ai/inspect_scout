@@ -794,6 +794,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "agent",
             "agent_args",
             "model",
+            "score",
             "error",
             "limit",
             "messages",

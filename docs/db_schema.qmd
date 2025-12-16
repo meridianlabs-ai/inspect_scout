@@ -62,6 +62,8 @@ Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`)
 </style>
 ```
 
+Note that field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
+
 ### Metadata
 
 You can include arbitrary other fields in your database which will be made available as `Transcript.metadata`. These fields can then be used for filtering in calls to `Transcripts.where()`.

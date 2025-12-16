@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { RecordTree } from "../../content/RecordTree";
 import { useStore } from "../../state/store";
 
 interface TranscriptsListProps {
@@ -17,7 +16,11 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({ className }) => {
   return (
     <div className={clsx(className)}>
       <div>Transcripts List: {transcriptsDatabasePath}</div>
-      <RecordTree id={"transcripts-dump"} record={{ transcripts }} />
+      <hr />
+      {transcripts?.map((t) => {
+        return <div>{JSON.stringify(t)}</div>;
+      })}
+      <hr />
     </div>
   );
 };

@@ -303,14 +303,9 @@ export const useServerTranscripts = () => {
   const clearError = useStore((state) => state.clearError);
 
   useEffect(() => {
-    const fetchScannerDataframeInput = () => {
+    const fetchScannerDataframeInput = async () => {
       // Clear any existing errors
       clearError("transcripts");
-
-      // Not enough context to load
-      if (!transcriptsDatabasePath) {
-        return;
-      }
 
       // See if we already have data
       if (!transcripts)
@@ -319,11 +314,8 @@ export const useServerTranscripts = () => {
 
       try {
         // Request the raw data from the server
-        const serverTranscripts = []; /*await api.getTranscripts(
-          transcriptsDatabasePath
-        );*/
-
-        // Store in state
+        const serverDir = await api.getTranscriptsDir();
+        const serverTranscripts = await api.getTranscripts();
         setTranscripts(serverTranscripts);
       } catch (e) {
         // Notify app of error

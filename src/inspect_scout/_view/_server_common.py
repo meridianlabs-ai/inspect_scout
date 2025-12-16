@@ -14,7 +14,8 @@ class InspectPydanticJSONResponse(JSONResponse):
         return to_json_safe(content)
 
 
-async def _default_transcripts_dir() -> str:
+async def default_transcripts_dir() -> str:
+    """Return resolved path to transcripts dir, scrounging scan results for a plausible default."""
     return (
         UPath(await _scrounged_transcripts_dir() or "file://./transcripts")
         .resolve()

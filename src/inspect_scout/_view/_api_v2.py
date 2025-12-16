@@ -29,7 +29,7 @@ from .._scanresults import (
 from .._transcript.factory import transcripts_from
 from .._transcript.types import TranscriptInfo
 from ._api_v2_types import RestScanStatus, ScansRestResponse
-from ._server_common import InspectPydanticJSONResponse, _default_transcripts_dir
+from ._server_common import InspectPydanticJSONResponse, default_transcripts_dir
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -112,13 +112,13 @@ def v2_api_app(
     async def transcripts_dir(
         request: Request,
     ) -> str:
-        return await _default_transcripts_dir()
+        return await default_transcripts_dir()
 
     @app.get("/transcripts")
     async def transcripts(
         request_transcripts_dir: str | None = Query(None, alias="transcripts-dir"),
     ) -> list[TranscriptInfo]:
-        transcripts_dir = request_transcripts_dir or await _default_transcripts_dir()
+        transcripts_dir = request_transcripts_dir or await default_transcripts_dir()
         try:
             async with transcripts_from(transcripts_dir).reader() as tr:
                 return [t async for t in tr.index()]

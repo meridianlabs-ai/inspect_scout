@@ -15,7 +15,7 @@ export const apiScoutServer = (
   } = {}
 ): ScanApi => {
   const { apiBaseUrl, headerProvider, resultsDir } = options;
-  const requestApi = serverRequestApi(apiBaseUrl || "/api", headerProvider);
+  const requestApi = serverRequestApi(apiBaseUrl || "/api/v2", headerProvider);
   return {
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(

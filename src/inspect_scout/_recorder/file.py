@@ -324,7 +324,7 @@ class FileRecorder(ScanRecorder):
         )
 
         return ScanResultsDF(
-            status=status.complete,
+            complete=status.complete,
             spec=status.spec,
             location=status.location,
             summary=status.summary,

@@ -1,5 +1,6 @@
 import hashlib
 import io
+import json
 import sqlite3
 from datetime import datetime
 from functools import reduce
@@ -267,6 +268,25 @@ class EvalLogTranscriptsDB:
             transcript_id = row_dict.get("sample_id", None)
             transcript_source_id = row_dict.get("eval_id", None)
             transcript_source_uri = row_dict.get("log", None)
+            transcript_date = row_dict.get("date", None)
+            transcript_task = row_dict.get("task", None)
+            transcript_agent = row_dict.get("agent", None)
+            transcript_agent_args = row_dict.get("agent_args", None)
+            transcript_model = row_dict.get("model", None)
+            transcript_score = row_dict.get("score", None)
+            transcript_success = row_dict.get("success", None)
+            transcript_total_time = row_dict.get("total_time", None)
+            transcript_total_tokens = row_dict.get("total_tokens", None)
+            transcript_error = row_dict.get("error", None)
+            transcript_limit = row_dict.get("limit", None)
+
+            # resolve json
+            if transcript_agent_args is not None:
+                transcript_agent_args = json.loads(transcript_agent_args)
+            if isinstance(transcript_score, str) and (
+                transcript_score.startswith("{") or transcript_score.startswith("[")
+            ):
+                transcript_score = json.loads(transcript_score)
 
             # ensure we have required fields
             if (
@@ -294,6 +314,17 @@ class EvalLogTranscriptsDB:
                 source_type=EVAL_LOG_SOURCE_TYPE,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
+                date=transcript_date,
+                task=transcript_task,
+                agent=transcript_agent,
+                agent_args=transcript_agent_args,
+                model=transcript_model,
+                score=transcript_score,
+                success=transcript_success,
+                total_time=transcript_total_time,
+                total_tokens=transcript_total_tokens,
+                error=transcript_error,
+                limit=transcript_limit,
                 metadata=metadata,
             )
 

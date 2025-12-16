@@ -66,7 +66,7 @@ async def test_integration() -> None:
         ) as reader:
             t = await reader.index().__anext__()
             assert t.metadata["sample_id"] == REFERENCE_SAMPLE_ID
-            assert t.metadata["date"] == REFERENCE_EVAL_CREATED
+            assert t.date == REFERENCE_EVAL_CREATED
             assert t.metadata["working_time"] == REFERENCE_WORKING_TIME
 
 

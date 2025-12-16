@@ -260,6 +260,25 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 transcript_source_id = row_dict.get("source_id")
                 transcript_source_uri = row_dict.get("source_uri")
                 transcript_filename = row_dict.get("filename")
+                transcript_date = row_dict.get("date")
+                transcript_task = row_dict.get("task")
+                transcript_agent = row_dict.get("agent")
+                transcript_agent_args = row_dict.get("agent_args")
+                transcript_model = row_dict.get("model")
+                transcript_score = row_dict.get("score")
+                transcript_success = row_dict.get("success")
+                transcript_total_time = row_dict.get("total_time")
+                transcript_total_tokens = row_dict.get("total_tokens")
+                transcript_error = row_dict.get("error")
+                transcript_limit = row_dict.get("limit")
+
+                # resolve json
+                if transcript_agent_args is not None:
+                    transcript_agent_args = json.loads(transcript_agent_args)
+                if isinstance(transcript_score, str) and (
+                    transcript_score.startswith("{") or transcript_score.startswith("[")
+                ):
+                    transcript_score = json.loads(transcript_score)
 
                 # Reconstruct metadata from all non-reserved columns
                 # Use LazyJSONDict to defer JSON parsing until values are accessed
@@ -277,6 +296,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     source_type=transcript_source_type,
                     source_id=transcript_source_id,
                     source_uri=transcript_source_uri,
+                    date=transcript_date,
+                    task=transcript_task,
+                    agent=transcript_agent,
+                    agent_args=transcript_agent_args,
+                    model=transcript_model,
+                    score=transcript_score,
+                    success=transcript_success,
+                    total_time=transcript_total_time,
+                    total_tokens=transcript_total_tokens,
+                    error=transcript_error,
+                    limit=transcript_limit,
                     metadata=metadata,
                     filename=transcript_filename,
                 )
@@ -343,6 +373,26 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
+        def transcript_no_content() -> Transcript:
+            return Transcript.model_construct(
+                transcript_id=t.transcript_id,
+                source_type=t.source_type,
+                source_id=t.source_id,
+                source_uri=t.source_uri,
+                date=t.date,
+                task=t.task,
+                agent=t.agent,
+                agent_args=t.agent_args,
+                model=t.model,
+                score=t.score,
+                success=t.success,
+                total_time=t.total_time,
+                total_tokens=t.total_tokens,
+                error=t.error,
+                limit=t.limit,
+                metadata=t.metadata,
+            )
+
         with trace_action(
             logger, "Scout Parquet Read", f"Reading from {t.transcript_id}"
         ):
@@ -352,13 +402,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             if not need_messages and not need_events:
                 # No content needed - use model_construct to preserve LazyJSONDict
-                return Transcript.model_construct(
-                    transcript_id=t.transcript_id,
-                    source_type=t.source_type,
-                    source_id=t.source_id,
-                    source_uri=t.source_uri,
-                    metadata=t.metadata,
-                )
+                return transcript_no_content()
 
             # Build column list for SELECT
             columns = []
@@ -375,13 +419,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             if not filename_result:
                 # Transcript not found in metadata table - use model_construct to preserve LazyJSONDict
-                return Transcript.model_construct(
-                    transcript_id=t.transcript_id,
-                    source_type=t.source_type,
-                    source_id=t.source_id,
-                    source_uri=t.source_uri,
-                    metadata=t.metadata,
-                )
+                return transcript_no_content()
 
             # Now read content from just that specific file (targeted I/O)
             # This avoids scanning all files - only reads from the one file containing this transcript
@@ -400,13 +438,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
                 if not columns_read:
                     # No content columns available - return empty content
-                    return Transcript.model_construct(
-                        transcript_id=t.transcript_id,
-                        source_type=t.source_type,
-                        source_id=t.source_id,
-                        source_uri=t.source_uri,
-                        metadata=t.metadata,
-                    )
+                    return transcript_no_content()
 
                 # Retry with only available columns
                 sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
@@ -414,13 +446,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             if not result:
                 # Transcript not found - use model_construct to preserve LazyJSONDict
-                return Transcript.model_construct(
-                    transcript_id=t.transcript_id,
-                    source_type=t.source_type,
-                    source_id=t.source_id,
-                    source_uri=t.source_uri,
-                    metadata=t.metadata,
-                )
+                return transcript_no_content()
 
             # Extract column values based on which columns were actually read
             messages_json: str | None = None
@@ -644,6 +670,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
+            "date": transcript.date,
+            "task": transcript.task,
+            "agent": transcript.agent,
+            "agent_args": json.dumps(transcript.agent_args),
+            "model": transcript.model,
+            "score": json.dumps(transcript.score),
+            "success": transcript.success,
+            "total_time": transcript.total_time,
+            "total_tokens": transcript.total_tokens,
+            "error": transcript.error,
+            "limit": transcript.limit,
             "messages": json.dumps(messages_array),
             "events": json.dumps(events_array),
         }
@@ -747,11 +784,18 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 f"'transcript_id' column must be string type, got {transcript_id_type}"
             )
 
-        # Check optional columns are string type if present
+        # Check optional string columns
         optional_string_columns = [
             "source_type",
             "source_id",
             "source_uri",
+            "date",
+            "task",
+            "agent",
+            "agent_args",
+            "model",
+            "error",
+            "limit",
             "messages",
             "events",
         ]
@@ -762,6 +806,26 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     raise ValueError(
                         f"'{col}' column must be string type, got {col_type}"
                     )
+
+        # Check optional bool/numeric columns
+        if "success" in schema.names:
+            col_type = schema.field("success").type
+            if col_type != pa.bool_():
+                raise ValueError(f"'success' column must be bool type, got {col_type}")
+
+        if "total_time" in schema.names:
+            col_type = schema.field("total_time").type
+            if not pa.types.is_floating(col_type):
+                raise ValueError(
+                    f"'total_time' column must be float type, got {col_type}"
+                )
+
+        if "total_tokens" in schema.names:
+            col_type = schema.field("total_tokens").type
+            if not pa.types.is_integer(col_type):
+                raise ValueError(
+                    f"'total_tokens' column must be integer type, got {col_type}"
+                )
 
     def _ensure_required_columns(self, table: pa.Table) -> pa.Table:
         """Add missing optional columns as null-filled string columns.
@@ -775,17 +839,39 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             Table with all optional columns present (null-filled if missing).
         """
-        optional_columns = [
+        optional_string_columns = [
             "source_type",
             "source_id",
             "source_uri",
+            "date",
+            "task",
+            "agent",
+            "agent_args",
+            "model",
+            "error",
+            "limit",
             "messages",
             "events",
         ]
-        for col in optional_columns:
+        for col in optional_string_columns:
             if col not in table.column_names:
                 null_array = pa.nulls(len(table), type=pa.string())
                 table = table.append_column(col, null_array)
+
+        # Optional bool/numeric columns
+        if "success" not in table.column_names:
+            table = table.append_column(
+                "success", pa.nulls(len(table), type=pa.bool_())
+            )
+        if "total_time" not in table.column_names:
+            table = table.append_column(
+                "total_time", pa.nulls(len(table), type=pa.float64())
+            )
+        if "total_tokens" not in table.column_names:
+            table = table.append_column(
+                "total_tokens", pa.nulls(len(table), type=pa.int64())
+            )
+
         return table
 
     def _get_available_content_columns(self, filename: str) -> set[str]:
@@ -894,6 +980,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
             ("source_type", pa.string()),
             ("source_id", pa.string()),
             ("source_uri", pa.string()),
+            ("date", pa.string()),
+            ("task", pa.string()),
+            ("agent", pa.string()),
+            ("agent_args", pa.string()),
+            ("model", pa.string()),
+            ("score", pa.string()),
+            ("success", pa.bool_()),
+            ("total_time", pa.float64()),
+            ("total_tokens", pa.int64()),
+            ("error", pa.string()),
+            ("limit", pa.string()),
             ("messages", pa.string()),
             ("events", pa.string()),
         ]
@@ -1068,6 +1165,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
             WHERE FALSE
         """)
+        # TODO: correct types
+
+        # "date",
+
+        # success - bool
+        # total_time - float
+        # total_tokens - int
         self._conn.execute("""
             CREATE VIEW transcripts AS
             SELECT
@@ -1075,6 +1179,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 ''::VARCHAR AS source_type,
                 ''::VARCHAR AS source_id,
                 ''::VARCHAR AS source_uri,
+                ''::VARCHAR AS source_uri,
+                ''::VARCHAR AS date,
+                ''::VARCHAR AS task,
+                ''::VARCHAR AS agent,
+                ''::VARCHAR AS agent_args,
+                ''::VARCHAR AS model,
+                FALSE::BOOLEAN AS success,
+                0.0::DOUBLE AS total_time,
+                0::BIGINT AS total_tokens,
+                ''::VARCHAR AS error,
+                ''::VARCHAR AS limit,
                 ''::VARCHAR AS filename
             WHERE FALSE
         """)

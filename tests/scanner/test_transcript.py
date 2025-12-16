@@ -599,12 +599,12 @@ async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
     # Filter by model
     results = [item async for item in db.query(where=[c.model == "gpt-4"])]
     for result in results:
-        assert result.metadata["model"] == "gpt-4"
+        assert result.model == "gpt-4"
 
     # Filter by score range
     results = [item async for item in db.query(where=[c.score > 0.7])]
     for result in results:
-        assert cast(float, result.metadata["score"]) > 0.7
+        assert cast(float, result.score) > 0.7
 
 
 @pytest.mark.asyncio
@@ -614,8 +614,8 @@ async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
     results = [item async for item in db.query(where=conditions)]
 
     for result in results:
-        assert result.metadata["model"] == "gpt-4"
-        assert cast(float, result.metadata["score"]) > 0.6
+        assert result.model == "gpt-4"
+        assert cast(float, result.score) > 0.6
 
 
 @pytest.mark.asyncio
@@ -660,8 +660,8 @@ async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
 
     results = [item async for item in db.query(where=conditions)]
     for result in results:
-        assert result.metadata["model"] in ["gpt-4", "claude"]
-        assert cast(float, result.metadata["score"]) > 0.6
+        assert result.model in ["gpt-4", "claude"]
+        assert cast(float, result.score) > 0.6
         assert result.metadata.get("error_message") is None
 
 
@@ -675,8 +675,8 @@ async def test_metadata_extraction(db: EvalLogTranscriptsDB) -> None:
     metadata = result.metadata
 
     # Check expected metadata fields
-    assert "model" in metadata
-    assert "score" in metadata
+    assert result.model
+    assert result.score
     assert "status" in metadata
     assert "retries" in metadata
 

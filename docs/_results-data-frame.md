@@ -1,4 +1,3 @@
-
 ### Data Frames {#data-frames}
 
 ```{=html}
@@ -36,7 +35,18 @@ The data frame includes the following fields (note that some fields included emb
 | `transcript_source_type` | str | Type of transcript source (e.g. "eval_log"). |
 | `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to \`eval_id\` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `transcript_metadata` | dict </br><small>JSON</small> | Eval configuration metadata (e.g. task, model, scores, etc.). |
+| `transcript_date` | datetime | Date/time when the transcript was created. |
+| `transcript_task` | str | Name of task executed by transcript (e.g. benchmark name) |
+| `transcript_agent` | str | Agent used to to execute task. |
+| `transcript_agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
+| `transcript_model` | str | Main model used by agent. |
+| `transcript_score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
+| `transcript_success` | bool |  Boolean reduction of `score` to succeeded/failed. |
+| `transcript_total_time` | number | Time required to execute task (seconds) |
+| `transcript_total_tokens` | number | Tokens spent in execution of task. |
+| `transcript_error` | str | Error message that terminated the task. |
+| `transcript_limit` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
+| `transcript_metadata` | dict </br><small>JSON</small> | Source specific metadata. |
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]</br><small>JSON</small> | Tags associated with the scan. |
 | `scan_metadata` | dict<br/><small>JSON</small> | Additional scan metadata. |

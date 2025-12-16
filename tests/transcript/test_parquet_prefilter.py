@@ -14,6 +14,7 @@ from inspect_scout import columns as c
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.transcripts import TranscriptsQuery
 from inspect_scout._transcript.types import Transcript, TranscriptContent
+from pydantic import JsonValue
 
 
 # Test data helpers
@@ -21,6 +22,8 @@ def create_sample_transcript(
     id: str = "test-001",
     source_id: str = "source-001",
     source_uri: str = "test://uri",
+    model: str | None = None,
+    score: JsonValue | None = None,
     metadata: dict[str, Any] | None = None,
     messages: list[ChatMessage] | None = None,
 ) -> Transcript:
@@ -30,6 +33,8 @@ def create_sample_transcript(
         source_type="test",
         source_id=source_id,
         source_uri=source_uri,
+        model=model,
+        score=score,
         metadata=metadata or {},
         messages=messages or [ChatMessageUser(content="Test message")],
         events=[],
@@ -48,12 +53,12 @@ def create_test_transcripts(count: int = 100) -> list[Transcript]:
                 id=f"sample-{i:03d}",
                 source_id=f"eval-{i // 10:02d}",
                 source_uri=f"test://log-{i:03d}.json",
+                model=models[i % 3],
+                score=i * 0.01,
                 metadata={
-                    "model": models[i % 3],
                     "dataset": datasets[i % 3],
                     "index": i,
                     "temperature": 0.5 + (i % 5) * 0.1,
-                    "score": i * 0.01,
                 },
                 messages=[ChatMessageUser(content=f"Question {i}")],
             )
@@ -198,7 +203,7 @@ async def test_additive_where_filtering(
     results = []
     async for info in db.select([c.index < 30], None, False):
         results.append(info)
-        assert info.metadata["model"] == "gpt-4"
+        assert info.model == "gpt-4"
         assert info.metadata["index"] < 30
 
     assert len(results) == 10
@@ -282,7 +287,7 @@ async def test_combined_prefilter_where_shuffle_limit(
     results = []
     async for info in db.select([], None, False):
         results.append(info)
-        assert info.metadata["model"] == "gpt-4"
+        assert info.model == "gpt-4"
 
     assert len(results) == 15
 
@@ -375,7 +380,7 @@ async def test_read_works_with_prefiltered_db(
     transcript = await db.read(info, TranscriptContent(messages="all", events="all"))
 
     assert transcript.transcript_id == info.transcript_id
-    assert transcript.metadata["model"] == "gpt-4"
+    assert transcript.model == "gpt-4"
     assert len(transcript.messages) > 0
     # Verify message content (handle both string and list types)
     content = transcript.messages[0].content
@@ -404,7 +409,7 @@ async def test_multiple_where_conditions_in_prefilter(
     results = []
     async for info in db.select([], None, False):
         results.append(info)
-        assert info.metadata["model"] == "gpt-4"
+        assert info.model == "gpt-4"
         assert info.metadata["dataset"] == "gsm8k"
 
     assert len(results) == len(transcript_ids)
@@ -431,7 +436,7 @@ async def test_prefilter_with_complex_conditions(
     results = []
     async for info in db.select([], None, False):
         results.append(info)
-        assert info.metadata["model"] in ["gpt-4", "claude-3-opus"]
+        assert info.model in ["gpt-4", "claude-3-opus"]
         assert info.metadata["index"] >= 50
 
     assert len(results) > 0

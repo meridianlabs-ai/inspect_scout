@@ -20,6 +20,7 @@ from inspect_scout._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
+from pydantic import JsonValue
 
 
 # Test data helpers
@@ -27,6 +28,9 @@ def create_sample_transcript(
     id: str = "test-001",
     source_id: str = "source-001",
     source_uri: str = "test://uri",
+    model: str | None = None,
+    task: str | None = None,
+    score: JsonValue | None = None,
     metadata: dict[str, Any] | None = None,
     messages: list[ChatMessage] | None = None,
     events: list[Event] | None = None,
@@ -37,6 +41,9 @@ def create_sample_transcript(
         source_type="test",
         source_id=source_id,
         source_uri=source_uri,
+        task=task,
+        model=model,
+        score=score,
         metadata=metadata or {},
         messages=messages or [ChatMessageUser(content="Test message")],
         events=events or [],
@@ -55,12 +62,12 @@ def create_test_transcripts(count: int = 10) -> list[Transcript]:
                 id=f"sample-{i:03d}",
                 source_id=f"eval-{i // 5:02d}",  # Group into evals
                 source_uri=f"test://log-{i:03d}.json",
+                model=models[i % 3],
+                task=tasks[i % 3],
+                score=0.5 + (i % 10) * 0.05,
                 metadata={
-                    "model": models[i % 3],
-                    "task": tasks[i % 3],
                     "temperature": 0.5 + (i % 5) * 0.1,
                     "index": i,
-                    "score": 0.5 + (i % 10) * 0.05,  # Moved to metadata
                     "mean": 0.8,  # Moved to metadata
                     "completeness": 0.9,  # Moved to metadata
                     "var_a": i,  # Moved to metadata
@@ -172,12 +179,12 @@ async def test_insert_multiple_batches(test_location: Path) -> None:
                     id=f"sample-{i:03d}",
                     source_id=f"eval-{i // 250:02d}",  # Groups of 250 to test batch splitting
                     source_uri=f"test://log-{i:03d}.json",
+                    model=["gpt-4", "gpt-3.5-turbo", "claude-3-opus"][i % 3],
+                    task=["math", "coding", "qa"][i % 3],
+                    score=0.5 + (i % 10) * 0.05,
                     metadata={
-                        "model": ["gpt-4", "gpt-3.5-turbo", "claude-3-opus"][i % 3],
-                        "task": ["math", "coding", "qa"][i % 3],
                         "temperature": 0.5 + (i % 5) * 0.1,
                         "index": i,
-                        "score": 0.5 + (i % 10) * 0.05,
                         "mean": 0.8,
                         "completeness": 0.9,
                         "var_a": i,
@@ -257,7 +264,7 @@ async def test_select_with_where(populated_db: ParquetTranscriptsDB) -> None:
 
     # Verify all results match condition
     for info in results:
-        assert info.metadata.get("model") == "gpt-4"
+        assert info.model == "gpt-4"
 
 
 @pytest.mark.asyncio
@@ -334,7 +341,7 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     results = [info async for info in populated_db.select([condition], None, False)]
 
     for info in results:
-        assert info.metadata.get("model") == "gpt-4"
+        assert info.model == "gpt-4"
         index = info.metadata.get("index", 100)
         assert isinstance(index, int) and index < 10
 
@@ -441,7 +448,8 @@ async def test_null_handling(parquet_db: ParquetTranscriptsDB) -> None:
     transcripts = [
         create_sample_transcript(
             id="with-data",
-            metadata={"key": "value", "score": 0.95, "a": 1.0, "x": "y"},
+            score=0.95,
+            metadata={"key": "value", "a": 1.0, "x": "y"},
         ),
         create_sample_transcript(
             id="without-data",
@@ -576,8 +584,8 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
     transcripts = [
         create_sample_transcript(
             id="nested-1",
+            model="gpt-4",
             metadata={
-                "model": "gpt-4",
                 "config": {
                     "temperature": 0.7,
                     "top_p": 0.9,
@@ -587,8 +595,8 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
         ),
         create_sample_transcript(
             id="nested-2",
+            model="claude",
             metadata={
-                "model": "claude",
                 "config": {
                     "temperature": 0.5,
                 },
@@ -638,7 +646,7 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> N
         _validate_metadata_keys({"events": "bad"})
 
     # Should be fine for non-reserved keys
-    _validate_metadata_keys({"model": "gpt-4", "task": "math"})  # No error
+    _validate_metadata_keys({"foo": "gpt-4", "bar": "math"})  # No error
     _validate_metadata_keys({"content": "custom"})  # "content" is no longer reserved
 
 
@@ -647,21 +655,21 @@ async def test_schema_evolution(
     parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
     """Test that different metadata fields across batches work correctly."""
-    # First batch: model, task
+    # First batch: category, difficulty metadata
     batch1 = [
         create_sample_transcript(
             id=f"batch1-{i}",
-            metadata={"model": "gpt-4", "task": "math"},
+            metadata={"category": "science", "difficulty": "hard"},
         )
         for i in range(5)
     ]
     await parquet_db.insert(batch1)
 
-    # Second batch: model, temperature (different fields!)
+    # Second batch: category, temperature (different fields!)
     batch2 = [
         create_sample_transcript(
             id=f"batch2-{i}",
-            metadata={"model": "claude", "temperature": 0.7},
+            metadata={"category": "math", "temperature": 0.7},
         )
         for i in range(5)
     ]
@@ -677,20 +685,20 @@ async def test_schema_evolution(
 
     # First batch has NULL temperature
     batch1_results = [
-        info async for info in parquet_db.select([c.task == "math"], None, False)
+        info async for info in parquet_db.select([c.category == "science"], None, False)
     ]
     assert len(batch1_results) == 5
     for info in batch1_results:
         assert info.metadata.get("temperature") is None
-        assert info.metadata.get("task") == "math"
+        assert info.metadata.get("difficulty") == "hard"
 
-    # Second batch has NULL task
+    # Second batch has NULL difficulty
     batch2_results = [
-        info async for info in parquet_db.select([c.model == "claude"], None, False)
+        info async for info in parquet_db.select([c.category == "math"], None, False)
     ]
     assert len(batch2_results) == 5
     for info in batch2_results:
-        assert info.metadata.get("task") is None
+        assert info.metadata.get("difficulty") is None
         assert info.metadata.get("temperature") == 0.7
 
 
@@ -725,9 +733,9 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
                     id=f"sample-{i:03d}",
                     source_id=f"eval-{i // 10:02d}",
                     source_uri=f"test://log-{i:03d}.json",
+                    model="gpt-4",
                     metadata={
                         "index": i,
-                        "model": "gpt-4",
                         "description": "z" * 200,  # Add more bulk to metadata
                     },
                     messages=messages,

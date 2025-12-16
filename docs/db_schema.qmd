@@ -6,7 +6,7 @@ title: Database Schema
 
 In a transcript database, the only strictly required field is `transcript_id` (although you'll almost always want to also include a `messages` field as that's the main thing targeted by most scanners).
 
-You can also include `source_*` fields as a reference to where the transcript originated as well as arbitrary other fields (trancript metadata) which are then queryable using the `Transcripts` API.
+Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`) which you'll want to populate if you have access to them (as this will provide important context both when viewinging transcripts and when viewing scan results). You can also include `source_*` fields as a reference to where the transcript originated,. Finally, arbitrary other fields can be included. All fields are queryable using the `Transcripts` API.
 
 +-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Field           | Description                                                                                                                                                                    |
@@ -18,6 +18,28 @@ You can also include `source_*` fields as a reference to where the transcript or
 | `source_id`     | Optional. Globally unique identifier for a transcript source (e.g. a project id).                                                                                              |
 +-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | `source_uri`    | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).                                                            |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `date`          | Optional. Date the transcript was created.                                                                                                                                     |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `task`          | Optional. Name of task executed by transcript (e.g. benchmark name)                                                                                                            |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `agent`         | Optional. Agent used to to execute task.                                                                                                                                       |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `agent_args`    | Optional. Arguments passed to create agent.                                                                                                                                    |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `model`         | Optional. Main model used by agent.                                                                                                                                            |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `score`         | Optional. Value indicating score on task.                                                                                                                                      |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `success`       | Optional. Boolean reduction of `score` to succeeded/failed.                                                                                                                    |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `total_time`    | Optional. Time required to execute task.                                                                                                                                       |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `total_tokens`  | Optional. Tokens spent in execution of task.                                                                                                                                   |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `error`         | Optional. Error message that terminated the task.                                                                                                                              |
++-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `limit`         | Optional. Limit that caused the task to exit (e.g. "tokens", "messages, etc.)                                                                                                  |
 +-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | `messages`      | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history.                                                    |
 +-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -86,7 +108,7 @@ The `events` field is only important if you have scanners that will be doing eve
 
 ## Importing Data
 
-Now that you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database: 
+Now that you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database:
 
 1.  [Transcript API](db_importing.qmd#transcript-api): Read and parse transcripts into `Transcript` objects and use the `TranscriptsDB.insert()` function to add them to the database.
 

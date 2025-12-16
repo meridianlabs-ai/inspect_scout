@@ -414,7 +414,7 @@ async def test_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     results = [r async for r in db.query(where=[lc.model == "openai/gpt-4o-mini"])]
     assert len(results) > 0
     for result in results:
-        assert result.metadata["model"] == "openai/gpt-4o-mini"
+        assert result.model == "openai/gpt-4o-mini"
 
     # Filter by epoch
     results = [r async for r in db.query(where=[lc.working_time > 1.5])]
@@ -426,7 +426,7 @@ async def test_query_with_typed_properties(db: EvalLogTranscriptsDB) -> None:
     results = [r async for r in db.query(where=[lc.total_tokens.between(50, 69)])]
     assert len(results) > 0
     for result in results:
-        assert 50 <= cast(int, result.metadata["total_tokens"]) <= 69
+        assert 50 <= cast(int, result.total_tokens) <= 69
 
 
 @pytest.mark.asyncio
@@ -442,7 +442,7 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsDB) -> 
     results = [item async for item in db.query(where=conditions)]
     assert len(results) > 0
     for result in results:
-        assert result.metadata["model"] in [
+        assert result.model in [
             "openai/gpt-4o-mini",
             "anthropic/claude-sonnet-4-5",
         ]
@@ -470,7 +470,7 @@ async def test_transcripts_with_log_metadata(db: EvalLogTranscriptsDB) -> None:
         results = [item async for item in db.query(conditions)]
         assert len(results) > 0
         for result in results:
-            assert result.metadata["model"] == "openai/gpt-4o-mini"
+            assert result.model == "openai/gpt-4o-mini"
             assert cast(int, result.metadata["working_time"]) > 1.5
             assert result.metadata["target"] == " Yes"
     finally:
@@ -492,18 +492,14 @@ async def test_transcripts_complex_filtering(db: EvalLogTranscriptsDB) -> None:
         results = [item async for item in db.query(conditions, limit=10)]
         assert len(results) > 0
         for result in results:
-            meta = result.metadata
-
             # Check the OR condition
-            if meta["model"] == "openai/gpt-4o-mini":
-                assert cast(int, meta["total_tokens"]) > 50
-            elif meta["model"] == "anthropic/claude-sonnet-4-5":
-                assert cast(int, meta["total_tokens"]) > 500
+            if result.model == "openai/gpt-4o-mini":
+                assert cast(int, result.total_tokens) > 50
+            elif result.model == "anthropic/claude-sonnet-4-5":
+                assert cast(int, result.total_tokens) > 500
             else:
-                pytest.fail(f"Unexpected model: {meta['model']}")
+                pytest.fail(f"Unexpected model: {result.model}")
 
-            # Check solver is null/not present
-            assert meta.get("solver") is None
     finally:
         await db.disconnect()
 
@@ -520,7 +516,7 @@ async def test_transcripts_with_shuffle_and_limit(db: EvalLogTranscriptsDB) -> N
         assert len(results) > 0
 
         for result in results:
-            assert result.metadata["model"] == "openai/gpt-4o-mini"
+            assert result.model == "openai/gpt-4o-mini"
 
         assert len(results) <= 5
     finally:
@@ -545,7 +541,7 @@ async def test_query_json_metadata_fields(db: EvalLogTranscriptsDB) -> None:
         assert len(results) > 0
 
         for result in results:
-            assert result.metadata["model"] == "openai/gpt-4o-mini"
+            assert result.model == "openai/gpt-4o-mini"
             assert result.metadata["sample_metadata"]["label_confidence"] >= 0.9
 
     finally:

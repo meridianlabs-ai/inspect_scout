@@ -7,7 +7,7 @@ from inspect_ai.log._file import (
     EvalLogInfo,
 )
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
@@ -54,8 +54,41 @@ class TranscriptInfo(BaseModel):
     source_uri: str | None = Field(default=None)
     """Optional. URI for source data (e.g. log file path)."""
 
+    date: str | None = Field(default=None)
+    """Date/time when the transcript was created."""
+
+    task: str | None = Field(default=None)
+    """Name of task executed by transcript (e.g. benchmark name)."""
+
+    agent: str | None = Field(default=None)
+    """Agent used to to execute task.."""
+
+    agent_args: dict[str, Any] | None = Field(default=None)
+    """Arguments passed to create agent."""
+
+    model: str | None = Field(default=None)
+    """Main model used by agent."""
+
+    score: JsonValue | None = Field(default=None)
+    """Value indicating score on task."""
+
+    success: bool | None = Field(default=None)
+    """Boolean reduction of score to succeeded/failed."""
+
+    total_time: float | None = Field(default=None)
+    """Time required to execute task (seconds)."""
+
+    total_tokens: int | None = Field(default=None)
+    """Tokens spent in execution of task."""
+
+    error: str | None = Field(default=None)
+    """"Error message that terminated the task."""
+
+    limit: str | None = Field(default=None)
+    """Limit that caused the task to exit (e.g. "tokens", "messages, etc.)."""
+
     metadata: dict[str, Any] = Field(default_factory=dict)
-    """Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.)."""
+    """Transcript source specific metadata."""
 
 
 class Transcript(TranscriptInfo):
@@ -75,6 +108,17 @@ RESERVED_COLUMNS = {
     "source_type",
     "source_id",
     "source_uri",
+    "date",
+    "task",
+    "agent",
+    "agent_args",
+    "model",
+    "score",
+    "success",
+    "total_time",
+    "total_tokens",
+    "error",
+    "limit",
     "messages",
     "events",
     "filename",  # Internal column for DuckDB file-targeting optimization

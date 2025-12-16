@@ -119,6 +119,7 @@ def v2_api_app(
         request_transcripts_dir: str | None = Query(None, alias="dir"),
     ) -> list[TranscriptInfo]:
         transcripts_dir = request_transcripts_dir or await default_transcripts_dir()
+        print(f"/transcripts got\n\t{request_transcripts_dir=}\n\t{transcripts_dir=}")
         try:
             async with transcripts_from(transcripts_dir).reader() as tr:
                 return [t async for t in tr.index()]

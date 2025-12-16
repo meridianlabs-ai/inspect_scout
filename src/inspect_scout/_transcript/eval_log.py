@@ -469,5 +469,6 @@ JSON_COLUMNS: Final[list[str]] = [
     "solver_args",
     "generate_config",
     "model_roles",
+    "input",
     "sample_metadata",
 ]

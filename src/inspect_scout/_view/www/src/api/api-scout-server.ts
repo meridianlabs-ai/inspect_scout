@@ -21,10 +21,12 @@ export const apiScoutServer = (
       return (await requestApi.fetchString("GET", `/transcripts-dir`)).raw;
     },
     getTranscripts: async (transcriptsDir?: string): Promise<unknown[]> => {
-      const path = transcriptsDir
-        ? `/transcripts?dir=${encodeURIComponent(transcriptsDir)}`
-        : `/transcripts`;
-      const result = await requestApi.fetchString("GET", path);
+      const result = await requestApi.fetchString(
+        "GET",
+        transcriptsDir
+          ? `/transcripts?dir=${encodeURIComponent(transcriptsDir)}`
+          : `/transcripts`
+      );
 
       const parsedResult = await asyncJsonParse<unknown[]>(result.raw);
       if (!Array.isArray(parsedResult)) {

@@ -87,6 +87,9 @@ interface StoreState {
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
 
+  // Transcripts DB
+  transcriptsDatabasePath?: string;
+
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
   setHasInitializedEmbeddedData: (initialized: boolean) => void;
@@ -193,6 +196,8 @@ interface StoreState {
   setDataframeWrapText: (wrap: boolean) => void;
   setDataframeFilterColumns: (columns: string[]) => void;
   setDataframeShowFilterColumns: (show: boolean) => void;
+
+  setTranscriptsDatabasePath: (path: string) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -647,6 +652,11 @@ export const createStore = (api: ScanApi) =>
           setDataframeShowFilterColumns: (show: boolean) => {
             set((state) => {
               state.dataframeShowFilterColumns = show;
+            });
+          },
+          setTranscriptsDatabasePath: (path: string) => {
+            set((state) => {
+              state.transcriptsDatabasePath = path;
             });
           },
         })),

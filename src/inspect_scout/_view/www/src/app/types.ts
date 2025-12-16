@@ -10,6 +10,11 @@ import {
   Messages,
 } from "../types/log";
 
+export interface ScanResultInputData {
+  input: Input;
+  inputType: InputType;
+}
+
 export type Input = Transcript | Messages | Events | MessageType | EventType;
 
 export type InputType =
@@ -18,32 +23,6 @@ export type InputType =
   | "messages"
   | "event"
   | "events";
-
-export interface ScanResultInputData {
-  input: Input;
-  inputType: InputType;
-}
-
-export interface SortColumn {
-  column: string;
-  direction: "asc" | "desc";
-}
-
-export type ErrorScope =
-  | "scanjobs"
-  | "scanner"
-  | "dataframe"
-  | "dataframe_input";
-
-export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
-
-export type ValueType =
-  | "boolean"
-  | "number"
-  | "string"
-  | "array"
-  | "object"
-  | "null";
 
 export interface ScanResultSummary {
   uuid?: string;
@@ -68,12 +47,6 @@ export interface ScanResultReference {
   cite?: string;
 }
 
-export type MessageType =
-  | ChatMessageSystem
-  | ChatMessageUser
-  | ChatMessageAssistant
-  | ChatMessageTool;
-
 // Base interface with common properties
 export interface ScanResultData extends ScanResultSummary {
   answer?: string;
@@ -95,6 +68,33 @@ export interface ScanResultData extends ScanResultSummary {
   transcriptId: string;
   transcriptSourceUri: string;
 }
+
+export type MessageType =
+  | ChatMessageSystem
+  | ChatMessageUser
+  | ChatMessageAssistant
+  | ChatMessageTool;
+
+export interface SortColumn {
+  column: string;
+  direction: "asc" | "desc";
+}
+
+export type ErrorScope =
+  | "scanjobs"
+  | "scanner"
+  | "dataframe"
+  | "dataframe_input";
+
+export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
+
+export type ValueType =
+  | "boolean"
+  | "number"
+  | "string"
+  | "array"
+  | "object"
+  | "null";
 
 // Type guard functions for value types
 export function isStringValue(

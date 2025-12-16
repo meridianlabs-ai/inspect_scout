@@ -108,10 +108,12 @@ export type ChatMessage =
   | ChatMessageAssistant
   | ChatMessageTool;
 
-export interface Transcript {
+export interface TranscriptInfo {
   id: string;
   source_id: string;
-  source_url: string;
+  source_uri: string;
+  source_type: string;
+  filename?: string;
   date?: string;
   task?: string;
   agent?: string;
@@ -124,11 +126,18 @@ export interface Transcript {
   error?: string;
   limit?: string;
   metadata: TranscriptMetadata;
+}
+
+export interface Transcript extends TranscriptInfo {
   messages: ChatMessages;
   events: Events;
 }
 
 export interface TranscriptMetadata {
+  // These fields are only left here as optional for backwards compatbility
+  // for scans which were run before these fields were added to the Transcript data itself
+  // we will still scrounge around for them if we can't resolve them from
+  // the Transcript directly
   sample_id?: string;
   id?: string | number;
   epoch?: number;

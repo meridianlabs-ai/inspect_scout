@@ -104,7 +104,6 @@ transcript.metadata["id"]               # dataset sample id
 transcript.metadata["epoch"]            # sample epoch
 transcript.metadata["eval_metadata"]    # eval metadata
 transcript.metadata["sample_metadata"]  # sample metadata
-transcript.metadata["score"]            # main sample score 
 transcript.metadata["score_<scorer>"]   # named sample scores
 ```
 
@@ -115,8 +114,7 @@ from inspect_scout import transcripts_from, log_columns as c
 
 transcripts = (
     transcripts_from("./logs")
-    .where(c.task == "cybench")
-    .where(c.model.like("openai/%"))
+    .where(c.sample_metadata.category == "accounting")
 )
 ```
 

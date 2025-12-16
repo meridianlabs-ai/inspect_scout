@@ -641,6 +641,76 @@ class Columns:
     ```
     """
 
+    @property
+    def transcript_id(self) -> Column:
+        """Globally unique identifier for transcript."""
+        return Column("transcript_id")
+
+    @property
+    def source_type(self) -> Column:
+        """Type of transcript source (e.g. "eval_log", "weave", etc.)."""
+        return Column("source_type")
+
+    @property
+    def source_id(self) -> Column:
+        """Globally unique identifier of transcript source (e.g. 'eval_id' in Inspect logs)."""
+        return Column("source_id")
+
+    @property
+    def source_uri(self) -> Column:
+        """URI for source data (e.g. full path to the Inspect log file or weave op)."""
+        return Column("source_uri")
+
+    @property
+    def date(self) -> Column:
+        """Date transcript was created."""
+        return Column("date")
+
+    @property
+    def task(self) -> Column:
+        """Task name."""
+        return Column("task")
+
+    @property
+    def agent(self) -> Column:
+        """Agent name."""
+        return Column("agent")
+
+    @property
+    def agent_args(self) -> Column:
+        """Agent args."""
+        return Column("agent_args")
+
+    @property
+    def model(self) -> Column:
+        """Model used for eval."""
+        return Column("model")
+
+    @property
+    def score(self) -> Column:
+        """Headline score value."""
+        return Column("score")
+
+    @property
+    def success(self) -> Column:
+        """Reduction of 'score' to True/False sucess."""
+        return Column("success")
+
+    @property
+    def total_time(self) -> Column:
+        """Total execution time."""
+        return Column("total_time")
+
+    @property
+    def error(self) -> Column:
+        """Error that halted exeuction."""
+        return Column("error")
+
+    @property
+    def limit(self) -> Column:
+        """Limit that halted execution."""
+        return Column("limit")
+
     def __getattr__(self, name: str) -> Column:
         """Access columns using dot notation."""
         if name.startswith("_"):

@@ -76,7 +76,7 @@ class Transcripts(abc.ABC):
     referenced via the return value. For example:
 
     ```python
-    from inspect_scout import transcripts, log_columns as c
+    from inspect_scout import transcripts, columns as c
 
     transcripts = transcripts_from("./logs")
     transcripts = transcripts.where(c.task == "cybench")

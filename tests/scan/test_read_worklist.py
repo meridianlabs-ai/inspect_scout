@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from inspect_scout import log_columns as c
+from inspect_scout import columns as c
 from inspect_scout._scan import _resolve_worklist
 from inspect_scout._scanspec import Worklist
 from inspect_scout._transcript.factory import transcripts_from

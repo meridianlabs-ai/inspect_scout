@@ -41,7 +41,7 @@ from inspect_ai.analysis._dataframe.samples.table import (
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
 )
-from inspect_ai.log import EvalSampleSummary
+from inspect_ai.log import EvalLog, EvalSampleSummary
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
@@ -266,10 +266,10 @@ class EvalLogTranscriptsDB:
             # create a dict of column name to value
             row_dict = dict(zip(column_names, row, strict=True))
 
-            # extract required fields
-            transcript_id = row_dict.get("sample_id", None)
-            transcript_source_id = row_dict.get("eval_id", None)
-            transcript_source_uri = row_dict.get("log", None)
+            # extract required fields (prefer new columns, fall back to old for compatibility)
+            transcript_id = row_dict.get("transcript_id") or row_dict.get("sample_id")
+            transcript_source_id = row_dict.get("source_id") or row_dict.get("eval_id")
+            transcript_source_uri = row_dict.get("source_uri") or row_dict.get("log")
             transcript_date = row_dict.get("date", None)
             transcript_task = row_dict.get("task", None)
             transcript_agent = row_dict.get("agent", None)
@@ -452,10 +452,40 @@ def sample_success(sample: EvalSampleSummary) -> bool | None:
         return None
 
 
+# Standard transcript column extractors
+def _source_type(log: EvalLog) -> str:
+    """Return constant source type for eval logs."""
+    return EVAL_LOG_SOURCE_TYPE
+
+
+def _source_id(log: EvalLog) -> str | None:
+    """Return eval_id as source_id."""
+    return log.eval.eval_id
+
+
+def _source_uri(log: EvalLog) -> str | None:
+    """Return log location as source_uri (plain path without file:// prefix)."""
+    location = log.location
+    if location and location.startswith("file://"):
+        # Strip file:// prefix to get plain path
+        return location[7:]
+    return location
+
+
+def _transcript_id(sample: EvalSampleSummary) -> str | None:
+    """Return sample uuid as transcript_id."""
+    return sample.uuid
+
+
 TranscriptColumns: list[Column] = (
     EvalId
     + EvalLogPath
     + [
+        # Standard transcript columns (aliases for filtering)
+        EvalColumn("source_type", path=_source_type, required=True),
+        EvalColumn("source_id", path=_source_id, required=True),
+        EvalColumn("source_uri", path=_source_uri, required=True),
+        # Eval info columns
         EvalColumn("date", path="eval.created", type=datetime, required=True),
         EvalColumn("eval_status", path="status", required=True),
         EvalColumn("eval_tags", path="eval.tags", default="", value=list_as_str),
@@ -467,6 +497,8 @@ TranscriptColumns: list[Column] = (
         EvalColumn("model", path="eval.model", required=True),
         EvalColumn("generate_config", path="eval.model_generate_config", default={}),
         EvalColumn("model_roles", path="eval.model_roles", default={}),
+        # Sample columns
+        SampleColumn("transcript_id", path=_transcript_id, required=True),
         SampleColumn("id", path="id", required=True, type=str),
         SampleColumn("epoch", path="epoch", required=True),
         SampleColumn("input", path=sample_input_as_str, required=True),

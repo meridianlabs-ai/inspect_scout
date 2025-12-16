@@ -95,9 +95,7 @@ def test_typed_properties_have_docstrings() -> None:
     assert "Model used for eval" in get_property_doc(LogColumns.model)
     assert "Task name" in get_property_doc(LogColumns.task)
     assert "Headline score value" in get_property_doc(LogColumns.score)
-    assert "Total time that the sample was running" in get_property_doc(
-        LogColumns.total_time
-    )
+    assert "Total execution time" in get_property_doc(LogColumns.total_time)
 
 
 # ============================================================================

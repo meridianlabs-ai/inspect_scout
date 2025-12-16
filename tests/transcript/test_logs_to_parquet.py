@@ -398,9 +398,9 @@ async def test_success_column_values(
     # Verify success mapping is consistent between sources
     for transcript_id in log_success_mapping:
         assert transcript_id in parquet_success_mapping
-        assert log_success_mapping[transcript_id] == parquet_success_mapping[transcript_id], (
-            f"Success value mismatch for {transcript_id}"
-        )
+        assert (
+            log_success_mapping[transcript_id] == parquet_success_mapping[transcript_id]
+        ), f"Success value mismatch for {transcript_id}"
 
     # Verify success values match expected behavior:
     # - "C" (correct) scores should have success=True
@@ -424,3 +424,98 @@ async def test_success_column_values(
     # Verify we tested both types of scores
     assert correct_count > 0, "Should have some correct (C) scores"
     assert incorrect_count > 0, "Should have some incorrect (I) scores"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_source_type(
+    log_transcripts: Transcripts, parquet_transcripts: Transcripts
+) -> None:
+    """Test filtering by source_type column works on both sources."""
+    # Filter by source_type == "eval_log" (all test logs should have this)
+    log_filtered = log_transcripts.where(c.source_type == "eval_log")
+    parquet_filtered = parquet_transcripts.where(c.source_type == "eval_log")
+
+    log_ids = await get_transcript_ids(log_filtered)
+    parquet_ids = await get_transcript_ids(parquet_filtered)
+
+    # All transcripts from eval logs should match
+    all_log_ids = await get_transcript_ids(log_transcripts)
+    assert len(log_ids) == len(all_log_ids), (
+        "All logs should have source_type='eval_log'"
+    )
+    assert sorted(log_ids) == sorted(parquet_ids), "Should return same IDs"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_source_id(
+    log_transcripts: Transcripts, parquet_transcripts: Transcripts
+) -> None:
+    """Test filtering by source_id column works on both sources."""
+    # Get a source_id (eval_id) from the first transcript
+    async with log_transcripts.reader() as reader:
+        first_info = None
+        async for info in reader.index():
+            first_info = info
+            break
+        assert first_info is not None
+
+    source_id = first_info.source_id
+    assert source_id is not None, "source_id should be set for eval logs"
+
+    # Filter by that specific source_id
+    log_filtered = log_transcripts.where(c.source_id == source_id)
+    parquet_filtered = parquet_transcripts.where(c.source_id == source_id)
+
+    log_ids = await get_transcript_ids(log_filtered)
+    parquet_ids = await get_transcript_ids(parquet_filtered)
+
+    assert len(log_ids) > 0, "Should find transcripts with matching source_id"
+    assert sorted(log_ids) == sorted(parquet_ids), "Should return same IDs"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_source_uri(
+    log_transcripts: Transcripts, parquet_transcripts: Transcripts
+) -> None:
+    """Test filtering by source_uri column works on both sources."""
+    # Get a source_uri (log path) from the first transcript
+    async with log_transcripts.reader() as reader:
+        first_info = None
+        async for info in reader.index():
+            first_info = info
+            break
+        assert first_info is not None
+
+    source_uri = first_info.source_uri
+    assert source_uri is not None, "source_uri should be set for eval logs"
+
+    # Filter by that specific source_uri
+    log_filtered = log_transcripts.where(c.source_uri == source_uri)
+    parquet_filtered = parquet_transcripts.where(c.source_uri == source_uri)
+
+    log_ids = await get_transcript_ids(log_filtered)
+    parquet_ids = await get_transcript_ids(parquet_filtered)
+
+    assert len(log_ids) > 0, "Should find transcripts with matching source_uri"
+    assert sorted(log_ids) == sorted(parquet_ids), "Should return same IDs"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_transcript_id(
+    log_transcripts: Transcripts, parquet_transcripts: Transcripts
+) -> None:
+    """Test filtering by transcript_id column works on both sources."""
+    # Get a transcript_id from the first transcript
+    all_ids = await get_transcript_ids(log_transcripts)
+    assert len(all_ids) > 0
+    target_id = all_ids[0]
+
+    # Filter by that specific transcript_id
+    log_filtered = log_transcripts.where(c.transcript_id == target_id)
+    parquet_filtered = parquet_transcripts.where(c.transcript_id == target_id)
+
+    log_ids = await get_transcript_ids(log_filtered)
+    parquet_ids = await get_transcript_ids(parquet_filtered)
+
+    assert log_ids == [target_id], "Should find exactly one transcript"
+    assert parquet_ids == [target_id], "Should find exactly one transcript"

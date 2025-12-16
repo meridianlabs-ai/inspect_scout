@@ -45,7 +45,7 @@ In this case we recommend that you create a new database dedicated to your analy
 
 ``` python
 from inspect_scout import (
-    transcripts_db, transcripts_from, log_columns as c
+    transcripts_db, transcripts_from, columns as c
 )
 
 # create a local transcripts database for analysis

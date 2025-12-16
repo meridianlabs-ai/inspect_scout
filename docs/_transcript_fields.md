@@ -6,7 +6,7 @@ Here are the available `Transcript` fields:
 | `source_type` | str | Type of transcript source (e.g. "eval_log", "weave", etc.). |
 | `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
 | `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `date` | ISO | Date/time when the transcript was created. |
+| `date` | iso | Date/time when the transcript was created. |
 | `task` | str | Name of task executed by transcript (e.g. benchmark name) |
 | `agent` | str | Agent used to to execute task. |
 | `agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |

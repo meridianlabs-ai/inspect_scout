@@ -56,11 +56,6 @@ class LogColumns(Columns):
     # ===== Eval Info columns =====
 
     @property
-    def date(self) -> Column:
-        """Time eval was created."""
-        return Column("date")
-
-    @property
     def eval_tags(self) -> Column:
         """Tags associated with evaluation run."""
         return Column("eval_tags")
@@ -73,31 +68,11 @@ class LogColumns(Columns):
     # ===== Eval Task columns =====
 
     @property
-    def task(self) -> Column:
-        """Task name."""
-        return Column("task")
-
-    @property
     def task_args(self) -> Column:
         """Task arguments."""
         return Column("task_args")
 
-    @property
-    def agent(self) -> Column:
-        """Agent name."""
-        return Column("agent")
-
-    @property
-    def agent_args(self) -> Column:
-        """Agent args."""
-        return Column("agent_args")
-
     # ===== Eval Model columns =====
-
-    @property
-    def model(self) -> Column:
-        """Model used for eval."""
-        return Column("model")
 
     @property
     def generate_config(self) -> Column:
@@ -137,34 +112,9 @@ class LogColumns(Columns):
         return Column("sample_metadata")
 
     @property
-    def score(self) -> Column:
-        """Headline score value."""
-        return Column("score")
-
-    @property
-    def total_tokens(self) -> Column:
-        """Total tokens used for sample."""
-        return Column("total_tokens")
-
-    @property
-    def total_time(self) -> Column:
-        """Total time that the sample was running."""
-        return Column("total_time")
-
-    @property
     def working_time(self) -> Column:
         """Time spent working (model generation, sandbox calls, etc.)."""
         return Column("working_time")
-
-    @property
-    def error(self) -> Column:
-        """Error that halted the sample."""
-        return Column("error")
-
-    @property
-    def limit(self) -> Column:
-        """Limit that halted the sample."""
-        return Column("limit")
 
     # ===== Deprecated columns =====
 

@@ -27,11 +27,11 @@ from inspect_scout._scanresults import (
     scan_results_df_async,
 )
 
-from ._rest_types import (
-    InspectPydanticJSONResponse,
+from ._api_v2_types import (
     RestScanStatus,
     ScansRestResponse,
 )
+from ._server_common import InspectPydanticJSONResponse
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -58,6 +58,11 @@ def v2_api_app(
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
 ) -> "FastAPI":
+    """Create V2 API FastAPI app.
+
+    WARNING: This is an ALPHA API. Expect breaking changes without notice.
+    Do not depend on this API for production use.
+    """
     app = FastAPI(
         title="Inspect Scout Viewer API",
         version="2.0.0-alpha",

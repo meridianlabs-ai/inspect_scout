@@ -1,8 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Literal, TypeAlias, override
+from typing import Literal, TypeAlias
 
-from fastapi.responses import JSONResponse
-from inspect_ai._util.json import to_json_safe
 from pydantic import BaseModel
 
 from inspect_scout._recorder.recorder import Status as RecorderStatus
@@ -10,14 +8,6 @@ from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanspec import ScanSpec
 
 from .._scanner.result import Error
-
-
-class InspectPydanticJSONResponse(JSONResponse):
-    """Like the standard starlette JSON, but allows NaN."""
-
-    @override
-    def render(self, content: Any) -> bytes:
-        return to_json_safe(content)
 
 
 @dataclass

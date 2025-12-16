@@ -30,9 +30,9 @@ from inspect_scout._scanresults import (
     scan_results_df_async,
 )
 from inspect_scout._scanspec import ScanSpec
-from inspect_scout._view._rest_types import InspectPydanticJSONResponse
 
 from .._scanner.result import Error
+from ._server_common import InspectPydanticJSONResponse
 
 
 @dataclass

@@ -17,6 +17,14 @@ export const apiVscode = (
   rpcClient: (method: string, params?: unknown) => Promise<unknown>
 ): ScanApi => {
   return {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getTranscriptsDir: async (): Promise<string> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getTranscripts: async (transcriptsDir?: string): Promise<unknown[]> => {
+      throw new Error("Not Yet Implemented");
+    },
     getScan: async (scanLocation: string): Promise<Status> => {
       const response = (await rpcClient(kMethodGetScan, [
         scanLocation,

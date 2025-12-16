@@ -116,7 +116,7 @@ def v2_api_app(
 
     @app.get("/transcripts")
     async def transcripts(
-        request_transcripts_dir: str | None = Query(None, alias="transcripts-dir"),
+        request_transcripts_dir: str | None = Query(None, alias="dir"),
     ) -> list[TranscriptInfo]:
         transcripts_dir = request_transcripts_dir or await default_transcripts_dir()
         try:

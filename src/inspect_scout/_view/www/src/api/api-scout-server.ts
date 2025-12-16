@@ -17,6 +17,21 @@ export const apiScoutServer = (
   const { apiBaseUrl, headerProvider, resultsDir } = options;
   const requestApi = serverRequestApi(apiBaseUrl || "/api/v2", headerProvider);
   return {
+    getTranscriptsDir: async (): Promise<string> => {
+      return (await requestApi.fetchString("GET", `/transcripts-dir`)).raw;
+    },
+    getTranscripts: async (transcriptsDir?: string): Promise<unknown[]> => {
+      const path = transcriptsDir
+        ? `/transcripts?dir=${encodeURIComponent(transcriptsDir)}`
+        : `/transcripts`;
+      const result = await requestApi.fetchString("GET", path);
+
+      const parsedResult = await asyncJsonParse<unknown[]>(result.raw);
+      if (!Array.isArray(parsedResult)) {
+        throw new Error("Expected array from /transcripts endpoint");
+      }
+      return parsedResult;
+    },
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",

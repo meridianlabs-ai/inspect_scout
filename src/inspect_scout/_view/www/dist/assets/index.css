@@ -157,37 +157,20 @@
   margin-top: -2px;
   font-size: 0.8em;
 }
-._header_oy6cz_1 {
+._header_tayqw_1 {
   background: var(--bs-light);
   display: grid;
   grid-template-columns: 1fr max-content;
   justify-content: space-between;
   padding: 0.2em 0.5em;
-  --bs-breadcrumb-divider: ">";
   overflow: hidden;
 }
 
-._header_oy6cz_1 ._bordered_oy6cz_11 {
+._header_tayqw_1 ._bordered_tayqw_10 {
   border-bottom: solid var(--bs-border-color) 1px;
 }
 
-._breadcrumbs_oy6cz_15 {
-  border-left: solid var(--bs-border-color) 1px;
-  padding-left: 0.5em !important;
-  margin-bottom: 0 !important;
-  min-width: 0;
-  overflow: hidden;
-  width: max-content;
-  display: flex;
-  flex-wrap: nowrap;
-}
-
-._ellipsis_oy6cz_26 {
-  color: var(--bs-secondary);
-  font-weight: normal;
-}
-
-._left_oy6cz_31 {
+._left_tayqw_14 {
   display: grid;
   grid-template-columns: max-content max-content 1fr;
   align-items: center;
@@ -197,7 +180,7 @@
   max-width: 100%;
 }
 
-._right_oy6cz_41 {
+._right_tayqw_24 {
   display: grid;
   grid-auto-columns: max-content;
   grid-auto-flow: column;
@@ -206,19 +189,7 @@
   column-gap: 0.5em;
 }
 
-._toolbarButton_oy6cz_50 {
-  color: var(--bs-body-color);
-}
-
-._toolbarButton_oy6cz_50:hover {
-  color: var(--bs-link-hover-color);
-}
-
-._pathContainer_oy6cz_58 {
-  overflow-x: hidden;
-}
-
-._hasChildren_oy6cz_62 {
+._hasChildren_tayqw_33 {
   border-left: solid var(--bs-border-color) 1px;
   padding-left: 0.5rem;
   margin-left: 0.5rem;
@@ -344,6 +315,22 @@
   outline: 2px solid var(--bs-primary);
   outline-offset: 0;
   border-color: var(--bs-primary);
+}
+._labeledValue_6obbb_1 {
+  display: flex;
+  justify-content: flex-start;
+}
+
+._labeledValue_6obbb_1._row_6obbb_6 {
+  flex-direction: row;
+}
+
+._labeledValue_6obbb_1._column_6obbb_10 {
+  flex-direction: column;
+}
+
+._labeledValue_6obbb_1._row_6obbb_6 ._labeledValueLabel_6obbb_14 {
+  margin-right: 0.5em;
 }
 ._activityBar_q73jv_1 {
   height: 100vh;
@@ -610,22 +597,6 @@
 
 ._traceback_1cz5u_5 {
   margin-top: 1rem;
-}
-._labeledValue_6obbb_1 {
-  display: flex;
-  justify-content: flex-start;
-}
-
-._labeledValue_6obbb_1._row_6obbb_6 {
-  flex-direction: row;
-}
-
-._labeledValue_6obbb_1._column_6obbb_10 {
-  flex-direction: column;
-}
-
-._labeledValue_6obbb_1._row_6obbb_6 ._labeledValueLabel_6obbb_14 {
-  margin-right: 0.5em;
 }
 ._expandablePanel_1ka1g_1 {
   position: relative;

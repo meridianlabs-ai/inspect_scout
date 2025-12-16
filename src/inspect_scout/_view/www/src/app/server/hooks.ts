@@ -290,15 +290,15 @@ export const useServerTranscripts = () => {
   // api
   const api = useApi();
 
-  // State
-  const transcriptsDatabasePath = useStore(
-    (state) => state.transcriptsDatabasePath
-  );
+  // Transcripts
   const transcripts = useStore((state) => state.transcripts);
-
-  // Setters
-  const setLoadingData = useStore((state) => state.setLoadingData);
   const setTranscripts = useStore((state) => state.setTranscripts);
+  const setTranscriptsDatabasePath = useStore(
+    (state) => state.setTranscriptsDatabasePath
+  );
+
+  // Status/Error
+  const setLoadingData = useStore((state) => state.setLoadingData);
   const setError = useStore((state) => state.setError);
   const clearError = useStore((state) => state.clearError);
 
@@ -308,31 +308,27 @@ export const useServerTranscripts = () => {
       clearError("transcripts");
 
       // See if we already have data
-      if (!transcripts)
+      if (transcripts === undefined) {
         // Start loading (since we are going to fetch)
         setLoadingData(true);
 
-      try {
-        // Request the raw data from the server
-        const serverDir = await api.getTranscriptsDir();
-        const serverTranscripts = await api.getTranscripts();
-        setTranscripts(serverTranscripts);
-      } catch (e) {
-        // Notify app of error
-        setError("transcripts", e?.toString());
-      } finally {
-        // Stop progress
-        setLoadingData(false);
+        try {
+          // Get the transcripts directory
+          const transcriptsDir = await api.getTranscriptsDir();
+          setTranscriptsDatabasePath(transcriptsDir);
+
+          // Request the raw data from the server
+          const serverTranscripts = await api.getTranscripts();
+          setTranscripts(serverTranscripts);
+        } catch (e) {
+          // Notify app of error
+          setError("transcripts", e?.toString());
+        } finally {
+          // Stop progress
+          setLoadingData(false);
+        }
       }
     };
     void fetchScannerDataframeInput();
-  }, [
-    api,
-    transcriptsDatabasePath,
-    transcripts,
-    setLoadingData,
-    setTranscripts,
-    setError,
-    clearError,
-  ]);
+  }, [api, transcripts, setLoadingData, setTranscripts, setError, clearError]);
 };

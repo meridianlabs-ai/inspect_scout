@@ -1170,13 +1170,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
             WHERE FALSE
         """)
-        # TODO: correct types
-
-        # "date",
-
-        # success - bool
-        # total_time - float
-        # total_tokens - int
         self._conn.execute("""
             CREATE VIEW transcripts AS
             SELECT

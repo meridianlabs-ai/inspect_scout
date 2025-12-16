@@ -343,3 +343,84 @@ async def test_multiple_where_clauses(
 
     # Sort for platform-independent comparison (file system ordering differs)
     assert sorted(log_ids) == sorted(parquet_ids), "Should return same IDs"
+
+
+@pytest.mark.asyncio
+async def test_success_column_values(
+    log_transcripts: Transcripts, parquet_transcripts: Transcripts
+) -> None:
+    """Test that success column correctly maps score values.
+
+    Verifies that:
+    - Scores with value "C" (correct) have success=True (value_to_float returns 1.0)
+    - Scores with value "I" (incorrect) have success=False (value_to_float returns 0.0)
+    """
+    # Get popularity transcripts which have "C" and "I" score values
+    log_filtered = log_transcripts.where(c.task == "popularity")
+    parquet_filtered = parquet_transcripts.where(c.task == "popularity")
+
+    # Check success values from log source
+    async with log_filtered.reader() as reader:
+        log_success_mapping: dict[str, bool | None] = {}
+        log_score_value_mapping: dict[str, Any] = {}
+        async for info in reader.index():
+            # success is stored as int (0/1) in the database, convert to bool
+            success = info.success
+            if success is not None:
+                success = bool(success)
+            log_success_mapping[info.transcript_id] = success
+            # score is a dict with 'value' key
+            score_value = None
+            if isinstance(info.score, dict):
+                score_value = info.score.get("value")
+            log_score_value_mapping[info.transcript_id] = score_value
+
+    # Check success values from parquet source
+    async with parquet_filtered.reader() as reader:
+        parquet_success_mapping: dict[str, bool | None] = {}
+        parquet_score_value_mapping: dict[str, Any] = {}
+        async for info in reader.index():
+            # success is stored as int (0/1) in the database, convert to bool
+            success = info.success
+            if success is not None:
+                success = bool(success)
+            parquet_success_mapping[info.transcript_id] = success
+            # score is a dict with 'value' key
+            score_value = None
+            if isinstance(info.score, dict):
+                score_value = info.score.get("value")
+            parquet_score_value_mapping[info.transcript_id] = score_value
+
+    # Verify both sources have the same number of transcripts
+    assert len(log_success_mapping) > 0, "Should have popularity transcripts"
+    assert len(log_success_mapping) == len(parquet_success_mapping)
+
+    # Verify success mapping is consistent between sources
+    for transcript_id in log_success_mapping:
+        assert transcript_id in parquet_success_mapping
+        assert log_success_mapping[transcript_id] == parquet_success_mapping[transcript_id], (
+            f"Success value mismatch for {transcript_id}"
+        )
+
+    # Verify success values match expected behavior:
+    # - "C" (correct) scores should have success=True
+    # - "I" (incorrect) scores should have success=False
+    correct_count = 0
+    incorrect_count = 0
+
+    for transcript_id, score_value in log_score_value_mapping.items():
+        success = log_success_mapping[transcript_id]
+        if score_value == "C":
+            assert success is True, (
+                f"Score 'C' should result in success=True for {transcript_id}"
+            )
+            correct_count += 1
+        elif score_value == "I":
+            assert success is False, (
+                f"Score 'I' should result in success=False for {transcript_id}"
+            )
+            incorrect_count += 1
+
+    # Verify we tested both types of scores
+    assert correct_count > 0, "Should have some correct (C) scores"
+    assert incorrect_count > 0, "Should have some incorrect (I) scores"

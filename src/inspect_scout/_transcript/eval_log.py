@@ -41,9 +41,11 @@ from inspect_ai.analysis._dataframe.samples.table import (
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
 )
+from inspect_ai.log import EvalSampleSummary
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
+from inspect_ai.scorer import value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
@@ -428,6 +430,28 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
         return samples_df_with_caching(read_samples, logs)
 
 
+def sample_success(sample: EvalSampleSummary) -> bool | None:
+    if not sample.scores:
+        return None
+
+    score = next(iter(sample.scores.values()), None)
+    if not score:
+        return None
+
+    # scores can explicitly mark themselves as successful/unsuccesful
+    if score.metadata and "success" in score.metadata:
+        success = score.metadata.get("success", None)
+        if isinstance(success, bool | None):
+            return success
+
+    # otherwise use standard value_to_float on scalers
+    if isinstance(score.value, str | int | float | bool):
+        return value_to_float()(score.value) > 0
+    # lists/dicts get None
+    else:
+        return None
+
+
 TranscriptColumns: list[Column] = (
     EvalId
     + EvalLogPath
@@ -449,6 +473,7 @@ TranscriptColumns: list[Column] = (
         SampleColumn("target", path="target", required=True, value=list_as_str),
         SampleColumn("sample_metadata", path="metadata", default={}),
         SampleColumn("score", path="scores", value=score_value),
+        SampleColumn("success", path=sample_success),
         SampleColumn("score_*", path="scores", value=score_values),
         SampleColumn("total_tokens", path=sample_total_tokens),
         SampleColumn("total_time", path="total_time"),
@@ -457,6 +482,7 @@ TranscriptColumns: list[Column] = (
         SampleColumn("limit", path="limit", default=""),
     ]
 )
+
 
 JSON_COLUMNS: Final[list[str]] = [
     "eval_metadata",

@@ -16,10 +16,7 @@ import { EventNode, EventType } from "../../transcript/types";
 import { ApplicationIcons } from "../appearance/icons";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
-import {
-  useSelectedResultsRow,
-  useSelectedScanResultInputData,
-} from "../hooks";
+import { useSelectedResultsRow } from "../hooks";
 import {
   useServerScans,
   useServerScanner,
@@ -77,7 +74,6 @@ export const ScanResultPanel: FC = () => {
     useSelectedResultsRow(scanResultUuid);
 
   const status = useStore((state) => state.selectedScanStatus);
-  const dfInput = useSelectedScanResultInputData();
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {

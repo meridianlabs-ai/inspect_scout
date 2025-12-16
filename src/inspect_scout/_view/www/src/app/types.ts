@@ -33,7 +33,8 @@ export type ErrorScope =
   | "scanjobs"
   | "scanner"
   | "dataframe"
-  | "dataframe_input";
+  | "dataframe_input"
+  | "transcripts";
 
 export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
 

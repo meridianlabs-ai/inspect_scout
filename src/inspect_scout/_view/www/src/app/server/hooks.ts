@@ -285,3 +285,62 @@ export const useServerScannerDataframeInput = () => {
     getSelectedScanResultInput,
   ]);
 };
+
+export const useServerTranscripts = () => {
+  // api
+  const api = useApi();
+
+  // State
+  const transcriptsDatabasePath = useStore(
+    (state) => state.transcriptsDatabasePath
+  );
+  const transcripts = useStore((state) => state.transcripts);
+
+  // Setters
+  const setLoadingData = useStore((state) => state.setLoadingData);
+  const setTranscripts = useStore((state) => state.setTranscripts);
+  const setError = useStore((state) => state.setError);
+  const clearError = useStore((state) => state.clearError);
+
+  useEffect(() => {
+    const fetchScannerDataframeInput = () => {
+      // Clear any existing errors
+      clearError("transcripts");
+
+      // Not enough context to load
+      if (!transcriptsDatabasePath) {
+        return;
+      }
+
+      // See if we already have data
+      if (!transcripts)
+        // Start loading (since we are going to fetch)
+        setLoadingData(true);
+
+      try {
+        // Request the raw data from the server
+        const serverTranscripts = []; /*await api.getTranscripts(
+          transcriptsDatabasePath
+        );*/
+
+        // Store in state
+        setTranscripts(serverTranscripts);
+      } catch (e) {
+        // Notify app of error
+        setError("transcripts", e?.toString());
+      } finally {
+        // Stop progress
+        setLoadingData(false);
+      }
+    };
+    void fetchScannerDataframeInput();
+  }, [
+    api,
+    transcriptsDatabasePath,
+    transcripts,
+    setLoadingData,
+    setTranscripts,
+    setError,
+    clearError,
+  ]);
+};

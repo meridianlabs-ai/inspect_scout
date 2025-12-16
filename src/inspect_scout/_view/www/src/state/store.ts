@@ -89,6 +89,7 @@ interface StoreState {
 
   // Transcripts DB
   transcriptsDatabasePath?: string;
+  transcripts?: unknown[];
 
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
@@ -198,6 +199,7 @@ interface StoreState {
   setDataframeShowFilterColumns: (show: boolean) => void;
 
   setTranscriptsDatabasePath: (path: string) => void;
+  setTranscripts: (transcripts: unknown[]) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -657,6 +659,11 @@ export const createStore = (api: ScanApi) =>
           setTranscriptsDatabasePath: (path: string) => {
             set((state) => {
               state.transcriptsDatabasePath = path;
+            });
+          },
+          setTranscripts: (transcripts: unknown[]) => {
+            set((state) => {
+              state.transcripts = transcripts;
             });
           },
         })),

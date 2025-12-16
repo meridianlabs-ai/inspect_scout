@@ -7,7 +7,14 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
-import { ErrorScope, ResultGroup, ScannerCore, SortColumn } from "../app/types";
+import {
+  ScanResultInputData,
+  ErrorScope,
+  Input,
+  ResultGroup,
+  ScanResultSummary,
+  SortColumn,
+} from "../app/types";
 import { Status } from "../types";
 import { debounce } from "../utils/sync";
 
@@ -16,11 +23,17 @@ import { debounce } from "../utils/sync";
 const selectedScanResultDataRef: {
   data: ColumnTable | undefined;
   scanner: string | undefined;
-  previews: ScannerCore[] | undefined;
+  previews: ScanResultSummary[] | undefined;
+  input: Input | undefined;
+  inputUuid: string | undefined;
+  inputType: string | undefined;
 } = {
   data: undefined,
   scanner: undefined,
   previews: undefined,
+  input: undefined,
+  inputUuid: undefined,
+  inputType: undefined,
 };
 
 interface StoreState {
@@ -40,7 +53,7 @@ interface StoreState {
   selectedScanStatus?: Status;
 
   // Scanner
-  visibleScannerResults: ScannerCore[];
+  visibleScannerResults: ScanResultSummary[];
   visibleScannerResultsCount: number;
 
   // Dataframes
@@ -102,14 +115,21 @@ interface StoreState {
   setSelectedScanResult: (result: string) => void;
   setSelectedScanResultData: (scanner: string, data: ColumnTable) => void;
   getSelectedScanResultData: (scanner?: string) => ColumnTable | undefined;
+  setSelectedScanResultInputData: (
+    uuid: string,
+    inputData: ScanResultInputData
+  ) => void;
+  getSelectedScanResultInputData: (
+    uuid: string
+  ) => ScanResultInputData | undefined;
   setSelectedScanResultPreviews: (
     scanner?: string,
-    previews?: ScannerCore[]
+    previews?: ScanResultSummary[]
   ) => void;
   getSelectedScanResultPreviews: (
     scanner?: string
-  ) => ScannerCore[] | undefined;
-  setVisibleScannerResults: (results: ScannerCore[]) => void;
+  ) => ScanResultSummary[] | undefined;
+  setVisibleScannerResults: (results: ScanResultSummary[]) => void;
   setVisibleScannerResultsCount: (count: number) => void;
 
   // Clearing state
@@ -314,7 +334,38 @@ export const createStore = (api: ScanApi) =>
             }
             return undefined;
           },
-          setVisibleScannerResults: (results: ScannerCore[]) => {
+          setSelectedScanResultInputData: (
+            uuid?: string,
+            inputData?: ScanResultInputData
+          ) => {
+            selectedScanResultDataRef.input = inputData?.input;
+            selectedScanResultDataRef.inputUuid = uuid;
+            selectedScanResultDataRef.inputType = inputData?.inputType;
+          },
+          getSelectedScanResultInputData: (uuid: string) => {
+            if (
+              !selectedScanResultDataRef.inputType ||
+              !selectedScanResultDataRef.input
+            ) {
+              return undefined;
+            }
+
+            // Only return data that matches the requested uuid
+            if (selectedScanResultDataRef.inputUuid === uuid) {
+              return {
+                inputType: selectedScanResultDataRef.inputType as
+                  | "transcript"
+                  | "message"
+                  | "messages"
+                  | "event"
+                  | "events",
+                input: selectedScanResultDataRef.input,
+              };
+            }
+
+            return undefined;
+          },
+          setVisibleScannerResults: (results: ScanResultSummary[]) => {
             set((state) => {
               state.visibleScannerResults = results;
             });
@@ -326,7 +377,7 @@ export const createStore = (api: ScanApi) =>
           },
           setSelectedScanResultPreviews: (
             scanner?: string,
-            previews?: ScannerCore[]
+            previews?: ScanResultSummary[]
           ) => {
             if (selectedScanResultDataRef.scanner === scanner) {
               selectedScanResultDataRef.previews = previews;
@@ -338,7 +389,7 @@ export const createStore = (api: ScanApi) =>
           },
           getSelectedScanResultPreviews: (
             scanner?: string
-          ): ScannerCore[] | undefined => {
+          ): ScanResultSummary[] | undefined => {
             // Only return data that matches the requested scanner
             if (selectedScanResultDataRef.scanner === scanner) {
               return selectedScanResultDataRef.previews;

@@ -1,0 +1,5 @@
+.row {
+  border-bottom: solid 1px var(--bs-border-color);
+  padding: 0.25rem 1rem;
+  background-color: rgba(var(--bs-secondary-rgb), 0.03);
+}

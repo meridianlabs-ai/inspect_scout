@@ -114,23 +114,34 @@ export interface Transcript {
   id: string;
   source_id: string;
   source_url: string;
+  date?: string;
+  task?: string;
+  agent?: string;
+  agent_args?: string;
+  model?: string;
+  score?: string;
+  success?: boolean;
+  total_time?: number;
+  total_tokens?: number;
+  error?: string;
+  limit?: string;
+  metadata: TranscriptMetadata;
   messages: ChatMessages;
   events: Events;
-  metadata: TranscriptMetadata;
 }
 
 export interface TranscriptMetadata {
-  sample_id: string;
-  id: string | number;
-  epoch: number;
-  eval_id: string;
-  log: string;
-  date: string;
-  eval_metadata: Record<string, unknown>;
+  sample_id?: string;
+  id?: string | number;
+  epoch?: number;
+  eval_id?: string;
+  log?: string;
+  date?: string;
+  eval_metadata?: Record<string, unknown>;
   task?: string;
   task_name?: string;
-  model: string;
-  score: string;
+  model?: string;
+  score?: string;
   [key: string]: unknown;
 }
 

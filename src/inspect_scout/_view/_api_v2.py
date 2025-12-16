@@ -5,7 +5,7 @@ from typing import Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import (
     AccessPolicy,
@@ -20,18 +20,16 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._recorder.recorder import Status as RecorderStatus
-from inspect_scout._scanlist import scan_list_async
-from inspect_scout._scanresults import (
+from .._recorder.recorder import Status as RecorderStatus
+from .._scanlist import scan_list_async
+from .._scanresults import (
     scan_results_arrow_async,
     scan_results_df_async,
 )
-
-from ._api_v2_types import (
-    RestScanStatus,
-    ScansRestResponse,
-)
-from ._server_common import InspectPydanticJSONResponse
+from .._transcript.factory import transcripts_from
+from .._transcript.types import TranscriptInfo
+from ._api_v2_types import RestScanStatus, ScansRestResponse
+from ._server_common import InspectPydanticJSONResponse, default_transcripts_dir
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -109,6 +107,23 @@ def v2_api_app(
         request: Request, scan: RecorderStatus, running_scans: set[str]
     ) -> RestScanStatus:
         return replace(scan, location=await _unmap_file(request, scan.location))
+
+    @app.get("/transcripts-dir", response_class=PlainTextResponse)
+    async def transcripts_dir(
+        request: Request,
+    ) -> str:
+        return await default_transcripts_dir()
+
+    @app.get("/transcripts")
+    async def transcripts(
+        request_transcripts_dir: str | None = Query(None, alias="transcripts-dir"),
+    ) -> list[TranscriptInfo]:
+        transcripts_dir = request_transcripts_dir or await default_transcripts_dir()
+        try:
+            async with transcripts_from(transcripts_dir).reader() as tr:
+                return [t async for t in tr.index()]
+        except FileNotFoundError:
+            return []
 
     @app.get(
         "/scans",

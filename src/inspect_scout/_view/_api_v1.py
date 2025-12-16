@@ -1,24 +1,18 @@
 import base64
 import io
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Iterable, Literal, TypeVar
+from typing import Iterable, Literal, TypeVar
 
-import anyio
 import pandas as pd
 import pyarrow as pa
 import pyarrow.ipc as pa_ipc
-import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from inspect_ai._util.file import FileSystem, filesystem
+from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import (
     AccessPolicy,
     FileMappingPolicy,
-    OnlyDirAccessPolicy,
 )
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
@@ -27,7 +21,6 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._display._display import display
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanlist import scan_list_async
@@ -40,7 +33,6 @@ from inspect_scout._scanspec import ScanSpec
 from inspect_scout._view._rest_types import InspectPydanticJSONResponse
 
 from .._scanner.result import Error
-from ._api_v2 import v2_api_app
 
 
 @dataclass

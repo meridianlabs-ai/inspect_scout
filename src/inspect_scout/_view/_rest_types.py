@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from dataclasses import fields as dataclass_fields
 from typing import Any, Literal, TypeAlias, override
 
 from fastapi.responses import JSONResponse
 from inspect_ai._util.json import to_json_safe
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from inspect_scout._recorder.recorder import Status as RecorderStatus
 from inspect_scout._recorder.summary import Summary

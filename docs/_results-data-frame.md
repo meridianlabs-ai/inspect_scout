@@ -31,11 +31,11 @@ The data frame includes the following fields (note that some fields included emb
 
 | Field | Type | Description |
 |-------------------|-------------------|----------------------------------|
-| `transcript_id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log or `sample_id` in Inspect analysis data frames). |
+| `transcript_id` | str | Globally unique identifier for a transcript (e.g. sample `uuid` in the Inspect log). |
 | `transcript_source_type` | str | Type of transcript source (e.g. "eval_log"). |
-| `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to \`eval_id\` in the Inspect log and analysis data frames). |
+| `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `transcript_date` | datetime | Date/time when the transcript was created. |
+| `transcript_date` | str | ISO 8601 datetime when the transcript was created. |
 | `transcript_task` | str | Name of task executed by transcript (e.g. benchmark name) |
 | `transcript_agent` | str | Agent used to to execute task. |
 | `transcript_agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
@@ -46,7 +46,7 @@ The data frame includes the following fields (note that some fields included emb
 | `transcript_total_tokens` | number | Tokens spent in execution of task. |
 | `transcript_error` | str | Error message that terminated the task. |
 | `transcript_limit` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
-| `transcript_metadata` | dict </br><small>JSON</small> | Source specific metadata. |
+| `transcript_metadata` | dict <br/><small>JSON</small> | Source specific metadata. |
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]</br><small>JSON</small> | Tags associated with the scan. |
 | `scan_metadata` | dict<br/><small>JSON</small> | Additional scan metadata. |

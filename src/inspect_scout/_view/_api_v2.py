@@ -94,9 +94,7 @@ def v2_api_app(
         return scan
 
     @app.get("/transcripts-dir", response_class=PlainTextResponse)
-    async def transcripts_dir(
-        request: Request,
-    ) -> str:
+    async def transcripts_dir(request: Request) -> str:
         return await default_transcripts_dir()
 
     @app.get("/transcripts")

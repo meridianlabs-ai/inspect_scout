@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 
 # Index directory and file patterns
@@ -70,7 +71,7 @@ class IndexStorage:
             # Use provided key or fall back to environment
             resolved_key = key if key is not None else get_encryption_key_from_env()
             if not resolved_key:
-                raise ValueError(
+                raise PrerequisiteError(
                     "Encrypted files detected but no encryption key provided. "
                     f"Pass key parameter or set {ENCRYPTION_KEY_ENV} environment variable."
                 )

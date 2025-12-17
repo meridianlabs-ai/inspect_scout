@@ -868,6 +868,7 @@ async def test_indexed_database_isolation(test_location: Path) -> None:
     await db_sub2.disconnect()
 
 
+@pytest.mark.asyncio
 async def test_file_uri_discovery(test_location: Path) -> None:
     """Test that parquet files are discovered when location is a file: URI."""
     # Create and populate database using regular path

@@ -1796,22 +1796,31 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _is_hf(self) -> bool:
         return self._location is not None and self._location.startswith("hf://")
 
-    def _full_parquet_path(self, relative_filename: str) -> str:
-        """Convert a relative parquet filename to a full path.
+    def _full_parquet_path(self, filename: str) -> str:
+        """Convert a filename from the index to a full path.
 
         The index stores filenames relative to the database location.
         This method constructs the full path by joining the location
         with the relative filename.
 
+        For backwards compatibility with older indexes that stored absolute
+        paths, this returns absolute paths unchanged.
+
         Args:
-            relative_filename: Relative path from index (e.g., 'data/file.parquet')
+            filename: Path from index (relative like 'data/file.parquet' or
+                     absolute like '/path/to/file.parquet' or 's3://...')
 
         Returns:
-            Full path suitable for read_parquet (e.g., 's3://bucket/db/data/file.parquet')
+            Full path suitable for read_parquet.
         """
+        # Check if already absolute (Unix path, Windows path, or URI)
+        if filename.startswith("/") or "://" in filename:
+            return filename
+
+        # Relative path - prepend location
         assert self._location is not None
         location = self._location.rstrip("/")
-        return f"{location}/{relative_filename}"
+        return f"{location}/{filename}"
 
     def _init_hf_auth(self) -> None:
         assert self._conn is not None

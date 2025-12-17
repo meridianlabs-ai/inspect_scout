@@ -111,19 +111,25 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
   // The metadata was previously used to store these values before they were
   // added to the main Transcript schema (so we're doing this mainly for backwards
   // compatibility with old scan results)
-  const datasourceUri = transcript.source_uri || transcript.metadata?.log;
+  // Source info
+  const sourceUri = transcript.source_uri || transcript.metadata?.log;
+
+  // Model info
+  const transcriptModel = transcript.model || transcript.metadata?.model;
+  const scanningModel = status?.spec.model.model;
+
   const taskName = transcript.task || transcript.metadata?.task_name;
   const transcriptId =
     transcript.metadata?.id && transcript.metadata?.epoch
       ? `${transcript.metadata?.id} Epoch ${transcript.metadata?.epoch}`
       : transcript.id;
-  const transcriptModel = transcript.model || transcript.metadata?.model;
-  const scanningModel = status?.spec.model.model;
+
+  // task_set, task_id, task_repeat
 
   const cols: Column[] = [
     {
       label: "Source",
-      value: datasourceUri,
+      value: sourceUri,
     },
     {
       label: "Task",

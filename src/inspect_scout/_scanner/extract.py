@@ -128,9 +128,11 @@ async def messages_as_str(
             for item in items
         )
 
-    if include_ids:
-        return result, lambda text: _extract_references(text, id_map)
-    return result
+    return (
+        (result, lambda text: _extract_references(text, id_map))
+        if include_ids
+        else result
+    )
 
 
 def message_as_str(

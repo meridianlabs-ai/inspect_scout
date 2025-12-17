@@ -36,6 +36,8 @@ class _TestAnswer(Answer):
 
 def _create_transcript(
     messages: list[ChatMessage] | None = None,
+    model: str | None = None,
+    score: JsonValue = None,
     metadata: dict[str, JsonValue] | None = None,
 ) -> Transcript:
     """Helper to create test transcripts with required fields."""
@@ -44,6 +46,8 @@ def _create_transcript(
         source_type="test",
         source_id="test-source",
         source_uri="test://uri",
+        model=model,
+        score=score,
         messages=messages or [],
         metadata=metadata or {},
     )
@@ -93,13 +97,13 @@ async def test_render_basic_prompt() -> None:
         ),
         # Score (present)
         (
-            "Score: {{ metadata.score }}",
-            {"metadata": {"score": 0.85}},
+            "Score: {{ score }}",
+            {"score": 0.85},
             ["Score: 0.85"],
         ),
         # Score (absent - None)
         (
-            "Score: {% if metadata.score %}{{ metadata.score }}{% else %}N/A{% endif %}",
+            "Score: {% if score %}{{ score }}{% else %}N/A{% endif %}",
             {},
             ["Score: N/A"],
         ),
@@ -111,13 +115,13 @@ async def test_render_basic_prompt() -> None:
         ),
         # Mixed: metadata fields including score and named scores
         (
-            "Model: {{ metadata.model }}, Score: {{ metadata.score }}, Help: {{ metadata.scores.helpfulness }}",
+            "Model: {{ model }}, Score: {{ score }}, Help: {{ metadata.scores.helpfulness }}",
             {
+                "model": "gpt-4",
+                "score": 0.88,
                 "metadata": {
-                    "model": "gpt-4",
-                    "score": 0.88,
                     "scores": {"helpfulness": 0.92},
-                }
+                },
             },
             ["Model: gpt-4", "Score: 0.88", "Help: 0.92"],
         ),

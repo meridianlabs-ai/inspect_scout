@@ -163,8 +163,8 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
         snapshot_df = pd.read_csv(io.StringIO(snapshot.data))
 
         # determine unique logs, re-read, then filter on sample_id
-        logs = snapshot_df["log"].unique().tolist()
-        df = _index_logs(logs)
+        snapshot_logs = snapshot_df["log"].unique().tolist()
+        df = _index_logs(snapshot_logs)
         return df[df["sample_id"].isin(snapshot_df["sample_id"])]
 
     else:

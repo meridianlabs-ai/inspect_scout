@@ -349,41 +349,127 @@ ul.task-list li input[type="checkbox"] {
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
 <p>In a transcript database, the only strictly required field is <code>transcript_id</code> (although you’ll almost always want to also include a <code>messages</code> field as that’s the main thing targeted by most scanners).</p>
-<p>You can also include <code>source_*</code> fields as a reference to where the transcript originated as well as arbitrary other fields (trancript metadata) which are then queryable using the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts">Transcripts</a></span> API.</p>
+<p>Further, there are many standard fields (e.g.&nbsp;<code>task</code>, <code>agent</code>, <code>model</code>, <code>score</code>) which you’ll want to populate if you have access to them (as this will provide important context both when viewing transcripts and when viewing scan results). You can also include <code>source_*</code> fields as a reference to where the transcript originated,. Finally, arbitrary other fields can be included. All fields are queryable using the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts">Transcripts</a></span> API.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
 <th>Field</th>
+<th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td><code>transcript_id</code></td>
+<td>string</td>
 <td>Required. A globally unique identifier for a transcript.</td>
 </tr>
 <tr class="even">
 <td><code>source_type</code></td>
+<td>string</td>
 <td>Optional. Type of transcript source (e.g.&nbsp;“weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the <code>metadata</code> field.</td>
 </tr>
 <tr class="odd">
 <td><code>source_id</code></td>
+<td>string</td>
 <td>Optional. Globally unique identifier for a transcript source (e.g.&nbsp;a project id).</td>
 </tr>
 <tr class="even">
 <td><code>source_uri</code></td>
+<td>string</td>
 <td>Optional. URI for source data (e.g.&nbsp;link to a web page or REST resource for discovering more about the transcript).</td>
 </tr>
 <tr class="odd">
-<td><code>messages</code></td>
-<td>Optional. List of <a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages">ChatMessage</a> with message history.</td>
+<td><code>date</code></td>
+<td>string</td>
+<td>Optional. ISO 8601 datetime of transcript creation.</td>
 </tr>
 <tr class="even">
+<td><code>task_set</code></td>
+<td>string</td>
+<td>Optional. Set from which transcript task was drawn (e.g.&nbsp;Inspect task name or benchmark name).</td>
+</tr>
+<tr class="odd">
+<td><code>task_id</code></td>
+<td>string</td>
+<td>Optional. Identifier for task (e.g.&nbsp;dataset sample id).</td>
+</tr>
+<tr class="even">
+<td><code>task_repeat</code></td>
+<td>int</td>
+<td>Optional. Repeat for a given task id within a task set (e.g.&nbsp;epoch).</td>
+</tr>
+<tr class="odd">
+<td><code>agent</code></td>
+<td>string</td>
+<td>Optional. Agent used to to execute task.</td>
+</tr>
+<tr class="even">
+<td><code>agent_args</code></td>
+<td>dict[str,Any]<br>
+<small>JSON</small></td>
+<td>Optional. Arguments passed to create agent.</td>
+</tr>
+<tr class="odd">
+<td><code>model</code></td>
+<td>string</td>
+<td>Optional. Main model used by agent.</td>
+</tr>
+<tr class="even">
+<td><code>score</code></td>
+<td>JsonValue<br>
+<small>JSON</small></td>
+<td>Optional. Value indicating score on task.</td>
+</tr>
+<tr class="odd">
+<td><code>success</code></td>
+<td>bool</td>
+<td>Optional. Boolean reduction of <code>score</code> to succeeded/failed.</td>
+</tr>
+<tr class="even">
+<td><code>total_time</code></td>
+<td>float</td>
+<td>Optional. Time (in seconds) required to execute task.</td>
+</tr>
+<tr class="odd">
+<td><code>total_tokens</code></td>
+<td>int</td>
+<td>Optional. Tokens spent in execution of task.</td>
+</tr>
+<tr class="even">
+<td><code>error</code></td>
+<td>string</td>
+<td>Optional. Error message that terminated the task.</td>
+</tr>
+<tr class="odd">
+<td><code>limit</code></td>
+<td>string</td>
+<td>Optional. Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages, etc.)</td>
+</tr>
+<tr class="even">
+<td><code>messages</code></td>
+<td>list[ChatMessage]<br>
+<small>JSON</small></td>
+<td>Optional. List of <a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages">ChatMessage</a> with message history.</td>
+</tr>
+<tr class="odd">
 <td><code>events</code></td>
+<td>list[Event]<br>
+<small>JSON</small></td>
 <td>Optional. List of <a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html">Event</a> with event history (e.g.&nbsp;model events, tool events, etc.)</td>
 </tr>
 </tbody>
 </table>
+<style type="text/css">
+#overview td:nth-child(2) {
+  font-size: 0.9em;
+  line-height: 1.2;
+}
+#overview small {
+  font-size: x-small;
+}
+</style>
+<p>Field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> interface.</p>
 <section id="metadata" class="level3">
 <h3 class="anchored" data-anchor-id="metadata">Metadata</h3>
 <p>You can include arbitrary other fields in your database which will be made available as <code>Transcript.metadata</code>. These fields can then be used for filtering in calls to <code>Transcripts.where()</code>.</p>

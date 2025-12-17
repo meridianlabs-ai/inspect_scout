@@ -58,7 +58,9 @@ imagine that our logs are in an S3 bucket named
 into a local directory named `./transcripts`:
 
 ``` python
-from inspect_scout import transcripts_db, transcripts_from
+from inspect_scout import (
+    transcripts_db, transcripts_from, columns as c
+)
 
 # create a local transcripts database for analysis
 async with transcripts_db("./transcripts") as db:
@@ -66,8 +68,8 @@ async with transcripts_db("./transcripts") as db:
     # filter transcripts from our global log archive
     transcripts = (
         transcripts_from("s3://inspect-log-archive")
-        .where(m.task_name == "cybench")
-        .where(m.model.like("openai/%"))
+        .where(c.task_set == "cybench")
+        .where(c.model.like("openai/%"))
     )
 
     # insert into local database
@@ -454,11 +456,24 @@ included embedded JSON data, these are all noted below):
 
 | Field | Type | Description |
 |----|----|----|
-| `transcript_id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log or `sample_id` in Inspect analysis data frames). |
+| `transcript_id` | str | Globally unique identifier for a transcript (e.g. sample `uuid` in the Inspect log). |
 | `transcript_source_type` | str | Type of transcript source (e.g. “eval_log”). |
-| `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to \`eval_id\` in the Inspect log and analysis data frames). |
+| `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `transcript_metadata` | dict JSON | Eval configuration metadata (e.g. task, model, scores, etc.). |
+| `transcript_date` | str | ISO 8601 datetime when the transcript was created. |
+| `transcript_task_set` | str | Set from which transcript task was drawn (e.g. Inspect task name or benchmark name) |
+| `transcript_task_id` | str | Identifier for task (e.g. dataset sample id). |
+| `transcript_task_repeat` | int | Repeat for a given task id within a task set (e.g. epoch). |
+| `transcript_agent` | str | Agent used to to execute task. |
+| `transcript_agent_args` | dict JSON | Arguments passed to create agent. |
+| `transcript_model` | str | Main model used by agent. |
+| `transcript_score` | JsonValueJSON | Value indicating score on task. |
+| `transcript_success` | bool | Boolean reduction of `score` to succeeded/failed. |
+| `transcript_total_time` | number | Time required to execute task (seconds) |
+| `transcript_total_tokens` | number | Tokens spent in execution of task. |
+| `transcript_error` | str | Error message that terminated the task. |
+| `transcript_limit` | str | Limit that caused the task to exit (e.g. “tokens”, “messages, etc.) |
+| `transcript_metadata` | dict JSON | Source specific metadata. |
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]JSON | Tags associated with the scan. |
 | `scan_metadata` | dictJSON | Additional scan metadata. |
@@ -492,6 +507,16 @@ included embedded JSON data, these are all noted below):
 | `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
 | `scan_model_usage` | dict \[str, ModelUsage\]JSON | Token usage by model for scan (only included when `rows = "transcripts"`). |
 
+> [!NOTE]
+>
+> Note that the `transcript_*` fields are available only in the
+> development version of Inspect Scout. Install the development version
+> from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
+
 ## Running Scanners
 
 Once you’ve developed, refined, and validated your scanner you are ready
@@ -509,7 +534,7 @@ defining jobs in a YAML file, here is a job defined in Python:
 
 ``` python
 from inspect_scout (
-    import ScanJob, scanjob, transcripts_from, metadata as m
+    import ScanJob, scanjob, transcripts_from, columns as c
 )
 
 from .scanners import deception, tool_errors
@@ -518,7 +543,7 @@ from .scanners import deception, tool_errors
 def cybench_job(logs: str = "./logs") -> ScanJob:
 
     transcripts = transcripts_from(logs)
-    transcripts = transcripts.where(m.task_name == "cybench")
+    transcripts = transcripts.where(c.task == "cybench")
 
     return ScanJob(
         transcripts = transcripts,

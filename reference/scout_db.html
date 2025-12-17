@@ -456,26 +456,26 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#metadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Metadata</span></a>
+  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Columns</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#metadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">metadata</span></a>
+  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">columns</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#logmetadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LogMetadata</span></a>
+  <a href="../reference/transcript.html#logcolumns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LogColumns</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#log_metadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">log_metadata</span></a>
+  <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">log_columns</span></a>
   </div>
 </li>
       </ul>
@@ -695,6 +695,7 @@ ul.task-list li input[type="checkbox"] {
   <ul>
   <li><a href="#scout-db-encrypt" id="toc-scout-db-encrypt" class="nav-link active" data-scroll-target="#scout-db-encrypt">scout db encrypt</a></li>
   <li><a href="#scout-db-decrypt" id="toc-scout-db-decrypt" class="nav-link" data-scroll-target="#scout-db-decrypt">scout db decrypt</a></li>
+  <li><a href="#scout-db-index" id="toc-scout-db-index" class="nav-link" data-scroll-target="#scout-db-index">scout db index</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -769,6 +770,10 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td><a href="#scout-db-decrypt">decrypt</a></td>
 <td>Decrypt a transcript database.</td>
+</tr>
+<tr class="odd">
+<td><a href="#scout-db-index">index</a></td>
+<td>Create or rebuild the index for a transcript database.</td>
 </tr>
 </tbody>
 </table>
@@ -890,6 +895,59 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="subcommands-2" class="level4">
 <h4 class="anchored" data-anchor-id="subcommands-2">Subcommands</h4>
+<table class="table-borderless caption-top">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
+
+</table>
+</section>
+</section>
+<section id="scout-db-index" class="level2" data-toc-label="index">
+<h2 data-toc-label="index" class="anchored" data-anchor-id="scout-db-index">scout db index</h2>
+<p>Create or rebuild the index for a transcript database.</p>
+<p>This scans all parquet data files and creates a manifest index containing metadata for fast queries. Any existing index files are replaced.</p>
+<p>For encrypted databases, provide –key or set SCOUT_DB_ENCRYPTION_KEY.</p>
+<section id="usage-3" class="level4">
+<h4 class="anchored" data-anchor-id="usage-3">Usage</h4>
+<pre class="text"><code>scout db index [OPTIONS] DATABASE_LOCATION</code></pre>
+</section>
+<section id="options-3" class="level4">
+<h4 class="anchored" data-anchor-id="options-3">Options</h4>
+<table class="table-sm table-borderless small caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 15%">
+<col style="width: 50%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--key</code></td>
+<td>text</td>
+<td>Encryption key for encrypted databases (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="subcommands-3" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands-3">Subcommands</h4>
 <table class="table-borderless caption-top">
 <colgroup>
 <col style="width: 35%">

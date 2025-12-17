@@ -129,11 +129,24 @@ included embedded JSON data, these are all noted below):
 
 | Field | Type | Description |
 |----|----|----|
-| `transcript_id` | str | Globally unique identifier for a transcript (maps to `EvalSample.uuid` in the Inspect log or `sample_id` in Inspect analysis data frames). |
+| `transcript_id` | str | Globally unique identifier for a transcript (e.g. sample `uuid` in the Inspect log). |
 | `transcript_source_type` | str | Type of transcript source (e.g. “eval_log”). |
-| `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to \`eval_id\` in the Inspect log and analysis data frames). |
+| `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
-| `transcript_metadata` | dict JSON | Eval configuration metadata (e.g. task, model, scores, etc.). |
+| `transcript_date` | str | ISO 8601 datetime when the transcript was created. |
+| `transcript_task_set` | str | Set from which transcript task was drawn (e.g. Inspect task name or benchmark name) |
+| `transcript_task_id` | str | Identifier for task (e.g. dataset sample id). |
+| `transcript_task_repeat` | int | Repeat for a given task id within a task set (e.g. epoch). |
+| `transcript_agent` | str | Agent used to to execute task. |
+| `transcript_agent_args` | dict JSON | Arguments passed to create agent. |
+| `transcript_model` | str | Main model used by agent. |
+| `transcript_score` | JsonValueJSON | Value indicating score on task. |
+| `transcript_success` | bool | Boolean reduction of `score` to succeeded/failed. |
+| `transcript_total_time` | number | Time required to execute task (seconds) |
+| `transcript_total_tokens` | number | Tokens spent in execution of task. |
+| `transcript_error` | str | Error message that terminated the task. |
+| `transcript_limit` | str | Limit that caused the task to exit (e.g. “tokens”, “messages, etc.) |
+| `transcript_metadata` | dict JSON | Source specific metadata. |
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]JSON | Tags associated with the scan. |
 | `scan_metadata` | dictJSON | Additional scan metadata. |
@@ -166,3 +179,13 @@ included embedded JSON data, these are all noted below):
 | `scan_events` | list\[Event\]JSON | Scan events (e.g. model event, log event, etc.) |
 | `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
 | `scan_model_usage` | dict \[str, ModelUsage\]JSON | Token usage by model for scan (only included when `rows = "transcripts"`). |
+
+> [!NOTE]
+>
+> Note that the `transcript_*` fields are available only in the
+> development version of Inspect Scout. Install the development version
+> from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```

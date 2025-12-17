@@ -7,18 +7,29 @@ In a transcript database, the only strictly required field is
 `transcript_id` (although you’ll almost always want to also include a
 `messages` field as that’s the main thing targeted by most scanners).
 
-You can also include `source_*` fields as a reference to where the
-transcript originated as well as arbitrary other fields (trancript
-metadata) which are then queryable using the `Transcripts` API.
+Further, there are many standard fields (e.g. `task`, `agent`, `model`,
+`score`) which you’ll want to populate if you have access to them (as
+this will provide important context both when viewing transcripts and
+when viewing scan results). You can also include `source_*` fields as a
+reference to where the transcript originated,. Finally, arbitrary other
+fields can be included. All fields are queryable using the `Transcripts`
+API.
 
-| Field | Description |
-|----|----|
-| `transcript_id` | Required. A globally unique identifier for a transcript. |
-| `source_type` | Optional. Type of transcript source (e.g. “weave”, “logfire”, “eval_log”, etc.). Useful for providing a hint to readers about what might be available in the `metadata` field. |
-| `source_id` | Optional. Globally unique identifier for a transcript source (e.g. a project id). |
-| `source_uri` | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript). |
-| `messages` | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history. |
-| `events` | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.) |
+[TABLE]
+
+<style type="text/css">
+#overview td:nth-child(2) {
+  font-size: 0.9em;
+  line-height: 1.2;
+}
+#overview small {
+  font-size: x-small;
+}
+</style>
+
+Field types marked with JSON are stored in the database as serialized
+JSON strings and then converted to richer types when accessed via the
+`Transcript` interface.
 
 ### Metadata
 

@@ -42,17 +42,28 @@ If you want to scan only a subset of transcripts, you can use the
 `.where()` method to narrow down the collection. For example:
 
 ``` python
-from inspect_scout import transcripts_from, metadata as m
+from inspect_scout import transcripts_from, columns as c
 
 transcripts = (
     transcripts_from("./logs")
-    .where(m.task_name == "cybench")
-    .where(m.model.like("openai/%"))
+    .where(c.task_set == "cybench")
+    .where(c.model.like("openai/%"))
 )
 ```
 
-See the `Column` documentation for additional details on supported
+See the `Columns` documentation for additional details on supported
 filtering operations.
+
+``` python
+from inspect_scout import transcripts_from, log_columns as c
+
+transcripts = (
+    transcripts_from("./logs")
+    .where(c.)
+    .where(c.task_set == "cybench")
+    .where(c.model.like("openai/%"))
+)
+```
 
 You can also limit the total number of transcripts as well as shuffle
 the order of transcripts read (both are useful during scanner
@@ -60,7 +71,7 @@ development when you don’t want to process all transcripts). For
 example:
 
 ``` python
-from inspect_scout import transcripts_from, log_metadata as m
+from inspect_scout import transcripts_from
 
 transcripts = (
     transcripts_from("./logs")
@@ -79,9 +90,32 @@ Here are the available `Transcript` fields:
 | `source_type` | str | Type of transcript source (e.g. “eval_log”, “weave”, etc.). |
 | `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
 | `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
+| `date` | iso | Date/time when the transcript was created. |
+| `task_set` | str | Set from which transcript task was drawn (e.g. Inspect task name or benchmark name) |
+| `task_id` | str | Identifier for task (e.g. dataset sample id). |
+| `task_repeat` | int | Repeat for a given task id within a task set (e.g. epoch). |
+| `agent` | str | Agent used to to execute task. |
+| `agent_args` | dict JSON | Arguments passed to create agent. |
+| `model` | str | Main model used by agent. |
+| `score` | JsonValueJSON | Value indicating score on task. |
+| `success` | bool | Boolean reduction of `score` to succeeded/failed. |
+| `total_time` | number | Time required to execute task (seconds) |
+| `total_tokens` | number | Tokens spent in execution of task. |
+| `error` | str | Error message that terminated the task. |
+| `limit` | str | Limit that caused the task to exit (e.g. “tokens”, “messages, etc.) |
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
+
+> [!NOTE]
+>
+> Note that many of the fields described above are available only in the
+> development version of Inspect Scout. Install the development version
+> from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
 
 ## Scanning Transcripts
 
@@ -107,7 +141,7 @@ the CLI using `scout scan`, then perform the filtering inside a
 
 ``` python
 from inspect_scout (
-    import ScanJob, scanjob, transcripts_from, metadata as m
+    import ScanJob, scanjob, transcripts_from, columns as c
 )
 
 from .scanners import deception, tool_errors
@@ -116,7 +150,7 @@ from .scanners import deception, tool_errors
 def cybench_job(logs: str = "./logs") -> ScanJob:
 
     transcripts = transcripts_from(logs)
-    transcripts = transcripts.where(m.task_name == "cybench")
+    transcripts = transcripts.where(c.task_set == "cybench")
 
     return ScanJob(
         scanners = [deception(), java_tool_usages()],
@@ -161,21 +195,19 @@ transcript.metadata["id"]               # dataset sample id
 transcript.metadata["epoch"]            # sample epoch
 transcript.metadata["eval_metadata"]    # eval metadata
 transcript.metadata["sample_metadata"]  # sample metadata
-transcript.metadata["score"]            # main sample score 
 transcript.metadata["score_<scorer>"]   # named sample scores
 ```
 
-See the `LogMetadata` class for details on all of the fields included in
-`transcript.metadata`. Use `log_metadata` (aliased to `m` below) to do
+See the `LogColumns` class for details on all of the fields included in
+`transcript.metadata`. Use `log_columns` (aliased to `c` below) to do
 typesafe filtering for Inspect logs:
 
 ``` python
-from inspect_scout import transcripts_from, log_metadata as m
+from inspect_scout import transcripts_from, log_columns as c
 
 transcripts = (
     transcripts_from("./logs")
-    .where(m.task_name == "cybench")
-    .where(m.model.like("openai/%"))
+    .where(c.sample_metadata.category == "accounting")
 )
 ```
 

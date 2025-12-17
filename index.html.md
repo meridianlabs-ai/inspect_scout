@@ -17,10 +17,10 @@ from any source) or by directly reading Inspect AI eval logs.
 
 ### Installation
 
-Install the `inspect_scout` package from PyPI with:
+Install the `inspect_scout` package from GitHub with:
 
 ``` bash
-pip install inspect_scout
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ```
 
 You should also be sure to install the [Inspect AI VS Code
@@ -388,13 +388,13 @@ here we filter down to only Cybench logs:
 
 ``` python
 from inspect_scout (
-    import scan, transcripts_from, metadata as m
+    import scan, transcripts_from, columns as c
 )
 
 from .scanners import deception, tool_errors
 
 transcripts = transcripts_from("s3://weave-rollouts")
-transcripts = transcripts.where(m.task_name == "cybench")
+transcripts = transcripts.where(c.task_set == "cybench")
 
 status = scan(
     scanners = [ctf_environment(), tool_errors()],
@@ -413,7 +413,7 @@ API. We can still use the CLI if we wrap our transcript query in a
 
 ``` python
 from inspect_scout (
-    import ScanJob, scanjob, transcripts_from, metadata as m
+    import ScanJob, scanjob, transcripts_from, columns as c
 )
 
 from .scanners import deception, tool_errors
@@ -422,7 +422,7 @@ from .scanners import deception, tool_errors
 def cybench_job(logs: str = "./logs") -> ScanJob:
 
     transcripts = transcripts_from(logs)
-    transcripts = transcripts.where(m.task_name == "cybench")
+    transcripts = transcripts.where(c.task_set == "cybench")
 
     return ScanJob(
         scanners = [deception(), java_tool_usages()],

@@ -7,6 +7,7 @@ from typing import Any
 import duckdb
 import pyarrow as pa
 import pytest
+from inspect_ai._util.error import PrerequisiteError
 from inspect_scout._transcript.database.parquet.encryption import (
     _check_data_encryption_status,
     _check_index_encryption_status,
@@ -227,7 +228,7 @@ class TestEncryptionStatus:
 
         os.environ.pop("SCOUT_DB_ENCRYPTION_KEY", None)
 
-        with pytest.raises(ValueError, match="no encryption key"):
+        with pytest.raises(PrerequisiteError, match="no encryption key"):
             await IndexStorage.create(location=str(tmp_path))
 
     @pytest.mark.asyncio

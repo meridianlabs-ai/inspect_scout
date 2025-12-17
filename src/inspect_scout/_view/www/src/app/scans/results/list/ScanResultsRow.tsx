@@ -78,19 +78,24 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
     >
       {hasExplanation && (
         <div className={clsx(styles.result, "text-size-smaller")}>
-          <div className={clsx(styles.id, "text-size-smallest")}>
+          <div className={clsx(styles.explanation, "text-size-smaller")}>
+            <Explanation summary={summary} references={refs} />
+          </div>
+
+          <div
+            className={clsx(
+              styles.id,
+              "text-size-smallest",
+              "text-style-secondary"
+            )}
+          >
             <TaskName
               taskSet={taskSet}
               taskId={taskId}
               taskRepeat={taskRepeat}
             />
-          </div>
-          <div className={clsx(styles.model, "text-size-smallest")}>
+            {` — `}
             {summary.transcriptModel || ""}
-          </div>
-
-          <div className={clsx(styles.explanation, "text-size-smaller")}>
-            <Explanation summary={summary} references={refs} />
           </div>
         </div>
       )}

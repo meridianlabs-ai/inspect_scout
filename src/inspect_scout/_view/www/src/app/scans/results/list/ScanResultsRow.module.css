@@ -23,13 +23,13 @@
 .result {
   display: grid;
   grid-template-columns: max-content 1fr;
+  grid-template-rows: auto auto;
   column-gap: 0.5rem;
   row-gap: 0.5rem;
   justify-content: space-between;
 }
 
 .id {
-  font-weight: 600;
 }
 
 .model {

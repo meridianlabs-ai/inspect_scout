@@ -117,8 +117,7 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
   const scanningModel = status?.spec.model.model;
 
   // Task information
-  const taskSet =
-    transcript.task_set || transcript.task || transcript.metadata?.task_name;
+  const taskSet = transcript.task_set || transcript.metadata?.task_name;
   const taskId = transcript.task_id || transcript.metadata?.id;
   const taskRepeat = transcript.task_repeat || transcript.metadata?.epoch;
 
@@ -212,7 +211,11 @@ const eventsCols = (events: Events): Column[] => {
   ];
 };
 
-const taskName = (taskSet?: string, taskId?: string, taskRepeat?: number) => {
+const taskName = (
+  taskSet?: string,
+  taskId?: string | number,
+  taskRepeat?: number
+) => {
   if (!taskSet && !taskId && taskRepeat === undefined) {
     return "<unknown>";
   }

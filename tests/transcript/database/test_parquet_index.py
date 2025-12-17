@@ -606,6 +606,7 @@ class TestCreateIndex:
 
         # All filenames should be relative (not contain the location prefix)
         for filename in filenames:
+            assert filename
             assert not filename.startswith(str(location)), (
                 f"Filename '{filename}' should be relative, not absolute"
             )

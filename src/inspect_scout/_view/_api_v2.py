@@ -3,7 +3,7 @@ import io
 from typing import Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
-from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import AccessPolicy
@@ -90,14 +90,30 @@ def v2_api_router(
     ) -> RestScanStatus:
         return scan
 
-    @router.get("/transcripts-dir", response_class=PlainTextResponse)
+    @router.get(
+        "/transcripts-dir",
+        response_class=PlainTextResponse,
+        summary="Get default transcripts directory",
+        description="Returns the default directory path where transcripts are stored.",
+    )
     async def transcripts_dir(request: Request) -> str:
+        """Return default transcripts directory path."""
         return await default_transcripts_dir()
 
-    @router.get("/transcripts")
+    @router.get(
+        "/transcripts",
+        summary="List transcripts",
+        description="Returns metadata for all transcripts in the specified directory.",
+    )
     async def transcripts(
-        request_transcripts_dir: str | None = Query(None, alias="dir"),
+        request_transcripts_dir: str | None = Query(
+            None,
+            alias="dir",
+            description="Transcripts directory path. Uses default if not specified.",
+            examples=["/path/to/transcripts"],
+        ),
     ) -> list[TranscriptInfo]:
+        """List transcript metadata from the transcripts directory."""
         transcripts_dir = request_transcripts_dir or await default_transcripts_dir()
         try:
             async with transcripts_from(transcripts_dir).reader() as tr:
@@ -109,17 +125,25 @@ def v2_api_router(
         "/scans",
         response_model=ScansRestResponse,
         response_class=InspectPydanticJSONResponse,
-        responses={
-            HTTP_304_NOT_MODIFIED: {"description": "Not Modified"},
-            HTTP_403_FORBIDDEN: {"description": "Forbidden"},
-        },
+        summary="List scans",
+        description="Returns all scans in the results directory. Supports ETag caching.",
     )
     async def scans(
         request: Request,
         response: Response,
-        query_results_dir: str | None = Query(None, alias="results_dir"),
-        if_none_match: str | None = Header(None, alias="If-None-Match"),
+        query_results_dir: str | None = Query(
+            None,
+            alias="results_dir",
+            description="Results directory containing scans. Required if not configured server-side.",
+            examples=["/path/to/results"],
+        ),
+        if_none_match: str | None = Header(
+            None,
+            alias="If-None-Match",
+            description="ETag from previous response for cache validation.",
+        ),
     ) -> ScansRestResponse | Response:
+        """List all scans with ETag-based caching support."""
         validated_results_dir = _ensure_not_none(
             query_results_dir or results_dir, "results_dir is required"
         )
@@ -140,13 +164,28 @@ def v2_api_router(
             ],
         )
 
-    @router.get("/scanner_df_input/{scan:path}")
+    @router.get(
+        "/scanner_df_input/{scan:path}",
+        summary="Get scanner input",
+        description="Returns the original input text for a specific scanner result. "
+        "The input type is returned in the X-Input-Type response header.",
+    )
     async def scanner_input(
         request: Request,
-        scan: str,
-        query_scanner: str | None = Query(None, alias="scanner"),
-        query_uuid: str | None = Query(None, alias="uuid"),
+        scan: str = Path(description="Scan path (absolute or relative to results_dir)"),
+        query_scanner: str | None = Query(
+            None,
+            alias="scanner",
+            description="Scanner name to retrieve input for.",
+            examples=["my_scanner"],
+        ),
+        query_uuid: str | None = Query(
+            None,
+            alias="uuid",
+            description="UUID of the specific result row.",
+        ),
     ) -> Response:
+        """Retrieve original input text for a scanner result."""
         if query_scanner is None:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
@@ -195,12 +234,23 @@ def v2_api_router(
             headers={"X-Input-Type": input_type or ""},
         )
 
-    @router.get("/scanner_df/{scan:path}")
+    @router.get(
+        "/scanner_df/{scan:path}",
+        summary="Get scanner dataframe",
+        description="Streams scanner results as Arrow IPC format with LZ4 compression. "
+        "Excludes input column for efficiency; use scanner_df_input for input text.",
+    )
     async def scan_df(
         request: Request,
-        scan: str,
-        query_scanner: str | None = Query(None, alias="scanner"),
+        scan: str = Path(description="Scan path (absolute or relative to results_dir)"),
+        query_scanner: str | None = Query(
+            None,
+            alias="scanner",
+            description="Scanner name to retrieve results for.",
+            examples=["my_scanner"],
+        ),
     ) -> Response:
+        """Stream scanner results as Arrow IPC with LZ4 compression."""
         if query_scanner is None:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
@@ -273,15 +323,14 @@ def v2_api_router(
         "/scan/{scan:path}",
         response_model=RestScanStatus,
         response_class=InspectPydanticJSONResponse,
-        responses={
-            HTTP_403_FORBIDDEN: {"description": "Forbidden"},
-            HTTP_404_NOT_FOUND: {"description": "Not Found"},
-        },
+        summary="Get scan status",
+        description="Returns detailed status and metadata for a single scan.",
     )
     async def scan(
         request: Request,
-        scan: str,
+        scan: str = Path(description="Scan path (absolute or relative to results_dir)"),
     ) -> RestScanStatus:
+        """Get detailed status for a single scan."""
         # convert to absolute path
         scan_path = UPath(scan)
         if not scan_path.is_absolute():

@@ -100,7 +100,7 @@ def v1_api_router(
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
 ) -> APIRouter:
-    router = APIRouter(tags=["v1"])
+    router = APIRouter(tags=["v1"], deprecated=True)
 
     async def _map_file(request: Request, file: str) -> str:
         if mapping_policy is not None:

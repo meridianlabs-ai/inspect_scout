@@ -92,7 +92,7 @@ class TestHelperFunctions:
 
     def test_extract_timestamp_manifest(self) -> None:
         """Test extracting timestamp from manifest filename."""
-        ts = _extract_timestamp("_manifest_20250103T100000.idx")
+        ts = _extract_timestamp("_manifest_20250103T100000_abc12345.idx")
         assert ts == "20250103T100000"
 
     def test_extract_timestamp_with_path(self) -> None:
@@ -124,7 +124,7 @@ class TestHelperFunctions:
 
     def test_extract_timestamp_encrypted_manifest(self) -> None:
         """Test extracting timestamp from encrypted manifest filename."""
-        ts = _extract_timestamp("_manifest_20250103T100000.enc.idx")
+        ts = _extract_timestamp("_manifest_20250103T100000_abc12345.enc.idx")
         assert ts == "20250103T100000"
 
 
@@ -293,7 +293,7 @@ class TestDiscoverIndexFiles:
         (index_dir / "index_20250101T110000_def67890.idx").touch()
 
         # Create newer manifest
-        (index_dir / "_manifest_20250102T100000.idx").touch()
+        (index_dir / "_manifest_20250102T100000_abc12345.idx").touch()
 
         result = await _discover_index_files(storage)
 
@@ -310,9 +310,9 @@ class TestDiscoverIndexFiles:
         index_dir.mkdir(parents=True)
 
         # Create multiple manifests
-        (index_dir / "_manifest_20250101T100000.idx").touch()
-        (index_dir / "_manifest_20250102T100000.idx").touch()
-        (index_dir / "_manifest_20250103T100000.idx").touch()
+        (index_dir / "_manifest_20250101T100000_aaa11111.idx").touch()
+        (index_dir / "_manifest_20250102T100000_bbb22222.idx").touch()
+        (index_dir / "_manifest_20250103T100000_ccc33333.idx").touch()
 
         result = await _discover_index_files(storage)
 
@@ -328,7 +328,7 @@ class TestDiscoverIndexFiles:
         index_dir.mkdir(parents=True)
 
         # Create manifest at T=100
-        (index_dir / "_manifest_20250101T100000.idx").touch()
+        (index_dir / "_manifest_20250101T100000_abc12345.idx").touch()
 
         # Create older incremental (should be ignored)
         (index_dir / "index_20250101T090000_old12345.idx").touch()
@@ -341,7 +341,7 @@ class TestDiscoverIndexFiles:
         # Should return manifest + newer incremental
         assert len(result) == 2
         filenames = [Path(f).name for f in result]
-        assert "_manifest_20250101T100000.idx" in filenames
+        assert "_manifest_20250101T100000_abc12345.idx" in filenames
         assert "index_20250101T110000_new12345.idx" in filenames
         # Older incremental should NOT be included
         assert "index_20250101T090000_old12345.idx" not in filenames
@@ -562,10 +562,10 @@ class TestCreateIndex:
         # Create various old index files:
         # 1. A manifest that would be discovered
         table1 = create_sample_index_table(["t1"], ["data.parquet"])
-        await append_index(table1, storage, "_manifest_20250101T100000.idx")
+        await append_index(table1, storage, "_manifest_20250101T100000_abc12345.idx")
 
         # 2. An older manifest that would be orphaned (not discovered)
-        (index_dir / "_manifest_20250101T080000.idx").touch()
+        (index_dir / "_manifest_20250101T080000_def67890.idx").touch()
 
         # 3. An older incremental that would be orphaned
         (index_dir / "index_20250101T090000_old.idx").touch()
@@ -722,7 +722,7 @@ class TestCompactIndex:
 
         # Create a valid manifest (newest - will be discovered)
         table1 = create_sample_index_table(["t1"], ["data1.parquet"])
-        await append_index(table1, storage, "_manifest_20250101T100000.idx")
+        await append_index(table1, storage, "_manifest_20250101T100000_abc12345.idx")
 
         # Create a valid incremental newer than manifest (will be discovered)
         table2 = create_sample_index_table(["t2"], ["data2.parquet"])
@@ -730,7 +730,7 @@ class TestCompactIndex:
 
         # Create orphaned files (older than newest manifest, won't be discovered)
         # These are empty files - they would cause errors if read, proving they're skipped
-        (index_dir / "_manifest_20250101T050000.idx").touch()  # Old manifest
+        (index_dir / "_manifest_20250101T050000_def67890.idx").touch()  # Old manifest
         (index_dir / "index_20250101T060000_old.idx").touch()  # Old incremental
 
         # Verify we have 4 index files before

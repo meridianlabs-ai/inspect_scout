@@ -7,7 +7,7 @@ are stored in an `_index/` directory with two types:
 - Incremental index files: `index_<timestamp>_<uuid>.idx` (or `.enc.idx` if encrypted)
   Written during insert operations, one per batch.
 
-- Compacted manifests: `_manifest_<timestamp>.idx` (or `.enc.idx` if encrypted)
+- Compacted manifests: `_manifest_<timestamp>_<uuid>.idx` (or `.enc.idx` if encrypted)
   Written during compaction, consolidates multiple index files.
 
 The discovery priority ensures concurrent operations work correctly:
@@ -30,6 +30,7 @@ import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 from inspect_ai._util.file import filesystem
+from shortuuid import uuid
 
 from .encryption import (
     ENCRYPTION_KEY_NAME,
@@ -54,7 +55,7 @@ logger = getLogger(__name__)
 # UUID part allows any alphanumeric (actual UUIDs are hex, but be permissive for testing)
 # These patterns match both encrypted (.enc.idx) and unencrypted (.idx) files
 INCREMENTAL_PATTERN = re.compile(r"index_(\d{8}T\d{6})_[a-zA-Z0-9]+(?:\.enc)?\.idx$")
-MANIFEST_PATTERN = re.compile(r"_manifest_(\d{8}T\d{6})(?:\.enc)?\.idx$")
+MANIFEST_PATTERN = re.compile(r"_manifest_(\d{8}T\d{6})_[a-zA-Z0-9]+(?:\.enc)?\.idx$")
 
 
 async def append_index(
@@ -373,12 +374,12 @@ async def _discover_index_files(storage: IndexStorage) -> list[str]:
         # Shouldn't happen, but fall back to just using manifest
         return [newest_manifest]
 
-    # Include incremental files NEWER than the manifest
-    # This handles the case where insert happens after compaction starts
+    # Include incremental files at or after the manifest timestamp
+    # Using >= handles the case where insert happens in the same second as compaction
     newer_incrementals = []
     for f in incremental_files:
         inc_ts = _extract_timestamp(f)
-        if inc_ts and inc_ts > manifest_ts:
+        if inc_ts and inc_ts >= manifest_ts:
             newer_incrementals.append(f)
 
     return [newest_manifest] + sorted(newer_incrementals)
@@ -566,7 +567,12 @@ def _generate_timestamp() -> str:
 
 
 def _generate_manifest_filename(encrypted: bool = False) -> str:
-    """Generate filename for a compacted manifest file."""
+    """Generate filename for a compacted manifest file.
+
+    Includes short UUID to ensure uniqueness when multiple compactions
+    happen in the same second.
+    """
     timestamp = _generate_timestamp()
+    unique_id = uuid()[:8]
     ext = ENCRYPTED_INDEX_EXTENSION if encrypted else INDEX_EXTENSION
-    return f"{MANIFEST_PREFIX}{timestamp}{ext}"
+    return f"{MANIFEST_PREFIX}{timestamp}_{unique_id}{ext}"

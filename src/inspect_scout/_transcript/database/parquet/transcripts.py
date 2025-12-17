@@ -47,6 +47,13 @@ from .encryption import (
     get_encryption_key_from_env,
     validate_encryption_key,
 )
+from .index import (
+    _discover_index_files,
+    append_index,
+    compact_index,
+    create_index,
+)
+from .types import IndexStorage
 
 logger = getLogger(__name__)
 
@@ -110,6 +117,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # State (initialized in connect)
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._fs: AsyncFilesystem | None = None
+        self._index_storage: IndexStorage | None = None
         self._current_shuffle_seed: int | None = None
         self._transcript_ids: set[str] = set()
         self._file_columns_cache: dict[str, set[str]] = {}
@@ -156,6 +164,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 if self._is_hf():
                     self._init_hf_auth()
 
+        # Initialize index storage for index operations
+        self._index_storage = await IndexStorage.create(
+            location=self._location,
+            fs=self._fs,
+            key=get_encryption_key_from_env(),
+        )
+
         # Discover and register Parquet files
         await self._create_transcripts_table()
 
@@ -183,12 +198,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """Insert transcripts, writing one Parquet file per batch.
 
         Transcript ids that are already in the database are not inserted.
+        Each batch write also creates a corresponding index file. After all
+        inserts complete, index files are compacted.
 
         Args:
             transcripts: Transcripts to insert (iterable, async iterable, source,
                 or PyArrow RecordBatchReader for efficient Arrow-native insertion).
         """
         assert self._conn is not None
+        assert self._index_storage is not None
 
         # if we don't yet have a list of transcript ids then query for one
         if len(self._transcript_ids) == 0:
@@ -198,6 +216,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 row_dict = dict(zip(column_names, cursor_row, strict=True))
                 self._transcript_ids.add(row_dict["transcript_id"])
 
+        # Check if index exists - if not but data exists, build index first
+        idx_files = await _discover_index_files(self._index_storage)
+        if not idx_files and len(self._transcript_ids) > 0:
+            # Existing data but no index - build index from existing parquet files
+            await create_index(self._conn, self._index_storage)
+
         # two insert codepaths, one for arrow batch, one for transcripts
         if isinstance(transcripts, pa.RecordBatchReader):
             await self._insert_from_record_batch_reader(transcripts)
@@ -206,6 +230,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # refresh the view
         await self._create_transcripts_table()
+
+        # Best-effort compaction - merge index files and clean up orphaned data
+        try:
+            await compact_index(self._conn, self._index_storage, delete_orphaned_data=True)
+        except Exception as e:
+            logger.warning(f"Index compaction failed (data is consistent): {e}")
 
     @override
     async def select(
@@ -915,10 +945,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
         )
 
     async def _write_arrow_batch(self, batches: list[pa.RecordBatch]) -> None:
-        """Write accumulated Arrow batches to a new Parquet file.
+        """Write accumulated Arrow batches to a new Parquet file and index.
 
         Concatenates batches into a single table and writes with same
-        compression settings as _write_parquet_batch.
+        compression settings as _write_parquet_batch. Also writes corresponding
+        index file. If index write fails, the parquet file is deleted.
 
         Args:
             batches: List of PyArrow RecordBatches to write.
@@ -940,8 +971,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Determine output path and write Parquet file
             assert self._location is not None
+            parquet_path: str
             if self._location.startswith("s3://"):
-                s3_path = f"{self._location.rstrip('/')}/{filename}"
+                parquet_path = f"{self._location.rstrip('/')}/{filename}"
 
                 # For S3, write to temp file then upload
                 with tempfile.NamedTemporaryFile(
@@ -954,9 +986,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     self._write_parquet_file(table, tmp_path)
 
                     # Upload to S3
-                    s3_path = f"{self._location.rstrip('/')}/{filename}"
                     assert self._fs is not None
-                    await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
+                    await self._fs.write_file(parquet_path, Path(tmp_path).read_bytes())
                 finally:
                     # Clean up temp file
                     Path(tmp_path).unlink(missing_ok=True)
@@ -964,8 +995,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 # Local file system
                 output_path = Path(self._location) / filename
                 output_path.parent.mkdir(parents=True, exist_ok=True)
+                parquet_path = output_path.as_posix()
 
-                self._write_parquet_file(table, output_path.as_posix())
+                self._write_parquet_file(table, parquet_path)
+
+            # Write index file for this batch
+            await self._write_index_for_batch(table, parquet_path, filename)
 
     def _infer_schema(self, rows: list[dict[str, Any]]) -> pa.Schema:
         """Infer PyArrow schema from transcript rows.
@@ -1051,7 +1086,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return pa.string()
 
     async def _write_parquet_batch(self, batch: list[dict[str, Any]]) -> None:
-        """Write a batch of pre-serialized rows to a new Parquet file.
+        """Write a batch of pre-serialized rows to a new Parquet file and index.
+
+        Writes parquet data file first, then writes corresponding index file.
+        If index write fails, the parquet file is deleted and the error is raised.
 
         Args:
             batch: List of row dicts (already serialized by _transcript_to_row).
@@ -1074,8 +1112,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Determine output path and write Parquet file
             assert self._location is not None
+            parquet_path: str
             if self._location.startswith("s3://"):
-                s3_path = f"{self._location.rstrip('/')}/{filename}"
+                parquet_path = f"{self._location.rstrip('/')}/{filename}"
 
                 # For S3, write to temp file then upload
                 with tempfile.NamedTemporaryFile(
@@ -1088,9 +1127,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     self._write_parquet_file(table, tmp_path)
 
                     # Upload to S3
-                    s3_path = f"{self._location.rstrip('/')}/{filename}"
                     assert self._fs is not None
-                    await self._fs.write_file(s3_path, Path(tmp_path).read_bytes())
+                    await self._fs.write_file(parquet_path, Path(tmp_path).read_bytes())
                 finally:
                     # Clean up temp file
                     Path(tmp_path).unlink(missing_ok=True)
@@ -1098,8 +1136,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 # Local file system
                 output_path = Path(self._location) / filename
                 output_path.parent.mkdir(parents=True, exist_ok=True)
+                parquet_path = output_path.as_posix()
 
-                self._write_parquet_file(table, output_path.as_posix())
+                self._write_parquet_file(table, parquet_path)
+
+            # Write index file for this batch
+            await self._write_index_for_batch(table, parquet_path, filename)
 
     async def _create_transcripts_table(self) -> None:
         """Create or refresh DuckDB structures for querying transcripts.
@@ -1449,6 +1491,88 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _have_transcript(self, transcript_id: str) -> bool:
         return transcript_id in (self._transcript_ids or set())
+
+    def _index_filename_for_parquet(self, parquet_filename: str) -> str:
+        """Generate index filename matching parquet file's timestamp/uuid.
+
+        Args:
+            parquet_filename: Name of the parquet file (e.g., transcripts_20250101T120000_abc123.parquet)
+
+        Returns:
+            Index filename (e.g., index_20250101T120000_abc123.idx or .enc.idx if encrypted)
+        """
+        assert self._index_storage is not None
+        # Extract timestamp_uuid from: transcripts_20250101T120000_abc123.parquet
+        # or transcripts_20250101T120000_abc123.enc.parquet
+        base = Path(parquet_filename).stem  # transcripts_20250101T120000_abc123
+        if base.endswith(".enc"):
+            base = base[:-4]  # Remove .enc suffix
+        # Remove "transcripts_" prefix, keep timestamp_uuid
+        timestamp_uuid = base.replace("transcripts_", "", 1)
+        ext = self._index_storage.index_extension()
+        return f"index_{timestamp_uuid}{ext}"
+
+    def _build_index_table(self, table: pa.Table, parquet_path: str) -> pa.Table:
+        """Build index table from data table (excludes messages/events, adds filename).
+
+        Args:
+            table: PyArrow table with full transcript data.
+            parquet_path: Full path to the parquet file.
+
+        Returns:
+            Index table with metadata columns and filename.
+        """
+        # Get columns to keep (exclude messages and events)
+        columns_to_keep = [
+            name for name in table.column_names if name not in ("messages", "events")
+        ]
+
+        # Select only metadata columns
+        index_table = table.select(columns_to_keep)
+
+        # Add filename column
+        filename_array = pa.array([parquet_path] * len(table), type=pa.string())
+        index_table = index_table.append_column("filename", filename_array)
+
+        return index_table
+
+    async def _write_index_for_batch(
+        self, table: pa.Table, parquet_path: str, parquet_filename: str
+    ) -> None:
+        """Write index file for a batch, deleting parquet on failure.
+
+        Args:
+            table: PyArrow table with full transcript data.
+            parquet_path: Full path to the parquet file (for index filename column).
+            parquet_filename: Parquet filename (for deriving index filename).
+
+        Raises:
+            RuntimeError: If index write fails (parquet file is deleted first).
+        """
+        assert self._index_storage is not None
+        try:
+            index_table = self._build_index_table(table, parquet_path)
+            index_filename = self._index_filename_for_parquet(parquet_filename)
+            await append_index(index_table, self._index_storage, index_filename)
+        except Exception as e:
+            # Index write failed - delete parquet file and re-raise
+            self._delete_file(parquet_path)
+            raise RuntimeError(
+                f"Failed to write index for {parquet_filename}: {e}"
+            ) from e
+
+    def _delete_file(self, path: str) -> None:
+        """Delete a file (local or remote).
+
+        Args:
+            path: Path to the file to delete.
+        """
+        if self._is_s3() or self._is_hf():
+            assert self._location is not None
+            fs = filesystem(self._location)
+            fs.rm(path)
+        else:
+            Path(path).unlink(missing_ok=True)
 
     def _as_async_iterator(
         self,

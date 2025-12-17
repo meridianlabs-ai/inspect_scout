@@ -677,11 +677,7 @@ async def test_schema_evolution(
     ]
     await parquet_db.insert(batch2)
 
-    # Should have 2 Parquet files
-    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
-    assert len(parquet_files) == 2
-
-    # Query should work across both schemas
+    # Query should work across both schemas (files may be compacted)
     all_results = [info async for info in parquet_db.select([], None, False)]
     assert len(all_results) == 10
 

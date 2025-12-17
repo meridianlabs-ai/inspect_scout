@@ -83,3 +83,11 @@ The data frame includes the following fields (note that some fields included emb
 | `scan_model_usage` | dict \[str, ModelUsage\]<br/><small>JSON</small> | Token usage by model for scan (only included when `rows = "transcripts"`). |
 
 : {tbl-colwidths=\[20,20,60\]}
+
+::: {.callout-note}
+Note that the `transcript_*` fields are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::

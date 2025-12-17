@@ -66,7 +66,7 @@ Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`)
 </style>
 ```
 
-Note that field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
+Field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
 
 ### Metadata
 

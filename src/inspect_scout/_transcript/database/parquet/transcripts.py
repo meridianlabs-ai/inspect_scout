@@ -52,6 +52,7 @@ from .index import (
     append_index,
     compact_index,
     create_index,
+    init_index_table,
 )
 from .types import IndexStorage
 
@@ -1144,65 +1145,180 @@ class ParquetTranscriptsDB(TranscriptsDB):
             await self._write_index_for_batch(table, parquet_path, filename)
 
     async def _create_transcripts_table(self) -> None:
-        """Create or refresh DuckDB structures for querying transcripts.
+        """Create DuckDB structures for querying transcripts.
 
-        Creates two structures:
-        1. transcript_index: Small table with transcript_id → filename mapping (for fast read())
-        2. transcripts: VIEW over Parquet files for metadata queries (for select()/count())
+        Creates:
+        - transcript_index TABLE: For filename lookups in read()
+        - transcripts TABLE or VIEW: For metadata queries in select()/count()
 
-        This enables:
-        1. Fast indexed lookups on transcript_id for read() via index table
-        2. Low memory usage (only transcript_id + filename in memory)
-        3. Efficient metadata queries via VIEW with Parquet predicate pushdown
-        4. Targeted file access for content reads (via filename in index table)
+        The implementation depends on whether index files exist:
+        - With index: Creates TABLEs from index files (fast, in-memory)
+        - Without index: Creates VIEW over parquet files (lazy, memory-efficient)
+
+        Query methods always use `transcripts` and don't need to know the difference.
         """
         assert self._conn is not None
 
         with trace_action(logger, "Scout Parquet Index", f"Indexing {self._location}"):
             # Drop existing structures
+            # DuckDB is type-strict: DROP TABLE IF EXISTS fails on VIEW and vice versa
+            # Use try/except to handle both cases
             self._conn.execute("DROP TABLE IF EXISTS transcript_index")
-            self._conn.execute("DROP VIEW IF EXISTS transcripts")
+            try:
+                self._conn.execute("DROP TABLE IF EXISTS transcripts")
+            except duckdb.CatalogException:
+                pass
+            try:
+                self._conn.execute("DROP VIEW IF EXISTS transcripts")
+            except duckdb.CatalogException:
+                pass
 
-            # Get file paths - either from snapshot or by discovering parquet files
-            if self._snapshot and self._snapshot.transcript_ids:
-                # Fast path: extract filenames from snapshot (no crawl needed)
-                file_paths = sorted(
-                    {f for f in self._snapshot.transcript_ids.values() if f is not None}
-                )
+            # Decision point: use index files if available, otherwise scan parquet
+            idx_files: list[str] = []
+            if self._index_storage is not None:
+                idx_files = await _discover_index_files(self._index_storage)
+
+            if idx_files:
+                await self._init_from_index()
             else:
-                # Standard path: discover parquet files
-                file_paths = await self._discover_parquet_files()
+                await self._init_from_parquet()
 
-            # Handle empty case
-            if not file_paths:
-                self._create_empty_structures()
-                return
+    async def _init_from_index(self) -> None:
+        """Initialize from index files (fast path).
 
-            # Setup encryption if needed
-            self._setup_encryption(file_paths)
+        Creates:
+        - transcript_index TABLE with all metadata from index files
+        - transcripts TABLE (copy of transcript_index for uniform query interface)
 
-            # Build pattern for read_parquet
-            pattern = self._build_parquet_pattern(file_paths)
-            self._parquet_pattern = pattern
+        This is the fast path used when index files exist. All metadata is loaded
+        into memory for fast queries.
+        """
+        assert self._conn is not None
+        assert self._index_storage is not None
 
-            # Infer exclude clause from first file
-            self._exclude_clause = self._infer_exclude_clause(file_paths[0])
+        # Load index files into transcript_index table
+        row_count = await init_index_table(self._conn, self._index_storage)
 
-            # Create index table
-            if self._snapshot and self._snapshot.transcript_ids:
-                # Fast path: create directly from snapshot data
-                self._create_index_from_snapshot()
-            else:
-                # Standard path: query parquet files
-                self._create_index_from_parquet(pattern)
+        if row_count == 0:
+            self._create_empty_structures()
+            return
 
-            # Create index on transcript_id for fast lookups
-            self._conn.execute(
-                "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
+        # Create index for fast lookups
+        self._conn.execute(
+            "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
+        )
+
+        # Create transcripts TABLE as copy of transcript_index
+        # This provides uniform query interface (both paths create 'transcripts')
+        self._conn.execute("""
+            CREATE TABLE transcripts AS SELECT * FROM transcript_index
+        """)
+
+        # Apply pre-filter query if provided (rare case)
+        if self._query and (self._query.where or self._query.shuffle or self._query.limit):
+            self._apply_query_filter_to_tables()
+
+    async def _init_from_parquet(self) -> None:
+        """Initialize from parquet files (legacy/slow path).
+
+        Creates:
+        - transcript_index TABLE with (transcript_id, filename) for read() lookups
+        - transcripts VIEW over parquet for memory-efficient metadata queries
+
+        This is the legacy path used when no index files exist. It's memory-efficient
+        because the VIEW queries parquet on-demand rather than loading into memory.
+        """
+        assert self._conn is not None
+
+        # Get file paths - either from snapshot or by discovering parquet files
+        if self._snapshot and self._snapshot.transcript_ids:
+            # Fast path: extract filenames from snapshot (no crawl needed)
+            file_paths = sorted(
+                {f for f in self._snapshot.transcript_ids.values() if f is not None}
             )
+        else:
+            # Standard path: discover parquet files
+            file_paths = await self._discover_parquet_files()
 
-            # Create VIEW for metadata queries
-            self._create_transcripts_view(pattern)
+        # Handle empty case
+        if not file_paths:
+            self._create_empty_structures()
+            return
+
+        # Setup encryption if needed
+        self._setup_encryption(file_paths)
+
+        # Build pattern for read_parquet
+        pattern = self._build_parquet_pattern(file_paths)
+        self._parquet_pattern = pattern
+
+        # Infer exclude clause from first file
+        self._exclude_clause = self._infer_exclude_clause(file_paths[0])
+
+        # Create transcript_index table (id + filename only)
+        if self._snapshot and self._snapshot.transcript_ids:
+            # Fast path: create directly from snapshot data
+            self._create_index_from_snapshot()
+        else:
+            # Standard path: query parquet files
+            self._create_index_from_parquet(pattern)
+
+        # Create index on transcript_id for fast lookups
+        self._conn.execute(
+            "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
+        )
+
+        # Create transcripts VIEW for memory-efficient metadata queries
+        self._create_transcripts_view(pattern)
+
+    def _apply_query_filter_to_tables(self) -> None:
+        """Apply pre-filter query to in-memory tables (indexed path only).
+
+        When a pre-filter query is provided at connect time, filters the
+        transcript_index and transcripts tables to match. This is a rare case
+        used when the caller wants to work with a subset of transcripts.
+        """
+        assert self._conn is not None
+        assert self._query is not None
+
+        # Build filter SQL
+        filter_sql = "SELECT * FROM transcript_index"
+        params: list[Any] = []
+
+        if self._query.where:
+            where_clause, where_params = self._build_where_clause(self._query.where)
+            filter_sql += where_clause
+            params.extend(where_params)
+
+        if self._query.shuffle:
+            seed = 0 if self._query.shuffle is True else self._query.shuffle
+            self._register_shuffle_function(seed)
+            filter_sql += " ORDER BY shuffle_hash(transcript_id)"
+
+        if self._query.limit:
+            filter_sql += " LIMIT ?"
+            params.append(self._query.limit)
+
+        # Create filtered version in temp table first, then swap
+        self._conn.execute("DROP TABLE IF EXISTS transcript_index_filtered")
+        self._conn.execute(
+            f"CREATE TABLE transcript_index_filtered AS {filter_sql}", params
+        )
+
+        # Replace transcript_index with filtered version
+        self._conn.execute("DROP TABLE transcript_index")
+        self._conn.execute(
+            "ALTER TABLE transcript_index_filtered RENAME TO transcript_index"
+        )
+        self._conn.execute(
+            "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
+        )
+
+        # Replace transcripts with filtered version
+        self._conn.execute("DROP TABLE transcripts")
+        self._conn.execute("""
+            CREATE TABLE transcripts AS SELECT * FROM transcript_index
+        """)
 
     def _create_empty_structures(self) -> None:
         """Create empty transcript_index table and transcripts VIEW."""

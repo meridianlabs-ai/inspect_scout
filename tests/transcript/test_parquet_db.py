@@ -792,9 +792,13 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
 
 
 @pytest.mark.asyncio
-async def test_recursive_discovery(test_location: Path) -> None:
-    """Test that parquet files in subdirectories are discovered and read correctly."""
-    # Create subdirectories
+async def test_indexed_database_isolation(test_location: Path) -> None:
+    """Test that indexed databases are isolated - each database only sees its own index.
+
+    When multiple databases exist in a directory hierarchy, each with its own index,
+    opening a database from a specific location only sees that database's transcripts.
+    """
+    # Create subdirectories for separate databases
     subdir1 = test_location / "batch1"
     subdir2 = test_location / "batch2" / "nested"
     subdir1.mkdir(parents=True)
@@ -803,7 +807,6 @@ async def test_recursive_discovery(test_location: Path) -> None:
     # Create database and insert transcripts to root
     db = ParquetTranscriptsDB(str(test_location))
     await db.connect()
-
     root_transcripts = [
         create_sample_transcript(
             id=f"root-{i}", source_id="root-eval", metadata={"location": "root"}
@@ -813,7 +816,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db.insert(root_transcripts)
     await db.disconnect()
 
-    # Create database and insert transcripts to subdir1
+    # Create separate database in subdir1
     db1 = ParquetTranscriptsDB(str(subdir1))
     await db1.connect()
     subdir1_transcripts = [
@@ -825,7 +828,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db1.insert(subdir1_transcripts)
     await db1.disconnect()
 
-    # Create database and insert transcripts to subdir2
+    # Create separate database in subdir2
     db2 = ParquetTranscriptsDB(str(subdir2))
     await db2.connect()
     subdir2_transcripts = [
@@ -837,63 +840,32 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db2.insert(subdir2_transcripts)
     await db2.disconnect()
 
-    # Now create a database pointing to root and verify it discovers all files recursively
-    db_all = ParquetTranscriptsDB(str(test_location))
-    await db_all.connect()
+    # Open from root - should only see root's 3 transcripts (uses root's index)
+    db_root = ParquetTranscriptsDB(str(test_location))
+    await db_root.connect()
+    root_ids = await db_root.transcript_ids([], None)
+    assert len(root_ids) == 3
+    root_results = [info async for info in db_root.select([], None, False)]
+    assert all(info.metadata.get("location") == "root" for info in root_results)
+    await db_root.disconnect()
 
-    # Should find all 9 transcripts across root and subdirectories
-    transcript_ids = await db_all.transcript_ids([], None)
-    assert len(transcript_ids) == 9
+    # Open from subdir1 - should only see subdir1's 3 transcripts
+    db_sub1 = ParquetTranscriptsDB(str(subdir1))
+    await db_sub1.connect()
+    sub1_ids = await db_sub1.transcript_ids([], None)
+    assert len(sub1_ids) == 3
+    sub1_results = [info async for info in db_sub1.select([], None, False)]
+    assert all(info.metadata.get("location") == "subdir1" for info in sub1_results)
+    await db_sub1.disconnect()
 
-    # Verify we can query transcripts from all locations
-    all_transcripts = [info async for info in db_all.select([], None, False)]
-    assert len(all_transcripts) == 9
-
-    # Check that we have transcripts from each location
-    locations = {info.metadata.get("location") for info in all_transcripts}
-    assert locations == {"root", "subdir1", "subdir2"}
-
-    # Verify we can filter by location
-    root_results = [
-        info async for info in db_all.select([c.location == "root"], None, False)
-    ]
-    assert len(root_results) == 3
-
-    subdir1_results = [
-        info async for info in db_all.select([c.location == "subdir1"], None, False)
-    ]
-    assert len(subdir1_results) == 3
-
-    subdir2_results = [
-        info async for info in db_all.select([c.location == "subdir2"], None, False)
-    ]
-    assert len(subdir2_results) == 3
-
-    # Verify we can read full content from recursively discovered transcripts
-    from inspect_scout._transcript.types import TranscriptContent
-
-    # Read a transcript from root
-    root_transcript = await db_all.read(
-        root_results[0], TranscriptContent(messages="all", events="all")
-    )
-    assert len(root_transcript.messages) > 0
-    assert root_transcript.metadata.get("location") == "root"
-
-    # Read a transcript from subdir1
-    subdir1_transcript = await db_all.read(
-        subdir1_results[0], TranscriptContent(messages="all", events="all")
-    )
-    assert len(subdir1_transcript.messages) > 0
-    assert subdir1_transcript.metadata.get("location") == "subdir1"
-
-    # Read a transcript from nested subdir2
-    subdir2_transcript = await db_all.read(
-        subdir2_results[0], TranscriptContent(messages="all", events="all")
-    )
-    assert len(subdir2_transcript.messages) > 0
-    assert subdir2_transcript.metadata.get("location") == "subdir2"
-
-    await db_all.disconnect()
+    # Open from subdir2 - should only see subdir2's 3 transcripts
+    db_sub2 = ParquetTranscriptsDB(str(subdir2))
+    await db_sub2.connect()
+    sub2_ids = await db_sub2.transcript_ids([], None)
+    assert len(sub2_ids) == 3
+    sub2_results = [info async for info in db_sub2.select([], None, False)]
+    assert all(info.metadata.get("location") == "subdir2" for info in sub2_results)
+    await db_sub2.disconnect()
 
 
 # RecordBatchReader Tests

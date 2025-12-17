@@ -1,6 +1,7 @@
 import { ScanResultSummary } from "../types";
 
 export interface IdentifierInfo {
+  taskSet?: string;
   id: string | number;
   secondaryId?: string | number;
   epoch?: number;
@@ -14,12 +15,18 @@ export const resultIdentifierStr = (
     return undefined;
   }
   if (identifier.secondaryId || identifier.epoch) {
-    const result: string[] = [String(identifier.id)];
+    const id: string[] = [];
+    if (identifier.taskSet) {
+      id.push(identifier.taskSet);
+    }
+    id.push(String(identifier.id));
+
+    const result: string[] = [id.join("/")];
     if (identifier.secondaryId) {
       result.push(String(identifier.secondaryId));
     }
     if (identifier.epoch) {
-      result.push(String(identifier.epoch));
+      result.push(`(${String(identifier.epoch)})`);
     }
     return result.join(" ");
   }
@@ -72,9 +79,13 @@ const getSampleIdentifier = (
     summary.transcriptMetadata["epoch"]) as number | undefined;
 
   if (id && epoch) {
+    const taskSet =
+      summary.transcriptTaskSet ||
+      (summary.transcriptMetadata["task_name"] as string | undefined);
     return {
       id,
       epoch,
+      taskSet,
     };
   }
   return undefined;

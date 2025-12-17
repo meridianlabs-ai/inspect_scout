@@ -114,7 +114,13 @@ export type ErrorScope =
   | "dataframe"
   | "dataframe_input";
 
-export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
+export type ResultGroup =
+  | "source"
+  | "label"
+  | "id"
+  | "epoch"
+  | "model"
+  | "none";
 
 export type ValueType =
   | "boolean"

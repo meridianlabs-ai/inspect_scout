@@ -170,7 +170,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
             ? item.label || "Unlabeled"
             : groupResultsBy === "epoch"
               ? (item.transcriptMetadata.epoch as number)
-              : resultIdentifierStr(item) || "Unknown";
+              : groupResultsBy === "model"
+                ? item.transcriptModel || "Unknown"
+                : resultIdentifierStr(item) || "Unknown";
 
       // Insert group header when group changes
       if (!groups.has(groupKey)) {

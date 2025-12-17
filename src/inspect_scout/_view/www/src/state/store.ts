@@ -87,9 +87,12 @@ interface StoreState {
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
 
-  // Transcripts DB
+  // User selected / visible transcript path
   transcriptsDatabasePath?: string;
+
+  // Transcript Data (loaded data + source directory)
   transcripts?: unknown[];
+  transcriptsDir?: string;
 
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
@@ -200,6 +203,7 @@ interface StoreState {
 
   setTranscriptsDatabasePath: (path: string) => void;
   setTranscripts: (transcripts: unknown[]) => void;
+  setTranscriptsDir: (path: string) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -664,6 +668,11 @@ export const createStore = (api: ScanApi) =>
           setTranscripts: (transcripts: unknown[]) => {
             set((state) => {
               state.transcripts = transcripts;
+            });
+          },
+          setTranscriptsDir: (path: string) => {
+            set((state) => {
+              state.transcriptsDir = path;
             });
           },
         })),

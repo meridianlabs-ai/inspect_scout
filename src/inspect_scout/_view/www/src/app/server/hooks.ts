@@ -293,6 +293,15 @@ export const useServerTranscripts = () => {
   // Transcripts
   const transcripts = useStore((state) => state.transcripts);
   const setTranscripts = useStore((state) => state.setTranscripts);
+
+  // The loaded path to the transcripts directory
+  const transcriptsDir = useStore((state) => state.transcriptsDir);
+  const setTranscriptsDir = useStore((state) => state.setTranscriptsDir);
+
+  // The user path to the transcripts database
+  const transcriptsDatabasePath = useStore(
+    (state) => state.transcriptsDatabasePath
+  );
   const setTranscriptsDatabasePath = useStore(
     (state) => state.setTranscriptsDatabasePath
   );
@@ -308,18 +317,27 @@ export const useServerTranscripts = () => {
       clearError("transcripts");
 
       // See if we already have data
-      if (transcripts === undefined) {
+      if (
+        transcripts === undefined ||
+        transcriptsDir !== transcriptsDatabasePath
+      ) {
         // Start loading (since we are going to fetch)
         setLoadingData(true);
 
         try {
           // Get the transcripts directory
-          const transcriptsDir = await api.getTranscriptsDir();
-          setTranscriptsDatabasePath(transcriptsDir);
+          let queryTranscriptDir = transcriptsDatabasePath;
+          if (!queryTranscriptDir) {
+            queryTranscriptDir = await api.getTranscriptsDir();
+            setTranscriptsDatabasePath(queryTranscriptDir);
+          }
 
           // Request the raw data from the server
-          const serverTranscripts = await api.getTranscripts();
+          const serverTranscripts =
+            await api.getTranscripts(queryTranscriptDir);
+
           setTranscripts(serverTranscripts);
+          setTranscriptsDir(queryTranscriptDir);
         } catch (e) {
           // Notify app of error
           setError("transcripts", e?.toString());
@@ -329,6 +347,16 @@ export const useServerTranscripts = () => {
         }
       }
     };
+
     void fetchScannerDataframeInput();
-  }, [api, transcripts, setLoadingData, setTranscripts, setError, clearError]);
+  }, [
+    api,
+    transcriptsDatabasePath,
+    transcriptsDir,
+    transcripts,
+    setLoadingData,
+    setTranscripts,
+    setError,
+    clearError,
+  ]);
 };

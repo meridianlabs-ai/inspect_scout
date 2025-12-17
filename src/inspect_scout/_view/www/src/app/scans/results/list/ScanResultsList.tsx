@@ -14,7 +14,7 @@ import {
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { basename } from "../../../../utils/path";
-import { useScannerSummaries } from "../../../hooks";
+import { useScanResultSummaries } from "../../../hooks";
 import { ScanResultSummary, SortColumn } from "../../../types";
 import {
   resultIdentifier,
@@ -53,7 +53,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   // Data
   const { data: scannerSummaries, isLoading } =
-    useScannerSummaries(columnTable);
+    useScanResultSummaries(columnTable);
   const isLoadingData = useStore((state) => state.loadingData);
   const busy = isLoading || isLoadingData;
 

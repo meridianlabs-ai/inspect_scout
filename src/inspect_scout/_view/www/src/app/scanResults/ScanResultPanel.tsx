@@ -17,7 +17,7 @@ import { ApplicationIcons } from "../appearance/icons";
 import { Navbar } from "../components/Navbar";
 import { ToolButton } from "../components/ToolButton";
 import {
-  useSelectedResultsRow,
+  useSelectedScanResultData,
   useSelectedScanResultInputData,
 } from "../hooks";
 import {
@@ -74,7 +74,7 @@ export const ScanResultPanel: FC = () => {
 
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
   const { data: selectedResult, isLoading: resultLoading } =
-    useSelectedResultsRow(scanResultUuid);
+    useSelectedScanResultData(scanResultUuid);
 
   const status = useStore((state) => state.selectedScanStatus);
   const inputData = useSelectedScanResultInputData();

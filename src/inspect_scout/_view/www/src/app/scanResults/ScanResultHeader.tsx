@@ -4,6 +4,7 @@ import { FC, ReactNode } from "react";
 import { EventType } from "../../transcript/types";
 import { Status, Transcript } from "../../types";
 import { Events, Messages } from "../../types/log";
+import { TaskName } from "../components/TaskName";
 import {
   ScanResultInputData,
   isEventInput,
@@ -124,7 +125,9 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
   const cols: Column[] = [
     {
       label: "Task",
-      value: taskName(taskSet, taskId, taskRepeat),
+      value: (
+        <TaskName taskSet={taskSet} taskId={taskId} taskRepeat={taskRepeat} />
+      ),
     },
     {
       label: "Source",
@@ -209,33 +212,4 @@ const eventsCols = (events: Events): Column[] => {
       value: events.length,
     },
   ];
-};
-
-const taskName = (
-  taskSet?: string,
-  taskId?: string | number,
-  taskRepeat?: number
-) => {
-  if (!taskSet && !taskId && taskRepeat === undefined) {
-    return "<unknown>";
-  }
-
-  const results: ReactNode[] = [
-    <span key={"task-column-task-set"}>{taskSet || "<unknown>"}</span>,
-  ];
-
-  if (taskId) {
-    results.push("/", <span key={"task-column-task-id"}>{taskId}</span>);
-  }
-  if (taskRepeat !== undefined) {
-    results.push(
-      " ",
-      <span
-        key={"task-column-task-repeat"}
-        className={clsx("text-style-secondary", "text-size-smallest")}
-      >{`(${taskRepeat})`}</span>
-    );
-  }
-
-  return results;
 };

@@ -36,7 +36,9 @@ The data frame includes the following fields (note that some fields included emb
 | `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `transcript_date` | str | ISO 8601 datetime when the transcript was created. |
-| `transcript_task` | str | Name of task executed by transcript (e.g. benchmark name) |
+| `transcript_task_set` | str | Set from which transcript task was drawn (e.g. Inspect task name or benchmark name) |
+| `transcript_task_id` | str | Identifier for task (e.g. dataset sample id). |
+| `transcript_task_repeat` | int | Repeat for a given task id within a task set (e.g. epoch). |
 | `transcript_agent` | str | Agent used to to execute task. |
 | `transcript_agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
 | `transcript_model` | str | Main model used by agent. |

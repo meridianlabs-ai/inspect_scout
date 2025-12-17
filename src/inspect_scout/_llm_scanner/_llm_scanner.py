@@ -210,7 +210,9 @@ async def render_scanner_prompt(
             answer_prompt=answer.prompt,
             answer_format=answer.format,
             date=transcript.date,
-            task=transcript.task,
+            task_set=transcript.task_set,
+            task_id=transcript.task_id,
+            task_repeat=transcript.task_repeat,
             agent=transcript.agent,
             agent_args=transcript.agent_args,
             model=transcript.model,
@@ -224,7 +226,7 @@ async def render_scanner_prompt(
             # backward compatibility for existing templates
             # TODO: remove this once users have updated
             | {
-                "task_name": transcript.task,
+                "task_name": transcript.task_set,
                 "score": transcript.score,
                 "model": transcript.model,
                 "solver": transcript.agent,

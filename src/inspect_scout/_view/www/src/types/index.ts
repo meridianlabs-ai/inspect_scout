@@ -115,7 +115,9 @@ export interface TranscriptInfo {
   source_type: string;
   filename?: string;
   date?: string;
-  task?: string;
+  task_set?: string;
+  task_id?: string;
+  task_repeat?: number;
   agent?: string;
   agent_args?: string;
   model?: string;

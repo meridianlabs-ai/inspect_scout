@@ -7,7 +7,9 @@ Here are the available `Transcript` fields:
 | `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
 | `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `date` | iso | Date/time when the transcript was created. |
-| `task` | str | Name of task executed by transcript (e.g. benchmark name) |
+| `task_set` | str | Set from which transcript task was drawn (e.g. Inspect task name or benchmark name) |
+| `task_id` | str | Identifier for task (e.g. dataset sample id). |
+| `task_repeat` | int | Repeat for a given task id within a task set (e.g. epoch). |
 | `agent` | str | Agent used to to execute task. |
 | `agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
 | `model` | str | Main model used by agent. |

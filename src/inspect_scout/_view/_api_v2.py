@@ -3,7 +3,7 @@ import io
 from typing import Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
-from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import AccessPolicy
@@ -33,9 +33,11 @@ from ._server_common import (
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
 
+API_VERSION = "2.0.0-alpha"
+
 
 def _compute_scans_etag(scans_location: str) -> str | None:
-    """Compute ETag from scan_summary.json mtimes. Returns None on error."""
+    """Compute ETag from API version and scan_summary.json mtimes."""
     try:
         scans_dir = UPath(scans_location)
         mtimes = sorted(
@@ -43,23 +45,23 @@ def _compute_scans_etag(scans_location: str) -> str | None:
             for d in scans_dir.rglob("scan_id=*")
             if d.is_dir() and (d / "scan_summary.json").exists()
         )
-        return hashlib.md5(str(mtimes).encode()).hexdigest()
+        return hashlib.md5(f"{API_VERSION}:{mtimes}".encode()).hexdigest()
     except Exception:
         return None
 
 
-def v2_api_router(
+def v2_api_app(
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
-) -> APIRouter:
-    """Create V2 API router.
+) -> FastAPI:
+    """Create V2 API FastAPI app.
 
     WARNING: This is an ALPHA API. Expect breaking changes without notice.
     Do not depend on this API for production use.
     """
-    router = APIRouter(prefix="/v2", tags=["v2"])
+    app = FastAPI(title="Inspect Scout Viewer API", version=API_VERSION)
 
     async def _validate_read(request: Request, file: str | UPath) -> None:
         if access_policy is not None:
@@ -93,7 +95,7 @@ def v2_api_router(
     ) -> RestScanStatus:
         return scan
 
-    @router.get(
+    @app.get(
         "/transcripts-dir",
         response_class=PlainTextResponse,
         summary="Get default transcripts directory",
@@ -103,7 +105,7 @@ def v2_api_router(
         """Return default transcripts directory path."""
         return await default_transcripts_dir()
 
-    @router.get(
+    @app.get(
         "/transcripts",
         summary="List transcripts",
         description="Returns metadata for all transcripts in the specified directory.",
@@ -124,7 +126,7 @@ def v2_api_router(
         except FileNotFoundError:
             return []
 
-    @router.get(
+    @app.get(
         "/scans",
         response_model=ScansRestResponse,
         response_class=InspectPydanticJSONResponse,
@@ -167,7 +169,7 @@ def v2_api_router(
             ],
         )
 
-    @router.get(
+    @app.get(
         "/scans/{scan}/{scanner}/{uuid}/input",
         summary="Get scanner input",
         description="Returns the original input text for a specific scanner result. "
@@ -207,7 +209,7 @@ def v2_api_router(
             headers={"X-Input-Type": input_type or ""},
         )
 
-    @router.get(
+    @app.get(
         "/scans/{scan}/{scanner}",
         summary="Get scanner dataframe",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
@@ -276,7 +278,7 @@ def v2_api_router(
             media_type="application/vnd.apache.arrow.stream; codecs=lz4",
         )
 
-    @router.get(
+    @app.get(
         "/scans/{scan}",
         response_model=RestScanStatus,
         response_class=InspectPydanticJSONResponse,
@@ -313,4 +315,4 @@ def v2_api_router(
 
         return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
 
-    return router
+    return app

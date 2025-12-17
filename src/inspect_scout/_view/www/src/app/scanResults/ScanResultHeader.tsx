@@ -107,98 +107,110 @@ const colsForResult: (
 };
 
 const transcriptCols = (transcript: Transcript, status?: Status) => {
-  const cols = [
+  // Read values from the transcript directly, falling back to metadata
+  // The metadata was previously used to store these values before they were
+  // added to the main Transcript schema (so we're doing this mainly for backwards
+  // compatibility with old scan results)
+  const datasourceUri = transcript.source_uri || transcript.metadata?.log;
+  const taskName = transcript.task || transcript.metadata?.task_name;
+  const transcriptId =
+    transcript.metadata?.id && transcript.metadata?.epoch
+      ? `${transcript.metadata?.id} Epoch ${transcript.metadata?.epoch}`
+      : transcript.id;
+  const transcriptModel = transcript.model || transcript.metadata?.model;
+  const scanningModel = status?.spec.model.model;
+
+  const cols: Column[] = [
     {
-      label: "Log",
-      value: transcript.metadata?.log as ReactNode,
+      label: "Source",
+      value: datasourceUri,
     },
     {
       label: "Task",
-      value: (transcript.task || transcript.metadata?.task_name) as ReactNode,
+      value: taskName,
     },
 
     {
-      label: "Sample Id",
-      value:
-        `${transcript.metadata?.id} Epoch ${transcript.metadata?.epoch}` as ReactNode,
+      label: "Id",
+      value: transcriptId,
     },
 
     {
       label: "Model",
-      value: transcript.metadata?.model as ReactNode,
+      value: transcriptModel,
     },
   ];
 
   if (status?.spec.model.model) {
     cols.push({
       label: "Scanning Model",
-      value: status.spec.model.model as ReactNode,
+      value: scanningModel,
     });
   }
   return cols;
 };
 
 const messageCols = (message: MessageType, status?: Status) => {
-  const cols = [
+  const cols: Column[] = [
     {
       label: "Message ID",
-      value: message.id as ReactNode,
+      value: message.id,
     },
   ];
 
   if (message.role === "assistant") {
     cols.push({
       label: "Model",
-      value: message.model as ReactNode,
+      value: message.model,
     });
     cols.push({
       label: "Tool Calls",
-      value: ((message.tool_calls as []) || []).length as ReactNode,
+      value: ((message.tool_calls as []) || []).length,
     });
   } else {
     cols.push({
       label: "Role",
-      value: message.role as ReactNode,
+      value: message.role,
     });
   }
 
   if (status?.spec.model.model) {
     cols.push({
       label: "Scanning Model",
-      value: status.spec.model.model as ReactNode,
+      value: status.spec.model.model,
     });
   }
 
   return cols;
 };
 
-const messagesCols = (messages: Messages) => {
+const messagesCols = (messages: Messages): Column[] => {
   return [
     {
       label: "Message Count",
-      value: messages.length as ReactNode,
+      value: messages.length,
     },
   ];
 };
 
-const eventCols = (event: EventType) => {
+const eventCols = (event: EventType): Column[] => {
   return [
     {
       label: "Event Type",
-      value: event.event as ReactNode,
+      value: event.event,
     },
     {
       label: "Timestamp",
-      value: new Date(event.timestamp).toLocaleString() as ReactNode,
+      value: new Date(event.timestamp).toLocaleString(),
     },
   ];
 };
 
-const eventsCols = (events: Events) => {
+const eventsCols = (events: Events): Column[] => {
   return [
     {
       label: "Event Count",
-      value: events.length as ReactNode,
+      value: events.length,
     },
   ];
 };

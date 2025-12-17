@@ -173,6 +173,19 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               ? new Date(r.timestamp as string)
               : undefined;
 
+            const transcriptTaskSet = r.transcript_task_set as
+              | string
+              | undefined;
+
+            const transcriptTaskId = r.transcript_task_id as
+              | string
+              | number
+              | undefined;
+
+            const transcriptTaskRepeat = r.transcript_task_repeat as
+              | number
+              | undefined;
+
             const basePreview = {
               uuid: r.uuid as string | undefined,
               label: r.label as string | undefined,
@@ -187,6 +200,9 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
                 | Record<string, boolean>,
               value,
               valueType,
+              transcriptTaskSet,
+              transcriptTaskId,
+              transcriptTaskRepeat,
               transcriptMetadata: transcriptMetadata || {},
               transcriptSourceId,
               scanError,
@@ -429,14 +445,26 @@ export const useScanResultData = (
           0
         ) as string;
 
+        const transcriptTaskSet = getOptionalColumn<string>(
+          filtered,
+          "transcript_task_set"
+        );
+
+        const transcriptTaskId = getOptionalColumn<string | number>(
+          filtered,
+          "transcript_task_id"
+        );
+
+        const transcriptTaskRepeat = getOptionalColumn<number>(
+          filtered,
+          "transcript_task_repeat"
+        );
+
         const transcriptDate = getOptionalDateColumn(
           filtered,
           "transcript_date"
         );
-        const transcriptTask = getOptionalColumn<string>(
-          filtered,
-          "transcript_task"
-        );
+
         const transcriptAgent = getOptionalColumn<string>(
           filtered,
           "transcript_agent"
@@ -493,10 +521,12 @@ export const useScanResultData = (
           transcriptMetadata: transcriptMetadata as Record<string, JsonValue>,
           transcriptSourceId,
           transcriptSourceUri,
+          transcriptTaskSet,
+          transcriptTaskId,
+          transcriptTaskRepeat,
           transcriptAgent,
           transcriptAgentArgs: transcriptAgentArgs as Record<string, unknown>,
           transcriptDate,
-          transcriptTask,
           transcriptModel,
           transcriptScore,
           transcriptSuccess,

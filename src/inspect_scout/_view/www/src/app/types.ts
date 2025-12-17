@@ -50,8 +50,12 @@ export interface ScanResultSummary {
   scanError?: string;
   scanErrorRefusal?: boolean;
 
-  transcriptMetadata: Record<string, JsonValue>;
+  // Transcript info
   transcriptSourceId: string;
+  transcriptTaskset?: string;
+  transcriptTaskId?: string | number;
+  transcriptTaskRepeat?: number;
+  transcriptMetadata: Record<string, JsonValue>;
 }
 
 // Base interface with common properties
@@ -76,7 +80,6 @@ export interface ScanResultData extends ScanResultSummary {
   transcriptSourceUri: string;
 
   transcriptDate?: Date;
-  transcriptTask?: string;
   transcriptAgent?: string;
   transcriptAgentArgs?: Record<string, unknown>;
   transcriptModel?: string;

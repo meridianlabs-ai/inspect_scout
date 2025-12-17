@@ -25,26 +25,33 @@ export type InputType =
   | "events";
 
 export interface ScanResultSummary {
+  // Basic Info
   uuid?: string;
-  inputType: InputType;
   explanation?: string;
   label?: string;
+  timestamp?: Date;
+
+  // Input
+  inputType: InputType;
+
+  // Refs
   eventReferences: ScanResultReference[];
   messageReferences: ScanResultReference[];
+
+  // Validation
   validationResult: boolean | Record<string, boolean>;
   validationTarget: boolean | Record<string, boolean>;
+
+  // Value
   value: string | boolean | number | null | unknown[] | object;
   valueType: ValueType;
-  transcriptMetadata: Record<string, JsonValue>;
-  transcriptSourceId: string;
+
+  // Scan metadata
   scanError?: string;
   scanErrorRefusal?: boolean;
-}
 
-export interface ScanResultReference {
-  type: "message" | "event";
-  id: string;
-  cite?: string;
+  transcriptMetadata: Record<string, JsonValue>;
+  transcriptSourceId: string;
 }
 
 // Base interface with common properties
@@ -67,6 +74,24 @@ export interface ScanResultData extends ScanResultSummary {
   scannerParams: Record<string, JsonValue>;
   transcriptId: string;
   transcriptSourceUri: string;
+
+  transcriptDate?: Date;
+  transcriptTask?: string;
+  transcriptAgent?: string;
+  transcriptAgentArgs?: Record<string, unknown>;
+  transcriptModel?: string;
+  transcriptScore?: JsonValue;
+  transcriptSuccess?: boolean;
+  transcriptTotalTime?: number;
+  transcroptTotalTokens?: number;
+  transcriptError?: string;
+  transcriptLimit?: string;
+}
+
+export interface ScanResultReference {
+  type: "message" | "event";
+  id: string;
+  cite?: string;
 }
 
 export type MessageType =

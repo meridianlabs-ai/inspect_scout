@@ -169,6 +169,9 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
 
             const scanError = r.scan_error as string;
             const scanErrorRefusal = r.scan_error_refusal as boolean;
+            const timestamp = r.timestamp
+              ? new Date(r.timestamp as string)
+              : undefined;
 
             const basePreview = {
               uuid: r.uuid as string | undefined,
@@ -188,6 +191,7 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               transcriptSourceId,
               scanError,
               scanErrorRefusal,
+              timestamp,
             };
 
             // Create typed preview based on inputType
@@ -352,6 +356,8 @@ export const useScanResultData = (
           validationResult,
           validationTarget,
           value,
+          transcriptAgentArgs,
+          transcriptScore,
         ] = await Promise.all([
           parse(filtered.get("event_references", 0) as string),
           parse(filtered.get("input_ids", 0) as string),
@@ -366,15 +372,18 @@ export const useScanResultData = (
           parse(filtered.get("validation_result", 0) as string),
           parse(filtered.get("validation_target", 0) as string),
           simpleValue(filtered.get("value", 0), valueType),
+          parse(filtered.get("transcript_agent_args", 0) as string),
+          parse(filtered.get("transcript_score", 0) as string),
         ]);
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         const uuid = filtered.get("uuid", 0) as string | undefined;
+        const timestamp = getOptionalDateColumn(filtered, "timestamp");
         const answer = filtered.get("answer", 0) as string | undefined;
-        const label = filtered.columnNames().includes("label")
-          ? (filtered.get("label", 0) as string | undefined)
-          : undefined;
+        const label = getOptionalColumn<string>(filtered, "label");
         const explanation = filtered.get("explanation", 0) as
           | string
           | undefined;
@@ -388,13 +397,8 @@ export const useScanResultData = (
         const scanErrorTraceback = filtered.get("scan_error_traceback", 0) as
           | string
           | undefined;
-        const scanErrorRefusal = filtered
-          .columnNames()
-          .includes("scan_error_refusal")
-          ? (filtered.get("scan_error_refusal", undefined) as
-              | boolean
-              | undefined)
-          : false;
+        const scanErrorRefusal =
+          getOptionalColumn<boolean>(filtered, "scan_error_refusal") ?? false;
         const scanId = filtered.get("scan_id", 0) as string;
         const scanTotalTokens = filtered.get("scan_total_tokens", 0) as number;
         const scannerFile = filtered.get("scanner_file", 0) as string;
@@ -410,8 +414,46 @@ export const useScanResultData = (
           0
         ) as string;
 
+        const transcriptDate = getOptionalDateColumn(
+          filtered,
+          "transcript_date"
+        );
+        const transcriptTask = getOptionalColumn<string>(
+          filtered,
+          "transcript_task"
+        );
+        const transcriptAgent = getOptionalColumn<string>(
+          filtered,
+          "transcript_agent"
+        );
+        const transcriptModel = getOptionalColumn<string>(
+          filtered,
+          "transcript_model"
+        );
+        const transcriptSuccess = getOptionalColumn<boolean>(
+          filtered,
+          "transcript_success"
+        );
+        const transcriptTotalTime = getOptionalColumn<number>(
+          filtered,
+          "transcript_total_time"
+        );
+        const transcroptTotalTokens = getOptionalColumn<number>(
+          filtered,
+          "transcropt_total_tokens"
+        );
+        const transcriptError = getOptionalColumn<string>(
+          filtered,
+          "transcript_error"
+        );
+        const transcriptLimit = getOptionalColumn<string>(
+          filtered,
+          "transcript_limit"
+        );
+
         const baseData = {
           uuid,
+          timestamp,
           answer,
           label,
           eventReferences: eventReferences as ScanResultReference[],
@@ -436,6 +478,17 @@ export const useScanResultData = (
           transcriptMetadata: transcriptMetadata as Record<string, JsonValue>,
           transcriptSourceId,
           transcriptSourceUri,
+          transcriptAgent,
+          transcriptAgentArgs: transcriptAgentArgs as Record<string, unknown>,
+          transcriptDate,
+          transcriptTask,
+          transcriptModel,
+          transcriptScore,
+          transcriptSuccess,
+          transcriptTotalTime,
+          transcroptTotalTokens,
+          transcriptError,
+          transcriptLimit,
           validationResult: validationResult as
             | boolean
             | Record<string, boolean>,
@@ -501,3 +554,22 @@ export const useScanResultData = (
 
   return { data: scanResultData, isLoading };
 };
+
+function getOptionalColumn<T>(
+  table: ColumnTable,
+  columnName: string,
+  rowIndex: number = 0
+): T | undefined {
+  return table.columnNames().includes(columnName)
+    ? (table.get(columnName, rowIndex) as T)
+    : undefined;
+}
+
+function getOptionalDateColumn(
+  table: ColumnTable,
+  columnName: string,
+  rowIndex: number = 0
+): Date | undefined {
+  const value = getOptionalColumn<string>(table, columnName, rowIndex);
+  return value ? new Date(value) : undefined;
+}

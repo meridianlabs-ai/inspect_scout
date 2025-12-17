@@ -39,16 +39,19 @@ class IndexStorage:
         cls,
         location: str,
         fs: AsyncFilesystem | None = None,
+        key: str | None = None,
     ) -> "IndexStorage":
         """Create IndexStorage with encryption status auto-detected.
 
         Checks index files first, then data files if no index exists.
         If encrypted files are detected, validates that the encryption key
-        is available in the environment.
+        is available (either passed directly or from environment).
 
         Args:
             location: Path to the database directory.
             fs: Optional async filesystem for remote storage.
+            key: Optional encryption key. If not provided and encrypted files
+                are detected, falls back to SCOUT_DB_ENCRYPTION_KEY env var.
 
         Returns:
             Configured IndexStorage with is_encrypted set appropriately.
@@ -64,18 +67,18 @@ class IndexStorage:
         is_encrypted = await storage._detect_encryption()
 
         if is_encrypted:
-            # Validate encryption key is available
-            key = get_encryption_key_from_env()
-            if not key:
+            # Use provided key or fall back to environment
+            resolved_key = key if key is not None else get_encryption_key_from_env()
+            if not resolved_key:
                 raise ValueError(
                     "Encrypted files detected but no encryption key provided. "
-                    f"Set {ENCRYPTION_KEY_ENV} environment variable."
+                    f"Pass key parameter or set {ENCRYPTION_KEY_ENV} environment variable."
                 )
         else:
-            key = None
+            resolved_key = None
 
         return cls(
-            location=location, fs=fs, is_encrypted=is_encrypted, encryption_key=key
+            location=location, fs=fs, is_encrypted=is_encrypted, encryption_key=resolved_key
         )
 
     def is_remote(self) -> bool:

@@ -12,8 +12,8 @@ from inspect_ai._view.fastapi_server import (
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from .._display._display import display
-from ._api_v1 import v1_api_app
-from ._api_v2 import v2_api_app
+from ._api_v1 import v1_api_router
+from ._api_v2 import v2_api_router
 
 
 def view_server(
@@ -29,27 +29,28 @@ def view_server(
         fs.mkdir(results_dir, True)
     results_dir = fs.info(results_dir).name
 
-    v1_api = v1_api_app(
-        access_policy=OnlyDirAccessPolicy(results_dir) if not authorization else None,
+    access_policy = OnlyDirAccessPolicy(results_dir) if not authorization else None
+
+    v1_router = v1_api_router(
+        access_policy=access_policy,
         results_dir=results_dir,
         fs=fs,
     )
 
-    v2_api = v2_api_app(
-        access_policy=OnlyDirAccessPolicy(results_dir) if not authorization else None,
+    v2_router = v2_api_router(
+        access_policy=access_policy,
         results_dir=results_dir,
         fs=fs,
     )
-
-    if authorization:
-        v1_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
-        v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
     app = FastAPI()
-    # NOTE that the order is important here. Starlette matches mounts in order.
-    # If /api were mounted first, requests to /api/v2/... would get routed to v1_api
-    app.mount("/api/v2", v2_api)
-    app.mount("/api", v1_api)
+
+    if authorization:
+        app.add_middleware(AuthorizationMiddleware, authorization=authorization)
+
+    # v2 has prefix="/v2" built-in, so both mount at /api
+    app.include_router(v2_router, prefix="/api")
+    app.include_router(v1_router, prefix="/api")
 
     dist = Path(__file__).parent / "www" / "dist"
     app.mount("/", StaticFiles(directory=dist.as_posix(), html=True), name="static")

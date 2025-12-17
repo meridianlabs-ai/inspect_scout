@@ -6,12 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pyarrow as pa
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from inspect_scout._recorder.recorder import ScanResultsArrow, ScanResultsDF, Status
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanner.result import Error
 from inspect_scout._scanspec import ScanSpec
-from inspect_scout._view._api_v2 import v2_api_app
+from inspect_scout._view._api_v2 import v2_api_router
 from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
@@ -73,7 +74,8 @@ def sample_dataframe() -> pd.DataFrame:
 def app_with_results_dir(tmp_path: Path) -> TestClient:
     """Create a test app with a temporary results directory."""
     results_dir = str(tmp_path)
-    app = v2_api_app(results_dir=results_dir)
+    app = FastAPI()
+    app.include_router(v2_api_router(results_dir=results_dir))
     return TestClient(app)
 
 
@@ -98,7 +100,7 @@ class TestViewServerAppScansEndpoint:
         with patch(
             "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
         ):
-            response = app_with_results_dir.get("/scans")
+            response = app_with_results_dir.get("/v2/scans")
 
         assert response.status_code == 200
         data = response.json()
@@ -116,7 +118,7 @@ class TestViewServerAppScansEndpoint:
         with patch(
             "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
         ):
-            response = app_with_results_dir.get("/scans?results_dir=/custom/path")
+            response = app_with_results_dir.get("/v2/scans?results_dir=/custom/path")
 
         assert response.status_code == 200
         data = response.json()
@@ -125,10 +127,11 @@ class TestViewServerAppScansEndpoint:
     @pytest.mark.asyncio
     async def test_scans_endpoint_no_results_dir(self) -> None:
         """Test scans endpoint without results_dir."""
-        app = v2_api_app(results_dir=None)
+        app = FastAPI()
+        app.include_router(v2_api_router(results_dir=None))
         client = TestClient(app)
 
-        response = client.get("/scans")
+        response = client.get("/v2/scans")
 
         assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -144,7 +147,7 @@ class TestViewServerAppScansEndpoint:
                 return_value="abc123",
             ),
         ):
-            response = app_with_results_dir.get("/scans")
+            response = app_with_results_dir.get("/v2/scans")
 
         assert response.status_code == 200
         assert response.headers.get("etag") == '"abc123"'
@@ -159,7 +162,7 @@ class TestViewServerAppScansEndpoint:
             return_value="abc123",
         ):
             response = app_with_results_dir.get(
-                "/scans", headers={"If-None-Match": '"abc123"'}
+                "/v2/scans", headers={"If-None-Match": '"abc123"'}
             )
 
         assert response.status_code == 304
@@ -178,7 +181,7 @@ class TestViewServerAppScansEndpoint:
             ),
         ):
             response = app_with_results_dir.get(
-                "/scans", headers={"If-None-Match": '"old-etag"'}
+                "/v2/scans", headers={"If-None-Match": '"old-etag"'}
             )
 
         assert response.status_code == 200
@@ -212,7 +215,7 @@ class TestViewServerAppScanDfEndpoint:
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
-                "/scanner_df/test_scan?scanner=scanner1"
+                "/v2/scanner_df/test_scan?scanner=scanner1"
             )
 
         assert response.status_code == 200
@@ -226,7 +229,7 @@ class TestViewServerAppScanDfEndpoint:
         self, app_with_results_dir: TestClient
     ) -> None:
         """Test scanner_df endpoint without scanner parameter."""
-        response = app_with_results_dir.get("/scanner_df/test_scan")
+        response = app_with_results_dir.get("/v2/scanner_df/test_scan")
 
         assert response.status_code == HTTP_400_BAD_REQUEST
 
@@ -243,7 +246,7 @@ class TestViewServerAppScanDfEndpoint:
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
-                "/scanner_df/test_scan?scanner=nonexistent"
+                "/v2/scanner_df/test_scan?scanner=nonexistent"
             )
 
         assert response.status_code == HTTP_404_NOT_FOUND
@@ -270,7 +273,7 @@ class TestViewServerAppScanEndpoint:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get("/scan/test_scan")
+            response = app_with_results_dir.get("/v2/scan/test_scan")
 
         assert response.status_code == 200
         data = response.json()
@@ -295,7 +298,7 @@ class TestViewServerAppScanEndpoint:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get("/scan/test_scan?status_only=true")
+            response = app_with_results_dir.get("/v2/scan/test_scan?status_only=true")
 
         assert response.status_code == 200
         data = response.json()
@@ -308,21 +311,17 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_success(self) -> None:
         """Test successful authorization."""
-        app = v2_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
-
-        # Add authorization middleware
-        from fastapi import FastAPI
 
         main_app = FastAPI()
         main_app.add_middleware(AuthorizationMiddleware, authorization=test_auth)
-        main_app.mount("/api", app)
+        main_app.include_router(v2_api_router(results_dir="/test"), prefix="/api")
 
         client = TestClient(main_app)
 
         with patch("inspect_scout._view._api_v2.scan_list_async", return_value=[]):
             response = client.get(
-                "/api/scans?results_dir=/test",
+                "/api/v2/scans?results_dir=/test",
                 headers={"Authorization": test_auth},
             )
 
@@ -330,20 +329,16 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_failure(self) -> None:
         """Test failed authorization."""
-        app = v2_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
-
-        # Add authorization middleware
-        from fastapi import FastAPI
 
         main_app = FastAPI()
         main_app.add_middleware(AuthorizationMiddleware, authorization=test_auth)
-        main_app.mount("/api", app)
+        main_app.include_router(v2_api_router(results_dir="/test"), prefix="/api")
 
         client = TestClient(main_app)
 
         response = client.get(
-            "/api/scans?results_dir=/test",
+            "/api/v2/scans?results_dir=/test",
             headers={"Authorization": "Bearer wrong-token"},
         )
 
@@ -351,19 +346,15 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_missing_header(self) -> None:
         """Test missing authorization header."""
-        app = v2_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
-
-        # Add authorization middleware
-        from fastapi import FastAPI
 
         main_app = FastAPI()
         main_app.add_middleware(AuthorizationMiddleware, authorization=test_auth)
-        main_app.mount("/api", app)
+        main_app.include_router(v2_api_router(results_dir="/test"), prefix="/api")
 
         client = TestClient(main_app)
 
-        response = client.get("/api/scans?results_dir=/test")
+        response = client.get("/api/v2/scans?results_dir=/test")
 
         assert response.status_code == 401
 
@@ -377,11 +368,14 @@ class TestAccessPolicy:
         mock_access_policy = MagicMock()
         mock_access_policy.can_read = AsyncMock(return_value=False)
 
-        app = v2_api_app(access_policy=mock_access_policy, results_dir="/test")
+        app = FastAPI()
+        app.include_router(
+            v2_api_router(access_policy=mock_access_policy, results_dir="/test")
+        )
         client = TestClient(app)
 
         with patch("inspect_scout._view._api_v2.scan_results_df_async") as mock_scan:
-            response = client.get("/scan/test_scan")
+            response = client.get("/v2/scan/test_scan")
 
         assert response.status_code == HTTP_403_FORBIDDEN
         mock_scan.assert_not_called()
@@ -392,11 +386,14 @@ class TestAccessPolicy:
         mock_access_policy = MagicMock()
         mock_access_policy.can_list = AsyncMock(return_value=False)
 
-        app = v2_api_app(access_policy=mock_access_policy, results_dir="/test")
+        app = FastAPI()
+        app.include_router(
+            v2_api_router(access_policy=mock_access_policy, results_dir="/test")
+        )
         client = TestClient(app)
 
         with patch("inspect_scout._view._api_v2.scan_list_async") as mock_list:
-            response = client.get("/scans?results_dir=/test")
+            response = client.get("/v2/scans?results_dir=/test")
 
         assert response.status_code == HTTP_403_FORBIDDEN
         mock_list.assert_not_called()
@@ -424,7 +421,7 @@ class TestViewServerAppEdgeCases:
             return_value=mock_results,
         ):
             # Use relative path
-            response = app_with_results_dir.get("/scan/relative/path/scan")
+            response = app_with_results_dir.get("/v2/scan/relative/path/scan")
 
         assert response.status_code == 200
 
@@ -452,7 +449,7 @@ class TestViewServerAppEdgeCases:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get("/scan/test_scan?status_only=true")
+            response = app_with_results_dir.get("/v2/scan/test_scan?status_only=true")
 
         assert response.status_code == 200
         data = response.json()

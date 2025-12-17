@@ -3,7 +3,7 @@ import io
 from typing import Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import AccessPolicy
@@ -45,21 +45,18 @@ def _compute_scans_etag(scans_location: str) -> str | None:
         return None
 
 
-def v2_api_app(
+def v2_api_router(
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
-) -> "FastAPI":
-    """Create V2 API FastAPI app.
+) -> APIRouter:
+    """Create V2 API router.
 
     WARNING: This is an ALPHA API. Expect breaking changes without notice.
     Do not depend on this API for production use.
     """
-    app = FastAPI(
-        title="Inspect Scout Viewer API",
-        version="2.0.0-alpha",
-    )
+    router = APIRouter(prefix="/v2", tags=["v2"])
 
     async def _validate_read(request: Request, file: str | UPath) -> None:
         if access_policy is not None:
@@ -93,11 +90,11 @@ def v2_api_app(
     ) -> RestScanStatus:
         return scan
 
-    @app.get("/transcripts-dir", response_class=PlainTextResponse)
+    @router.get("/transcripts-dir", response_class=PlainTextResponse)
     async def transcripts_dir(request: Request) -> str:
         return await default_transcripts_dir()
 
-    @app.get("/transcripts")
+    @router.get("/transcripts")
     async def transcripts(
         request_transcripts_dir: str | None = Query(None, alias="dir"),
     ) -> list[TranscriptInfo]:
@@ -108,7 +105,7 @@ def v2_api_app(
         except FileNotFoundError:
             return []
 
-    @app.get(
+    @router.get(
         "/scans",
         response_model=ScansRestResponse,
         response_class=InspectPydanticJSONResponse,
@@ -143,7 +140,7 @@ def v2_api_app(
             ],
         )
 
-    @app.get("/scanner_df_input/{scan:path}")
+    @router.get("/scanner_df_input/{scan:path}")
     async def scanner_input(
         request: Request,
         scan: str,
@@ -198,7 +195,7 @@ def v2_api_app(
             headers={"X-Input-Type": input_type or ""},
         )
 
-    @app.get("/scanner_df/{scan:path}")
+    @router.get("/scanner_df/{scan:path}")
     async def scan_df(
         request: Request,
         scan: str,
@@ -272,7 +269,7 @@ def v2_api_app(
             media_type="application/vnd.apache.arrow.stream; codecs=lz4",
         )
 
-    @app.get(
+    @router.get(
         "/scan/{scan:path}",
         response_model=RestScanStatus,
         response_class=InspectPydanticJSONResponse,
@@ -312,4 +309,4 @@ def v2_api_app(
 
         return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
 
-    return app
+    return router

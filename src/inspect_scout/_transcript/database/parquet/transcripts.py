@@ -54,6 +54,7 @@ from .index import (
     create_index,
     init_index_table,
 )
+from .migration import migrate_view
 from .types import IndexStorage
 
 logger = getLogger(__name__)
@@ -1555,6 +1556,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Schema differs across files - fall back to full scan
             self._exclude_clause = self._infer_exclude_clause_full(pattern)
             self._conn.execute(build_view_sql(self._exclude_clause))
+
+        # migrate view for databases imported from eval_log
+        migrate_view(self._conn, "transcripts")
 
     async def _discover_parquet_files(self) -> list[str]:
         """Discover all Parquet files in location.

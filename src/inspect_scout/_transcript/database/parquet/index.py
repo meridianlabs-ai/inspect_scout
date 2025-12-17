@@ -41,6 +41,7 @@ from .encryption import (
     setup_encryption,
 )
 from .index_cache import get_index_cache_path, load_cached_index, save_index_cache
+from .migration import migrate_table
 from .types import (
     ENCRYPTED_INDEX_EXTENSION,
     INCREMENTAL_PREFIX,
@@ -312,6 +313,8 @@ async def init_index_table(
             trace_message(
                 logger, "Scout Index Cache", f"Loaded from cache: {cache_path}"
             )
+            # migrate fields for backwards compatiblity with databases created from eval_log
+            migrate_table(conn, table_name)
             return cached_count
 
     # Build file list for read_parquet
@@ -341,6 +344,9 @@ async def init_index_table(
             trace_message(logger, "Scout Index Cache", f"Saved to cache: {cache_path}")
         except Exception as e:
             logger.warning(f"Failed to save index cache: {e}")
+
+    # migrate fields for backwards compatiblity with databases created from eval_log
+    migrate_table(conn, table_name)
 
     return row_count
 

@@ -1,3 +1,4 @@
+import json
 import re
 from dataclasses import dataclass
 from functools import reduce
@@ -57,6 +58,7 @@ async def messages_as_str(
     input: T,
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
+    as_json: bool = False,
 ) -> str: ...
 
 
@@ -66,6 +68,7 @@ async def messages_as_str(
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
+    as_json: bool = False,
 ) -> tuple[str, Callable[[str], list[Reference]]]: ...
 
 
@@ -74,6 +77,7 @@ async def messages_as_str(
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True] | None = None,
+    as_json: bool = False,
 ) -> str | tuple[str, Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
 
@@ -83,6 +87,7 @@ async def messages_as_str(
        include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
           to each message and return a function to extract references from text.
           If None (default), return plain formatted string.
+       as_json: If True, output as JSON string instead of plain text.
 
     Returns:
        If include_ids is False: Messages concatenated as a formatted string.
@@ -98,27 +103,37 @@ async def messages_as_str(
         else input
     )
 
-    if not include_ids:
-        return "\n".join([message_as_str(m, preprocessor) or "" for m in messages])
-
     def reduce_message(
-        acc: tuple[list[str], dict[str, str]], message: ChatMessage
-    ) -> tuple[list[str], dict[str, str]]:
-        formatted_messages, message_id_map = acc
-        if (msg_str := message_as_str(message, preprocessor)) is not None:
-            ordinal = f"M{len(message_id_map) + 1}"
-            message_id_map[ordinal] = _message_id(message)
-            formatted_messages.append(f"[{ordinal}] {msg_str}")
-        return formatted_messages, message_id_map
+        acc: tuple[list[dict[str, str]], dict[str, str]], message: ChatMessage
+    ) -> tuple[list[dict[str, str]], dict[str, str]]:
+        items, id_map = acc
+        if (content := message_as_str(message, preprocessor)) is not None:
+            item: dict[str, str] = {"role": message.role, "content": content}
+            if include_ids:
+                ordinal = f"M{len(id_map) + 1}"
+                id_map[ordinal] = _message_id(message)
+                item["id"] = ordinal
+            items.append(item)
+        return items, id_map
 
-    formatted_messages, message_id_map = reduce(
-        reduce_message, messages, (list[str](), dict[str, str]())
+    items, id_map = reduce(
+        reduce_message, messages, (list[dict[str, str]](), dict[str, str]())
     )
 
-    def extract_references(text: str) -> list[Reference]:
-        return _extract_references(text, message_id_map)
+    result = (
+        json.dumps(items)
+        if as_json
+        else "\n".join(
+            f"[{item['id']}] {item['content']}" if "id" in item else item["content"]
+            for item in items
+        )
+    )
 
-    return "\n".join(formatted_messages), extract_references
+    return (
+        (result, lambda text: _extract_references(text, id_map))
+        if include_ids
+        else result
+    )
 
 
 def message_as_str(

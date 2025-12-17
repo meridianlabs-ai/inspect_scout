@@ -8,20 +8,20 @@ import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Navbar } from "../components/Navbar";
 import {
-  useServerScanner,
-  useServerScannerDataframe,
+  useServerScan,
+  useServerScanDataframe,
   useServerScans,
 } from "../server/hooks";
 
-import styles from "./ScannerPanel.module.css";
-import { ScannerPanelBody } from "./ScannerPanelBody";
-import { ScannerPanelTitle } from "./ScannerPanelTitle";
+import styles from "./ScansPanel.module.css";
+import { ScansPanelBody } from "./ScansPanelBody";
+import { ScansPanelTitle } from "./ScansPanelTitle";
 
-export const ScannerPanel: React.FC = () => {
+export const ScansPanel: React.FC = () => {
   // Load server data
   useServerScans();
-  useServerScanner();
-  useServerScannerDataframe();
+  useServerScan();
+  useServerScanDataframe();
   const loading = useStore((state) => state.loading);
 
   // Clear scan state from the store on mount
@@ -48,9 +48,9 @@ export const ScannerPanel: React.FC = () => {
       <ActivityBar animating={!!loading} />
       {selectedStatus && (
         <>
-          <ScannerPanelTitle />
+          <ScansPanelTitle />
           <ExtendedFindProvider>
-            <ScannerPanelBody />
+            <ScansPanelBody />
           </ExtendedFindProvider>
         </>
       )}

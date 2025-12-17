@@ -82,6 +82,8 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
+    "@tanstack/react-query": "^5.90.12",
+    "@tanstack/react-query-devtools": "^5.91.1",
     "ag-grid-community": "^34.3.0",
     "ag-grid-react": "^34.3.0",
     "ansi-output": "^0.0.9",

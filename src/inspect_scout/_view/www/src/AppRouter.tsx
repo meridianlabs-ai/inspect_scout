@@ -9,7 +9,7 @@ import {
 
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
-import { ScannerPanel } from "./app/scans/ScannerPanel";
+import { ScansPanel } from "./app/scans/ScansPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
   kScansRouteUrlPattern,
@@ -143,7 +143,7 @@ const ScanOrScanResultsRoute = () => {
     return <Navigate to={`/scans/${relativePath}`} replace />;
   }
 
-  return <ScannerPanel />;
+  return <ScansPanel />;
 };
 
 export const AppRouter = createHashRouter(

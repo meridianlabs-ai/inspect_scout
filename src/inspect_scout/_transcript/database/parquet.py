@@ -1,6 +1,5 @@
 """DuckDB/Parquet-backed transcript database implementation."""
 
-import glob
 import hashlib
 import json
 import os
@@ -21,6 +20,7 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai.util import trace_action
 from typing_extensions import override
+from upath import UPath
 
 from inspect_scout._display._display import display
 from inspect_scout._scanspec import ScanTranscripts
@@ -1421,17 +1421,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # return file_paths
         else:
-            location_path = Path(self._location)
+            location_path = UPath(self._location)
             if not location_path.exists():
                 location_path.mkdir(parents=True, exist_ok=True)
                 return []
 
             # Recursively discover all transcript parquet files
-            return list(
-                glob.glob(
-                    str(location_path / "**" / PARQUET_TRANSCRIPTS_GLOB), recursive=True
-                )
-            )
+            return [
+                str(p) for p in location_path.glob(f"**/{PARQUET_TRANSCRIPTS_GLOB}")
+            ]
 
     def _check_encryption_status(self, file_paths: list[str]) -> bool:
         """Check if database files are encrypted and validate consistency.

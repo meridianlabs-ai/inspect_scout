@@ -11,8 +11,7 @@ from inspect_ai._view.fastapi_server import (
 )
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from inspect_scout._display._display import display
-
+from .._display._display import display
 from ._api_v1 import v1_api_app
 from ._api_v2 import v2_api_app
 
@@ -30,14 +29,16 @@ def view_server(
         fs.mkdir(results_dir, True)
     results_dir = fs.info(results_dir).name
 
+    access_policy = OnlyDirAccessPolicy(results_dir) if not authorization else None
+
     v1_api = v1_api_app(
-        access_policy=OnlyDirAccessPolicy(results_dir) if not authorization else None,
+        access_policy=access_policy,
         results_dir=results_dir,
         fs=fs,
     )
 
     v2_api = v2_api_app(
-        access_policy=OnlyDirAccessPolicy(results_dir) if not authorization else None,
+        access_policy=access_policy,
         results_dir=results_dir,
         fs=fs,
     )
@@ -47,8 +48,8 @@ def view_server(
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
     app = FastAPI()
-    # NOTE that the order is important here. Starlette matches mounts in order.
-    # If /api were mounted first, requests to /api/v2/... would get routed to v1_api
+    # NOTE: order matters - Starlette matches mounts in order
+    # /api/v2 must come before /api or v2 requests would route to v1
     app.mount("/api/v2", v2_api)
     app.mount("/api", v1_api)
 

@@ -63,7 +63,9 @@ class RawTranscript:
     source_id: str | None
     source_uri: str | None
     date: str | None
-    task: str | None
+    task_set: str | None
+    task_id: str | None
+    task_repeat: int | None
     agent: str | None
     agent_args: dict[str, Any] | None
     model: str | None
@@ -140,7 +142,9 @@ async def _load_with_json5_fallback(
                 source_id=t.source_id,
                 source_uri=t.source_uri,
                 date=t.date,
-                task=t.task,
+                task_set=t.task_set,
+                task_id=t.task_id,
+                task_repeat=t.task_repeat,
                 agent=t.agent,
                 agent_args=t.agent_args,
                 model=t.model,
@@ -270,7 +274,9 @@ async def _parse_and_filter(
             source_id=t.source_id,
             source_uri=t.source_uri,
             date=t.date,
-            task=t.task,
+            task_set=t.task_set,
+            task_id=t.task_id,
+            task_repeat=t.task_repeat,
             agent=t.agent,
             agent_args=t.agent_args,
             model=t.model,
@@ -343,7 +349,9 @@ def _resolve_attachments(
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
             "date": transcript.date,
-            "task": transcript.task,
+            "task_set": transcript.task_set,
+            "task_id": transcript.task_id,
+            "task_repeat": transcript.task_repeat,
             "agent": transcript.agent,
             "agent_args": transcript.agent_args,
             "model": transcript.model,

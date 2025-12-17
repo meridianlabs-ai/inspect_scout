@@ -67,7 +67,7 @@ def test_typed_properties_exist() -> None:
     assert lc.eval_metadata.name == "eval_metadata"
 
     # Task configuration columns
-    assert lc.task.name == "task"
+    assert lc.task_set.name == "task_set"
     assert lc.task_args.name == "task_args"
     assert lc.solver.name == "agent"
     assert lc.solver_args.name == "agent_args"
@@ -93,7 +93,7 @@ def test_typed_properties_have_docstrings() -> None:
     # Properties are descriptors, so we need to check their fget docstrings
     assert "Globally unique id for eval" in get_property_doc(LogColumns.eval_id)
     assert "Model used for eval" in get_property_doc(LogColumns.model)
-    assert "Task name" in get_property_doc(LogColumns.task)
+    assert "transcript task" in get_property_doc(LogColumns.task_set)
     assert "Headline score value" in get_property_doc(LogColumns.score)
     assert "Total execution time" in get_property_doc(LogColumns.total_time)
 
@@ -112,9 +112,9 @@ def test_sql_generation_simple_equality() -> None:
     assert params == ["gpt-4"]
 
     # Task name equality
-    condition = lc.task == "math_problem"
+    condition = lc.task_set == "math_problem"
     sql, params = condition.to_sql("sqlite")
-    assert sql == '"task" = ?'
+    assert sql == '"task_set" = ?'
     assert params == ["math_problem"]
 
     # Solver equality
@@ -222,9 +222,9 @@ def test_sql_generation_in_operators() -> None:
 def test_sql_generation_like_operators() -> None:
     """Test SQL generation for LIKE operators using typed properties."""
     # LIKE
-    condition = lc.task.like("math%")
+    condition = lc.task_set.like("math%")
     sql, params = condition.to_sql("sqlite")
-    assert sql == '"task" LIKE ?'
+    assert sql == '"task_set" LIKE ?'
     assert params == ["math%"]
 
     # NOT LIKE
@@ -580,8 +580,8 @@ def test_all_operators_with_typed_properties() -> None:
         (lc.epoch <= 2, '"epoch" <= ?', [2]),
         (lc.model.in_(["a", "b"]), '"model" IN (?, ?)', ["a", "b"]),
         (lc.model.not_in(["a", "b"]), '"model" NOT IN (?, ?)', ["a", "b"]),
-        (lc.task.like("math%"), '"task" LIKE ?', ["math%"]),
-        (lc.task.not_like("code%"), '"task" NOT LIKE ?', ["code%"]),
+        (lc.task_set.like("math%"), '"task_set" LIKE ?', ["math%"]),
+        (lc.task_set.not_like("code%"), '"task_set" NOT LIKE ?', ["code%"]),
         (lc.limit.is_null(), '"limit" IS NULL', []),
         (lc.limit.is_not_null(), '"limit" IS NOT NULL', []),
         (lc.epoch.between(1, 3), '"epoch" BETWEEN ? AND ?', [1, 3]),

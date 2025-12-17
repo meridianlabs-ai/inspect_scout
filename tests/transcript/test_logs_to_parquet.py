@@ -126,8 +126,8 @@ async def test_query_simple_equality(
 ) -> None:
     """Test simple equality filter works the same on both sources."""
     # Query for specific task
-    log_filtered = log_transcripts.where(c.task == "popularity")
-    parquet_filtered = parquet_transcripts.where(c.task == "popularity")
+    log_filtered = log_transcripts.where(c.task_set == "popularity")
+    parquet_filtered = parquet_transcripts.where(c.task_set == "popularity")
 
     log_ids = await get_transcript_ids(log_filtered)
     parquet_ids = await get_transcript_ids(parquet_filtered)
@@ -142,8 +142,8 @@ async def test_query_simple_inequality(
     log_transcripts: Transcripts, parquet_transcripts: Transcripts
 ) -> None:
     """Test inequality filter works the same on both sources."""
-    log_filtered = log_transcripts.where(c.task != "popularity")
-    parquet_filtered = parquet_transcripts.where(c.task != "popularity")
+    log_filtered = log_transcripts.where(c.task_set != "popularity")
+    parquet_filtered = parquet_transcripts.where(c.task_set != "popularity")
 
     log_ids = await get_transcript_ids(log_filtered)
     parquet_ids = await get_transcript_ids(parquet_filtered)
@@ -172,8 +172,8 @@ async def test_query_in_operator(
 ) -> None:
     """Test IN operator works the same on both sources."""
     tasks = ["popularity", "security-guide"]
-    log_filtered = log_transcripts.where(c.task.in_(tasks))
-    parquet_filtered = parquet_transcripts.where(c.task.in_(tasks))
+    log_filtered = log_transcripts.where(c.task_set.in_(tasks))
+    parquet_filtered = parquet_transcripts.where(c.task_set.in_(tasks))
 
     log_ids = await get_transcript_ids(log_filtered)
     parquet_ids = await get_transcript_ids(parquet_filtered)
@@ -203,7 +203,7 @@ async def test_query_and_operator(
     log_transcripts: Transcripts, parquet_transcripts: Transcripts
 ) -> None:
     """Test AND operator works the same on both sources."""
-    condition = (c.task == "popularity") & (c.epoch == 0)
+    condition = (c.task_set == "popularity") & (c.epoch == 0)
     log_filtered = log_transcripts.where(condition)
     parquet_filtered = parquet_transcripts.where(condition)
 
@@ -219,7 +219,7 @@ async def test_query_or_operator(
     log_transcripts: Transcripts, parquet_transcripts: Transcripts
 ) -> None:
     """Test OR operator works the same on both sources."""
-    condition = (c.task == "popularity") | (c.task == "security-guide")
+    condition = (c.task_set == "popularity") | (c.task_set == "security-guide")
     log_filtered = log_transcripts.where(condition)
     parquet_filtered = parquet_transcripts.where(condition)
 
@@ -236,7 +236,7 @@ async def test_query_not_operator(
     log_transcripts: Transcripts, parquet_transcripts: Transcripts
 ) -> None:
     """Test NOT operator works the same on both sources."""
-    condition = ~(c.task == "popularity")
+    condition = ~(c.task_set == "popularity")
     log_filtered = log_transcripts.where(condition)
     parquet_filtered = parquet_transcripts.where(condition)
 
@@ -311,10 +311,10 @@ async def test_chained_queries(
     """Test complex chained queries work the same on both sources."""
     # Chain multiple operations
     log_filtered = (
-        log_transcripts.where(c.task != "popularity").limit(5).shuffle(seed=42)
+        log_transcripts.where(c.task_set != "popularity").limit(5).shuffle(seed=42)
     )
     parquet_filtered = (
-        parquet_transcripts.where(c.task != "popularity").limit(5).shuffle(seed=42)
+        parquet_transcripts.where(c.task_set != "popularity").limit(5).shuffle(seed=42)
     )
 
     log_ids = await get_transcript_ids(log_filtered)
@@ -332,10 +332,10 @@ async def test_multiple_where_clauses(
     """Test multiple sequential where clauses work the same on both sources."""
     # Multiple where calls should be ANDed together
     log_filtered = log_transcripts.where(c.epoch >= 0).where(
-        c.task.in_(["popularity", "security-guide"])
+        c.task_set.in_(["popularity", "security-guide"])
     )
     parquet_filtered = parquet_transcripts.where(c.epoch >= 0).where(
-        c.task.in_(["popularity", "security-guide"])
+        c.task_set.in_(["popularity", "security-guide"])
     )
 
     log_ids = await get_transcript_ids(log_filtered)
@@ -356,8 +356,8 @@ async def test_success_column_values(
     - Scores with value "I" (incorrect) have success=False (value_to_float returns 0.0)
     """
     # Get popularity transcripts which have "C" and "I" score values
-    log_filtered = log_transcripts.where(c.task == "popularity")
-    parquet_filtered = parquet_transcripts.where(c.task == "popularity")
+    log_filtered = log_transcripts.where(c.task_set == "popularity")
+    parquet_filtered = parquet_transcripts.where(c.task_set == "popularity")
 
     # Check success values from log source
     async with log_filtered.reader() as reader:

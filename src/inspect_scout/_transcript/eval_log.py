@@ -271,7 +271,9 @@ class EvalLogTranscriptsDB:
             transcript_source_id = row_dict.get("source_id") or row_dict.get("eval_id")
             transcript_source_uri = row_dict.get("source_uri") or row_dict.get("log")
             transcript_date = row_dict.get("date", None)
-            transcript_task = row_dict.get("task", None)
+            transcript_task_set = row_dict.get("task_set", None)
+            transcript_task_id = row_dict.get("task_id", None)
+            transcript_task_repeat = row_dict.get("task_repeat", None)
             transcript_agent = row_dict.get("agent", None)
             transcript_agent_args = row_dict.get("agent_args", None)
             transcript_model = row_dict.get("model", None)
@@ -317,7 +319,9 @@ class EvalLogTranscriptsDB:
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
                 date=transcript_date,
-                task=transcript_task,
+                task_set=transcript_task_set,
+                task_id=transcript_task_id,
+                task_repeat=transcript_task_repeat,
                 agent=transcript_agent,
                 agent_args=transcript_agent_args,
                 model=transcript_model,
@@ -490,7 +494,7 @@ TranscriptColumns: list[Column] = (
         EvalColumn("eval_status", path="status", required=True),
         EvalColumn("eval_tags", path="eval.tags", default="", value=list_as_str),
         EvalColumn("eval_metadata", path="eval.metadata", default={}),
-        EvalColumn("task", path="eval.task", required=True, value=remove_namespace),
+        EvalColumn("task_set", path="eval.task", required=True, value=remove_namespace),
         EvalColumn("task_args", path="eval.task_args", default={}),
         EvalColumn("agent", path="eval.solver"),
         EvalColumn("agent_args", path="eval.solver_args", default={}),
@@ -499,7 +503,9 @@ TranscriptColumns: list[Column] = (
         EvalColumn("model_roles", path="eval.model_roles", default={}),
         # Sample columns
         SampleColumn("transcript_id", path=_transcript_id, required=True),
+        SampleColumn("task_id", path="id", required=True, type=str),
         SampleColumn("id", path="id", required=True, type=str),
+        SampleColumn("task_repeat", path="epoch", required=True),
         SampleColumn("epoch", path="epoch", required=True),
         SampleColumn("input", path=sample_input_as_str, required=True),
         SampleColumn("target", path="target", required=True, value=list_as_str),

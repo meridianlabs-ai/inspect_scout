@@ -41,7 +41,7 @@ def create_sample_transcript(
         source_type="test",
         source_id=source_id,
         source_uri=source_uri,
-        task=task,
+        task_set=task,
         model=model,
         score=score,
         metadata=metadata or {},
@@ -312,7 +312,7 @@ async def test_metadata_dsl_queries(populated_db: ParquetTranscriptsDB) -> None:
     results = [
         info
         async for info in populated_db.select(
-            [c.task.in_(["math", "coding"])], None, False
+            [c.task_set.in_(["math", "coding"])], None, False
         )
     ]
     assert len(results) >= 10  # At least 2/3 of results

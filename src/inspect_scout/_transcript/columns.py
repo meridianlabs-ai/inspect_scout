@@ -667,9 +667,19 @@ class Columns:
         return Column("date")
 
     @property
-    def task(self) -> Column:
-        """Task name."""
-        return Column("task")
+    def task_set(self) -> Column:
+        """Set from which transcript task was drawn (e.g. benchmark name)."""
+        return Column("task_set")
+
+    @property
+    def task_id(self) -> Column:
+        """Identifier for task (e.g. dataset sample id)."""
+        return Column("task_id")
+
+    @property
+    def task_repeat(self) -> Column:
+        """Repeat for a given task id within a task set (e.g. epoch)."""
+        return Column("task_repeat")
 
     @property
     def agent(self) -> Column:

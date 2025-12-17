@@ -7,7 +7,9 @@ Here are the available `Transcript` fields:
 | `source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in Inspect logs) |
 | `source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `date` | iso | Date/time when the transcript was created. |
-| `task` | str | Name of task executed by transcript (e.g. benchmark name) |
+| `task_set` | str | Set from which transcript task was drawn (e.g. Inspect task name or benchmark name) |
+| `task_id` | str | Identifier for task (e.g. dataset sample id). |
+| `task_repeat` | int | Repeat for a given task id within a task set (e.g. epoch). |
 | `agent` | str | Agent used to to execute task. |
 | `agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
 | `model` | str | Main model used by agent. |
@@ -22,3 +24,12 @@ Here are the available `Transcript` fields:
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
 
 : {tbl-colwidths=\[20,30,50\]}
+
+
+::: {.callout-note}
+Note that many of the fields described above are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::

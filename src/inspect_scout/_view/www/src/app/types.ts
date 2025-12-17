@@ -10,6 +10,11 @@ import {
   Messages,
 } from "../types/log";
 
+export interface ScanResultInputData {
+  input: Input;
+  inputType: InputType;
+}
+
 export type Input = Transcript | Messages | Events | MessageType | EventType;
 
 export type InputType =
@@ -19,60 +24,35 @@ export type InputType =
   | "event"
   | "events";
 
-export interface ScanResultInputData {
-  input: Input;
-  inputType: InputType;
-}
-
-export interface SortColumn {
-  column: string;
-  direction: "asc" | "desc";
-}
-
-export type ErrorScope =
-  | "scanjobs"
-  | "scanner"
-  | "dataframe"
-  | "dataframe_input";
-
-export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
-
-export type ValueType =
-  | "boolean"
-  | "number"
-  | "string"
-  | "array"
-  | "object"
-  | "null";
-
 export interface ScanResultSummary {
+  // Basic Info
   uuid?: string;
-  inputType: InputType;
   explanation?: string;
   label?: string;
+  timestamp?: Date;
+
+  // Input
+  inputType: InputType;
+
+  // Refs
   eventReferences: ScanResultReference[];
   messageReferences: ScanResultReference[];
+
+  // Validation
   validationResult: boolean | Record<string, boolean>;
   validationTarget: boolean | Record<string, boolean>;
+
+  // Value
   value: string | boolean | number | null | unknown[] | object;
   valueType: ValueType;
-  transcriptMetadata: Record<string, JsonValue>;
-  transcriptSourceId: string;
+
+  // Scan metadata
   scanError?: string;
   scanErrorRefusal?: boolean;
-}
 
-export interface ScanResultReference {
-  type: "message" | "event";
-  id: string;
-  cite?: string;
+  transcriptMetadata: Record<string, JsonValue>;
+  transcriptSourceId: string;
 }
-
-export type MessageType =
-  | ChatMessageSystem
-  | ChatMessageUser
-  | ChatMessageAssistant
-  | ChatMessageTool;
 
 // Base interface with common properties
 export interface ScanResultData extends ScanResultSummary {
@@ -94,7 +74,52 @@ export interface ScanResultData extends ScanResultSummary {
   scannerParams: Record<string, JsonValue>;
   transcriptId: string;
   transcriptSourceUri: string;
+
+  transcriptDate?: Date;
+  transcriptTask?: string;
+  transcriptAgent?: string;
+  transcriptAgentArgs?: Record<string, unknown>;
+  transcriptModel?: string;
+  transcriptScore?: JsonValue;
+  transcriptSuccess?: boolean;
+  transcriptTotalTime?: number;
+  transcroptTotalTokens?: number;
+  transcriptError?: string;
+  transcriptLimit?: string;
 }
+
+export interface ScanResultReference {
+  type: "message" | "event";
+  id: string;
+  cite?: string;
+}
+
+export type MessageType =
+  | ChatMessageSystem
+  | ChatMessageUser
+  | ChatMessageAssistant
+  | ChatMessageTool;
+
+export interface SortColumn {
+  column: string;
+  direction: "asc" | "desc";
+}
+
+export type ErrorScope =
+  | "scanjobs"
+  | "scanner"
+  | "dataframe"
+  | "dataframe_input";
+
+export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
+
+export type ValueType =
+  | "boolean"
+  | "number"
+  | "string"
+  | "array"
+  | "object"
+  | "null";
 
 // Type guard functions for value types
 export function isStringValue(

@@ -36,7 +36,9 @@ The data frame includes the following fields (note that some fields included emb
 | `transcript_source_id` | str | Globally unique identifier for a transcript source (maps to `eval_id` in the Inspect log and analysis data frames). |
 | `transcript_source_uri` | str | URI for source data (e.g. full path to the Inspect log file). |
 | `transcript_date` | str | ISO 8601 datetime when the transcript was created. |
-| `transcript_task` | str | Name of task executed by transcript (e.g. benchmark name) |
+| `transcript_task_set` | str | Set from which transcript task was drawn (e.g. Inspect task name or benchmark name) |
+| `transcript_task_id` | str | Identifier for task (e.g. dataset sample id). |
+| `transcript_task_repeat` | int | Repeat for a given task id within a task set (e.g. epoch). |
 | `transcript_agent` | str | Agent used to to execute task. |
 | `transcript_agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
 | `transcript_model` | str | Main model used by agent. |
@@ -81,3 +83,11 @@ The data frame includes the following fields (note that some fields included emb
 | `scan_model_usage` | dict \[str, ModelUsage\]<br/><small>JSON</small> | Token usage by model for scan (only included when `rows = "transcripts"`). |
 
 : {tbl-colwidths=\[20,20,60\]}
+
+::: {.callout-note}
+Note that the `transcript_*` fields are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::

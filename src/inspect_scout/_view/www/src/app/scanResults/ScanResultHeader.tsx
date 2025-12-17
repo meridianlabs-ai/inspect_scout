@@ -11,15 +11,13 @@ import {
   isMessageInput,
   isMessagesInput,
   isTranscriptInput,
-  ScanResultData,
   MessageType,
 } from "../types";
 
 import styles from "./ScanResultHeader.module.css";
 
 interface ScanResultHeaderProps {
-  result?: ScanResultData;
-  status?: Status;
+  scan?: Status;
   inputData?: ScanResultInputData;
 }
 
@@ -30,10 +28,10 @@ interface Column {
 }
 
 export const ScanResultHeader: FC<ScanResultHeaderProps> = ({
-  status,
+  scan,
   inputData,
 }) => {
-  const columns = colsForResult(inputData, status) || [];
+  const columns = colsForResult(inputData, scan) || [];
 
   return (
     <div className={clsx(styles.header, classForCols(columns.length))}>
@@ -107,98 +105,137 @@ const colsForResult: (
 };
 
 const transcriptCols = (transcript: Transcript, status?: Status) => {
-  const cols = [
-    {
-      label: "Log",
-      value: transcript.metadata?.log as ReactNode,
-    },
+  // Read values from the transcript directly, falling back to metadata
+  // The metadata was previously used to store these values before they were
+  // added to the main Transcript schema (so we're doing this mainly for backwards
+  // compatibility with old scan results)
+  // Source info
+  const sourceUri = transcript.source_uri || transcript.metadata?.log;
+
+  // Model info
+  const transcriptModel = transcript.model || transcript.metadata?.model;
+  const scanningModel = status?.spec.model.model;
+
+  // Task information
+  const taskSet = transcript.task_set || transcript.metadata?.task_name;
+  const taskId = transcript.task_id || transcript.metadata?.id;
+  const taskRepeat = transcript.task_repeat || transcript.metadata?.epoch;
+
+  const cols: Column[] = [
     {
       label: "Task",
-      value: (transcript.task || transcript.metadata?.task_name) as ReactNode,
+      value: taskName(taskSet, taskId, taskRepeat),
     },
-
     {
-      label: "Sample Id",
-      value:
-        `${transcript.metadata?.id} Epoch ${transcript.metadata?.epoch}` as ReactNode,
+      label: "Source",
+      value: sourceUri,
     },
-
     {
       label: "Model",
-      value: transcript.metadata?.model as ReactNode,
+      value: transcriptModel,
     },
   ];
 
   if (status?.spec.model.model) {
     cols.push({
       label: "Scanning Model",
-      value: status.spec.model.model as ReactNode,
+      value: scanningModel,
     });
   }
+
   return cols;
 };
 
 const messageCols = (message: MessageType, status?: Status) => {
-  const cols = [
+  const cols: Column[] = [
     {
       label: "Message ID",
-      value: message.id as ReactNode,
+      value: message.id,
     },
   ];
 
   if (message.role === "assistant") {
     cols.push({
       label: "Model",
-      value: message.model as ReactNode,
+      value: message.model,
     });
     cols.push({
       label: "Tool Calls",
-      value: ((message.tool_calls as []) || []).length as ReactNode,
+      value: ((message.tool_calls as []) || []).length,
     });
   } else {
     cols.push({
       label: "Role",
-      value: message.role as ReactNode,
+      value: message.role,
     });
   }
 
   if (status?.spec.model.model) {
     cols.push({
       label: "Scanning Model",
-      value: status.spec.model.model as ReactNode,
+      value: status.spec.model.model,
     });
   }
 
   return cols;
 };
 
-const messagesCols = (messages: Messages) => {
+const messagesCols = (messages: Messages): Column[] => {
   return [
     {
       label: "Message Count",
-      value: messages.length as ReactNode,
+      value: messages.length,
     },
   ];
 };
 
-const eventCols = (event: EventType) => {
+const eventCols = (event: EventType): Column[] => {
   return [
     {
       label: "Event Type",
-      value: event.event as ReactNode,
+      value: event.event,
     },
     {
       label: "Timestamp",
-      value: new Date(event.timestamp).toLocaleString() as ReactNode,
+      value: new Date(event.timestamp).toLocaleString(),
     },
   ];
 };
 
-const eventsCols = (events: Events) => {
+const eventsCols = (events: Events): Column[] => {
   return [
     {
       label: "Event Count",
-      value: events.length as ReactNode,
+      value: events.length,
     },
   ];
+};
+
+const taskName = (
+  taskSet?: string,
+  taskId?: string | number,
+  taskRepeat?: number
+) => {
+  if (!taskSet && !taskId && taskRepeat === undefined) {
+    return "<unknown>";
+  }
+
+  const results: ReactNode[] = [
+    <span key={"task-column-task-set"}>{taskSet || "<unknown>"}</span>,
+  ];
+
+  if (taskId) {
+    results.push("/", <span key={"task-column-task-id"}>{taskId}</span>);
+  }
+  if (taskRepeat !== undefined) {
+    results.push(
+      " ",
+      <span
+        key={"task-column-task-repeat"}
+        className={clsx("text-style-secondary", "text-size-smallest")}
+      >{`(run ${taskRepeat})`}</span>
+    );
+  }
+
+  return results;
 };

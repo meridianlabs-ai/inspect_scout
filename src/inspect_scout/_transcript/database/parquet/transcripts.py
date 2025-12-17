@@ -292,7 +292,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 transcript_source_uri = row_dict.get("source_uri")
                 transcript_filename = row_dict.get("filename")
                 transcript_date = row_dict.get("date")
-                transcript_task = row_dict.get("task")
+                transcript_task_set = row_dict.get("task_set")
+                transcript_task_id = row_dict.get("task_id")
+                transcript_task_repeat = row_dict.get("task_repeat")
                 transcript_agent = row_dict.get("agent")
                 transcript_agent_args = row_dict.get("agent_args")
                 transcript_model = row_dict.get("model")
@@ -328,7 +330,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     source_id=transcript_source_id,
                     source_uri=transcript_source_uri,
                     date=transcript_date,
-                    task=transcript_task,
+                    task_set=transcript_task_set,
+                    task_id=transcript_task_id,
+                    task_repeat=transcript_task_repeat,
                     agent=transcript_agent,
                     agent_args=transcript_agent_args,
                     model=transcript_model,
@@ -411,7 +415,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 source_id=t.source_id,
                 source_uri=t.source_uri,
                 date=t.date,
-                task=t.task,
+                task_set=t.task_set,
+                task_id=t.task_id,
+                task_repeat=t.task_repeat,
                 agent=t.agent,
                 agent_args=t.agent_args,
                 model=t.model,
@@ -702,7 +708,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
             "date": transcript.date,
-            "task": transcript.task,
+            "task_set": transcript.task_set,
+            "task_id": transcript.task_id,
+            "task_repeat": transcript.task_repeat,
             "agent": transcript.agent,
             "agent_args": json.dumps(transcript.agent_args),
             "model": transcript.model,
@@ -825,7 +833,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "source_id",
             "source_uri",
             "date",
-            "task",
+            "task_set",
+            "task_id",
             "agent",
             "agent_args",
             "model",
@@ -856,12 +865,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     f"'total_time' column must be float type, got {col_type}"
                 )
 
-        if "total_tokens" in schema.names:
-            col_type = schema.field("total_tokens").type
-            if not pa.types.is_integer(col_type):
-                raise ValueError(
-                    f"'total_tokens' column must be integer type, got {col_type}"
-                )
+        optional_int_columns = ["task_repeat", "total_tokens"]
+        for col in optional_int_columns:
+            if col in schema.names:
+                col_type = schema.field(col).type
+                if not pa.types.is_integer(col_type):
+                    raise ValueError(
+                        f"'{col}' column must be integer type, got {col_type}"
+                    )
 
     def _ensure_required_columns(self, table: pa.Table) -> pa.Table:
         """Add missing optional columns as null-filled string columns.
@@ -880,7 +891,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "source_id",
             "source_uri",
             "date",
-            "task",
+            "task_set",
+            "task_id",
             "agent",
             "agent_args",
             "model",
@@ -902,6 +914,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if "total_time" not in table.column_names:
             table = table.append_column(
                 "total_time", pa.nulls(len(table), type=pa.float64())
+            )
+        if "task_repeat" not in table.column_names:
+            table = table.append_column(
+                "task_repeat", pa.nulls(len(table), type=pa.int64())
             )
         if "total_tokens" not in table.column_names:
             table = table.append_column(
@@ -1022,7 +1038,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             ("source_id", pa.string()),
             ("source_uri", pa.string()),
             ("date", pa.string()),
-            ("task", pa.string()),
+            ("task_set", pa.string()),
+            ("task_id", pa.string()),
+            ("task_repeat", pa.int64()),
             ("agent", pa.string()),
             ("agent_args", pa.string()),
             ("model", pa.string()),
@@ -1337,7 +1355,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 ''::VARCHAR AS source_uri,
                 ''::VARCHAR AS source_uri,
                 ''::VARCHAR AS date,
-                ''::VARCHAR AS task,
+                ''::VARCHAR AS task_set,
+                ''::VARCHAR AS task_id,
+                1::BIGINT AS task_repeat,
                 ''::VARCHAR AS agent,
                 ''::VARCHAR AS agent_args,
                 ''::VARCHAR AS model,

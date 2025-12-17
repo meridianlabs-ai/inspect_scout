@@ -37,12 +37,23 @@ from inspect_scout import transcripts_from, columns as c
 
 transcripts = (
     transcripts_from("./logs")
-    .where(c.task == "cybench")
+    .where(c.task_set == "cybench")
     .where(c.model.like("openai/%"))
 )
 ```
 
-See the `Column` documentation for additional details on supported filtering operations.
+See the `Columns` documentation for additional details on supported filtering operations. 
+
+``` python
+from inspect_scout import transcripts_from, log_columns as c
+
+transcripts = (
+    transcripts_from("./logs")
+    .where(c.)
+    .where(c.task_set == "cybench")
+    .where(c.model.like("openai/%"))
+)
+```
 
 You can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don't want to process all transcripts). For example:
 

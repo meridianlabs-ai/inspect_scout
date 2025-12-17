@@ -79,7 +79,7 @@ class Transcripts(abc.ABC):
     from inspect_scout import transcripts, columns as c
 
     transcripts = transcripts_from("./logs")
-    transcripts = transcripts.where(c.task == "cybench")
+    transcripts = transcripts.where(c.task_set == "cybench")
     ```
     """
 

@@ -17,8 +17,8 @@ export const ValidationResult: FC<ValidationResultProps> = ({ result }) => {
 
     return (
       <div className={clsx(styles.validationTable)}>
-        {entries.map(([_key, value]) => (
-          <div>
+        {entries.map(([key, value]) => (
+          <div key={`validation-result-${key}`}>
             <Result value={value} />
           </div>
         ))}

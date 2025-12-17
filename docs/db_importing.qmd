@@ -195,7 +195,7 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 
     transcripts = (
         transcripts_from("./logs")
-        .where(c.task == "cybench")
+        .where(c.task_set == "cybench")
         .where(c.model.like("openai/%"))
     )
 

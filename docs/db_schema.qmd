@@ -21,7 +21,11 @@ Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`)
 +-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | `date`          | string               | Optional. ISO 8601 datetime of transcript creation.                                                                                                                            |
 +-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `task`          | string               | Optional. Name of task executed by transcript (e.g. benchmark name)                                                                                                            |
+| `task_set`      | string               | Optional. Set from which transcript task was drawn (e.g. Inspect task name or benchmark name).                                                                                 |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `task_id`       | string               | Optional. Identifier for task (e.g. dataset sample id).                                                                                                                        |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `task_repeat`   | int                  | Optional. Repeat for a given task id within a task set (e.g. epoch).                                                                                                           |
 +-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | `agent`         | string               | Optional. Agent used to to execute task.                                                                                                                                       |
 +-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -62,7 +66,7 @@ Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`)
 </style>
 ```
 
-Note that field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
+Field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
 
 ### Metadata
 

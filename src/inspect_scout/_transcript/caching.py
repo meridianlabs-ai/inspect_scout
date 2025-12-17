@@ -13,7 +13,7 @@ from inspect_ai.log._file import EvalLogInfo, log_files_from_ls
 from .types import LogPaths
 
 DEFAULT_MAX_CACHE_ENTRIES = 5000
-_CACHE_VERSION = 5
+_CACHE_VERSION = 6
 _CACHE_VERSION_KEY = "__cache_version__"
 
 

@@ -54,7 +54,7 @@ async with transcripts_db("./transcripts") as db:
     # filter transcripts from our global log archive
     transcripts = (
         transcripts_from("s3://inspect-log-archive")
-        .where(c.task == "cybench")
+        .where(c.task_set == "cybench")
         .where(c.model.like("openai/%"))
     )
 

@@ -50,15 +50,6 @@ export interface Model {
   args: Record<string, unknown>;
 }
 
-export interface Transcript {
-  type: string;
-  location?: string;
-  transcript_ids: Record<string, string | null>;
-
-  // deprecated value for compatibility with old scans
-  count?: number;
-}
-
 export interface ScanSpec {
   scan_file?: string;
   scan_id: string;
@@ -74,7 +65,14 @@ export interface ScanSpec {
   revision?: Record<string, unknown>;
 
   scanners: Record<string, Scanner>;
-  transcripts?: Transcript;
+  transcripts?: {
+    type: string;
+    location?: string;
+    transcript_ids: Record<string, string | null>;
+
+    // deprecated value for compatibility with old scans
+    count?: number;
+  };
 }
 
 export interface Scanner {
@@ -110,12 +108,16 @@ export type ChatMessage =
   | ChatMessageAssistant
   | ChatMessageTool;
 
-export interface Transcript {
+export interface TranscriptInfo {
   id: string;
   source_id: string;
-  source_url: string;
+  source_uri: string;
+  source_type: string;
+  filename?: string;
   date?: string;
-  task?: string;
+  task_set?: string;
+  task_id?: string;
+  task_repeat?: number;
   agent?: string;
   agent_args?: string;
   model?: string;
@@ -126,11 +128,18 @@ export interface Transcript {
   error?: string;
   limit?: string;
   metadata: TranscriptMetadata;
+}
+
+export interface Transcript extends TranscriptInfo {
   messages: ChatMessages;
   events: Events;
 }
 
 export interface TranscriptMetadata {
+  // These fields are only left here as optional for backwards compatbility
+  // for scans which were run before these fields were added to the Transcript data itself
+  // we will still scrounge around for them if we can't resolve them from
+  // the Transcript directly
   sample_id?: string;
   id?: string | number;
   epoch?: number;

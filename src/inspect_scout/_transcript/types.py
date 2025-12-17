@@ -57,8 +57,14 @@ class TranscriptInfo(BaseModel):
     date: str | None = Field(default=None)
     """Date/time when the transcript was created."""
 
-    task: str | None = Field(default=None)
-    """Name of task executed by transcript (e.g. benchmark name)."""
+    task_set: str | None = Field(default=None)
+    """Set from which transcript task was drawn (e.g. benchmark name)."""
+
+    task_id: str | None = Field(default=None)
+    """Identifier for task (e.g. dataset sample id)."""
+
+    task_repeat: int | None = Field(default=None)
+    """Repeat for a given task id within a task set (e.g. epoch)."""
 
     agent: str | None = Field(default=None)
     """Agent used to to execute task.."""
@@ -109,7 +115,9 @@ RESERVED_COLUMNS = {
     "source_id",
     "source_uri",
     "date",
-    "task",
+    "task_set",
+    "task_id",
+    "task_repeat",
     "agent",
     "agent_args",
     "model",

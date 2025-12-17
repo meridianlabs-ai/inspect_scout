@@ -342,6 +342,17 @@ export const useScanResultData = (
           }
         };
 
+        const transcript_agent_args_raw = getOptionalColumn<string>(
+          filtered,
+          "transcript_agent_args",
+          0
+        );
+        const transcript_score_raw = getOptionalColumn<string>(
+          filtered,
+          "transcript_score",
+          0
+        );
+
         const [
           eventReferences,
           inputIds,
@@ -372,8 +383,12 @@ export const useScanResultData = (
           parse(filtered.get("validation_result", 0) as string),
           parse(filtered.get("validation_target", 0) as string),
           simpleValue(filtered.get("value", 0), valueType),
-          parse(filtered.get("transcript_agent_args", 0) as string),
-          parse(filtered.get("transcript_score", 0) as string),
+          transcript_agent_args_raw
+            ? parse(transcript_agent_args_raw)
+            : Promise.resolve(undefined),
+          transcript_score_raw
+            ? parse(transcript_score_raw)
+            : Promise.resolve(undefined),
         ]);
 
         if (cancelled) {

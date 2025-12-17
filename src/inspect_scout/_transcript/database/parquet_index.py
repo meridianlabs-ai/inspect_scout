@@ -1,0 +1,742 @@
+"""Parquet index management for efficient transcript queries.
+
+This module provides standalone functions for managing index files that
+enable fast metadata queries without scanning all data files. Index files
+are stored in an `_index/` directory with two types:
+
+- Incremental index files: `index_<timestamp>_<uuid>.idx` (or `.enc.idx` if encrypted)
+  Written during insert operations, one per batch.
+
+- Compacted manifests: `_manifest_<timestamp>.idx` (or `.enc.idx` if encrypted)
+  Written during compaction, consolidates multiple index files.
+
+The discovery priority ensures concurrent operations work correctly:
+1. If any `_manifest_*.idx` exists, use the newest one
+2. Also include any `index_*.idx` files newer than that manifest
+3. If no manifest exists, use all `index_*.idx` files
+
+Encryption status is determined by file extensions (`.enc.idx` vs `.idx`),
+mirroring the `.enc.parquet` vs `.parquet` pattern for data files.
+"""
+
+import glob
+import re
+import tempfile
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from logging import getLogger
+from pathlib import Path
+
+import duckdb
+import pyarrow as pa
+import pyarrow.parquet as pq
+from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.file import filesystem
+
+from .encryption import (
+    ENCRYPTION_KEY_ENV,
+    ENCRYPTION_KEY_NAME,
+    get_encryption_key_from_env,
+)
+
+logger = getLogger(__name__)
+
+# Index directory and file patterns
+INDEX_DIR = "_index"
+INCREMENTAL_PREFIX = "index_"
+MANIFEST_PREFIX = "_manifest_"
+INDEX_EXTENSION = ".idx"
+ENCRYPTED_INDEX_EXTENSION = ".enc.idx"
+
+# Timestamp format used in filenames (must sort correctly as strings)
+TIMESTAMP_FORMAT = "%Y%m%dT%H%M%S"
+
+# Regex patterns for extracting timestamps from filenames
+# UUID part allows any alphanumeric (actual UUIDs are hex, but be permissive for testing)
+# These patterns match both encrypted (.enc.idx) and unencrypted (.idx) files
+INCREMENTAL_PATTERN = re.compile(r"index_(\d{8}T\d{6})_[a-zA-Z0-9]+(?:\.enc)?\.idx$")
+MANIFEST_PATTERN = re.compile(r"_manifest_(\d{8}T\d{6})(?:\.enc)?\.idx$")
+
+
+@dataclass
+class IndexStorage:
+    """Storage configuration for index operations.
+
+    Use the async `create()` classmethod to construct with automatic
+    encryption detection from existing files.
+
+    Example:
+        storage = await IndexStorage.create(location="/path/to/db")
+        # storage.is_encrypted is correctly set based on existing files
+    """
+
+    location: str
+    fs: AsyncFilesystem | None = None
+    is_encrypted: bool = False
+
+    @classmethod
+    async def create(
+        cls,
+        location: str,
+        fs: AsyncFilesystem | None = None,
+    ) -> "IndexStorage":
+        """Create IndexStorage with encryption status auto-detected.
+
+        Checks index files first, then data files if no index exists.
+        If encrypted files are detected, validates that the encryption key
+        is available in the environment.
+
+        Args:
+            location: Path to the database directory.
+            fs: Optional async filesystem for remote storage.
+
+        Returns:
+            Configured IndexStorage with is_encrypted set appropriately.
+
+        Raises:
+            ValueError: If files have mixed encryption status, or if
+                encrypted files exist but no encryption key is available.
+        """
+        storage = cls(location=location, fs=fs, is_encrypted=False)
+        is_encrypted = await storage._detect_encryption()
+
+        if is_encrypted:
+            # Validate encryption key is available
+            key = get_encryption_key_from_env()
+            if not key:
+                raise ValueError(
+                    "Encrypted files detected but no encryption key provided. "
+                    f"Set {ENCRYPTION_KEY_ENV} environment variable."
+                )
+
+        return cls(location=location, fs=fs, is_encrypted=is_encrypted)
+
+    def is_remote(self) -> bool:
+        """Check if storage location is remote (S3 or HuggingFace)."""
+        return self.location.startswith("s3://") or self.location.startswith("hf://")
+
+    def index_dir_path(self) -> str:
+        """Get path to the _index directory."""
+        return f"{self.location.rstrip('/')}/{INDEX_DIR}"
+
+    def index_extension(self) -> str:
+        """Get the appropriate index file extension based on encryption status."""
+        return ENCRYPTED_INDEX_EXTENSION if self.is_encrypted else INDEX_EXTENSION
+
+    async def _detect_encryption(self) -> bool:
+        """Detect encryption status from existing files."""
+        # First check index files
+        index_dir = self.index_dir_path()
+
+        if self.is_remote():
+            fs = filesystem(self.location)
+            try:
+                all_files = fs.ls(index_dir, recursive=False)
+                idx_files = [f.name for f in all_files if _is_index_file(f.name)]
+            except FileNotFoundError:
+                idx_files = []
+        else:
+            index_path = Path(index_dir)
+            if index_path.exists():
+                idx_files = [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
+            else:
+                idx_files = []
+
+        # Check index file encryption status
+        is_encrypted = _check_index_encryption_status(idx_files)
+
+        # If no index files, check data files
+        if is_encrypted is None:
+            data_files = await _discover_data_files_internal(self)
+            is_encrypted = _check_data_encryption_status(data_files)
+
+        # Default to False if no files exist
+        return is_encrypted if is_encrypted is not None else False
+
+
+@dataclass
+class CompactionResult:
+    """Result of a compaction operation."""
+
+    index_files_merged: int
+    index_files_deleted: int
+    orphaned_files_deleted: int
+    new_index_path: str
+
+
+def _is_encrypted_index_file(filename: str) -> bool:
+    """Check if an index file is encrypted based on its extension."""
+    return filename.endswith(ENCRYPTED_INDEX_EXTENSION)
+
+
+def _is_index_file(filename: str) -> bool:
+    """Check if a file is an index file (encrypted or not)."""
+    return filename.endswith(INDEX_EXTENSION)  # Matches both .idx and .enc.idx
+
+
+def _extract_timestamp(filename: str) -> str | None:
+    """Extract timestamp from an index filename.
+
+    Args:
+        filename: Index filename (path or just filename).
+
+    Returns:
+        Timestamp string (e.g., "20250101T120000") or None if not matched.
+    """
+    basename = Path(filename).name
+
+    # Try incremental pattern first
+    match = INCREMENTAL_PATTERN.search(basename)
+    if match:
+        return match.group(1)
+
+    # Try manifest pattern
+    match = MANIFEST_PATTERN.search(basename)
+    if match:
+        return match.group(1)
+
+    return None
+
+
+def _generate_timestamp() -> str:
+    """Generate current UTC timestamp for filenames."""
+    return datetime.now(timezone.utc).strftime(TIMESTAMP_FORMAT)
+
+
+def _generate_manifest_filename(encrypted: bool = False) -> str:
+    """Generate filename for a compacted manifest file."""
+    timestamp = _generate_timestamp()
+    ext = ENCRYPTED_INDEX_EXTENSION if encrypted else INDEX_EXTENSION
+    return f"{MANIFEST_PREFIX}{timestamp}{ext}"
+
+
+def _get_encryption_key(storage: IndexStorage) -> str:
+    """Get encryption key from environment, raising if not available.
+
+    Args:
+        storage: Storage configuration with is_encrypted flag.
+
+    Returns:
+        The encryption key.
+
+    Raises:
+        ValueError: If encrypted but no key available.
+    """
+    if not storage.is_encrypted:
+        raise ValueError("Cannot get encryption key for non-encrypted storage")
+
+    key = get_encryption_key_from_env()
+    if not key:
+        raise ValueError(
+            "Encrypted index detected but no encryption key provided. "
+            f"Set {ENCRYPTION_KEY_ENV} environment variable."
+        )
+    return key
+
+
+def _setup_encryption(
+    conn: duckdb.DuckDBPyConnection,
+    storage: IndexStorage,
+) -> str:
+    """Setup encryption key and return config string for read_parquet.
+
+    Args:
+        conn: DuckDB connection to register the key with.
+        storage: Storage configuration with is_encrypted flag.
+
+    Returns:
+        Encryption config string for read_parquet (empty if not encrypted).
+    """
+    if not storage.is_encrypted:
+        return ""
+
+    key = _get_encryption_key(storage)
+    conn.execute(f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')")
+    return f", encryption_config={{footer_key: '{ENCRYPTION_KEY_NAME}'}}"
+
+
+def _check_index_encryption_status(index_files: list[str]) -> bool | None:
+    """Check encryption status of index files and validate consistency.
+
+    Args:
+        index_files: List of index file paths.
+
+    Returns:
+        True if all encrypted, False if all unencrypted, None if empty list.
+
+    Raises:
+        ValueError: If index contains mixed encrypted and unencrypted files.
+    """
+    if not index_files:
+        return None
+
+    encrypted_count = sum(1 for f in index_files if _is_encrypted_index_file(f))
+    unencrypted_count = len(index_files) - encrypted_count
+
+    if encrypted_count > 0 and unencrypted_count > 0:
+        raise ValueError(
+            f"Index contains mixed encrypted ({encrypted_count}) and "
+            f"unencrypted ({unencrypted_count}) index files. "
+            "All index files must be either encrypted or unencrypted."
+        )
+
+    return encrypted_count > 0
+
+
+def _check_data_encryption_status(data_files: list[str]) -> bool | None:
+    """Check encryption status of data files and validate consistency.
+
+    Args:
+        data_files: List of data file paths.
+
+    Returns:
+        True if all encrypted, False if all unencrypted, None if empty list.
+
+    Raises:
+        ValueError: If database contains mixed encrypted and unencrypted files.
+    """
+    if not data_files:
+        return None
+
+    encrypted_count = sum(1 for f in data_files if f.endswith(".enc.parquet"))
+    unencrypted_count = len(data_files) - encrypted_count
+
+    if encrypted_count > 0 and unencrypted_count > 0:
+        raise ValueError(
+            f"Database contains mixed encrypted ({encrypted_count}) and "
+            f"unencrypted ({unencrypted_count}) parquet files. "
+            "All files must be either encrypted or unencrypted."
+        )
+
+    return encrypted_count > 0
+
+
+async def _discover_data_files_internal(storage: IndexStorage) -> list[str]:
+    """Internal helper to discover data files without encryption detection."""
+    if storage.is_remote():
+        fs = filesystem(storage.location)
+        all_files = fs.ls(storage.location, recursive=True)
+        return [
+            f.name
+            for f in all_files
+            if f.name.endswith(".parquet") and f"/{INDEX_DIR}/" not in f.name
+        ]
+    else:
+        location_path = Path(storage.location)
+        if not location_path.exists():
+            return []
+
+        all_parquet = glob.glob(str(location_path / "**" / "*.parquet"), recursive=True)
+        return [
+            p
+            for p in all_parquet
+            if f"/{INDEX_DIR}/" not in p and f"\\{INDEX_DIR}\\" not in p
+        ]
+
+
+async def discover_index_files(storage: IndexStorage) -> list[str]:
+    """Find index files in _index/ directory.
+
+    Implements discovery priority for handling concurrent operations:
+    1. If any _manifest_*.idx exists, use the newest one
+    2. Also include any index_*.idx files NEWER than that manifest
+    3. If no manifest exists, use all index_*.idx files
+
+    Args:
+        storage: Storage configuration.
+
+    Returns:
+        List of index file paths to use.
+
+    Raises:
+        ValueError: If index contains mixed encrypted and unencrypted files.
+    """
+    index_dir = storage.index_dir_path()
+
+    if storage.is_remote():
+        # Remote storage: use filesystem listing
+        fs = filesystem(storage.location)
+        try:
+            all_files = fs.ls(index_dir, recursive=False)
+        except FileNotFoundError:
+            # Index directory doesn't exist yet
+            return []
+        all_idx_files = [f.name for f in all_files if _is_index_file(f.name)]
+    else:
+        # Local storage: use glob for both extensions
+        index_path = Path(index_dir)
+        if not index_path.exists():
+            return []
+        all_idx_files = [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
+
+    if not all_idx_files:
+        return []
+
+    # Validate encryption status consistency (raises if mixed)
+    _check_index_encryption_status(all_idx_files)
+
+    # Separate manifests from incremental files
+    manifest_files = [
+        f for f in all_idx_files if Path(f).name.startswith(MANIFEST_PREFIX)
+    ]
+    incremental_files = [
+        f for f in all_idx_files if Path(f).name.startswith(INCREMENTAL_PREFIX)
+    ]
+
+    if not manifest_files:
+        # No manifest - use all incremental files
+        return sorted(incremental_files)
+
+    # Use newest manifest (sorted by filename = sorted by timestamp)
+    newest_manifest = sorted(manifest_files)[-1]
+    manifest_ts = _extract_timestamp(newest_manifest)
+
+    if manifest_ts is None:
+        # Shouldn't happen, but fall back to just using manifest
+        return [newest_manifest]
+
+    # Include incremental files NEWER than the manifest
+    # This handles the case where insert happens after compaction starts
+    newer_incrementals = []
+    for f in incremental_files:
+        inc_ts = _extract_timestamp(f)
+        if inc_ts and inc_ts > manifest_ts:
+            newer_incrementals.append(f)
+
+    return [newest_manifest] + sorted(newer_incrementals)
+
+
+async def discover_data_files(storage: IndexStorage) -> list[str]:
+    """Find all .parquet data files (excluding _index/).
+
+    Args:
+        storage: Storage configuration.
+
+    Returns:
+        List of data file paths.
+
+    Raises:
+        ValueError: If database contains mixed encrypted and unencrypted files.
+    """
+    data_files = await _discover_data_files_internal(storage)
+
+    # Validate encryption status consistency (raises if mixed)
+    if data_files:
+        _check_data_encryption_status(data_files)
+
+    return data_files
+
+
+async def register_index_table(
+    conn: duckdb.DuckDBPyConnection,
+    storage: IndexStorage,
+    table_name: str = "transcript_index",
+) -> int:
+    """Register index files as a DuckDB table for querying.
+
+    Creates a TABLE from index files using union_by_name.
+    This is the primary entry point for read operations.
+
+    After calling, SQL queries work directly:
+        SELECT * FROM transcript_index WHERE task = 'gaia'
+        SELECT COUNT(*) FROM transcript_index WHERE model LIKE '%claude%'
+
+    Args:
+        conn: DuckDB connection.
+        storage: Storage configuration.
+        table_name: Name for the created table.
+
+    Returns:
+        Row count (0 if no index files found).
+
+    Raises:
+        duckdb.Error: If index files are corrupted or unreadable.
+        ValueError: If encrypted but no encryption key available.
+    """
+    idx_files = await discover_index_files(storage)
+
+    if not idx_files:
+        # No index files - create empty table
+        conn.execute(f"""
+            CREATE TABLE {table_name} AS
+            SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
+            WHERE FALSE
+        """)
+        return 0
+
+    # Build file list for read_parquet
+    if len(idx_files) == 1:
+        file_pattern = f"'{idx_files[0]}'"
+    else:
+        file_pattern = "[" + ", ".join(f"'{p}'" for p in idx_files) + "]"
+
+    # Setup encryption if needed (discover_index_files sets storage.is_encrypted)
+    enc_config = _setup_encryption(conn, storage)
+
+    # Create table from index files
+    # Note: We don't catch exceptions here - corrupted files should fail loudly
+    conn.execute(f"""
+        CREATE TABLE {table_name} AS
+        SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
+    """)
+
+    # Return row count
+    result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+    return result[0] if result else 0
+
+
+# --- Write Operations ---
+
+
+async def write_index_file(
+    table: pa.Table,
+    storage: IndexStorage,
+    filename: str,
+) -> str:
+    """Write index file to _index/ directory.
+
+    Args:
+        table: PyArrow table containing index data.
+        storage: Storage configuration.
+        filename: Name for the index file (without directory prefix).
+
+    Returns:
+        Full path to the written file.
+    """
+    index_dir = storage.index_dir_path()
+    full_path = f"{index_dir}/{filename}"
+
+    if storage.is_remote():
+        # Remote storage: write to temp file then upload
+        with tempfile.NamedTemporaryFile(
+            suffix=storage.index_extension(), delete=False
+        ) as tmp_file:
+            tmp_path = tmp_file.name
+
+        try:
+            _write_parquet_table(table, tmp_path, storage)
+
+            # Upload to remote
+            assert storage.fs is not None, "AsyncFilesystem required for remote storage"
+            await storage.fs.write_file(full_path, Path(tmp_path).read_bytes())
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+    else:
+        # Local storage: write directly
+        output_path = Path(full_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        _write_parquet_table(table, str(output_path), storage)
+
+    return full_path
+
+
+async def create_index(
+    conn: duckdb.DuckDBPyConnection,
+    storage: IndexStorage,
+) -> str | None:
+    """Create or rebuild index from existing parquet files.
+
+    Scans all .parquet data files, extracts metadata (excluding
+    messages/events), and writes a complete manifest file. Handles both:
+    - Databases with no index (full build)
+    - Databases with partial index (rebuild)
+
+    The index will be encrypted if the data files are encrypted.
+
+    Args:
+        conn: DuckDB connection.
+        storage: Storage configuration.
+
+    Returns:
+        Path to created index file, or None if no data files exist.
+    """
+    data_files = await discover_data_files(storage)
+
+    if not data_files:
+        # Empty database - nothing to index
+        return None
+
+    # Build file list for read_parquet
+    if len(data_files) == 1:
+        file_pattern = f"'{data_files[0]}'"
+    else:
+        file_pattern = "[" + ", ".join(f"'{p}'" for p in data_files) + "]"
+
+    # Setup encryption if needed (discover_data_files sets storage.is_encrypted)
+    enc_config = _setup_encryption(conn, storage)
+
+    # Read all metadata from data files, excluding messages/events
+    # First, get the schema to know which columns exist
+    schema_result = conn.execute(
+        f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config}))"
+    ).fetchall()
+    all_columns = {row[0] for row in schema_result}
+
+    # Build exclude clause for messages/events if they exist
+    exclude_columns = [c for c in ["messages", "events"] if c in all_columns]
+    exclude_clause = (
+        f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
+    )
+
+    # Read metadata into Arrow table
+    result = conn.execute(f"""
+        SELECT *{exclude_clause}
+        FROM read_parquet({file_pattern}, union_by_name=true, filename=true{enc_config})
+    """).fetch_arrow_table()
+
+    # Write as manifest file (this is a full rebuild, so use manifest naming)
+    filename = _generate_manifest_filename(encrypted=storage.is_encrypted)
+    return await write_index_file(result, storage, filename)
+
+
+async def compact_index(
+    conn: duckdb.DuckDBPyConnection,
+    storage: IndexStorage,
+    delete_orphaned_data: bool = True,
+) -> CompactionResult:
+    """Compact multiple index files into one and clean up orphans.
+
+    Steps:
+    1. Read all index files into merged manifest
+    2. Write single compacted manifest file
+    3. (Only after success) Delete old index files
+    4. (Only after success) Find and delete orphaned data files
+
+    Args:
+        conn: DuckDB connection.
+        storage: Storage configuration.
+        delete_orphaned_data: Whether to delete orphaned data files.
+
+    Returns:
+        CompactionResult with stats about files merged/deleted.
+    """
+    idx_files = await discover_index_files(storage)
+
+    if not idx_files:
+        # No index files at all
+        return CompactionResult(
+            index_files_merged=0,
+            index_files_deleted=0,
+            orphaned_files_deleted=0,
+            new_index_path="",
+        )
+
+    # Load all index files into a single table
+    if len(idx_files) == 1:
+        file_pattern = f"'{idx_files[0]}'"
+    else:
+        file_pattern = "[" + ", ".join(f"'{p}'" for p in idx_files) + "]"
+
+    # Setup encryption if needed (discover_index_files sets storage.is_encrypted)
+    enc_config = _setup_encryption(conn, storage)
+
+    merged_table = conn.execute(f"""
+        SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
+    """).fetch_arrow_table()
+
+    # Write compacted manifest (even if only 1 file - converts incremental to manifest)
+    new_filename = _generate_manifest_filename(encrypted=storage.is_encrypted)
+    new_path = await write_index_file(merged_table, storage, new_filename)
+
+    # Delete old index files (only after successful write)
+    deleted_idx_count = 0
+    for old_file in idx_files:
+        try:
+            await _delete_file(storage, old_file)
+            deleted_idx_count += 1
+        except Exception as e:
+            logger.warning(f"Failed to delete old index file {old_file}: {e}")
+
+    # Find and delete orphaned data files
+    orphaned_deleted = 0
+    if delete_orphaned_data:
+        data_files = await discover_data_files(storage)
+        orphaned = _find_orphaned_data_files(data_files, merged_table)
+        for orphan in orphaned:
+            try:
+                await _delete_file(storage, orphan)
+                orphaned_deleted += 1
+            except Exception as e:
+                logger.warning(f"Failed to delete orphaned file {orphan}: {e}")
+
+    return CompactionResult(
+        index_files_merged=len(idx_files),
+        index_files_deleted=deleted_idx_count,
+        orphaned_files_deleted=orphaned_deleted,
+        new_index_path=new_path,
+    )
+
+
+def _write_parquet_table(
+    table: pa.Table,
+    path: str,
+    storage: IndexStorage,
+) -> None:
+    """Write PyArrow table to Parquet with standard settings.
+
+    Uses DuckDB to write encrypted parquet when encryption is enabled.
+
+    Args:
+        table: PyArrow table to write.
+        path: Destination file path.
+        storage: Storage configuration with is_encrypted flag.
+    """
+    if storage.is_encrypted:
+        # Use DuckDB to write encrypted parquet
+        key = _get_encryption_key(storage)
+        conn = duckdb.connect()
+        try:
+            conn.execute(f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')")
+            # Register the PyArrow table and write with encryption
+            conn.register("source_table", table)
+            conn.execute(
+                f"COPY source_table TO '{path}' "
+                f"(FORMAT PARQUET, COMPRESSION 'zstd', "
+                f"ENCRYPTION_CONFIG {{footer_key: '{ENCRYPTION_KEY_NAME}'}})"
+            )
+        finally:
+            conn.close()
+    else:
+        # Write unencrypted using PyArrow
+        pq.write_table(
+            table,
+            path,
+            compression="zstd",
+            use_dictionary=True,
+            write_statistics=True,
+        )
+
+
+async def _delete_file(storage: IndexStorage, path: str) -> None:
+    """Delete a file from storage.
+
+    Args:
+        storage: Storage configuration.
+        path: Path to the file to delete.
+    """
+    if storage.is_remote():
+        fs = filesystem(storage.location)
+        fs.rm(path)
+    else:
+        Path(path).unlink(missing_ok=True)
+
+
+def _find_orphaned_data_files(
+    data_files: list[str],
+    manifest: pa.Table,
+) -> list[str]:
+    """Find data files not referenced in manifest.
+
+    Args:
+        data_files: List of all data file paths.
+        manifest: Arrow table with 'filename' column.
+
+    Returns:
+        List of data files not referenced in manifest.
+    """
+    if "filename" not in manifest.column_names:
+        # No filename column - can't determine orphans
+        return []
+
+    referenced_files = set(manifest.column("filename").to_pylist())
+    return [f for f in data_files if f not in referenced_files]

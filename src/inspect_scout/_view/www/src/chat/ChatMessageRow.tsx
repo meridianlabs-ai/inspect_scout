@@ -173,6 +173,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
     return views.map((view, idx) => {
       return (
         <div
+          key={`chat-message-row-unlabeled-${index}-part-${idx}`}
           className={clsx(
             styles.container,
             idx === 0 ? styles.first : undefined,

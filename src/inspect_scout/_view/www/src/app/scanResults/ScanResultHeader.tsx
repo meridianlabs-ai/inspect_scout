@@ -217,15 +217,18 @@ const taskName = (taskSet?: string, taskId?: string, taskRepeat?: number) => {
     return "<unknown>";
   }
 
-  const results: ReactNode[] = [<span>{taskSet || "<unknown>"}</span>];
+  const results: ReactNode[] = [
+    <span key={"task-column-task-set"}>{taskSet || "<unknown>"}</span>,
+  ];
 
   if (taskId) {
-    results.push("/", <span>{taskId}</span>);
+    results.push("/", <span key={"task-column-task-id"}>{taskId}</span>);
   }
   if (taskRepeat !== undefined) {
     results.push(
       " ",
       <span
+        key={"task-column-task-repeat"}
         className={clsx("text-style-secondary", "text-size-smallest")}
       >{`(run ${taskRepeat})`}</span>
     );

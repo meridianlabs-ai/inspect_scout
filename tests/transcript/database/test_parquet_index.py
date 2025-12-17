@@ -547,6 +547,42 @@ class TestCreateIndex:
 
         assert path is None
 
+    @pytest.mark.asyncio
+    async def test_create_index_cleans_up_all_old_index_files(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Cleans up ALL old index files, including orphaned ones."""
+        location = Path(storage.location)
+        index_dir = location / INDEX_DIR
+        index_dir.mkdir(parents=True)
+
+        # Create data file
+        create_sample_data_file(location / "data.parquet", ["t1"])
+
+        # Create various old index files:
+        # 1. A manifest that would be discovered
+        table1 = create_sample_index_table(["t1"], ["data.parquet"])
+        await append_index(table1, storage, "_manifest_20250101T100000.idx")
+
+        # 2. An older manifest that would be orphaned (not discovered)
+        (index_dir / "_manifest_20250101T080000.idx").touch()
+
+        # 3. An older incremental that would be orphaned
+        (index_dir / "index_20250101T090000_old.idx").touch()
+
+        # Verify we have 3 index files before
+        idx_files_before = list(index_dir.glob("*.idx"))
+        assert len(idx_files_before) == 3
+
+        # Run create_index
+        new_path = await create_index(conn, storage)
+
+        # Verify only the new manifest remains
+        idx_files_after = list(index_dir.glob("*.idx"))
+        assert len(idx_files_after) == 1
+        assert idx_files_after[0].name.startswith("_manifest_")
+        assert str(idx_files_after[0]) == new_path
+
 
 # --- Maintenance Tests ---
 
@@ -674,3 +710,41 @@ class TestCompactIndex:
         # Schema merged (union_by_name)
         assert "task" in table.column_names
         assert "new_field" in table.column_names
+
+    @pytest.mark.asyncio
+    async def test_compact_index_cleans_up_all_old_index_files(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Cleans up ALL old index files, including orphaned ones."""
+        location = Path(storage.location)
+        index_dir = location / INDEX_DIR
+        index_dir.mkdir(parents=True)
+
+        # Create a valid manifest (newest - will be discovered)
+        table1 = create_sample_index_table(["t1"], ["data1.parquet"])
+        await append_index(table1, storage, "_manifest_20250101T100000.idx")
+
+        # Create a valid incremental newer than manifest (will be discovered)
+        table2 = create_sample_index_table(["t2"], ["data2.parquet"])
+        await append_index(table2, storage, "index_20250101T110000_b.idx")
+
+        # Create orphaned files (older than newest manifest, won't be discovered)
+        # These are empty files - they would cause errors if read, proving they're skipped
+        (index_dir / "_manifest_20250101T050000.idx").touch()  # Old manifest
+        (index_dir / "index_20250101T060000_old.idx").touch()  # Old incremental
+
+        # Verify we have 4 index files before
+        idx_files_before = list(index_dir.glob("*.idx"))
+        assert len(idx_files_before) == 4
+
+        # Run compact_index - should succeed (only reads valid files)
+        result = await compact_index(conn, storage, delete_orphaned_data=False)
+
+        # Verify only the new manifest remains
+        idx_files_after = list(index_dir.glob("*.idx"))
+        assert len(idx_files_after) == 1
+        assert idx_files_after[0].name.startswith("_manifest_")
+        assert str(idx_files_after[0]) == result.new_index_path
+
+        # All 4 old files should have been deleted
+        assert result.index_files_deleted == 4

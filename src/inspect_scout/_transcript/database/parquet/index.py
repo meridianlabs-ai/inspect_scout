@@ -109,7 +109,7 @@ async def compact_index(
     Steps:
     1. Read all index files into merged manifest
     2. Write single compacted manifest file
-    3. (Only after success) Delete old index files
+    3. (Only after success) Delete ALL old index files
     4. (Only after success) Find and delete orphaned data files
 
     Args:
@@ -120,7 +120,10 @@ async def compact_index(
     Returns:
         CompactionResult with stats about files merged/deleted.
     """
+    # Use discovery for reading (gets the right files to merge)
     idx_files = await _discover_index_files(storage)
+    # List ALL files for cleanup (includes orphaned older files)
+    all_idx_files = await _list_all_index_files(storage)
 
     if not idx_files:
         # No index files at all
@@ -148,9 +151,9 @@ async def compact_index(
     new_filename = _generate_manifest_filename(encrypted=storage.is_encrypted)
     new_path = await append_index(merged_table, storage, new_filename)
 
-    # Delete old index files (only after successful write)
+    # Delete ALL old index files (only after successful write)
     deleted_idx_count = 0
-    for old_file in idx_files:
+    for old_file in all_idx_files:
         try:
             await _delete_file(storage, old_file)
             deleted_idx_count += 1
@@ -188,6 +191,9 @@ async def create_index(
     - Databases with no index (full build)
     - Databases with partial index (rebuild)
 
+    After successfully writing the new index, any existing index files
+    are deleted. This ensures corrupted or partial indexes are cleaned up.
+
     The index will be encrypted if the data files are encrypted.
 
     Args:
@@ -197,6 +203,9 @@ async def create_index(
     Returns:
         Path to created index file, or None if no data files exist.
     """
+    # List ALL existing index files before creating new one (for cleanup)
+    existing_idx_files = await _list_all_index_files(storage)
+
     data_files = await _discover_data_files(storage)
 
     if not data_files:
@@ -233,7 +242,16 @@ async def create_index(
 
     # Write as manifest file (this is a full rebuild, so use manifest naming)
     filename = _generate_manifest_filename(encrypted=storage.is_encrypted)
-    return await append_index(result, storage, filename)
+    new_path = await append_index(result, storage, filename)
+
+    # Delete old index files (only after successful write)
+    for old_file in existing_idx_files:
+        try:
+            await _delete_file(storage, old_file)
+        except Exception as e:
+            logger.warning(f"Failed to delete old index file {old_file}: {e}")
+
+    return new_path
 
 
 async def init_index_table(
@@ -364,6 +382,34 @@ async def _discover_index_files(storage: IndexStorage) -> list[str]:
             newer_incrementals.append(f)
 
     return [newest_manifest] + sorted(newer_incrementals)
+
+
+async def _list_all_index_files(storage: IndexStorage) -> list[str]:
+    """List ALL index files in _index/ directory (no priority filtering).
+
+    Unlike _discover_index_files(), this returns every .idx file,
+    used for cleanup operations like create_index().
+
+    Args:
+        storage: Storage configuration.
+
+    Returns:
+        List of all index file paths.
+    """
+    index_dir = storage.index_dir_path()
+
+    if storage.is_remote():
+        fs = filesystem(storage.location)
+        try:
+            all_files = fs.ls(index_dir, recursive=False)
+        except FileNotFoundError:
+            return []
+        return [f.name for f in all_files if _is_index_file(f.name)]
+    else:
+        index_path = Path(index_dir)
+        if not index_path.exists():
+            return []
+        return [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
 
 
 async def _discover_data_files(storage: IndexStorage) -> list[str]:

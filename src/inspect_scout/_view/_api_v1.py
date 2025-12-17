@@ -6,7 +6,7 @@ from typing import Iterable, Literal, TypeVar
 import pandas as pd
 import pyarrow as pa
 import pyarrow.ipc as pa_ipc
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import (
@@ -92,15 +92,15 @@ def df_to_ipc(df: pd.DataFrame) -> IPCDataFrame:
     )
 
 
-# TODO: Move this into _api_v1.py once we're happy that we haven't broken it
-def v1_api_router(
+def v1_api_app(
     mapping_policy: FileMappingPolicy | None = None,
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
-) -> APIRouter:
-    router = APIRouter(tags=["v1"], deprecated=True)
+) -> FastAPI:
+    """Create V1 API FastAPI app (deprecated)."""
+    app = FastAPI()
 
     async def _map_file(request: Request, file: str) -> str:
         if mapping_policy is not None:
@@ -139,7 +139,7 @@ def v1_api_router(
             )
         return value
 
-    @router.get("/scans")
+    @app.get("/scans")
     async def scans(
         request: Request,
         query_results_dir: str | None = Query(None, alias="results_dir"),
@@ -157,7 +157,7 @@ def v1_api_router(
             media_type="application/json",
         )
 
-    @router.get("/scanner_df_input/{scan:path}")
+    @app.get("/scanner_df_input/{scan:path}")
     async def scanner_input(
         request: Request,
         scan: str,
@@ -212,7 +212,7 @@ def v1_api_router(
             headers={"X-Input-Type": input_type or ""},
         )
 
-    @router.get("/scanner_df/{scan:path}")
+    @app.get("/scanner_df/{scan:path}")
     async def scan_df(
         request: Request,
         scan: str,
@@ -286,7 +286,7 @@ def v1_api_router(
             media_type="application/vnd.apache.arrow.stream; codecs=lz4",
         )
 
-    @router.get("/scan/{scan:path}")
+    @app.get("/scan/{scan:path}")
     async def scan(
         request: Request,
         scan: str,
@@ -325,7 +325,7 @@ def v1_api_router(
             content=status, media_type="application/json"
         )
 
-    @router.get("/scan-delete/{scan:path}")
+    @app.get("/scan-delete/{scan:path}")
     async def scan_delete(request: Request, scan: str) -> Response:
         # convert to absolute path
         scan_path = UPath(await _map_file(request, scan))
@@ -342,4 +342,4 @@ def v1_api_router(
 
         return InspectPydanticJSONResponse(content=True, media_type="application/json")
 
-    return router
+    return app

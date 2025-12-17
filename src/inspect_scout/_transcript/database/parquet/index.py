@@ -22,7 +22,6 @@ mirroring the `.enc.parquet` vs `.parquet` pattern for data files.
 import glob
 import re
 import tempfile
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
@@ -30,308 +29,32 @@ from pathlib import Path
 import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
-from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 
 from .encryption import (
-    ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
-    get_encryption_key_from_env,
+    _check_data_encryption_status,
+    _check_index_encryption_status,
+    setup_encryption,
+)
+from .types import (
+    ENCRYPTED_INDEX_EXTENSION,
+    INCREMENTAL_PREFIX,
+    INDEX_DIR,
+    INDEX_EXTENSION,
+    MANIFEST_PREFIX,
+    TIMESTAMP_FORMAT,
+    CompactionResult,
+    IndexStorage,
 )
 
 logger = getLogger(__name__)
-
-# Index directory and file patterns
-INDEX_DIR = "_index"
-INCREMENTAL_PREFIX = "index_"
-MANIFEST_PREFIX = "_manifest_"
-INDEX_EXTENSION = ".idx"
-ENCRYPTED_INDEX_EXTENSION = ".enc.idx"
-
-# Timestamp format used in filenames (must sort correctly as strings)
-TIMESTAMP_FORMAT = "%Y%m%dT%H%M%S"
 
 # Regex patterns for extracting timestamps from filenames
 # UUID part allows any alphanumeric (actual UUIDs are hex, but be permissive for testing)
 # These patterns match both encrypted (.enc.idx) and unencrypted (.idx) files
 INCREMENTAL_PATTERN = re.compile(r"index_(\d{8}T\d{6})_[a-zA-Z0-9]+(?:\.enc)?\.idx$")
 MANIFEST_PATTERN = re.compile(r"_manifest_(\d{8}T\d{6})(?:\.enc)?\.idx$")
-
-
-@dataclass
-class IndexStorage:
-    """Storage configuration for index operations.
-
-    Use the async `create()` classmethod to construct with automatic
-    encryption detection from existing files.
-
-    Example:
-        storage = await IndexStorage.create(location="/path/to/db")
-        # storage.is_encrypted is correctly set based on existing files
-    """
-
-    location: str
-    fs: AsyncFilesystem | None = None
-    is_encrypted: bool = False
-
-    @classmethod
-    async def create(
-        cls,
-        location: str,
-        fs: AsyncFilesystem | None = None,
-    ) -> "IndexStorage":
-        """Create IndexStorage with encryption status auto-detected.
-
-        Checks index files first, then data files if no index exists.
-        If encrypted files are detected, validates that the encryption key
-        is available in the environment.
-
-        Args:
-            location: Path to the database directory.
-            fs: Optional async filesystem for remote storage.
-
-        Returns:
-            Configured IndexStorage with is_encrypted set appropriately.
-
-        Raises:
-            ValueError: If files have mixed encryption status, or if
-                encrypted files exist but no encryption key is available.
-        """
-        storage = cls(location=location, fs=fs, is_encrypted=False)
-        is_encrypted = await storage._detect_encryption()
-
-        if is_encrypted:
-            # Validate encryption key is available
-            key = get_encryption_key_from_env()
-            if not key:
-                raise ValueError(
-                    "Encrypted files detected but no encryption key provided. "
-                    f"Set {ENCRYPTION_KEY_ENV} environment variable."
-                )
-
-        return cls(location=location, fs=fs, is_encrypted=is_encrypted)
-
-    def is_remote(self) -> bool:
-        """Check if storage location is remote (S3 or HuggingFace)."""
-        return self.location.startswith("s3://") or self.location.startswith("hf://")
-
-    def index_dir_path(self) -> str:
-        """Get path to the _index directory."""
-        return f"{self.location.rstrip('/')}/{INDEX_DIR}"
-
-    def index_extension(self) -> str:
-        """Get the appropriate index file extension based on encryption status."""
-        return ENCRYPTED_INDEX_EXTENSION if self.is_encrypted else INDEX_EXTENSION
-
-    async def _detect_encryption(self) -> bool:
-        """Detect encryption status from existing files."""
-        # First check index files
-        index_dir = self.index_dir_path()
-
-        if self.is_remote():
-            fs = filesystem(self.location)
-            try:
-                all_files = fs.ls(index_dir, recursive=False)
-                idx_files = [f.name for f in all_files if _is_index_file(f.name)]
-            except FileNotFoundError:
-                idx_files = []
-        else:
-            index_path = Path(index_dir)
-            if index_path.exists():
-                idx_files = [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
-            else:
-                idx_files = []
-
-        # Check index file encryption status
-        is_encrypted = _check_index_encryption_status(idx_files)
-
-        # If no index files, check data files
-        if is_encrypted is None:
-            data_files = await _discover_data_files_internal(self)
-            is_encrypted = _check_data_encryption_status(data_files)
-
-        # Default to False if no files exist
-        return is_encrypted if is_encrypted is not None else False
-
-
-@dataclass
-class CompactionResult:
-    """Result of a compaction operation."""
-
-    index_files_merged: int
-    index_files_deleted: int
-    orphaned_files_deleted: int
-    new_index_path: str
-
-
-def _is_encrypted_index_file(filename: str) -> bool:
-    """Check if an index file is encrypted based on its extension."""
-    return filename.endswith(ENCRYPTED_INDEX_EXTENSION)
-
-
-def _is_index_file(filename: str) -> bool:
-    """Check if a file is an index file (encrypted or not)."""
-    return filename.endswith(INDEX_EXTENSION)  # Matches both .idx and .enc.idx
-
-
-def _extract_timestamp(filename: str) -> str | None:
-    """Extract timestamp from an index filename.
-
-    Args:
-        filename: Index filename (path or just filename).
-
-    Returns:
-        Timestamp string (e.g., "20250101T120000") or None if not matched.
-    """
-    basename = Path(filename).name
-
-    # Try incremental pattern first
-    match = INCREMENTAL_PATTERN.search(basename)
-    if match:
-        return match.group(1)
-
-    # Try manifest pattern
-    match = MANIFEST_PATTERN.search(basename)
-    if match:
-        return match.group(1)
-
-    return None
-
-
-def _generate_timestamp() -> str:
-    """Generate current UTC timestamp for filenames."""
-    return datetime.now(timezone.utc).strftime(TIMESTAMP_FORMAT)
-
-
-def _generate_manifest_filename(encrypted: bool = False) -> str:
-    """Generate filename for a compacted manifest file."""
-    timestamp = _generate_timestamp()
-    ext = ENCRYPTED_INDEX_EXTENSION if encrypted else INDEX_EXTENSION
-    return f"{MANIFEST_PREFIX}{timestamp}{ext}"
-
-
-def _get_encryption_key(storage: IndexStorage) -> str:
-    """Get encryption key from environment, raising if not available.
-
-    Args:
-        storage: Storage configuration with is_encrypted flag.
-
-    Returns:
-        The encryption key.
-
-    Raises:
-        ValueError: If encrypted but no key available.
-    """
-    if not storage.is_encrypted:
-        raise ValueError("Cannot get encryption key for non-encrypted storage")
-
-    key = get_encryption_key_from_env()
-    if not key:
-        raise ValueError(
-            "Encrypted index detected but no encryption key provided. "
-            f"Set {ENCRYPTION_KEY_ENV} environment variable."
-        )
-    return key
-
-
-def _setup_encryption(
-    conn: duckdb.DuckDBPyConnection,
-    storage: IndexStorage,
-) -> str:
-    """Setup encryption key and return config string for read_parquet.
-
-    Args:
-        conn: DuckDB connection to register the key with.
-        storage: Storage configuration with is_encrypted flag.
-
-    Returns:
-        Encryption config string for read_parquet (empty if not encrypted).
-    """
-    if not storage.is_encrypted:
-        return ""
-
-    key = _get_encryption_key(storage)
-    conn.execute(f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')")
-    return f", encryption_config={{footer_key: '{ENCRYPTION_KEY_NAME}'}}"
-
-
-def _check_index_encryption_status(index_files: list[str]) -> bool | None:
-    """Check encryption status of index files and validate consistency.
-
-    Args:
-        index_files: List of index file paths.
-
-    Returns:
-        True if all encrypted, False if all unencrypted, None if empty list.
-
-    Raises:
-        ValueError: If index contains mixed encrypted and unencrypted files.
-    """
-    if not index_files:
-        return None
-
-    encrypted_count = sum(1 for f in index_files if _is_encrypted_index_file(f))
-    unencrypted_count = len(index_files) - encrypted_count
-
-    if encrypted_count > 0 and unencrypted_count > 0:
-        raise ValueError(
-            f"Index contains mixed encrypted ({encrypted_count}) and "
-            f"unencrypted ({unencrypted_count}) index files. "
-            "All index files must be either encrypted or unencrypted."
-        )
-
-    return encrypted_count > 0
-
-
-def _check_data_encryption_status(data_files: list[str]) -> bool | None:
-    """Check encryption status of data files and validate consistency.
-
-    Args:
-        data_files: List of data file paths.
-
-    Returns:
-        True if all encrypted, False if all unencrypted, None if empty list.
-
-    Raises:
-        ValueError: If database contains mixed encrypted and unencrypted files.
-    """
-    if not data_files:
-        return None
-
-    encrypted_count = sum(1 for f in data_files if f.endswith(".enc.parquet"))
-    unencrypted_count = len(data_files) - encrypted_count
-
-    if encrypted_count > 0 and unencrypted_count > 0:
-        raise ValueError(
-            f"Database contains mixed encrypted ({encrypted_count}) and "
-            f"unencrypted ({unencrypted_count}) parquet files. "
-            "All files must be either encrypted or unencrypted."
-        )
-
-    return encrypted_count > 0
-
-
-async def _discover_data_files_internal(storage: IndexStorage) -> list[str]:
-    """Internal helper to discover data files without encryption detection."""
-    if storage.is_remote():
-        fs = filesystem(storage.location)
-        all_files = fs.ls(storage.location, recursive=True)
-        return [
-            f.name
-            for f in all_files
-            if f.name.endswith(".parquet") and f"/{INDEX_DIR}/" not in f.name
-        ]
-    else:
-        location_path = Path(storage.location)
-        if not location_path.exists():
-            return []
-
-        all_parquet = glob.glob(str(location_path / "**" / "*.parquet"), recursive=True)
-        return [
-            p
-            for p in all_parquet
-            if f"/{INDEX_DIR}/" not in p and f"\\{INDEX_DIR}\\" not in p
-        ]
 
 
 async def discover_index_files(storage: IndexStorage) -> list[str]:
@@ -471,7 +194,7 @@ async def register_index_table(
         file_pattern = "[" + ", ".join(f"'{p}'" for p in idx_files) + "]"
 
     # Setup encryption if needed (discover_index_files sets storage.is_encrypted)
-    enc_config = _setup_encryption(conn, storage)
+    enc_config = setup_encryption(conn, storage)
 
     # Create table from index files
     # Note: We don't catch exceptions here - corrupted files should fail loudly
@@ -483,9 +206,6 @@ async def register_index_table(
     # Return row count
     result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
     return result[0] if result else 0
-
-
-# --- Write Operations ---
 
 
 async def write_index_file(
@@ -563,7 +283,7 @@ async def create_index(
         file_pattern = "[" + ", ".join(f"'{p}'" for p in data_files) + "]"
 
     # Setup encryption if needed (discover_data_files sets storage.is_encrypted)
-    enc_config = _setup_encryption(conn, storage)
+    enc_config = setup_encryption(conn, storage)
 
     # Read all metadata from data files, excluding messages/events
     # First, get the schema to know which columns exist
@@ -628,7 +348,7 @@ async def compact_index(
         file_pattern = "[" + ", ".join(f"'{p}'" for p in idx_files) + "]"
 
     # Setup encryption if needed (discover_index_files sets storage.is_encrypted)
-    enc_config = _setup_encryption(conn, storage)
+    enc_config = setup_encryption(conn, storage)
 
     merged_table = conn.execute(f"""
         SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
@@ -667,6 +387,29 @@ async def compact_index(
     )
 
 
+async def _discover_data_files_internal(storage: IndexStorage) -> list[str]:
+    """Internal helper to discover data files without encryption detection."""
+    if storage.is_remote():
+        fs = filesystem(storage.location)
+        all_files = fs.ls(storage.location, recursive=True)
+        return [
+            f.name
+            for f in all_files
+            if f.name.endswith(".parquet") and f"/{INDEX_DIR}/" not in f.name
+        ]
+    else:
+        location_path = Path(storage.location)
+        if not location_path.exists():
+            return []
+
+        all_parquet = glob.glob(str(location_path / "**" / "*.parquet"), recursive=True)
+        return [
+            p
+            for p in all_parquet
+            if f"/{INDEX_DIR}/" not in p and f"\\{INDEX_DIR}\\" not in p
+        ]
+
+
 def _write_parquet_table(
     table: pa.Table,
     path: str,
@@ -682,11 +425,11 @@ def _write_parquet_table(
         storage: Storage configuration with is_encrypted flag.
     """
     if storage.is_encrypted:
-        # Use DuckDB to write encrypted parquet
-        key = _get_encryption_key(storage)
         conn = duckdb.connect()
         try:
-            conn.execute(f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')")
+            conn.execute(
+                f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{storage.encryption_key}')"
+            )
             # Register the PyArrow table and write with encryption
             conn.register("source_table", table)
             conn.execute(
@@ -740,3 +483,44 @@ def _find_orphaned_data_files(
 
     referenced_files = set(manifest.column("filename").to_pylist())
     return [f for f in data_files if f not in referenced_files]
+
+
+def _is_index_file(filename: str) -> bool:
+    """Check if a file is an index file (encrypted or not)."""
+    return filename.endswith(INDEX_EXTENSION)  # Matches both .idx and .enc.idx
+
+
+def _extract_timestamp(filename: str) -> str | None:
+    """Extract timestamp from an index filename.
+
+    Args:
+        filename: Index filename (path or just filename).
+
+    Returns:
+        Timestamp string (e.g., "20250101T120000") or None if not matched.
+    """
+    basename = Path(filename).name
+
+    # Try incremental pattern first
+    match = INCREMENTAL_PATTERN.search(basename)
+    if match:
+        return match.group(1)
+
+    # Try manifest pattern
+    match = MANIFEST_PATTERN.search(basename)
+    if match:
+        return match.group(1)
+
+    return None
+
+
+def _generate_timestamp() -> str:
+    """Generate current UTC timestamp for filenames."""
+    return datetime.now(timezone.utc).strftime(TIMESTAMP_FORMAT)
+
+
+def _generate_manifest_filename(encrypted: bool = False) -> str:
+    """Generate filename for a compacted manifest file."""
+    timestamp = _generate_timestamp()
+    ext = ENCRYPTED_INDEX_EXTENSION if encrypted else INDEX_EXTENSION
+    return f"{MANIFEST_PREFIX}{timestamp}{ext}"

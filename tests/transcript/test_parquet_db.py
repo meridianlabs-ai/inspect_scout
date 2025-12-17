@@ -630,7 +630,9 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
 @pytest.mark.asyncio
 async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> None:
     """Test that reserved column names in metadata raise error."""
-    from inspect_scout._transcript.database.parquet import _validate_metadata_keys
+    from inspect_scout._transcript.database.parquet.transcripts import (
+        _validate_metadata_keys,
+    )
 
     # Should raise error for reserved keys (actual Parquet columns)
     with pytest.raises(ValueError, match="reserved"):

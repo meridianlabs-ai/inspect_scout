@@ -3,7 +3,7 @@ import sys
 import click
 from inspect_ai._util.error import PrerequisiteError
 
-from inspect_scout._transcript.database.encryption import (
+from inspect_scout._transcript.database.parquet.encryption import (
     ENCRYPTION_KEY_ENV,
     decrypt_database,
     encrypt_database,

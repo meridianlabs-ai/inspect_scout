@@ -29,24 +29,24 @@ from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
-from ..columns import Condition
-from ..json.load_filtered import load_filtered_transcript
-from ..local_files_cache import init_task_files_cache
-from ..transcripts import (
+from ...columns import Condition
+from ...json.load_filtered import load_filtered_transcript
+from ...local_files_cache import init_task_files_cache
+from ...transcripts import (
     Transcripts,
     TranscriptsQuery,
     TranscriptsReader,
 )
-from ..types import Transcript, TranscriptContent, TranscriptInfo
-from .database import TranscriptsDB
+from ...types import Transcript, TranscriptContent, TranscriptInfo
+from ..database import TranscriptsDB
+from ..reader import TranscriptsDBReader
+from ..source import TranscriptsSource
 from .encryption import (
     ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
     get_encryption_key_from_env,
     validate_encryption_key,
 )
-from .reader import TranscriptsDBReader
-from .source import TranscriptsSource
 
 logger = getLogger(__name__)
 

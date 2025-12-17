@@ -7,6 +7,10 @@ import duckdb
 from upath import UPath
 
 from inspect_scout._display import display
+from inspect_scout._transcript.database.parquet.types import (
+    ENCRYPTED_INDEX_EXTENSION,
+    IndexStorage,
+)
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 # Environment variable for encryption key
@@ -354,3 +358,86 @@ def decrypt_database(location: str, output_dir: str, key: str, overwrite: bool) 
                 _copy_file(file_path, dest_path, output_is_remote)
 
     conn.close()
+
+
+def _is_encrypted_index_file(filename: str) -> bool:
+    """Check if an index file is encrypted based on its extension."""
+    return filename.endswith(ENCRYPTED_INDEX_EXTENSION)
+
+
+def _check_index_encryption_status(index_files: list[str]) -> bool | None:
+    """Check encryption status of index files and validate consistency.
+
+    Args:
+        index_files: List of index file paths.
+
+    Returns:
+        True if all encrypted, False if all unencrypted, None if empty list.
+
+    Raises:
+        ValueError: If index contains mixed encrypted and unencrypted files.
+    """
+    if not index_files:
+        return None
+
+    encrypted_count = sum(1 for f in index_files if _is_encrypted_index_file(f))
+    unencrypted_count = len(index_files) - encrypted_count
+
+    if encrypted_count > 0 and unencrypted_count > 0:
+        raise ValueError(
+            f"Index contains mixed encrypted ({encrypted_count}) and "
+            f"unencrypted ({unencrypted_count}) index files. "
+            "All index files must be either encrypted or unencrypted."
+        )
+
+    return encrypted_count > 0
+
+
+def _check_data_encryption_status(data_files: list[str]) -> bool | None:
+    """Check encryption status of data files and validate consistency.
+
+    Args:
+        data_files: List of data file paths.
+
+    Returns:
+        True if all encrypted, False if all unencrypted, None if empty list.
+
+    Raises:
+        ValueError: If database contains mixed encrypted and unencrypted files.
+    """
+    if not data_files:
+        return None
+
+    encrypted_count = sum(1 for f in data_files if f.endswith(".enc.parquet"))
+    unencrypted_count = len(data_files) - encrypted_count
+
+    if encrypted_count > 0 and unencrypted_count > 0:
+        raise ValueError(
+            f"Database contains mixed encrypted ({encrypted_count}) and "
+            f"unencrypted ({unencrypted_count}) parquet files. "
+            "All files must be either encrypted or unencrypted."
+        )
+
+    return encrypted_count > 0
+
+
+def setup_encryption(
+    conn: duckdb.DuckDBPyConnection,
+    storage: IndexStorage,
+) -> str:
+    """Setup encryption key and return config string for read_parquet.
+
+    Args:
+        conn: DuckDB connection to register the key with.
+        storage: Storage configuration with is_encrypted flag.
+
+    Returns:
+        Encryption config string for read_parquet (empty if not encrypted).
+    """
+    if not storage.is_encrypted:
+        return ""
+
+    conn.execute(
+        f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{storage.encryption_key}')"
+    )
+    return f", encryption_config={{footer_key: '{ENCRYPTION_KEY_NAME}'}}"

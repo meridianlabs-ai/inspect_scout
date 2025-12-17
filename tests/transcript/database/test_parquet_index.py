@@ -7,15 +7,11 @@ from typing import Any
 import duckdb
 import pyarrow as pa
 import pytest
-from inspect_scout._transcript.database.parquet_index import (
-    ENCRYPTED_INDEX_EXTENSION,
-    INDEX_DIR,
-    INDEX_EXTENSION,
-    MANIFEST_PREFIX,
-    CompactionResult,
-    IndexStorage,
+from inspect_scout._transcript.database.parquet.encryption import (
     _check_data_encryption_status,
     _check_index_encryption_status,
+)
+from inspect_scout._transcript.database.parquet.index import (
     _extract_timestamp,
     _find_orphaned_data_files,
     _generate_manifest_filename,
@@ -25,6 +21,14 @@ from inspect_scout._transcript.database.parquet_index import (
     discover_index_files,
     register_index_table,
     write_index_file,
+)
+from inspect_scout._transcript.database.parquet.types import (
+    ENCRYPTED_INDEX_EXTENSION,
+    INDEX_DIR,
+    INDEX_EXTENSION,
+    MANIFEST_PREFIX,
+    CompactionResult,
+    IndexStorage,
 )
 
 # --- Test Fixtures ---

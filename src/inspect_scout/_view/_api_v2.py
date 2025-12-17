@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import io
 from typing import Iterable, TypeVar
@@ -25,7 +24,11 @@ from .._scanresults import (
 from .._transcript.factory import transcripts_from
 from .._transcript.types import TranscriptInfo
 from ._api_v2_types import RestScanStatus, ScansRestResponse
-from ._server_common import InspectPydanticJSONResponse, default_transcripts_dir
+from ._server_common import (
+    InspectPydanticJSONResponse,
+    decode_base64url,
+    default_transcripts_dir,
+)
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -177,11 +180,7 @@ def v2_api_router(
         uuid: str = Path(description="UUID of the specific result row"),
     ) -> Response:
         """Retrieve original input text for a scanner result."""
-        # decode base64url scan path
-        scan_decoded = base64.urlsafe_b64decode(
-            scan + "=" * (-len(scan) % 4)
-        ).decode()
-        scan_path = UPath(scan_decoded)
+        scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -189,25 +188,17 @@ def v2_api_router(
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
 
-        # validate
         await _validate_read(request, scan_path)
 
-        # get the result
         result = await scan_results_arrow_async(str(scan_path))
-
-        # ensure we have the data (404 if not)
         if scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        input_value = result.get_field(
-            scanner, "uuid", uuid, "input"
-        ).as_py()
-        input_type = result.get_field(
-            scanner, "uuid", uuid, "input_type"
-        ).as_py()
+        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
+        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
 
         # Return raw input as body with inputType in header (more efficient for large text)
         return Response(
@@ -228,11 +219,7 @@ def v2_api_router(
         scanner: str = Path(description="Scanner name"),
     ) -> Response:
         """Stream scanner results as Arrow IPC with LZ4 compression."""
-        # decode base64url scan path
-        scan_decoded = base64.urlsafe_b64decode(
-            scan + "=" * (-len(scan) % 4)
-        ).decode()
-        scan_path = UPath(scan_decoded)
+        scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -240,13 +227,9 @@ def v2_api_router(
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
 
-        # validate
         await _validate_read(request, scan_path)
 
-        # get the result
         result = await scan_results_arrow_async(str(scan_path))
-
-        # ensure we have the data (404 if not)
         if scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
@@ -305,11 +288,7 @@ def v2_api_router(
         scan: str = Path(description="Scan path (base64url-encoded)"),
     ) -> RestScanStatus:
         """Get detailed status for a single scan."""
-        # decode base64url scan path
-        scan_decoded = base64.urlsafe_b64decode(
-            scan + "=" * (-len(scan) % 4)
-        ).decode()
-        scan_path = UPath(scan_decoded)
+        scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -317,7 +296,6 @@ def v2_api_router(
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
 
-        # validate
         await _validate_read(request, scan_path)
 
         # read the results and return

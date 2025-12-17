@@ -70,18 +70,11 @@ export const resultIdentifier = (
 const getSampleIdentifier = (
   summary: ScanResultSummary
 ): IdentifierInfo | undefined => {
-  // Read the new ids. The metadata reading is only here to support old
-  // scan results that didn't have these fields.
-  const id =
-    summary.transcriptTaskId ||
-    (summary.transcriptMetadata["id"] as string | number);
-  const epoch = (summary.transcriptTaskRepeat ||
-    summary.transcriptMetadata["epoch"]) as number | undefined;
+  const id = summary.transcriptTaskId;
+  const epoch = summary.transcriptTaskRepeat;
 
   if (id && epoch) {
-    const taskSet =
-      summary.transcriptTaskSet ||
-      (summary.transcriptMetadata["task_name"] as string | undefined);
+    const taskSet = summary.transcriptTaskSet;
     return {
       id,
       epoch,

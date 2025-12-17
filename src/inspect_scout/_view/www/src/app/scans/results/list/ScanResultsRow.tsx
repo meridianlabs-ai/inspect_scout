@@ -57,15 +57,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const refs: MarkdownReference[] = useMarkdownRefs(summary);
 
   // Task information
-  const taskSet =
-    summary.transcriptTaskSet ||
-    (summary.transcriptMetadata?.task_name as string);
-  const taskId =
-    summary.transcriptTaskId ||
-    (summary.transcriptMetadata?.id as string | number);
-  const taskRepeat =
-    summary.transcriptTaskRepeat ||
-    (summary.transcriptMetadata?.epoch as number);
+  const taskSet = summary.transcriptTaskSet;
+  const taskId = summary.transcriptTaskId;
+  const taskRepeat = summary.transcriptTaskRepeat;
 
   const grid = (
     <div
@@ -110,7 +104,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
           )}
         >
           {summary.label || (
-            <span className={clsx("text-style-secondary")}>—</span>
+            <span className={clsx(styles.label, "text-style-secondary")}>
+              —
+            </span>
           )}
         </div>
       )}

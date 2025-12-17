@@ -36,12 +36,16 @@
   text-align: right;
 }
 
+.label {
+  overflow-wrap: break-word;
+}
+
 .explanation {
   overflow: hidden;
   text-overflow: ellipsis;
 
   grid-column: span 2;
-  max-height: calc(200px - 3rem);
+  max-height: calc(160px - 3rem);
 }
 
 .row.selected {
@@ -60,5 +64,5 @@
 .error {
   overflow: hidden;
   text-overflow: ellipsis;
-  max-height: calc(200px - 3rem);
+  max-height: calc(160px - 3rem);
 }

@@ -213,6 +213,11 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               timestamp,
             };
 
+            // Resolve old values from the metadata if not present directly
+            // this should only be hit if the scan was old enough to not have
+            // these fields
+            resolveTranscriptPropertiesFromMetadata(baseSummary);
+
             // Create typed preview based on inputType
             let typedSummary: ScanResultSummary;
             switch (inputType) {
@@ -547,6 +552,11 @@ export const useScanResultData = (
           valueType,
         };
 
+        // Resolve old values from the metadata if not present directly
+        // this should only be hit if the scan was old enough to not have
+        // these fields
+        resolveTranscriptPropertiesFromMetadata(baseData);
+
         // Create typed data based on inputType
         let typedData: ScanResultData;
         switch (inputType) {
@@ -620,4 +630,30 @@ function getOptionalDateColumn(
 ): Date | undefined {
   const value = getOptionalColumn<string>(table, columnName, rowIndex);
   return value ? new Date(value) : undefined;
+}
+
+function resolveTranscriptPropertiesFromMetadata<
+  T extends {
+    transcriptModel?: string;
+    transcriptTaskSet?: string;
+    transcriptTaskId?: string | number;
+    transcriptTaskRepeat?: number;
+    transcriptMetadata: Record<string, unknown>;
+  },
+>(data: T): void {
+  if (data.transcriptModel === undefined) {
+    data.transcriptModel = data.transcriptMetadata["model"] as string;
+  }
+
+  if (data.transcriptTaskSet === undefined) {
+    data.transcriptTaskSet = data.transcriptMetadata["task_name"] as string;
+  }
+
+  if (data.transcriptTaskId === undefined) {
+    data.transcriptTaskId = data.transcriptMetadata["id"] as string | number;
+  }
+
+  if (data.transcriptTaskRepeat === undefined) {
+    data.transcriptTaskRepeat = data.transcriptMetadata["epoch"] as number;
+  }
 }

@@ -12,15 +12,15 @@ from inspect_scout._transcript.database.parquet.encryption import (
     _check_index_encryption_status,
 )
 from inspect_scout._transcript.database.parquet.index import (
+    _discover_data_files,
+    _discover_index_files,
     _extract_timestamp,
     _find_orphaned_data_files,
     _generate_manifest_filename,
+    append_index,
     compact_index,
     create_index,
-    discover_data_files,
-    discover_index_files,
-    register_index_table,
-    write_index_file,
+    init_index_table,
 )
 from inspect_scout._transcript.database.parquet.types import (
     ENCRYPTED_INDEX_EXTENSION,
@@ -243,7 +243,7 @@ class TestEncryptionStatus:
         (index_dir / "index_20250101T110000_def.enc.idx").touch()
 
         with pytest.raises(ValueError, match="mixed encrypted"):
-            await discover_index_files(storage)
+            await _discover_index_files(storage)
 
     @pytest.fixture
     def storage(self, tmp_path: Path) -> IndexStorage:
@@ -260,7 +260,7 @@ class TestDiscoverIndexFiles:
     @pytest.mark.asyncio
     async def test_discover_index_files_empty(self, storage: IndexStorage) -> None:
         """No index directory returns empty list."""
-        result = await discover_index_files(storage)
+        result = await _discover_index_files(storage)
         assert result == []
 
     @pytest.mark.asyncio
@@ -276,7 +276,7 @@ class TestDiscoverIndexFiles:
         (index_dir / "index_20250101T100000_abc12345.idx").touch()
         (index_dir / "index_20250101T110000_def67890.idx").touch()
 
-        result = await discover_index_files(storage)
+        result = await _discover_index_files(storage)
         assert len(result) == 2
         assert all("index_" in str(f) for f in result)
 
@@ -295,7 +295,7 @@ class TestDiscoverIndexFiles:
         # Create newer manifest
         (index_dir / "_manifest_20250102T100000.idx").touch()
 
-        result = await discover_index_files(storage)
+        result = await _discover_index_files(storage)
 
         # Should only return the manifest (incremental files are older)
         assert len(result) == 1
@@ -314,7 +314,7 @@ class TestDiscoverIndexFiles:
         (index_dir / "_manifest_20250102T100000.idx").touch()
         (index_dir / "_manifest_20250103T100000.idx").touch()
 
-        result = await discover_index_files(storage)
+        result = await _discover_index_files(storage)
 
         assert len(result) == 1
         assert "20250103T100000" in str(result[0])
@@ -336,7 +336,7 @@ class TestDiscoverIndexFiles:
         # Create newer incremental (should be included)
         (index_dir / "index_20250101T110000_new12345.idx").touch()
 
-        result = await discover_index_files(storage)
+        result = await _discover_index_files(storage)
 
         # Should return manifest + newer incremental
         assert len(result) == 2
@@ -367,7 +367,7 @@ class TestDiscoverDataFiles:
         index_dir.mkdir()
         (index_dir / "index_20250101T100000_abc.idx").touch()
 
-        result = await discover_data_files(storage)
+        result = await _discover_data_files(storage)
 
         assert len(result) == 2
         assert all(".parquet" in f for f in result)
@@ -385,7 +385,7 @@ class TestRegisterIndexTable:
         self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
     ) -> None:
         """Returns 0 when no index exists."""
-        count = await register_index_table(conn, storage)
+        count = await init_index_table(conn, storage)
         assert count == 0
 
         # Table should exist but be empty
@@ -403,9 +403,9 @@ class TestRegisterIndexTable:
             transcript_ids=["t1", "t2", "t3"],
             filenames=["data1.parquet"] * 3,
         )
-        await write_index_file(table, storage, "index_20250101T100000_test.idx")
+        await append_index(table, storage, "index_20250101T100000_test.idx")
 
-        count = await register_index_table(conn, storage)
+        count = await init_index_table(conn, storage)
         assert count == 3
 
     @pytest.mark.asyncio
@@ -418,7 +418,7 @@ class TestRegisterIndexTable:
             transcript_ids=["t1", "t2"],
             filenames=["data1.parquet"] * 2,
         )
-        await write_index_file(table1, storage, "index_20250101T100000_abc.idx")
+        await append_index(table1, storage, "index_20250101T100000_abc.idx")
 
         # Wait a moment to ensure different timestamp
         time.sleep(0.01)
@@ -428,9 +428,9 @@ class TestRegisterIndexTable:
             transcript_ids=["t3", "t4"],
             filenames=["data2.parquet"] * 2,
         )
-        await write_index_file(table2, storage, "index_20250101T110000_def.idx")
+        await append_index(table2, storage, "index_20250101T110000_def.idx")
 
-        count = await register_index_table(conn, storage)
+        count = await init_index_table(conn, storage)
         assert count == 4
 
     @pytest.mark.asyncio
@@ -447,9 +447,9 @@ class TestRegisterIndexTable:
                 "model": ["gpt-4", "claude", "gpt-4"],
             },
         )
-        await write_index_file(table, storage, "index_20250101T100000_abc.idx")
+        await append_index(table, storage, "index_20250101T100000_abc.idx")
 
-        await register_index_table(conn, storage)
+        await init_index_table(conn, storage)
 
         # Test WHERE clause
         result = conn.execute(
@@ -478,7 +478,7 @@ class TestWriteIndexFile:
         )
 
         filename = "test_index.idx"
-        path = await write_index_file(table, storage, filename)
+        path = await append_index(table, storage, filename)
 
         assert Path(path).exists()
         assert path.endswith(filename)
@@ -502,7 +502,7 @@ class TestWriteIndexFile:
         index_dir = Path(storage.location) / INDEX_DIR
         assert not index_dir.exists()
 
-        await write_index_file(table, storage, "test.idx")
+        await append_index(table, storage, "test.idx")
 
         assert index_dir.exists()
 
@@ -600,8 +600,8 @@ class TestCompactIndex:
         table1 = create_sample_index_table(["t1"], ["data1.parquet"])
         table2 = create_sample_index_table(["t2"], ["data2.parquet"])
 
-        await write_index_file(table1, storage, "index_20250101T100000_a.idx")
-        await write_index_file(table2, storage, "index_20250101T110000_b.idx")
+        await append_index(table1, storage, "index_20250101T100000_a.idx")
+        await append_index(table2, storage, "index_20250101T110000_b.idx")
 
         result = await compact_index(conn, storage, delete_orphaned_data=False)
 
@@ -628,7 +628,7 @@ class TestCompactIndex:
 
         # Create index that only references data1.parquet
         table = create_sample_index_table(["t1"], [str(location / "data1.parquet")])
-        await write_index_file(table, storage, "index_20250101T100000_a.idx")
+        await append_index(table, storage, "index_20250101T100000_a.idx")
 
         result = await compact_index(conn, storage, delete_orphaned_data=True)
 
@@ -658,8 +658,8 @@ class TestCompactIndex:
             }
         )
 
-        await write_index_file(table1, storage, "index_20250101T100000_a.idx")
-        await write_index_file(table2, storage, "index_20250101T110000_b.idx")
+        await append_index(table1, storage, "index_20250101T100000_a.idx")
+        await append_index(table2, storage, "index_20250101T110000_b.idx")
 
         result = await compact_index(conn, storage, delete_orphaned_data=False)
 

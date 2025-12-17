@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, ReactNode } from "react";
+import { FC, Fragment, ReactNode } from "react";
 
 import { ContentTool } from "../types";
 import { ChatMessageTool } from "../types/log";
@@ -136,7 +136,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
           {views.map((view, idx) => {
             const label = viewLabels[idx];
             return (
-              <>
+              <Fragment key={`chat-message-row-${index}-part-${idx}`}>
                 <div
                   className={clsx(
                     "text-size-smaller",
@@ -163,7 +163,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
                 >
                   {view}
                 </div>
-              </>
+              </Fragment>
             );
           })}
         </div>

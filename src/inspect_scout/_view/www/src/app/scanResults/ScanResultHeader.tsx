@@ -11,15 +11,13 @@ import {
   isMessageInput,
   isMessagesInput,
   isTranscriptInput,
-  ScanResultData,
   MessageType,
 } from "../types";
 
 import styles from "./ScanResultHeader.module.css";
 
 interface ScanResultHeaderProps {
-  result?: ScanResultData;
-  status?: Status;
+  scan?: Status;
   inputData?: ScanResultInputData;
 }
 
@@ -30,10 +28,10 @@ interface Column {
 }
 
 export const ScanResultHeader: FC<ScanResultHeaderProps> = ({
-  status,
+  scan,
   inputData,
 }) => {
-  const columns = colsForResult(inputData, status) || [];
+  const columns = colsForResult(inputData, scan) || [];
 
   return (
     <div className={clsx(styles.header, classForCols(columns.length))}>

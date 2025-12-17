@@ -77,7 +77,7 @@ export const ScanResultPanel: FC = () => {
     useSelectedResultsRow(scanResultUuid);
 
   const status = useStore((state) => state.selectedScanStatus);
-  const dfInput = useSelectedScanResultInputData();
+  const inputData = useSelectedScanResultInputData();
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -150,7 +150,7 @@ export const ScanResultPanel: FC = () => {
     <div className={clsx(styles.root)}>
       <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
       <ActivityBar animating={!!loading || resultLoading} />
-      <ScanResultHeader inputData={dfInput} status={status} />
+      <ScanResultHeader inputData={inputData} scan={status} />
       {selectedResult && (
         <ExtendedFindProvider>
           <TabSet

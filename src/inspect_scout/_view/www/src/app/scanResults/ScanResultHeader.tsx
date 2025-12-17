@@ -118,29 +118,21 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
   const transcriptModel = transcript.model || transcript.metadata?.model;
   const scanningModel = status?.spec.model.model;
 
-  const taskName = transcript.task || transcript.metadata?.task_name;
-  const transcriptId =
-    transcript.metadata?.id && transcript.metadata?.epoch
-      ? `${transcript.metadata?.id} Epoch ${transcript.metadata?.epoch}`
-      : transcript.id;
-
-  // task_set, task_id, task_repeat
+  // Task information
+  const taskSet =
+    transcript.task_set || transcript.task || transcript.metadata?.task_name;
+  const taskId = transcript.task_id || transcript.metadata?.id;
+  const taskRepeat = transcript.task_repeat || transcript.metadata?.epoch;
 
   const cols: Column[] = [
+    {
+      label: "Task",
+      value: taskName(taskSet, taskId, taskRepeat),
+    },
     {
       label: "Source",
       value: sourceUri,
     },
-    {
-      label: "Task",
-      value: taskName,
-    },
-
-    {
-      label: "Id",
-      value: transcriptId,
-    },
-
     {
       label: "Model",
       value: transcriptModel,
@@ -153,6 +145,7 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
       value: scanningModel,
     });
   }
+
   return cols;
 };
 
@@ -219,4 +212,26 @@ const eventsCols = (events: Events): Column[] => {
       value: events.length,
     },
   ];
+};
+
+const taskName = (taskSet?: string, taskId?: string, taskRepeat?: number) => {
+  if (!taskSet && !taskId && taskRepeat === undefined) {
+    return "<unknown>";
+  }
+
+  const results: ReactNode[] = [<span>{taskSet || "<unknown>"}</span>];
+
+  if (taskId) {
+    results.push("/", <span>{taskId}</span>);
+  }
+  if (taskRepeat !== undefined) {
+    results.push(
+      " ",
+      <span
+        className={clsx("text-style-secondary", "text-size-smallest")}
+      >{`(run ${taskRepeat})`}</span>
+    );
+  }
+
+  return results;
 };

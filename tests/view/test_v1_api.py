@@ -6,12 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pyarrow as pa
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from inspect_scout._recorder.recorder import ScanResultsArrow, ScanResultsDF, Status
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanner.result import Error
 from inspect_scout._scanspec import ScanSpec
-from inspect_scout._view._api_v1 import v1_api_app
+from inspect_scout._view._api_v1 import v1_api_router
 from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
@@ -73,7 +74,8 @@ def sample_dataframe() -> pd.DataFrame:
 def app_with_results_dir(tmp_path: Path) -> TestClient:
     """Create a test app with a temporary results directory."""
     results_dir = str(tmp_path)
-    app = v1_api_app(results_dir=results_dir)
+    app = FastAPI()
+    app.include_router(v1_api_router(results_dir=results_dir))
     return TestClient(app)
 
 
@@ -125,7 +127,8 @@ class TestViewServerAppScansEndpoint:
     @pytest.mark.asyncio
     async def test_scans_endpoint_no_results_dir(self) -> None:
         """Test scans endpoint without results_dir."""
-        app = v1_api_app(results_dir=None)
+        app = FastAPI()
+        app.include_router(v1_api_router(results_dir=None))
         client = TestClient(app)
 
         response = client.get("/scans")
@@ -324,15 +327,11 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_success(self) -> None:
         """Test successful authorization."""
-        app = v1_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
-
-        # Add authorization middleware
-        from fastapi import FastAPI
 
         main_app = FastAPI()
         main_app.add_middleware(AuthorizationMiddleware, authorization=test_auth)
-        main_app.mount("/api", app)
+        main_app.include_router(v1_api_router(results_dir="/test"), prefix="/api")
 
         client = TestClient(main_app)
 
@@ -346,15 +345,11 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_failure(self) -> None:
         """Test failed authorization."""
-        app = v1_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
-
-        # Add authorization middleware
-        from fastapi import FastAPI
 
         main_app = FastAPI()
         main_app.add_middleware(AuthorizationMiddleware, authorization=test_auth)
-        main_app.mount("/api", app)
+        main_app.include_router(v1_api_router(results_dir="/test"), prefix="/api")
 
         client = TestClient(main_app)
 
@@ -367,15 +362,11 @@ class TestAuthorizationMiddleware:
 
     def test_authorization_middleware_missing_header(self) -> None:
         """Test missing authorization header."""
-        app = v1_api_app(results_dir="/test")
         test_auth = "Bearer test-token"
-
-        # Add authorization middleware
-        from fastapi import FastAPI
 
         main_app = FastAPI()
         main_app.add_middleware(AuthorizationMiddleware, authorization=test_auth)
-        main_app.mount("/api", app)
+        main_app.include_router(v1_api_router(results_dir="/test"), prefix="/api")
 
         client = TestClient(main_app)
 
@@ -393,7 +384,10 @@ class TestAccessPolicy:
         mock_access_policy = MagicMock()
         mock_access_policy.can_read = AsyncMock(return_value=False)
 
-        app = v1_api_app(access_policy=mock_access_policy, results_dir="/test")
+        app = FastAPI()
+        app.include_router(
+            v1_api_router(access_policy=mock_access_policy, results_dir="/test")
+        )
         client = TestClient(app)
 
         with patch("inspect_scout._view._api_v1.scan_results_df_async") as mock_scan:
@@ -408,7 +402,10 @@ class TestAccessPolicy:
         mock_access_policy = MagicMock()
         mock_access_policy.can_delete = AsyncMock(return_value=False)
 
-        app = v1_api_app(access_policy=mock_access_policy, results_dir="/test")
+        app = FastAPI()
+        app.include_router(
+            v1_api_router(access_policy=mock_access_policy, results_dir="/test")
+        )
         client = TestClient(app)
 
         with patch("inspect_scout._view._api_v1.remove_scan_results") as mock_remove:
@@ -423,7 +420,10 @@ class TestAccessPolicy:
         mock_access_policy = MagicMock()
         mock_access_policy.can_list = AsyncMock(return_value=False)
 
-        app = v1_api_app(access_policy=mock_access_policy, results_dir="/test")
+        app = FastAPI()
+        app.include_router(
+            v1_api_router(access_policy=mock_access_policy, results_dir="/test")
+        )
         client = TestClient(app)
 
         with patch("inspect_scout._view._api_v1.scan_list_async") as mock_list:
@@ -447,7 +447,10 @@ class TestMappingPolicy:
             side_effect=lambda req, file: file.replace("/mapped", "")
         )
 
-        app = v1_api_app(mapping_policy=mock_mapping_policy, results_dir="/test")
+        app = FastAPI()
+        app.include_router(
+            v1_api_router(mapping_policy=mock_mapping_policy, results_dir="/test")
+        )
         client = TestClient(app)
 
         mock_scans = [

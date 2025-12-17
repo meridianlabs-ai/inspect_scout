@@ -186,6 +186,8 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               | number
               | undefined;
 
+            const transcriptModel = r.transcript_model as string | undefined;
+
             const baseSummary = {
               uuid: r.uuid as string | undefined,
               label: r.label as string | undefined,
@@ -203,6 +205,7 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               transcriptTaskSet,
               transcriptTaskId,
               transcriptTaskRepeat,
+              transcriptModel,
               transcriptMetadata: transcriptMetadata || {},
               transcriptSourceId,
               scanError,

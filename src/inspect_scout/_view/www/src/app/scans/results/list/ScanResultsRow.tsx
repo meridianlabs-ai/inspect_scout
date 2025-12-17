@@ -10,7 +10,7 @@ import {
 import { useStore } from "../../../../state/store";
 import { Error } from "../../../components/Error";
 import { Explanation } from "../../../components/Explanation";
-import { Identifier } from "../../../components/Identifier";
+import { TaskName } from "../../../components/TaskName";
 import { ValidationResult } from "../../../components/ValidationResult";
 import { Value } from "../../../components/Value";
 import { ScanResultSummary } from "../../../types";
@@ -48,13 +48,24 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const navigate = useNavigate();
 
   // Information about the row
-  const hasExplanation = gridDescriptor.columns.includes("explanation");
+  const hasExplanation = gridDescriptor.columns.includes("result");
   const hasLabel = gridDescriptor.columns.includes("label");
   const hasErrors = gridDescriptor.columns.includes("error");
   const hasValidations = gridDescriptor.columns.includes("validations");
 
   // refs
   const refs: MarkdownReference[] = useMarkdownRefs(summary);
+
+  // Task information
+  const taskSet =
+    summary.transcriptTaskSet ||
+    (summary.transcriptMetadata?.task_name as string);
+  const taskId =
+    summary.transcriptTaskId ||
+    (summary.transcriptMetadata?.id as string | number);
+  const taskRepeat =
+    summary.transcriptTaskRepeat ||
+    (summary.transcriptMetadata?.epoch as number);
 
   const grid = (
     <div
@@ -71,12 +82,22 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
         }
       }}
     >
-      <div className={clsx(styles.id, "text-size-smaller")}>
-        <Identifier summary={summary} />
-      </div>
       {hasExplanation && (
-        <div className={clsx(styles.explanation, "text-size-smaller")}>
-          <Explanation summary={summary} references={refs} />
+        <div className={clsx(styles.result, "text-size-smaller")}>
+          <div className={clsx(styles.id, "text-size-smallest")}>
+            <TaskName
+              taskSet={taskSet}
+              taskId={taskId}
+              taskRepeat={taskRepeat}
+            />
+          </div>
+          <div className={clsx(styles.model, "text-size-smallest")}>
+            {summary.transcriptModel || ""}
+          </div>
+
+          <div className={clsx(styles.explanation, "text-size-smaller")}>
+            <Explanation summary={summary} references={refs} />
+          </div>
         </div>
       )}
       {hasLabel && (

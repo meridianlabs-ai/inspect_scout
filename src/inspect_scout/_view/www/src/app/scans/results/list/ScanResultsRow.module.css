@@ -1,11 +1,11 @@
 .row {
   border-bottom: solid 1px var(--bs-border-color);
-  padding: 0.5rem 1rem;
-  height: 150px;
+  padding: 0.5rem 1rem 1rem 1rem;
+  max-height: 200px;
 }
 
 .row.noExplanation {
-  height: 50px;
+  max-height: 100px;
 }
 
 .row:hover {
@@ -20,10 +20,28 @@
   cursor: default;
 }
 
+.result {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.5rem;
+  row-gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.id {
+  font-weight: 600;
+}
+
+.model {
+  text-align: right;
+}
+
 .explanation {
   overflow: hidden;
   text-overflow: ellipsis;
-  height: calc(150px - 3em);
+
+  grid-column: span 2;
+  max-height: calc(200px - 3rem);
 }
 
 .row.selected {
@@ -42,5 +60,5 @@
 .error {
   overflow: hidden;
   text-overflow: ellipsis;
-  height: calc(150px - 3em);
+  max-height: calc(200px - 3rem);
 }

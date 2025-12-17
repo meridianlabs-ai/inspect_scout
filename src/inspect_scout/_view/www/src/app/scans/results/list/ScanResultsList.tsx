@@ -484,21 +484,9 @@ const optimalColumnLayout = (
   const columns: string[] = [];
   const gridColParts: string[] = [];
 
-  // The id column
-  columns.push("id");
-  const maxIdLen = scannerSummaries.reduce((max, s) => {
-    return Math.max(max, String(resultIdentifier(s).id).length);
-  }, 0);
-  gridColParts.push(
-    `minmax(${Math.min(Math.max(maxIdLen * 8, 50), 250)}px, 1fr)`
-  );
-
   // The explanation column, if any explanations exist
-  const hasExplanation = scannerSummaries.some((s) => !!s.explanation);
-  if (hasExplanation) {
-    columns.push("explanation");
-    gridColParts.push("10fr");
-  }
+  columns.push("result");
+  gridColParts.push("10fr");
 
   // The label column, if any labels exist
   const hasLabel = scannerSummaries.some((s) => !!s.label);
@@ -585,7 +573,7 @@ const optimalColumnLayout = (
     gridStyle: {
       gridTemplateColumns: gridColParts.join(" "),
       display: "grid",
-      columnGap: "0.5rem",
+      columnGap: "1rem",
     },
     columns,
   };

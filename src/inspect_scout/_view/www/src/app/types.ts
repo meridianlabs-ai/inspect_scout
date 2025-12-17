@@ -52,9 +52,10 @@ export interface ScanResultSummary {
 
   // Transcript info
   transcriptSourceId: string;
-  transcriptTaskset?: string;
+  transcriptTaskSet?: string;
   transcriptTaskId?: string | number;
   transcriptTaskRepeat?: number;
+  transcriptModel?: string;
   transcriptMetadata: Record<string, JsonValue>;
 }
 
@@ -82,7 +83,6 @@ export interface ScanResultData extends ScanResultSummary {
   transcriptDate?: Date;
   transcriptAgent?: string;
   transcriptAgentArgs?: Record<string, unknown>;
-  transcriptModel?: string;
   transcriptScore?: JsonValue;
   transcriptSuccess?: boolean;
   transcriptTotalTime?: number;

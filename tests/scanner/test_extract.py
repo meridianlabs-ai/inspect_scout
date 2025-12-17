@@ -935,7 +935,11 @@ async def test_messages_as_str_json_with_ids() -> None:
 
     assert len(parsed) == 2
     assert parsed[0] == {"id": "M1", "role": "user", "content": "USER:\nHello\n"}
-    assert parsed[1] == {"id": "M2", "role": "assistant", "content": "ASSISTANT:\nHi there\n"}
+    assert parsed[1] == {
+        "id": "M2",
+        "role": "assistant",
+        "content": "ASSISTANT:\nHi there\n",
+    }
 
     # extract_references should still work
     refs = extract_references("[M1] and [M2]")

@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import io
 from typing import Iterable, TypeVar
@@ -9,7 +10,6 @@ from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import AccessPolicy
 from starlette.status import (
     HTTP_304_NOT_MODIFIED,
-    HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -165,41 +165,23 @@ def v2_api_router(
         )
 
     @router.get(
-        "/scanner_df_input/{scan:path}",
+        "/scans/{scan}/{scanner}/{uuid}/input",
         summary="Get scanner input",
         description="Returns the original input text for a specific scanner result. "
         "The input type is returned in the X-Input-Type response header.",
     )
     async def scanner_input(
         request: Request,
-        scan: str = Path(description="Scan path (absolute or relative to results_dir)"),
-        query_scanner: str | None = Query(
-            None,
-            alias="scanner",
-            description="Scanner name to retrieve input for.",
-            examples=["my_scanner"],
-        ),
-        query_uuid: str | None = Query(
-            None,
-            alias="uuid",
-            description="UUID of the specific result row.",
-        ),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
+        scanner: str = Path(description="Scanner name"),
+        uuid: str = Path(description="UUID of the specific result row"),
     ) -> Response:
         """Retrieve original input text for a scanner result."""
-        if query_scanner is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="scanner query parameter is required",
-            )
-
-        if query_uuid is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="uuid query parameter is required",
-            )
-
-        # convert to absolute path
-        scan_path = UPath(scan)
+        # decode base64url scan path
+        scan_decoded = base64.urlsafe_b64decode(
+            scan + "=" * (-len(scan) % 4)
+        ).decode()
+        scan_path = UPath(scan_decoded)
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -214,17 +196,17 @@ def v2_api_router(
         result = await scan_results_arrow_async(str(scan_path))
 
         # ensure we have the data (404 if not)
-        if query_scanner not in result.scanners:
+        if scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{query_scanner}' not found in scan results",
+                detail=f"Scanner '{scanner}' not found in scan results",
             )
 
         input_value = result.get_field(
-            query_scanner, "uuid", query_uuid, "input"
+            scanner, "uuid", uuid, "input"
         ).as_py()
         input_type = result.get_field(
-            query_scanner, "uuid", query_uuid, "input_type"
+            scanner, "uuid", uuid, "input_type"
         ).as_py()
 
         # Return raw input as body with inputType in header (more efficient for large text)
@@ -235,30 +217,22 @@ def v2_api_router(
         )
 
     @router.get(
-        "/scanner_df/{scan:path}",
+        "/scans/{scan}/{scanner}",
         summary="Get scanner dataframe",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
-        "Excludes input column for efficiency; use scanner_df_input for input text.",
+        "Excludes input column for efficiency; use the input endpoint for input text.",
     )
     async def scan_df(
         request: Request,
-        scan: str = Path(description="Scan path (absolute or relative to results_dir)"),
-        query_scanner: str | None = Query(
-            None,
-            alias="scanner",
-            description="Scanner name to retrieve results for.",
-            examples=["my_scanner"],
-        ),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
+        scanner: str = Path(description="Scanner name"),
     ) -> Response:
         """Stream scanner results as Arrow IPC with LZ4 compression."""
-        if query_scanner is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="scanner query parameter is required",
-            )
-
-        # convert to absolute path
-        scan_path = UPath(scan)
+        # decode base64url scan path
+        scan_decoded = base64.urlsafe_b64decode(
+            scan + "=" * (-len(scan) % 4)
+        ).decode()
+        scan_path = UPath(scan_decoded)
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -273,10 +247,10 @@ def v2_api_router(
         result = await scan_results_arrow_async(str(scan_path))
 
         # ensure we have the data (404 if not)
-        if query_scanner not in result.scanners:
+        if scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{query_scanner}' not found in scan results",
+                detail=f"Scanner '{scanner}' not found in scan results",
             )
 
         def stream_as_arrow_ipc() -> Iterable[bytes]:
@@ -290,7 +264,7 @@ def v2_api_router(
             # with only a moderate loss in compression ratio
             # (e.g. 40% larger in exchange for ~20x faster compression)
             with result.reader(
-                query_scanner,
+                scanner,
                 streaming_batch_size=streaming_batch_size,
                 exclude_columns=["input"],
             ) as reader:
@@ -320,7 +294,7 @@ def v2_api_router(
         )
 
     @router.get(
-        "/scan/{scan:path}",
+        "/scans/{scan}",
         response_model=RestScanStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Get scan status",
@@ -328,11 +302,14 @@ def v2_api_router(
     )
     async def scan(
         request: Request,
-        scan: str = Path(description="Scan path (absolute or relative to results_dir)"),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
     ) -> RestScanStatus:
         """Get detailed status for a single scan."""
-        # convert to absolute path
-        scan_path = UPath(scan)
+        # decode base64url scan path
+        scan_decoded = base64.urlsafe_b64decode(
+            scan + "=" * (-len(scan) % 4)
+        ).decode()
+        scan_path = UPath(scan_decoded)
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"

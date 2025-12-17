@@ -10,7 +10,7 @@ from .scanners import deception, tool_errors
 def cybench_job(logs: str = "./logs") -> ScanJob:
 
     transcripts = transcripts_from(logs)
-    transcripts = transcripts.where(c.task == "cybench")
+    transcripts = transcripts.where(c.task_set == "cybench")
 
     return ScanJob(
         scanners = [deception(), java_tool_usages()],

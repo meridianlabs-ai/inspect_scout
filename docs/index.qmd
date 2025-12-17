@@ -18,10 +18,10 @@ Scout can process input either from a [transcript database](transcripts.qmd#tran
 
 ### Installation
 
-Install the `inspect_scout` package from PyPI with:
+Install the `inspect_scout` package from GitHub with:
 
 ``` bash
-pip install inspect_scout
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ```
 
 You should also be sure to install the [Inspect AI VS Code Extension](https://inspect.aisi.org.uk/vscode.html) which includes features for viewing and debugging Scout scans.
@@ -307,7 +307,7 @@ from inspect_scout (
 from .scanners import deception, tool_errors
 
 transcripts = transcripts_from("s3://weave-rollouts")
-transcripts = transcripts.where(c.task == "cybench")
+transcripts = transcripts.where(c.task_set == "cybench")
 
 status = scan(
     scanners = [ctf_environment(), tool_errors()],

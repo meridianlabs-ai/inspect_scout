@@ -17,11 +17,17 @@ from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
 from starlette.status import (
-    HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+
+
+def base64url(s: str) -> str:
+    """Encode string as base64url (URL-safe base64 without padding)."""
+    import base64
+
+    return base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
 
 
 @pytest.fixture
@@ -189,7 +195,7 @@ class TestViewServerAppScansEndpoint:
 
 
 class TestViewServerAppScanDfEndpoint:
-    """Tests for the /scanner_df endpoint."""
+    """Tests for the /scans/{scan}/{scanner} endpoint."""
 
     @pytest.mark.asyncio
     async def test_scanner_df_endpoint_success(
@@ -215,7 +221,7 @@ class TestViewServerAppScanDfEndpoint:
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
-                "/v2/scanner_df/test_scan?scanner=scanner1"
+                f"/v2/scans/{base64url('test_scan')}/scanner1"
             )
 
         assert response.status_code == 200
@@ -223,15 +229,6 @@ class TestViewServerAppScanDfEndpoint:
             response.headers["content-type"]
             == "application/vnd.apache.arrow.stream; codecs=lz4"
         )
-
-    @pytest.mark.asyncio
-    async def test_scanner_df_endpoint_missing_scanner_param(
-        self, app_with_results_dir: TestClient
-    ) -> None:
-        """Test scanner_df endpoint without scanner parameter."""
-        response = app_with_results_dir.get("/v2/scanner_df/test_scan")
-
-        assert response.status_code == HTTP_400_BAD_REQUEST
 
     @pytest.mark.asyncio
     async def test_scanner_df_endpoint_scanner_not_found(
@@ -246,14 +243,14 @@ class TestViewServerAppScanDfEndpoint:
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
-                "/v2/scanner_df/test_scan?scanner=nonexistent"
+                f"/v2/scans/{base64url('test_scan')}/nonexistent"
             )
 
         assert response.status_code == HTTP_404_NOT_FOUND
 
 
 class TestViewServerAppScanEndpoint:
-    """Tests for the /scan endpoint."""
+    """Tests for the /scans/{scan} endpoint."""
 
     @pytest.mark.asyncio
     async def test_scan_endpoint_success(
@@ -273,37 +270,12 @@ class TestViewServerAppScanEndpoint:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get("/v2/scan/test_scan")
+            response = app_with_results_dir.get(f"/v2/scans/{base64url('test_scan')}")
 
         assert response.status_code == 200
         data = response.json()
         assert data["complete"] is True
         assert data["location"] == "/test/scan"
-
-    @pytest.mark.asyncio
-    async def test_scan_endpoint_status_only(
-        self, app_with_results_dir: TestClient, sample_dataframe: pd.DataFrame
-    ) -> None:
-        """Test scan endpoint with status_only parameter."""
-        mock_results = ScanResultsDF(
-            complete=True,
-            spec=ScanSpec(scan_name="test_scan", scanners={}, transcripts=None),
-            location="/test/scan",
-            summary=Summary(scanners={}),
-            errors=[],
-            scanners={"scanner1": sample_dataframe},
-        )
-
-        with patch(
-            "inspect_scout._view._api_v2.scan_results_df_async",
-            return_value=mock_results,
-        ):
-            response = app_with_results_dir.get("/v2/scan/test_scan?status_only=true")
-
-        assert response.status_code == 200
-        data = response.json()
-        print(data)
-        assert data["complete"] is True
 
 
 class TestAuthorizationMiddleware:
@@ -375,7 +347,7 @@ class TestAccessPolicy:
         client = TestClient(app)
 
         with patch("inspect_scout._view._api_v2.scan_results_df_async") as mock_scan:
-            response = client.get("/v2/scan/test_scan")
+            response = client.get(f"/v2/scans/{base64url('test_scan')}")
 
         assert response.status_code == HTTP_403_FORBIDDEN
         mock_scan.assert_not_called()
@@ -420,8 +392,10 @@ class TestViewServerAppEdgeCases:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            # Use relative path
-            response = app_with_results_dir.get("/v2/scan/relative/path/scan")
+            # Use relative path (base64url encoded)
+            response = app_with_results_dir.get(
+                f"/v2/scans/{base64url('relative/path/scan')}"
+            )
 
         assert response.status_code == 200
 
@@ -449,7 +423,7 @@ class TestViewServerAppEdgeCases:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get("/v2/scan/test_scan?status_only=true")
+            response = app_with_results_dir.get(f"/v2/scans/{base64url('test_scan')}")
 
         assert response.status_code == 200
         data = response.json()

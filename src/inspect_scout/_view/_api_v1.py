@@ -21,17 +21,16 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._recorder.recorder import Status
-from inspect_scout._recorder.summary import Summary
-from inspect_scout._scanlist import scan_list_async
-from inspect_scout._scanresults import (
+from .._recorder.recorder import Status
+from .._recorder.summary import Summary
+from .._scanlist import scan_list_async
+from .._scanner.result import Error
+from .._scanresults import (
     remove_scan_results,
     scan_results_arrow_async,
     scan_results_df_async,
 )
-from inspect_scout._scanspec import ScanSpec
-
-from .._scanner.result import Error
+from .._scanspec import ScanSpec
 from ._server_common import InspectPydanticJSONResponse
 
 

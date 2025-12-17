@@ -1,16 +1,12 @@
 import hashlib
 import io
-from dataclasses import replace
 from typing import Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
-from inspect_ai._view.fastapi_server import (
-    AccessPolicy,
-    FileMappingPolicy,
-)
+from inspect_ai._view.fastapi_server import AccessPolicy
 from starlette.status import (
     HTTP_304_NOT_MODIFIED,
     HTTP_400_BAD_REQUEST,
@@ -50,7 +46,6 @@ def _compute_scans_etag(scans_location: str) -> str | None:
 
 
 def v2_api_app(
-    mapping_policy: FileMappingPolicy | None = None,
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
@@ -65,16 +60,6 @@ def v2_api_app(
         title="Inspect Scout Viewer API",
         version="2.0.0-alpha",
     )
-
-    async def _map_file(request: Request, file: str) -> str:
-        if mapping_policy is not None:
-            return await mapping_policy.map(request, file)
-        return file
-
-    async def _unmap_file(request: Request, file: str) -> str:
-        if mapping_policy is not None:
-            return await mapping_policy.unmap(request, file)
-        return file
 
     async def _validate_read(request: Request, file: str | UPath) -> None:
         if access_policy is not None:
@@ -106,7 +91,7 @@ def v2_api_app(
     async def _to_rest_scan(
         request: Request, scan: RecorderStatus, running_scans: set[str]
     ) -> RestScanStatus:
-        return replace(scan, location=await _unmap_file(request, scan.location))
+        return scan
 
     @app.get("/transcripts-dir", response_class=PlainTextResponse)
     async def transcripts_dir(
@@ -144,9 +129,8 @@ def v2_api_app(
             query_results_dir or results_dir, "results_dir is required"
         )
         await _validate_list(request, validated_results_dir)
-        mapped_results_dir = await _map_file(request, validated_results_dir)
 
-        if etag := _compute_scans_etag(mapped_results_dir):
+        if etag := _compute_scans_etag(validated_results_dir):
             if if_none_match and if_none_match.strip('"') == etag:
                 return Response(
                     status_code=HTTP_304_NOT_MODIFIED, headers={"ETag": f'"{etag}"'}
@@ -157,7 +141,7 @@ def v2_api_app(
             results_dir=validated_results_dir,
             scans=[
                 await _to_rest_scan(request, scan, _running_scans)
-                for scan in await scan_list_async(mapped_results_dir)
+                for scan in await scan_list_async(validated_results_dir)
             ],
         )
 
@@ -181,7 +165,7 @@ def v2_api_app(
             )
 
         # convert to absolute path
-        scan_path = UPath(await _map_file(request, scan))
+        scan_path = UPath(scan)
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -229,7 +213,7 @@ def v2_api_app(
             )
 
         # convert to absolute path
-        scan_path = UPath(await _map_file(request, scan))
+        scan_path = UPath(scan)
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -304,7 +288,7 @@ def v2_api_app(
         scan: str,
     ) -> RestScanStatus:
         # convert to absolute path
-        scan_path = UPath(await _map_file(request, scan))
+        scan_path = UPath(scan)
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"

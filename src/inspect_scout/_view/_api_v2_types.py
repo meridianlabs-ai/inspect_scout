@@ -3,11 +3,10 @@ from typing import Literal, TypeAlias
 
 from pydantic import BaseModel
 
-from inspect_scout._recorder.recorder import Status as RecorderStatus
-from inspect_scout._recorder.summary import Summary
-from inspect_scout._scanspec import ScanSpec
-
+from .._recorder.recorder import Status as RecorderStatus
+from .._recorder.summary import Summary
 from .._scanner.result import Error
+from .._scanspec import ScanSpec
 
 
 @dataclass

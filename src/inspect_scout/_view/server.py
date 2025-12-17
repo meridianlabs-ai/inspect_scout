@@ -11,8 +11,7 @@ from inspect_ai._view.fastapi_server import (
 )
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from inspect_scout._display._display import display
-
+from .._display._display import display
 from ._api_v1 import v1_api_app
 from ._api_v2 import v2_api_app
 

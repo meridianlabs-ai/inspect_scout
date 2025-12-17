@@ -402,44 +402,6 @@ class TestAccessPolicy:
         mock_list.assert_not_called()
 
 
-class TestMappingPolicy:
-    """Tests for file mapping policy."""
-
-    @pytest.mark.asyncio
-    async def test_mapping_policy_map_and_unmap(self) -> None:
-        """Test that mapping policy transforms file paths."""
-        mock_mapping_policy = MagicMock()
-        mock_mapping_policy.map = AsyncMock(
-            side_effect=lambda req, file: f"/mapped{file}"
-        )
-        mock_mapping_policy.unmap = AsyncMock(
-            side_effect=lambda req, file: file.replace("/mapped", "")
-        )
-
-        app = v2_api_app(mapping_policy=mock_mapping_policy, results_dir="/test")
-        client = TestClient(app)
-
-        mock_scans = [
-            Status(
-                complete=True,
-                spec=ScanSpec(scan_name="test_scan", scanners={}, transcripts=None),
-                location="/mapped/test/scan1",
-                summary=Summary(scanners={}),
-                errors=[],
-            )
-        ]
-
-        with patch(
-            "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
-        ):
-            response = client.get("/scans?results_dir=/test")
-
-        assert response.status_code == 200
-        data = response.json()
-        # Location should be unmapped in response
-        assert data["scans"][0]["location"] == "/test/scan1"
-
-
 class TestViewServerAppEdgeCases:
     """Tests for edge cases and error handling."""
 

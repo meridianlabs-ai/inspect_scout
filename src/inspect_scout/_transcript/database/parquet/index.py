@@ -309,7 +309,9 @@ async def init_index_table(
         # Try loading from cache
         cached_count = load_cached_index(conn, cache_path, table_name, storage)
         if cached_count is not None:
-            trace_message(logger, "Scout Index Cache", f"Loaded from cache: {cache_path}")
+            trace_message(
+                logger, "Scout Index Cache", f"Loaded from cache: {cache_path}"
+            )
             return cached_count
 
     # Build file list for read_parquet

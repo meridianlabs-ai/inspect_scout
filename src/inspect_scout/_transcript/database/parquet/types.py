@@ -78,7 +78,10 @@ class IndexStorage:
             resolved_key = None
 
         return cls(
-            location=location, fs=fs, is_encrypted=is_encrypted, encryption_key=resolved_key
+            location=location,
+            fs=fs,
+            is_encrypted=is_encrypted,
+            encryption_key=resolved_key,
         )
 
     def is_remote(self) -> bool:

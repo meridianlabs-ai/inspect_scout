@@ -63,7 +63,9 @@ def create_sample_index_table(
     return pa.table(data)
 
 
-def create_index_file(storage: IndexStorage, name: str, transcript_ids: list[str]) -> str:
+def create_index_file(
+    storage: IndexStorage, name: str, transcript_ids: list[str]
+) -> str:
     """Create an index file in the storage location."""
     index_dir = Path(storage.location) / "_index"
     index_dir.mkdir(parents=True, exist_ok=True)
@@ -236,7 +238,9 @@ class TestCacheSaveLoad:
         count = load_cached_index(conn2, cache_path, "loaded_index", storage)
 
         assert count == 2
-        result = conn2.execute("SELECT * FROM loaded_index ORDER BY transcript_id").fetchall()
+        result = conn2.execute(
+            "SELECT * FROM loaded_index ORDER BY transcript_id"
+        ).fetchall()
         assert len(result) == 2
         assert result[0][0] == "id1"
         assert result[1][0] == "id2"
@@ -271,9 +275,7 @@ class TestInitIndexTableCaching:
     """Tests for caching integration with init_index_table."""
 
     @pytest.mark.asyncio
-    async def test_init_index_table_uses_cache_for_remote(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_init_index_table_uses_cache_for_remote(self, tmp_path: Path) -> None:
         """Cache is populated on first call for remote storage."""
         # Setup storage with index file
         storage = IndexStorage(location=str(tmp_path))
@@ -282,9 +284,12 @@ class TestInitIndexTableCaching:
         cache_base = tmp_path / "cache"
         cache_base.mkdir()
 
-        with patch.object(storage, "is_remote", return_value=True), patch(
-            "inspect_scout._transcript.database.parquet.index_cache.scout_cache_dir",
-            return_value=cache_base,
+        with (
+            patch.object(storage, "is_remote", return_value=True),
+            patch(
+                "inspect_scout._transcript.database.parquet.index_cache.scout_cache_dir",
+                return_value=cache_base,
+            ),
         ):
             # First call should create cache
             conn1 = duckdb.connect(":memory:")
@@ -296,9 +301,7 @@ class TestInitIndexTableCaching:
             assert count1 == 2
 
     @pytest.mark.asyncio
-    async def test_init_index_table_loads_from_cache(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_init_index_table_loads_from_cache(self, tmp_path: Path) -> None:
         """Second call uses cache instead of reading index files."""
         # Setup storage with index file
         storage = IndexStorage(location=str(tmp_path))
@@ -307,9 +310,12 @@ class TestInitIndexTableCaching:
         cache_base = tmp_path / "cache"
         cache_base.mkdir()
 
-        with patch.object(storage, "is_remote", return_value=True), patch(
-            "inspect_scout._transcript.database.parquet.index_cache.scout_cache_dir",
-            return_value=cache_base,
+        with (
+            patch.object(storage, "is_remote", return_value=True),
+            patch(
+                "inspect_scout._transcript.database.parquet.index_cache.scout_cache_dir",
+                return_value=cache_base,
+            ),
         ):
             # First call populates cache
             conn1 = duckdb.connect(":memory:")
@@ -340,9 +346,12 @@ class TestInitIndexTableCaching:
         cache_base = tmp_path / "cache"
         cache_base.mkdir()
 
-        with patch.object(storage, "is_remote", return_value=True), patch(
-            "inspect_scout._transcript.database.parquet.index_cache.scout_cache_dir",
-            return_value=cache_base,
+        with (
+            patch.object(storage, "is_remote", return_value=True),
+            patch(
+                "inspect_scout._transcript.database.parquet.index_cache.scout_cache_dir",
+                return_value=cache_base,
+            ),
         ):
             # First call creates cache
             conn1 = duckdb.connect(":memory:")
@@ -356,7 +365,9 @@ class TestInitIndexTableCaching:
                 storage, "_manifest_20250102T100000_def.idx", ["id3", "id4", "id5"]
             )
             # Remove old manifest
-            old_manifest = Path(storage.location) / "_index" / "_manifest_20250101T100000_abc.idx"
+            old_manifest = (
+                Path(storage.location) / "_index" / "_manifest_20250101T100000_abc.idx"
+            )
             old_manifest.unlink()
 
             # Second call should create new cache
@@ -369,9 +380,7 @@ class TestInitIndexTableCaching:
             assert count2 == 3
 
     @pytest.mark.asyncio
-    async def test_init_index_table_skips_cache_for_local(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_init_index_table_skips_cache_for_local(self, tmp_path: Path) -> None:
         """Local storage doesn't use caching."""
         # Setup storage with index file
         storage = IndexStorage(location=str(tmp_path))
@@ -426,12 +435,12 @@ class TestEncryptedCache:
 
         # Verify file is encrypted (can't read without key)
         conn2 = duckdb.connect(":memory:")
-        with pytest.raises(duckdb.Error):  # DuckDB raises error for encrypted file without key
+        with pytest.raises(
+            duckdb.Error
+        ):  # DuckDB raises error for encrypted file without key
             conn2.execute(f"SELECT * FROM read_parquet('{cache_path}')")
 
-    def test_load_encrypted_cache(
-        self, tmp_path: Path
-    ) -> None:
+    def test_load_encrypted_cache(self, tmp_path: Path) -> None:
         """Encrypted cache can be loaded with correct key."""
         key = "0" * 32
         storage = IndexStorage(

@@ -237,7 +237,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Best-effort compaction - merge index files and clean up orphaned data
         try:
-            await compact_index(self._conn, self._index_storage, delete_orphaned_data=True)
+            await compact_index(
+                self._conn, self._index_storage, delete_orphaned_data=True
+            )
         except Exception as e:
             logger.warning(f"Index compaction failed (data is consistent): {e}")
 
@@ -471,7 +473,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             enc_config = self._read_parquet_encryption_config()
             try:
                 sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
-                result = self._conn.execute(sql, [full_path, t.transcript_id]).fetchone()
+                result = self._conn.execute(
+                    sql, [full_path, t.transcript_id]
+                ).fetchone()
                 columns_read = columns  # All requested columns were available
             except duckdb.BinderException:
                 # Column doesn't exist - check which ones are available (cached)
@@ -484,7 +488,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
                 # Retry with only available columns
                 sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
-                result = self._conn.execute(sql, [full_path, t.transcript_id]).fetchone()
+                result = self._conn.execute(
+                    sql, [full_path, t.transcript_id]
+                ).fetchone()
 
             if not result:
                 # Transcript not found - use model_construct to preserve LazyJSONDict
@@ -1238,7 +1244,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """)
 
         # Apply pre-filter query if provided (rare case)
-        if self._query and (self._query.where or self._query.shuffle or self._query.limit):
+        if self._query and (
+            self._query.where or self._query.shuffle or self._query.limit
+        ):
             self._apply_query_filter_to_tables()
 
     async def _init_from_parquet(self) -> None:

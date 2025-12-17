@@ -414,9 +414,20 @@ const sortByColumns = (
       case "id": {
         const identifierA = resultIdentifier(a);
         const identifierB = resultIdentifier(b);
-        comparison = identifierA.id.localeCompare(identifierB.id);
+
+        if (
+          typeof identifierA.id === "number" &&
+          typeof identifierB.id === "number"
+        ) {
+          comparison = identifierA.id - identifierB.id;
+        } else {
+          comparison = String(identifierA.id).localeCompare(
+            String(identifierB.id)
+          );
+        }
+
         if (comparison === 0 && identifierA.epoch && identifierB.epoch) {
-          comparison = identifierA.epoch.localeCompare(identifierB.epoch);
+          comparison = identifierA.epoch - identifierB.epoch;
         }
         break;
       }
@@ -476,7 +487,7 @@ const optimalColumnLayout = (
   // The id column
   columns.push("id");
   const maxIdLen = scannerSummaries.reduce((max, s) => {
-    return Math.max(max, resultIdentifier(s).id.length);
+    return Math.max(max, String(resultIdentifier(s).id).length);
   }, 0);
   gridColParts.push(
     `minmax(${Math.min(Math.max(maxIdLen * 8, 50), 250)}px, 1fr)`
@@ -495,7 +506,7 @@ const optimalColumnLayout = (
     columns.push("label");
 
     const maxlabelLen = scannerSummaries.reduce((max, s) => {
-      return Math.max(max, resultIdentifier(s).id.length);
+      return Math.max(max, s.label ? s.label.length : 0);
     }, 0);
     gridColParts.push(
       `minmax(${Math.min(Math.max(maxlabelLen * 5, 75), 250)}px, 1fr)`

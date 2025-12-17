@@ -186,7 +186,7 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               | number
               | undefined;
 
-            const basePreview = {
+            const baseSummary = {
               uuid: r.uuid as string | undefined,
               label: r.label as string | undefined,
               explanation,
@@ -211,41 +211,41 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
             };
 
             // Create typed preview based on inputType
-            let typedPreview: ScanResultSummary;
+            let typedSummary: ScanResultSummary;
             switch (inputType) {
               case "transcript":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "transcript",
                 };
                 break;
               case "message":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "message",
                 };
                 break;
               case "messages":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "messages",
                 };
                 break;
               case "event":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "event",
                 };
                 break;
               case "events":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "events",
                 };
                 break;
             }
 
-            return typedPreview;
+            return typedSummary;
           })
         );
 

@@ -1,9 +1,9 @@
 import { ScanResultSummary } from "../types";
 
 export interface IdentifierInfo {
-  id: string;
-  secondaryId?: string;
-  epoch?: string;
+  id: string | number;
+  secondaryId?: string | number;
+  epoch?: number;
 }
 
 export const resultIdentifierStr = (
@@ -14,12 +14,12 @@ export const resultIdentifierStr = (
     return undefined;
   }
   if (identifier.secondaryId || identifier.epoch) {
-    const result: string[] = [identifier.id];
+    const result: string[] = [String(identifier.id)];
     if (identifier.secondaryId) {
-      result.push(identifier.secondaryId);
+      result.push(String(identifier.secondaryId));
     }
     if (identifier.epoch) {
-      result.push(identifier.epoch);
+      result.push(String(identifier.epoch));
     }
     return result.join(" ");
   }
@@ -62,10 +62,16 @@ export const resultIdentifier = (
 
 const getSampleIdentifier = (
   summary: ScanResultSummary
-): { id: string; epoch: string } | undefined => {
-  if (summary.transcriptMetadata["id"] && summary.transcriptMetadata["epoch"]) {
-    const id = String(summary.transcriptMetadata["id"]);
-    const epoch = String(summary.transcriptMetadata["epoch"]);
+): IdentifierInfo | undefined => {
+  // Read the new ids. The metadata reading is only here to support old
+  // scan results that didn't have these fields.
+  const id =
+    summary.transcriptTaskId ||
+    (summary.transcriptMetadata["id"] as string | number);
+  const epoch = (summary.transcriptTaskRepeat ||
+    summary.transcriptMetadata["epoch"]) as number | undefined;
+
+  if (id && epoch) {
     return {
       id,
       epoch,

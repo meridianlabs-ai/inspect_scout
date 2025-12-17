@@ -233,7 +233,7 @@ const taskName = (
       <span
         key={"task-column-task-repeat"}
         className={clsx("text-style-secondary", "text-size-smallest")}
-      >{`(run ${taskRepeat})`}</span>
+      >{`(${taskRepeat})`}</span>
     );
   }
 

@@ -9,9 +9,9 @@ import { toRelativePath } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";
 import { ApplicationIcons } from "../appearance/icons";
 
-import styles from "./ScannerPanelTitle.module.css";
+import styles from "./ScansPanelTitle.module.css";
 
-export const ScannerPanelTitle: FC = () => {
+export const ScansPanelTitle: FC = () => {
   const selectedStatus = useStore((state) => state.selectedScanStatus);
   const resultsDir = useStore((state) => state.resultsDir);
   const scanJobName =

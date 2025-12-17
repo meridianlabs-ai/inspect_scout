@@ -120,13 +120,14 @@ async def messages_as_str(
         reduce_message, messages, (list[dict[str, str]](), dict[str, str]())
     )
 
-    if as_json:
-        result = json.dumps(items)
-    else:
-        result = "\n".join(
+    result = (
+        json.dumps(items)
+        if as_json
+        else "\n".join(
             f"[{item['id']}] {item['content']}" if "id" in item else item["content"]
             for item in items
         )
+    )
 
     return (
         (result, lambda text: _extract_references(text, id_map))

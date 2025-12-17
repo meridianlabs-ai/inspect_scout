@@ -630,6 +630,14 @@ class Column:
 class Columns:
     """Entry point for building filter expressions.
 
+    ::: {.callout-note}
+    Note that the `Columns` class is available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+    ```python
+    pip install git+https://github.com/meridianlabs-ai/inspect_scout
+    ```
+    :::
+
     Supports both dot notation and bracket notation for accessing columns:
 
     ```python
@@ -743,6 +751,6 @@ for use in queries). For example:
 ```python
 from inspect_scout import columns as c
 filter = c.model == "gpt-4"
-filter = (c.task == "math") & (c.epochs > 1)
+filter = (c.task_set == "math") & (c.epochs > 1)
 ```
 """

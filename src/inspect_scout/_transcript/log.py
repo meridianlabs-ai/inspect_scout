@@ -16,6 +16,14 @@ logger = getLogger(__name__)
 class LogColumns(Columns):
     """Typed column interface for Inspect log transcripts.
 
+    ::: {.callout-note}
+    Note that the `LogColumns` class is available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+    ```python
+    pip install git+https://github.com/meridianlabs-ai/inspect_scout
+    ```
+    :::
+
     Provides typed properties for standard Inspect log columns while
     preserving the ability to access custom fields through the base
     Metadata class methods.
@@ -25,7 +33,7 @@ class LogColumns(Columns):
 
         # Typed access to standard fields
         filter = c.model == "gpt-4"
-        filter = (c.task == "math") & (c.epochs > 1)
+        filter = (c.task_set == "math") & (c.epochs > 1)
 
         # Dynamic access to custom fields
         filter = c["custom_field"] > 100
@@ -154,7 +162,7 @@ from inspect_scout import log_columns as c
 
 # typed access to standard fields
 filter = c.model == "gpt-4"
-filter = (c.task_name == "math") & (c.epochs > 1)
+filter = (c.task_set == "math") & (c.epochs > 1)
 
 # dynamic access to custom fields
 filter = c["custom_field"] > 100

@@ -16,18 +16,36 @@ export const apiScoutServer = (
 ): ScanApi => {
   const { apiBaseUrl, headerProvider, resultsDir } = options;
   const requestApi = serverRequestApi(apiBaseUrl || "/api/v2", headerProvider);
+
   return {
+    getTranscriptsDir: async (): Promise<string> => {
+      return (await requestApi.fetchString("GET", `/transcripts-dir`)).raw;
+    },
+    getTranscripts: async (transcriptsDir?: string): Promise<unknown[]> => {
+      const result = await requestApi.fetchString(
+        "GET",
+        transcriptsDir
+          ? `/transcripts?dir=${encodeURIComponent(transcriptsDir)}`
+          : `/transcripts`
+      );
+
+      const parsedResult = await asyncJsonParse<unknown[]>(result.raw);
+      if (!Array.isArray(parsedResult)) {
+        throw new Error("Expected array from /transcripts endpoint");
+      }
+      return parsedResult;
+    },
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",
-        `/scan/${encodeURIComponent(scanLocation)}?status_only=true`
+        `/scans/${base64url(scanLocation)}`
       );
 
       return asyncJsonParse<Status>(result.raw);
     },
 
     getScans: async (): Promise<Scans> => {
-      let query = "/scans?status_only=true";
+      let query = "/scans";
       if (resultsDir) {
         query += `&results_dir=${encodeURIComponent(resultsDir)}`;
       }
@@ -39,9 +57,7 @@ export const apiScoutServer = (
     ): Promise<ArrayBuffer> => {
       return await requestApi.fetchBytes(
         "GET",
-        `/scanner_df/${encodeURIComponent(
-          scanLocation
-        )}?scanner=${encodeURIComponent(scanner)}`
+        `/scans/${base64url(scanLocation)}/${encodeURIComponent(scanner)}`
       );
     },
     getScannerDataframeInput: async (
@@ -52,9 +68,7 @@ export const apiScoutServer = (
       // Fetch the data
       const response = await requestApi.fetchType<Input>(
         "GET",
-        `/scanner_df_input/${encodeURIComponent(
-          scanLocation
-        )}?scanner=${encodeURIComponent(scanner)}&uuid=${encodeURIComponent(uuid)}`
+        `/scans/${base64url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
       const input = response.parsed;
 
@@ -77,3 +91,9 @@ export const apiScoutServer = (
     storage: NoPersistence,
   };
 };
+
+/**
+ * Encodes a string as base64url (URL-safe base64 without padding).
+ */
+const base64url = (s: string) =>
+  btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");

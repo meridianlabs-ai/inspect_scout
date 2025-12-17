@@ -170,7 +170,9 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
             ? item.label || "Unlabeled"
             : groupResultsBy === "epoch"
               ? (item.transcriptMetadata.epoch as number)
-              : resultIdentifierStr(item) || "Unknown";
+              : groupResultsBy === "model"
+                ? item.transcriptModel || "Unknown"
+                : resultIdentifierStr(item) || "Unknown";
 
       // Insert group header when group changes
       if (!groups.has(groupKey)) {
@@ -414,9 +416,20 @@ const sortByColumns = (
       case "id": {
         const identifierA = resultIdentifier(a);
         const identifierB = resultIdentifier(b);
-        comparison = identifierA.id.localeCompare(identifierB.id);
+
+        if (
+          typeof identifierA.id === "number" &&
+          typeof identifierB.id === "number"
+        ) {
+          comparison = identifierA.id - identifierB.id;
+        } else {
+          comparison = String(identifierA.id).localeCompare(
+            String(identifierB.id)
+          );
+        }
+
         if (comparison === 0 && identifierA.epoch && identifierB.epoch) {
-          comparison = identifierA.epoch.localeCompare(identifierB.epoch);
+          comparison = identifierA.epoch - identifierB.epoch;
         }
         break;
       }
@@ -473,21 +486,9 @@ const optimalColumnLayout = (
   const columns: string[] = [];
   const gridColParts: string[] = [];
 
-  // The id column
-  columns.push("id");
-  const maxIdLen = scannerSummaries.reduce((max, s) => {
-    return Math.max(max, resultIdentifier(s).id.length);
-  }, 0);
-  gridColParts.push(
-    `minmax(${Math.min(Math.max(maxIdLen * 8, 50), 250)}px, 1fr)`
-  );
-
   // The explanation column, if any explanations exist
-  const hasExplanation = scannerSummaries.some((s) => !!s.explanation);
-  if (hasExplanation) {
-    columns.push("explanation");
-    gridColParts.push("10fr");
-  }
+  columns.push("result");
+  gridColParts.push("10fr");
 
   // The label column, if any labels exist
   const hasLabel = scannerSummaries.some((s) => !!s.label);
@@ -495,7 +496,7 @@ const optimalColumnLayout = (
     columns.push("label");
 
     const maxlabelLen = scannerSummaries.reduce((max, s) => {
-      return Math.max(max, resultIdentifier(s).id.length);
+      return Math.max(max, s.label ? s.label.length : 0);
     }, 0);
     gridColParts.push(
       `minmax(${Math.min(Math.max(maxlabelLen * 5, 75), 250)}px, 1fr)`
@@ -574,7 +575,7 @@ const optimalColumnLayout = (
     gridStyle: {
       gridTemplateColumns: gridColParts.join(" "),
       display: "grid",
-      columnGap: "0.5rem",
+      columnGap: "1rem",
     },
     columns,
   };

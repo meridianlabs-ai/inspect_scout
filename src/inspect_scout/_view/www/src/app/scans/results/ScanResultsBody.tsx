@@ -13,7 +13,7 @@ import {
 } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { useSelectedScanner } from "../../hooks";
-import { kSegmentDataframe, kSegmentList } from "../ScannerPanelBody";
+import { kSegmentDataframe, kSegmentList } from "../ScansPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
 import styles from "./ScanResultsBody.module.css";

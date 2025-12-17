@@ -173,7 +173,22 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               ? new Date(r.timestamp as string)
               : undefined;
 
-            const basePreview = {
+            const transcriptTaskSet = r.transcript_task_set as
+              | string
+              | undefined;
+
+            const transcriptTaskId = r.transcript_task_id as
+              | string
+              | number
+              | undefined;
+
+            const transcriptTaskRepeat = r.transcript_task_repeat as
+              | number
+              | undefined;
+
+            const transcriptModel = r.transcript_model as string | undefined;
+
+            const baseSummary = {
               uuid: r.uuid as string | undefined,
               label: r.label as string | undefined,
               explanation,
@@ -187,6 +202,10 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
                 | Record<string, boolean>,
               value,
               valueType,
+              transcriptTaskSet,
+              transcriptTaskId,
+              transcriptTaskRepeat,
+              transcriptModel,
               transcriptMetadata: transcriptMetadata || {},
               transcriptSourceId,
               scanError,
@@ -194,42 +213,47 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
               timestamp,
             };
 
+            // Resolve old values from the metadata if not present directly
+            // this should only be hit if the scan was old enough to not have
+            // these fields
+            resolveTranscriptPropertiesFromMetadata(baseSummary);
+
             // Create typed preview based on inputType
-            let typedPreview: ScanResultSummary;
+            let typedSummary: ScanResultSummary;
             switch (inputType) {
               case "transcript":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "transcript",
                 };
                 break;
               case "message":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "message",
                 };
                 break;
               case "messages":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "messages",
                 };
                 break;
               case "event":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "event",
                 };
                 break;
               case "events":
-                typedPreview = {
-                  ...basePreview,
+                typedSummary = {
+                  ...baseSummary,
                   inputType: "events",
                 };
                 break;
             }
 
-            return typedPreview;
+            return typedSummary;
           })
         );
 
@@ -429,14 +453,26 @@ export const useScanResultData = (
           0
         ) as string;
 
+        const transcriptTaskSet = getOptionalColumn<string>(
+          filtered,
+          "transcript_task_set"
+        );
+
+        const transcriptTaskId = getOptionalColumn<string | number>(
+          filtered,
+          "transcript_task_id"
+        );
+
+        const transcriptTaskRepeat = getOptionalColumn<number>(
+          filtered,
+          "transcript_task_repeat"
+        );
+
         const transcriptDate = getOptionalDateColumn(
           filtered,
           "transcript_date"
         );
-        const transcriptTask = getOptionalColumn<string>(
-          filtered,
-          "transcript_task"
-        );
+
         const transcriptAgent = getOptionalColumn<string>(
           filtered,
           "transcript_agent"
@@ -493,10 +529,12 @@ export const useScanResultData = (
           transcriptMetadata: transcriptMetadata as Record<string, JsonValue>,
           transcriptSourceId,
           transcriptSourceUri,
+          transcriptTaskSet,
+          transcriptTaskId,
+          transcriptTaskRepeat,
           transcriptAgent,
           transcriptAgentArgs: transcriptAgentArgs as Record<string, unknown>,
           transcriptDate,
-          transcriptTask,
           transcriptModel,
           transcriptScore,
           transcriptSuccess,
@@ -513,6 +551,11 @@ export const useScanResultData = (
           value: value ?? null,
           valueType,
         };
+
+        // Resolve old values from the metadata if not present directly
+        // this should only be hit if the scan was old enough to not have
+        // these fields
+        resolveTranscriptPropertiesFromMetadata(baseData);
 
         // Create typed data based on inputType
         let typedData: ScanResultData;
@@ -587,4 +630,30 @@ function getOptionalDateColumn(
 ): Date | undefined {
   const value = getOptionalColumn<string>(table, columnName, rowIndex);
   return value ? new Date(value) : undefined;
+}
+
+function resolveTranscriptPropertiesFromMetadata<
+  T extends {
+    transcriptModel?: string;
+    transcriptTaskSet?: string;
+    transcriptTaskId?: string | number;
+    transcriptTaskRepeat?: number;
+    transcriptMetadata: Record<string, unknown>;
+  },
+>(data: T): void {
+  if (data.transcriptModel === undefined) {
+    data.transcriptModel = data.transcriptMetadata["model"] as string;
+  }
+
+  if (data.transcriptTaskSet === undefined) {
+    data.transcriptTaskSet = data.transcriptMetadata["task_name"] as string;
+  }
+
+  if (data.transcriptTaskId === undefined) {
+    data.transcriptTaskId = data.transcriptMetadata["id"] as string | number;
+  }
+
+  if (data.transcriptTaskRepeat === undefined) {
+    data.transcriptTaskRepeat = data.transcriptMetadata["epoch"] as number;
+  }
 }

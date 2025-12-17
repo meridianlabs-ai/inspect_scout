@@ -868,6 +868,30 @@ async def test_indexed_database_isolation(test_location: Path) -> None:
     await db_sub2.disconnect()
 
 
+async def test_file_uri_discovery(test_location: Path) -> None:
+    """Test that parquet files are discovered when location is a file: URI."""
+    # Create and populate database using regular path
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    transcripts = [
+        create_sample_transcript(id=f"uri-{i}", metadata={"index": i}) for i in range(3)
+    ]
+    await db.insert(transcripts)
+    await db.disconnect()
+
+    # Now create a new database using file: URI
+    file_uri = test_location.as_uri()  # Converts to file:///path/to/dir
+    db_uri = ParquetTranscriptsDB(file_uri)
+    await db_uri.connect()
+
+    try:
+        # Should discover and read all transcripts
+        transcript_ids = await db_uri.transcript_ids([], None)
+        assert len(transcript_ids) == 3
+    finally:
+        await db_uri.disconnect()
+
+
 # RecordBatchReader Tests
 def create_record_batch_reader(
     transcript_ids: list[str],

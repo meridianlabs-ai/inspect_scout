@@ -50,8 +50,13 @@ export interface ScanResultSummary {
   scanError?: string;
   scanErrorRefusal?: boolean;
 
-  transcriptMetadata: Record<string, JsonValue>;
+  // Transcript info
   transcriptSourceId: string;
+  transcriptTaskSet?: string;
+  transcriptTaskId?: string | number;
+  transcriptTaskRepeat?: number;
+  transcriptModel?: string;
+  transcriptMetadata: Record<string, JsonValue>;
 }
 
 // Base interface with common properties
@@ -76,10 +81,8 @@ export interface ScanResultData extends ScanResultSummary {
   transcriptSourceUri: string;
 
   transcriptDate?: Date;
-  transcriptTask?: string;
   transcriptAgent?: string;
   transcriptAgentArgs?: Record<string, unknown>;
-  transcriptModel?: string;
   transcriptScore?: JsonValue;
   transcriptSuccess?: boolean;
   transcriptTotalTime?: number;
@@ -111,7 +114,13 @@ export type ErrorScope =
   | "dataframe"
   | "dataframe_input";
 
-export type ResultGroup = "source" | "label" | "id" | "epoch" | "none";
+export type ResultGroup =
+  | "source"
+  | "label"
+  | "id"
+  | "epoch"
+  | "model"
+  | "none";
 
 export type ValueType =
   | "boolean"

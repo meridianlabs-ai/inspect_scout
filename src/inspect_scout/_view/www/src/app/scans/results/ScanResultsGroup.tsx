@@ -11,7 +11,7 @@ interface ScanResultsGroupProps {
 }
 
 export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
-  options = ["source", "label", "id"],
+  options = ["source", "label", "id", "epoch", "model"],
 }) => {
   const setGroupResultsBy = useStore((state) => state.setGroupResultsBy);
   const groupResultsBy = useStore((state) => state.groupResultsBy);
@@ -29,6 +29,7 @@ export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
     { label: "Label", value: "label" },
     { label: "Id", value: "id" },
     { label: "Epoch", value: "epoch" },
+    { label: "Model", value: "model" },
   ].filter((opt) => options.includes(toVal(opt.value)));
   if (groupByOpts.length === 0) {
     return null;
@@ -76,6 +77,8 @@ const toVal = (v: string | null): ResultGroup => {
     return "id";
   } else if (v === "epoch") {
     return "epoch";
+  } else if (v === "model") {
+    return "model";
   } else {
     return "none";
   }

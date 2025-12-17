@@ -6,6 +6,8 @@ import { Scans, Status } from "../types";
 export type ClientStorage = StateStorage;
 
 export interface ScanApi {
+  getTranscriptsDir(): Promise<string>;
+  getTranscripts(transcriptsDir?: string): Promise<unknown[]>;
   getScans(): Promise<Scans>;
   getScan(scanLocation: string): Promise<Status>;
   getScannerDataframe(

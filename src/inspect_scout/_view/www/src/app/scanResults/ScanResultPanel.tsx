@@ -22,9 +22,9 @@ import {
 } from "../hooks";
 import {
   useServerScans,
-  useServerScanner,
-  useServerScannerDataframe,
-  useServerScannerDataframeInput,
+  useServerScan,
+  useServerScanDataframe,
+  useServerScanDataframeInput,
 } from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";
@@ -53,9 +53,9 @@ export const ScanResultPanel: FC = () => {
 
   // Required server data
   useServerScans();
-  useServerScanner();
-  useServerScannerDataframe();
-  useServerScannerDataframeInput();
+  useServerScan();
+  useServerScanDataframe();
+  useServerScanDataframeInput();
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);

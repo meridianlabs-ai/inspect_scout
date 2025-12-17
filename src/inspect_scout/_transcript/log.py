@@ -135,7 +135,7 @@ class LogColumns(Columns):
     @property
     def task_name(self) -> Column:
         """Task name (deprecated, use 'task' instead)."""
-        warn_once(logger, "'task_name' is deprecated, use 'task' instead")
+        warn_once(logger, "'task_name' is deprecated, use 'task_set' instead")
         return self.task_set
 
     @property

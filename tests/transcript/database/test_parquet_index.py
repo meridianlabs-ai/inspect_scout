@@ -583,6 +583,40 @@ class TestCreateIndex:
         assert idx_files_after[0].name.startswith("_manifest_")
         assert str(idx_files_after[0]) == new_path
 
+    @pytest.mark.asyncio
+    async def test_create_index_stores_relative_filenames(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Index stores filenames relative to database location, not absolute paths."""
+        import pyarrow.parquet as pq
+
+        # Create data files in subdirectories (like partitioned data)
+        location = Path(storage.location)
+        subdir = location / "task_set=test" / "agent=foo"
+        subdir.mkdir(parents=True)
+        create_sample_data_file(subdir / "data1.parquet", ["t1", "t2"])
+        create_sample_data_file(location / "data2.parquet", ["t3"])
+
+        path = await create_index(conn, storage)
+        assert path is not None
+
+        # Read the index and check filenames
+        table = pq.read_table(path)
+        filenames = table.column("filename").to_pylist()
+
+        # All filenames should be relative (not contain the location prefix)
+        for filename in filenames:
+            assert not filename.startswith(str(location)), (
+                f"Filename '{filename}' should be relative, not absolute"
+            )
+            assert not filename.startswith("/"), (
+                f"Filename '{filename}' should not start with /"
+            )
+
+        # Verify expected relative paths
+        assert "task_set=test/agent=foo/data1.parquet" in filenames
+        assert "data2.parquet" in filenames
+
 
 # --- Maintenance Tests ---
 

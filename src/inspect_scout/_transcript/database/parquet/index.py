@@ -28,8 +28,10 @@ from pathlib import Path
 
 import duckdb
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.file import filesystem
+from inspect_ai.util import trace_message
 from shortuuid import uuid
 
 from .encryption import (
@@ -38,6 +40,7 @@ from .encryption import (
     _check_index_encryption_status,
     setup_encryption,
 )
+from .index_cache import get_index_cache_path, load_cached_index, save_index_cache
 from .types import (
     ENCRYPTED_INDEX_EXTENSION,
     INCREMENTAL_PREFIX,
@@ -241,6 +244,9 @@ async def create_index(
         FROM read_parquet({file_pattern}, union_by_name=true, filename=true{enc_config})
     """).fetch_arrow_table()
 
+    # Convert absolute filenames to relative paths (relative to database location)
+    result = _make_filenames_relative(result, storage.location)
+
     # Write as manifest file (this is a full rebuild, so use manifest naming)
     filename = _generate_manifest_filename(encrypted=storage.is_encrypted)
     new_path = await append_index(result, storage, filename)
@@ -264,6 +270,9 @@ async def init_index_table(
 
     Creates a TABLE from index files using union_by_name.
     This is the primary entry point for read operations.
+
+    For remote storage, uses local caching to avoid repeated downloads.
+    The cache is invalidated when index files change (based on filename hash).
 
     After calling, SQL queries work directly:
         SELECT * FROM transcript_index WHERE task = 'gaia'
@@ -292,6 +301,17 @@ async def init_index_table(
         """)
         return 0
 
+    # For remote storage, try to use local cache
+    cache_path: Path | None = None
+    if storage.is_remote():
+        cache_path = get_index_cache_path(storage, idx_files)
+
+        # Try loading from cache
+        cached_count = load_cached_index(conn, cache_path, table_name, storage)
+        if cached_count is not None:
+            trace_message(logger, "Scout Index Cache", f"Loaded from cache: {cache_path}")
+            return cached_count
+
     # Build file list for read_parquet
     if len(idx_files) == 1:
         file_pattern = f"'{idx_files[0]}'"
@@ -310,7 +330,17 @@ async def init_index_table(
 
     # Return row count
     result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
-    return result[0] if result else 0
+    row_count = result[0] if result else 0
+
+    # For remote storage, save to cache
+    if storage.is_remote() and cache_path is not None:
+        try:
+            save_index_cache(conn, cache_path, table_name, storage)
+            trace_message(logger, "Scout Index Cache", f"Saved to cache: {cache_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save index cache: {e}")
+
+    return row_count
 
 
 async def _discover_index_files(storage: IndexStorage) -> list[str]:
@@ -576,3 +606,40 @@ def _generate_manifest_filename(encrypted: bool = False) -> str:
     unique_id = uuid()[:8]
     ext = ENCRYPTED_INDEX_EXTENSION if encrypted else INDEX_EXTENSION
     return f"{MANIFEST_PREFIX}{timestamp}_{unique_id}{ext}"
+
+
+def _make_filenames_relative(table: pa.Table, location: str) -> pa.Table:
+    """Convert absolute filenames in a table to paths relative to location.
+
+    The index stores filenames relative to the database root so they work
+    correctly when the database is accessed from different locations
+    (e.g., local vs S3 vs HuggingFace).
+
+    Args:
+        table: PyArrow table with a 'filename' column containing absolute paths.
+        location: Database location to strip from filenames.
+
+    Returns:
+        Table with filename column containing relative paths.
+    """
+    if "filename" not in table.column_names:
+        return table
+
+    # Normalize location to ensure consistent trailing slash handling
+    location_prefix = location.rstrip("/") + "/"
+
+    # Get current filename column
+    filenames = table.column("filename")
+
+    # Strip the location prefix from each filename
+    # PyArrow's replace_substring works well for this
+    relative_filenames = pc.replace_substring(
+        filenames,
+        pattern=location_prefix,
+        replacement="",
+        max_replacements=1,  # Only replace the prefix once
+    )
+
+    # Replace the filename column with relative paths
+    col_idx = table.column_names.index("filename")
+    return table.set_column(col_idx, "filename", relative_filenames)

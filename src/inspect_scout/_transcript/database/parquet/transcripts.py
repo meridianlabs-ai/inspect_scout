@@ -140,6 +140,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Create DuckDB connection
             self._conn = duckdb.connect(":memory:")
 
+            # Disable progress bar (shows up during S3/HTTP operations)
+            self._conn.execute("SET enable_progress_bar=false")
+
             # Enable Parquet metadata caching for better performance when querying same files
             # multiple times (e.g., SELECT for metadata, then read() for content)
             self._conn.execute("SET parquet_metadata_cache=true")
@@ -460,17 +463,19 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Now read content from just that specific file (targeted I/O)
             # This avoids scanning all files - only reads from the one file containing this transcript
-            filename = filename_result[0]
+            # The index stores relative filenames, so we need to construct the full path
+            relative_filename = filename_result[0]
+            full_path = self._full_parquet_path(relative_filename)
 
             # Try optimistic read first (fast path for files with all columns)
             enc_config = self._read_parquet_encryption_config()
             try:
                 sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
-                result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
+                result = self._conn.execute(sql, [full_path, t.transcript_id]).fetchone()
                 columns_read = columns  # All requested columns were available
             except duckdb.BinderException:
                 # Column doesn't exist - check which ones are available (cached)
-                available = self._get_available_content_columns(filename)
+                available = self._get_available_content_columns(full_path)
                 columns_read = [c for c in columns if c in available]
 
                 if not columns_read:
@@ -479,7 +484,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
                 # Retry with only available columns
                 sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
-                result = self._conn.execute(sql, [filename, t.transcript_id]).fetchone()
+                result = self._conn.execute(sql, [full_path, t.transcript_id]).fetchone()
 
             if not result:
                 # Transcript not found - use model_construct to preserve LazyJSONDict
@@ -1784,6 +1789,23 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _is_hf(self) -> bool:
         return self._location is not None and self._location.startswith("hf://")
+
+    def _full_parquet_path(self, relative_filename: str) -> str:
+        """Convert a relative parquet filename to a full path.
+
+        The index stores filenames relative to the database location.
+        This method constructs the full path by joining the location
+        with the relative filename.
+
+        Args:
+            relative_filename: Relative path from index (e.g., 'data/file.parquet')
+
+        Returns:
+            Full path suitable for read_parquet (e.g., 's3://bucket/db/data/file.parquet')
+        """
+        assert self._location is not None
+        location = self._location.rstrip("/")
+        return f"{location}/{relative_filename}"
 
     def _init_hf_auth(self) -> None:
         assert self._conn is not None

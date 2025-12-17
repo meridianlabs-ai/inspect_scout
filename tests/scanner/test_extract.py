@@ -1,5 +1,7 @@
 """Tests for message extraction functions in llm_scanner."""
 
+import json
+
 import pytest
 from inspect_ai._util.content import (
     ContentData,
@@ -897,3 +899,77 @@ def test_extract_references(
     """Test extract_references with various message and event references."""
     result = _extract_references(text, id_map)
     assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_json_without_ids() -> None:
+    """Test as_json=True without include_ids."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi there", id="msg2"),
+    ]
+
+    result = await messages_as_str(messages, as_json=True)
+    parsed = json.loads(result)
+
+    assert len(parsed) == 2
+    assert parsed[0] == {"role": "user", "content": "USER:\nHello\n"}
+    assert parsed[1] == {"role": "assistant", "content": "ASSISTANT:\nHi there\n"}
+    # No id field when include_ids is not set
+    assert "id" not in parsed[0]
+    assert "id" not in parsed[1]
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_json_with_ids() -> None:
+    """Test as_json=True with include_ids=True."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi there", id="msg2"),
+    ]
+
+    result, extract_references = await messages_as_str(
+        messages, include_ids=True, as_json=True
+    )
+    parsed = json.loads(result)
+
+    assert len(parsed) == 2
+    assert parsed[0] == {"id": "M1", "role": "user", "content": "USER:\nHello\n"}
+    assert parsed[1] == {"id": "M2", "role": "assistant", "content": "ASSISTANT:\nHi there\n"}
+
+    # extract_references should still work
+    refs = extract_references("[M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg2"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_json_with_filtered_messages() -> None:
+    """Test as_json=True with system messages excluded."""
+    messages: list[ChatMessage] = [
+        ChatMessageSystem(content="System prompt", id="sys1"),
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi", id="msg2"),
+    ]
+
+    result = await messages_as_str(
+        messages, preprocessor=MessagesPreprocessor[list[ChatMessage]](), as_json=True
+    )
+    parsed = json.loads(result)
+
+    # System message excluded by default
+    assert len(parsed) == 2
+    assert parsed[0]["role"] == "user"
+    assert parsed[1]["role"] == "assistant"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_json_empty_list() -> None:
+    """Test as_json=True with empty message list."""
+    messages: list[ChatMessage] = []
+
+    result = await messages_as_str(messages, as_json=True)
+    parsed = json.loads(result)
+
+    assert parsed == []

@@ -13,6 +13,7 @@ import {
 } from "../../router/url";
 import { useStore } from "../../state/store";
 import { EventNode, EventType } from "../../transcript/types";
+import { compose } from "../../utils/asyncData";
 import { ApplicationIcons } from "../appearance/icons";
 import { Navbar } from "../components/Navbar";
 import { ToolButton } from "../components/ToolButton";
@@ -21,10 +22,9 @@ import {
   useSelectedScanResultInputData,
 } from "../hooks";
 import {
-  useServerScans,
-  useServerScan,
-  useServerScanDataframe,
   useServerScanDataframeInput,
+  useServerScanDataframe,
+  useServerScan,
 } from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";
@@ -52,8 +52,8 @@ export const ScanResultPanel: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Required server data
-  useServerScans();
-  useServerScan();
+  const { loading: scanLoading, data: status } = useServerScan();
+  // TODO: These two aren't actually used at this layer
   useServerScanDataframe();
   useServerScanDataframeInput();
 
@@ -66,7 +66,6 @@ export const ScanResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  const loading = useStore((state) => state.loading);
   const selectedTab = useStore((state) => state.selectedResultTab);
   const visibleScannerResults = useStore(
     (state) => state.visibleScannerResults
@@ -76,7 +75,6 @@ export const ScanResultPanel: FC = () => {
   const { data: selectedResult, isLoading: resultLoading } =
     useSelectedResultsRow(scanResultUuid);
 
-  const status = useStore((state) => state.selectedScanStatus);
   const dfInput = useSelectedScanResultInputData();
 
   // Sync URL tab parameter with store on mount and URL changes
@@ -149,7 +147,7 @@ export const ScanResultPanel: FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
-      <ActivityBar animating={!!loading || resultLoading} />
+      <ActivityBar animating={scanLoading || resultLoading} />
       <ScanResultHeader inputData={dfInput} status={status} />
       {selectedResult && (
         <ExtendedFindProvider>

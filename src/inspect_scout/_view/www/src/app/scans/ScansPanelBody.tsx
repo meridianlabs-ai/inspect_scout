@@ -1,3 +1,4 @@
+import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -7,6 +8,8 @@ import JSONPanel from "../../components/JsonPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
+import { Status } from "../../types";
+import { AsyncData } from "../../utils/asyncData";
 import { ApplicationIcons } from "../appearance/icons";
 import { ResultGroup } from "../types";
 import { resultIdentifierStr, resultLog } from "../utils/results";
@@ -29,13 +32,20 @@ const kTabIdJson = "scan-detail-tabs-json";
 export const kSegmentList = "list";
 export const kSegmentDataframe = "dataframe";
 
-export const ScansPanelBody: React.FC = () => {
+interface ScansPanelBodyProps {
+  selectedStatus: Status;
+  dataframeData: AsyncData<ColumnTable>;
+}
+
+export const ScansPanelBody: React.FC<ScansPanelBodyProps> = ({
+  selectedStatus,
+  dataframeData: _dataframeData,
+}) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
   const setSelectedResultsTab = useStore(
     (state) => state.setSelectedResultsTab
   );
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
 
   const selectedScanner = useStore((state) => state.selectedScanner);
   const visibleScannerResults = useStore(

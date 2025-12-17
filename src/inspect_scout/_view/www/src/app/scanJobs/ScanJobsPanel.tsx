@@ -14,9 +14,7 @@ import styles from "./ScanJobsPanel.module.css";
 
 export const ScanJobsPanel: FC = () => {
   // Load scans data
-  useServerScans();
-  const loading = useStore((state) => state.loading);
-  const error = useStore((state) => state.scopedErrors["scanjobs"]);
+  const { loading, error, data: scans } = useServerScans();
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
 
   // Clear scan state from store on mount
@@ -31,9 +29,12 @@ export const ScanJobsPanel: FC = () => {
       <ActivityBar animating={!!loading} />
       <ExtendedFindProvider>
         {error && (
-          <ErrorPanel title="Error Loading Scans" error={{ message: error }} />
+          <ErrorPanel
+            title="Error Loading Scans"
+            error={{ message: error.message }}
+          />
         )}
-        {!error && <ScanJobGrid />}
+        {!error && <ScanJobGrid scans={scans ?? []} />}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

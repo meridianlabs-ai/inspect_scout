@@ -1,3 +1,4 @@
+import { ColumnTable } from "arquero";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 
@@ -6,13 +7,16 @@ import {
   parseScanResultPath,
 } from "../../router/url";
 import { useApi, useStore } from "../../state/store";
+import { Status } from "../../types";
 import { decodeArrowBytes } from "../../utils/arrow";
+import { AsyncData, data, loading } from "../../utils/asyncData";
 import { join } from "../../utils/uri";
 import { useSelectedScanner } from "../hooks";
+import { ScanResultInputData } from "../types";
 import { expandResultsetRows } from "../utils/arrow";
 
 // Lists the available scans from the server and stores in state
-export const useServerScans = () => {
+export const useServerScansOld = () => {
   // api
   const api = useApi();
 
@@ -57,7 +61,7 @@ export const useServerScans = () => {
 };
 
 // Fetches the selected scan status from the server and stores in state
-export const useServerScan = () => {
+export const useServerScanOld = () => {
   // api
   const api = useApi();
 
@@ -124,7 +128,7 @@ export const useServerScan = () => {
 };
 
 // Fetch scanner dataframe from the server and stores in state
-export const useServerScanDataframe = () => {
+export const useServerScanDataframeOld = () => {
   // api
   const api = useApi();
 
@@ -203,7 +207,7 @@ export const useServerScanDataframe = () => {
   ]);
 };
 
-export const useServerScanDataframeInput = () => {
+export const useServerScanDataframeInputOld = () => {
   // api
   const api = useApi();
 
@@ -285,3 +289,66 @@ export const useServerScanDataframeInput = () => {
     getSelectedScanResultInput,
   ]);
 };
+
+// --- New AsyncData-returning hooks ---
+
+export const useServerScans = (): AsyncData<Status[]> => {
+  useServerScansOld();
+
+  const scans = useStore((s) => s.scans);
+  const error = useStore((s) => s.scopedErrors.scanjobs);
+  const resultsDir = useStore((s) => s.resultsDir);
+
+  if (error) return { loading: false, error: new Error(error) };
+  if (!resultsDir) return loading;
+  return data(scans);
+};
+
+export const useServerScan = (): AsyncData<Status> => {
+  useServerScanOld();
+
+  const selectedScanStatus = useStore((s) => s.selectedScanStatus);
+  const error = useStore((s) => s.scopedErrors.scanner);
+
+  if (error) return { loading: false, error: new Error(error) };
+  if (!selectedScanStatus) return loading;
+  return data(selectedScanStatus);
+};
+
+export const useServerScanDataframe = (): AsyncData<ColumnTable> => {
+  useServerScanDataframeOld();
+
+  const selectedScanner = useSelectedScanner();
+  const getSelectedScanResultData = useStore(
+    (s) => s.getSelectedScanResultData
+  );
+  const error = useStore((s) => s.scopedErrors.dataframe);
+
+  const resultData = getSelectedScanResultData(selectedScanner);
+
+  if (error) return { loading: false, error: new Error(error) };
+  if (!resultData) return loading;
+  return data(resultData);
+};
+
+export const useServerScanDataframeInput =
+  (): AsyncData<ScanResultInputData> => {
+    useServerScanDataframeInputOld();
+
+    const params = useParams<{ "*": string }>();
+    const relativePath = getRelativePathFromParams(params);
+    const { scanResultUuid } = parseScanResultPath(relativePath);
+
+    const getSelectedScanResultInputData = useStore(
+      (s) => s.getSelectedScanResultInputData
+    );
+    const error = useStore((s) => s.scopedErrors.dataframe_input);
+
+    const inputData = scanResultUuid
+      ? getSelectedScanResultInputData(scanResultUuid)
+      : undefined;
+
+    if (error) return { loading: false, error: new Error(error) };
+    if (!inputData) return loading;
+    return data(inputData);
+  };

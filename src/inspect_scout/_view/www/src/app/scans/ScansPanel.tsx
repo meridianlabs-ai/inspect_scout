@@ -6,10 +6,11 @@ import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
+import { compose } from "../../utils/asyncData";
 import { Navbar } from "../components/Navbar";
 import {
-  useServerScan,
   useServerScanDataframe,
+  useServerScan,
   useServerScans,
 } from "../server/hooks";
 
@@ -19,10 +20,15 @@ import { ScansPanelTitle } from "./ScansPanelTitle";
 
 export const ScansPanel: React.FC = () => {
   // Load server data
-  useServerScans();
-  useServerScan();
-  useServerScanDataframe();
-  const loading = useStore((state) => state.loading);
+  const scansData = useServerScans();
+  const scanData = useServerScan();
+  const dataframeData = useServerScanDataframe();
+
+  const combinedData = compose({
+    scans: scansData,
+    scan: scanData,
+    dataframe: dataframeData,
+  });
 
   // Clear scan state from the store on mount
   const clearScanState = useStore((state) => state.clearScanState);
@@ -40,17 +46,17 @@ export const ScansPanel: React.FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  // Render only if we have selected results
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  // Render only if we have selected scan
+  const selectedScanStatus = scanData.data;
   return (
     <div className={clsx(styles.root)}>
       <Navbar />
-      <ActivityBar animating={!!loading} />
-      {selectedStatus && (
+      <ActivityBar animating={combinedData.loading} />
+      {selectedScanStatus && (
         <>
-          <ScansPanelTitle />
+          <ScansPanelTitle selectedStatus={selectedScanStatus} />
           <ExtendedFindProvider>
-            <ScansPanelBody />
+            <ScansPanelBody scanData={scanData} dataframeData={dataframeData} />
           </ExtendedFindProvider>
         </>
       )}

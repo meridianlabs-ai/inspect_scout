@@ -100,7 +100,10 @@ def v1_api_app(
     streaming_batch_size: int = 1024,
 ) -> FastAPI:
     """Create V1 API FastAPI app (deprecated)."""
-    app = FastAPI()
+    app = FastAPI(
+        title="Inspect Scout Viewer API (Deprecated)",
+        description="⚠️ **DEPRECATED**: This API is deprecated. Use /api/v2 instead.",
+    )
 
     async def _map_file(request: Request, file: str) -> str:
         if mapping_policy is not None:
@@ -139,7 +142,7 @@ def v1_api_app(
             )
         return value
 
-    @app.get("/scans")
+    @app.get("/scans", deprecated=True)
     async def scans(
         request: Request,
         query_results_dir: str | None = Query(None, alias="results_dir"),
@@ -157,7 +160,7 @@ def v1_api_app(
             media_type="application/json",
         )
 
-    @app.get("/scanner_df_input/{scan:path}")
+    @app.get("/scanner_df_input/{scan:path}", deprecated=True)
     async def scanner_input(
         request: Request,
         scan: str,
@@ -212,7 +215,7 @@ def v1_api_app(
             headers={"X-Input-Type": input_type or ""},
         )
 
-    @app.get("/scanner_df/{scan:path}")
+    @app.get("/scanner_df/{scan:path}", deprecated=True)
     async def scan_df(
         request: Request,
         scan: str,
@@ -286,7 +289,7 @@ def v1_api_app(
             media_type="application/vnd.apache.arrow.stream; codecs=lz4",
         )
 
-    @app.get("/scan/{scan:path}")
+    @app.get("/scan/{scan:path}", deprecated=True)
     async def scan(
         request: Request,
         scan: str,
@@ -325,7 +328,7 @@ def v1_api_app(
             content=status, media_type="application/json"
         )
 
-    @app.get("/scan-delete/{scan:path}")
+    @app.get("/scan-delete/{scan:path}", deprecated=True)
     async def scan_delete(request: Request, scan: str) -> Response:
         # convert to absolute path
         scan_path = UPath(await _map_file(request, scan))

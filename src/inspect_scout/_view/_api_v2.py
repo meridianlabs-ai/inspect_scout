@@ -91,7 +91,7 @@ def v2_api_router(
     async def _to_rest_scan(
         request: Request, scan: RecorderStatus, running_scans: set[str]
     ) -> RestScanStatus:
-        return scan
+        return RestScanStatus.from_recorder_status(scan, running_scans)
 
     @router.get(
         "/transcripts-dir",

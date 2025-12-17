@@ -104,26 +104,27 @@ async def messages_as_str(
     )
 
     def reduce_message(
-        acc: tuple[list[dict[str, str | None]], dict[str, str]], message: ChatMessage
-    ) -> tuple[list[dict[str, str | None]], dict[str, str]]:
+        acc: tuple[list[dict[str, str]], dict[str, str]], message: ChatMessage
+    ) -> tuple[list[dict[str, str]], dict[str, str]]:
         items, id_map = acc
         if (content := message_as_str(message, preprocessor)) is not None:
-            ordinal = f"M{len(id_map) + 1}" if include_ids else None
-            if ordinal:
+            item: dict[str, str] = {"role": message.role, "content": content}
+            if include_ids:
+                ordinal = f"M{len(id_map) + 1}"
                 id_map[ordinal] = _message_id(message)
-            items.append({"id": ordinal, "role": message.role, "content": content})
+                item["id"] = ordinal
+            items.append(item)
         return items, id_map
 
     items, id_map = reduce(
-        reduce_message, messages, (list[dict[str, str | None]](), dict[str, str]())
+        reduce_message, messages, (list[dict[str, str]](), dict[str, str]())
     )
 
     if as_json:
-        output = [{k: v for k, v in item.items() if v is not None} for item in items]
-        result = json.dumps(output)
+        result = json.dumps(items)
     else:
         result = "\n".join(
-            f"[{item['id']}] {item['content']}" if item["id"] else str(item["content"])
+            f"[{item['id']}] {item['content']}" if "id" in item else item["content"]
             for item in items
         )
 

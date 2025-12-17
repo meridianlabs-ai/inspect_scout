@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import IO, Any, Callable
 
 import ijson  # type: ignore
+from pydantic import JsonValue
 
 from inspect_scout._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 
@@ -61,6 +62,19 @@ class RawTranscript:
     source_type: str | None
     source_id: str | None
     source_uri: str | None
+    date: str | None
+    task_set: str | None
+    task_id: str | None
+    task_repeat: int | None
+    agent: str | None
+    agent_args: dict[str, Any] | None
+    model: str | None
+    score: JsonValue
+    success: bool | None
+    total_time: float | None
+    total_tokens: int | None
+    error: str | None
+    limit: str | None
     metadata: dict[str, Any]
     messages: list[dict[str, Any]]
     events: list[dict[str, Any]]
@@ -127,6 +141,19 @@ async def _load_with_json5_fallback(
                 source_type=t.source_type,
                 source_id=t.source_id,
                 source_uri=t.source_uri,
+                date=t.date,
+                task_set=t.task_set,
+                task_id=t.task_id,
+                task_repeat=t.task_repeat,
+                agent=t.agent,
+                agent_args=t.agent_args,
+                model=t.model,
+                score=t.score,
+                success=t.success,
+                total_time=t.total_time,
+                total_tokens=t.total_tokens,
+                error=t.error,
+                limit=t.limit,
                 metadata=(
                     t.metadata.copy() | {"sample_metadata": data.get("metadata", {})}
                     if data.get("metadata")
@@ -246,6 +273,19 @@ async def _parse_and_filter(
             source_type=t.source_type,
             source_id=t.source_id,
             source_uri=t.source_uri,
+            date=t.date,
+            task_set=t.task_set,
+            task_id=t.task_id,
+            task_repeat=t.task_repeat,
+            agent=t.agent,
+            agent_args=t.agent_args,
+            model=t.model,
+            score=t.score,
+            success=t.success,
+            total_time=t.total_time,
+            total_tokens=t.total_tokens,
+            error=t.error,
+            limit=t.limit,
             # t.metadata's sample_metadata is potentially thinned, so swap in the full one
             metadata=(
                 t.metadata.copy() | {"sample_metadata": state.metadata}
@@ -308,6 +348,19 @@ def _resolve_attachments(
             "source_type": transcript.source_type,
             "source_id": transcript.source_id,
             "source_uri": transcript.source_uri,
+            "date": transcript.date,
+            "task_set": transcript.task_set,
+            "task_id": transcript.task_id,
+            "task_repeat": transcript.task_repeat,
+            "agent": transcript.agent,
+            "agent_args": transcript.agent_args,
+            "model": transcript.model,
+            "score": transcript.score,
+            "success": transcript.success,
+            "total_time": transcript.total_time,
+            "total_tokens": transcript.total_tokens,
+            "error": transcript.error,
+            "limit": transcript.limit,
             "metadata": {},  # Placeholder to avoid validation
             "messages": resolved_messages,
             "events": resolved_events,

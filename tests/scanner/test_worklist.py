@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 from inspect_scout import Result, Scanner, ScannerWork, scan, scanner
+from inspect_scout import columns as c
 from inspect_scout._scanresults import scan_results_db, scan_status
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.log import log_metadata as m
 from inspect_scout._transcript.types import Transcript
 
 # Test data location
@@ -688,7 +688,7 @@ async def test_worklist_with_transcripts_query() -> None:
     """Test using ScannerWork with a Transcripts query (using .where())."""
     # Create a Transcripts query that filters by task_name
     transcripts = transcripts_from(LOGS_DIR)
-    popularity_transcripts = transcripts.where(m.task_name == "popularity")
+    popularity_transcripts = transcripts.where(c.task_set == "popularity")
 
     # Create worklist using ScannerWork with a Transcripts query
     worklist = [
@@ -721,15 +721,15 @@ async def test_worklist_with_multiple_transcripts_queries() -> None:
     ```python
     transcripts = transcripts_from("./logs")
     worklist = [
-        ScannerWork(scanner="foo", transcripts=transcripts.where(m.task_name == "cybench")),
-        ScannerWork(scanner="bar", transcripts=transcripts.where(m.task_name == "swe-bench")),
+        ScannerWork(scanner="foo", transcripts=transcripts.where(c.task == "cybench")),
+        ScannerWork(scanner="bar", transcripts=transcripts.where(c.task == "swe-bench")),
     ]
     ```
     """
     # Create base transcripts and filter independently (builder pattern)
     transcripts = transcripts_from(LOGS_DIR)
-    popularity_transcripts = transcripts.where(m.task_name == "popularity")
-    security_transcripts = transcripts.where(m.task_name == "security_guide")
+    popularity_transcripts = transcripts.where(c.task_set == "popularity")
+    security_transcripts = transcripts.where(c.task_set == "security_guide")
 
     # Create worklist with different filters for each scanner
     worklist = [
@@ -771,7 +771,7 @@ async def test_worklist_mixed_scanner_work_and_worklist_types() -> None:
 
     # Create a Transcripts query
     transcripts = transcripts_from(LOGS_DIR)
-    security_transcripts = transcripts.where(m.task_name == "security_guide")
+    security_transcripts = transcripts.where(c.task_set == "security_guide")
 
     # Create worklist with mixed types:
     # - scanner_a uses a Transcripts query

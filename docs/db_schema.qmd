@@ -6,23 +6,67 @@ title: Database Schema
 
 In a transcript database, the only strictly required field is `transcript_id` (although you'll almost always want to also include a `messages` field as that's the main thing targeted by most scanners).
 
-You can also include `source_*` fields as a reference to where the transcript originated as well as arbitrary other fields (trancript metadata) which are then queryable using the `Transcripts` API.
+Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`) which you'll want to populate if you have access to them (as this will provide important context both when viewing transcripts and when viewing scan results). You can also include `source_*` fields as a reference to where the transcript originated,. Finally, arbitrary other fields can be included. All fields are queryable using the `Transcripts` API.
 
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Field           | Description                                                                                                                                                                    |
-+=================+================================================================================================================================================================================+
-| `transcript_id` | Required. A globally unique identifier for a transcript.                                                                                                                       |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `source_type`   | Optional. Type of transcript source (e.g. "weave", "logfire", "eval_log", etc.). Useful for providing a hint to readers about what might be available in the `metadata` field. |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `source_id`     | Optional. Globally unique identifier for a transcript source (e.g. a project id).                                                                                              |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `source_uri`    | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).                                                            |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `messages`      | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history.                                                    |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `events`        | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.)                               |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Field           | Type                 | Description                                                                                                                                                                    |
++=================+======================+================================================================================================================================================================================+
+| `transcript_id` | string               | Required. A globally unique identifier for a transcript.                                                                                                                       |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `source_type`   | string               | Optional. Type of transcript source (e.g. "weave", "logfire", "eval_log", etc.). Useful for providing a hint to readers about what might be available in the `metadata` field. |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `source_id`     | string               | Optional. Globally unique identifier for a transcript source (e.g. a project id).                                                                                              |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `source_uri`    | string               | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).                                                            |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `date`          | string               | Optional. ISO 8601 datetime of transcript creation.                                                                                                                            |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `task_set`      | string               | Optional. Set from which transcript task was drawn (e.g. Inspect task name or benchmark name).                                                                                 |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `task_id`       | string               | Optional. Identifier for task (e.g. dataset sample id).                                                                                                                        |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `task_repeat`   | int                  | Optional. Repeat for a given task id within a task set (e.g. epoch).                                                                                                           |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `agent`         | string               | Optional. Agent used to to execute task.                                                                                                                                       |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `agent_args`    | dict\[str,Any\]\     | Optional. Arguments passed to create agent.                                                                                                                                    |
+|                 | <small>JSON</small>  |                                                                                                                                                                                |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `model`         | string               | Optional. Main model used by agent.                                                                                                                                            |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `score`         | JsonValue\           | Optional. Value indicating score on task.                                                                                                                                      |
+|                 | <small>JSON</small>  |                                                                                                                                                                                |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `success`       | bool                 | Optional. Boolean reduction of `score` to succeeded/failed.                                                                                                                    |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `total_time`    | float                | Optional. Time (in seconds) required to execute task.                                                                                                                          |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `total_tokens`  | int                  | Optional. Tokens spent in execution of task.                                                                                                                                   |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `error`         | string               | Optional. Error message that terminated the task.                                                                                                                              |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `limit`         | string               | Optional. Limit that caused the task to exit (e.g. "tokens", "messages, etc.)                                                                                                  |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `messages`      | list\[ChatMessage\]\ | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history.                                                    |
+|                 | <small>JSON</small>  |                                                                                                                                                                                |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `events`        | list\[Event\]\       | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.)                               |
+|                 | <small>JSON</small>  |                                                                                                                                                                                |
++-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+```{=html}
+<style type="text/css">
+#overview td:nth-child(2) {
+  font-size: 0.9em;
+  line-height: 1.2;
+}
+#overview small {
+  font-size: x-small;
+}
+</style>
+```
+
+Field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
 
 ### Metadata
 
@@ -86,7 +130,7 @@ The `events` field is only important if you have scanners that will be doing eve
 
 ## Importing Data
 
-Now that you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database: 
+Now that you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database:
 
 1.  [Transcript API](db_importing.qmd#transcript-api): Read and parse transcripts into `Transcript` objects and use the `TranscriptsDB.insert()` function to add them to the database.
 

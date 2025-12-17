@@ -30,8 +30,7 @@ export const ScanResultsHeader: FC<ScanResultsHeaderProps> = ({
         hasExplanation ? "" : styles.noExplanation
       )}
     >
-      <ColumnHeader label="Id" />
-      {hasExplanation && <ColumnHeader label="Explanation" />}
+      <ColumnHeader label="Result" />
       {hasLabel && <ColumnHeader label="Label" />}
       <ColumnHeader label="Value" className={clsx(styles.value)} />
       {hasValidations && <ColumnHeader label="Validation" />}

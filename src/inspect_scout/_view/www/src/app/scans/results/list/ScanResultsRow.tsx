@@ -10,7 +10,7 @@ import {
 import { useStore } from "../../../../state/store";
 import { Error } from "../../../components/Error";
 import { Explanation } from "../../../components/Explanation";
-import { Identifier } from "../../../components/Identifier";
+import { TaskName } from "../../../components/TaskName";
 import { ValidationResult } from "../../../components/ValidationResult";
 import { Value } from "../../../components/Value";
 import { ScanResultSummary } from "../../../types";
@@ -48,13 +48,18 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const navigate = useNavigate();
 
   // Information about the row
-  const hasExplanation = gridDescriptor.columns.includes("explanation");
+  const hasExplanation = gridDescriptor.columns.includes("result");
   const hasLabel = gridDescriptor.columns.includes("label");
   const hasErrors = gridDescriptor.columns.includes("error");
   const hasValidations = gridDescriptor.columns.includes("validations");
 
   // refs
   const refs: MarkdownReference[] = useMarkdownRefs(summary);
+
+  // Task information
+  const taskSet = summary.transcriptTaskSet;
+  const taskId = summary.transcriptTaskId;
+  const taskRepeat = summary.transcriptTaskRepeat;
 
   const grid = (
     <div
@@ -71,12 +76,27 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
         }
       }}
     >
-      <div className={clsx(styles.id, "text-size-smaller")}>
-        <Identifier summary={summary} />
-      </div>
       {hasExplanation && (
-        <div className={clsx(styles.explanation, "text-size-smaller")}>
-          <Explanation summary={summary} references={refs} />
+        <div className={clsx(styles.result, "text-size-smaller")}>
+          <div className={clsx(styles.explanation, "text-size-smaller")}>
+            <Explanation summary={summary} references={refs} />
+          </div>
+
+          <div
+            className={clsx(
+              styles.id,
+              "text-size-smallest",
+              "text-style-secondary"
+            )}
+          >
+            <TaskName
+              taskSet={taskSet}
+              taskId={taskId}
+              taskRepeat={taskRepeat}
+            />
+            {` — `}
+            {summary.transcriptModel || ""}
+          </div>
         </div>
       )}
       {hasLabel && (
@@ -89,7 +109,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
           )}
         >
           {summary.label || (
-            <span className={clsx("text-style-secondary")}>—</span>
+            <span className={clsx(styles.label, "text-style-secondary")}>
+              —
+            </span>
           )}
         </div>
       )}

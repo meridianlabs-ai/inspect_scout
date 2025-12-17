@@ -289,8 +289,8 @@ async def parquet_db_with_nested_metadata(
         source_type="test",
         source_id="source-1",
         source_uri="file:///test",
+        model="gpt-4",
         metadata={
-            "model": "gpt-4",
             "config": {"temperature": 0.7, "top_p": 0.9},
             "tags": ["math", "reasoning"],
         },

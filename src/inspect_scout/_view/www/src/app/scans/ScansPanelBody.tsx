@@ -112,6 +112,11 @@ export const ScansPanelBody: React.FC = () => {
       .filter((e): e is number => e !== undefined);
     const hasEpochs = new Set(epochStrs).size > 1;
 
+    const models = visibleScannerResults
+      .map((summary) => summary.transcriptModel)
+      .filter((m) => m !== undefined);
+    const hasModels = models.length > 1;
+
     const options: Array<ResultGroup> = [];
     if (hasLabel) {
       options.push("label");
@@ -124,6 +129,9 @@ export const ScansPanelBody: React.FC = () => {
     }
     if (hasEpochs) {
       options.push("epoch");
+    }
+    if (hasModels) {
+      options.push("model");
     }
     return options;
   }, [selectedScanner, visibleScannerResults]);

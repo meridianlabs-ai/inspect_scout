@@ -122,11 +122,11 @@ interface StoreState {
   getSelectedScanResultInputData: (
     uuid: string
   ) => ScanResultInputData | undefined;
-  setSelectedScanResultPreviews: (
+  setSelectedScanResultSummaries: (
     scanner?: string,
     previews?: ScanResultSummary[]
   ) => void;
-  getSelectedScanResultPreviews: (
+  getSelectedScanResultSummaries: (
     scanner?: string
   ) => ScanResultSummary[] | undefined;
   setVisibleScannerResults: (results: ScanResultSummary[]) => void;
@@ -375,7 +375,7 @@ export const createStore = (api: ScanApi) =>
               state.visibleScannerResultsCount = count;
             });
           },
-          setSelectedScanResultPreviews: (
+          setSelectedScanResultSummaries: (
             scanner?: string,
             previews?: ScanResultSummary[]
           ) => {
@@ -387,7 +387,7 @@ export const createStore = (api: ScanApi) =>
               );
             }
           },
-          getSelectedScanResultPreviews: (
+          getSelectedScanResultSummaries: (
             scanner?: string
           ): ScanResultSummary[] | undefined => {
             // Only return data that matches the requested scanner

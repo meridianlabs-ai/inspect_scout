@@ -50,15 +50,6 @@ export interface Model {
   args: Record<string, unknown>;
 }
 
-export interface Transcript {
-  type: string;
-  location?: string;
-  transcript_ids: Record<string, string | null>;
-
-  // deprecated value for compatibility with old scans
-  count?: number;
-}
-
 export interface ScanSpec {
   scan_file?: string;
   scan_id: string;
@@ -74,7 +65,14 @@ export interface ScanSpec {
   revision?: Record<string, unknown>;
 
   scanners: Record<string, Scanner>;
-  transcripts?: Transcript;
+  transcripts?: {
+    type: string;
+    location?: string;
+    transcript_ids: Record<string, string | null>;
+
+    // deprecated value for compatibility with old scans
+    count?: number;
+  };
 }
 
 export interface Scanner {
@@ -110,26 +108,49 @@ export type ChatMessage =
   | ChatMessageAssistant
   | ChatMessageTool;
 
-export interface Transcript {
+export interface TranscriptInfo {
   id: string;
   source_id: string;
-  source_url: string;
-  messages: ChatMessages;
-  events: Events;
+  source_uri: string;
+  source_type: string;
+  filename?: string;
+  date?: string;
+  task_set?: string;
+  task_id?: string;
+  task_repeat?: number;
+  agent?: string;
+  agent_args?: string;
+  model?: string;
+  score?: string;
+  success?: boolean;
+  total_time?: number;
+  total_tokens?: number;
+  error?: string;
+  limit?: string;
   metadata: TranscriptMetadata;
 }
 
+export interface Transcript extends TranscriptInfo {
+  messages: ChatMessages;
+  events: Events;
+}
+
 export interface TranscriptMetadata {
-  sample_id: string;
-  id: string | number;
-  epoch: number;
-  eval_id: string;
-  log: string;
-  eval_created: string;
-  eval_metadata: Record<string, unknown>;
-  task_name: string;
-  model: string;
-  score: string;
+  // These fields are only left here as optional for backwards compatbility
+  // for scans which were run before these fields were added to the Transcript data itself
+  // we will still scrounge around for them if we can't resolve them from
+  // the Transcript directly
+  sample_id?: string;
+  id?: string | number;
+  epoch?: number;
+  eval_id?: string;
+  log?: string;
+  date?: string;
+  eval_metadata?: Record<string, unknown>;
+  task?: string;
+  task_name?: string;
+  model?: string;
+  score?: string;
   [key: string]: unknown;
 }
 

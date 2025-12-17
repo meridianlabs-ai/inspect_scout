@@ -141,7 +141,7 @@ const printIdentifier = (
   if (identifier.epoch) {
     val = `${identifier.id} epoch ${identifier.epoch}`;
   } else {
-    val = identifier.id;
+    val = String(identifier.id);
   }
 
   if (label && label.length > 0) {

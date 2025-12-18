@@ -316,17 +316,16 @@
   outline-offset: 0;
   border-color: var(--bs-primary);
 }
-._container_1lcsa_1 {
-  height: 100%;
+._container_fcmrb_1 {
   overflow: auto;
 }
 
-._table_1lcsa_6 {
+._table_fcmrb_5 {
   display: grid;
   width: 100%;
 }
 
-._thead_1lcsa_11 {
+._thead_fcmrb_10 {
   display: grid;
   position: sticky;
   top: 0;
@@ -336,12 +335,12 @@
   border-top: 1px solid var(--bs-border-color);
 }
 
-._headerRow_1lcsa_21 {
+._headerRow_fcmrb_20 {
   display: flex;
   width: 100%;
 }
 
-._headerCell_1lcsa_26 {
+._headerCell_fcmrb_25 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -353,7 +352,7 @@
   font-size: 12px !important;
 }
 
-._headerSeparator_1lcsa_38 {
+._headerSeparator_fcmrb_37 {
   margin-top: 4px;
   margin-bottom: 4px;
   background: var(--bs-border-color);
@@ -361,16 +360,16 @@
   height: 100%;
 }
 
-._headerCell_1lcsa_26:last-child {
+._headerCell_fcmrb_25:last-child {
   border-right: none;
 }
 
-._tbody_1lcsa_50 {
+._tbody_fcmrb_49 {
   display: grid;
   position: relative;
 }
 
-._row_1lcsa_55 {
+._row_fcmrb_54 {
   display: flex;
   position: absolute;
   width: 100%;
@@ -379,11 +378,11 @@
   transition: background-color 0.15s ease;
 }
 
-._row_1lcsa_55:hover {
+._row_fcmrb_54:hover {
   background: var(--bs-light-bg-subtle);
 }
 
-._cell_1lcsa_68 {
+._cell_fcmrb_67 {
   display: flex;
   align-items: center;
   padding: 4px 8px;
@@ -393,24 +392,34 @@
   font-size: 12px !important;
 }
 
-._cell_1lcsa_68:last-child {
+._cell_fcmrb_67:last-child {
   border-right: none;
 }
 
-._cellCenter_1lcsa_82 {
+._cellCenter_fcmrb_81 {
   justify-content: center;
 }
 
-._headerCellCenter_1lcsa_86 {
+._headerCellCenter_fcmrb_85 {
   justify-content: center;
 }
 
-._green_1lcsa_90 {
+._green_fcmrb_89 {
   color: var(--bs-success);
 }
 
-._red_1lcsa_94 {
+._red_fcmrb_93 {
   color: var(--bs-danger);
+}
+._container_1ptqu_1 {
+  height: 100%;
+  display: grid;
+  grid-template-rows: max-content 1fr max-content;
+}
+
+._panel_1ptqu_7 {
+  display: grid;
+  grid-template-columns: max-content 1fr;
 }
 ._activityBar_q73jv_1 {
   height: 100vh;

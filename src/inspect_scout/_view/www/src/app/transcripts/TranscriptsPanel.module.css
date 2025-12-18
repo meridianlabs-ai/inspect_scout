@@ -1,3 +1,9 @@
+.container {
+  height: 100%;
+  display: grid;
+  grid-template-rows: max-content 1fr max-content;
+}
+
 .panel {
   display: grid;
   grid-template-columns: max-content 1fr;

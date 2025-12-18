@@ -341,13 +341,15 @@ interface Status {
 
 Feature Panels = `ScansPanel`, `ScanJobsPanel`, `ScanResultPanel`
 
-| Component | Server Data Consumed | Layer | Usage |
-|-----------|---------------------|-------|-------|
-| Navbar | `resultsDir` | Shared | Builds breadcrumb navigation path |
-| ScanJobGrid | `scans`, `resultsDir` | ScanJobs Feature | Transforms scans to grid rows; computes relative paths |
-| ScansPanelBody | `selectedScanStatus` | Scans Feature | Passes to JSON panel; determines tab content |
-| ScansPanelTitle | `selectedScanStatus`, `resultsDir` | Scans Feature | Displays name, model, transcript count, timestamp |
-| ScanInfo | `selectedScanStatus` | Scans Feature | Shows scan ID, args, source, origin, commit |
-| ScanResultsOutline | `selectedScanStatus` | Scans Feature | Builds scanner summary with metrics/errors |
-| ScanResultsBody | `getSelectedScanResultData()` | Scans Feature | Powers list/dataframe views with ColumnTable |
-| ScanResultsList | `selectedScanStatus` | Scans Feature | Uses completion state for initial filter |
+| Component | Server Data Consumed | Layer | Usage | Status |
+|-----------|---------------------|-------|-------|-------|
+| Navbar | `resultsDir` | Shared | Builds breadcrumb navigation path | FIXED |
+| ScanJobGrid | `resultsDir` | ScanJobs Feature | computes relative paths | FIXED |
+| ScanJobGrid | `scans`| ScanJobs Feature | Transforms scans to grid rows| |
+| ScansPanelBody | `selectedScanStatus` | Scans Feature | Passes to JSON panel; determines tab content | |
+| ScansPanelTitle | `resultsDir` | Scans Feature | computes relative paths | FIXED |
+| ScansPanelTitle | `selectedScanStatus` | Scans Feature | Displays name, model, transcript count, timestamp | |
+| ScanInfo | `selectedScanStatus` | Scans Feature | Shows scan ID, args, source, origin, commit | |
+| ScanResultsOutline | `selectedScanStatus` | Scans Feature | Builds scanner summary with metrics/errors | |
+| ScanResultsBody | `getSelectedScanResultData()` | Scans Feature | Powers list/dataframe views with ColumnTable | |
+| ScanResultsList | `selectedScanStatus` | Scans Feature | Uses completion state for initial filter | |

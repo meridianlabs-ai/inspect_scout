@@ -14,9 +14,10 @@ import { useSelectedScanner } from "../../hooks";
 
 import styles from "./ScanResultsOutline.module.css";
 
-export const ScanResultsOutline: FC = () => {
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
-  const entries = toEntries(selectedStatus);
+export const ScanResultsOutline: FC<{ selectedScan: Status }> = ({
+  selectedScan,
+}) => {
+  const entries = toEntries(selectedScan);
 
   const scanListHandle = useRef<VirtuosoHandle | null>(null);
   const renderRow = useCallback(

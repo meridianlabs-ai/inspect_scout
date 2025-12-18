@@ -4,65 +4,60 @@ import { FC } from "react";
 import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
-import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
 
 import styles from "./ScanInfo.module.css";
 
-export const ScanInfo: FC = () => {
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
-  if (!selectedStatus) {
-    return null;
-  }
+export const ScanInfo: FC<{ selectedScan: Status }> = ({ selectedScan }) => {
   return (
     <>
       <ScanInfoCard
         className={clsx(styles.container)}
-        selectedStatus={selectedStatus}
+        selectedScan={selectedScan}
       />
       <ScanMetadataCard
         className={clsx(styles.container)}
-        selectedStatus={selectedStatus}
+        selectedScan={selectedScan}
       />
       <ScannerInfoCard
         className={clsx(styles.container)}
-        selectedStatus={selectedStatus}
+        selectedScan={selectedScan}
       />
     </>
   );
 };
 
 interface ScanInfoCardProps {
-  selectedStatus: Status;
+  selectedScan: Status;
   className?: string | string[];
 }
-const ScanInfoCard: FC<ScanInfoCardProps> = ({ selectedStatus, className }) => {
+const ScanInfoCard: FC<ScanInfoCardProps> = ({ selectedScan, className }) => {
   const record = {
-    ID: selectedStatus.spec.scan_id,
-    Name: selectedStatus.spec.scan_name,
+    ID: selectedScan.spec.scan_id,
+    Name: selectedScan.spec.scan_name,
   };
-  if (selectedStatus.spec.scan_args) {
-    record["Args"] = selectedStatus.spec.scan_args;
+  if (selectedScan.spec.scan_args) {
+    record["Args"] = selectedScan.spec.scan_args;
   }
-  if (selectedStatus.spec.scan_file) {
-    record["Source File"] = selectedStatus.spec.scan_file;
+  if (selectedScan.spec.scan_file) {
+    record["Source File"] = selectedScan.spec.scan_file;
   }
-  if (selectedStatus.spec.revision?.origin) {
-    record["Origin"] = selectedStatus.spec.revision?.origin;
+  if (selectedScan.spec.revision?.origin) {
+    record["Origin"] = selectedScan.spec.revision?.origin;
   }
-  if (selectedStatus.spec.revision?.commit) {
-    record["Commit"] = selectedStatus.spec.revision?.commit;
+  if (selectedScan.spec.revision?.commit) {
+    record["Commit"] = selectedScan.spec.revision?.commit;
   }
-  if (selectedStatus.spec.packages) {
-    record["Packages"] = selectedStatus.spec.packages;
+  if (selectedScan.spec.packages) {
+    record["Packages"] = selectedScan.spec.packages;
   }
-  if (selectedStatus.spec.options) {
-    record["Options"] = selectedStatus.spec.options;
+  if (selectedScan.spec.options) {
+    record["Options"] = selectedScan.spec.options;
   }
 
   return (
     <InfoCard
-      title={`Scan: ${selectedStatus.spec.scan_name}`}
+      title={`Scan: ${selectedScan.spec.scan_name}`}
       className={clsx(className, "text-size-small")}
     >
       <MetaDataGrid
@@ -75,34 +70,34 @@ const ScanInfoCard: FC<ScanInfoCardProps> = ({ selectedStatus, className }) => {
 };
 
 interface ScanMetadataCardProps {
-  selectedStatus: Status;
+  selectedScan: Status;
   className?: string | string[];
 }
 const ScanMetadataCard: FC<ScanMetadataCardProps> = ({
-  selectedStatus,
+  selectedScan,
   className,
 }) => {
   if (
-    !selectedStatus.spec.metadata ||
-    Object.keys(selectedStatus.spec.metadata).length === 0
+    !selectedScan.spec.metadata ||
+    Object.keys(selectedScan.spec.metadata).length === 0
   ) {
     return null;
   }
 
   return (
     <InfoCard title={"Metadata"} className={className}>
-      <RecordTree id="scan-metadata" record={selectedStatus.spec.metadata} />
+      <RecordTree id="scan-metadata" record={selectedScan.spec.metadata} />
     </InfoCard>
   );
 };
 
 interface ScannerInfoCardProps {
-  selectedStatus: Status;
+  selectedScan: Status;
   className?: string | string[];
 }
 
 const ScannerInfoCard: FC<ScannerInfoCardProps> = ({
-  selectedStatus,
+  selectedScan,
   className,
 }) => {
   return (
@@ -111,7 +106,7 @@ const ScannerInfoCard: FC<ScannerInfoCardProps> = ({
         key={`plan-md-task`}
         className={"text-size-small"}
         entries={{
-          ...selectedStatus.spec.scanners,
+          ...selectedScan.spec.scanners,
         }}
       />
     </InfoCard>

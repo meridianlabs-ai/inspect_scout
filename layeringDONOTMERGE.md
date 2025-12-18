@@ -345,7 +345,7 @@ Feature Panels = `ScansPanel`, `ScanJobsPanel`, `ScanResultPanel`
 |-----------|---------------------|-------|-------|-------|
 | Navbar | `resultsDir` | Shared | Builds breadcrumb navigation path | FIXED |
 | ScanJobGrid | `resultsDir` | ScanJobs Feature | computes relative paths | FIXED |
-| ScanJobGrid | `scans`| ScanJobs Feature | Transforms scans to grid rows| |
+| ScanJobGrid | `scans`| ScanJobs Feature | Transforms scans to grid rows| FIXED |
 | ScansPanelBody | `selectedScanStatus` | Scans Feature | Passes to JSON panel; determines tab content | |
 | ScansPanelTitle | `resultsDir` | Scans Feature | computes relative paths | FIXED |
 | ScansPanelTitle | `selectedScanStatus` | Scans Feature | Displays name, model, transcript count, timestamp | |

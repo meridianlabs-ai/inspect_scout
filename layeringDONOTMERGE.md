@@ -262,3 +262,55 @@ Two similarly-named components exist:
 |-------------|------|---------|---------|
 | `ScanResultsGroup` | `scans/results/ScanResultsGroup.tsx` | Dropdown to select grouping | ScansPanelBody |
 | `ScanResultGroup` | `scans/results/list/ScanResultsGroup.tsx` | Group header display in list | ScanResultsList |
+
+## Server Data
+
+Data retrieved by `server/hooks.ts`:
+
+**Zustand State (direct):**
+| Item | Type | Source Hook | Source API |
+|------|------|-------------|------------|
+| `resultsDir` | `string` | `useServerScans` | `api.getScans()` |
+| `scans` | `Status[]` | `useServerScans` | `api.getScans()` |
+| `selectedScanStatus` | `Status` | `useServerScan` | `api.getScan()` |
+| `selectedScanLocation` | `string` | `useServerScan` | derived from URL |
+
+**External Ref Data (`selectedScanResultDataRef`):**
+
+This data is stored outside zustand in a plain object ref for three reasons:
+
+1. **Lazy Loading** (primary) - This data is not required for Feature Panels to render. Panels display their skeleton (header, nav, controls) using zustand state, then show loading indicators while ref data fetches. This enables progressive rendering.
+2. **Serialization** - zustand's `persist` middleware would attempt to serialize this data to localStorage; `ColumnTable` (arquero) doesn't serialize properly
+3. **Performance** - large dataframes in zustand state would trigger unnecessary re-renders and deep equality checks
+
+The ref is accessed through getter functions exposed on the store.
+
+| Ref Field | Type | Source Hook | Source API |
+|-----------|------|-------------|------------|
+| `data` | `ColumnTable` | `useServerScanDataframe` | `api.getScannerDataframe()` |
+| `previews` | `ScanResultSummary[]` | `useServerScanDataframe` | derived from data |
+| `input` | `Input` | `useServerScanDataframeInput` | `api.getScannerDataframeInput()` |
+| `inputUuid` | `string` | `useServerScanDataframeInput` | derived from URL |
+| `inputType` | `string` | `useServerScanDataframeInput` | `api.getScannerDataframeInput()` |
+
+**Getter Functions (access external ref):**
+| Function | Returns |
+|----------|---------|
+| `getSelectedScanResultData()` | `ColumnTable` |
+| `getSelectedScanResultInputData()` | `ScanResultInputData` |
+| `getSelectedScanResultSummaries()` | `ScanResultSummary[]` |
+
+## Components Outside Feature Panels Consuming Server Data
+
+Feature Panels = `ScansPanel`, `ScanJobsPanel`, `ScanResultPanel`
+
+| Component | Server Data Consumed | Layer | Usage |
+|-----------|---------------------|-------|-------|
+| Navbar | `resultsDir` | Shared | Builds breadcrumb navigation path |
+| ScanJobGrid | `scans`, `resultsDir` | ScanJobs Feature | Transforms scans to grid rows; computes relative paths |
+| ScansPanelBody | `selectedScanStatus` | Scans Feature | Passes to JSON panel; determines tab content |
+| ScansPanelTitle | `selectedScanStatus`, `resultsDir` | Scans Feature | Displays name, model, transcript count, timestamp |
+| ScanInfo | `selectedScanStatus` | Scans Feature | Shows scan ID, args, source, origin, commit |
+| ScanResultsOutline | `selectedScanStatus` | Scans Feature | Builds scanner summary with metrics/errors |
+| ScanResultsBody | `getSelectedScanResultData()` | Scans Feature | Powers list/dataframe views with ColumnTable |
+| ScanResultsList | `selectedScanStatus` | Scans Feature | Uses completion state for initial filter |

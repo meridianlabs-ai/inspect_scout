@@ -351,5 +351,5 @@ Feature Panels = `ScansPanel`, `ScanJobsPanel`, `ScanResultPanel`
 | ScansPanelTitle | `selectedScanStatus` | Scans Feature | Displays name, model, transcript count, timestamp | FIXED |
 | ScanInfo | `selectedScanStatus` | Scans Feature | Shows scan ID, args, source, origin, commit | FIXED |
 | ScanResultsOutline | `selectedScanStatus` | Scans Feature | Builds scanner summary with metrics/errors | FIXED |
-| ScanResultsBody | `getSelectedScanResultData()` | Scans Feature | Powers list/dataframe views with ColumnTable | |
+| ScanResultsBody | `getSelectedScanResultData()` | Scans Feature | Powers list/dataframe views with ColumnTable | FIXED |
 | ScanResultsList | `selectedScanStatus` | Scans Feature | Uses completion state for initial filter | FIXED |

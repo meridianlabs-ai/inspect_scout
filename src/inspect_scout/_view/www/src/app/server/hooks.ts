@@ -6,6 +6,7 @@ import {
   parseScanResultPath,
 } from "../../router/url";
 import { useApi, useStore } from "../../state/store";
+import { TranscriptInfo } from "../../types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { join } from "../../utils/uri";
 import { useSelectedScanner } from "../hooks";
@@ -336,7 +337,9 @@ export const useServerTranscripts = () => {
           const serverTranscripts =
             await api.getTranscripts(queryTranscriptDir);
 
-          setTranscripts(serverTranscripts);
+          // TODO: 'convert' transcripts if needed.
+
+          setTranscripts(serverTranscripts as TranscriptInfo[]);
           setTranscriptsDir(queryTranscriptDir);
         } catch (e) {
           // Notify app of error

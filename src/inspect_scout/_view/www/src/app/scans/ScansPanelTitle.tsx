@@ -11,9 +11,10 @@ import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScansPanelTitle.module.css";
 
-export const ScansPanelTitle: FC = () => {
+export const ScansPanelTitle: FC<{ resultsDir: string | undefined }> = ({
+  resultsDir,
+}) => {
   const selectedStatus = useStore((state) => state.selectedScanStatus);
-  const resultsDir = useStore((state) => state.resultsDir);
   const scanJobName =
     selectedStatus?.spec.scan_name === "job"
       ? "scan"

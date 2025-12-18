@@ -56,6 +56,7 @@ export const ScanResultPanel: FC = () => {
   useServerScan();
   useServerScanDataframe();
   useServerScanDataframeInput();
+  const resultsDir = useStore((state) => state.resultsDir);
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
@@ -148,7 +149,9 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
+      <Navbar resultsDir={resultsDir}>
+        {visibleScannerResults.length > 0 && <ScanResultNav />}
+      </Navbar>
       <ActivityBar animating={!!loading || resultLoading} />
       <ScanResultHeader inputData={inputData} scan={status} />
       {selectedResult && (

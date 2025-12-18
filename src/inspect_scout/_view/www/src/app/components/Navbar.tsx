@@ -20,10 +20,14 @@ import { useBreadcrumbTruncation } from "./useBreadcrumbTruncation";
 interface NavbarProps {
   children?: ReactNode;
   bordered?: boolean;
+  resultsDir?: string;
 }
 
-export const Navbar: FC<NavbarProps> = ({ bordered = true, children }) => {
-  const resultsDir = useStore((state) => state.resultsDir);
+export const Navbar: FC<NavbarProps> = ({
+  bordered = true,
+  resultsDir,
+  children,
+}) => {
   const baseResultsDir = dirname(resultsDir || "");
   const baseResultsName = basename(resultsDir || "");
 

@@ -300,6 +300,43 @@ The ref is accessed through getter functions exposed on the store.
 | `getSelectedScanResultInputData()` | `ScanResultInputData` |
 | `getSelectedScanResultSummaries()` | `ScanResultSummary[]` |
 
+## Deep Dive: `selectedScanStatus`
+
+This item warrants special attention because it combines client state (selection) with server data (Status object).
+
+**Two related store items:**
+| Item | Type | Nature |
+|------|------|--------|
+| `selectedScanLocation` | `string` | Client state - which scan URL is selected |
+| `selectedScanStatus` | `Status` | Server data - fetched for that location |
+
+**Selection flow:**
+```
+URL navigation
+  → parseScanResultPath(relativePath) extracts scanPath
+  → setSelectedScanLocation(scanPath)           [client choice stored]
+  → join(scanPath, resultsDir) = absolute location
+  → Check scans[] cache OR api.getScan(location) [server fetch]
+  → setSelectedScanStatus(status)               [server data stored]
+```
+
+**Key characteristics:**
+- `Status` is **purely server data** - never modified client-side
+- **Caching**: First checks if Status exists in `scans[]` list before fetching
+- **Persistence**: Persisted to localStorage via zustand (useful for page refresh)
+- Components only **read** from Status (display-only)
+
+**Status type structure:**
+```typescript
+interface Status {
+  complete: boolean;      // Scan finished?
+  spec: ScanSpec;         // Scan metadata (name, model, scanners, transcripts)
+  location: string;       // Absolute path to scan results
+  summary: Summary;       // Aggregated results (tokens, metrics, validations)
+  errors: Error[];        // Scan-level errors
+}
+```
+
 ## Components Outside Feature Panels Consuming Server Data
 
 Feature Panels = `ScansPanel`, `ScanJobsPanel`, `ScanResultPanel`

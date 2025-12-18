@@ -16,12 +16,15 @@ import { EventNode, EventType } from "../../transcript/types";
 import { ApplicationIcons } from "../appearance/icons";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
-import { useSelectedResultsRow } from "../hooks";
+import {
+  useSelectedScanResultData,
+  useSelectedScanResultInputData,
+} from "../hooks";
 import {
   useServerScans,
-  useServerScanner,
-  useServerScannerDataframe,
-  useServerScannerDataframeInput,
+  useServerScan,
+  useServerScanDataframe,
+  useServerScanDataframeInput,
 } from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";
@@ -50,9 +53,9 @@ export const ScanResultPanel: FC = () => {
 
   // Required server data
   useServerScans();
-  useServerScanner();
-  useServerScannerDataframe();
-  useServerScannerDataframeInput();
+  useServerScan();
+  useServerScanDataframe();
+  useServerScanDataframeInput();
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
@@ -71,9 +74,10 @@ export const ScanResultPanel: FC = () => {
 
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
   const { data: selectedResult, isLoading: resultLoading } =
-    useSelectedResultsRow(scanResultUuid);
+    useSelectedScanResultData(scanResultUuid);
 
   const status = useStore((state) => state.selectedScanStatus);
+  const inputData = useSelectedScanResultInputData();
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -148,7 +152,7 @@ export const ScanResultPanel: FC = () => {
         {visibleScannerResults.length > 0 && <ScanResultNav />}
       </ScansNavbar>
       <LoadingBar loading={!!loading || resultLoading} />
-      <ScanResultHeader result={selectedResult} status={status} />
+      <ScanResultHeader inputData={inputData} scan={status} />
       {selectedResult && (
         <ExtendedFindProvider>
           <TabSet

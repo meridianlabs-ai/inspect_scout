@@ -85,17 +85,38 @@ Your answer should include an explanation of your assessment. It should include 
 
 You can provide your own `template` as an argument to `llm_scanner()`. The following substitutable values are available for prompt templates:
 
-| Variable | Description |
-|---------------------------|---------------------------------------------|
-| `{{{ messages }}}` | The message list formatted via `messages_to_str()` |
-| `{{{ question }}}` | Question about the transcript posed to the LLM (e.g. "Did the assistant refuse the user's request?") |
-| `{{{ answer_prompt }}}` | The prompt used by the current answer type (e.g. "Answer the following yes or no question:") |
-| `{{{ answer_format }}}` | Formatting guidelines used by the current answer type (e.g. ""'ANSWER: \$VALUE' (without quotes) where \$VALUE is yes or no.") |
-| `{{{ metadata }}}` | Dictionary from `Transcript.metadata` |
-
-: {tbl-colwidths=\[40,60\]}
+| Variable | Type | Description |
+|---------------------------|---------------------------------------------|---------------|
+| `{{{ messages }}}` | str | The message list formatted via `messages_to_str()` |
+| `{{{ question }}}` | str | Question about the transcript posed to the LLM (e.g. "Did the assistant refuse the user's request?") |
+| `{{{ answer_prompt }}}` | str | The prompt used by the current answer type (e.g. "Answer the following yes or no question:") |
+| `{{{ answer_format }}}` | str | Formatting guidelines used by the current answer type (e.g. ""'ANSWER: \$VALUE' (without quotes) where \$VALUE is yes or no.") |
+| `{{{ date}}} ` | str | ISO 8601 datetime when the transcript was created. |
+| `{{{ task_set }}}` | str | Set from which transcript task was drawn (e.g. Inspect taks name or benchmark name). |
+| `{{{ task_id }}}` | str | Identifier for task (e.g. dataset sample id). |
+| `{{{ task_repeat }}}` | int | Repeat for a given task id within a task set (e.g. epoch). |
+| `{{{ agent }}}` | str | Agent used to to execute task. |
+| `{{{ agent_args }}}` | dict | Arguments passed to create agent. |
+| `{{{ model }}}` | str | Main model used by agent. |
+| `{{{ score }}}` | JsonValue | Value indicating score on task. |
+| `{{{ success }}}` | bool |  Boolean reduction of `score` to succeeded/failed. |
+| `{{{ total_time }}}` | number | Time required to execute task (seconds) |
+| `{{{ total_tokens }}}` | number | Tokens spent in execution of task. |
+| `{{{ error }}}` | str | Error message that terminated the task. |
+| `{{{ limit }}}` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
+| `{{{ metadata }}}` | dict | Additional metadata |
+: {tbl-colwidths=\[40,15,45\]}
 
 In addition, you can use the `template_variables` option to pass additional variables for use in your template.
+
+
+::: {.callout-note}
+Note that many of the fields described above are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
 
 ## Scanner Results
 

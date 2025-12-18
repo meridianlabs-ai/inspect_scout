@@ -5,7 +5,7 @@ from pathlib import Path
 
 import duckdb
 import pytest
-from inspect_scout._transcript.database.encryption import (
+from inspect_scout._transcript.database.parquet.encryption import (
     ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
     _get_relative_path,

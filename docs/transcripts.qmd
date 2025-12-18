@@ -33,21 +33,32 @@ See the sections below on the [Transcripts Database] and [Inspect Eval Logs] for
 If you want to scan only a subset of transcripts, you can use the `.where()` method to narrow down the collection. For example:
 
 ``` python
-from inspect_scout import transcripts_from, metadata as m
+from inspect_scout import transcripts_from, columns as c
 
 transcripts = (
     transcripts_from("./logs")
-    .where(m.task_name == "cybench")
-    .where(m.model.like("openai/%"))
+    .where(c.task_set == "cybench")
+    .where(c.model.like("openai/%"))
 )
 ```
 
-See the `Column` documentation for additional details on supported filtering operations.
+See the `Columns` documentation for additional details on supported filtering operations. 
+
+``` python
+from inspect_scout import transcripts_from, log_columns as c
+
+transcripts = (
+    transcripts_from("./logs")
+    .where(c.)
+    .where(c.task_set == "cybench")
+    .where(c.model.like("openai/%"))
+)
+```
 
 You can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don't want to process all transcripts). For example:
 
 ``` python
-from inspect_scout import transcripts_from, log_metadata as m
+from inspect_scout import transcripts_from
 
 transcripts = (
     transcripts_from("./logs")
@@ -104,19 +115,17 @@ transcript.metadata["id"]               # dataset sample id
 transcript.metadata["epoch"]            # sample epoch
 transcript.metadata["eval_metadata"]    # eval metadata
 transcript.metadata["sample_metadata"]  # sample metadata
-transcript.metadata["score"]            # main sample score 
 transcript.metadata["score_<scorer>"]   # named sample scores
 ```
 
-See the `LogMetadata` class for details on all of the fields included in `transcript.metadata`. Use `log_metadata` (aliased to `m` below) to do typesafe filtering for Inspect logs:
+See the `LogColumns` class for details on all of the fields included in `transcript.metadata`. Use `log_columns` (aliased to `c` below) to do typesafe filtering for Inspect logs:
 
 ``` python
-from inspect_scout import transcripts_from, log_metadata as m
+from inspect_scout import transcripts_from, log_columns as c
 
 transcripts = (
     transcripts_from("./logs")
-    .where(m.task_name == "cybench")
-    .where(m.model.like("openai/%"))
+    .where(c.sample_metadata.category == "accounting")
 )
 ```
 

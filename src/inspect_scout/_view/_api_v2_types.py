@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from inspect_scout._recorder.recorder import Status as RecorderStatus
-from inspect_scout._recorder.summary import Summary
-from inspect_scout._scanspec import ScanSpec
-
+from .._recorder.recorder import Status as RecorderStatus
+from .._recorder.summary import Summary
 from .._scanner.result import Error
+from .._scanspec import ScanSpec
 
 
 @dataclass
@@ -57,5 +56,12 @@ RestScanStatus: TypeAlias = RecorderStatus
 
 
 class ScansRestResponse(BaseModel):
-    results_dir: str
-    scans: list[RestScanStatus]
+    """Response containing list of scans from a results directory."""
+
+    results_dir: str = Field(
+        description="Path to the results directory containing scans.",
+        examples=["/path/to/results"],
+    )
+    scans: list[RestScanStatus] = Field(
+        description="List of scan statuses from the results directory."
+    )

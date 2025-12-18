@@ -44,7 +44,9 @@ In some cases there may be many more transcripts in storage than you want to ana
 In this case we recommend that you create a new database dedicated to your analysis project. For example, let's imagine you have a log directory with transcripts from many tasks and many models, but your analysis wants to target only OpenAI model runs of Cybench. Let's imagine that our logs are in an S3 bucket named `s3://inspect-log-archive` and we want to stage transcripts for analysis into a local directory named `./transcripts`:
 
 ``` python
-from inspect_scout import transcripts_db, transcripts_from
+from inspect_scout import (
+    transcripts_db, transcripts_from, columns as c
+)
 
 # create a local transcripts database for analysis
 async with transcripts_db("./transcripts") as db:
@@ -52,8 +54,8 @@ async with transcripts_db("./transcripts") as db:
     # filter transcripts from our global log archive
     transcripts = (
         transcripts_from("s3://inspect-log-archive")
-        .where(m.task_name == "cybench")
-        .where(m.model.like("openai/%"))
+        .where(c.task_set == "cybench")
+        .where(c.model.like("openai/%"))
     )
 
     # insert into local database
@@ -217,7 +219,7 @@ We discussed scout jobs above in the context of scanner development—job defini
 
 ``` {.python filename="cybench_scan.py"}
 from inspect_scout (
-    import ScanJob, scanjob, transcripts_from, metadata as m
+    import ScanJob, scanjob, transcripts_from, columns as c
 )
 
 from .scanners import deception, tool_errors
@@ -226,7 +228,7 @@ from .scanners import deception, tool_errors
 def cybench_job(logs: str = "./logs") -> ScanJob:
 
     transcripts = transcripts_from(logs)
-    transcripts = transcripts.where(m.task_name == "cybench")
+    transcripts = transcripts.where(c.task == "cybench")
 
     return ScanJob(
         transcripts = transcripts,

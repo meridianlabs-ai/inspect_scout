@@ -10,25 +10,25 @@
 }
 
 .oneCol {
-  grid-template-columns: 2fr;
+  grid-template-columns: auto;
 }
 
 .twoCol {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: auto auto;
 }
 
 .threeCol {
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: auto auto auto;
 }
 
 .fourCol {
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: auto auto auto auto;
 }
 
 .fiveCol {
-  grid-template-columns: 3fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: auto auto auto auto auto;
 }
 
 .sixCol {
-  grid-template-columns: 3fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: auto auto auto auto auto auto;
 }

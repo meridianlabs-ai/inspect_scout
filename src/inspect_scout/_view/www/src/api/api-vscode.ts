@@ -22,7 +22,7 @@ export const apiVscode = (
       throw new Error("Not Yet Implemented");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
-    getTranscripts: async (transcriptsDir?: string): Promise<unknown[]> => {
+    getTranscripts: async (_transcriptsDir?: string): Promise<unknown[]> => {
       throw new Error("Not Yet Implemented");
     },
     getScan: async (scanLocation: string): Promise<Status> => {

@@ -9,7 +9,7 @@ from typing import (
 from inspect_scout._validation.types import ValidationCase, ValidationSet
 
 from .._scanspec import ScanTranscripts
-from .metadata import Column, Condition
+from .columns import Column, Condition
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
 
@@ -76,10 +76,10 @@ class Transcripts(abc.ABC):
     referenced via the return value. For example:
 
     ```python
-    from inspect_scout import transcripts, log_metadata as m
+    from inspect_scout import transcripts, columns as c
 
     transcripts = transcripts_from("./logs")
-    transcripts = transcripts.where(m.task_name == "cybench")
+    transcripts = transcripts.where(c.task_set == "cybench")
     ```
     """
 

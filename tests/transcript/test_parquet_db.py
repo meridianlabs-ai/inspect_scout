@@ -8,18 +8,19 @@ import pytest
 import pytest_asyncio
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
+from inspect_scout import columns as c
 from inspect_scout import transcripts_from
 from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
     ParquetTranscriptsDB,
 )
 from inspect_scout._transcript.database.reader import TranscriptsDBReader
-from inspect_scout._transcript.metadata import metadata as m
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
 )
+from pydantic import JsonValue
 
 
 # Test data helpers
@@ -27,6 +28,9 @@ def create_sample_transcript(
     id: str = "test-001",
     source_id: str = "source-001",
     source_uri: str = "test://uri",
+    model: str | None = None,
+    task: str | None = None,
+    score: JsonValue | None = None,
     metadata: dict[str, Any] | None = None,
     messages: list[ChatMessage] | None = None,
     events: list[Event] | None = None,
@@ -37,6 +41,9 @@ def create_sample_transcript(
         source_type="test",
         source_id=source_id,
         source_uri=source_uri,
+        task_set=task,
+        model=model,
+        score=score,
         metadata=metadata or {},
         messages=messages or [ChatMessageUser(content="Test message")],
         events=events or [],
@@ -55,12 +62,12 @@ def create_test_transcripts(count: int = 10) -> list[Transcript]:
                 id=f"sample-{i:03d}",
                 source_id=f"eval-{i // 5:02d}",  # Group into evals
                 source_uri=f"test://log-{i:03d}.json",
+                model=models[i % 3],
+                task=tasks[i % 3],
+                score=0.5 + (i % 10) * 0.05,
                 metadata={
-                    "model": models[i % 3],
-                    "task": tasks[i % 3],
                     "temperature": 0.5 + (i % 5) * 0.1,
                     "index": i,
-                    "score": 0.5 + (i % 10) * 0.05,  # Moved to metadata
                     "mean": 0.8,  # Moved to metadata
                     "completeness": 0.9,  # Moved to metadata
                     "var_a": i,  # Moved to metadata
@@ -172,12 +179,12 @@ async def test_insert_multiple_batches(test_location: Path) -> None:
                     id=f"sample-{i:03d}",
                     source_id=f"eval-{i // 250:02d}",  # Groups of 250 to test batch splitting
                     source_uri=f"test://log-{i:03d}.json",
+                    model=["gpt-4", "gpt-3.5-turbo", "claude-3-opus"][i % 3],
+                    task=["math", "coding", "qa"][i % 3],
+                    score=0.5 + (i % 10) * 0.05,
                     metadata={
-                        "model": ["gpt-4", "gpt-3.5-turbo", "claude-3-opus"][i % 3],
-                        "task": ["math", "coding", "qa"][i % 3],
                         "temperature": 0.5 + (i % 5) * 0.1,
                         "index": i,
-                        "score": 0.5 + (i % 10) * 0.05,
                         "mean": 0.8,
                         "completeness": 0.9,
                         "var_a": i,
@@ -249,7 +256,7 @@ async def test_select_all(populated_db: ParquetTranscriptsDB) -> None:
 async def test_select_with_where(populated_db: ParquetTranscriptsDB) -> None:
     """Test filtering by metadata conditions."""
     # Filter by model (now a direct column, not nested in metadata JSON)
-    condition = m.model == "gpt-4"
+    condition = c.model == "gpt-4"
     results = [info async for info in populated_db.select([condition], None, False)]
 
     # Should have ~7 results (20 total / 3 models)
@@ -257,7 +264,7 @@ async def test_select_with_where(populated_db: ParquetTranscriptsDB) -> None:
 
     # Verify all results match condition
     for info in results:
-        assert info.metadata.get("model") == "gpt-4"
+        assert info.model == "gpt-4"
 
 
 @pytest.mark.asyncio
@@ -294,18 +301,18 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
 async def test_metadata_dsl_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test various Condition operators."""
     # Greater than
-    results = [info async for info in populated_db.select([m.index > 15], None, False)]
+    results = [info async for info in populated_db.select([c.index > 15], None, False)]
     assert len(results) == 4  # indices 16, 17, 18, 19
 
     # Less than or equal
-    results = [info async for info in populated_db.select([m.index <= 5], None, False)]
+    results = [info async for info in populated_db.select([c.index <= 5], None, False)]
     assert len(results) == 6  # indices 0-5
 
     # IN operator
     results = [
         info
         async for info in populated_db.select(
-            [m.task.in_(["math", "coding"])], None, False
+            [c.task_set.in_(["math", "coding"])], None, False
         )
     ]
     assert len(results) >= 10  # At least 2/3 of results
@@ -316,7 +323,7 @@ async def test_json_path_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test querying metadata fields."""
     # Query by temperature value
     results = [
-        info async for info in populated_db.select([m.temperature > 0.7], None, False)
+        info async for info in populated_db.select([c.temperature > 0.7], None, False)
     ]
     assert len(results) > 0
 
@@ -330,16 +337,16 @@ async def test_json_path_queries(populated_db: ParquetTranscriptsDB) -> None:
 async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     """Test combining conditions with & and |."""
     # AND condition
-    condition = (m.model == "gpt-4") & (m.index < 10)
+    condition = (c.model == "gpt-4") & (c.index < 10)
     results = [info async for info in populated_db.select([condition], None, False)]
 
     for info in results:
-        assert info.metadata.get("model") == "gpt-4"
+        assert info.model == "gpt-4"
         index = info.metadata.get("index", 100)
         assert isinstance(index, int) and index < 10
 
     # OR condition
-    condition = (m.index == 0) | (m.index == 19)
+    condition = (c.index == 0) | (c.index == 19)
     results = [info async for info in populated_db.select([condition], None, False)]
     assert len(results) == 2
 
@@ -429,7 +436,7 @@ async def test_arbitrary_metadata(parquet_db: ParquetTranscriptsDB) -> None:
     # Query with nested metadata (use JSON path for nested dicts)
     results = [
         info
-        async for info in parquet_db.select([m["nested.deep.value"] == 42], None, False)
+        async for info in parquet_db.select([c["nested.deep.value"] == 42], None, False)
     ]
     assert len(results) == 1
     assert results[0].transcript_id == "complex-1"
@@ -441,7 +448,8 @@ async def test_null_handling(parquet_db: ParquetTranscriptsDB) -> None:
     transcripts = [
         create_sample_transcript(
             id="with-data",
-            metadata={"key": "value", "score": 0.95, "a": 1.0, "x": "y"},
+            score=0.95,
+            metadata={"key": "value", "a": 1.0, "x": "y"},
         ),
         create_sample_transcript(
             id="without-data",
@@ -480,7 +488,7 @@ async def test_where_filtering(test_location: Path) -> None:
             await reader._db.insert(create_test_transcripts(20))
 
     # Filter
-    filtered = transcripts_obj.where(m.model == "gpt-4")
+    filtered = transcripts_obj.where(c.model == "gpt-4")
 
     async with filtered.reader() as reader:
         index = [info async for info in reader.index()]
@@ -543,7 +551,7 @@ async def test_query_no_matches(populated_db: ParquetTranscriptsDB) -> None:
     results = [
         info
         async for info in populated_db.select(
-            [m.model == "non-existent-model"], None, False
+            [c.model == "non-existent-model"], None, False
         )
     ]
     assert len(results) == 0
@@ -576,8 +584,8 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
     transcripts = [
         create_sample_transcript(
             id="nested-1",
+            model="gpt-4",
             metadata={
-                "model": "gpt-4",
                 "config": {
                     "temperature": 0.7,
                     "top_p": 0.9,
@@ -587,8 +595,8 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
         ),
         create_sample_transcript(
             id="nested-2",
+            model="claude",
             metadata={
-                "model": "claude",
                 "config": {
                     "temperature": 0.5,
                 },
@@ -600,7 +608,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
 
     # Query by direct field
     results = [
-        info async for info in parquet_db.select([m.model == "gpt-4"], None, False)
+        info async for info in parquet_db.select([c.model == "gpt-4"], None, False)
     ]
     assert len(results) == 1
 
@@ -608,7 +616,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
     results = [
         info
         async for info in parquet_db.select(
-            [m["config.temperature"] > 0.6], None, False
+            [c["config.temperature"] > 0.6], None, False
         )
     ]
     assert len(results) == 1
@@ -622,7 +630,9 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
 @pytest.mark.asyncio
 async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> None:
     """Test that reserved column names in metadata raise error."""
-    from inspect_scout._transcript.database.parquet import _validate_metadata_keys
+    from inspect_scout._transcript.database.parquet.transcripts import (
+        _validate_metadata_keys,
+    )
 
     # Should raise error for reserved keys (actual Parquet columns)
     with pytest.raises(ValueError, match="reserved"):
@@ -638,7 +648,7 @@ async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> N
         _validate_metadata_keys({"events": "bad"})
 
     # Should be fine for non-reserved keys
-    _validate_metadata_keys({"model": "gpt-4", "task": "math"})  # No error
+    _validate_metadata_keys({"foo": "gpt-4", "bar": "math"})  # No error
     _validate_metadata_keys({"content": "custom"})  # "content" is no longer reserved
 
 
@@ -647,50 +657,46 @@ async def test_schema_evolution(
     parquet_db: ParquetTranscriptsDB, test_location: Path
 ) -> None:
     """Test that different metadata fields across batches work correctly."""
-    # First batch: model, task
+    # First batch: category, difficulty metadata
     batch1 = [
         create_sample_transcript(
             id=f"batch1-{i}",
-            metadata={"model": "gpt-4", "task": "math"},
+            metadata={"category": "science", "difficulty": "hard"},
         )
         for i in range(5)
     ]
     await parquet_db.insert(batch1)
 
-    # Second batch: model, temperature (different fields!)
+    # Second batch: category, temperature (different fields!)
     batch2 = [
         create_sample_transcript(
             id=f"batch2-{i}",
-            metadata={"model": "claude", "temperature": 0.7},
+            metadata={"category": "math", "temperature": 0.7},
         )
         for i in range(5)
     ]
     await parquet_db.insert(batch2)
 
-    # Should have 2 Parquet files
-    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
-    assert len(parquet_files) == 2
-
-    # Query should work across both schemas
+    # Query should work across both schemas (files may be compacted)
     all_results = [info async for info in parquet_db.select([], None, False)]
     assert len(all_results) == 10
 
     # First batch has NULL temperature
     batch1_results = [
-        info async for info in parquet_db.select([m.task == "math"], None, False)
+        info async for info in parquet_db.select([c.category == "science"], None, False)
     ]
     assert len(batch1_results) == 5
     for info in batch1_results:
         assert info.metadata.get("temperature") is None
-        assert info.metadata.get("task") == "math"
+        assert info.metadata.get("difficulty") == "hard"
 
-    # Second batch has NULL task
+    # Second batch has NULL difficulty
     batch2_results = [
-        info async for info in parquet_db.select([m.model == "claude"], None, False)
+        info async for info in parquet_db.select([c.category == "math"], None, False)
     ]
     assert len(batch2_results) == 5
     for info in batch2_results:
-        assert info.metadata.get("task") is None
+        assert info.metadata.get("difficulty") is None
         assert info.metadata.get("temperature") == 0.7
 
 
@@ -725,9 +731,9 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
                     id=f"sample-{i:03d}",
                     source_id=f"eval-{i // 10:02d}",
                     source_uri=f"test://log-{i:03d}.json",
+                    model="gpt-4",
                     metadata={
                         "index": i,
-                        "model": "gpt-4",
                         "description": "z" * 200,  # Add more bulk to metadata
                     },
                     messages=messages,
@@ -786,9 +792,13 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
 
 
 @pytest.mark.asyncio
-async def test_recursive_discovery(test_location: Path) -> None:
-    """Test that parquet files in subdirectories are discovered and read correctly."""
-    # Create subdirectories
+async def test_indexed_database_isolation(test_location: Path) -> None:
+    """Test that indexed databases are isolated - each database only sees its own index.
+
+    When multiple databases exist in a directory hierarchy, each with its own index,
+    opening a database from a specific location only sees that database's transcripts.
+    """
+    # Create subdirectories for separate databases
     subdir1 = test_location / "batch1"
     subdir2 = test_location / "batch2" / "nested"
     subdir1.mkdir(parents=True)
@@ -797,7 +807,6 @@ async def test_recursive_discovery(test_location: Path) -> None:
     # Create database and insert transcripts to root
     db = ParquetTranscriptsDB(str(test_location))
     await db.connect()
-
     root_transcripts = [
         create_sample_transcript(
             id=f"root-{i}", source_id="root-eval", metadata={"location": "root"}
@@ -807,7 +816,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db.insert(root_transcripts)
     await db.disconnect()
 
-    # Create database and insert transcripts to subdir1
+    # Create separate database in subdir1
     db1 = ParquetTranscriptsDB(str(subdir1))
     await db1.connect()
     subdir1_transcripts = [
@@ -819,7 +828,7 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db1.insert(subdir1_transcripts)
     await db1.disconnect()
 
-    # Create database and insert transcripts to subdir2
+    # Create separate database in subdir2
     db2 = ParquetTranscriptsDB(str(subdir2))
     await db2.connect()
     subdir2_transcripts = [
@@ -831,63 +840,57 @@ async def test_recursive_discovery(test_location: Path) -> None:
     await db2.insert(subdir2_transcripts)
     await db2.disconnect()
 
-    # Now create a database pointing to root and verify it discovers all files recursively
-    db_all = ParquetTranscriptsDB(str(test_location))
-    await db_all.connect()
+    # Open from root - should only see root's 3 transcripts (uses root's index)
+    db_root = ParquetTranscriptsDB(str(test_location))
+    await db_root.connect()
+    root_ids = await db_root.transcript_ids([], None)
+    assert len(root_ids) == 3
+    root_results = [info async for info in db_root.select([], None, False)]
+    assert all(info.metadata.get("location") == "root" for info in root_results)
+    await db_root.disconnect()
 
-    # Should find all 9 transcripts across root and subdirectories
-    transcript_ids = await db_all.transcript_ids([], None)
-    assert len(transcript_ids) == 9
+    # Open from subdir1 - should only see subdir1's 3 transcripts
+    db_sub1 = ParquetTranscriptsDB(str(subdir1))
+    await db_sub1.connect()
+    sub1_ids = await db_sub1.transcript_ids([], None)
+    assert len(sub1_ids) == 3
+    sub1_results = [info async for info in db_sub1.select([], None, False)]
+    assert all(info.metadata.get("location") == "subdir1" for info in sub1_results)
+    await db_sub1.disconnect()
 
-    # Verify we can query transcripts from all locations
-    all_transcripts = [info async for info in db_all.select([], None, False)]
-    assert len(all_transcripts) == 9
+    # Open from subdir2 - should only see subdir2's 3 transcripts
+    db_sub2 = ParquetTranscriptsDB(str(subdir2))
+    await db_sub2.connect()
+    sub2_ids = await db_sub2.transcript_ids([], None)
+    assert len(sub2_ids) == 3
+    sub2_results = [info async for info in db_sub2.select([], None, False)]
+    assert all(info.metadata.get("location") == "subdir2" for info in sub2_results)
+    await db_sub2.disconnect()
 
-    # Check that we have transcripts from each location
-    locations = {info.metadata.get("location") for info in all_transcripts}
-    assert locations == {"root", "subdir1", "subdir2"}
 
-    # Verify we can filter by location
-    root_results = [
-        info async for info in db_all.select([m.location == "root"], None, False)
+@pytest.mark.asyncio
+async def test_file_uri_discovery(test_location: Path) -> None:
+    """Test that parquet files are discovered when location is a file: URI."""
+    # Create and populate database using regular path
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    transcripts = [
+        create_sample_transcript(id=f"uri-{i}", metadata={"index": i}) for i in range(3)
     ]
-    assert len(root_results) == 3
+    await db.insert(transcripts)
+    await db.disconnect()
 
-    subdir1_results = [
-        info async for info in db_all.select([m.location == "subdir1"], None, False)
-    ]
-    assert len(subdir1_results) == 3
+    # Now create a new database using file: URI
+    file_uri = test_location.as_uri()  # Converts to file:///path/to/dir
+    db_uri = ParquetTranscriptsDB(file_uri)
+    await db_uri.connect()
 
-    subdir2_results = [
-        info async for info in db_all.select([m.location == "subdir2"], None, False)
-    ]
-    assert len(subdir2_results) == 3
-
-    # Verify we can read full content from recursively discovered transcripts
-    from inspect_scout._transcript.types import TranscriptContent
-
-    # Read a transcript from root
-    root_transcript = await db_all.read(
-        root_results[0], TranscriptContent(messages="all", events="all")
-    )
-    assert len(root_transcript.messages) > 0
-    assert root_transcript.metadata.get("location") == "root"
-
-    # Read a transcript from subdir1
-    subdir1_transcript = await db_all.read(
-        subdir1_results[0], TranscriptContent(messages="all", events="all")
-    )
-    assert len(subdir1_transcript.messages) > 0
-    assert subdir1_transcript.metadata.get("location") == "subdir1"
-
-    # Read a transcript from nested subdir2
-    subdir2_transcript = await db_all.read(
-        subdir2_results[0], TranscriptContent(messages="all", events="all")
-    )
-    assert len(subdir2_transcript.messages) > 0
-    assert subdir2_transcript.metadata.get("location") == "subdir2"
-
-    await db_all.disconnect()
+    try:
+        # Should discover and read all transcripts
+        transcript_ids = await db_uri.transcript_ids([], None)
+        assert len(transcript_ids) == 3
+    finally:
+        await db_uri.disconnect()
 
 
 # RecordBatchReader Tests

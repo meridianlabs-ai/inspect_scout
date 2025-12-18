@@ -1,5 +1,6 @@
 import hashlib
 import io
+import json
 import sqlite3
 from datetime import datetime
 from functools import reduce
@@ -40,9 +41,11 @@ from inspect_ai.analysis._dataframe.samples.table import (
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
 )
+from inspect_ai.log import EvalLog, EvalSampleSummary
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
+from inspect_ai.scorer import value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
@@ -52,9 +55,9 @@ from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
+from .columns import Condition
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache
-from .metadata import Condition
 from .transcripts import TranscriptsQuery, TranscriptsReader
 from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
 from .util import LazyJSONDict
@@ -157,46 +160,12 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
     # read legacy format that included the full datasets
     if snapshot.fields and snapshot.data:
         # Read CSV data from snapshot
-        df = pd.read_csv(io.StringIO(snapshot.data))
+        snapshot_df = pd.read_csv(io.StringIO(snapshot.data))
 
-        # Process field definitions to apply correct dtypes
-        for field in snapshot.fields:
-            col_name = field["name"]
-            col_type = field["type"]
-
-            # Skip if column doesn't exist in DataFrame
-            if col_name not in df.columns:
-                continue
-
-            # Handle datetime columns with timezone
-            if col_type == "datetime":
-                tz = field.get("tz")
-                if tz:
-                    # Parse datetime with timezone
-                    df[col_name] = pd.to_datetime(df[col_name]).dt.tz_localize(tz)
-                else:
-                    df[col_name] = pd.to_datetime(df[col_name])
-
-            # Handle other specific types
-            elif col_type == "integer":
-                # Handle nullable integers
-                if df[col_name].isnull().any():
-                    df[col_name] = df[col_name].astype("Int64")
-                else:
-                    df[col_name] = df[col_name].astype("int64")
-
-            elif col_type == "number":
-                df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
-
-            elif col_type == "boolean":
-                df[col_name] = df[col_name].astype("bool")
-
-            elif col_type == "string":
-                df[col_name] = df[col_name].astype("string")
-
-            # For any other type, let pandas infer or keep as-is
-
-        return df
+        # determine unique logs, re-read, then filter on sample_id
+        snapshot_logs = snapshot_df["log"].unique().tolist()
+        df = _index_logs(snapshot_logs)
+        return df[df["sample_id"].isin(snapshot_df["sample_id"])]
 
     else:
         # re-read from index (which will be cached) then filter
@@ -297,10 +266,31 @@ class EvalLogTranscriptsDB:
             # create a dict of column name to value
             row_dict = dict(zip(column_names, row, strict=True))
 
-            # extract required fields
-            transcript_id = row_dict.get("sample_id", None)
-            transcript_source_id = row_dict.get("eval_id", None)
-            transcript_source_uri = row_dict.get("log", None)
+            # extract required fields (prefer new columns, fall back to old for compatibility)
+            transcript_id = row_dict.get("transcript_id") or row_dict.get("sample_id")
+            transcript_source_id = row_dict.get("source_id") or row_dict.get("eval_id")
+            transcript_source_uri = row_dict.get("source_uri") or row_dict.get("log")
+            transcript_date = row_dict.get("date", None)
+            transcript_task_set = row_dict.get("task_set", None)
+            transcript_task_id = row_dict.get("task_id", None)
+            transcript_task_repeat = row_dict.get("task_repeat", None)
+            transcript_agent = row_dict.get("agent", None)
+            transcript_agent_args = row_dict.get("agent_args", None)
+            transcript_model = row_dict.get("model", None)
+            transcript_score = row_dict.get("score", None)
+            transcript_success = row_dict.get("success", None)
+            transcript_total_time = row_dict.get("total_time", None)
+            transcript_total_tokens = row_dict.get("total_tokens", None)
+            transcript_error = row_dict.get("error", None)
+            transcript_limit = row_dict.get("limit", None)
+
+            # resolve json
+            if transcript_agent_args is not None:
+                transcript_agent_args = json.loads(transcript_agent_args)
+            if isinstance(transcript_score, str) and (
+                transcript_score.startswith("{") or transcript_score.startswith("[")
+            ):
+                transcript_score = json.loads(transcript_score)
 
             # ensure we have required fields
             if (
@@ -328,6 +318,19 @@ class EvalLogTranscriptsDB:
                 source_type=EVAL_LOG_SOURCE_TYPE,
                 source_id=transcript_source_id,
                 source_uri=transcript_source_uri,
+                date=transcript_date,
+                task_set=transcript_task_set,
+                task_id=transcript_task_id,
+                task_repeat=transcript_task_repeat,
+                agent=transcript_agent,
+                agent_args=transcript_agent_args,
+                model=transcript_model,
+                score=transcript_score,
+                success=transcript_success,
+                total_time=transcript_total_time,
+                total_tokens=transcript_total_tokens,
+                error=transcript_error,
+                limit=transcript_limit,
                 metadata=metadata,
             )
 
@@ -431,29 +434,84 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
         return samples_df_with_caching(read_samples, logs)
 
 
+def sample_success(sample: EvalSampleSummary) -> bool | None:
+    if not sample.scores:
+        return None
+
+    score = next(iter(sample.scores.values()), None)
+    if not score:
+        return None
+
+    # scores can explicitly mark themselves as successful/unsuccesful
+    if score.metadata and "success" in score.metadata:
+        success = score.metadata.get("success", None)
+        if isinstance(success, bool | None):
+            return success
+
+    # otherwise use standard value_to_float on scalers
+    if isinstance(score.value, str | int | float | bool):
+        return value_to_float()(score.value) > 0
+    # lists/dicts get None
+    else:
+        return None
+
+
+# Standard transcript column extractors
+def _source_type(log: EvalLog) -> str:
+    """Return constant source type for eval logs."""
+    return EVAL_LOG_SOURCE_TYPE
+
+
+def _source_id(log: EvalLog) -> str | None:
+    """Return eval_id as source_id."""
+    return log.eval.eval_id
+
+
+def _source_uri(log: EvalLog) -> str | None:
+    """Return log location as source_uri (plain path without file:// prefix)."""
+    location = log.location
+    if location and location.startswith("file://"):
+        # Strip file:// prefix to get plain path
+        return location[7:]
+    return location
+
+
+def _transcript_id(sample: EvalSampleSummary) -> str | None:
+    """Return sample uuid as transcript_id."""
+    return sample.uuid
+
+
 TranscriptColumns: list[Column] = (
     EvalId
     + EvalLogPath
     + [
+        # Standard transcript columns (aliases for filtering)
+        EvalColumn("source_type", path=_source_type, required=True),
+        EvalColumn("source_id", path=_source_id, required=True),
+        EvalColumn("source_uri", path=_source_uri, required=True),
+        # Eval info columns
+        EvalColumn("date", path="eval.created", type=datetime, required=True),
         EvalColumn("eval_status", path="status", required=True),
-        EvalColumn("eval_created", path="eval.created", type=datetime, required=True),
         EvalColumn("eval_tags", path="eval.tags", default="", value=list_as_str),
         EvalColumn("eval_metadata", path="eval.metadata", default={}),
-        EvalColumn(
-            "task_name", path="eval.task", required=True, value=remove_namespace
-        ),
+        EvalColumn("task_set", path="eval.task", required=True, value=remove_namespace),
         EvalColumn("task_args", path="eval.task_args", default={}),
-        EvalColumn("solver", path="eval.solver"),
-        EvalColumn("solver_args", path="eval.solver_args", default={}),
+        EvalColumn("agent", path="eval.solver"),
+        EvalColumn("agent_args", path="eval.solver_args", default={}),
         EvalColumn("model", path="eval.model", required=True),
         EvalColumn("generate_config", path="eval.model_generate_config", default={}),
         EvalColumn("model_roles", path="eval.model_roles", default={}),
+        # Sample columns
+        SampleColumn("transcript_id", path=_transcript_id, required=True),
+        SampleColumn("task_id", path="id", required=True, type=str),
         SampleColumn("id", path="id", required=True, type=str),
+        SampleColumn("task_repeat", path="epoch", required=True),
         SampleColumn("epoch", path="epoch", required=True),
         SampleColumn("input", path=sample_input_as_str, required=True),
         SampleColumn("target", path="target", required=True, value=list_as_str),
         SampleColumn("sample_metadata", path="metadata", default={}),
         SampleColumn("score", path="scores", value=score_value),
+        SampleColumn("success", path=sample_success),
         SampleColumn("score_*", path="scores", value=score_values),
         SampleColumn("total_tokens", path=sample_total_tokens),
         SampleColumn("total_time", path="total_time"),
@@ -462,6 +520,7 @@ TranscriptColumns: list[Column] = (
         SampleColumn("limit", path="limit", default=""),
     ]
 )
+
 
 JSON_COLUMNS: Final[list[str]] = [
     "eval_metadata",

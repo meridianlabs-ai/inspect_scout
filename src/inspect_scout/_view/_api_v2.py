@@ -1,19 +1,14 @@
 import hashlib
 import io
-from dataclasses import replace
 from typing import Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
-from inspect_ai._view.fastapi_server import (
-    AccessPolicy,
-    FileMappingPolicy,
-)
+from inspect_ai._view.fastapi_server import AccessPolicy
 from starlette.status import (
     HTTP_304_NOT_MODIFIED,
-    HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -29,14 +24,20 @@ from .._scanresults import (
 from .._transcript.factory import transcripts_from
 from .._transcript.types import TranscriptInfo
 from ._api_v2_types import RestScanStatus, ScansRestResponse
-from ._server_common import InspectPydanticJSONResponse, default_transcripts_dir
+from ._server_common import (
+    InspectPydanticJSONResponse,
+    decode_base64url,
+    default_transcripts_dir,
+)
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
 
+API_VERSION = "2.0.0-alpha"
+
 
 def _compute_scans_etag(scans_location: str) -> str | None:
-    """Compute ETag from scan_summary.json mtimes. Returns None on error."""
+    """Compute ETag from API version and scan_summary.json mtimes."""
     try:
         scans_dir = UPath(scans_location)
         mtimes = sorted(
@@ -44,37 +45,23 @@ def _compute_scans_etag(scans_location: str) -> str | None:
             for d in scans_dir.rglob("scan_id=*")
             if d.is_dir() and (d / "scan_summary.json").exists()
         )
-        return hashlib.md5(str(mtimes).encode()).hexdigest()
+        return hashlib.md5(f"{API_VERSION}:{mtimes}".encode()).hexdigest()
     except Exception:
         return None
 
 
 def v2_api_app(
-    mapping_policy: FileMappingPolicy | None = None,
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
-) -> "FastAPI":
+) -> FastAPI:
     """Create V2 API FastAPI app.
 
     WARNING: This is an ALPHA API. Expect breaking changes without notice.
     Do not depend on this API for production use.
     """
-    app = FastAPI(
-        title="Inspect Scout Viewer API",
-        version="2.0.0-alpha",
-    )
-
-    async def _map_file(request: Request, file: str) -> str:
-        if mapping_policy is not None:
-            return await mapping_policy.map(request, file)
-        return file
-
-    async def _unmap_file(request: Request, file: str) -> str:
-        if mapping_policy is not None:
-            return await mapping_policy.unmap(request, file)
-        return file
+    app = FastAPI(title="Inspect Scout Viewer API", version=API_VERSION)
 
     async def _validate_read(request: Request, file: str | UPath) -> None:
         if access_policy is not None:
@@ -106,18 +93,32 @@ def v2_api_app(
     async def _to_rest_scan(
         request: Request, scan: RecorderStatus, running_scans: set[str]
     ) -> RestScanStatus:
-        return replace(scan, location=await _unmap_file(request, scan.location))
+        return scan
 
-    @app.get("/transcripts-dir", response_class=PlainTextResponse)
-    async def transcripts_dir(
-        request: Request,
-    ) -> str:
+    @app.get(
+        "/transcripts-dir",
+        response_class=PlainTextResponse,
+        summary="Get default transcripts directory",
+        description="Returns the default directory path where transcripts are stored.",
+    )
+    async def transcripts_dir(request: Request) -> str:
+        """Return default transcripts directory path."""
         return await default_transcripts_dir()
 
-    @app.get("/transcripts")
+    @app.get(
+        "/transcripts",
+        summary="List transcripts",
+        description="Returns metadata for all transcripts in the specified directory.",
+    )
     async def transcripts(
-        request_transcripts_dir: str | None = Query(None, alias="dir"),
+        request_transcripts_dir: str | None = Query(
+            None,
+            alias="dir",
+            description="Transcripts directory path. Uses default if not specified.",
+            examples=["/path/to/transcripts"],
+        ),
     ) -> list[TranscriptInfo]:
+        """List transcript metadata from the transcripts directory."""
         transcripts_dir = request_transcripts_dir or await default_transcripts_dir()
         print(f"/transcripts got\n\t{request_transcripts_dir=}\n\t{transcripts_dir=}")
         try:
@@ -130,24 +131,31 @@ def v2_api_app(
         "/scans",
         response_model=ScansRestResponse,
         response_class=InspectPydanticJSONResponse,
-        responses={
-            HTTP_304_NOT_MODIFIED: {"description": "Not Modified"},
-            HTTP_403_FORBIDDEN: {"description": "Forbidden"},
-        },
+        summary="List scans",
+        description="Returns all scans in the results directory. Supports ETag caching.",
     )
     async def scans(
         request: Request,
         response: Response,
-        query_results_dir: str | None = Query(None, alias="results_dir"),
-        if_none_match: str | None = Header(None, alias="If-None-Match"),
+        query_results_dir: str | None = Query(
+            None,
+            alias="results_dir",
+            description="Results directory containing scans. Required if not configured server-side.",
+            examples=["/path/to/results"],
+        ),
+        if_none_match: str | None = Header(
+            None,
+            alias="If-None-Match",
+            description="ETag from previous response for cache validation.",
+        ),
     ) -> ScansRestResponse | Response:
+        """List all scans with ETag-based caching support."""
         validated_results_dir = _ensure_not_none(
             query_results_dir or results_dir, "results_dir is required"
         )
         await _validate_list(request, validated_results_dir)
-        mapped_results_dir = await _map_file(request, validated_results_dir)
 
-        if etag := _compute_scans_etag(mapped_results_dir):
+        if etag := _compute_scans_etag(validated_results_dir):
             if if_none_match and if_none_match.strip('"') == etag:
                 return Response(
                     status_code=HTTP_304_NOT_MODIFIED, headers={"ETag": f'"{etag}"'}
@@ -158,31 +166,24 @@ def v2_api_app(
             results_dir=validated_results_dir,
             scans=[
                 await _to_rest_scan(request, scan, _running_scans)
-                for scan in await scan_list_async(mapped_results_dir)
+                for scan in await scan_list_async(validated_results_dir)
             ],
         )
 
-    @app.get("/scanner_df_input/{scan:path}")
+    @app.get(
+        "/scans/{scan}/{scanner}/{uuid}/input",
+        summary="Get scanner input",
+        description="Returns the original input text for a specific scanner result. "
+        "The input type is returned in the X-Input-Type response header.",
+    )
     async def scanner_input(
         request: Request,
-        scan: str,
-        query_scanner: str | None = Query(None, alias="scanner"),
-        query_uuid: str | None = Query(None, alias="uuid"),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
+        scanner: str = Path(description="Scanner name"),
+        uuid: str = Path(description="UUID of the specific result row"),
     ) -> Response:
-        if query_scanner is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="scanner query parameter is required",
-            )
-
-        if query_uuid is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="uuid query parameter is required",
-            )
-
-        # convert to absolute path
-        scan_path = UPath(await _map_file(request, scan))
+        """Retrieve original input text for a scanner result."""
+        scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -190,25 +191,17 @@ def v2_api_app(
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
 
-        # validate
         await _validate_read(request, scan_path)
 
-        # get the result
         result = await scan_results_arrow_async(str(scan_path))
-
-        # ensure we have the data (404 if not)
-        if query_scanner not in result.scanners:
+        if scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{query_scanner}' not found in scan results",
+                detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        input_value = result.get_field(
-            query_scanner, "uuid", query_uuid, "input"
-        ).as_py()
-        input_type = result.get_field(
-            query_scanner, "uuid", query_uuid, "input_type"
-        ).as_py()
+        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
+        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
 
         # Return raw input as body with inputType in header (more efficient for large text)
         return Response(
@@ -217,20 +210,19 @@ def v2_api_app(
             headers={"X-Input-Type": input_type or ""},
         )
 
-    @app.get("/scanner_df/{scan:path}")
+    @app.get(
+        "/scans/{scan}/{scanner}",
+        summary="Get scanner dataframe",
+        description="Streams scanner results as Arrow IPC format with LZ4 compression. "
+        "Excludes input column for efficiency; use the input endpoint for input text.",
+    )
     async def scan_df(
         request: Request,
-        scan: str,
-        query_scanner: str | None = Query(None, alias="scanner"),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
+        scanner: str = Path(description="Scanner name"),
     ) -> Response:
-        if query_scanner is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="scanner query parameter is required",
-            )
-
-        # convert to absolute path
-        scan_path = UPath(await _map_file(request, scan))
+        """Stream scanner results as Arrow IPC with LZ4 compression."""
+        scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -238,17 +230,13 @@ def v2_api_app(
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
 
-        # validate
         await _validate_read(request, scan_path)
 
-        # get the result
         result = await scan_results_arrow_async(str(scan_path))
-
-        # ensure we have the data (404 if not)
-        if query_scanner not in result.scanners:
+        if scanner not in result.scanners:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{query_scanner}' not found in scan results",
+                detail=f"Scanner '{scanner}' not found in scan results",
             )
 
         def stream_as_arrow_ipc() -> Iterable[bytes]:
@@ -262,7 +250,7 @@ def v2_api_app(
             # with only a moderate loss in compression ratio
             # (e.g. 40% larger in exchange for ~20x faster compression)
             with result.reader(
-                query_scanner,
+                scanner,
                 streaming_batch_size=streaming_batch_size,
                 exclude_columns=["input"],
             ) as reader:
@@ -292,20 +280,18 @@ def v2_api_app(
         )
 
     @app.get(
-        "/scan/{scan:path}",
+        "/scans/{scan}",
         response_model=RestScanStatus,
         response_class=InspectPydanticJSONResponse,
-        responses={
-            HTTP_403_FORBIDDEN: {"description": "Forbidden"},
-            HTTP_404_NOT_FOUND: {"description": "Not Found"},
-        },
+        summary="Get scan status",
+        description="Returns detailed status and metadata for a single scan.",
     )
     async def scan(
         request: Request,
-        scan: str,
+        scan: str = Path(description="Scan path (base64url-encoded)"),
     ) -> RestScanStatus:
-        # convert to absolute path
-        scan_path = UPath(await _map_file(request, scan))
+        """Get detailed status for a single scan."""
+        scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
                 results_dir, "results_dir is required"
@@ -313,7 +299,6 @@ def v2_api_app(
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
 
-        # validate
         await _validate_read(request, scan_path)
 
         # read the results and return

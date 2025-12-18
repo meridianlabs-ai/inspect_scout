@@ -3,8 +3,8 @@ import io
 import pandas as pd
 
 from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.columns import Column
 from inspect_scout._transcript.database.database import TranscriptsDB
-from inspect_scout._transcript.metadata import Column
 from inspect_scout._transcript.transcripts import Transcripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
@@ -36,7 +36,7 @@ def transcripts_from_db(location: str) -> Transcripts:
 
     Example:
         ```python
-        from inspect_scout import transcripts_from, metadata as m
+        from inspect_scout import transcripts_from, columns as c
 
         # Load from local directory
         transcripts = transcripts_from("./transcript_db")
@@ -45,7 +45,7 @@ def transcripts_from_db(location: str) -> Transcripts:
         transcripts = transcripts_from("s3://bucket/transcript_db")
 
         # Filter by metadata
-        transcripts = transcripts.where(m.model == "gpt-4")
+        transcripts = transcripts.where(c.model == "gpt-4")
         transcripts = transcripts.limit(100)
         ```
     """

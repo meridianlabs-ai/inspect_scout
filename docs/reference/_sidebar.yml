@@ -87,14 +87,14 @@ website:
           href: reference/transcript.qmd#column
         - text: Condition
           href: reference/transcript.qmd#condition
-        - text: Metadata
-          href: reference/transcript.qmd#metadata
-        - text: metadata
-          href: reference/transcript.qmd#metadata
-        - text: LogMetadata
-          href: reference/transcript.qmd#logmetadata
-        - text: log_metadata
-          href: reference/transcript.qmd#log_metadata
+        - text: Columns
+          href: reference/transcript.qmd#columns
+        - text: columns
+          href: reference/transcript.qmd#columns
+        - text: LogColumns
+          href: reference/transcript.qmd#logcolumns
+        - text: log_columns
+          href: reference/transcript.qmd#log_columns
       - section: scanner
         href: reference/scanner.qmd
         contents:

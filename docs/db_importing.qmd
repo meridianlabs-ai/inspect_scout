@@ -173,6 +173,20 @@ transcripts = transcripts_from(
 )
 ```
 
+Note that several fields in the database schema are marked as <small>JSON</small>---these should be encoded as serialized JSON strings within your parquet files.
+
+### Transcript Index
+
+One critical additional step required for a custom data lake is to build a transcript index. While this is not required, it can make querying across large sets of transcripts dramatically faster (10x or better) as well as improve the handling of large databases in Scout View. 
+
+To build an index, use the `scout db index` command. For example:
+
+```bash
+scout db index s3://my-transcripts-data-lake/cyber
+```
+
+You should run this command whenever you add or remove transcripts from your data lake (transcripts will not be visible to clients until the index is updated). While building an index is not required, it is highly reccommend if you want optimal query performance.
+
 ## Inspect Logs
 
 If you prefer to keep all of your transcripts (including ones from Inspect evals) in a transcript database, you can easily import Inspect logs as follows:
@@ -187,12 +201,14 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 You could also insert a filtered list of transcripts:
 
 ``` python
+from inspect_scout import columns as c
+
 async with transcripts_db("s3://my-transcript-db/") as db:
 
     transcripts = (
         transcripts_from("./logs")
-        .where(m.task_name == "cybench")
-        .where(m.model.like("openai/%"))
+        .where(c.task_set == "cybench")
+        .where(c.model.like("openai/%"))
     )
 
     await db.insert(transcripts)

@@ -21,17 +21,16 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._recorder.recorder import Status
-from inspect_scout._recorder.summary import Summary
-from inspect_scout._scanlist import scan_list_async
-from inspect_scout._scanresults import (
+from .._recorder.recorder import Status
+from .._recorder.summary import Summary
+from .._scanlist import scan_list_async
+from .._scanner.result import Error
+from .._scanresults import (
     remove_scan_results,
     scan_results_arrow_async,
     scan_results_df_async,
 )
-from inspect_scout._scanspec import ScanSpec
-
-from .._scanner.result import Error
+from .._scanspec import ScanSpec
 from ._server_common import InspectPydanticJSONResponse
 
 
@@ -93,15 +92,18 @@ def df_to_ipc(df: pd.DataFrame) -> IPCDataFrame:
     )
 
 
-# TODO: Move this into _api_v1.py once we're happy that we haven't broken it
 def v1_api_app(
     mapping_policy: FileMappingPolicy | None = None,
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
-) -> "FastAPI":
-    app = FastAPI()
+) -> FastAPI:
+    """Create V1 API FastAPI app (deprecated)."""
+    app = FastAPI(
+        title="Inspect Scout Viewer API (Deprecated)",
+        description="⚠️ **DEPRECATED**: This API is deprecated. Use /api/v2 instead.",
+    )
 
     async def _map_file(request: Request, file: str) -> str:
         if mapping_policy is not None:
@@ -140,7 +142,7 @@ def v1_api_app(
             )
         return value
 
-    @app.get("/scans")
+    @app.get("/scans", deprecated=True)
     async def scans(
         request: Request,
         query_results_dir: str | None = Query(None, alias="results_dir"),
@@ -158,7 +160,7 @@ def v1_api_app(
             media_type="application/json",
         )
 
-    @app.get("/scanner_df_input/{scan:path}")
+    @app.get("/scanner_df_input/{scan:path}", deprecated=True)
     async def scanner_input(
         request: Request,
         scan: str,
@@ -213,7 +215,7 @@ def v1_api_app(
             headers={"X-Input-Type": input_type or ""},
         )
 
-    @app.get("/scanner_df/{scan:path}")
+    @app.get("/scanner_df/{scan:path}", deprecated=True)
     async def scan_df(
         request: Request,
         scan: str,
@@ -287,7 +289,7 @@ def v1_api_app(
             media_type="application/vnd.apache.arrow.stream; codecs=lz4",
         )
 
-    @app.get("/scan/{scan:path}")
+    @app.get("/scan/{scan:path}", deprecated=True)
     async def scan(
         request: Request,
         scan: str,
@@ -326,7 +328,7 @@ def v1_api_app(
             content=status, media_type="application/json"
         )
 
-    @app.get("/scan-delete/{scan:path}")
+    @app.get("/scan-delete/{scan:path}", deprecated=True)
     async def scan_delete(request: Request, scan: str) -> Response:
         # convert to absolute path
         scan_path = UPath(await _map_file(request, scan))

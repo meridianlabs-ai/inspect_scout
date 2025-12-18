@@ -1,9 +1,10 @@
 import { ScanResultSummary } from "../types";
 
 export interface IdentifierInfo {
-  id: string;
-  secondaryId?: string;
-  epoch?: string;
+  taskSet?: string;
+  id: string | number;
+  secondaryId?: string | number;
+  epoch?: number;
 }
 
 export const resultIdentifierStr = (
@@ -14,12 +15,18 @@ export const resultIdentifierStr = (
     return undefined;
   }
   if (identifier.secondaryId || identifier.epoch) {
-    const result: string[] = [identifier.id];
+    const id: string[] = [];
+    if (identifier.taskSet) {
+      id.push(identifier.taskSet);
+    }
+    id.push(String(identifier.id));
+
+    const result: string[] = [id.join("/")];
     if (identifier.secondaryId) {
-      result.push(identifier.secondaryId);
+      result.push(String(identifier.secondaryId));
     }
     if (identifier.epoch) {
-      result.push(identifier.epoch);
+      result.push(`(${String(identifier.epoch)})`);
     }
     return result.join(" ");
   }
@@ -62,13 +69,16 @@ export const resultIdentifier = (
 
 const getSampleIdentifier = (
   summary: ScanResultSummary
-): { id: string; epoch: string } | undefined => {
-  if (summary.transcriptMetadata["id"] && summary.transcriptMetadata["epoch"]) {
-    const id = String(summary.transcriptMetadata["id"]);
-    const epoch = String(summary.transcriptMetadata["epoch"]);
+): IdentifierInfo | undefined => {
+  const id = summary.transcriptTaskId;
+  const epoch = summary.transcriptTaskRepeat;
+
+  if (id && epoch) {
+    const taskSet = summary.transcriptTaskSet;
     return {
       id,
       epoch,
+      taskSet,
     };
   }
   return undefined;

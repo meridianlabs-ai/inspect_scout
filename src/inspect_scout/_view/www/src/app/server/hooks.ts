@@ -57,7 +57,7 @@ export const useServerScans = () => {
 };
 
 // Fetches the selected scan status from the server and stores in state
-export const useServerScanner = () => {
+export const useServerScan = () => {
   // api
   const api = useApi();
 
@@ -124,7 +124,7 @@ export const useServerScanner = () => {
 };
 
 // Fetch scanner dataframe from the server and stores in state
-export const useServerScannerDataframe = () => {
+export const useServerScanDataframe = () => {
   // api
   const api = useApi();
 
@@ -203,7 +203,7 @@ export const useServerScannerDataframe = () => {
   ]);
 };
 
-export const useServerScannerDataframeInput = () => {
+export const useServerScanDataframeInput = () => {
   // api
   const api = useApi();
 

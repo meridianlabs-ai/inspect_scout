@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 from datetime import datetime
-from typing import Any, Final, Sequence, Set, cast
+from typing import Any, Final, Sequence, Set, TypeVar, cast
 
 import jsonlines
 import pyarrow as pa
@@ -11,6 +11,8 @@ import pyarrow.parquet as pq
 from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
+from inspect_ai.scorer import value_to_float
+from pydantic import JsonValue
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
@@ -74,6 +76,32 @@ class RecorderBuffer:
     ) -> None:
         import pyarrow.parquet as pq
 
+        # do some bridging for inspect logs
+        m = transcript.metadata
+        transcript_date = resolve_metadata_var(transcript.date, "eval_created", m)
+        transcript_task_set = resolve_metadata_var(transcript.task_set, "task_name", m)
+        transcript_task_id = resolve_metadata_var(transcript.task_id, "id", m)
+        transcript_task_repeat = resolve_metadata_var(
+            transcript.task_repeat, "epoch", m
+        )
+        transcript_agent = resolve_metadata_var(transcript.agent, "solver", m)
+        transcript_agent_args = resolve_metadata_var(
+            transcript.agent_args, "solver_args", m
+        )
+        transcript_model = resolve_metadata_var(transcript.model, "model", m)
+        transcript_score = resolve_metadata_var(transcript.score, "score", m)
+        transcript_success = resolve_success_value(
+            transcript.success, cast(JsonValue | None, transcript_score)
+        )
+        transcript_total_time = resolve_metadata_var(
+            transcript.total_time, "total_time", m
+        )
+        transcript_total_tokens = resolve_metadata_var(
+            transcript.total_tokens, "total_tokens", m
+        )
+        transcript_error = resolve_metadata_var(transcript.error, "error", m)
+        transcript_limit = resolve_metadata_var(transcript.limit, "limit", m)
+
         records = [
             cast(
                 dict[str, str | bool | int | float | None],
@@ -82,6 +110,19 @@ class RecorderBuffer:
                     "transcript_source_type": transcript.source_type,
                     "transcript_source_id": transcript.source_id,
                     "transcript_source_uri": transcript.source_uri,
+                    "transcript_date": transcript_date,
+                    "transcript_task_set": transcript_task_set,
+                    "transcript_task_id": transcript_task_id,
+                    "transcript_task_repeat": transcript_task_repeat,
+                    "transcript_agent": transcript_agent,
+                    "transcript_agent_args": transcript_agent_args,
+                    "transcript_model": transcript_model,
+                    "transcript_score": transcript_score,
+                    "transcript_success": transcript_success,
+                    "transcript_total_time": transcript_total_time,
+                    "transcript_total_tokens": transcript_total_tokens,
+                    "transcript_error": transcript_error,
+                    "transcript_limit": transcript_limit,
                     "transcript_metadata": transcript.metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
@@ -174,6 +215,29 @@ class RecorderBuffer:
     def cleanup(self) -> None:
         """Remove the buffer directory for this scan (best-effort)."""
         cleanup_buffer_dir(self._buffer_dir)
+
+
+T = TypeVar("T")
+
+
+def resolve_metadata_var(
+    value: T | None, metadata_key: str, metadata: dict[str, Any]
+) -> T | None:
+    if value is None:
+        return metadata.get(metadata_key, None)
+    else:
+        return value
+
+
+def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool | None:
+    if value is not None:
+        return value  # Use explicit value when provided
+    else:
+        # Fall back to computing from score
+        if isinstance(score, str | int | float | bool):
+            return value_to_float()(score) > 0
+        else:
+            return None
 
 
 def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:

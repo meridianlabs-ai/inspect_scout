@@ -178,3 +178,27 @@ jobs:
             echo "Build completed with changes"
             exit 1
           fi
+
+  js-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/inspect_scout/_view/www/package.json
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/inspect_scout/_view/www/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: src/inspect_scout/_view/www
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        working-directory: src/inspect_scout/_view/www
+        run: pnpm test

@@ -79,7 +79,7 @@ export const ScanJobGrid: FC = () => {
     const rows: ScanJobSummary[] = [];
 
     scans.forEach((scan) => {
-      const relativeLocation = toRelativePath(scan.location, resultsDir || "");
+      const relativeLocation = toRelativePath(scan.location, resultsDir);
       const icon = scan.complete
         ? ApplicationIcons.success
         : scan.errors.length > 0

@@ -15,7 +15,7 @@ import {
   ScanResultSummary,
   SortColumn,
 } from "../app/types";
-import { Status } from "../types";
+import { Status, TranscriptInfo } from "../types";
 import { debounce } from "../utils/sync";
 
 // Holds the currently selected scan result data in a ref
@@ -91,7 +91,7 @@ interface StoreState {
   transcriptsDatabasePath?: string;
 
   // Transcript Data (loaded data + source directory)
-  transcripts?: unknown[];
+  transcripts?: TranscriptInfo[];
   transcriptsDir?: string;
 
   // App initialization
@@ -202,7 +202,7 @@ interface StoreState {
   setDataframeShowFilterColumns: (show: boolean) => void;
 
   setTranscriptsDatabasePath: (path: string) => void;
-  setTranscripts: (transcripts: unknown[]) => void;
+  setTranscripts: (transcripts: TranscriptInfo[]) => void;
   setTranscriptsDir: (path: string) => void;
 }
 
@@ -665,7 +665,7 @@ export const createStore = (api: ScanApi) =>
               state.transcriptsDatabasePath = path;
             });
           },
-          setTranscripts: (transcripts: unknown[]) => {
+          setTranscripts: (transcripts: TranscriptInfo[]) => {
             set((state) => {
               state.transcripts = transcripts;
             });

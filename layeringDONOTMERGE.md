@@ -346,10 +346,10 @@ Feature Panels = `ScansPanel`, `ScanJobsPanel`, `ScanResultPanel`
 | Navbar | `resultsDir` | Shared | Builds breadcrumb navigation path | FIXED |
 | ScanJobGrid | `resultsDir` | ScanJobs Feature | computes relative paths | FIXED |
 | ScanJobGrid | `scans`| ScanJobs Feature | Transforms scans to grid rows| FIXED |
-| ScansPanelBody | `selectedScanStatus` | Scans Feature | Passes to JSON panel; determines tab content | |
+| ScansPanelBody | `selectedScanStatus` | Scans Feature | Passes to JSON panel; determines tab content | FIXED |
 | ScansPanelTitle | `resultsDir` | Scans Feature | computes relative paths | FIXED |
-| ScansPanelTitle | `selectedScanStatus` | Scans Feature | Displays name, model, transcript count, timestamp | |
-| ScanInfo | `selectedScanStatus` | Scans Feature | Shows scan ID, args, source, origin, commit | |
-| ScanResultsOutline | `selectedScanStatus` | Scans Feature | Builds scanner summary with metrics/errors | |
+| ScansPanelTitle | `selectedScanStatus` | Scans Feature | Displays name, model, transcript count, timestamp | FIXED |
+| ScanInfo | `selectedScanStatus` | Scans Feature | Shows scan ID, args, source, origin, commit | FIXED |
+| ScanResultsOutline | `selectedScanStatus` | Scans Feature | Builds scanner summary with metrics/errors | FIXED |
 | ScanResultsBody | `getSelectedScanResultData()` | Scans Feature | Powers list/dataframe views with ColumnTable | |
-| ScanResultsList | `selectedScanStatus` | Scans Feature | Uses completion state for initial filter | |
+| ScanResultsList | `selectedScanStatus` | Scans Feature | Uses completion state for initial filter | FIXED |

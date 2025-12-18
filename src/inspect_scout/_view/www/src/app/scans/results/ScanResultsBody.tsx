@@ -42,10 +42,6 @@ export const ScanResultsBody: FC<{
     name: selectedScanner,
   },
 }) => {
-  // TODO: I don't think it's possible for `isLoading` to be true since this component
-  // takes a non-optional selectedScan. If it were loading, we wouldn't have the
-  // scan. Confirm this.
-
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
 

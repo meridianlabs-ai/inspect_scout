@@ -1,4 +1,5 @@
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
+import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -13,7 +14,6 @@ import {
 } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
-import { useSelectedScanner } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScansPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
@@ -25,22 +25,31 @@ const columnOrder = ["transcript_id", "value", "explanation", "metadata"];
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-export const ScanResultsBody: FC<{ selectedStatus: Status }> = ({
-  selectedStatus,
+export const ScanResultsBody: FC<{
+  selectedScan: Status;
+  selectedScanner: {
+    name: string | undefined;
+    columnTable: ColumnTable | undefined;
+    isLoading: boolean;
+    error: string | undefined;
+  };
+}> = ({
+  selectedScan,
+  selectedScanner: {
+    columnTable,
+    error,
+    isLoading: isLoadingData,
+    name: selectedScanner,
+  },
 }) => {
-  const selectedScanner = useSelectedScanner();
+  // TODO: I don't think it's possible for `isLoading` to be true since this component
+  // takes a non-optional selectedScan. If it were loading, we wouldn't have the
+  // scan. Confirm this.
+
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
-  const getSelectedScanResultData = useStore(
-    (state) => state.getSelectedScanResultData
-  );
-  // Get the column table for the selected scanner
-  const columnTable = getSelectedScanResultData(selectedScanner);
 
-  const isLoadingData = useStore((state) => state.loadingData);
-  const isLoading = useStore((state) => state.loading);
   const hasScanner = (columnTable?.numRows() || 0) > 0;
-  const error = useStore((state) => state.scopedErrors["dataframe"]);
   const dataframeWrapText = useStore((state) => state.dataframeWrapText);
   const setVisibleScannerResultsCount = useStore(
     (state) => state.setVisibleScannerResultsCount
@@ -70,7 +79,7 @@ export const ScanResultsBody: FC<{ selectedStatus: Status }> = ({
             <ScanResultsList
               columnTable={columnTable}
               id={`scan-list-${selectedScanner}`}
-              selectedStatus={selectedStatus}
+              selectedScan={selectedScan}
             />
           )}
           {selectedResultsView === kSegmentDataframe && (
@@ -93,7 +102,7 @@ export const ScanResultsBody: FC<{ selectedStatus: Status }> = ({
           )}
         </div>
       )}
-      {!hasScanner && !isLoadingData && !isLoading && !error && (
+      {!hasScanner && !isLoadingData && !error && (
         <NoContentsPanel text="No scanner data available." />
       )}
       {error && (

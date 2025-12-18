@@ -4,16 +4,13 @@ import { FC } from "react";
 import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
-import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
 
 import styles from "./ScanInfo.module.css";
 
-export const ScanInfo: FC = () => {
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
-  if (!selectedStatus) {
-    return null;
-  }
+export const ScanInfo: FC<{ selectedStatus: Status }> = ({
+  selectedStatus,
+}) => {
   return (
     <>
       <ScanInfoCard

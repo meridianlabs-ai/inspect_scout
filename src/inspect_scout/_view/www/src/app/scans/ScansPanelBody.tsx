@@ -7,6 +7,7 @@ import JSONPanel from "../../components/JsonPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
+import { Status } from "../../types";
 import { ApplicationIcons } from "../appearance/icons";
 import { ResultGroup } from "../types";
 import { resultIdentifierStr, resultLog } from "../utils/results";
@@ -29,13 +30,14 @@ const kTabIdJson = "scan-detail-tabs-json";
 export const kSegmentList = "list";
 export const kSegmentDataframe = "dataframe";
 
-export const ScansPanelBody: React.FC = () => {
+export const ScansPanelBody: React.FC<{ selectedStatus: Status }> = ({
+  selectedStatus,
+}) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
   const setSelectedResultsTab = useStore(
     (state) => state.setSelectedResultsTab
   );
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
 
   const selectedScanner = useStore((state) => state.selectedScanner);
   const visibleScannerResults = useStore(
@@ -215,7 +217,7 @@ export const ScansPanelBody: React.FC = () => {
             handleTabChange(kTabIdScans);
           }}
         >
-          <ScanResultsPanel />
+          <ScanResultsPanel selectedStatus={selectedStatus} />
         </TabPanel>
 
         <TabPanel
@@ -226,7 +228,7 @@ export const ScansPanelBody: React.FC = () => {
             handleTabChange(kTabIdInfo);
           }}
         >
-          <ScanInfo />
+          <ScanInfo selectedStatus={selectedStatus} />
         </TabPanel>
         <TabPanel
           id={kTabIdJson}

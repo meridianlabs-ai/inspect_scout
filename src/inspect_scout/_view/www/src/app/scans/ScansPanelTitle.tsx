@@ -11,9 +11,10 @@ import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScansPanelTitle.module.css";
 
-export const ScansPanelTitle: FC = () => {
+export const ScansPanelTitle: FC<{ resultsDir: string | undefined }> = ({
+  resultsDir,
+}) => {
   const selectedStatus = useStore((state) => state.selectedScanStatus);
-  const resultsDir = useStore((state) => state.resultsDir);
   const scanJobName =
     selectedStatus?.spec.scan_name === "job"
       ? "scan"
@@ -34,7 +35,7 @@ export const ScansPanelTitle: FC = () => {
         <h1>{scanJobName}:</h1>
         <div className={clsx(styles.secondaryRow)}>
           <h2>
-            {toRelativePath(selectedStatus?.location || "", resultsDir || "")}
+            {toRelativePath(selectedStatus?.location, resultsDir)}
             {scannerModel ? ` (${scannerModel})` : ""}
           </h2>
           {selectedStatus?.location && (

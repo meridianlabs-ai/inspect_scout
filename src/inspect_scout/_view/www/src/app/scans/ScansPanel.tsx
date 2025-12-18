@@ -49,9 +49,12 @@ export const ScansPanel: React.FC = () => {
       <ActivityBar animating={!!loading} />
       {selectedStatus && (
         <>
-          <ScansPanelTitle resultsDir={resultsDir} />
+          <ScansPanelTitle
+            resultsDir={resultsDir}
+            selectedStatus={selectedStatus}
+          />
           <ExtendedFindProvider>
-            <ScansPanelBody />
+            <ScansPanelBody selectedStatus={selectedStatus} />
           </ExtendedFindProvider>
         </>
       )}

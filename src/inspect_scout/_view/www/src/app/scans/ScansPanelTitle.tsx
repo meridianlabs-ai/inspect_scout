@@ -2,7 +2,6 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { CopyButton } from "../../components/CopyButton";
-import { useStore } from "../../state/store";
 import { Status } from "../../types";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
@@ -11,21 +10,21 @@ import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScansPanelTitle.module.css";
 
-export const ScansPanelTitle: FC<{ resultsDir: string | undefined }> = ({
-  resultsDir,
-}) => {
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
+export const ScansPanelTitle: FC<{
+  resultsDir: string | undefined;
+  selectedStatus: Status;
+}> = ({ resultsDir, selectedStatus }) => {
   const scanJobName =
-    selectedStatus?.spec.scan_name === "job"
+    selectedStatus.spec.scan_name === "job"
       ? "scan"
-      : selectedStatus?.spec.scan_name;
+      : selectedStatus.spec.scan_name;
 
-  const scannerModel = selectedStatus?.spec.model.model;
+  const scannerModel = selectedStatus.spec.model.model;
 
   // Awesome
-  const deprecatedCount = selectedStatus?.spec.transcripts?.count || 0;
+  const deprecatedCount = selectedStatus.spec.transcripts?.count || 0;
   const modernCorrectCount = Object.keys(
-    selectedStatus?.spec.transcripts?.transcript_ids || {}
+    selectedStatus.spec.transcripts?.transcript_ids || {}
   ).length;
   const transcriptCount = Math.max(deprecatedCount, modernCorrectCount);
 
@@ -35,14 +34,14 @@ export const ScansPanelTitle: FC<{ resultsDir: string | undefined }> = ({
         <h1>{scanJobName}:</h1>
         <div className={clsx(styles.secondaryRow)}>
           <h2>
-            {toRelativePath(selectedStatus?.location, resultsDir)}
+            {toRelativePath(selectedStatus.location, resultsDir)}
             {scannerModel ? ` (${scannerModel})` : ""}
           </h2>
-          {selectedStatus?.location && (
+          {selectedStatus.location && (
             <CopyButton
               title="Copy Scan Path"
               className={clsx("text-size-small")}
-              value={prettyDirUri(selectedStatus?.location)}
+              value={prettyDirUri(selectedStatus.location)}
             />
           )}
         </div>
@@ -53,8 +52,8 @@ export const ScansPanelTitle: FC<{ resultsDir: string | undefined }> = ({
           <div>{transcriptCount} Transcripts </div>
           <div>—</div>
           <div>
-            {selectedStatus?.spec.timestamp
-              ? formatDateTime(new Date(selectedStatus?.spec.timestamp))
+            {selectedStatus.spec.timestamp
+              ? formatDateTime(new Date(selectedStatus.spec.timestamp))
               : ""}
           </div>
         </div>

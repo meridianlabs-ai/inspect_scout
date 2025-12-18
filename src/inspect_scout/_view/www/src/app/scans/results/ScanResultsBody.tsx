@@ -12,6 +12,7 @@ import {
   scanResultRoute,
 } from "../../../router/url";
 import { useStore } from "../../../state/store";
+import { Status } from "../../../types";
 import { useSelectedScanner } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScansPanelBody";
 
@@ -24,7 +25,9 @@ const columnOrder = ["transcript_id", "value", "explanation", "metadata"];
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-export const ScanResultsBody: FC = () => {
+export const ScanResultsBody: FC<{ selectedStatus: Status }> = ({
+  selectedStatus,
+}) => {
   const selectedScanner = useSelectedScanner();
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
@@ -67,6 +70,7 @@ export const ScanResultsBody: FC = () => {
             <ScanResultsList
               columnTable={columnTable}
               id={`scan-list-${selectedScanner}`}
+              selectedStatus={selectedStatus}
             />
           )}
           {selectedResultsView === kSegmentDataframe && (

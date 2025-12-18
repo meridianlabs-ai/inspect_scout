@@ -13,6 +13,7 @@ import {
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
+import { Status } from "../../../../types";
 import { basename } from "../../../../utils/path";
 import { useScanResultSummaries } from "../../../hooks";
 import { ScanResultSummary, SortColumn } from "../../../types";
@@ -39,10 +40,12 @@ export interface GridDescriptor {
 interface ScanResultsListProps {
   id: string;
   columnTable?: ColumnTable;
+  selectedStatus: Status;
 }
 export const ScanResultsList: FC<ScanResultsListProps> = ({
   id,
   columnTable,
+  selectedStatus,
 }) => {
   // Url data
   const navigate = useNavigate();
@@ -63,7 +66,6 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const selectedFilter = useStore((state) => state.selectedFilter);
   const groupResultsBy = useStore((state) => state.groupResultsBy);
   const scansSearchText = useStore((state) => state.scansSearchText);
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
 
   // Setters
   const setVisibleScannerResults = useStore(
@@ -82,7 +84,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const setSortResults = useStore((state) => state.setSortResults);
 
   useEffect(() => {
-    if (selectedFilter === undefined && selectedStatus?.complete === false) {
+    if (selectedFilter === undefined && selectedStatus.complete === false) {
       setSelectedFilter(kFilterAllResults);
     }
   }, [selectedStatus, selectedFilter, setSelectedFilter]);

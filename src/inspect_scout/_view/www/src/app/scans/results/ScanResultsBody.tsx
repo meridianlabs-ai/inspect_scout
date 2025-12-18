@@ -1,4 +1,5 @@
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
+import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -12,6 +13,8 @@ import {
   scanResultRoute,
 } from "../../../router/url";
 import { useStore } from "../../../state/store";
+import { Status } from "../../../types";
+import { AsyncData } from "../../../utils/asyncData";
 import { useSelectedScanner } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScansPanelBody";
 
@@ -24,20 +27,23 @@ const columnOrder = ["transcript_id", "value", "explanation", "metadata"];
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-export const ScanResultsBody: FC = () => {
+interface ScanResultsBodyProps {
+  scanStatus: Status;
+  dataframe: AsyncData<ColumnTable>;
+}
+
+export const ScanResultsBody: FC<ScanResultsBodyProps> = ({
+  scanStatus,
+  dataframe,
+}) => {
   const selectedScanner = useSelectedScanner();
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
-  const getSelectedScanResultData = useStore(
-    (state) => state.getSelectedScanResultData
-  );
-  // Get the column table for the selected scanner
-  const columnTable = getSelectedScanResultData(selectedScanner);
 
-  const isLoadingData = useStore((state) => state.loadingData);
-  const isLoading = useStore((state) => state.loading);
+  const columnTable = dataframe.data;
+  const isLoading = dataframe.loading;
+  const error = dataframe.error;
   const hasScanner = (columnTable?.numRows() || 0) > 0;
-  const error = useStore((state) => state.scopedErrors["dataframe"]);
   const dataframeWrapText = useStore((state) => state.dataframeWrapText);
   const setVisibleScannerResultsCount = useStore(
     (state) => state.setVisibleScannerResultsCount
@@ -65,8 +71,9 @@ export const ScanResultsBody: FC = () => {
         <div style={{ height: "100%", width: "100%" }}>
           {selectedResultsView === kSegmentList && (
             <ScanResultsList
-              columnTable={columnTable}
+              dataframe={dataframe}
               id={`scan-list-${selectedScanner}`}
+              scanStatus={scanStatus}
             />
           )}
           {selectedResultsView === kSegmentDataframe && (
@@ -89,13 +96,13 @@ export const ScanResultsBody: FC = () => {
           )}
         </div>
       )}
-      {!hasScanner && !isLoadingData && !isLoading && !error && (
+      {!hasScanner && !isLoading && !error && (
         <NoContentsPanel text="No scanner data available." />
       )}
       {error && (
         <ErrorPanel
           title="Error Loading Dataframe"
-          error={{ message: error }}
+          error={{ message: error.message }}
         />
       )}
     </div>

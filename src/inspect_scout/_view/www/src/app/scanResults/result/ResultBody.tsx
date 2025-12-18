@@ -19,11 +19,12 @@ import {
 import styles from "./ResultBody.module.css";
 
 export interface ResultBodyProps {
-  resultData?: ScanResultData;
+  resultData: ScanResultData;
   inputData?: ScanResultInputData;
+  loading: boolean;
 }
 
-export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData }) => {
+export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData, loading }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [searchParams] = useSearchParams();
 
@@ -44,6 +45,7 @@ export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData }) => {
           initialMessageId={initialMessageId}
           initialEventId={initialEventId}
           highlightLabeled={highlightLabeled}
+          loading={loading}
         />
       </div>
     </div>
@@ -58,6 +60,7 @@ interface InputRendererProps {
   initialMessageId?: string | null;
   initialEventId?: string | null;
   highlightLabeled?: boolean;
+  loading?: boolean;
 }
 
 const InputRenderer: FC<InputRendererProps> = ({
@@ -68,11 +71,10 @@ const InputRenderer: FC<InputRendererProps> = ({
   initialMessageId,
   initialEventId,
   highlightLabeled,
+  loading,
 }) => {
-  const loading = useStore((state) => state.loading);
-  const loadingData = useStore((state) => state.loadingData);
   if (!inputData) {
-    return loading || loadingData ? undefined : <div>No Input Available</div>;
+    return loading ? undefined : <div>No Input Available</div>;
   }
 
   if (isTranscriptInput(inputData)) {

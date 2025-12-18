@@ -14,7 +14,7 @@ import { useMarkdownRefs } from "../../utils/refs";
 import styles from "./ResultSidebar.module.css";
 
 interface ResultSidebarProps {
-  resultData?: ScanResultData;
+  resultData: ScanResultData;
 }
 
 export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {

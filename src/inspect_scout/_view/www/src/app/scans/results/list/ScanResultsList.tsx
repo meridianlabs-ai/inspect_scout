@@ -13,6 +13,8 @@ import {
   scanResultRoute,
 } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
+import { Status } from "../../../../types";
+import { AsyncData } from "../../../../utils/asyncData";
 import { basename } from "../../../../utils/path";
 import { useScannerCores } from "../../../hooks";
 import { ScanResultSummary, SortColumn } from "../../../types";
@@ -38,11 +40,13 @@ export interface GridDescriptor {
 
 interface ScanResultsListProps {
   id: string;
-  columnTable?: ColumnTable;
+  dataframe: AsyncData<ColumnTable>;
+  scanStatus: Status;
 }
 export const ScanResultsList: FC<ScanResultsListProps> = ({
   id,
-  columnTable,
+  dataframe,
+  scanStatus,
 }) => {
   // Url data
   const navigate = useNavigate();
@@ -52,9 +56,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const { scanPath } = parseScanResultPath(relativePath);
 
   // Data
-  const { data: scannerSummaries, isLoading } = useScannerCores(columnTable);
-  const isLoadingData = useStore((state) => state.loadingData);
-  const busy = isLoading || isLoadingData;
+  const { data: scannerSummaries, isLoading } = useScannerCores(dataframe?.data);
+  const busy = isLoading || dataframe?.loading;
 
   // Options / State
   const listHandle = useRef<VirtuosoHandle | null>(null);
@@ -62,7 +65,6 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const selectedFilter = useStore((state) => state.selectedFilter);
   const groupResultsBy = useStore((state) => state.groupResultsBy);
   const scansSearchText = useStore((state) => state.scansSearchText);
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
 
   // Setters
   const setVisibleScannerResults = useStore(
@@ -81,10 +83,10 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const setSortResults = useStore((state) => state.setSortResults);
 
   useEffect(() => {
-    if (selectedFilter === undefined && selectedStatus?.complete === false) {
+    if (selectedFilter === undefined && scanStatus?.complete === false) {
       setSelectedFilter(kFilterAllResults);
     }
-  }, [selectedStatus, selectedFilter, setSelectedFilter]);
+  }, [scanStatus, selectedFilter, setSelectedFilter]);
 
   // Apply text filtering to the scanner summaries
   const filteredSummaries = useMemo(() => {

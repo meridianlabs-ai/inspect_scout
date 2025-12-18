@@ -10,7 +10,7 @@ import { ScanResultData } from "../../types";
 import styles from "./Metadata.module.css";
 
 interface MetadataPanelProps {
-  resultData?: ScanResultData;
+  resultData: ScanResultData;
 }
 
 export const MetadataPanel: FC<MetadataPanelProps> = ({ resultData }) => {

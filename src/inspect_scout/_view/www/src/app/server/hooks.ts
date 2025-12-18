@@ -292,7 +292,12 @@ export const useServerScanDataframeInputOld = () => {
 
 // --- New AsyncData-returning hooks ---
 
-export const useServerScans = (): AsyncData<Status[]> => {
+export interface ScansData {
+  scans: Status[];
+  resultsDir: string;
+}
+
+export const useServerScans = (): AsyncData<ScansData> => {
   useServerScansOld();
 
   const scans = useStore((s) => s.scans);
@@ -301,7 +306,7 @@ export const useServerScans = (): AsyncData<Status[]> => {
 
   if (error) return { loading: false, error: new Error(error) };
   if (!resultsDir) return loading;
-  return data(scans);
+  return data({ scans, resultsDir });
 };
 
 export const useServerScan = (): AsyncData<Status> => {

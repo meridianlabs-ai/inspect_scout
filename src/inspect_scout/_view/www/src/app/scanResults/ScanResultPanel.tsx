@@ -13,7 +13,6 @@ import {
 } from "../../router/url";
 import { useStore } from "../../state/store";
 import { EventNode, EventType } from "../../transcript/types";
-import { compose } from "../../utils/asyncData";
 import { ApplicationIcons } from "../appearance/icons";
 import { Navbar } from "../components/Navbar";
 import { ToolButton } from "../components/ToolButton";
@@ -25,6 +24,7 @@ import {
   useServerScanDataframeInput,
   useServerScanDataframe,
   useServerScan,
+  useServerScans,
 } from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";
@@ -53,9 +53,11 @@ export const ScanResultPanel: FC = () => {
 
   // Required server data
   const { loading: scanLoading, data: status } = useServerScan();
+  // TODO: resultsDir is global config, shouldn't need useServerScans here
+  const { data: scansData } = useServerScans();
   // TODO: These two aren't actually used at this layer
-  useServerScanDataframe();
-  useServerScanDataframeInput();
+  const { loading: dataframeLoading } = useServerScanDataframe();
+  const { loading: inputLoading } = useServerScanDataframeInput();
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
@@ -146,9 +148,11 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <Navbar>{visibleScannerResults.length > 0 && <ScanResultNav />}</Navbar>
+      <Navbar resultsDir={scansData?.resultsDir}>
+        {visibleScannerResults.length > 0 && <ScanResultNav />}
+      </Navbar>
       <ActivityBar animating={scanLoading || resultLoading} />
-      <ScanResultHeader inputData={dfInput} status={status} />
+      {status && dfInput && <ScanResultHeader inputData={dfInput} status={status} />}
       {selectedResult && (
         <ExtendedFindProvider>
           <TabSet
@@ -190,7 +194,7 @@ export const ScanResultPanel: FC = () => {
                 }}
                 className={styles.fullHeight}
               >
-                <ResultPanel resultData={selectedResult} />
+                <ResultPanel resultData={selectedResult} loading={scanLoading || dataframeLoading || inputLoading} />
               </TabPanel>
             ) : undefined}
             {showEvents ? (

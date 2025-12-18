@@ -16,10 +16,10 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
-import { Status } from "../../types";
 import { dirname, toRelativePath } from "../../utils/path";
 import { debounce } from "../../utils/sync";
 import { ApplicationIcons } from "../appearance/icons";
+import { ScansData } from "../server/hooks";
 
 import styles from "./ScanJobsGrid.module.css";
 
@@ -42,7 +42,13 @@ interface ScanJobSummary {
   scanners: string[];
 }
 
-export const ScanJobGrid: FC<{ scans: Status[] }> = ({ scans }) => {
+interface ScanJobGridProps {
+  scansData: ScansData;
+}
+
+export const ScanJobGrid: FC<ScanJobGridProps> = ({ scansData }) => {
+  const scans = scansData?.scans ?? [];
+  const resultsDir = scansData?.resultsDir;
   const params = useParams<{ "*": string }>();
   const paramsRelativePath = getRelativePathFromParams(params);
 
@@ -54,8 +60,6 @@ export const ScanJobGrid: FC<{ scans: Status[] }> = ({ scans }) => {
   const setVisibleScanJobCount = useStore(
     (state) => state.setVisibleScanJobCount
   );
-
-  const resultsDir = useStore((state) => state.resultsDir);
 
   const gridState = useMemo(() => {
     const savedState = gridStates[GRID_STATE_NAME];

@@ -12,7 +12,7 @@ import { ScanResultData } from "../../types";
 import styles from "./InfoPanel.module.css";
 
 interface InfoPanelProps {
-  resultData?: ScanResultData;
+  resultData: ScanResultData;
 }
 
 export const InfoPanel: FC<InfoPanelProps> = ({ resultData }) => {

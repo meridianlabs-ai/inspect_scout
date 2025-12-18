@@ -14,7 +14,7 @@ import styles from "./ScanJobsPanel.module.css";
 
 export const ScanJobsPanel: FC = () => {
   // Load scans data
-  const { loading, error, data: scans } = useServerScans();
+  const { loading, error, data: scansData } = useServerScans();
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
 
   // Clear scan state from store on mount
@@ -25,7 +25,7 @@ export const ScanJobsPanel: FC = () => {
 
   return (
     <div className={clsx(styles.container)}>
-      <Navbar bordered={false} />
+      <Navbar bordered={false} resultsDir={scansData?.resultsDir} />
       <ActivityBar animating={!!loading} />
       <ExtendedFindProvider>
         {error && (
@@ -34,7 +34,7 @@ export const ScanJobsPanel: FC = () => {
             error={{ message: error.message }}
           />
         )}
-        {!error && <ScanJobGrid scans={scans ?? []} />}
+        {!error && scansData && <ScanJobGrid scansData={scansData} />}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

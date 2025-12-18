@@ -39,7 +39,7 @@ interface ScansPanelBodyProps {
 
 export const ScansPanelBody: React.FC<ScansPanelBodyProps> = ({
   selectedStatus,
-  dataframeData: _dataframeData,
+  dataframeData,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
@@ -217,7 +217,7 @@ export const ScansPanelBody: React.FC<ScansPanelBodyProps> = ({
             handleTabChange(kTabIdScans);
           }}
         >
-          <ScanResultsPanel />
+          <ScanResultsPanel scanStatus={selectedStatus} dataframe={dataframeData} />
         </TabPanel>
 
         <TabPanel
@@ -228,7 +228,7 @@ export const ScansPanelBody: React.FC<ScansPanelBodyProps> = ({
             handleTabChange(kTabIdInfo);
           }}
         >
-          <ScanInfo />
+          <ScanInfo scanStatus={selectedStatus} />
         </TabPanel>
         <TabPanel
           id={kTabIdJson}

@@ -2,7 +2,6 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { CopyButton } from "../../components/CopyButton";
-import { useStore } from "../../state/store";
 import { Status } from "../../types";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
@@ -11,10 +10,15 @@ import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScansPanelTitle.module.css";
 
-export const ScansPanelTitle: FC<{ selectedStatus: Status }> = ({
+interface ScansPanelTitleProps {
+  selectedStatus: Status;
+  resultsDir?: string;
+}
+
+export const ScansPanelTitle: FC<ScansPanelTitleProps> = ({
   selectedStatus,
+  resultsDir,
 }) => {
-  const resultsDir = useStore((state) => state.resultsDir);
   const scanJobName =
     selectedStatus.spec.scan_name === "job"
       ? "scan"

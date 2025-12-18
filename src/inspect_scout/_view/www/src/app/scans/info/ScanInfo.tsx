@@ -4,29 +4,28 @@ import { FC } from "react";
 import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
-import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
 
 import styles from "./ScanInfo.module.css";
 
-export const ScanInfo: FC = () => {
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
-  if (!selectedStatus) {
-    return null;
-  }
+interface ScanInfoProps {
+  scanStatus: Status;
+}
+
+export const ScanInfo: FC<ScanInfoProps> = ({ scanStatus }) => {
   return (
     <>
       <ScanInfoCard
         className={clsx(styles.container)}
-        selectedStatus={selectedStatus}
+        selectedStatus={scanStatus}
       />
       <ScanMetadataCard
         className={clsx(styles.container)}
-        selectedStatus={selectedStatus}
+        selectedStatus={scanStatus}
       />
       <ScannerInfoCard
         className={clsx(styles.container)}
-        selectedStatus={selectedStatus}
+        selectedStatus={scanStatus}
       />
     </>
   );

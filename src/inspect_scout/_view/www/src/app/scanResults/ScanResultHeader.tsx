@@ -11,16 +11,14 @@ import {
   isMessageInput,
   isMessagesInput,
   isTranscriptInput,
-  ScanResultData,
   MessageType,
 } from "../types";
 
 import styles from "./ScanResultHeader.module.css";
 
 interface ScanResultHeaderProps {
-  result?: ScanResultData;
-  status?: Status;
-  inputData?: ScanResultInputData;
+  status: Status;
+  inputData: ScanResultInputData;
 }
 
 interface Column {

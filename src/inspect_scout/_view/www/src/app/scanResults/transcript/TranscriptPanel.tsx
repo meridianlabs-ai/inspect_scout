@@ -9,8 +9,8 @@ import styles from "./TranscriptPanel.module.css";
 
 interface TranscriptPanelProps {
   id: string;
-  resultData?: ScanResultData;
-  nodeFilter?: (node: EventNode<EventType>[]) => EventNode<EventType>[];
+  resultData: ScanResultData;
+  nodeFilter: (node: EventNode<EventType>[]) => EventNode<EventType>[];
 }
 
 export const TranscriptPanel: FC<TranscriptPanelProps> = ({

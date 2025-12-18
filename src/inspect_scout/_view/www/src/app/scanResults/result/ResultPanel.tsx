@@ -9,17 +9,18 @@ import styles from "./ResultPanel.module.css";
 import { ResultSidebar } from "./ResultSidebar";
 
 interface ResultPanelProps {
-  resultData?: ScanResultData;
+  resultData: ScanResultData;
+  loading: boolean;
 }
 
-export const ResultPanel: FC<ResultPanelProps> = ({ resultData }) => {
+export const ResultPanel: FC<ResultPanelProps> = ({ resultData, loading }) => {
   const dfInput = useSelectedScanResultInputData();
 
   return (
     resultData && (
       <div className={clsx(styles.container, "text-size-base")}>
         <ResultSidebar resultData={resultData} />
-        <ResultBody resultData={resultData} inputData={dfInput} />
+        <ResultBody resultData={resultData} inputData={dfInput} loading={loading} />
       </div>
     )
   );

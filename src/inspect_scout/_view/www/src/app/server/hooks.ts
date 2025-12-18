@@ -72,7 +72,7 @@ export const useServerScanOld = () => {
 
   // State
   const resultsDir = useStore((state) => state.resultsDir);
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  const selectedScan = useStore((state) => state.selectedScanStatus);
   const scans = useStore((state) => state.scans);
 
   // Setters
@@ -87,7 +87,7 @@ export const useServerScanOld = () => {
   const clearError = useStore((state) => state.clearError);
 
   useEffect(() => {
-    if (scanPath && !selectedStatus) {
+    if (scanPath && !selectedScan) {
       // Clear any existing errors
       clearError("scanner");
 
@@ -121,7 +121,7 @@ export const useServerScanOld = () => {
     api,
     setSelectedScanStatus,
     scanPath,
-    selectedStatus,
+    selectedScan,
     scans,
     resultsDir,
   ]);

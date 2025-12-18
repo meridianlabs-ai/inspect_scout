@@ -17,13 +17,13 @@ import {
 
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  const selectedScan = useStore((state) => state.selectedScanStatus);
   const defaultScanner = useMemo(() => {
-    if (selectedStatus) {
-      const scanners = Object.keys(selectedStatus.summary.scanners);
+    if (selectedScan) {
+      const scanners = Object.keys(selectedScan.summary.scanners);
       return scanners.length > 0 ? scanners[0] : undefined;
     }
-  }, [selectedStatus, selectedStatus?.summary.scanners]);
+  }, [selectedScan, selectedScan?.summary.scanners]);
 
   return selectedScanner || defaultScanner;
 };

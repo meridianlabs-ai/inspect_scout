@@ -30,8 +30,8 @@ const kTabIdJson = "scan-detail-tabs-json";
 export const kSegmentList = "list";
 export const kSegmentDataframe = "dataframe";
 
-export const ScansPanelBody: React.FC<{ selectedStatus: Status }> = ({
-  selectedStatus,
+export const ScansPanelBody: React.FC<{ selectedScan: Status }> = ({
+  selectedScan,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedTab = useStore((state) => state.selectedResultsTab);
@@ -217,7 +217,7 @@ export const ScansPanelBody: React.FC<{ selectedStatus: Status }> = ({
             handleTabChange(kTabIdScans);
           }}
         >
-          <ScanResultsPanel selectedStatus={selectedStatus} />
+          <ScanResultsPanel selectedScan={selectedScan} />
         </TabPanel>
 
         <TabPanel
@@ -228,7 +228,7 @@ export const ScansPanelBody: React.FC<{ selectedStatus: Status }> = ({
             handleTabChange(kTabIdInfo);
           }}
         >
-          <ScanInfo selectedStatus={selectedStatus} />
+          <ScanInfo selectedScan={selectedScan} />
         </TabPanel>
         <TabPanel
           id={kTabIdJson}
@@ -241,7 +241,7 @@ export const ScansPanelBody: React.FC<{ selectedStatus: Status }> = ({
         >
           <JSONPanel
             id="task-json-contents"
-            data={selectedStatus}
+            data={selectedScan}
             simple={true}
           />
         </TabPanel>

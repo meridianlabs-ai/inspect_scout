@@ -40,12 +40,12 @@ export interface GridDescriptor {
 interface ScanResultsListProps {
   id: string;
   columnTable?: ColumnTable;
-  selectedStatus: Status;
+  selectedScan: Status;
 }
 export const ScanResultsList: FC<ScanResultsListProps> = ({
   id,
   columnTable,
-  selectedStatus,
+  selectedScan,
 }) => {
   // Url data
   const navigate = useNavigate();
@@ -84,10 +84,10 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const setSortResults = useStore((state) => state.setSortResults);
 
   useEffect(() => {
-    if (selectedFilter === undefined && selectedStatus.complete === false) {
+    if (selectedFilter === undefined && selectedScan.complete === false) {
       setSelectedFilter(kFilterAllResults);
     }
-  }, [selectedStatus, selectedFilter, setSelectedFilter]);
+  }, [selectedScan, selectedFilter, setSelectedFilter]);
 
   // Apply text filtering to the scanner summaries
   const filteredSummaries = useMemo(() => {

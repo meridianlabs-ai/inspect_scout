@@ -25,108 +25,121 @@ import {
 import { useStore } from "./state/store";
 import { getEmbeddedScanState } from "./utils/embeddedState";
 
-// Create a layout component that handles embedded state and tracks route changes
-const AppLayout = () => {
-  const navigate = useNavigate();
-  const setResultsDir = useStore((state) => state.setResultsDir);
-  const resultsDir = useStore((state) => state.resultsDir);
-  const selectedScanner = useStore((state) => state.selectedScanner);
-  const setSingleFileMode = useStore((state) => state.setSingleFileMode);
-  const hasInitializedEmbeddedData = useStore(
-    (state) => state.hasInitializedEmbeddedData
-  );
-  const hasInitializedRouting = useStore(
-    (state) => state.hasInitializedRouting
-  );
-  const selectedScanResult = useStore((state) => state.selectedScanResult);
-  const selectedScanLocation = useStore((state) => state.selectedScanLocation);
-  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
-  const setHasInitializedEmbeddedData = useStore(
-    (state) => state.setHasInitializedEmbeddedData
-  );
-  const setHasInitializedRouting = useStore(
-    (state) => state.setHasInitializedRouting
-  );
+export interface AppRouterConfig {
+  mode: "scans" | "workbench";
+}
 
-  const hasRestoredState =
-    resultsDir !== undefined && selectedScanner !== undefined;
+// Creates a layout component that handles embedded state and tracks route changes
+const createAppLayout = (config: AppRouterConfig) => {
+  const AppLayout = () => {
+    const navigate = useNavigate();
+    const setResultsDir = useStore((state) => state.setResultsDir);
+    const resultsDir = useStore((state) => state.resultsDir);
+    const selectedScanner = useStore((state) => state.selectedScanner);
+    const setSingleFileMode = useStore((state) => state.setSingleFileMode);
+    const hasInitializedEmbeddedData = useStore(
+      (state) => state.hasInitializedEmbeddedData
+    );
+    const hasInitializedRouting = useStore(
+      (state) => state.hasInitializedRouting
+    );
+    const selectedScanResult = useStore((state) => state.selectedScanResult);
+    const selectedScanLocation = useStore(
+      (state) => state.selectedScanLocation
+    );
+    const setSelectedScanner = useStore((state) => state.setSelectedScanner);
+    const setHasInitializedEmbeddedData = useStore(
+      (state) => state.setHasInitializedEmbeddedData
+    );
+    const setHasInitializedRouting = useStore(
+      (state) => state.setHasInitializedRouting
+    );
 
-  useEffect(() => {
-    if (hasInitializedEmbeddedData) {
-      return;
-    }
+    const hasRestoredState =
+      resultsDir !== undefined && selectedScanner !== undefined;
 
-    // Check for embedded state on initial load
-    const embeddedState = getEmbeddedScanState();
-    if (embeddedState && !hasRestoredState) {
-      const { dir, scan, scanner } = embeddedState;
-
-      // Set the results directory in the store
-      setResultsDir(dir);
-      setSingleFileMode(true);
-      if (scanner) {
-        setSelectedScanner(scanner);
+    useEffect(() => {
+      if (hasInitializedEmbeddedData) {
+        return;
       }
 
-      // Navigate to the scan
-      void navigate(`/scan/${scan}`, { replace: true });
-    }
+      // Check for embedded state on initial load
+      const embeddedState = getEmbeddedScanState();
+      if (embeddedState && !hasRestoredState) {
+        const { dir, scan, scanner } = embeddedState;
 
-    setHasInitializedEmbeddedData(true);
-  }, [
-    navigate,
-    hasInitializedEmbeddedData,
-    setSingleFileMode,
-    setHasInitializedEmbeddedData,
-    setResultsDir,
-    setSelectedScanner,
-    hasRestoredState,
-  ]);
+        // Set the results directory in the store
+        setResultsDir(dir);
+        setSingleFileMode(true);
+        if (scanner) {
+          setSelectedScanner(scanner);
+        }
 
-  // Handle state-driven navigation on initial load
-  useEffect(() => {
-    // Only run once on initial mount, after embedded state is handled
-    if (hasInitializedRouting) {
-      return;
-    }
-
-    // Get current path (remove leading '#' from hash)
-    const currentPath = window.location.hash.slice(1);
-    const isDefaultRoute =
-      currentPath === "/" || currentPath === "/scans" || currentPath === "";
-
-    // If we're on a default route and have persisted state, navigate to the appropriate view
-    if (isDefaultRoute && selectedScanLocation) {
-      if (selectedScanResult) {
-        // Navigate to scan result view
-        void navigate(`/scan/${selectedScanLocation}/${selectedScanResult}`, {
-          replace: true,
-        });
-      } else {
-        // Navigate to scanner view
-        void navigate(`/scan/${selectedScanLocation}`, { replace: true });
+        // Navigate to the scan
+        void navigate(`/scan/${scan}`, { replace: true });
       }
-    }
 
-    // Mark routing as initialized
-    setHasInitializedRouting(true);
-  }, [
-    hasInitializedEmbeddedData,
-    hasInitializedRouting,
-    selectedScanner,
-    selectedScanLocation,
-    selectedScanResult,
-    navigate,
-    setHasInitializedRouting,
-  ]);
+      setHasInitializedEmbeddedData(true);
+    }, [
+      navigate,
+      hasInitializedEmbeddedData,
+      setSingleFileMode,
+      setHasInitializedEmbeddedData,
+      setResultsDir,
+      setSelectedScanner,
+      hasRestoredState,
+    ]);
 
-  return (
-    <AppErrorBoundary>
-      <ActivityBarLayout>
-        <Outlet />
-      </ActivityBarLayout>
-    </AppErrorBoundary>
-  );
+    // Handle state-driven navigation on initial load
+    useEffect(() => {
+      // Only run once on initial mount, after embedded state is handled
+      if (hasInitializedRouting) {
+        return;
+      }
+
+      // Get current path (remove leading '#' from hash)
+      const currentPath = window.location.hash.slice(1);
+      const isDefaultRoute =
+        currentPath === "/" || currentPath === "/scans" || currentPath === "";
+
+      // If we're on a default route and have persisted state, navigate to the appropriate view
+      if (isDefaultRoute && selectedScanLocation) {
+        if (selectedScanResult) {
+          // Navigate to scan result view
+          void navigate(`/scan/${selectedScanLocation}/${selectedScanResult}`, {
+            replace: true,
+          });
+        } else {
+          // Navigate to scanner view
+          void navigate(`/scan/${selectedScanLocation}`, { replace: true });
+        }
+      }
+
+      // Mark routing as initialized
+      setHasInitializedRouting(true);
+    }, [
+      hasInitializedEmbeddedData,
+      hasInitializedRouting,
+      selectedScanner,
+      selectedScanLocation,
+      selectedScanResult,
+      navigate,
+      setHasInitializedRouting,
+    ]);
+
+    const content = <Outlet />;
+    return (
+      <AppErrorBoundary>
+        {config.mode === "workbench" ? (
+          <ActivityBarLayout>{content}</ActivityBarLayout>
+        ) : (
+          content
+        )}
+      </AppErrorBoundary>
+    );
+  };
+
+  return AppLayout;
 };
 
 // Wrapper component that validates scan path before rendering
@@ -151,38 +164,42 @@ const ScanOrScanResultsRoute = () => {
   return <ScansPanel />;
 };
 
-export const AppRouter = createHashRouter(
-  [
-    {
-      path: "/",
-      element: <AppLayout />,
-      children: [
-        {
-          index: true,
-          element: <Navigate to="/scans" replace />,
-        },
-        {
-          path: kScansRouteUrlPattern,
-          element: <ScanJobsPanel />,
-        },
-        {
-          path: kScansWithPathRouteUrlPattern,
-          element: <ScanJobsPanel />,
-        },
-        {
-          path: kScanRouteUrlPattern,
-          element: <ScanOrScanResultsRoute />,
-        },
-        {
-          path: kTranscriptsRouteUrlPattern,
-          element: <TranscriptsPanel />,
-        },
-      ],
-    },
-    {
-      path: "*",
-      element: <Navigate to="/scans" replace />,
-    },
-  ],
-  { basename: "" }
-);
+export const createAppRouter = (config: AppRouterConfig) => {
+  const AppLayout = createAppLayout(config);
+
+  return createHashRouter(
+    [
+      {
+        path: "/",
+        element: <AppLayout />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/scans" replace />,
+          },
+          {
+            path: kScansRouteUrlPattern,
+            element: <ScanJobsPanel />,
+          },
+          {
+            path: kScansWithPathRouteUrlPattern,
+            element: <ScanJobsPanel />,
+          },
+          {
+            path: kScanRouteUrlPattern,
+            element: <ScanOrScanResultsRoute />,
+          },
+          {
+            path: kTranscriptsRouteUrlPattern,
+            element: <TranscriptsPanel />,
+          },
+        ],
+      },
+      {
+        path: "*",
+        element: <Navigate to="/scans" replace />,
+      },
+    ],
+    { basename: "" }
+  );
+};

@@ -128,7 +128,7 @@
 }
 
 .rowFocused {
-  outline: 1px solid var(--bs-primary-bg-subtle);
+  outline: 2px solid var(--bs-primary-bg-subtle);
   outline-offset: 0px;
 }
 

@@ -38,12 +38,20 @@
 
 .headerContent {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   cursor: grab;
   user-select: none;
 }
 
 .headerContent:active {
   cursor: grabbing;
+}
+
+.sortIcon {
+  font-size: 10px;
+  margin-left: 2px;
 }
 
 .headerCellDragging {

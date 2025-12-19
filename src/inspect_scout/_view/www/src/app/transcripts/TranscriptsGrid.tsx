@@ -1,10 +1,12 @@
 import {
   useReactTable,
   getCoreRowModel,
+  getSortedRowModel,
   ColumnDef,
   flexRender,
   OnChangeFn,
   ColumnSizingState,
+  SortingState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
@@ -70,6 +72,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const columnOrder = useStore(
     (state) => state.transcriptsTableState.columnOrder
   );
+  const sorting = useStore((state) => state.transcriptsTableState.sorting);
   const setTableState = useStore((state) => state.setTranscriptsTableState);
 
   // Column sizing
@@ -94,6 +97,18 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       setTableState((prev) => ({ ...prev, columnOrder: newValue }));
     },
     [columnOrder, setTableState]
+  );
+
+  // Sorting
+  const handleSortingChange: OnChangeFn<SortingState> = useCallback(
+    (updaterOrValue) => {
+      const newValue =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(sorting)
+          : updaterOrValue;
+      setTableState((prev) => ({ ...prev, sorting: newValue }));
+    },
+    [sorting, setTableState]
   );
 
   // Drag and drop state
@@ -273,14 +288,21 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     data: transcripts,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
     enableColumnResizing: true,
+    enableSorting: true,
+    enableMultiSort: true,
+    enableSortingRemoval: true,
+    maxMultiSortColCount: 3,
     state: {
       columnSizing,
       columnOrder,
+      sorting,
     },
     onColumnSizingChange: handleColumnSizingChange,
     onColumnOrderChange: handleColumnOrderChange,
+    onSortingChange: handleSortingChange,
   });
 
   const { rows } = table.getRowModel();
@@ -333,6 +355,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                       draggable
                       onDragStart={(e) => handleDragStart(e, header.column.id)}
                       onDragEnd={handleDragEnd}
+                      onClick={header.column.getToggleSortingHandler()}
+                      style={{ cursor: "pointer" }}
                     >
                       {header.isPlaceholder
                         ? null
@@ -340,6 +364,24 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                             header.column.columnDef.header,
                             header.getContext()
                           )}
+                      {{
+                        asc: (
+                          <i
+                            className={clsx(
+                              ApplicationIcons.arrows.up,
+                              styles.sortIcon
+                            )}
+                          />
+                        ),
+                        desc: (
+                          <i
+                            className={clsx(
+                              ApplicationIcons.arrows.down,
+                              styles.sortIcon
+                            )}
+                          />
+                        ),
+                      }[header.column.getIsSorted() as string] ?? null}
                     </div>
                     <div
                       className={clsx(

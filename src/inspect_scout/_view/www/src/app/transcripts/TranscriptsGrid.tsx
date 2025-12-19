@@ -370,8 +370,11 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         );
         if (currentSelectedRows.length > 0) {
           // Find the last selected row
-          const lastSelectedId = currentSelectedRows[currentSelectedRows.length - 1];
-          const lastSelectedIndex = rows.findIndex((r) => r.id === lastSelectedId);
+          const lastSelectedId =
+            currentSelectedRows[currentSelectedRows.length - 1];
+          const lastSelectedIndex = rows.findIndex(
+            (r) => r.id === lastSelectedId
+          );
 
           if (lastSelectedIndex !== -1) {
             const start = Math.min(lastSelectedIndex, rowIndex);

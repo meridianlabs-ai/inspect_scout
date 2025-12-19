@@ -316,16 +316,16 @@
   outline-offset: 0;
   border-color: var(--bs-primary);
 }
-._container_fcmrb_1 {
+._container_95ln5_1 {
   overflow: auto;
 }
 
-._table_fcmrb_5 {
+._table_95ln5_5 {
   display: grid;
   width: 100%;
 }
 
-._thead_fcmrb_10 {
+._thead_95ln5_10 {
   display: grid;
   position: sticky;
   top: 0;
@@ -335,13 +335,14 @@
   border-top: 1px solid var(--bs-border-color);
 }
 
-._headerRow_fcmrb_20 {
+._headerRow_95ln5_20 {
   display: flex;
   width: 100%;
 }
 
-._headerCell_fcmrb_25 {
+._headerCell_95ln5_25 {
   display: flex;
+  position: relative;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
@@ -352,24 +353,41 @@
   font-size: 12px !important;
 }
 
-._headerSeparator_fcmrb_37 {
+._resizer_95ln5_38 {
+  position: absolute;
+  right: 0;
+  top: 0;
   margin-top: 4px;
   margin-bottom: 4px;
-  background: var(--bs-border-color);
-  width: 1px;
-  height: 100%;
+  height: calc(100% - 8px);
+  width: 5px;
+  background: transparent;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  border-right: solid 1px var(--bs-border-color);
 }
 
-._headerCell_fcmrb_25:last-child {
+._resizer_95ln5_38:hover {
+  background: var(--bs-primary);
+  opacity: 0.5;
+}
+
+._resizerActive_95ln5_58 {
+  background: var(--bs-primary);
+  opacity: 1;
+}
+
+._headerCell_95ln5_25:last-child {
   border-right: none;
 }
 
-._tbody_fcmrb_49 {
+._tbody_95ln5_67 {
   display: grid;
   position: relative;
 }
 
-._row_fcmrb_54 {
+._row_95ln5_72 {
   display: flex;
   position: absolute;
   width: 100%;
@@ -378,11 +396,11 @@
   transition: background-color 0.15s ease;
 }
 
-._row_fcmrb_54:hover {
+._row_95ln5_72:hover {
   background: var(--bs-light-bg-subtle);
 }
 
-._cell_fcmrb_67 {
+._cell_95ln5_85 {
   display: flex;
   align-items: center;
   padding: 4px 8px;
@@ -392,23 +410,23 @@
   font-size: 12px !important;
 }
 
-._cell_fcmrb_67:last-child {
+._cell_95ln5_85:last-child {
   border-right: none;
 }
 
-._cellCenter_fcmrb_81 {
+._cellCenter_95ln5_99 {
   justify-content: center;
 }
 
-._headerCellCenter_fcmrb_85 {
+._headerCellCenter_95ln5_103 {
   justify-content: center;
 }
 
-._green_fcmrb_89 {
+._green_95ln5_107 {
   color: var(--bs-success);
 }
 
-._red_fcmrb_93 {
+._red_95ln5_111 {
   color: var(--bs-danger);
 }
 ._container_1ptqu_1 {

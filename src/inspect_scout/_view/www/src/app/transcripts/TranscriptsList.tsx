@@ -3,11 +3,15 @@ import {
   getCoreRowModel,
   ColumnDef,
   flexRender,
+  ColumnResizeMode,
+  OnChangeFn,
+  ColumnSizingState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
-import { FC, useRef, useMemo } from "react";
+import { FC, useRef, useMemo, useState } from "react";
 
+import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types";
 import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
@@ -58,6 +62,22 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({
   className,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
+  const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
+
+  // Get column sizing state from store
+  const columnSizing = useStore((state) => state.transcriptsColumnSizing);
+  const setColumnSizing = useStore((state) => state.setTranscriptsColumnSizing);
+
+  // Wrap setter to match TanStack Table's updater pattern
+  const handleColumnSizingChange: OnChangeFn<ColumnSizingState> = (
+    updaterOrValue
+  ) => {
+    const newValue =
+      typeof updaterOrValue === "function"
+        ? updaterOrValue(columnSizing)
+        : updaterOrValue;
+    setColumnSizing(newValue);
+  };
 
   // Define table columns
   const columns = useMemo<TranscriptColumn[]>(
@@ -155,6 +175,12 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({
     data: transcripts,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    columnResizeMode,
+    enableColumnResizing: true,
+    state: {
+      columnSizing,
+    },
+    onColumnSizingChange: handleColumnSizingChange,
   });
 
   const { rows } = table.getRowModel();
@@ -196,7 +222,15 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                    <div className={styles.headerSeparator} />
+                    <div
+                      className={clsx(
+                        styles.resizer,
+                        header.column.getIsResizing() && styles.resizerActive
+                      )}
+                      onMouseDown={header.getResizeHandler()}
+                      onTouchStart={header.getResizeHandler()}
+                      onDoubleClick={() => header.column.resetSize()}
+                    />
                   </th>
                 );
               })}

@@ -1,3 +1,4 @@
+import { ColumnSizingState } from "@tanstack/react-table";
 import { GridState } from "ag-grid-community";
 import { ColumnTable } from "arquero";
 import { createContext, useContext } from "react";
@@ -93,6 +94,7 @@ interface StoreState {
   // Transcript Data (loaded data + source directory)
   transcripts?: TranscriptInfo[];
   transcriptsDir?: string;
+  transcriptsColumnSizing: ColumnSizingState;
 
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
@@ -204,6 +206,7 @@ interface StoreState {
   setTranscriptsDatabasePath: (path: string) => void;
   setTranscripts: (transcripts: TranscriptInfo[]) => void;
   setTranscriptsDir: (path: string) => void;
+  setTranscriptsColumnSizing: (columnSizing: ColumnSizingState) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -250,6 +253,7 @@ export const createStore = (api: ScanApi) =>
           visibleScannerResults: [],
           visibleScannerResultsCount: 0,
           highlightLabeled: false,
+          transcriptsColumnSizing: {},
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -673,6 +677,11 @@ export const createStore = (api: ScanApi) =>
           setTranscriptsDir: (path: string) => {
             set((state) => {
               state.transcriptsDir = path;
+            });
+          },
+          setTranscriptsColumnSizing: (columnSizing: ColumnSizingState) => {
+            set((state) => {
+              state.transcriptsColumnSizing = columnSizing;
             });
           },
         })),

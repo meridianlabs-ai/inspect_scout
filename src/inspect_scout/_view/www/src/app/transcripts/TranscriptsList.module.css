@@ -24,6 +24,7 @@
 
 .headerCell {
   display: flex;
+  position: relative;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
@@ -34,12 +35,29 @@
   font-size: 12px !important;
 }
 
-.headerSeparator {
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
   margin-top: 4px;
   margin-bottom: 4px;
-  background: var(--bs-border-color);
-  width: 1px;
-  height: 100%;
+  height: calc(100% - 8px);
+  width: 5px;
+  background: transparent;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  border-right: solid 1px var(--bs-border-color);
+}
+
+.resizer:hover {
+  background: var(--bs-primary);
+  opacity: 0.5;
+}
+
+.resizerActive {
+  background: var(--bs-primary);
+  opacity: 1;
 }
 
 .headerCell:last-child {

@@ -20,8 +20,18 @@ Usage:
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal, Union
+
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
+
+# Scalar values that can be used in conditions
+ScalarValue = str | int | float | bool | None
+
+# JSON-serializable form (dates become strings, tuples become lists)
+SerializableValue = ScalarValue | list[ScalarValue]
 
 
 class SQLDialect(Enum):
@@ -516,6 +526,118 @@ class Condition:
             return ", ".join([f"${offset + i + 1}" for i in range(count)])
         else:  # SQLite and DuckDB use ?
             return ", ".join(["?" for _ in range(count)])
+
+    def _serialize_value(self, value: Any) -> ScalarValue | list[ScalarValue]:
+        """Convert value to JSON-serializable form.
+
+        Handles date/datetime → ISO string, tuple → list.
+        """
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
+        if isinstance(value, tuple):
+            return [self._serialize_scalar(v) for v in value]
+        if isinstance(value, list):
+            return [self._serialize_scalar(v) for v in value]
+        # str, int, float, bool, None
+        return self._serialize_scalar(value)
+
+    def _serialize_scalar(self, value: Any) -> ScalarValue:
+        """Convert a scalar value to JSON-serializable form."""
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        # Fallback for unexpected types - convert to string
+        return str(value)
+
+    def model_dump(self) -> dict[str, Any]:
+        """Serialize to JSON-compatible dict.
+
+        Returns:
+            Dict representation that can be passed to model_validate() to reconstruct.
+        """
+        if self.is_compound:
+            assert isinstance(self.left, Condition)
+            return {
+                "type": "compound",
+                "operator": self.operator.name if self.operator else None,
+                "left": self.left.model_dump(),
+                "right": self.right.model_dump() if self.right else None,
+            }
+        else:
+            return {
+                "type": "simple",
+                "column": self.left,
+                "operator": self.operator.name if self.operator else None,
+                "value": self._serialize_value(self.right),
+            }
+
+    @classmethod
+    def model_validate(cls, data: dict[str, Any]) -> "Condition":
+        """Deserialize from dict.
+
+        Args:
+            data: Dict representation from model_dump().
+
+        Returns:
+            Reconstructed Condition instance.
+
+        Raises:
+            ValueError: If the data is invalid.
+        """
+        if data.get("type") == "compound":
+            left = cls.model_validate(data["left"])
+            right = cls.model_validate(data["right"]) if data.get("right") else None
+            operator_name = data.get("operator")
+            logical_op = LogicalOperator[operator_name] if operator_name else None
+            return Condition(
+                left=left,
+                operator=logical_op,
+                right=right,
+                is_compound=True,
+            )
+        else:
+            value = data.get("value")
+            operator_name = data.get("operator")
+            # Convert list back to tuple for BETWEEN operators
+            if operator_name in ("BETWEEN", "NOT_BETWEEN") and isinstance(value, list):
+                value = tuple(value)
+            comparison_op = Operator[operator_name] if operator_name else None
+            return Condition(
+                left=data.get("column"),
+                operator=comparison_op,
+                right=value,
+                is_compound=False,
+            )
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """Define Pydantic schema for Condition type.
+
+        This allows Condition to be used as a field type in Pydantic models.
+        """
+        return core_schema.no_info_plain_validator_function(
+            cls._pydantic_validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda x: x.model_dump(),
+                info_arg=False,
+            ),
+        )
+
+    @classmethod
+    def _pydantic_validate(cls, value: Any) -> "Condition":
+        """Validate and convert value to Condition for Pydantic."""
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, dict):
+            return cls.model_validate(value)
+        raise ValueError(f"Cannot convert {type(value)} to Condition")
 
 
 class Column:

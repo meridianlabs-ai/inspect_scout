@@ -66,6 +66,8 @@ def test_answer_templates(
         ("Reasoning.\n\nANSWER: YES", True, "Yes", "Reasoning."),
         ("Reasoning.\n\nANSWER: maybe", False, None, "Reasoning.\n\nANSWER: maybe"),
         ("No pattern here", False, None, "No pattern here"),
+        # Bug: bolded markdown not parsed
+        ("**ANSWER: yes**", True, "Yes", ""),
     ],
 )
 def test_bool_results(
@@ -92,6 +94,10 @@ def test_bool_results(
         ("Zero.\n\nANSWER: 0", 0.0, "Zero."),
         ("Not numeric.\n\nANSWER: unknown", False, "Not numeric.\n\nANSWER: unknown"),
         ("No pattern", False, "No pattern"),
+        # Bug: non-integer numerics not parsed
+        ("ANSWER: 0.5", 0.5, ""),
+        # Bug: bolded markdown not parsed
+        ("**ANSWER: 7**", 7.0, ""),
     ],
 )
 def test_number_results(

@@ -468,3 +468,66 @@ class TestEncryptedCache:
         assert count == 1
         result = conn2.execute("SELECT * FROM loaded_index").fetchall()
         assert result[0][0] == "id1"
+
+
+# --- Concurrency Protection Tests ---
+
+
+class TestConcurrencyProtection:
+    """Tests for atomic write and concurrent process handling."""
+
+    def test_save_index_cache_no_temp_files_on_success(
+        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+    ) -> None:
+        """No temp files remain after successful save."""
+        conn.execute("""
+            CREATE TABLE test_index AS
+            SELECT 'id1' AS transcript_id, 'file1.parquet' AS filename
+        """)
+
+        cache_path = tmp_path / "cache.parquet"
+        save_index_cache(conn, cache_path, "test_index", storage)
+
+        # Verify no temp files remain
+        tmp_files = list(tmp_path.glob("*.tmp"))
+        assert len(tmp_files) == 0
+
+        # Verify cache file was created
+        assert cache_path.exists()
+
+    def test_save_index_cache_skips_if_exists(
+        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+    ) -> None:
+        """Skips write if cache already exists (another process wrote it)."""
+        conn.execute("""
+            CREATE TABLE test_index AS
+            SELECT 'id1' AS transcript_id, 'file1.parquet' AS filename
+        """)
+
+        # Pre-create the cache file (simulating another process)
+        cache_path = tmp_path / "cache.parquet"
+        cache_path.write_text("existing content")
+        original_content = cache_path.read_text()
+
+        # Try to save - should skip since file exists
+        save_index_cache(conn, cache_path, "test_index", storage)
+
+        # Content should be unchanged (was not overwritten)
+        assert cache_path.read_text() == original_content
+
+    def test_save_index_cache_cleans_temp_on_error(
+        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+    ) -> None:
+        """Temp file is cleaned up on write error."""
+        # Don't create a table - this will cause DuckDB to error
+        cache_path = tmp_path / "cache.parquet"
+
+        with pytest.raises(duckdb.CatalogException):
+            save_index_cache(conn, cache_path, "nonexistent_table", storage)
+
+        # Verify no temp files remain
+        tmp_files = list(tmp_path.glob("*.tmp"))
+        assert len(tmp_files) == 0
+
+        # Verify no cache file was created
+        assert not cache_path.exists()

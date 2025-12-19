@@ -815,8 +815,9 @@ class TestConcurrencyProtection:
         self, storage: IndexStorage
     ) -> None:
         """Temp file is cleaned up if write fails."""
-        import pyarrow.parquet as pq
         from unittest.mock import patch
+
+        import pyarrow.parquet as pq
 
         table = create_sample_index_table(["t1"], ["data.parquet"])
         index_dir = Path(storage.location) / INDEX_DIR

@@ -171,10 +171,16 @@ async def compact_index(
         """).fetch_arrow_table()
     except duckdb.IOException as e:
         error_msg = str(e).lower()
-        if ("could not open file" in error_msg or "no such file" in error_msg) and _retry_count < MAX_RETRIES:
+        if (
+            "could not open file" in error_msg or "no such file" in error_msg
+        ) and _retry_count < MAX_RETRIES:
             # Files changed during operation - retry with fresh discovery
-            logger.warning(f"Index file access failed during compaction (attempt {_retry_count + 1}), retrying")
-            return await compact_index(conn, storage, delete_orphaned_data, _retry_count + 1)
+            logger.warning(
+                f"Index file access failed during compaction (attempt {_retry_count + 1}), retrying"
+            )
+            return await compact_index(
+                conn, storage, delete_orphaned_data, _retry_count + 1
+            )
         raise
 
     # Write compacted manifest (even if only 1 file - converts incremental to manifest)
@@ -363,9 +369,13 @@ async def init_index_table(
         """)
     except duckdb.IOException as e:
         error_msg = str(e).lower()
-        if ("could not open file" in error_msg or "no such file" in error_msg) and _retry_count < MAX_RETRIES:
+        if (
+            "could not open file" in error_msg or "no such file" in error_msg
+        ) and _retry_count < MAX_RETRIES:
             # File was deleted by concurrent operation - rediscover and retry
-            logger.warning(f"Index file access failed (attempt {_retry_count + 1}), retrying")
+            logger.warning(
+                f"Index file access failed (attempt {_retry_count + 1}), retrying"
+            )
             return await init_index_table(conn, storage, table_name, _retry_count + 1)
         raise
 

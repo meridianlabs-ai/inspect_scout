@@ -1,8 +1,8 @@
 /**
  * AsyncData represents the possible states of some asynchronous operation like
- * a network request to an API. When the request is first made, it's `loading`,
- * but once we get a response, it will either represent the requested `data` or
- * maybe the operation failed due to an `error`.
+ * a network request to an API. When the request is first made, it's `loading`, but
+ * once we get a response, it will either represent the requested `data` or maybe
+ * the operation failed due to an `error`.
  *
  * @typeParam T - the data that will be returned
  */
@@ -33,23 +33,17 @@ export type AsyncDataNotLoading<T> =
 
 type AsyncDataMap<Mapping> = { [K in keyof Mapping]: AsyncData<Mapping[K]> };
 /**
- * The `compose` function allows a set of `AsyncData` values to be combined into a single
- * `AsyncData`. The complex type of the function represents a transformation
+ * The `compose` function allows a set of `AsyncData` values to be combined into
+ * a single `AsyncData`. The complex type of the function represents a transformation
  * from an argument like this...
  *
- *   {
- *     a: AsyncData<A>,
- *     b: AsyncData<B>,
- *     c: AsyncData<C>
- *   }
- *
+ * ```typescript
+ *   { a: AsyncData<A>, b: AsyncData<B>, c: AsyncData<C> }
+ *```
  * ...to a return value like this...
- *
- *   AsyncData<{
- *     a: A,
- *     b: B,
- *     c: C
- *   }>
+ *```
+ *   AsyncData<{ a: A, b: B, c: C }>
+ *```
  *
  * In practice, this can be used to create hooks that depend on multiple API
  * calls.
@@ -75,10 +69,10 @@ export function compose<Mapping>(
   }
 
   // If any `AsyncData` has an error, we know the entire set of operations will
-  // not succeed. Right now we return the first error, but the keys of JS
-  // objects don't have a defined order. Potentially in the future, we'll want
-  // to represent the entire set of errors somehow, allowing the caller to
-  // prioritize the errors as they'd like.
+  // not succeed. Right now we return the first error, but the keys of JS objects
+  // don't have a defined order. Potentially in the future, we'll want to represent
+  // the entire set of errors somehow, allowing the caller to prioritize the errors
+  // as they'd like.
   if (errors[0]) {
     return { loading: false, error: errors[0] };
   }
@@ -91,17 +85,20 @@ export function compose<Mapping>(
 }
 
 /**
- * The `data` function wraps the provided data in an `AsyncData` object, indicating that the data is not loading and there is no error.
+ * The `data` function wraps the provided data in an `AsyncData` object, indicating
+ * that the data is not loading and there is no error.
  *
  * @template T - The type of the data
  * @param {T} data - The data to wrap
- * @returns {AsyncData<T>} - An `AsyncData` object with `loading` set to `false` and `data` set to the provided data
+ * @returns {AsyncData<T>} - An `AsyncData` object with `loading` set to `false`
+ * and `data` set to the provided data
  */
 export function data<T>(data: T): AsyncData<T> {
   return { loading: false, data };
 }
 
 /**
- * The `loading` constant is an instance of `AsyncDataLoading` that can be shared to provide identity stability. It represents the state when the data is loading.
+ * The `loading` constant is an instance of `AsyncDataLoading` that can be shared
+ * to provide identity stability. It represents the state when the data is loading.
  */
 export const loading: AsyncDataLoading = { loading: true };

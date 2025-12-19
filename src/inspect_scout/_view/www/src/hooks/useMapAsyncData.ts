@@ -9,10 +9,14 @@ import { AsyncData, loading } from "../utils/asyncData";
  *
  * @template TBefore - The type of the data before the transformation
  * @template TAfter - The type of the data after the transformation
- * @param {AsyncData<TBefore> | AsyncData<TBefore>[]} input - The `AsyncData` object(s) to transform
- * @param {(before: TBefore) => TAfter} transform - The function to transform the data
- * @param {(err: Error) => Error} [errorTransform] - The function to transform any errors (optional)
- * @returns {AsyncData<TAfter> | AsyncData<TAfter>[]} - The transformed `AsyncData` object(s)
+ * @param {AsyncData<TBefore> | AsyncData<TBefore>[]} input - The `AsyncData` object(s)
+ * to transform
+ * @param {(before: TBefore) => TAfter} transform - The function to transform the
+ * data
+ * @param {(err: Error) => Error} [errorTransform] - The function to transform any
+ * errors (optional)
+ * @returns {AsyncData<TAfter> | AsyncData<TAfter>[]} - The transformed `AsyncData`
+ * object(s)
  *
  * @example
  * ```typescript
@@ -54,7 +58,7 @@ export function useMapAsyncData<TBefore, TAfter>(
         } catch (error: unknown) {
           if (!(error instanceof Error))
             throw Error(
-              `useMap only supports catching Error's: ${JSON.stringify(error)}`
+              `useMapAsyncData only supports catching Error's: ${JSON.stringify(error)}`
             );
           return { loading: false, error };
         }
@@ -62,7 +66,7 @@ export function useMapAsyncData<TBefore, TAfter>(
     );
     if (!isArray) {
       const [onlyItem] = mapped;
-      if (!onlyItem) throw Error("useMap: Array must have one item.");
+      if (!onlyItem) throw Error("useMapAsyncData: Array must have one item.");
       return onlyItem;
     }
     return mapped;

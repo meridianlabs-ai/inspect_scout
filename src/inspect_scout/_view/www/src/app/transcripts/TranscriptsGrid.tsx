@@ -192,6 +192,11 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     setDropPosition(null);
   }, []);
 
+  // Row click handler
+  const handleRowClick = useCallback((transcript: TranscriptInfo) => {
+    console.log("Row clicked - transcript_id:", transcript.transcript_id);
+  }, []);
+
   // Define table columns
   const columns = useMemo<TranscriptColumn[]>(
     () => [
@@ -408,6 +413,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                 key={row.id}
                 className={styles.row}
                 style={{ transform: `translateY(${virtualRow.start}px)` }}
+                onClick={() => handleRowClick(row.original)}
               >
                 {row.getVisibleCells().map((cell) => {
                   const align = (cell.column.columnDef as TranscriptColumn).meta

@@ -114,10 +114,12 @@
   border-bottom: 1px solid var(--bs-border-color);
   background: var(--bs-body-bg);
   transition: background-color 0.15s ease;
+  cursor: pointer;
+  user-select: none;
 }
 
 .row:hover {
-  background: var(--bs-light-bg-subtle);
+  background: var(--bs-light);
 }
 
 .cell {

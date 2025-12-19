@@ -74,7 +74,7 @@ export const ScanResultPanel: FC = () => {
   );
 
   const setSelectedResultTab = useStore((state) => state.setSelectedResultTab);
-  const { data: selectedResult, isLoading: resultLoading } =
+  const { data: selectedResult, loading: resultLoading } =
     useSelectedScanResultData(scanResultUuid);
 
   const status = useStore((state) => state.selectedScanStatus);

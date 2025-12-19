@@ -1,5 +1,6 @@
 .container {
   overflow: auto;
+  outline: none;
 }
 
 .table {
@@ -120,6 +121,19 @@
 
 .row:hover {
   background: var(--bs-light);
+}
+
+.rowSelected {
+  background: var(--bs-primary-bg-subtle) !important;
+}
+
+.rowFocused {
+  outline: 1px solid var(--bs-primary-bg-subtle);
+  outline-offset: 0px;
+}
+
+.rowSelected.rowFocused {
+  background: var(--bs-primary-bg-subtle) !important;
 }
 
 .cell {

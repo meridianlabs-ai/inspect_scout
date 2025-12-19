@@ -1,4 +1,8 @@
-import { ColumnSizingState, SortingState } from "@tanstack/react-table";
+import {
+  ColumnSizingState,
+  RowSelectionState,
+  SortingState,
+} from "@tanstack/react-table";
 import { GridState } from "ag-grid-community";
 import { ColumnTable } from "arquero";
 import { createContext, useContext } from "react";
@@ -24,6 +28,8 @@ interface TranscriptsTableState {
   columnSizing: ColumnSizingState;
   columnOrder: string[];
   sorting: SortingState;
+  rowSelection: RowSelectionState;
+  focusedRowId: string | null;
 }
 
 // Holds the currently selected scan result data in a ref
@@ -268,6 +274,8 @@ export const createStore = (api: ScanApi) =>
             columnSizing: {},
             columnOrder: [],
             sorting: [],
+            rowSelection: {},
+            focusedRowId: null,
           },
 
           // Actions

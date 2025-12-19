@@ -7,10 +7,21 @@ import {
   OnChangeFn,
   ColumnSizingState,
   SortingState,
+  RowSelectionState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
-import { FC, useRef, useMemo, useState, DragEvent, useCallback } from "react";
+import {
+  FC,
+  useRef,
+  useMemo,
+  useState,
+  DragEvent,
+  useCallback,
+  useEffect,
+  KeyboardEvent,
+  MouseEvent,
+} from "react";
 
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types";
@@ -73,6 +84,12 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     (state) => state.transcriptsTableState.columnOrder
   );
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
+  const rowSelection = useStore(
+    (state) => state.transcriptsTableState.rowSelection
+  );
+  const focusedRowId = useStore(
+    (state) => state.transcriptsTableState.focusedRowId
+  );
   const setTableState = useStore((state) => state.setTranscriptsTableState);
 
   // Column sizing
@@ -109,6 +126,18 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       setTableState((prev) => ({ ...prev, sorting: newValue }));
     },
     [sorting, setTableState]
+  );
+
+  // Row selection
+  const handleRowSelectionChange: OnChangeFn<RowSelectionState> = useCallback(
+    (updaterOrValue) => {
+      const newValue =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(rowSelection)
+          : updaterOrValue;
+      setTableState((prev) => ({ ...prev, rowSelection: newValue }));
+    },
+    [rowSelection, setTableState]
   );
 
   // Drag and drop state
@@ -190,11 +219,6 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     setDraggedColumn(null);
     setDragOverColumn(null);
     setDropPosition(null);
-  }, []);
-
-  // Row click handler
-  const handleRowClick = useCallback((transcript: TranscriptInfo) => {
-    console.log("Row clicked - transcript_id:", transcript.transcript_id);
   }, []);
 
   // Define table columns
@@ -300,24 +324,244 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     enableMultiSort: true,
     enableSortingRemoval: true,
     maxMultiSortColCount: 3,
+    enableRowSelection: true,
+    getRowId: (row) => String(row.transcript_id),
     state: {
       columnSizing,
       columnOrder,
       sorting,
+      rowSelection,
     },
     onColumnSizingChange: handleColumnSizingChange,
     onColumnOrderChange: handleColumnOrderChange,
     onSortingChange: handleSortingChange,
+    onRowSelectionChange: handleRowSelectionChange,
   });
 
   const { rows } = table.getRowModel();
+
+  // Row click handler with selection support
+  const handleRowClick = useCallback(
+    (e: MouseEvent<HTMLTableRowElement>, rowId: string, rowIndex: number) => {
+      // Focus the container to enable keyboard navigation
+      if (containerRef.current) {
+        containerRef.current.focus();
+      }
+
+      // Update focused row
+      setTableState((prev) => ({ ...prev, focusedRowId: rowId }));
+
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl + Click: Toggle individual row selection
+        setTableState((prev) => ({
+          ...prev,
+          rowSelection: {
+            ...prev.rowSelection,
+            [rowId]: !prev.rowSelection[rowId],
+          },
+        }));
+      } else if (e.shiftKey) {
+        // Shift + Click: Range selection
+        const currentSelectedRows = Object.keys(rowSelection).filter(
+          (id) => rowSelection[id]
+        );
+        if (currentSelectedRows.length > 0) {
+          // Find the last selected row
+          const lastSelectedId = currentSelectedRows[currentSelectedRows.length - 1];
+          const lastSelectedIndex = rows.findIndex((r) => r.id === lastSelectedId);
+
+          if (lastSelectedIndex !== -1) {
+            const start = Math.min(lastSelectedIndex, rowIndex);
+            const end = Math.max(lastSelectedIndex, rowIndex);
+            const newSelection: RowSelectionState = {};
+
+            for (let i = start; i <= end; i++) {
+              const row = rows[i];
+              if (row) {
+                newSelection[row.id] = true;
+              }
+            }
+
+            setTableState((prev) => ({
+              ...prev,
+              rowSelection: newSelection,
+            }));
+          }
+        } else {
+          // No previous selection, just select this row
+          setTableState((prev) => ({
+            ...prev,
+            rowSelection: { [rowId]: true },
+          }));
+        }
+      } else {
+        // Normal click: Navigate to transcript
+        console.log("Navigate to transcript_id:", rowId);
+        setTableState((prev) => ({
+          ...prev,
+          rowSelection: { [rowId]: true },
+        }));
+      }
+    },
+    [rows, rowSelection, setTableState]
+  );
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (rows.length === 0) return;
+
+      // Find the currently focused row index
+      const focusedIndex = focusedRowId
+        ? rows.findIndex((r) => r.id === focusedRowId)
+        : -1;
+
+      let newFocusedIndex = focusedIndex;
+      let shouldUpdateSelection = false;
+      let shouldExtendSelection = false;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          if (e.metaKey || e.ctrlKey) {
+            // Cmd/Ctrl + Arrow Down: Jump to bottom
+            newFocusedIndex = rows.length - 1;
+          } else {
+            newFocusedIndex = Math.min(focusedIndex + 1, rows.length - 1);
+          }
+          shouldUpdateSelection = !e.shiftKey;
+          shouldExtendSelection = e.shiftKey;
+          break;
+
+        case "ArrowUp":
+          e.preventDefault();
+          if (e.metaKey || e.ctrlKey) {
+            // Cmd/Ctrl + Arrow Up: Jump to top
+            newFocusedIndex = 0;
+          } else {
+            newFocusedIndex = Math.max(focusedIndex - 1, 0);
+          }
+          shouldUpdateSelection = !e.shiftKey;
+          shouldExtendSelection = e.shiftKey;
+          break;
+
+        case "Enter":
+          e.preventDefault();
+          if (focusedIndex !== -1) {
+            const row = rows[focusedIndex];
+            if (row) {
+              // Navigate to transcript
+              console.log("Navigate to transcript_id:", row.id);
+            }
+          }
+          return;
+
+        case " ":
+          e.preventDefault();
+          if (focusedIndex !== -1) {
+            const row = rows[focusedIndex];
+            if (row) {
+              setTableState((prev) => ({
+                ...prev,
+                rowSelection: {
+                  ...prev.rowSelection,
+                  [row.id]: !prev.rowSelection[row.id],
+                },
+              }));
+            }
+          }
+          return;
+
+        case "a":
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+            // Select all
+            const allSelected: RowSelectionState = {};
+            rows.forEach((row) => {
+              allSelected[row.id] = true;
+            });
+            setTableState((prev) => ({
+              ...prev,
+              rowSelection: allSelected,
+            }));
+          }
+          return;
+
+        case "Escape":
+          e.preventDefault();
+          // Clear selection
+          setTableState((prev) => ({
+            ...prev,
+            rowSelection: {},
+          }));
+          return;
+
+        default:
+          return;
+      }
+
+      // Handle arrow key navigation
+      if (newFocusedIndex !== focusedIndex && newFocusedIndex !== -1) {
+        const newRow = rows[newFocusedIndex];
+        if (!newRow) return;
+
+        setTableState((prev) => ({
+          ...prev,
+          focusedRowId: newRow.id,
+        }));
+
+        if (shouldUpdateSelection) {
+          // Normal arrow: move selection
+          setTableState((prev) => ({
+            ...prev,
+            rowSelection: { [newRow.id]: true },
+          }));
+        } else if (shouldExtendSelection) {
+          // Shift + arrow: extend selection
+          const currentSelectedRows = Object.keys(rowSelection).filter(
+            (id) => rowSelection[id]
+          );
+          if (currentSelectedRows.length > 0) {
+            // Find the anchor (first selected row)
+            const anchorId = currentSelectedRows[0];
+            const anchorIndex = rows.findIndex((r) => r.id === anchorId);
+
+            if (anchorIndex !== -1) {
+              const start = Math.min(anchorIndex, newFocusedIndex);
+              const end = Math.max(anchorIndex, newFocusedIndex);
+              const newSelection: RowSelectionState = {};
+
+              for (let i = start; i <= end; i++) {
+                const row = rows[i];
+                if (row) {
+                  newSelection[row.id] = true;
+                }
+              }
+
+              setTableState((prev) => ({
+                ...prev,
+                rowSelection: newSelection,
+              }));
+            }
+          } else {
+            // No selection, start new one
+            setTableState((prev) => ({
+              ...prev,
+              rowSelection: { [newRow.id]: true },
+            }));
+          }
+        }
+      }
+    },
+    [rows, focusedRowId, rowSelection, setTableState]
+  );
 
   // Create virtualizer
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => containerRef.current,
-    // Estimated row height in pixels
-    estimateSize: () => 28,
+    // Estimated row height in pixels (padding + content + border)
+    estimateSize: () => 29,
     // Number of items to render outside visible area
     overscan: 10,
   });
@@ -325,9 +569,32 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
+  // Scroll focused row into view when it changes
+  useEffect(() => {
+    if (focusedRowId && containerRef.current) {
+      const focusedIndex = rows.findIndex((r) => r.id === focusedRowId);
+      if (focusedIndex !== -1) {
+        // For the last item, scroll to the very bottom
+        if (focusedIndex === rows.length - 1) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        } else {
+          rowVirtualizer.scrollToIndex(focusedIndex, {
+            align: "center",
+            behavior: "auto",
+          });
+        }
+      }
+    }
+  }, [focusedRowId, rows, rowVirtualizer]);
+
   // Render the grid
   return (
-    <div ref={containerRef} className={clsx(className, styles.container)}>
+    <div
+      ref={containerRef}
+      className={clsx(className, styles.container)}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <table className={styles.table}>
         <thead className={styles.thead}>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -408,12 +675,19 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             const row = rows[virtualRow.index];
             if (!row) return null;
 
+            const isSelected = row.getIsSelected();
+            const isFocused = focusedRowId === row.id;
+
             return (
               <tr
                 key={row.id}
-                className={styles.row}
+                className={clsx(
+                  styles.row,
+                  isSelected && styles.rowSelected,
+                  isFocused && styles.rowFocused
+                )}
                 style={{ transform: `translateY(${virtualRow.start}px)` }}
-                onClick={() => handleRowClick(row.original)}
+                onClick={(e) => handleRowClick(e, row.id, virtualRow.index)}
               >
                 {row.getVisibleCells().map((cell) => {
                   const align = (cell.column.columnDef as TranscriptColumn).meta

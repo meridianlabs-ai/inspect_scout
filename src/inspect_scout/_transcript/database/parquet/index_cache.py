@@ -20,6 +20,7 @@ Cache invalidation:
 """
 
 import hashlib
+import os
 from pathlib import Path
 
 import duckdb
@@ -131,24 +132,44 @@ def save_index_cache(
 ) -> None:
     """Save index table to local cache.
 
+    Uses atomic write pattern to prevent partial cache files when multiple
+    processes try to cache the same remote index simultaneously.
+
     Args:
         conn: DuckDB connection with the table loaded.
         cache_path: Path to write the cache file.
         table_name: Name of the table to save.
         storage: Storage configuration (for encryption).
     """
-    cache_path.unlink(missing_ok=True)
+    # Skip if another process already wrote the cache while we were loading
+    if cache_path.exists():
+        return
 
-    if storage.is_encrypted:
-        # Use DuckDB COPY with encryption
-        conn.execute(f"""
-            COPY {table_name} TO '{cache_path}'
-            (FORMAT PARQUET, COMPRESSION 'zstd',
-             ENCRYPTION_CONFIG {{footer_key: '{ENCRYPTION_KEY_NAME}'}})
-        """)
-    else:
-        # Write unencrypted
-        conn.execute(f"""
-            COPY {table_name} TO '{cache_path}'
-            (FORMAT PARQUET, COMPRESSION 'zstd')
-        """)
+    # Write to temp file first, then atomic rename
+    tmp_path = cache_path.with_suffix(".tmp")
+
+    try:
+        if storage.is_encrypted:
+            # Use DuckDB COPY with encryption
+            conn.execute(f"""
+                COPY {table_name} TO '{tmp_path}'
+                (FORMAT PARQUET, COMPRESSION 'zstd',
+                 ENCRYPTION_CONFIG {{footer_key: '{ENCRYPTION_KEY_NAME}'}})
+            """)
+        else:
+            # Write unencrypted
+            conn.execute(f"""
+                COPY {table_name} TO '{tmp_path}'
+                (FORMAT PARQUET, COMPRESSION 'zstd')
+            """)
+
+        # Atomic rename - on POSIX this atomically replaces any existing file
+        os.rename(tmp_path, cache_path)
+    except FileExistsError:
+        # Another process wrote the cache between our exists() check and rename
+        # This is fine - the cache we need is present, just clean up our temp file
+        tmp_path.unlink(missing_ok=True)
+    except Exception:
+        # Clean up temp file on any other error
+        tmp_path.unlink(missing_ok=True)
+        raise

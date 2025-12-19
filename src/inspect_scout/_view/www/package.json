@@ -19,7 +19,7 @@
   },
   "packageManager": "pnpm@10.20.0",
   "engines": {
-    "node": "22.21.1",
+    "node": ">=22.21.1",
     "pnpm": ">=9.0.0"
   },
   "scripts": {

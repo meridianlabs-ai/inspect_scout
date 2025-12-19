@@ -7,7 +7,7 @@ import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useServerTranscripts } from "../server/hooks";
 
-import { TranscriptsGrid } from "./TranscriptsList";
+import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {

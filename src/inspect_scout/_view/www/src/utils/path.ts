@@ -72,21 +72,25 @@ export const ensureTrailingSlash = (path?: string): string => {
 };
 
 /**
- * Converts an absolute path to a relative path based on the results directory.
- * Handles nested subdirectories within the results directory.
- * For example: "/Users/user/scans/subdir/scan_id=123" -> "subdir/scan_id=123"
+ * Converts an absolute path to a relative path based on the basePath directory.
+ * Handles nested subdirectories within the basePath directory.
+ * For example:
+ * ```
+ * toRelativePath("/Users/user/scans/subdir/scan_id=123", "/Users/user/scans") === "subdir/scan_id=123"
+ * ```
  */
 export const toRelativePath = (
-  absolutePath: string,
-  basePath: string
+  absolutePath: string | undefined,
+  basePath: string | undefined
 ): string => {
   const normalizedResultsDir = ensureTrailingSlash(basePath).replace(
     "file://",
     ""
   );
-  const normalizedPath = absolutePath.startsWith("file://")
-    ? decodeURIComponent(absolutePath.replace("file://", ""))
-    : absolutePath;
+  const absolutePathToUse = absolutePath ?? "";
+  const normalizedPath = absolutePathToUse.startsWith("file://")
+    ? decodeURIComponent(absolutePathToUse.replace("file://", ""))
+    : absolutePathToUse;
 
   if (normalizedPath.startsWith(normalizedResultsDir)) {
     return normalizedPath.substring(normalizedResultsDir.length);

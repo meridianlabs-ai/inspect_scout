@@ -20,6 +20,7 @@ mirroring the `.enc.parquet` vs `.parquet` pattern for data files.
 """
 
 import glob
+import os
 import re
 import tempfile
 from datetime import datetime, timezone
@@ -96,10 +97,22 @@ async def append_index(
         finally:
             Path(tmp_path).unlink(missing_ok=True)
     else:
-        # Local storage: write directly
+        # Local storage: use atomic write pattern to prevent partial files
         output_path = Path(full_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        _write_parquet_table(table, str(output_path), storage)
+
+        # Write to temp file in same directory (ensures same filesystem for rename)
+        tmp_filename = f".tmp_{uuid()[:8]}{storage.index_extension()}"
+        local_tmp_path = output_path.parent / tmp_filename
+
+        try:
+            _write_parquet_table(table, str(local_tmp_path), storage)
+            # Atomic rename on POSIX - prevents partial files from being visible
+            os.rename(local_tmp_path, output_path)
+        except Exception:
+            # Clean up temp file on any error
+            local_tmp_path.unlink(missing_ok=True)
+            raise
 
     return full_path
 
@@ -108,6 +121,7 @@ async def compact_index(
     conn: duckdb.DuckDBPyConnection,
     storage: IndexStorage,
     delete_orphaned_data: bool = True,
+    _retry_count: int = 0,
 ) -> CompactionResult:
     """Compact multiple index files into one and clean up orphans.
 
@@ -121,10 +135,12 @@ async def compact_index(
         conn: DuckDB connection.
         storage: Storage configuration.
         delete_orphaned_data: Whether to delete orphaned data files.
+        _retry_count: Internal retry counter (do not set manually).
 
     Returns:
         CompactionResult with stats about files merged/deleted.
     """
+    MAX_RETRIES = 3
     # Use discovery for reading (gets the right files to merge)
     idx_files = await _discover_index_files(storage)
     # List ALL files for cleanup (includes orphaned older files)
@@ -148,9 +164,18 @@ async def compact_index(
     # Setup encryption if needed (discover_index_files sets storage.is_encrypted)
     enc_config = setup_encryption(conn, storage)
 
-    merged_table = conn.execute(f"""
-        SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
-    """).fetch_arrow_table()
+    # Handle file-not-found errors from concurrent operations with retry
+    try:
+        merged_table = conn.execute(f"""
+            SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
+        """).fetch_arrow_table()
+    except duckdb.IOException as e:
+        error_msg = str(e).lower()
+        if ("could not open file" in error_msg or "no such file" in error_msg) and _retry_count < MAX_RETRIES:
+            # Files changed during operation - retry with fresh discovery
+            logger.warning(f"Index file access failed during compaction (attempt {_retry_count + 1}), retrying")
+            return await compact_index(conn, storage, delete_orphaned_data, _retry_count + 1)
+        raise
 
     # Write compacted manifest (even if only 1 file - converts incremental to manifest)
     new_filename = _generate_manifest_filename(encrypted=storage.is_encrypted)
@@ -266,6 +291,7 @@ async def init_index_table(
     conn: duckdb.DuckDBPyConnection,
     storage: IndexStorage,
     table_name: str = "transcript_index",
+    _retry_count: int = 0,
 ) -> int:
     """Register index files as a DuckDB table for querying.
 
@@ -283,6 +309,7 @@ async def init_index_table(
         conn: DuckDB connection.
         storage: Storage configuration.
         table_name: Name for the created table.
+        _retry_count: Internal retry counter (do not set manually).
 
     Returns:
         Row count (0 if no index files found).
@@ -291,6 +318,7 @@ async def init_index_table(
         duckdb.Error: If index files are corrupted or unreadable.
         ValueError: If encrypted but no encryption key available.
     """
+    MAX_RETRIES = 3
     idx_files = await _discover_index_files(storage)
 
     if not idx_files:
@@ -327,11 +355,19 @@ async def init_index_table(
     enc_config = setup_encryption(conn, storage)
 
     # Create table from index files
-    # Note: We don't catch exceptions here - corrupted files should fail loudly
-    conn.execute(f"""
-        CREATE TABLE {table_name} AS
-        SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
-    """)
+    # Handle file-not-found errors from concurrent operations with retry
+    try:
+        conn.execute(f"""
+            CREATE TABLE {table_name} AS
+            SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
+        """)
+    except duckdb.IOException as e:
+        error_msg = str(e).lower()
+        if ("could not open file" in error_msg or "no such file" in error_msg) and _retry_count < MAX_RETRIES:
+            # File was deleted by concurrent operation - rediscover and retry
+            logger.warning(f"Index file access failed (attempt {_retry_count + 1}), retrying")
+            return await init_index_table(conn, storage, table_name, _retry_count + 1)
+        raise
 
     # Return row count
     result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
@@ -538,13 +574,18 @@ def _write_parquet_table(
 async def _delete_file(storage: IndexStorage, path: str) -> None:
     """Delete a file from storage.
 
+    Silently ignores missing files (already deleted by another process).
+
     Args:
         storage: Storage configuration.
         path: Path to the file to delete.
     """
     if storage.is_remote():
         fs = filesystem(storage.location)
-        fs.rm(path)
+        try:
+            fs.rm(path)
+        except FileNotFoundError:
+            pass  # Already deleted by another process - that's fine
     else:
         Path(path).unlink(missing_ok=True)
 

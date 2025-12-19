@@ -4,44 +4,48 @@ import { useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
 import { useStore } from "../state/store";
-import { ModelUsage } from "../types";
-import { JsonValue, Events } from "../types/log";
-import { asyncJsonParse } from "../utils/json-worker";
+import { AsyncData, data, loading } from "../utils/asyncData";
 
+import { parseScanResultData, parseScanResultSummaries } from "./arrowHelpers";
 import {
   ScanResultData,
-  ScanResultSummary,
-  ScanResultReference,
   ScanResultInputData,
+  ScanResultSummary,
 } from "./types";
 
 export const useSelectedScanner = () => {
   const selectedScanner = useStore((state) => state.selectedScanner);
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  const selectedScan = useStore((state) => state.selectedScanStatus);
   const defaultScanner = useMemo(() => {
-    if (selectedStatus) {
-      const scanners = Object.keys(selectedStatus.summary.scanners);
+    if (selectedScan) {
+      const scanners = Object.keys(selectedScan.summary.scanners);
       return scanners.length > 0 ? scanners[0] : undefined;
     }
-  }, [selectedStatus, selectedStatus?.summary.scanners]);
+  }, [selectedScan, selectedScan?.summary.scanners]);
 
   return selectedScanner || defaultScanner;
 };
 
-export const useSelectedScanResultData = (scanResultUuid?: string) => {
+export const useSelectedScanResultData = (
+  // TODO: We need `| undefined` both on the input param as well as on the output
+  // in order to honor the rules of hooks when the caller doesn't YET have the uuid.
+  // Better would be to refactor the parent so that it doesn't even render until
+  // it has the params so that it can avoid the hook call altogether.
+  scanResultUuid: string | undefined
+): AsyncData<ScanResultData | undefined> => {
   const getSelectedScanResultData = useStore(
     (state) => state.getSelectedScanResultData
   );
 
   // Get the column data for the selected scanner
   const selectedScanner = useSelectedScanner();
+  // TODO: In this case, it's not really that we may not have the data initially.
+  // It's that the return type of getSelectedScanResultData is | undefined. We really
+  // want to be able to assert that it had better be set if we're in this hook ...
+  // rather than designing this hook to be able to "stall" until its needs are met.
   const selectedScanResultData = getSelectedScanResultData(selectedScanner);
 
-  const { data: scanData, isLoading } = useScanResultData(
-    selectedScanResultData,
-    scanResultUuid
-  );
-  return { data: scanData, isLoading };
+  return useScanResultData(selectedScanResultData, scanResultUuid);
 };
 
 export const useSelectedScanResultInputData = ():
@@ -97,169 +101,12 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
     let cancelled = false;
     setIsLoading(true);
 
-    const jsonParse = async <T>(
-      text: string | null
-    ): Promise<T | undefined> => {
-      return text !== null
-        ? (asyncJsonParse<ScanResultSummary[]>(text) as Promise<T>)
-        : undefined;
-    };
-
-    const parseScanResultSummaries = async () => {
+    const run = async () => {
       try {
-        const parsedSummaries = await Promise.all(
-          (rowData || []).map(async (row) => {
-            const r = row as Record<string, unknown>;
-
-            // Determine the value type
-            const valueType = r.value_type as
-              | "string"
-              | "number"
-              | "boolean"
-              | "null"
-              | "array"
-              | "object";
-
-            const simpleValue = async (
-              val: unknown,
-              valueType:
-                | "string"
-                | "number"
-                | "boolean"
-                | "null"
-                | "array"
-                | "object"
-            ): Promise<
-              string | number | boolean | null | unknown[] | object
-            > => {
-              if (valueType === "object" || valueType === "array") {
-                return (
-                  (await jsonParse<object | unknown[]>(val as string)) || null
-                );
-              } else {
-                return Promise.resolve(val as string | number | boolean | null);
-              }
-            };
-            const [
-              validationResult,
-              validationTarget,
-              transcriptMetadata,
-              eventReferences,
-              messageReferences,
-              value,
-            ] = await Promise.all([
-              jsonParse(r.validation_result as string),
-              jsonParse(r.validation_target as string),
-              jsonParse<Record<string, unknown>>(
-                r.transcript_metadata as string
-              ),
-              jsonParse(r.event_references as string),
-              jsonParse(r.message_references as string),
-              simpleValue(r.value, valueType),
-            ]);
-
-            const explanation = r.explanation as string;
-            const transcriptSourceId = r.transcript_source_id as string;
-            const inputType = r.input_type as
-              | "transcript"
-              | "message"
-              | "messages"
-              | "event"
-              | "events";
-
-            const scanError = r.scan_error as string;
-            const scanErrorRefusal = r.scan_error_refusal as boolean;
-            const timestamp = r.timestamp
-              ? new Date(r.timestamp as string)
-              : undefined;
-
-            const transcriptTaskSet = r.transcript_task_set as
-              | string
-              | undefined;
-
-            const transcriptTaskId = r.transcript_task_id as
-              | string
-              | number
-              | undefined;
-
-            const transcriptTaskRepeat = r.transcript_task_repeat as
-              | number
-              | undefined;
-
-            const transcriptModel = r.transcript_model as string | undefined;
-
-            const baseSummary = {
-              uuid: r.uuid as string | undefined,
-              label: r.label as string | undefined,
-              explanation,
-              eventReferences: eventReferences as ScanResultReference[],
-              messageReferences: messageReferences as ScanResultReference[],
-              validationResult: validationResult as
-                | boolean
-                | Record<string, boolean>,
-              validationTarget: validationTarget as
-                | boolean
-                | Record<string, boolean>,
-              value,
-              valueType,
-              transcriptTaskSet,
-              transcriptTaskId,
-              transcriptTaskRepeat,
-              transcriptModel,
-              transcriptMetadata: transcriptMetadata || {},
-              transcriptSourceId,
-              scanError,
-              scanErrorRefusal,
-              timestamp,
-            };
-
-            // Resolve old values from the metadata if not present directly
-            // this should only be hit if the scan was old enough to not have
-            // these fields
-            resolveTranscriptPropertiesFromMetadata(baseSummary);
-
-            // Create typed preview based on inputType
-            let typedSummary: ScanResultSummary;
-            switch (inputType) {
-              case "transcript":
-                typedSummary = {
-                  ...baseSummary,
-                  inputType: "transcript",
-                };
-                break;
-              case "message":
-                typedSummary = {
-                  ...baseSummary,
-                  inputType: "message",
-                };
-                break;
-              case "messages":
-                typedSummary = {
-                  ...baseSummary,
-                  inputType: "messages",
-                };
-                break;
-              case "event":
-                typedSummary = {
-                  ...baseSummary,
-                  inputType: "event",
-                };
-                break;
-              case "events":
-                typedSummary = {
-                  ...baseSummary,
-                  inputType: "events",
-                };
-                break;
-            }
-
-            return typedSummary;
-          })
-        );
-
+        const result = await parseScanResultSummaries(rowData || []);
         if (!cancelled) {
-          setScanResultsSummaries(parsedSummaries);
-          setSelectedScanResultSummaries(selectedScanner, parsedSummaries);
+          setScanResultsSummaries(result);
+          setSelectedScanResultSummaries(selectedScanner, result);
           setIsLoading(false);
         }
       } catch (error) {
@@ -272,7 +119,7 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
       }
     };
 
-    void parseScanResultSummaries();
+    void run();
 
     return () => {
       cancelled = true;
@@ -287,10 +134,14 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
   return { data: scanResultSummaries, isLoading };
 };
 
-export const useScanResultData = (
-  columnTable?: ColumnTable,
-  scanResultUuid?: string
-) => {
+const useScanResultData = (
+  // TODO: We need `| undefined` both on the input param as well as on the output
+  // in order to honor the rules of hooks when the caller doesn't YET have the uuid.
+  // Better would be to refactor the parent so that it doesn't even render until
+  // it has the params so that it can avoid the hook call altogether.
+  columnTable: ColumnTable | undefined,
+  scanResultUuid: string | undefined
+): AsyncData<ScanResultData | undefined> => {
   const [scanResultData, setScanResultData] = useState<
     ScanResultData | undefined
   >(undefined);
@@ -331,269 +182,13 @@ export const useScanResultData = (
     let cancelled = false;
     setIsLoading(true);
 
-    const parse = async <T>(text: string | null): Promise<T | undefined> => {
-      return text !== null
-        ? (asyncJsonParse<ScanResultSummary[]>(text) as Promise<T>)
-        : undefined;
-    };
-
-    const parseData = async () => {
+    const run = async () => {
       try {
-        const valueType = filtered.get("value_type", 0) as
-          | "string"
-          | "number"
-          | "boolean"
-          | "null"
-          | "array"
-          | "object";
-
-        const simpleValue = (
-          val: unknown,
-          valueType:
-            | "string"
-            | "number"
-            | "boolean"
-            | "null"
-            | "array"
-            | "object"
-        ): Promise<
-          string | number | boolean | null | unknown[] | object | undefined
-        > => {
-          if (valueType === "object" || valueType === "array") {
-            return parse<object | unknown[]>(val as string);
-          } else {
-            return Promise.resolve(val as string | number | boolean | null);
-          }
-        };
-
-        const transcript_agent_args_raw = getOptionalColumn<string>(
-          filtered,
-          "transcript_agent_args",
-          0
-        );
-        const transcript_score_raw = getOptionalColumn<string>(
-          filtered,
-          "transcript_score",
-          0
-        );
-
-        const [
-          eventReferences,
-          inputIds,
-          messageReferences,
-          metadata,
-          scanEvents,
-          scanMetadata,
-          scanModelUsage,
-          scanTags,
-          scannerParams,
-          transcriptMetadata,
-          validationResult,
-          validationTarget,
-          value,
-          transcriptAgentArgs,
-          transcriptScore,
-        ] = await Promise.all([
-          parse(filtered.get("event_references", 0) as string),
-          parse(filtered.get("input_ids", 0) as string),
-          parse(filtered.get("message_references", 0) as string),
-          parse(filtered.get("metadata", 0) as string),
-          parse(filtered.get("scan_events", 0) as string),
-          parse(filtered.get("scan_metadata", 0) as string),
-          parse(filtered.get("scan_model_usage", 0) as string),
-          parse(filtered.get("scan_tags", 0) as string),
-          parse(filtered.get("scanner_params", 0) as string),
-          parse(filtered.get("transcript_metadata", 0) as string),
-          parse(filtered.get("validation_result", 0) as string),
-          parse(filtered.get("validation_target", 0) as string),
-          simpleValue(filtered.get("value", 0), valueType),
-          transcript_agent_args_raw
-            ? parse(transcript_agent_args_raw)
-            : Promise.resolve(undefined),
-          transcript_score_raw
-            ? parse(transcript_score_raw)
-            : Promise.resolve(undefined),
-        ]);
-
-        if (cancelled) {
-          return;
+        const result = await parseScanResultData(filtered);
+        if (!cancelled) {
+          setScanResultData(result);
+          setIsLoading(false);
         }
-
-        const uuid = filtered.get("uuid", 0) as string | undefined;
-        const timestamp = getOptionalDateColumn(filtered, "timestamp");
-        const answer = filtered.get("answer", 0) as string | undefined;
-        const label = getOptionalColumn<string>(filtered, "label");
-        const explanation = filtered.get("explanation", 0) as
-          | string
-          | undefined;
-        const inputType = filtered.get("input_type", 0) as
-          | "transcript"
-          | "message"
-          | "messages"
-          | "event"
-          | "events";
-        const scanError = filtered.get("scan_error", 0) as string | undefined;
-        const scanErrorTraceback = filtered.get("scan_error_traceback", 0) as
-          | string
-          | undefined;
-        const scanErrorRefusal =
-          getOptionalColumn<boolean>(filtered, "scan_error_refusal") ?? false;
-        const scanId = filtered.get("scan_id", 0) as string;
-        const scanTotalTokens = filtered.get("scan_total_tokens", 0) as number;
-        const scannerFile = filtered.get("scanner_file", 0) as string;
-        const scannerKey = filtered.get("scanner_key", 0) as string;
-        const scannerName = filtered.get("scanner_name", 0) as string;
-        const transcriptId = filtered.get("transcript_id", 0) as string;
-        const transcriptSourceId = filtered.get(
-          "transcript_source_id",
-          0
-        ) as string;
-        const transcriptSourceUri = filtered.get(
-          "transcript_source_uri",
-          0
-        ) as string;
-
-        const transcriptTaskSet = getOptionalColumn<string>(
-          filtered,
-          "transcript_task_set"
-        );
-
-        const transcriptTaskId = getOptionalColumn<string | number>(
-          filtered,
-          "transcript_task_id"
-        );
-
-        const transcriptTaskRepeat = getOptionalColumn<number>(
-          filtered,
-          "transcript_task_repeat"
-        );
-
-        const transcriptDate = getOptionalDateColumn(
-          filtered,
-          "transcript_date"
-        );
-
-        const transcriptAgent = getOptionalColumn<string>(
-          filtered,
-          "transcript_agent"
-        );
-        const transcriptModel = getOptionalColumn<string>(
-          filtered,
-          "transcript_model"
-        );
-        const transcriptSuccess = getOptionalColumn<boolean>(
-          filtered,
-          "transcript_success"
-        );
-        const transcriptTotalTime = getOptionalColumn<number>(
-          filtered,
-          "transcript_total_time"
-        );
-        const transcroptTotalTokens = getOptionalColumn<number>(
-          filtered,
-          "transcropt_total_tokens"
-        );
-        const transcriptError = getOptionalColumn<string>(
-          filtered,
-          "transcript_error"
-        );
-        const transcriptLimit = getOptionalColumn<string>(
-          filtered,
-          "transcript_limit"
-        );
-
-        const baseData = {
-          uuid,
-          timestamp,
-          answer,
-          label,
-          eventReferences: eventReferences as ScanResultReference[],
-          explanation,
-          inputIds: inputIds as string[],
-          messageReferences: messageReferences as ScanResultReference[],
-          metadata: metadata as Record<string, JsonValue>,
-          scanError,
-          scanErrorTraceback,
-          scanErrorRefusal,
-          scanEvents: scanEvents as Events,
-          scanId,
-          scanMetadata: scanMetadata as Record<string, JsonValue>,
-          scanModelUsage: scanModelUsage as Record<string, ModelUsage>,
-          scanTags: scanTags as string[],
-          scanTotalTokens,
-          scannerFile,
-          scannerKey,
-          scannerName,
-          scannerParams: scannerParams as Record<string, JsonValue>,
-          transcriptId,
-          transcriptMetadata: transcriptMetadata as Record<string, JsonValue>,
-          transcriptSourceId,
-          transcriptSourceUri,
-          transcriptTaskSet,
-          transcriptTaskId,
-          transcriptTaskRepeat,
-          transcriptAgent,
-          transcriptAgentArgs: transcriptAgentArgs as Record<string, unknown>,
-          transcriptDate,
-          transcriptModel,
-          transcriptScore,
-          transcriptSuccess,
-          transcriptTotalTime,
-          transcroptTotalTokens,
-          transcriptError,
-          transcriptLimit,
-          validationResult: validationResult as
-            | boolean
-            | Record<string, boolean>,
-          validationTarget: validationTarget as
-            | boolean
-            | Record<string, boolean>,
-          value: value ?? null,
-          valueType,
-        };
-
-        // Resolve old values from the metadata if not present directly
-        // this should only be hit if the scan was old enough to not have
-        // these fields
-        resolveTranscriptPropertiesFromMetadata(baseData);
-
-        // Create typed data based on inputType
-        let typedData: ScanResultData;
-        switch (inputType) {
-          case "transcript":
-            typedData = {
-              ...baseData,
-              inputType: "transcript",
-            };
-            break;
-          case "message":
-            typedData = {
-              ...baseData,
-              inputType: "message",
-            };
-            break;
-          case "messages":
-            typedData = {
-              ...baseData,
-              inputType: "messages",
-            };
-            break;
-          case "event":
-            typedData = {
-              ...baseData,
-              inputType: "event",
-            };
-            break;
-          case "events":
-            typedData = {
-              ...baseData,
-              inputType: "events",
-            };
-            break;
-        }
-
-        setScanResultData(typedData);
-        setIsLoading(false);
       } catch (error) {
         if (!cancelled) {
           console.error("Error parsing scanner data:", error);
@@ -603,57 +198,12 @@ export const useScanResultData = (
       }
     };
 
-    void parseData();
+    void run();
 
     return () => {
       cancelled = true;
     };
   }, [filtered]);
 
-  return { data: scanResultData, isLoading };
+  return isLoading ? loading : data(scanResultData);
 };
-
-function getOptionalColumn<T>(
-  table: ColumnTable,
-  columnName: string,
-  rowIndex: number = 0
-): T | undefined {
-  return table.columnNames().includes(columnName)
-    ? (table.get(columnName, rowIndex) as T)
-    : undefined;
-}
-
-function getOptionalDateColumn(
-  table: ColumnTable,
-  columnName: string,
-  rowIndex: number = 0
-): Date | undefined {
-  const value = getOptionalColumn<string>(table, columnName, rowIndex);
-  return value ? new Date(value) : undefined;
-}
-
-function resolveTranscriptPropertiesFromMetadata<
-  T extends {
-    transcriptModel?: string;
-    transcriptTaskSet?: string;
-    transcriptTaskId?: string | number;
-    transcriptTaskRepeat?: number;
-    transcriptMetadata: Record<string, unknown>;
-  },
->(data: T): void {
-  if (data.transcriptModel === undefined) {
-    data.transcriptModel = data.transcriptMetadata["model"] as string;
-  }
-
-  if (data.transcriptTaskSet === undefined) {
-    data.transcriptTaskSet = data.transcriptMetadata["task_name"] as string;
-  }
-
-  if (data.transcriptTaskId === undefined) {
-    data.transcriptTaskId = data.transcriptMetadata["id"] as string | number;
-  }
-
-  if (data.transcriptTaskRepeat === undefined) {
-    data.transcriptTaskRepeat = data.transcriptMetadata["epoch"] as number;
-  }
-}

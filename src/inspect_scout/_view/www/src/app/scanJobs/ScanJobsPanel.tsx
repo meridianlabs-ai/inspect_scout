@@ -18,6 +18,8 @@ export const ScanJobsPanel: FC = () => {
   const loading = useStore((state) => state.loading);
   const error = useStore((state) => state.scopedErrors["scanjobs"]);
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
+  const resultsDir = useStore((state) => state.resultsDir);
+  const scans = useStore((state) => state.scans);
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);
@@ -33,7 +35,7 @@ export const ScanJobsPanel: FC = () => {
         {error && (
           <ErrorPanel title="Error Loading Scans" error={{ message: error }} />
         )}
-        {!error && <ScanJobGrid />}
+        {!error && <ScanJobGrid resultsDir={resultsDir} scans={scans} />}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

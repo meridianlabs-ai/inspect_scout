@@ -213,7 +213,9 @@ interface StoreState {
   setTranscripts: (transcripts: TranscriptInfo[]) => void;
   setTranscriptsDir: (path: string) => void;
   setTranscriptsTableState: (
-    updater: TranscriptsTableState | ((prev: TranscriptsTableState) => TranscriptsTableState)
+    updater:
+      | TranscriptsTableState
+      | ((prev: TranscriptsTableState) => TranscriptsTableState)
   ) => void;
 }
 

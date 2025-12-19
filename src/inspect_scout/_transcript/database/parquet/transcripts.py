@@ -31,7 +31,6 @@ from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ...columns import Condition
 from ...json.load_filtered import load_filtered_transcript
-from ...local_files_cache import init_task_files_cache
 from ...transcripts import (
     Transcripts,
     TranscriptsQuery,
@@ -112,9 +111,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # lookups, but PyArrow doesn't yet support writing bloom filters (as of v21.0.0).
         # PR #37400 is in progress: https://github.com/apache/arrow/pull/37400
         # When available, add: bloom_filter_columns=['transcript_id'] to write_table calls.
-
-        # initialize cache
-        self._cache = init_task_files_cache()
 
         # State (initialized in connect)
         self._conn: duckdb.DuckDBPyConnection | None = None
@@ -1569,7 +1565,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._location is not None
         if self._is_s3() or self._is_hf():
             assert self._fs is not None
-            assert self._cache is not None
 
             # List all files recursively (returns list of FileInfo objects)
             fs = filesystem(self._location)
@@ -1580,21 +1575,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 name = f.name
                 if name.endswith(".parquet"):
                     files.append(name)
-
-            # no caching for now (downoads block initial startup and aggregate
-            # gain seems minimal)
             return files
-
-            # Try to cache files, but if cache is full, use S3 URIs directly
-            # file_paths = []
-            # for file_uri in files:
-            #     cached_path = await self._cache.resolve_remote_uri_to_local(
-            #         self._fs, file_uri
-            #     )
-            #     # If caching failed (exceeded 5GB), cached_path == file_uri
-            #     file_paths.append(cached_path)
-
-            # return file_paths
         else:
             location_path = UPath(self._location)
             if not location_path.exists():

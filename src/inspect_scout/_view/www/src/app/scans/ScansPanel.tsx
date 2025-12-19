@@ -23,6 +23,7 @@ export const ScansPanel: React.FC = () => {
   useServerScan();
   useServerScanDataframe();
   const loading = useStore((state) => state.loading);
+  const resultsDir = useStore((state) => state.resultsDir);
 
   // Clear scan state from the store on mount
   const clearScanState = useStore((state) => state.clearScanState);
@@ -41,16 +42,19 @@ export const ScansPanel: React.FC = () => {
   }, [searchParams, setSelectedScanner]);
 
   // Render only if we have selected results
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
+  const selectedScan = useStore((state) => state.selectedScanStatus);
   return (
     <div className={clsx(styles.root)}>
       <ScansNavbar />
       <LoadingBar loading={!!loading} />
-      {selectedStatus && (
+      {selectedScan && (
         <>
-          <ScansPanelTitle />
+          <ScansPanelTitle
+            resultsDir={resultsDir}
+            selectedScan={selectedScan}
+          />
           <ExtendedFindProvider>
-            <ScansPanelBody />
+            <ScansPanelBody selectedScan={selectedScan} />
           </ExtendedFindProvider>
         </>
       )}

@@ -2,7 +2,6 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { CopyButton } from "../../components/CopyButton";
-import { useStore } from "../../state/store";
 import { Status } from "../../types";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
@@ -11,20 +10,21 @@ import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScansPanelTitle.module.css";
 
-export const ScansPanelTitle: FC = () => {
-  const selectedStatus = useStore((state) => state.selectedScanStatus);
-  const resultsDir = useStore((state) => state.resultsDir);
+export const ScansPanelTitle: FC<{
+  resultsDir: string | undefined;
+  selectedScan: Status;
+}> = ({ resultsDir, selectedScan }) => {
   const scanJobName =
-    selectedStatus?.spec.scan_name === "job"
+    selectedScan.spec.scan_name === "job"
       ? "scan"
-      : selectedStatus?.spec.scan_name;
+      : selectedScan.spec.scan_name;
 
-  const scannerModel = selectedStatus?.spec.model.model;
+  const scannerModel = selectedScan.spec.model.model;
 
   // Awesome
-  const deprecatedCount = selectedStatus?.spec.transcripts?.count || 0;
+  const deprecatedCount = selectedScan.spec.transcripts?.count || 0;
   const modernCorrectCount = Object.keys(
-    selectedStatus?.spec.transcripts?.transcript_ids || {}
+    selectedScan.spec.transcripts?.transcript_ids || {}
   ).length;
   const transcriptCount = Math.max(deprecatedCount, modernCorrectCount);
 
@@ -34,26 +34,26 @@ export const ScansPanelTitle: FC = () => {
         <h1>{scanJobName}:</h1>
         <div className={clsx(styles.secondaryRow)}>
           <h2>
-            {toRelativePath(selectedStatus?.location || "", resultsDir || "")}
+            {toRelativePath(selectedScan.location, resultsDir)}
             {scannerModel ? ` (${scannerModel})` : ""}
           </h2>
-          {selectedStatus?.location && (
+          {selectedScan.location && (
             <CopyButton
               title="Copy Scan Path"
               className={clsx("text-size-small")}
-              value={prettyDirUri(selectedStatus?.location)}
+              value={prettyDirUri(selectedScan.location)}
             />
           )}
         </div>
         <div></div>
         <div className={clsx(styles.subtitle, "text-style-secondary")}>
-          <StatusDisplay status={selectedStatus} />
+          <StatusDisplay status={selectedScan} />
           <div>—</div>
           <div>{transcriptCount} Transcripts </div>
           <div>—</div>
           <div>
-            {selectedStatus?.spec.timestamp
-              ? formatDateTime(new Date(selectedStatus?.spec.timestamp))
+            {selectedScan.spec.timestamp
+              ? formatDateTime(new Date(selectedScan.spec.timestamp))
               : ""}
           </div>
         </div>

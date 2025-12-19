@@ -8,6 +8,7 @@ from inspect_scout._llm_scanner.answer import (
     _LabelsAnswer,
     _NumberAnswer,
     _StrAnswer,
+    _strip_markdown_formatting,
 )
 from inspect_scout._llm_scanner.prompt import ANSWER_FORMAT_PREAMBLE
 from inspect_scout._scanner.result import Reference
@@ -16,6 +17,33 @@ from inspect_scout._scanner.result import Reference
 def _dummy_extract_references(text: str) -> list[Reference]:
     """Dummy extract_references function for testing."""
     return []
+
+
+@pytest.mark.parametrize(
+    "input_text,expected",
+    [
+        ("**bold**", "bold"),
+        ("before **bold** after", "before bold after"),
+        ("*italic*", "italic"),
+        ("before *italic* after", "before italic after"),
+        ("__bold__", "bold"),
+        ("before __bold__ after", "before bold after"),
+        ("_italic_", "italic"),
+        ("before _italic_ after", "before italic after"),
+        ("`code`", "code"),
+        ("before `code` after", "before code after"),
+        ("**bold** and *italic*", "bold and italic"),
+        ("**ANSWER: yes**", "ANSWER: yes"),
+        ("plain text", "plain text"),
+        ("ANSWER: 42", "ANSWER: 42"),
+        ("**bold *nested* bold**", "bold nested bold"),
+        ("**a** and **b**", "a and b"),
+        ("", ""),
+    ],
+)
+def test_strip_markdown_formatting(input_text: str, expected: str) -> None:
+    """Strip markdown formatting from text."""
+    assert _strip_markdown_formatting(input_text) == expected
 
 
 @pytest.mark.parametrize(
@@ -65,6 +93,7 @@ def test_answer_templates(
         ("Reasoning.\n\nANSWER: no", False, "No", "Reasoning."),
         ("Reasoning.\n\nANSWER: YES", True, "Yes", "Reasoning."),
         ("Reasoning.\n\nANSWER: maybe", False, None, "Reasoning.\n\nANSWER: maybe"),
+        ("Reasoning.\n\n**ANSWER: yes**", True, "Yes", "Reasoning."),
         ("No pattern here", False, None, "No pattern here"),
     ],
 )
@@ -92,6 +121,12 @@ def test_bool_results(
         ("Zero.\n\nANSWER: 0", 0.0, "Zero."),
         ("Not numeric.\n\nANSWER: unknown", False, "Not numeric.\n\nANSWER: unknown"),
         ("No pattern", False, "No pattern"),
+        ("Decimal.\n\nANSWER: 0.5", 0.5, "Decimal."),
+        ("Negative.\n\nANSWER: -5", -5.0, "Negative."),
+        ("Negative decimal.\n\nANSWER: -3.14", -3.14, "Negative decimal."),
+        ("Trailing text.\n\nANSWER: 42 points", 42.0, "Trailing text."),
+        ("Whitespace.\n\nANSWER:  42  ", 42.0, "Whitespace."),
+        ("Markdown.\n\n**ANSWER: 7**", 7.0, "Markdown."),
     ],
 )
 def test_number_results(

@@ -3,6 +3,7 @@
 - Add more standard fields to the [transcript database schema](https://meridianlabs-ai.github.io/inspect_scout/db_schema.html).
 - Add an optional index to transcript database for higher performance queries on very large databases.
 - Add `as_json` option to `messages_as_str` for JSON output format.
+- Bugfix: Fix LLM answer parsing for decimals, negatives, and markdown.
 
 ## 0.4.2 (14 December 2025)
 

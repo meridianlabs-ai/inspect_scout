@@ -129,10 +129,10 @@ class _NumberAnswer(Answer):
     def result_for_answer(
         self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
-        match = re.search(ANSWER_PATTERN_WORD, output.completion)
+        match = re.search(ANSWER_PATTERN_LINE, output.completion)
 
         if match:
-            answer = _safe_str_to_float(match.group(1))
+            answer = _safe_str_to_float(match.group(1).strip())
 
             if answer is not None:
                 explanation = output.completion[: match.start()].strip()

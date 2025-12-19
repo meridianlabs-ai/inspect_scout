@@ -65,6 +65,7 @@ def test_answer_templates(
         ("Reasoning.\n\nANSWER: no", False, "No", "Reasoning."),
         ("Reasoning.\n\nANSWER: YES", True, "Yes", "Reasoning."),
         ("Reasoning.\n\nANSWER: maybe", False, None, "Reasoning.\n\nANSWER: maybe"),
+        ("Reasoning.\n\n**ANSWER: yes**", True, "Yes", "Reasoning."),
         ("No pattern here", False, None, "No pattern here"),
     ],
 )
@@ -97,6 +98,7 @@ def test_bool_results(
         ("Negative decimal.\n\nANSWER: -3.14", -3.14, "Negative decimal."),
         ("Trailing text.\n\nANSWER: 42 points", 42.0, "Trailing text."),
         ("Whitespace.\n\nANSWER:  42  ", 42.0, "Whitespace."),
+        ("Markdown.\n\n**ANSWER: 7**", 7.0, "Markdown."),
     ],
 )
 def test_number_results(

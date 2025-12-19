@@ -30,6 +30,18 @@ from .prompt import (
 )
 
 
+def _strip_markdown_formatting(text: str) -> str:
+    """Strip common markdown formatting from text."""
+    # Remove bold/italic: **text**, *text*, __text__, _text_
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"__(.+?)__", r"\1", text)
+    text = re.sub(r"\*(.+?)\*", r"\1", text)
+    text = re.sub(r"_(.+?)_", r"\1", text)
+    # Remove inline code: `text`
+    text = re.sub(r"`(.+?)`", r"\1", text)
+    return text
+
+
 class Answer(Protocol):
     """Protocol for LLM scanner answer types."""
 
@@ -87,11 +99,12 @@ class _BoolAnswer(Answer):
     def result_for_answer(
         self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
-        match = re.search(ANSWER_PATTERN_WORD, output.completion, re.IGNORECASE)
+        completion = _strip_markdown_formatting(output.completion)
+        match = re.search(ANSWER_PATTERN_WORD, completion, re.IGNORECASE)
 
         if match:
             answer = match.group(1).lower()
-            explanation = output.completion[: match.start()].strip()
+            explanation = completion[: match.start()].strip()
             references = extract_references(explanation)
 
             # Use a match instead of if/else so that answers other than yes or no flow
@@ -129,13 +142,14 @@ class _NumberAnswer(Answer):
     def result_for_answer(
         self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
     ) -> Result:
-        match = re.search(ANSWER_PATTERN_LINE, output.completion)
+        completion = _strip_markdown_formatting(output.completion)
+        match = re.search(ANSWER_PATTERN_LINE, completion)
 
         if match:
             answer = _safe_str_to_float(match.group(1).strip())
 
             if answer is not None:
-                explanation = output.completion[: match.start()].strip()
+                explanation = completion[: match.start()].strip()
                 references = extract_references(explanation)
 
                 return Result(
@@ -146,7 +160,7 @@ class _NumberAnswer(Answer):
                     references=references,
                 )
 
-        return Result(value=False, explanation=output.completion)
+        return Result(value=False, explanation=completion)
 
 
 class _LabelsAnswer(Answer):

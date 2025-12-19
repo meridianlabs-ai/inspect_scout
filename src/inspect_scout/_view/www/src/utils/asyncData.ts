@@ -1,3 +1,5 @@
+import { Brand, make } from "./brand";
+
 /**
  * AsyncData represents the possible states of some asynchronous operation like
  * a network request to an API. When the request is first made, it's `loading`, but
@@ -8,11 +10,15 @@
  */
 export type AsyncData<T> = AsyncDataLoading | AsyncDataNotLoading<T>;
 
-export type AsyncDataLoading = {
-  data?: undefined;
-  loading: true;
-  error?: undefined;
-};
+// Brand this to prevent code from making its own instances
+export type AsyncDataLoading = Brand<
+  {
+    data?: undefined;
+    loading: true;
+    error?: undefined;
+  },
+  "_please_use_AsyncData.loading_rather_than_your_own_instance_of_this_type_"
+>;
 
 /**
  * The different states the async data can be in when loading is finished.
@@ -101,4 +107,6 @@ export function data<T>(data: T): AsyncData<T> {
  * The `loading` constant is an instance of `AsyncDataLoading` that can be shared
  * to provide identity stability. It represents the state when the data is loading.
  */
-export const loading: AsyncDataLoading = { loading: true };
+export const loading: AsyncDataLoading = make<AsyncDataLoading>()({
+  loading: true,
+});

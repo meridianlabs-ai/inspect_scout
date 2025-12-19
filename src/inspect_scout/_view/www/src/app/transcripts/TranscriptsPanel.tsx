@@ -7,7 +7,7 @@ import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useServerTranscripts } from "../server/hooks";
 
-import { TranscriptsList } from "./TranscriptsList";
+import { TranscriptsGrid } from "./TranscriptsList";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
@@ -25,7 +25,7 @@ export const TranscriptsPanel: FC = () => {
           error={{ message: error }}
         />
       )}
-      {!error && <TranscriptsList transcripts={transcripts} />}
+      {!error && <TranscriptsGrid transcripts={transcripts} />}
       <Footer
         itemCount={transcripts?.length || 0}
         id={"transcripts-footer"}

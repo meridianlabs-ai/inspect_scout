@@ -19,6 +19,12 @@ import {
 import { Status, TranscriptInfo } from "../types";
 import { debounce } from "../utils/sync";
 
+// Transcripts table UI state
+interface TranscriptsTableState {
+  columnSizing: ColumnSizingState;
+  columnOrder: string[];
+}
+
 // Holds the currently selected scan result data in a ref
 // Keeping it out of the zustand state to avoid serialization and performance issues
 const selectedScanResultDataRef: {
@@ -94,7 +100,7 @@ interface StoreState {
   // Transcript Data (loaded data + source directory)
   transcripts?: TranscriptInfo[];
   transcriptsDir?: string;
-  transcriptsColumnSizing: ColumnSizingState;
+  transcriptsTableState: TranscriptsTableState;
 
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
@@ -206,7 +212,9 @@ interface StoreState {
   setTranscriptsDatabasePath: (path: string) => void;
   setTranscripts: (transcripts: TranscriptInfo[]) => void;
   setTranscriptsDir: (path: string) => void;
-  setTranscriptsColumnSizing: (columnSizing: ColumnSizingState) => void;
+  setTranscriptsTableState: (
+    updater: TranscriptsTableState | ((prev: TranscriptsTableState) => TranscriptsTableState)
+  ) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -253,7 +261,10 @@ export const createStore = (api: ScanApi) =>
           visibleScannerResults: [],
           visibleScannerResultsCount: 0,
           highlightLabeled: false,
-          transcriptsColumnSizing: {},
+          transcriptsTableState: {
+            columnSizing: {},
+            columnOrder: [],
+          },
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -679,9 +690,12 @@ export const createStore = (api: ScanApi) =>
               state.transcriptsDir = path;
             });
           },
-          setTranscriptsColumnSizing: (columnSizing: ColumnSizingState) => {
+          setTranscriptsTableState: (updater) => {
             set((state) => {
-              state.transcriptsColumnSizing = columnSizing;
+              state.transcriptsTableState =
+                typeof updater === "function"
+                  ? updater(state.transcriptsTableState)
+                  : updater;
             });
           },
         })),

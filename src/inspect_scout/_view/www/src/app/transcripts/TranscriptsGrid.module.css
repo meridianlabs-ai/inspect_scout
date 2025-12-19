@@ -33,6 +33,30 @@
   font-weight: 500;
   color: var(--bs-secondary);
   font-size: 12px !important;
+  transition: background-color 0.15s ease;
+}
+
+.headerContent {
+  flex: 1;
+  cursor: grab;
+  user-select: none;
+}
+
+.headerContent:active {
+  cursor: grabbing;
+}
+
+.headerCellDragging {
+  opacity: 1;
+  background: var(--bs-light-bg-subtle);
+}
+
+.headerCellDragOverLeft {
+  border-left: 3px solid var(--bs-primary);
+}
+
+.headerCellDragOverRight {
+  border-right: 3px solid var(--bs-primary);
 }
 
 .resizer {
@@ -48,6 +72,12 @@
   user-select: none;
   touch-action: none;
   border-right: solid 1px var(--bs-border-color);
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.headerCellDragging .resizer {
+  border-right: none;
 }
 
 .resizer:hover {

@@ -3,13 +3,12 @@ import {
   getCoreRowModel,
   ColumnDef,
   flexRender,
-  ColumnResizeMode,
   OnChangeFn,
   ColumnSizingState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
-import { FC, useRef, useMemo, useState } from "react";
+import { FC, useRef, useMemo, useState, DragEvent, useCallback } from "react";
 
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types";
@@ -18,7 +17,7 @@ import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
 import { ApplicationIcons } from "../appearance/icons";
 
-import styles from "./TranscriptsList.module.css";
+import styles from "./TranscriptsGrid.module.css";
 
 type TranscriptColumn = ColumnDef<TranscriptInfo> & {
   meta?: {
@@ -52,32 +51,131 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
   };
 }
 
-interface TranscriptsListProps {
+interface TranscriptGridProps {
   transcripts?: TranscriptInfo[];
   className?: string | string[];
 }
 
-export const TranscriptsList: FC<TranscriptsListProps> = ({
+export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   transcripts = [],
   className,
 }) => {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
+  // The table container which provides the scrollable region
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Get column sizing state from store
-  const columnSizing = useStore((state) => state.transcriptsColumnSizing);
-  const setColumnSizing = useStore((state) => state.setTranscriptsColumnSizing);
+  // Table state
+  const columnSizing = useStore(
+    (state) => state.transcriptsTableState.columnSizing
+  );
+  const columnOrder = useStore(
+    (state) => state.transcriptsTableState.columnOrder
+  );
+  const setTableState = useStore((state) => state.setTranscriptsTableState);
 
-  // Wrap setter to match TanStack Table's updater pattern
-  const handleColumnSizingChange: OnChangeFn<ColumnSizingState> = (
-    updaterOrValue
-  ) => {
-    const newValue =
-      typeof updaterOrValue === "function"
-        ? updaterOrValue(columnSizing)
-        : updaterOrValue;
-    setColumnSizing(newValue);
-  };
+  // Column sizing
+  const handleColumnSizingChange: OnChangeFn<ColumnSizingState> = useCallback(
+    (updaterOrValue) => {
+      const newValue =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(columnSizing)
+          : updaterOrValue;
+      setTableState((prev) => ({ ...prev, columnSizing: newValue }));
+    },
+    [columnSizing, setTableState]
+  );
+
+  // Column ordering
+  const handleColumnOrderChange: OnChangeFn<string[]> = useCallback(
+    (updaterOrValue) => {
+      const newValue =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(columnOrder)
+          : updaterOrValue;
+      setTableState((prev) => ({ ...prev, columnOrder: newValue }));
+    },
+    [columnOrder, setTableState]
+  );
+
+  // Drag and drop state
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<"left" | "right" | null>(
+    null
+  );
+
+  const handleDragStart = useCallback(
+    (e: DragEvent<HTMLElement>, columnId: string) => {
+      setDraggedColumn(columnId);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    []
+  );
+
+  const handleDragOver = useCallback(
+    (e: DragEvent<HTMLElement>, columnId: string) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+
+      // Only set drag over if it's a different column than the one being dragged
+      if (draggedColumn && draggedColumn !== columnId) {
+        setDragOverColumn(columnId);
+
+        // Determine which side to show the drop indicator based on current column order
+        const draggedIndex = columnOrder.indexOf(draggedColumn);
+        const targetIndex = columnOrder.indexOf(columnId);
+
+        // If dragging from left to right, show indicator on right side
+        // If dragging from right to left, show indicator on left side
+        setDropPosition(draggedIndex < targetIndex ? "right" : "left");
+      }
+    },
+    [draggedColumn, columnOrder]
+  );
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverColumn(null);
+    setDropPosition(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLElement>, targetColumnId: string) => {
+      e.preventDefault();
+
+      if (!draggedColumn || draggedColumn === targetColumnId) {
+        setDraggedColumn(null);
+        setDragOverColumn(null);
+        setDropPosition(null);
+        return;
+      }
+
+      const draggedIndex = columnOrder.indexOf(draggedColumn);
+      const targetIndex = columnOrder.indexOf(targetColumnId);
+
+      if (draggedIndex === -1 || targetIndex === -1) {
+        setDraggedColumn(null);
+        setDragOverColumn(null);
+        setDropPosition(null);
+        return;
+      }
+
+      // Create new order by moving dragged column to target position
+      const newOrder = [...columnOrder];
+      newOrder.splice(draggedIndex, 1);
+      newOrder.splice(targetIndex, 0, draggedColumn);
+
+      setTableState((prev) => ({ ...prev, columnOrder: newOrder }));
+      setDraggedColumn(null);
+      setDragOverColumn(null);
+      setDropPosition(null);
+    },
+    [draggedColumn, columnOrder, setTableState]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+    setDropPosition(null);
+  }, []);
 
   // Define table columns
   const columns = useMemo<TranscriptColumn[]>(
@@ -175,12 +273,14 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({
     data: transcripts,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    columnResizeMode,
+    columnResizeMode: "onChange",
     enableColumnResizing: true,
     state: {
       columnSizing,
+      columnOrder,
     },
     onColumnSizingChange: handleColumnSizingChange,
+    onColumnOrderChange: handleColumnOrderChange,
   });
 
   const { rows } = table.getRowModel();
@@ -188,7 +288,7 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({
   // Create virtualizer
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () => containerRef.current,
     // Estimated row height in pixels
     estimateSize: () => 28,
     // Number of items to render outside visible area
@@ -198,8 +298,9 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
+  // Render the grid
   return (
-    <div ref={parentRef} className={clsx(className, styles.container)}>
+    <div ref={containerRef} className={clsx(className, styles.container)}>
       <table className={styles.table}>
         <thead className={styles.thead}>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -212,16 +313,34 @@ export const TranscriptsList: FC<TranscriptsListProps> = ({
                     key={header.id}
                     className={clsx(
                       styles.headerCell,
-                      align === "center" && styles.headerCellCenter
+                      align === "center" && styles.headerCellCenter,
+                      draggedColumn === header.column.id &&
+                        styles.headerCellDragging,
+                      dragOverColumn === header.column.id &&
+                        dropPosition === "left" &&
+                        styles.headerCellDragOverLeft,
+                      dragOverColumn === header.column.id &&
+                        dropPosition === "right" &&
+                        styles.headerCellDragOverRight
                     )}
                     style={{ width: header.getSize() }}
+                    onDragOver={(e) => handleDragOver(e, header.column.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, header.column.id)}
                   >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                    <div
+                      className={styles.headerContent}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, header.column.id)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </div>
                     <div
                       className={clsx(
                         styles.resizer,

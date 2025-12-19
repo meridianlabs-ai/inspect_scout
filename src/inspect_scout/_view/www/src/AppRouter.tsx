@@ -25,8 +25,6 @@ import { getEmbeddedScanState } from "./utils/embeddedState";
 // Create a layout component that handles embedded state and tracks route changes
 const AppLayout = () => {
   const navigate = useNavigate();
-  const setResultsDir = useStore((state) => state.setResultsDir);
-  const resultsDir = useStore((state) => state.resultsDir);
   const selectedScanner = useStore((state) => state.selectedScanner);
   const setSingleFileMode = useStore((state) => state.setSingleFileMode);
   const hasInitializedEmbeddedData = useStore(
@@ -45,8 +43,7 @@ const AppLayout = () => {
     (state) => state.setHasInitializedRouting
   );
 
-  const hasRestoredState =
-    resultsDir !== undefined && selectedScanner !== undefined;
+  const hasRestoredState = selectedScanner !== undefined;
 
   useEffect(() => {
     if (hasInitializedEmbeddedData) {
@@ -56,10 +53,9 @@ const AppLayout = () => {
     // Check for embedded state on initial load
     const embeddedState = getEmbeddedScanState();
     if (embeddedState && !hasRestoredState) {
-      const { dir, scan, scanner } = embeddedState;
+      const { scan, scanner } = embeddedState;
 
       // Set the results directory in the store
-      setResultsDir(dir);
       setSingleFileMode(true);
       if (scanner) {
         setSelectedScanner(scanner);
@@ -75,7 +71,6 @@ const AppLayout = () => {
     hasInitializedEmbeddedData,
     setSingleFileMode,
     setHasInitializedEmbeddedData,
-    setResultsDir,
     setSelectedScanner,
     hasRestoredState,
   ]);

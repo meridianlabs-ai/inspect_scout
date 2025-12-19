@@ -19,7 +19,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({ resultData }) => {
     resultData && (
       <div className={clsx(styles.container, "text-size-base")}>
         <ResultSidebar resultData={resultData} />
-        <ResultBody resultData={resultData} inputData={dfInput} />
+        <ResultBody resultData={resultData} inputData={dfInput.data} />
       </div>
     )
   );

@@ -58,6 +58,7 @@ RestScanStatus: TypeAlias = RecorderStatus
 class ScansRestResponse(BaseModel):
     """Response containing list of scans from a results directory."""
 
+    # TODO: Alias results_dir to something less Pythonic and more RESTy like results-dir?
     results_dir: str = Field(
         description="Path to the results directory containing scans.",
         examples=["/path/to/results"],

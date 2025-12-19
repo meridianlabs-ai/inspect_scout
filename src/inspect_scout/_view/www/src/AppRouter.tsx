@@ -11,6 +11,7 @@ import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
+import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
@@ -21,6 +22,7 @@ import {
   getRelativePathFromParams,
   parseScanResultPath,
   kTranscriptsRouteUrlPattern,
+  kTranscriptDetailRouteUrlPattern,
 } from "./router/url";
 import { useStore } from "./state/store";
 import { getEmbeddedScanState } from "./utils/embeddedState";
@@ -192,6 +194,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             path: kTranscriptsRouteUrlPattern,
             element: <TranscriptsPanel />,
+          },
+          {
+            path: kTranscriptDetailRouteUrlPattern,
+            element: <TranscriptPanel />,
           },
         ],
       },

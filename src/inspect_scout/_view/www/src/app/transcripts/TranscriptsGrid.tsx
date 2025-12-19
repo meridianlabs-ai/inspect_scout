@@ -22,7 +22,9 @@ import {
   KeyboardEvent,
   MouseEvent,
 } from "react";
+import { useNavigate } from "react-router-dom";
 
+import { transcriptRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types";
 import { printArray } from "../../utils/array";
@@ -75,6 +77,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Table state
   const columnSizing = useStore(
@@ -396,14 +399,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         }
       } else {
         // Normal click: Navigate to transcript
-        console.log("Navigate to transcript_id:", rowId);
-        setTableState((prev) => ({
-          ...prev,
-          rowSelection: { [rowId]: true },
-        }));
+        void navigate(transcriptRoute(rowId));
       }
     },
-    [rows, rowSelection, setTableState]
+    [rows, rowSelection, setTableState, navigate]
   );
 
   // Keyboard navigation handler
@@ -451,7 +450,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             const row = rows[focusedIndex];
             if (row) {
               // Navigate to transcript
-              console.log("Navigate to transcript_id:", row.id);
+              void navigate(transcriptRoute(row.id));
             }
           }
           return;
@@ -553,7 +552,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         }
       }
     },
-    [rows, focusedRowId, rowSelection, setTableState]
+    [rows, focusedRowId, rowSelection, setTableState, navigate]
   );
 
   // Create virtualizer

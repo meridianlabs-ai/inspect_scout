@@ -98,7 +98,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             snapshot: Snapshot info. This is a mapping of transcript_id => filename
                 which we can use to avoid crawling.
         """
-        super().__init__(location, query.where if query is not None else None)
+        super().__init__(location)
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
         self._query = query

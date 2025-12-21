@@ -625,7 +625,7 @@ class Condition:
         return core_schema.no_info_plain_validator_function(
             cls._pydantic_validate,
             serialization=core_schema.plain_serializer_function_ser_schema(
-                lambda x: x.model_dump(),
+                cls.model_dump,  # Use method reference instead of lambda to avoid closure
                 info_arg=False,
             ),
         )

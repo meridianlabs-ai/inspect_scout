@@ -45,7 +45,9 @@ def _compute_scans_etag(scans_location: str) -> str | None:
             for d in scans_dir.rglob("scan_id=*")
             if d.is_dir() and (d / "scan_summary.json").exists()
         )
-        return hashlib.md5(f"{API_VERSION}:{mtimes}".encode()).hexdigest()
+        return hashlib.md5(
+            f"{API_VERSION}:{scans_location}:{mtimes}".encode()
+        ).hexdigest()
     except Exception:
         return None
 

@@ -46,11 +46,10 @@ def test_scan_with_simple_where_clause() -> None:
 
         # Verify the condition structure
         condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "simple"
-        assert dumped["column"] == "task_set"
-        assert dumped["operator"] == "EQ"
-        assert dumped["value"] == "popularity"
+        assert condition.is_compound is False
+        assert condition.left == "task_set"
+        assert condition.operator.name == "EQ"
+        assert condition.right == "popularity"
 
 
 def test_scan_with_compound_where_clause() -> None:
@@ -78,15 +77,18 @@ def test_scan_with_compound_where_clause() -> None:
 
         # Verify the compound condition structure
         condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "compound"
-        assert dumped["operator"] == "OR"
-        assert dumped["left"]["type"] == "simple"
-        assert dumped["left"]["column"] == "task_set"
-        assert dumped["left"]["value"] == "popularity"
-        assert dumped["right"]["type"] == "simple"
-        assert dumped["right"]["column"] == "task_set"
-        assert dumped["right"]["value"] == "theory-of-mind"
+        assert condition.is_compound is True
+        assert condition.operator.name == "OR"
+        # Check left operand
+        assert isinstance(condition.left, Condition)
+        assert condition.left.is_compound is False
+        assert condition.left.left == "task_set"
+        assert condition.left.right == "popularity"
+        # Check right operand
+        assert isinstance(condition.right, Condition)
+        assert condition.right.is_compound is False
+        assert condition.right.left == "task_set"
+        assert condition.right.right == "theory-of-mind"
 
 
 def test_scan_with_in_where_clause() -> None:
@@ -114,11 +116,10 @@ def test_scan_with_in_where_clause() -> None:
 
         # Verify the IN condition structure
         condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "simple"
-        assert dumped["column"] == "task_set"
-        assert dumped["operator"] == "IN"
-        assert dumped["value"] == ["popularity", "security-guide"]
+        assert condition.is_compound is False
+        assert condition.left == "task_set"
+        assert condition.operator.name == "IN"
+        assert condition.right == ["popularity", "security-guide"]
 
 
 def test_scan_with_and_where_clause() -> None:
@@ -146,9 +147,8 @@ def test_scan_with_and_where_clause() -> None:
 
         # Verify the AND condition structure
         condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "compound"
-        assert dumped["operator"] == "AND"
+        assert condition.is_compound is True
+        assert condition.operator.name == "AND"
 
 
 def test_where_clause_roundtrip() -> None:
@@ -248,11 +248,10 @@ def test_where_clause_with_comparison_operators() -> None:
 
         # Verify the condition structure
         condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "simple"
-        assert dumped["column"] == "score"
-        assert dumped["operator"] == "GT"
-        assert dumped["value"] == 0.5
+        assert condition.is_compound is False
+        assert condition.left == "score"
+        assert condition.operator.name == "GT"
+        assert condition.right == 0.5
 
 
 def test_where_clause_preserves_sql_generation() -> None:

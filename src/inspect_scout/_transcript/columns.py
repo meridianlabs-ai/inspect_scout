@@ -24,16 +24,10 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel, Field, model_serializer, model_validator
+from pydantic import BaseModel, Field
 
 # Scalar values that can be used in conditions
 ScalarValue = str | int | float | bool | datetime | date | None
-
-# JSON-serializable scalar (no datetime/date - they become strings)
-JsonScalar = str | int | float | bool | None
-
-# JSON-serializable form (dates become strings, tuples become lists)
-SerializableValue = JsonScalar | list[JsonScalar]
 
 
 class SQLDialect(Enum):
@@ -93,25 +87,20 @@ class Condition(BaseModel):
     is_compound: bool = Field(default=False)
     """True for AND/OR/NOT conditions, False for simple comparisons."""
 
-    params: list[ScalarValue] = Field(default_factory=list)
-    """SQL parameters extracted from the condition for parameterized queries."""
-
-    def model_post_init(self, __context: Any) -> None:
-        """Compute params after model initialization."""
-        if not self.is_compound and self.operator not in (
-            Operator.IS_NULL,
-            Operator.IS_NOT_NULL,
-        ):
-            if self.operator in (Operator.IN, Operator.NOT_IN):
-                if isinstance(self.right, list):
-                    self.params = list(self.right)
-            elif self.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
-                if isinstance(self.right, tuple) and len(self.right) >= 2:
-                    self.params = [self.right[0], self.right[1]]
-            elif self.right is not None and not isinstance(
-                self.right, (Condition, list, tuple)
-            ):
-                self.params = [self.right]
+    @property
+    def params(self) -> list[ScalarValue]:
+        """SQL parameters extracted from the condition for parameterized queries."""
+        if self.is_compound or self.operator in (Operator.IS_NULL, Operator.IS_NOT_NULL):
+            return []
+        if self.operator in (Operator.IN, Operator.NOT_IN):
+            return list(self.right) if isinstance(self.right, list) else []
+        if self.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
+            if isinstance(self.right, tuple) and len(self.right) >= 2:
+                return [self.right[0], self.right[1]]
+            return []
+        if self.right is not None and not isinstance(self.right, (Condition, list, tuple)):
+            return [self.right]
+        return []
 
     def __and__(self, other: Condition) -> Condition:
         """Combine conditions with AND."""
@@ -543,111 +532,6 @@ class Condition(BaseModel):
             return ", ".join([f"${offset + i + 1}" for i in range(count)])
         else:  # SQLite and DuckDB use ?
             return ", ".join(["?" for _ in range(count)])
-
-    def _serialize_value(self, value: Any) -> JsonScalar | list[JsonScalar]:
-        """Convert value to JSON-serializable form.
-
-        Handles date/datetime → ISO string, tuple → list.
-        """
-        if isinstance(value, datetime):
-            return value.isoformat()
-        if isinstance(value, date):
-            return value.isoformat()
-        if isinstance(value, tuple):
-            return [self._serialize_scalar(v) for v in value]
-        if isinstance(value, list):
-            return [self._serialize_scalar(v) for v in value]
-        # str, int, float, bool, None
-        return self._serialize_scalar(value)
-
-    def _serialize_scalar(self, value: Any) -> JsonScalar:
-        """Convert a scalar value to JSON-serializable form."""
-        if isinstance(value, datetime):
-            return value.isoformat()
-        if isinstance(value, date):
-            return value.isoformat()
-        if isinstance(value, (str, int, float, bool)) or value is None:
-            return value
-        # Fallback for unexpected types - convert to string
-        return str(value)
-
-    @model_serializer
-    def serialize(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict.
-
-        Returns:
-            Dict representation that can be passed to model_validate() to reconstruct.
-        """
-        if self.is_compound:
-            assert isinstance(self.left, Condition)
-            right_dump = None
-            if isinstance(self.right, Condition):
-                right_dump = self.right.model_dump()
-            return {
-                "type": "compound",
-                "operator": self.operator.name if self.operator else None,
-                "left": self.left.model_dump(),
-                "right": right_dump,
-            }
-        else:
-            return {
-                "type": "simple",
-                "column": self.left,
-                "operator": self.operator.name if self.operator else None,
-                "value": self._serialize_value(self.right),
-            }
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_from_dict(cls, data: Any) -> Any:
-        """Deserialize from custom dict format.
-
-        Converts the custom serialization format (with "type", "column", "value" keys)
-        to the native Pydantic field format.
-        """
-        if not isinstance(data, dict):
-            return data
-
-        # If already in native format (no "type" key), pass through
-        if "type" not in data:
-            return data
-
-        # Convert from custom format to native format
-        if data.get("type") == "compound":
-            # Recursively convert nested conditions
-            left_data = data["left"]
-            left = (
-                cls.model_validate(left_data)
-                if isinstance(left_data, dict)
-                else left_data
-            )
-            right_data = data.get("right")
-            right = (
-                cls.model_validate(right_data)
-                if isinstance(right_data, dict)
-                else right_data
-            )
-            operator_name = data.get("operator")
-            logical_op = LogicalOperator[operator_name] if operator_name else None
-            return {
-                "left": left,
-                "operator": logical_op,
-                "right": right,
-                "is_compound": True,
-            }
-        else:
-            value = data.get("value")
-            operator_name = data.get("operator")
-            # Convert list back to tuple for BETWEEN operators
-            if operator_name in ("BETWEEN", "NOT_BETWEEN") and isinstance(value, list):
-                value = tuple(value)
-            comparison_op = Operator[operator_name] if operator_name else None
-            return {
-                "left": data.get("column"),
-                "operator": comparison_op,
-                "right": value,
-                "is_compound": False,
-            }
 
 
 # Rebuild model to resolve forward references for recursive type

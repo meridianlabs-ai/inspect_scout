@@ -83,3 +83,26 @@ export const useServerScanDataframeInput = (
     staleTime: Infinity,
   });
 };
+
+export const useServerTranscriptsDir = (): AsyncData<string> => {
+  const api = useApi();
+
+  return useAsyncDataFromQuery({
+    queryKey: ["transcripts-dir"],
+    queryFn: async () => await api.getTranscriptsDir(),
+    staleTime: 10000,
+  });
+};
+
+export const useServerTranscripts = (
+  location: string | undefined
+): AsyncData<unknown[]> => {
+  const api = useApi();
+
+  return useAsyncDataFromQuery({
+    queryKey: ["transcripts", location],
+    queryFn: async () => await api.getTranscripts(location),
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
+  });
+};

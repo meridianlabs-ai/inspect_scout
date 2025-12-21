@@ -545,9 +545,7 @@ async def _scan_async_inner(
                 # Child processes don't need conditions (they read by transcript_id),
                 # and excluding them prevents cloudpickle from serializing the
                 # recursive Condition class which causes pytest hangs on Linux CI.
-                snapshot_for_workers = snapshot.model_copy(
-                    update={"conditions": None}
-                )
+                snapshot_for_workers = snapshot.model_copy(update={"conditions": None})
 
                 # Clone transcripts and clear its conditions to prevent cloudpickle
                 # from serializing Condition via the captured object.
@@ -557,9 +555,11 @@ async def _scan_async_inner(
                 async def _transcripts_reader() -> TranscriptsReader:
                     global _process_transcripts_reader
                     if _process_transcripts_reader is None:
-                        _process_transcripts_reader = await transcripts_for_workers.reader(
-                            snapshot_for_workers
-                        ).__aenter__()
+                        _process_transcripts_reader = (
+                            await transcripts_for_workers.reader(
+                                snapshot_for_workers
+                            ).__aenter__()
+                        )
                     return _process_transcripts_reader
 
                 async def _strategy_completed() -> None:

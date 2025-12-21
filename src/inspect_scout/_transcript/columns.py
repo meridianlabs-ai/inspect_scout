@@ -539,11 +539,8 @@ class Condition(BaseModel):
             return ", ".join(["?" for _ in range(count)])
 
 
-# Rebuild model to resolve forward references for recursive type.
-# Guard to prevent redundant rebuilds in multiprocessing child processes
-# where the module is reimported after cloudpickle deserialization.
-if not getattr(Condition, "__pydantic_complete__", False):
-    Condition.model_rebuild()
+# Rebuild model to resolve forward references for recursive type
+Condition.model_rebuild()
 
 
 class Column:

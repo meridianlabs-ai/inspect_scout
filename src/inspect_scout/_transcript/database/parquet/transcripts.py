@@ -292,7 +292,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 transcript_source_type = row_dict.get("source_type")
                 transcript_source_id = row_dict.get("source_id")
                 transcript_source_uri = row_dict.get("source_uri")
-                transcript_filename = row_dict.get("filename")
+                transcript_filename = row_dict["filename"]
                 transcript_date = row_dict.get("date")
                 transcript_task_set = row_dict.get("task_set")
                 transcript_task_id = row_dict.get("task_id")
@@ -322,11 +322,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     for col, value in row_dict.items()
                     if col not in RESERVED_COLUMNS and value is not None
                 }
-                metadata = LazyJSONDict(metadata_dict)
+                lazy_metadata = LazyJSONDict(metadata_dict)
 
-                # Use model_construct to bypass Pydantic validation which would
-                # convert LazyJSONDict to a plain dict, defeating lazy parsing
-                yield ParquetTranscriptInfo.model_construct(
+                # Use normal constructor for type validation/coercion, then inject
+                # LazyJSONDict for metadata for lazy parsing behavior
+                info = ParquetTranscriptInfo(
                     transcript_id=transcript_id,
                     source_type=transcript_source_type,
                     source_id=transcript_source_id,
@@ -344,9 +344,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     total_tokens=transcript_total_tokens,
                     error=transcript_error,
                     limit=transcript_limit,
-                    metadata=metadata,
+                    metadata={},
                     filename=transcript_filename,
                 )
+                object.__setattr__(info, "metadata", lazy_metadata)
+                yield info
 
     @override
     async def transcript_ids(

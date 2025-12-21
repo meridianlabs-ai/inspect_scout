@@ -27,20 +27,16 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 export const ScanResultsBody: FC<{
   selectedScan: Status;
+  scannerId: string;
   selectedScanner: {
-    name: string | undefined;
     columnTable: ColumnTable | undefined;
     isLoading: boolean;
     error: string | undefined;
   };
 }> = ({
+  scannerId,
   selectedScan,
-  selectedScanner: {
-    columnTable,
-    error,
-    isLoading: isLoadingData,
-    name: selectedScanner,
-  },
+  selectedScanner: { columnTable, error, isLoading: isLoadingData },
 }) => {
   const selectedResultsView =
     useStore((state) => state.selectedResultsView) || kSegmentList;
@@ -74,7 +70,7 @@ export const ScanResultsBody: FC<{
           {selectedResultsView === kSegmentList && (
             <ScanResultsList
               columnTable={columnTable}
-              id={`scan-list-${selectedScanner}`}
+              id={`scan-list-${scannerId}`}
               selectedScan={selectedScan}
             />
           )}

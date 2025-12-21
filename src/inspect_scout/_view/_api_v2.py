@@ -170,18 +170,17 @@ def v2_api_app(
         )
 
     @app.get(
-        "/scans/{scan}/{scanner}/{uuid}/input",
-        summary="Get scanner input",
-        description="Returns the original input text for a specific scanner result. "
-        "The input type is returned in the X-Input-Type response header.",
+        "/scans/{scan}",
+        response_model=RestScanStatus,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get scan status",
+        description="Returns detailed status and metadata for a single scan.",
     )
-    async def scanner_input(
+    async def scan(
         request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
-        scanner: str = Path(description="Scanner name"),
-        uuid: str = Path(description="UUID of the specific result row"),
-    ) -> Response:
-        """Retrieve original input text for a scanner result."""
+    ) -> RestScanStatus:
+        """Get detailed status for a single scan."""
         scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
@@ -192,26 +191,24 @@ def v2_api_app(
 
         await _validate_read(request, scan_path)
 
-        result = await scan_results_arrow_async(str(scan_path))
-        if scanner not in result.scanners:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{scanner}' not found in scan results",
+        # read the results and return
+        recorder_status_with_df = await scan_results_df_async(
+            str(scan_path), rows="transcripts"
+        )
+
+        # clear the transcript data
+        if recorder_status_with_df.spec.transcripts:
+            recorder_status_with_df.spec.transcripts = (
+                recorder_status_with_df.spec.transcripts.model_copy(
+                    update={"data": None}
+                )
             )
 
-        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
-        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
-
-        # Return raw input as body with inputType in header (more efficient for large text)
-        return Response(
-            content=input_value,
-            media_type="text/plain",
-            headers={"X-Input-Type": input_type or ""},
-        )
+        return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
 
     @app.get(
         "/scans/{scan}/{scanner}",
-        summary="Get scanner dataframe",
+        summary="Get scanner dataframe containing results for all transcripts",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
         "Excludes input column for efficiency; use the input endpoint for input text.",
     )
@@ -279,17 +276,18 @@ def v2_api_app(
         )
 
     @app.get(
-        "/scans/{scan}",
-        response_model=RestScanStatus,
-        response_class=InspectPydanticJSONResponse,
-        summary="Get scan status",
-        description="Returns detailed status and metadata for a single scan.",
+        "/scans/{scan}/{scanner}/{uuid}/input",
+        summary="Get scanner input for a specific transcript",
+        description="Returns the original input text for a specific scanner result. "
+        "The input type is returned in the X-Input-Type response header.",
     )
-    async def scan(
+    async def scanner_input(
         request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
-    ) -> RestScanStatus:
-        """Get detailed status for a single scan."""
+        scanner: str = Path(description="Scanner name"),
+        uuid: str = Path(description="UUID of the specific result row"),
+    ) -> Response:
+        """Retrieve original input text for a scanner result."""
         scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
@@ -300,19 +298,21 @@ def v2_api_app(
 
         await _validate_read(request, scan_path)
 
-        # read the results and return
-        recorder_status_with_df = await scan_results_df_async(
-            str(scan_path), rows="transcripts"
-        )
-
-        # clear the transcript data
-        if recorder_status_with_df.spec.transcripts:
-            recorder_status_with_df.spec.transcripts = (
-                recorder_status_with_df.spec.transcripts.model_copy(
-                    update={"data": None}
-                )
+        result = await scan_results_arrow_async(str(scan_path))
+        if scanner not in result.scanners:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
+        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
+        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
+
+        # Return raw input as body with inputType in header (more efficient for large text)
+        return Response(
+            content=input_value,
+            media_type="text/plain",
+            headers={"X-Input-Type": input_type or ""},
+        )
 
     return app

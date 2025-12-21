@@ -7,11 +7,8 @@ import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Navbar } from "../components/Navbar";
-import {
-  useServerScan,
-  useServerScanDataframe,
-  useServerScans,
-} from "../server/hooks";
+import { useSelectedScan } from "../hooks";
+import { useServerScans } from "../server/hooks";
 
 import styles from "./ScansPanel.module.css";
 import { ScansPanelBody } from "./ScansPanelBody";
@@ -19,11 +16,11 @@ import { ScansPanelTitle } from "./ScansPanelTitle";
 
 export const ScansPanel: React.FC = () => {
   // Load server data
-  useServerScans();
-  useServerScan();
-  useServerScanDataframe();
-  const loading = useStore((state) => state.loading);
-  const resultsDir = useStore((state) => state.resultsDir);
+  const { loading: scansLoading, data: { results_dir: resultsDir } = {} } =
+    useServerScans();
+  const { loading: scanLoading, data: selectedScan } = useSelectedScan();
+
+  const loading = scansLoading || scanLoading;
 
   // Clear scan state from the store on mount
   const clearScanState = useStore((state) => state.clearScanState);
@@ -40,9 +37,6 @@ export const ScansPanel: React.FC = () => {
       setSelectedScanner(scannerParam);
     }
   }, [searchParams, setSelectedScanner]);
-
-  // Render only if we have selected results
-  const selectedScan = useStore((state) => state.selectedScanStatus);
   return (
     <div className={clsx(styles.root)}>
       <Navbar resultsDir={resultsDir} />

@@ -49,7 +49,11 @@ export const apiScoutServer = (
       if (resultsDir) {
         query += `&results_dir=${encodeURIComponent(resultsDir)}`;
       }
-      return (await requestApi.fetchType<Scans>("GET", query)).parsed;
+      return (
+        await requestApi.fetchType<Scans>("GET", query, {
+          enableBrowserCache: true,
+        })
+      ).parsed;
     },
     getScannerDataframe: async (
       scanLocation: string,

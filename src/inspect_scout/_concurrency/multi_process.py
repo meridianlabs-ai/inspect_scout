@@ -375,6 +375,19 @@ def multi_process_strategy(
                     # Expected during cleanup - Manager connections already closed
                     print_diagnostics("MP Main", f"Manager shutdown (expected): {e}")
 
+                # Force-kill Manager process if still alive (Linux may not clean up properly)
+                # The Manager's internal _process attribute holds the server process
+                if hasattr(manager, "_process") and manager._process is not None:
+                    mgr_proc = manager._process
+                    if mgr_proc.is_alive():
+                        print_diagnostics("MP Main", "Manager still alive, terminating")
+                        mgr_proc.terminate()
+                        mgr_proc.join(timeout=1.0)
+                        if mgr_proc.is_alive():
+                            print_diagnostics("MP Main", "Manager still alive, killing")
+                            mgr_proc.kill()
+                            mgr_proc.join(timeout=1.0)
+
         finally:
             signal.signal(signal.SIGINT, original_sigint_handler)
             _active = False

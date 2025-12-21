@@ -52,7 +52,7 @@ class TestSimpleConditionRoundTrip:
         original = c.error == None  # noqa: E711
         serialized = original.model_dump()
 
-        assert original.operator.name == "IS_NULL"
+        assert original.operator is not None and original.operator.name == "IS_NULL"
         assert serialized["right"] is None
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
@@ -61,7 +61,7 @@ class TestSimpleConditionRoundTrip:
         original = c.status != "failed"
         serialized = original.model_dump()
 
-        assert original.operator.name == "NE"
+        assert original.operator is not None and original.operator.name == "NE"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -69,7 +69,7 @@ class TestSimpleConditionRoundTrip:
         original = c.score < 0.5
         serialized = original.model_dump()
 
-        assert original.operator.name == "LT"
+        assert original.operator is not None and original.operator.name == "LT"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -77,7 +77,7 @@ class TestSimpleConditionRoundTrip:
         original = c.score <= 0.5
         serialized = original.model_dump()
 
-        assert original.operator.name == "LE"
+        assert original.operator is not None and original.operator.name == "LE"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -85,7 +85,7 @@ class TestSimpleConditionRoundTrip:
         original = c.score > 0.8
         serialized = original.model_dump()
 
-        assert original.operator.name == "GT"
+        assert original.operator is not None and original.operator.name == "GT"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -93,7 +93,7 @@ class TestSimpleConditionRoundTrip:
         original = c.score >= 0.8
         serialized = original.model_dump()
 
-        assert original.operator.name == "GE"
+        assert original.operator is not None and original.operator.name == "GE"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -101,7 +101,7 @@ class TestSimpleConditionRoundTrip:
         original = c.model.in_(["gpt-4", "gpt-3.5", "claude-3"])
         serialized = original.model_dump()
 
-        assert original.operator.name == "IN"
+        assert original.operator is not None and original.operator.name == "IN"
         assert serialized["right"] == ["gpt-4", "gpt-3.5", "claude-3"]
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
@@ -110,7 +110,7 @@ class TestSimpleConditionRoundTrip:
         original = c.status.not_in(["error", "timeout"])
         serialized = original.model_dump()
 
-        assert original.operator.name == "NOT_IN"
+        assert original.operator is not None and original.operator.name == "NOT_IN"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -118,7 +118,7 @@ class TestSimpleConditionRoundTrip:
         original = c.model.like("gpt-%")
         serialized = original.model_dump()
 
-        assert original.operator.name == "LIKE"
+        assert original.operator is not None and original.operator.name == "LIKE"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -126,7 +126,7 @@ class TestSimpleConditionRoundTrip:
         original = c.model.not_like("test-%")
         serialized = original.model_dump()
 
-        assert original.operator.name == "NOT_LIKE"
+        assert original.operator is not None and original.operator.name == "NOT_LIKE"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -134,7 +134,7 @@ class TestSimpleConditionRoundTrip:
         original = c.model.ilike("%GPT%")
         serialized = original.model_dump()
 
-        assert original.operator.name == "ILIKE"
+        assert original.operator is not None and original.operator.name == "ILIKE"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -142,7 +142,7 @@ class TestSimpleConditionRoundTrip:
         original = c.error.is_null()
         serialized = original.model_dump()
 
-        assert original.operator.name == "IS_NULL"
+        assert original.operator is not None and original.operator.name == "IS_NULL"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -150,7 +150,7 @@ class TestSimpleConditionRoundTrip:
         original = c.error.is_not_null()
         serialized = original.model_dump()
 
-        assert original.operator.name == "IS_NOT_NULL"
+        assert original.operator is not None and original.operator.name == "IS_NOT_NULL"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -158,7 +158,7 @@ class TestSimpleConditionRoundTrip:
         original = c.score.between(0.5, 0.9)
         serialized = original.model_dump()
 
-        assert original.operator.name == "BETWEEN"
+        assert original.operator is not None and original.operator.name == "BETWEEN"
         assert serialized["right"] == (0.5, 0.9)
 
         restored = Condition.model_validate(serialized)
@@ -168,7 +168,7 @@ class TestSimpleConditionRoundTrip:
         original = c.score.not_between(0.0, 0.3)
         serialized = original.model_dump()
 
-        assert original.operator.name == "NOT_BETWEEN"
+        assert original.operator is not None and original.operator.name == "NOT_BETWEEN"
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
 
@@ -181,7 +181,7 @@ class TestCompoundConditionRoundTrip:
         serialized = original.model_dump()
 
         assert serialized["is_compound"] is True
-        assert original.operator.name == "AND"
+        assert original.operator is not None and original.operator.name == "AND"
         assert serialized["left"]["is_compound"] is False
         assert serialized["right"]["is_compound"] is False
 
@@ -193,7 +193,7 @@ class TestCompoundConditionRoundTrip:
         serialized = original.model_dump()
 
         assert serialized["is_compound"] is True
-        assert original.operator.name == "OR"
+        assert original.operator is not None and original.operator.name == "OR"
 
         restored = Condition.model_validate(serialized)
         assert original.to_sql("sqlite") == restored.to_sql("sqlite")
@@ -203,7 +203,7 @@ class TestCompoundConditionRoundTrip:
         serialized = original.model_dump()
 
         assert serialized["is_compound"] is True
-        assert original.operator.name == "NOT"
+        assert original.operator is not None and original.operator.name == "NOT"
         assert serialized["right"] is None
 
         restored = Condition.model_validate(serialized)
@@ -216,7 +216,7 @@ class TestCompoundConditionRoundTrip:
         serialized = original.model_dump()
 
         assert serialized["is_compound"] is True
-        assert original.operator.name == "OR"
+        assert original.operator is not None and original.operator.name == "OR"
         assert serialized["left"]["is_compound"] is True
         assert serialized["right"]["is_compound"] is True
 

@@ -90,7 +90,10 @@ class Condition(BaseModel):
     @property
     def params(self) -> list[ScalarValue]:
         """SQL parameters extracted from the condition for parameterized queries."""
-        if self.is_compound or self.operator in (Operator.IS_NULL, Operator.IS_NOT_NULL):
+        if self.is_compound or self.operator in (
+            Operator.IS_NULL,
+            Operator.IS_NOT_NULL,
+        ):
             return []
         if self.operator in (Operator.IN, Operator.NOT_IN):
             return list(self.right) if isinstance(self.right, list) else []
@@ -98,7 +101,9 @@ class Condition(BaseModel):
             if isinstance(self.right, tuple) and len(self.right) >= 2:
                 return [self.right[0], self.right[1]]
             return []
-        if self.right is not None and not isinstance(self.right, (Condition, list, tuple)):
+        if self.right is not None and not isinstance(
+            self.right, (Condition, list, tuple)
+        ):
             return [self.right]
         return []
 

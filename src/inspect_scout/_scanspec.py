@@ -93,7 +93,7 @@ class ScanTranscripts(BaseModel):
     location: str | None = Field(default=None)
     """Location of transcript collection (e.g. database location)."""
 
-    where: list[Condition] | None = Field(default=None)
+    conditions: list[Condition] | None = Field(default=None)
     """Selection criteria for transcripts."""
 
     transcript_ids: dict[str, str | None] = Field(default_factory=dict)

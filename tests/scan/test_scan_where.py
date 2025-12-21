@@ -41,14 +41,14 @@ def test_scan_with_simple_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the condition structure
-        condition = status.spec.transcripts.where[0]
+        condition = status.spec.transcripts.conditions[0]
         assert condition.is_compound is False
         assert condition.left == "task_set"
-        assert condition.operator.name == "EQ"
+        assert condition.operator is not None and condition.operator.name == "EQ"
         assert condition.right == "popularity"
 
 
@@ -72,13 +72,13 @@ def test_scan_with_compound_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the compound condition structure
-        condition = status.spec.transcripts.where[0]
+        condition = status.spec.transcripts.conditions[0]
         assert condition.is_compound is True
-        assert condition.operator.name == "OR"
+        assert condition.operator is not None and condition.operator.name == "OR"
         # Check left operand
         assert isinstance(condition.left, Condition)
         assert condition.left.is_compound is False
@@ -111,14 +111,14 @@ def test_scan_with_in_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the IN condition structure
-        condition = status.spec.transcripts.where[0]
+        condition = status.spec.transcripts.conditions[0]
         assert condition.is_compound is False
         assert condition.left == "task_set"
-        assert condition.operator.name == "IN"
+        assert condition.operator is not None and condition.operator.name == "IN"
         assert condition.right == ["popularity", "security-guide"]
 
 
@@ -142,13 +142,13 @@ def test_scan_with_and_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the AND condition structure
-        condition = status.spec.transcripts.where[0]
+        condition = status.spec.transcripts.conditions[0]
         assert condition.is_compound is True
-        assert condition.operator.name == "AND"
+        assert condition.operator is not None and condition.operator.name == "AND"
 
 
 def test_where_clause_roundtrip() -> None:
@@ -197,9 +197,9 @@ def test_scan_with_multiple_where_calls() -> None:
 
         # Verify where clauses were stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
+        assert status.spec.transcripts.conditions is not None
         # Multiple where() calls should accumulate
-        assert len(status.spec.transcripts.where) >= 1
+        assert len(status.spec.transcripts.conditions) >= 1
 
 
 def test_scan_without_where_clause() -> None:
@@ -221,7 +221,7 @@ def test_scan_without_where_clause() -> None:
         # Verify transcripts are present but where is None or empty
         assert status.spec.transcripts is not None
         # where should be None or empty list when no filter applied
-        where = status.spec.transcripts.where
+        where = status.spec.transcripts.conditions
         assert where is None or len(where) == 0
 
 
@@ -243,14 +243,14 @@ def test_where_clause_with_comparison_operators() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the condition structure
-        condition = status.spec.transcripts.where[0]
+        condition = status.spec.transcripts.conditions[0]
         assert condition.is_compound is False
         assert condition.left == "score"
-        assert condition.operator.name == "GT"
+        assert condition.operator is not None and condition.operator.name == "GT"
         assert condition.right == 0.5
 
 
@@ -276,8 +276,8 @@ def test_where_clause_preserves_sql_generation() -> None:
 
         # Get the restored condition
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        restored_condition = status.spec.transcripts.where[0]
+        assert status.spec.transcripts.conditions is not None
+        restored_condition = status.spec.transcripts.conditions[0]
 
         # Verify SQL generation matches
         restored_sql = restored_condition.to_sql("sqlite")

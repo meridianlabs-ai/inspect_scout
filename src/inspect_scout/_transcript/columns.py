@@ -134,6 +134,17 @@ class Condition(BaseModel):
             is_compound=True,
         )
 
+    def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
+        """Custom pickle protocol to avoid serializing Pydantic schema.
+
+        Returns a tuple of (callable, args) where callable(*args)
+        reconstructs the object. By using an external module-level function,
+        cloudpickle only serializes the dict data (~643 bytes) instead of
+        the entire Pydantic class schema (~6720 bytes). This prevents hangs
+        on Linux CI caused by recursive schema serialization.
+        """
+        return (_reconstruct_condition, (self.model_dump(),))
+
     def to_sql(
         self,
         dialect: Union[
@@ -537,6 +548,15 @@ class Condition(BaseModel):
             return ", ".join([f"${offset + i + 1}" for i in range(count)])
         else:  # SQLite and DuckDB use ?
             return ", ".join(["?" for _ in range(count)])
+
+
+def _reconstruct_condition(data: dict[str, Any]) -> Condition:
+    """Reconstruct Condition from dict during unpickling.
+
+    This function must be at module level for pickle to find it.
+    It's used by Condition.__reduce__ to avoid serializing the Pydantic schema.
+    """
+    return Condition.model_validate(data)
 
 
 # Rebuild model to resolve forward references for recursive type

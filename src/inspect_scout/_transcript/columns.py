@@ -760,7 +760,9 @@ class Column:
         """
         if low is None or high is None:
             raise ValueError("NOT BETWEEN operator requires non-None bounds")
-        return Condition(left=self.name, operator=Operator.NOT_BETWEEN, right=(low, high))
+        return Condition(
+            left=self.name, operator=Operator.NOT_BETWEEN, right=(low, high)
+        )
 
 
 class Columns:

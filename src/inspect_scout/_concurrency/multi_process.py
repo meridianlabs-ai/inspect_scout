@@ -356,6 +356,25 @@ def multi_process_strategy(
                         _SHUTDOWN_SENTINEL,
                     )
 
+                # Reset the concurrency system to default state before Manager shutdown.
+                # init_concurrency was called with parent_registry which holds Manager
+                # objects. We must reset it before shutting down the Manager to avoid
+                # leaving global state referencing dead Manager objects.
+                print_diagnostics("MP Main", "Resetting concurrency state")
+                init_concurrency(None)
+
+                # Shutdown the Manager server process to prevent pytest hang.
+                # Must happen AFTER shutdown_subprocesses completes (workers terminated,
+                # queues closed) to avoid race conditions. BrokenPipeError can occur
+                # if Manager objects were already disconnected during subprocess cleanup.
+                print_diagnostics("MP Main", "Shutting down Manager")
+                try:
+                    manager.shutdown()
+                    print_diagnostics("MP Main", "Manager shutdown complete")
+                except (BrokenPipeError, OSError) as e:
+                    # Expected during cleanup - Manager connections already closed
+                    print_diagnostics("MP Main", f"Manager shutdown (expected): {e}")
+
         finally:
             signal.signal(signal.SIGINT, original_sigint_handler)
             _active = False

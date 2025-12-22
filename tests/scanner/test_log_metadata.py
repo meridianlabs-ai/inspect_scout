@@ -483,7 +483,7 @@ async def test_transcripts_complex_filtering(db: EvalLogTranscriptsDB) -> None:
         conditions = [
             ((lc.model == "openai/gpt-4o-mini") & (lc.total_tokens > 50))
             | ((lc.model == "anthropic/claude-sonnet-4-5") & (lc.total_tokens > 500)),
-            lc.solver.is_null(),
+            lc.agent == "generate",
         ]
 
         # Verify results match conditions

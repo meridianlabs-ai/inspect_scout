@@ -904,6 +904,7 @@ def _reports_for_parse_error(
         agent=job.transcript_info.agent,
         agent_args=job.transcript_info.agent_args,
         model=job.transcript_info.model,
+        model_options=job.transcript_info.model_options,
         score=job.transcript_info.score,
         success=job.transcript_info.success,
         total_time=job.transcript_info.total_time,

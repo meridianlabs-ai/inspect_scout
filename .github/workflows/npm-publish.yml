@@ -47,6 +47,11 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: "src/inspect_scout/_view/www/pnpm-lock.yaml"
 
+      - name: Upgrade npm (for Trusted Publishing)
+        run: |
+          npm i -g npm@^11.5.1
+          npm --version    
+          
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

@@ -16,14 +16,6 @@ logger = getLogger(__name__)
 class LogColumns(Columns):
     """Typed column interface for Inspect log transcripts.
 
-    ::: {.callout-note}
-    Note that the `LogColumns` class is available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-    ```python
-    pip install git+https://github.com/meridianlabs-ai/inspect_scout
-    ```
-    :::
-
     Provides typed properties for standard Inspect log columns while
     preserving the ability to access custom fields through the base
     Metadata class methods.

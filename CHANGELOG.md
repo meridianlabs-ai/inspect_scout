@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.3 (22 December 2025)
 
 - Add more standard fields to the [transcript database schema](https://meridianlabs-ai.github.io/inspect_scout/db_schema.html).
 - Add an optional index to transcript database for higher performance queries on very large databases.

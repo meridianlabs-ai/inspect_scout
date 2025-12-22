@@ -113,6 +113,8 @@ export interface TranscriptInfo {
   metadata: TranscriptMetadata;
 
   model?: string;
+  model_options?: string;
+
   score?: Score;
 
   source_id: string;

@@ -61,7 +61,8 @@ class TestMigrateTable:
                 'my_task' AS task_name,
                 '2025-01-01' AS eval_created,
                 'claude-3' AS solver,
-                '{"param": "value"}' AS solver_args
+                '{"param": "value"}' AS solver_args,
+                '{"temp": 0.7}' AS generate_config
         """)
 
         # Verify old columns exist, new columns don't
@@ -78,6 +79,7 @@ class TestMigrateTable:
         assert "date" in columns_after
         assert "agent" in columns_after
         assert "agent_args" in columns_after
+        assert "model_options" in columns_after
 
     def test_migrate_table_skips_existing_new_columns(
         self, conn: duckdb.DuckDBPyConnection
@@ -139,7 +141,8 @@ class TestMigrateTable:
                 'math_task' AS task_name,
                 '2025-06-15' AS eval_created,
                 'gpt-4' AS solver,
-                '{"temp": 0.7}' AS solver_args
+                '{"temp": 0.7}' AS solver_args,
+                '{"max_tokens": 1000}' AS generate_config
         """)
 
         # Run migration
@@ -147,7 +150,7 @@ class TestMigrateTable:
 
         # Query using new column names
         result = conn.execute("""
-            SELECT task_set, date, agent, agent_args
+            SELECT task_set, date, agent, agent_args, model_options
             FROM test_table
             WHERE task_set = 'math_task'
         """).fetchone()
@@ -157,6 +160,7 @@ class TestMigrateTable:
         assert result[1] == "2025-06-15"
         assert result[2] == "gpt-4"
         assert result[3] == '{"temp": 0.7}'
+        assert result[4] == '{"max_tokens": 1000}'
 
     def test_migrate_table_nonexistent_table(
         self, conn: duckdb.DuckDBPyConnection
@@ -182,7 +186,8 @@ class TestMigrateView:
                 'my_task' AS task_name,
                 '2025-01-01' AS eval_created,
                 'claude-3' AS solver,
-                '{"param": "value"}' AS solver_args
+                '{"param": "value"}' AS solver_args,
+                '{"temp": 0.7}' AS generate_config
         """)
         conn.execute("""
             CREATE VIEW test_view AS
@@ -203,6 +208,7 @@ class TestMigrateView:
         assert "date" in columns_after
         assert "agent" in columns_after
         assert "agent_args" in columns_after
+        assert "model_options" in columns_after
 
     def test_migrate_view_skips_existing_new_columns(
         self, conn: duckdb.DuckDBPyConnection
@@ -269,7 +275,8 @@ class TestMigrateView:
                 'math_task' AS task_name,
                 '2025-06-15' AS eval_created,
                 'gpt-4' AS solver,
-                '{"temp": 0.7}' AS solver_args
+                '{"temp": 0.7}' AS solver_args,
+                '{"max_tokens": 1000}' AS generate_config
         """)
         conn.execute("""
             CREATE VIEW test_view AS
@@ -281,7 +288,7 @@ class TestMigrateView:
 
         # Query using new column names
         result = conn.execute("""
-            SELECT task_set, date, agent, agent_args
+            SELECT task_set, date, agent, agent_args, model_options
             FROM test_view
             WHERE task_set = 'math_task'
         """).fetchone()
@@ -291,6 +298,7 @@ class TestMigrateView:
         assert result[1] == "2025-06-15"
         assert result[2] == "gpt-4"
         assert result[3] == '{"temp": 0.7}'
+        assert result[4] == '{"max_tokens": 1000}'
 
     def test_migrate_view_nonexistent_view(
         self, conn: duckdb.DuckDBPyConnection
@@ -347,6 +355,7 @@ class TestColumnMap:
             "eval_created": "date",
             "solver": "agent",
             "solver_args": "agent_args",
+            "generate_config": "model_options",
         }
 
     def test_all_mappings_applied_to_table(
@@ -361,14 +370,15 @@ class TestColumnMap:
                 'task_value' AS task_name,
                 'date_value' AS eval_created,
                 'agent_value' AS solver,
-                'args_value' AS solver_args
+                'args_value' AS solver_args,
+                'config_value' AS generate_config
         """)
 
         migrate_table(conn, "test_table")
 
         # Query using all new column names
         result = conn.execute("""
-            SELECT task_set, date, agent, agent_args
+            SELECT task_set, date, agent, agent_args, model_options
             FROM test_table
         """).fetchone()
 
@@ -377,6 +387,7 @@ class TestColumnMap:
         assert result[1] == "date_value"
         assert result[2] == "agent_value"
         assert result[3] == "args_value"
+        assert result[4] == "config_value"
 
     def test_all_mappings_applied_to_view(
         self, conn: duckdb.DuckDBPyConnection
@@ -390,7 +401,8 @@ class TestColumnMap:
                 'task_value' AS task_name,
                 'date_value' AS eval_created,
                 'agent_value' AS solver,
-                'args_value' AS solver_args
+                'args_value' AS solver_args,
+                'config_value' AS generate_config
         """)
         conn.execute("CREATE VIEW test_view AS SELECT * FROM source_table")
 
@@ -398,7 +410,7 @@ class TestColumnMap:
 
         # Query using all new column names
         result = conn.execute("""
-            SELECT task_set, date, agent, agent_args
+            SELECT task_set, date, agent, agent_args, model_options
             FROM test_view
         """).fetchone()
 
@@ -407,6 +419,7 @@ class TestColumnMap:
         assert result[1] == "date_value"
         assert result[2] == "agent_value"
         assert result[3] == "args_value"
+        assert result[4] == "config_value"
 
 
 # --- Integration Tests with Parquet Files ---
@@ -426,6 +439,11 @@ class TestParquetIntegration:
                 "eval_created": ["2025-01-01", "2025-01-02", "2025-01-03"],
                 "solver": ["gpt-4", "claude-3", "gpt-4"],
                 "solver_args": ['{"temp": 0.7}', '{"temp": 0.5}', '{"temp": 0.9}'],
+                "generate_config": [
+                    '{"max_tokens": 1000}',
+                    '{"max_tokens": 2000}',
+                    '{"max_tokens": 3000}',
+                ],
                 "model": ["gpt-4", "claude-3", "gpt-4"],
                 "filename": ["file1.parquet", "file2.parquet", "file3.parquet"],
             }
@@ -444,7 +462,7 @@ class TestParquetIntegration:
 
         # Verify queries with new column names work
         result = conn.execute("""
-            SELECT task_set, date, agent, agent_args
+            SELECT task_set, date, agent, agent_args, model_options
             FROM transcript_index
             WHERE task_set = 'math'
         """).fetchone()
@@ -454,6 +472,7 @@ class TestParquetIntegration:
         assert result[1] == "2025-01-01"
         assert result[2] == "gpt-4"
         assert result[3] == '{"temp": 0.7}'
+        assert result[4] == '{"max_tokens": 1000}'
 
         # Verify all rows are accessible via new column names
         count = conn.execute("""
@@ -476,6 +495,11 @@ class TestParquetIntegration:
                 "eval_created": ["2025-01-01", "2025-01-02", "2025-01-03"],
                 "solver": ["gpt-4", "claude-3", "gpt-4"],
                 "solver_args": ['{"temp": 0.7}', '{"temp": 0.5}', '{"temp": 0.9}'],
+                "generate_config": [
+                    '{"max_tokens": 1000}',
+                    '{"max_tokens": 2000}',
+                    '{"max_tokens": 3000}',
+                ],
                 "model": ["gpt-4", "claude-3", "gpt-4"],
                 "messages": ["[]", "[]", "[]"],
                 "events": ["[]", "[]", "[]"],
@@ -496,7 +520,7 @@ class TestParquetIntegration:
 
         # Verify queries with new column names work
         result = conn.execute("""
-            SELECT task_set, date, agent, agent_args
+            SELECT task_set, date, agent, agent_args, model_options
             FROM transcripts
             WHERE task_set = 'coding'
         """).fetchone()
@@ -506,6 +530,7 @@ class TestParquetIntegration:
         assert result[1] == "2025-01-02"
         assert result[2] == "claude-3"
         assert result[3] == '{"temp": 0.5}'
+        assert result[4] == '{"max_tokens": 2000}'
 
         conn.close()
 
@@ -521,6 +546,10 @@ class TestParquetIntegration:
                 "eval_created": ["2025-01-01", "2025-01-02"],  # Old name
                 "agent": ["gpt-4", "claude-3"],  # New name
                 "solver_args": ['{"temp": 0.7}', '{"temp": 0.5}'],  # Old name
+                "generate_config": [
+                    '{"max_tokens": 1000}',
+                    '{"max_tokens": 2000}',
+                ],  # Old name
                 "model": ["gpt-4", "claude-3"],
             }
         )
@@ -537,9 +566,9 @@ class TestParquetIntegration:
         migrate_table(conn, "transcript_index")
 
         # Verify new columns work (task_set, agent already existed)
-        # Only date and agent_args should be added as aliases
+        # Only date, agent_args, and model_options should be added as aliases
         result = conn.execute("""
-            SELECT task_set, date, agent, agent_args
+            SELECT task_set, date, agent, agent_args, model_options
             FROM transcript_index
             WHERE task_set = 'math'
         """).fetchone()
@@ -549,6 +578,7 @@ class TestParquetIntegration:
         assert result[1] == "2025-01-01"  # Aliased from eval_created
         assert result[2] == "gpt-4"
         assert result[3] == '{"temp": 0.7}'  # Aliased from solver_args
+        assert result[4] == '{"max_tokens": 1000}'  # Aliased from generate_config
 
         conn.close()
 
@@ -565,6 +595,7 @@ class TestParquetIntegration:
                 "date": ["2025-01-01", "2025-01-02"],
                 "agent": ["gpt-4", "claude-3"],
                 "agent_args": ['{"temp": 0.7}', '{"temp": 0.5}'],
+                "model_options": ['{"max_tokens": 1000}', '{"max_tokens": 2000}'],
                 "model": ["gpt-4", "claude-3"],
             }
         )
@@ -597,7 +628,7 @@ class TestParquetIntegration:
 
         # Queries still work
         result = conn.execute("""
-            SELECT task_set, date, agent FROM transcript_index
+            SELECT task_set, date, agent, model_options FROM transcript_index
         """).fetchall()
         assert len(result) == 2
 
@@ -756,3 +787,173 @@ class TestEndToEndMigration:
         filtered = transcripts.where(c.eval_created.is_not_null())
         ids = await get_transcript_ids_from_transcripts(filtered)
         assert len(ids) > 0, "eval_created query should work"
+
+
+# --- End-to-End Test for model_options Field ---
+
+
+class TestModelOptionsEndToEnd:
+    """End-to-end tests for model_options field flow."""
+
+    @pytest.mark.asyncio
+    async def test_model_options_storage_and_retrieval(self, tmp_path: Path) -> None:
+        """Test that model_options flows correctly: insertion → storage → retrieval."""
+        from inspect_ai.model._chat_message import ChatMessageUser
+        from inspect_scout._transcript.types import Transcript
+
+        db_path = tmp_path / "model_options_test_db"
+        db_path.mkdir(parents=True, exist_ok=True)
+
+        # Create transcripts with model_options populated
+        model_options_data = {"temperature": 0.7, "max_tokens": 1000, "top_p": 0.9}
+        transcripts = [
+            Transcript(
+                transcript_id="mo-001",
+                source_type="test",
+                source_id="test-source",
+                source_uri="test://uri/1",
+                model="gpt-4",
+                model_options=model_options_data,
+                agent="test-agent",
+                agent_args={"param1": "value1"},
+                metadata={},
+                messages=[ChatMessageUser(content="Test message")],
+                events=[],
+            ),
+            Transcript(
+                transcript_id="mo-002",
+                source_type="test",
+                source_id="test-source",
+                source_uri="test://uri/2",
+                model="claude-3",
+                model_options={"temperature": 0.5},
+                agent="other-agent",
+                agent_args={"param2": "value2"},
+                metadata={},
+                messages=[ChatMessageUser(content="Another test")],
+                events=[],
+            ),
+        ]
+
+        # Insert into database
+        db = ParquetTranscriptsDB(str(db_path))
+        await db.connect()
+
+        try:
+            await db.insert(transcripts)
+
+            # Query back and verify model_options is preserved
+            results = [info async for info in db.select([], None, False)]
+            assert len(results) == 2
+
+            # Find specific transcript and verify model_options
+            mo_001 = next(r for r in results if r.transcript_id == "mo-001")
+            assert mo_001.model_options == model_options_data
+            assert mo_001.model_options["temperature"] == 0.7
+            assert mo_001.model_options["max_tokens"] == 1000
+            assert mo_001.model_options["top_p"] == 0.9
+
+            mo_002 = next(r for r in results if r.transcript_id == "mo-002")
+            assert mo_002.model_options == {"temperature": 0.5}
+
+            # Verify agent_args is also preserved
+            assert mo_001.agent_args == {"param1": "value1"}
+            assert mo_002.agent_args == {"param2": "value2"}
+
+        finally:
+            await db.disconnect()
+
+    @pytest.mark.asyncio
+    async def test_model_options_null_handling(self, tmp_path: Path) -> None:
+        """Test that null/empty model_options is handled correctly."""
+        from inspect_ai.model._chat_message import ChatMessageUser
+        from inspect_scout._transcript.types import Transcript
+
+        db_path = tmp_path / "model_options_null_test_db"
+        db_path.mkdir(parents=True, exist_ok=True)
+
+        # Create transcripts with None and empty model_options
+        transcripts = [
+            Transcript(
+                transcript_id="null-001",
+                source_type="test",
+                source_id="test-source",
+                source_uri="test://uri/1",
+                model="gpt-4",
+                model_options=None,  # Explicitly None
+                metadata={},
+                messages=[ChatMessageUser(content="Test")],
+                events=[],
+            ),
+            Transcript(
+                transcript_id="null-002",
+                source_type="test",
+                source_id="test-source",
+                source_uri="test://uri/2",
+                model="claude-3",
+                model_options={},  # Empty dict
+                metadata={},
+                messages=[ChatMessageUser(content="Test")],
+                events=[],
+            ),
+        ]
+
+        db = ParquetTranscriptsDB(str(db_path))
+        await db.connect()
+
+        try:
+            await db.insert(transcripts)
+
+            results = [info async for info in db.select([], None, False)]
+            assert len(results) == 2
+
+            # Verify null/empty handling
+            null_001 = next(r for r in results if r.transcript_id == "null-001")
+            null_002 = next(r for r in results if r.transcript_id == "null-002")
+
+            # Both should be handled gracefully
+            assert null_001.model_options is None
+            assert null_002.model_options == {}
+
+        finally:
+            await db.disconnect()
+
+    @pytest.mark.asyncio
+    async def test_model_options_via_transcripts_api(self, tmp_path: Path) -> None:
+        """Test model_options access via high-level transcripts API."""
+        from inspect_ai.model._chat_message import ChatMessageUser
+        from inspect_scout._transcript.types import Transcript
+
+        db_path = tmp_path / "model_options_api_test_db"
+        db_path.mkdir(parents=True, exist_ok=True)
+
+        # Create test transcripts
+        model_options_data = {"temperature": 0.8, "stop": ["\\n\\n"]}
+        transcripts_data = [
+            Transcript(
+                transcript_id="api-001",
+                source_type="test",
+                source_id="test-source",
+                source_uri="test://uri/1",
+                model="gpt-4",
+                model_options=model_options_data,
+                metadata={},
+                messages=[ChatMessageUser(content="Test")],
+                events=[],
+            ),
+        ]
+
+        # Insert via DB
+        db = ParquetTranscriptsDB(str(db_path))
+        await db.connect()
+        await db.insert(transcripts_data)
+        await db.disconnect()
+
+        # Access via high-level API
+        transcripts_obj = transcripts_from(str(db_path))
+
+        async with transcripts_obj.reader() as reader:
+            results = [info async for info in reader.index()]
+
+        assert len(results) == 1
+        assert results[0].model_options == model_options_data

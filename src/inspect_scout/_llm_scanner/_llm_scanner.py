@@ -216,6 +216,7 @@ async def render_scanner_prompt(
             agent=transcript.agent,
             agent_args=transcript.agent_args,
             model=transcript.model,
+            model_options=transcript.model_options,
             score=transcript.score,
             success=transcript.success,
             total_time=transcript.total_time,

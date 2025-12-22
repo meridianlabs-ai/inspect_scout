@@ -37,13 +37,13 @@ API_VERSION = "2.0.0-alpha"
 
 
 def _compute_scans_etag(scans_location: str) -> str | None:
-    """Compute ETag from API version and scan_summary.json mtimes."""
+    """Compute ETag from API version and _summary.json mtimes."""
     try:
         scans_dir = UPath(scans_location)
         mtimes = sorted(
-            (d.name, (d / "scan_summary.json").stat().st_mtime)
+            (d.name, (d / "_summary.json").stat().st_mtime)
             for d in scans_dir.rglob("scan_id=*")
-            if d.is_dir() and (d / "scan_summary.json").exists()
+            if d.is_dir() and (d / "_summary.json").exists()
         )
         return hashlib.md5(
             f"{API_VERSION}:{scans_location}:{mtimes}".encode()

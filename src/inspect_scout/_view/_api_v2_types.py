@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, Field
-
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
@@ -53,15 +51,3 @@ class IPCSerializableResults(RecorderStatus):
 
 
 RestScanStatus: TypeAlias = RecorderStatus
-
-
-class ScansRestResponse(BaseModel):
-    """Response containing list of scans from a results directory."""
-
-    results_dir: str = Field(
-        description="Path to the results directory containing scans.",
-        examples=["/path/to/results"],
-    )
-    scans: list[RestScanStatus] = Field(
-        description="List of scan statuses from the results directory."
-    )

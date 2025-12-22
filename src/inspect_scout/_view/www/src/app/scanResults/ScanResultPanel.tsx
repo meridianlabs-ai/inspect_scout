@@ -21,7 +21,7 @@ import {
   useSelectedScanResultData,
   useSelectedScanResultInputData,
 } from "../hooks";
-import { useResultsDir } from "../server/hooks";
+import { useServerScansDir } from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -48,7 +48,7 @@ export const ScanResultPanel: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Required server data
-  const { data: resultsDir } = useResultsDir();
+  const { data: resultsDir } = useServerScansDir();
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
   // Sync URL query param with store state

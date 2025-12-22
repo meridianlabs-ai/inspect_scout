@@ -11,7 +11,7 @@ import { join } from "../utils/uri";
 
 import { parseScanResultData, parseScanResultSummaries } from "./arrowHelpers";
 import {
-  useResultsDir,
+  useServerScansDir,
   useServerScan,
   useServerScanDataframe,
   useServerScanDataframeInput,
@@ -26,7 +26,7 @@ const useSelectedScanLocation = () => {
   const params = useParams<{ "*": string }>();
   const relativePath = getRelativePathFromParams(params);
   const { scanPath } = parseScanResultPath(relativePath);
-  const { data: resultsDir } = useResultsDir();
+  const { data: resultsDir } = useServerScansDir();
   const location = join(scanPath, resultsDir);
   // E.g.:
   //  scanPath:   "scan_id=3G7xoo4YV3KffYkZEtWqGw"

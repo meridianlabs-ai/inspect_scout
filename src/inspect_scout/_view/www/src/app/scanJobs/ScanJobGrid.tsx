@@ -16,7 +16,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
-import type { Scans } from "../../types";
+import type { Status } from "../../types";
 import { dirname, toRelativePath } from "../../utils/path";
 import { debounce } from "../../utils/sync";
 import { ApplicationIcons } from "../appearance/icons";
@@ -43,8 +43,9 @@ interface ScanJobSummary {
 }
 
 export const ScanJobGrid: FC<{
-  scans: Scans;
-}> = ({ scans: { results_dir: resultsDir, scans } }) => {
+  scans: Status[];
+  resultsDir: string | undefined;
+}> = ({ scans, resultsDir }) => {
   const params = useParams<{ "*": string }>();
   const paramsRelativePath = getRelativePathFromParams(params);
   const navigate = useNavigate();

@@ -7,7 +7,7 @@ import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { Navbar } from "../components/Navbar";
-import { useServerScans } from "../server/hooks";
+import { useServerScansDir, useServerScans } from "../server/hooks";
 
 import { ScanJobGrid } from "./ScanJobGrid";
 import styles from "./ScanJobsPanel.module.css";
@@ -15,6 +15,7 @@ import styles from "./ScanJobsPanel.module.css";
 export const ScanJobsPanel: FC = () => {
   // Load scans data
   const { loading, error, data: scans } = useServerScans();
+  const { data: resultsDir } = useServerScansDir();
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
 
   // Clear scan state from store on mount
@@ -25,7 +26,7 @@ export const ScanJobsPanel: FC = () => {
 
   return (
     <div className={clsx(styles.container)}>
-      <Navbar bordered={false} resultsDir={scans?.results_dir} />
+      <Navbar bordered={false} resultsDir={resultsDir} />
       <ActivityBar animating={loading} />
       <ExtendedFindProvider>
         {error && (
@@ -34,7 +35,7 @@ export const ScanJobsPanel: FC = () => {
             error={{ message: error.message }}
           />
         )}
-        {scans && <ScanJobGrid scans={scans} />}
+        {scans && <ScanJobGrid scans={scans} resultsDir={resultsDir} />}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

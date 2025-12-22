@@ -1,7 +1,7 @@
 import JSON5 from "json5";
 
 import { Input, InputType } from "../app/types";
-import { Scans, Status } from "../types";
+import { Status } from "../types";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
@@ -25,6 +25,10 @@ export const apiVscode = (
     getTranscripts: async (_transcriptsDir?: string): Promise<unknown[]> => {
       throw new Error("Not Yet Implemented");
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getScansDir: async (): Promise<string> => {
+      throw new Error("Not Yet Implemented");
+    },
     getScan: async (scanLocation: string): Promise<Status> => {
       const response = (await rpcClient(kMethodGetScan, [
         scanLocation,
@@ -38,10 +42,10 @@ export const apiVscode = (
         );
       }
     },
-    getScans: async (): Promise<Scans> => {
+    getScans: async (_scansDir?: string): Promise<Status[]> => {
       const response = (await rpcClient(kMethodGetScans, [])) as string;
       if (response) {
-        return JSON5.parse<Scans>(response);
+        return JSON5.parse<Status[]>(response);
       } else {
         throw new Error("Invalid response for getScans");
       }

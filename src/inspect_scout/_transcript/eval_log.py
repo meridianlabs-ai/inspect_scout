@@ -488,6 +488,24 @@ def _transcript_id(sample: EvalSampleSummary) -> str | None:
     return sample.uuid
 
 
+def _agent(log: EvalLog) -> str | None:
+    if log.eval.solver is not None:
+        return log.eval.solver
+    elif len(log.plan.steps) > 0:
+        return log.plan.steps[-1].solver
+    else:
+        return None
+
+
+def _agent_args(log: EvalLog) -> dict[str, Any] | None:
+    if log.eval.solver is not None:
+        return log.eval.solver_args
+    elif len(log.plan.steps) > 0:
+        return log.plan.steps[-1].params
+    else:
+        return None
+
+
 TranscriptColumns: list[Column] = (
     EvalId
     + EvalLogPath
@@ -503,8 +521,8 @@ TranscriptColumns: list[Column] = (
         EvalColumn("eval_metadata", path="eval.metadata", default={}),
         EvalColumn("task_set", path="eval.task", required=True, value=remove_namespace),
         EvalColumn("task_args", path="eval.task_args", default={}),
-        EvalColumn("agent", path="eval.solver"),
-        EvalColumn("agent_args", path="eval.solver_args", default={}),
+        EvalColumn("agent", path=_agent),
+        EvalColumn("agent_args", path=_agent_args, default={}),
         EvalColumn("model", path="eval.model", required=True),
         EvalColumn("model_options", path="eval.model_generate_config", default={}),
         EvalColumn("generate_config", path="eval.model_generate_config", default={}),

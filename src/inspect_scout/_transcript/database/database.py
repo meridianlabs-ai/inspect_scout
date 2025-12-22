@@ -16,13 +16,15 @@ from .source import TranscriptsSource
 class TranscriptsDB(abc.ABC):
     """Database of transcripts."""
 
-    def __init__(self, location: str) -> None:
+    def __init__(self, location: str, where: list[Condition] | None = None) -> None:
         """Create a transcripts database.
 
         Args:
             location: Database location (e.g. local or S3 file path)
+            where: Optional list of conditions used to filter transcripts.
         """
         self._location: str | None = location
+        self._where = where
 
     @abc.abstractmethod
     async def connect(self) -> None:

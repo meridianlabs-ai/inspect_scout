@@ -24,14 +24,10 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal, Union
 
-from pydantic import GetCoreSchemaHandler
-from pydantic_core import core_schema
+from pydantic import BaseModel, Field
 
 # Scalar values that can be used in conditions
-ScalarValue = str | int | float | bool | None
-
-# JSON-serializable form (dates become strings, tuples become lists)
-SerializableValue = ScalarValue | list[ScalarValue]
+ScalarValue = str | int | float | bool | datetime | date | None
 
 
 class SQLDialect(Enum):
@@ -71,30 +67,45 @@ class LogicalOperator(Enum):
     NOT = "NOT"
 
 
-class Condition:
+class Condition(BaseModel):
     """WHERE clause condition that can be combined with others."""
 
-    def __init__(
-        self,
-        left: Union[str, "Condition", None] = None,
-        operator: Union[Operator, LogicalOperator, None] = None,
-        right: Any = None,
-        is_compound: bool = False,
-    ):
-        self.left = left
-        self.operator = operator
-        self.right = right
-        self.is_compound = is_compound
-        self.params: list[Any] = []
+    left: Union[str, "Condition", None] = Field(default=None)
+    """Column name (simple) or left operand (compound)."""
 
-        # Store parameters for simple conditions
-        if not is_compound and operator not in (Operator.IS_NULL, Operator.IS_NOT_NULL):
-            if operator == Operator.IN or operator == Operator.NOT_IN:
-                self.params = list(right) if right is not None else []
-            elif operator == Operator.BETWEEN or operator == Operator.NOT_BETWEEN:
-                self.params = [right[0], right[1]] if right is not None else []
-            elif right is not None:
-                self.params = [right]
+    operator: Union[Operator, LogicalOperator, None] = Field(default=None)
+    """Comparison operator (simple) or logical operator (compound)."""
+
+    right: Union[
+        "Condition",
+        list[ScalarValue],
+        tuple[ScalarValue, ScalarValue],
+        ScalarValue,
+    ] = Field(default=None)
+    """Comparison value (simple) or right operand (compound)."""
+
+    is_compound: bool = Field(default=False)
+    """True for AND/OR/NOT conditions, False for simple comparisons."""
+
+    @property
+    def params(self) -> list[ScalarValue]:
+        """SQL parameters extracted from the condition for parameterized queries."""
+        if self.is_compound or self.operator in (
+            Operator.IS_NULL,
+            Operator.IS_NOT_NULL,
+        ):
+            return []
+        if self.operator in (Operator.IN, Operator.NOT_IN):
+            return list(self.right) if isinstance(self.right, list) else []
+        if self.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
+            if isinstance(self.right, tuple) and len(self.right) >= 2:
+                return [self.right[0], self.right[1]]
+            return []
+        if self.right is not None and not isinstance(
+            self.right, (Condition, list, tuple)
+        ):
+            return [self.right]
+        return []
 
     def __and__(self, other: Condition) -> Condition:
         """Combine conditions with AND."""
@@ -527,117 +538,9 @@ class Condition:
         else:  # SQLite and DuckDB use ?
             return ", ".join(["?" for _ in range(count)])
 
-    def _serialize_value(self, value: Any) -> ScalarValue | list[ScalarValue]:
-        """Convert value to JSON-serializable form.
 
-        Handles date/datetime → ISO string, tuple → list.
-        """
-        if isinstance(value, datetime):
-            return value.isoformat()
-        if isinstance(value, date):
-            return value.isoformat()
-        if isinstance(value, tuple):
-            return [self._serialize_scalar(v) for v in value]
-        if isinstance(value, list):
-            return [self._serialize_scalar(v) for v in value]
-        # str, int, float, bool, None
-        return self._serialize_scalar(value)
-
-    def _serialize_scalar(self, value: Any) -> ScalarValue:
-        """Convert a scalar value to JSON-serializable form."""
-        if isinstance(value, datetime):
-            return value.isoformat()
-        if isinstance(value, date):
-            return value.isoformat()
-        if isinstance(value, (str, int, float, bool)) or value is None:
-            return value
-        # Fallback for unexpected types - convert to string
-        return str(value)
-
-    def model_dump(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict.
-
-        Returns:
-            Dict representation that can be passed to model_validate() to reconstruct.
-        """
-        if self.is_compound:
-            assert isinstance(self.left, Condition)
-            return {
-                "type": "compound",
-                "operator": self.operator.name if self.operator else None,
-                "left": self.left.model_dump(),
-                "right": self.right.model_dump() if self.right else None,
-            }
-        else:
-            return {
-                "type": "simple",
-                "column": self.left,
-                "operator": self.operator.name if self.operator else None,
-                "value": self._serialize_value(self.right),
-            }
-
-    @classmethod
-    def model_validate(cls, data: dict[str, Any]) -> "Condition":
-        """Deserialize from dict.
-
-        Args:
-            data: Dict representation from model_dump().
-
-        Returns:
-            Reconstructed Condition instance.
-
-        Raises:
-            ValueError: If the data is invalid.
-        """
-        if data.get("type") == "compound":
-            left = cls.model_validate(data["left"])
-            right = cls.model_validate(data["right"]) if data.get("right") else None
-            operator_name = data.get("operator")
-            logical_op = LogicalOperator[operator_name] if operator_name else None
-            return Condition(
-                left=left,
-                operator=logical_op,
-                right=right,
-                is_compound=True,
-            )
-        else:
-            value = data.get("value")
-            operator_name = data.get("operator")
-            # Convert list back to tuple for BETWEEN operators
-            if operator_name in ("BETWEEN", "NOT_BETWEEN") and isinstance(value, list):
-                value = tuple(value)
-            comparison_op = Operator[operator_name] if operator_name else None
-            return Condition(
-                left=data.get("column"),
-                operator=comparison_op,
-                right=value,
-                is_compound=False,
-            )
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
-        """Define Pydantic schema for Condition type.
-
-        This allows Condition to be used as a field type in Pydantic models.
-        """
-        return core_schema.no_info_plain_validator_function(
-            cls._pydantic_validate,
-            serialization=core_schema.plain_serializer_function_ser_schema(
-                lambda x: x.model_dump(),
-                info_arg=False,
-            ),
-        )
-
-    @classmethod
-    def _pydantic_validate(cls, value: Any) -> "Condition":
-        """Validate and convert value to Condition for Pydantic."""
-        if isinstance(value, cls):
-            return value
-        if isinstance(value, dict):
-            return cls.model_validate(value)
-        raise ValueError(f"Cannot convert {type(value)} to Condition")
+# Rebuild model to resolve forward references for recursive type
+Condition.model_rebuild()
 
 
 class Column:
@@ -653,72 +556,72 @@ class Column:
     def __eq__(self, other: Any) -> Condition:  # type: ignore[override]
         """Equal to."""
         return Condition(
-            self.name,
-            Operator.IS_NULL if other is None else Operator.EQ,
-            None if other is None else other,
+            left=self.name,
+            operator=Operator.IS_NULL if other is None else Operator.EQ,
+            right=None if other is None else other,
         )
 
     def __ne__(self, other: Any) -> Condition:  # type: ignore[override]
         """Not equal to."""
         return Condition(
-            self.name,
-            Operator.IS_NOT_NULL if other is None else Operator.NE,
-            None if other is None else other,
+            left=self.name,
+            operator=Operator.IS_NOT_NULL if other is None else Operator.NE,
+            right=None if other is None else other,
         )
 
     def __lt__(self, other: Any) -> Condition:
         """Less than."""
-        return Condition(self.name, Operator.LT, other)
+        return Condition(left=self.name, operator=Operator.LT, right=other)
 
     def __le__(self, other: Any) -> Condition:
         """Less than or equal to."""
-        return Condition(self.name, Operator.LE, other)
+        return Condition(left=self.name, operator=Operator.LE, right=other)
 
     def __gt__(self, other: Any) -> Condition:
         """Greater than."""
-        return Condition(self.name, Operator.GT, other)
+        return Condition(left=self.name, operator=Operator.GT, right=other)
 
     def __ge__(self, other: Any) -> Condition:
         """Greater than or equal to."""
-        return Condition(self.name, Operator.GE, other)
+        return Condition(left=self.name, operator=Operator.GE, right=other)
 
     def in_(self, values: list[Any]) -> Condition:
         """Check if value is in a list."""
-        return Condition(self.name, Operator.IN, values)
+        return Condition(left=self.name, operator=Operator.IN, right=values)
 
     def not_in(self, values: list[Any]) -> Condition:
         """Check if value is not in a list."""
-        return Condition(self.name, Operator.NOT_IN, values)
+        return Condition(left=self.name, operator=Operator.NOT_IN, right=values)
 
     def like(self, pattern: str) -> Condition:
         """SQL LIKE pattern matching (case-sensitive)."""
-        return Condition(self.name, Operator.LIKE, pattern)
+        return Condition(left=self.name, operator=Operator.LIKE, right=pattern)
 
     def not_like(self, pattern: str) -> Condition:
         """SQL NOT LIKE pattern matching (case-sensitive)."""
-        return Condition(self.name, Operator.NOT_LIKE, pattern)
+        return Condition(left=self.name, operator=Operator.NOT_LIKE, right=pattern)
 
     def ilike(self, pattern: str) -> Condition:
         """PostgreSQL ILIKE pattern matching (case-insensitive).
 
         Note: For SQLite and DuckDB, this will use LIKE with LOWER() for case-insensitivity.
         """
-        return Condition(self.name, Operator.ILIKE, pattern)
+        return Condition(left=self.name, operator=Operator.ILIKE, right=pattern)
 
     def not_ilike(self, pattern: str) -> Condition:
         """PostgreSQL NOT ILIKE pattern matching (case-insensitive).
 
         Note: For SQLite and DuckDB, this will use NOT LIKE with LOWER() for case-insensitivity.
         """
-        return Condition(self.name, Operator.NOT_ILIKE, pattern)
+        return Condition(left=self.name, operator=Operator.NOT_ILIKE, right=pattern)
 
     def is_null(self) -> Condition:
         """Check if value is NULL."""
-        return Condition(self.name, Operator.IS_NULL, None)
+        return Condition(left=self.name, operator=Operator.IS_NULL, right=None)
 
     def is_not_null(self) -> Condition:
         """Check if value is not NULL."""
-        return Condition(self.name, Operator.IS_NOT_NULL, None)
+        return Condition(left=self.name, operator=Operator.IS_NOT_NULL, right=None)
 
     def between(self, low: Any, high: Any) -> Condition:
         """Check if value is between two values.
@@ -732,7 +635,7 @@ class Column:
         """
         if low is None or high is None:
             raise ValueError("BETWEEN operator requires non-None bounds")
-        return Condition(self.name, Operator.BETWEEN, (low, high))
+        return Condition(left=self.name, operator=Operator.BETWEEN, right=(low, high))
 
     def not_between(self, low: Any, high: Any) -> Condition:
         """Check if value is not between two values.
@@ -746,7 +649,9 @@ class Column:
         """
         if low is None or high is None:
             raise ValueError("NOT BETWEEN operator requires non-None bounds")
-        return Condition(self.name, Operator.NOT_BETWEEN, (low, high))
+        return Condition(
+            left=self.name, operator=Operator.NOT_BETWEEN, right=(low, high)
+        )
 
 
 class Columns:

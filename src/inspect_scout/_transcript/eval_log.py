@@ -150,6 +150,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
 
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_EVAL_LOG,
+            conditions=self._query.where if self._query.where else None,
             transcript_ids=dict(zip(transcript_ids, logs, strict=True)),
         )
 

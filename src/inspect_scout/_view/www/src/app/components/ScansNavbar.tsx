@@ -82,7 +82,7 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
       bordered={bordered}
       right={children}
       left={
-        <>
+        <div className={styles.leftContainer}>
           {backUrl && (
             <Link to={backUrl} className={clsx(styles.toolbarButton)}>
               <i className={clsx(ApplicationIcons.navbar.back)} />
@@ -139,7 +139,7 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
               ""
             )}
           </div>
-        </>
+        </div>
       }
     />
   );

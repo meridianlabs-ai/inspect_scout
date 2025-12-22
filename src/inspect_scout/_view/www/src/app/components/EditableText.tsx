@@ -1,11 +1,14 @@
+import clsx from "clsx";
 import { FC, useRef, useCallback } from "react";
 
 import styles from "./EditableText.module.css";
 
 interface EditableTextProps {
   value?: string;
+  mru?: string[];
   onValueChanged: (value: string) => void;
 
+  label?: string;
   icon?: string;
   placeholder?: string;
 
@@ -15,9 +18,10 @@ interface EditableTextProps {
 export const EditableText: FC<EditableTextProps> = ({
   value,
   onValueChanged,
-  className,
-  placeholder,
+  label,
   icon,
+  placeholder,
+  className,
 }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
   const initialValueRef = useRef<string>("");
@@ -75,9 +79,11 @@ export const EditableText: FC<EditableTextProps> = ({
   const displayValue = value || placeholder || "";
 
   return (
-    <div className={`${styles.container} ${className || ""}`}>
-      {icon && <i className={`${icon} ${styles.icon}`} />}
-
+    <div className={clsx(styles.container, className)}>
+      <div className={clsx(styles.labelContainer)}>
+        {icon && <i className={`${icon} ${styles.icon}`} />}
+        {label && <span className={styles.label}>{label}</span>}
+      </div>
       <span
         ref={spanRef}
         contentEditable="true"

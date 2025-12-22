@@ -2,7 +2,6 @@ import { FC } from "react";
 
 import { isUri, prettyDirUri } from "../../utils/uri";
 
-import styles from "./EditablePath.module.css";
 import { EditableText } from "./EditableText";
 
 interface EditablePathProps {
@@ -11,6 +10,7 @@ interface EditablePathProps {
 
   mru?: string[];
 
+  label?: string;
   icon?: string;
   placeholder?: string;
 
@@ -20,6 +20,8 @@ interface EditablePathProps {
 export const EditablePath: FC<EditablePathProps> = ({
   path,
   onPathChanged,
+  mru,
+  label,
   icon,
   placeholder,
   className,
@@ -40,6 +42,8 @@ export const EditablePath: FC<EditablePathProps> = ({
     <EditableText
       value={displayPath}
       onValueChanged={onValueChanged}
+      mru={mru}
+      label={label}
       icon={icon}
       placeholder={placeholder}
       className={className}

@@ -89,6 +89,9 @@ class RecorderBuffer:
             transcript.agent_args, "solver_args", m
         )
         transcript_model = resolve_metadata_var(transcript.model, "model", m)
+        transcript_model_options = resolve_metadata_var(
+            transcript.model_options, "generate_config", m
+        )
         transcript_score = resolve_metadata_var(transcript.score, "score", m)
         transcript_success = resolve_success_value(
             transcript.success, cast(JsonValue | None, transcript_score)
@@ -117,6 +120,7 @@ class RecorderBuffer:
                     "transcript_agent": transcript_agent,
                     "transcript_agent_args": transcript_agent_args,
                     "transcript_model": transcript_model,
+                    "transcript_model_options": transcript_model_options,
                     "transcript_score": transcript_score,
                     "transcript_success": transcript_success,
                     "transcript_total_time": transcript_total_time,

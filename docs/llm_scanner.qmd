@@ -98,6 +98,7 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ agent }}}` | str | Agent used to to execute task. |
 | `{{{ agent_args }}}` | dict | Arguments passed to create agent. |
 | `{{{ model }}}` | str | Main model used by agent. |
+| `{{{ model_options }}}` | dict | Generation options for main model. |
 | `{{{ score }}}` | JsonValue | Value indicating score on task. |
 | `{{{ success }}}` | bool |  Boolean reduction of `score` to succeeded/failed. |
 | `{{{ total_time }}}` | number | Time required to execute task (seconds) |

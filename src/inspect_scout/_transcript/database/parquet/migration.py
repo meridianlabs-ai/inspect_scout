@@ -22,6 +22,7 @@ EVAL_LOG_COLUMN_MAP = {
     "eval_created": "date",
     "solver": "agent",
     "solver_args": "agent_args",
+    "generate_config": "model_options",
 }
 
 

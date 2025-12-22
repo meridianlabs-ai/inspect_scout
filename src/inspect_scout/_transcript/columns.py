@@ -732,6 +732,11 @@ class Columns:
         return Column("model")
 
     @property
+    def model_options(self) -> Column:
+        """Generation options for model."""
+        return Column("model_options")
+
+    @property
     def score(self) -> Column:
         """Headline score value."""
         return Column("score")

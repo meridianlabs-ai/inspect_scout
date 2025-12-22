@@ -278,6 +278,7 @@ class EvalLogTranscriptsDB:
             transcript_agent = row_dict.get("agent", None)
             transcript_agent_args = row_dict.get("agent_args", None)
             transcript_model = row_dict.get("model", None)
+            transcript_model_options = row_dict.get("generate_config", None)
             transcript_score = row_dict.get("score", None)
             transcript_success = row_dict.get("success", None)
             transcript_total_time = row_dict.get("total_time", None)
@@ -288,6 +289,8 @@ class EvalLogTranscriptsDB:
             # resolve json
             if transcript_agent_args is not None:
                 transcript_agent_args = json.loads(transcript_agent_args)
+            if transcript_model_options is not None:
+                transcript_model_options = json.loads(transcript_model_options)
             if isinstance(transcript_score, str) and (
                 transcript_score.startswith("{") or transcript_score.startswith("[")
             ):
@@ -326,6 +329,7 @@ class EvalLogTranscriptsDB:
                 agent=transcript_agent,
                 agent_args=transcript_agent_args,
                 model=transcript_model,
+                model_options=transcript_model_options,
                 score=transcript_score,
                 success=transcript_success,
                 total_time=transcript_total_time,
@@ -502,6 +506,7 @@ TranscriptColumns: list[Column] = (
         EvalColumn("agent", path="eval.solver"),
         EvalColumn("agent_args", path="eval.solver_args", default={}),
         EvalColumn("model", path="eval.model", required=True),
+        EvalColumn("model_options", path="eval.model_generate_config", default={}),
         EvalColumn("generate_config", path="eval.model_generate_config", default={}),
         EvalColumn("model_roles", path="eval.model_roles", default={}),
         # Sample columns

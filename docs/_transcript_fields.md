@@ -13,6 +13,7 @@ Here are the available `Transcript` fields:
 | `agent` | str | Agent used to to execute task. |
 | `agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
 | `model` | str | Main model used by agent. |
+| `model_options` | dict </br><small>JSON</small> | Generation options for main model.  |
 | `score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
 | `success` | bool |  Boolean reduction of `score` to succeeded/failed. |
 | `total_time` | number | Time required to execute task (seconds) |

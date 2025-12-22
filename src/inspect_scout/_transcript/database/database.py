@@ -2,6 +2,8 @@ import abc
 from types import TracebackType
 from typing import AsyncIterable, AsyncIterator, Iterable, Type
 
+import pyarrow as pa
+
 from inspect_scout._transcript.transcripts import Transcripts
 
 from ..columns import Condition
@@ -57,7 +59,8 @@ class TranscriptsDB(abc.ABC):
         transcripts: Iterable[Transcript]
         | AsyncIterable[Transcript]
         | Transcripts
-        | TranscriptsSource,
+        | TranscriptsSource
+        | pa.RecordBatchReader,
     ) -> None:
         """Insert transcripts into database.
 

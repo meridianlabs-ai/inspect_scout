@@ -4,6 +4,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._transcript.columns import columns as c
 from inspect_scout._transcript.factory import transcripts_from
@@ -23,7 +25,8 @@ def where_test_scanner_factory() -> Scanner[Transcript]:
     return scan_transcript
 
 
-def test_scan_with_simple_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_simple_where_clause() -> None:
     """Test that a simple where clause is persisted in the scan spec."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with where clause

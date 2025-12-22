@@ -3,36 +3,44 @@ import { ColumnTable } from "arquero";
 
 import { useMapAsyncData } from "../../hooks/useMapAsyncData";
 import { useApi } from "../../state/store";
-import { Scans, Status } from "../../types";
+import { Status } from "../../types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 import { ScanResultInputData } from "../types";
 import { expandResultsetRows } from "../utils/arrow";
 
-// Lists the available scans from the server and stores in state
-export const useServerScans = (): AsyncData<Scans> => {
+// Returns the server's configured scans directory
+export const useServerScansDir = (): AsyncData<string> => {
   const api = useApi();
-  const queryClient = useQueryClient();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans"],
+    queryKey: ["scans-dir"],
+    queryFn: async () => await api.getScansDir(),
+    staleTime: Infinity,
+  });
+};
+
+// Lists the available scans from the server and stores in state
+export const useServerScans = (): AsyncData<Status[]> => {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { data: scansDir } = useServerScansDir();
+
+  return useAsyncDataFromQuery({
+    queryKey: ["scans", scansDir],
     queryFn: async () => {
-      const scans = await api.getScans();
-      for (const scan of scans.scans) {
+      const scans = await api.getScans(scansDir);
+      for (const scan of scans) {
         queryClient.setQueryData(["scan", scan.location], scan);
       }
       return scans;
     },
-    staleTime: 5000,
-    refetchInterval: 5000,
+    enabled: scansDir !== undefined,
+    staleTime: 10000,
+    refetchInterval: 10000,
   });
 };
-
-// TODO: This implementation is temporary until we break results_dir out from the
-// scans endpoint
-export const useResultsDir = (): AsyncData<string | undefined> =>
-  useMapAsyncData(useServerScans(), (x) => x.results_dir);
 
 // Fetches scan status from the server by location
 export const useServerScan = (
@@ -44,7 +52,7 @@ export const useServerScan = (
     queryKey: ["scan", location],
     queryFn: () => api.getScan(location!), // The ! is safe because of enabled below
     enabled: !!location,
-    staleTime: 5000,
+    staleTime: 10000,
     // TODO: We need to think through refetchInterval. If the specific scan was retrieved
     // by the scans hook above, it'll already have a refresh. If it was not, however,
     // we'll still want it to refresh, but we don't want the hooks to compete. Hmmm.

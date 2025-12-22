@@ -108,9 +108,8 @@ class TestViewServerAppScansEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert "scans" in data
-        assert "results_dir" in data
-        assert len(data["scans"]) == 1
+        assert isinstance(data, list)
+        assert len(data) == 1
 
     @pytest.mark.asyncio
     async def test_scans_endpoint_with_query_param(
@@ -126,7 +125,8 @@ class TestViewServerAppScansEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["results_dir"] == "/custom/path"
+        assert isinstance(data, list)
+        assert len(data) == 0
 
     @pytest.mark.asyncio
     async def test_scans_endpoint_no_results_dir(self) -> None:

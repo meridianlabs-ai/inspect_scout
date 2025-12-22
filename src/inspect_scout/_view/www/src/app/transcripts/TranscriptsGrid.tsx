@@ -67,12 +67,12 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
 }
 
 interface TranscriptGridProps {
-  transcripts?: TranscriptInfo[];
+  transcripts: TranscriptInfo[];
   className?: string | string[];
 }
 
 export const TranscriptsGrid: FC<TranscriptGridProps> = ({
-  transcripts = [],
+  transcripts,
   className,
 }) => {
   // The table container which provides the scrollable region

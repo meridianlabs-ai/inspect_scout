@@ -48,7 +48,7 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!hasError && <TranscriptsGrid transcripts={transcripts} />}
+      {!hasError && <TranscriptsGrid transcripts={transcripts ?? []} />}
       <Footer
         itemCount={transcripts?.length || 0}
         id={"transcripts-footer"}

@@ -43,7 +43,7 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
   index,
   entry,
 }) => {
-  const selectedScanner = useSelectedScanner();
+  const { data: selectedScanner } = useSelectedScanner();
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   const [searchParams, setSearchParams] = useSearchParams();
   const handleClick = useCallback(

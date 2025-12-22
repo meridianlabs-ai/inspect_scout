@@ -9,12 +9,6 @@ import {
   Score,
 } from "./log";
 
-// Internal Types
-export interface Scans {
-  results_dir: string;
-  scans: Status[];
-}
-
 // Scout types dervice from Python types
 // TODO: generate with schema
 export interface Status {

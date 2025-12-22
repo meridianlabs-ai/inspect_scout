@@ -17,15 +17,11 @@ import { ApplicationIcons } from "../appearance/icons";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
 import {
+  useSelectedScan,
   useSelectedScanResultData,
   useSelectedScanResultInputData,
 } from "../hooks";
-import {
-  useServerScans,
-  useServerScan,
-  useServerScanDataframe,
-  useServerScanDataframeInput,
-} from "../server/hooks";
+import { useServerScansDir } from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -52,10 +48,8 @@ export const ScanResultPanel: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Required server data
-  useServerScans();
-  useServerScan();
-  useServerScanDataframe();
-  useServerScanDataframeInput();
+  const { data: resultsDir } = useServerScansDir();
+  const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
@@ -66,7 +60,8 @@ export const ScanResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  const loading = useStore((state) => state.loading);
+  const storeLoading = useStore((state) => state.loading);
+  const loading = storeLoading || scanLoading;
   const selectedTab = useStore((state) => state.selectedResultTab);
   const visibleScannerResults = useStore(
     (state) => state.visibleScannerResults
@@ -76,7 +71,6 @@ export const ScanResultPanel: FC = () => {
   const { data: selectedResult, loading: resultLoading } =
     useSelectedScanResultData(scanResultUuid);
 
-  const status = useStore((state) => state.selectedScanStatus);
   const inputData = useSelectedScanResultInputData();
 
   // Sync URL tab parameter with store on mount and URL changes
@@ -148,11 +142,12 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <ScansNavbar>
+      <ScansNavbar resultsDir={resultsDir}>
         {visibleScannerResults.length > 0 && <ScanResultNav />}
       </ScansNavbar>
       <LoadingBar loading={!!loading || resultLoading} />
-      <ScanResultHeader inputData={inputData} scan={status} />
+      <ScanResultHeader inputData={inputData.data} scan={selectedScan} />
+
       {selectedResult && (
         <ExtendedFindProvider>
           <TabSet

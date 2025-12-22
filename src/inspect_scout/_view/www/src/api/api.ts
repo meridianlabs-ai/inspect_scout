@@ -1,14 +1,15 @@
 import { StateStorage } from "zustand/middleware";
 
 import { ScanResultInputData } from "../app/types";
-import { Scans, Status } from "../types";
+import { Status } from "../types";
 
 export type ClientStorage = StateStorage;
 
 export interface ScanApi {
   getTranscriptsDir(): Promise<string>;
   getTranscripts(transcriptsDir?: string): Promise<unknown[]>;
-  getScans(): Promise<Scans>;
+  getScansDir(): Promise<string>;
+  getScans(scansDir?: string): Promise<Status[]>;
   getScan(scanLocation: string): Promise<Status>;
   getScannerDataframe(
     scanLocation: string,

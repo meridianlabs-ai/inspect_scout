@@ -7,19 +7,16 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { useServerScans } from "../server/hooks";
+import { useServerScansDir, useServerScans } from "../server/hooks";
 
 import { ScanJobGrid } from "./ScanJobGrid";
 import styles from "./ScanJobsPanel.module.css";
 
 export const ScanJobsPanel: FC = () => {
   // Load scans data
-  useServerScans();
-  const loading = useStore((state) => state.loading);
-  const error = useStore((state) => state.scopedErrors["scanjobs"]);
+  const { loading, error, data: scans } = useServerScans();
+  const { data: resultsDir } = useServerScansDir();
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
-  const resultsDir = useStore((state) => state.resultsDir);
-  const scans = useStore((state) => state.scans);
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);
@@ -33,9 +30,12 @@ export const ScanJobsPanel: FC = () => {
       <LoadingBar loading={!!loading} />
       <ExtendedFindProvider>
         {error && (
-          <ErrorPanel title="Error Loading Scans" error={{ message: error }} />
+          <ErrorPanel
+            title="Error Loading Scans"
+            error={{ message: error.message }}
+          />
         )}
-        {!error && <ScanJobGrid resultsDir={resultsDir} scans={scans} />}
+        {scans && <ScanJobGrid scans={scans} resultsDir={resultsDir} />}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

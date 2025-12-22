@@ -43,9 +43,9 @@ interface ScanJobSummary {
 }
 
 export const ScanJobGrid: FC<{
-  resultsDir: string | undefined;
   scans: Status[];
-}> = ({ resultsDir, scans }) => {
+  resultsDir: string | undefined;
+}> = ({ scans, resultsDir }) => {
   const params = useParams<{ "*": string }>();
   const paramsRelativePath = getRelativePathFromParams(params);
   const navigate = useNavigate();

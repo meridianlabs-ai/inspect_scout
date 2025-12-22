@@ -1,6 +1,6 @@
 import hashlib
 import io
-from typing import Iterable, TypeVar
+from typing import Any, Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
@@ -23,7 +23,7 @@ from .._scanresults import (
 )
 from .._transcript.factory import transcripts_from
 from .._transcript.types import TranscriptInfo
-from ._api_v2_types import RestScanStatus, ScansRestResponse
+from ._api_v2_types import RestScanStatus
 from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
@@ -45,7 +45,9 @@ def _compute_scans_etag(scans_location: str) -> str | None:
             for d in scans_dir.rglob("scan_id=*")
             if d.is_dir() and (d / "scan_summary.json").exists()
         )
-        return hashlib.md5(f"{API_VERSION}:{mtimes}".encode()).hexdigest()
+        return hashlib.md5(
+            f"{API_VERSION}:{scans_location}:{mtimes}".encode()
+        ).hexdigest()
     except Exception:
         return None
 
@@ -61,7 +63,29 @@ def v2_api_app(
     WARNING: This is an ALPHA API. Expect breaking changes without notice.
     Do not depend on this API for production use.
     """
-    app = FastAPI(title="Inspect Scout Viewer API", version=API_VERSION)
+    app = FastAPI(
+        title="Inspect Scout Viewer API",
+        version=API_VERSION,
+    )
+
+    # Remove implied and noisy 422 responses from OpenAPI schema
+    def custom_openapi() -> dict[str, Any]:
+        if not app.openapi_schema:
+            from fastapi.openapi.utils import get_openapi
+
+            openapi_schema = get_openapi(
+                title=app.title,
+                version=app.version,
+                routes=app.routes,
+            )
+            for path in openapi_schema.get("paths", {}).values():
+                for operation in path.values():
+                    if isinstance(operation, dict):
+                        operation.get("responses", {}).pop("422", None)
+            app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    app.openapi = custom_openapi  # type: ignore[method-assign]
 
     async def _validate_read(request: Request, file: str | UPath) -> None:
         if access_policy is not None:
@@ -106,6 +130,16 @@ def v2_api_app(
         return await default_transcripts_dir()
 
     @app.get(
+        "/scans-dir",
+        response_class=PlainTextResponse,
+        summary="Get default scans directory",
+        description="Returns the default directory path where scans are stored.",
+    )
+    async def scans_dir(request: Request) -> str:
+        """Return default scans directory path."""
+        return _ensure_not_none(results_dir, "results_dir is not configured")
+
+    @app.get(
         "/transcripts",
         summary="List transcripts",
         description="Returns metadata for all transcripts in the specified directory.",
@@ -129,7 +163,7 @@ def v2_api_app(
 
     @app.get(
         "/scans",
-        response_model=ScansRestResponse,
+        response_model=list[RestScanStatus],
         response_class=InspectPydanticJSONResponse,
         summary="List scans",
         description="Returns all scans in the results directory. Supports ETag caching.",
@@ -146,9 +180,9 @@ def v2_api_app(
         if_none_match: str | None = Header(
             None,
             alias="If-None-Match",
-            description="ETag from previous response for cache validation.",
+            include_in_schema=False,
         ),
-    ) -> ScansRestResponse | Response:
+    ) -> list[RestScanStatus] | Response:
         """List all scans with ETag-based caching support."""
         validated_results_dir = _ensure_not_none(
             query_results_dir or results_dir, "results_dir is required"
@@ -162,27 +196,23 @@ def v2_api_app(
                 )
             response.headers["ETag"] = f'"{etag}"'
 
-        return ScansRestResponse(
-            results_dir=validated_results_dir,
-            scans=[
-                await _to_rest_scan(request, scan, _running_scans)
-                for scan in await scan_list_async(validated_results_dir)
-            ],
-        )
+        return [
+            await _to_rest_scan(request, scan, _running_scans)
+            for scan in await scan_list_async(validated_results_dir)
+        ]
 
     @app.get(
-        "/scans/{scan}/{scanner}/{uuid}/input",
-        summary="Get scanner input",
-        description="Returns the original input text for a specific scanner result. "
-        "The input type is returned in the X-Input-Type response header.",
+        "/scans/{scan}",
+        response_model=RestScanStatus,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get scan status",
+        description="Returns detailed status and metadata for a single scan.",
     )
-    async def scanner_input(
+    async def scan(
         request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
-        scanner: str = Path(description="Scanner name"),
-        uuid: str = Path(description="UUID of the specific result row"),
-    ) -> Response:
-        """Retrieve original input text for a scanner result."""
+    ) -> RestScanStatus:
+        """Get detailed status for a single scan."""
         scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
@@ -193,26 +223,24 @@ def v2_api_app(
 
         await _validate_read(request, scan_path)
 
-        result = await scan_results_arrow_async(str(scan_path))
-        if scanner not in result.scanners:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{scanner}' not found in scan results",
+        # read the results and return
+        recorder_status_with_df = await scan_results_df_async(
+            str(scan_path), rows="transcripts"
+        )
+
+        # clear the transcript data
+        if recorder_status_with_df.spec.transcripts:
+            recorder_status_with_df.spec.transcripts = (
+                recorder_status_with_df.spec.transcripts.model_copy(
+                    update={"data": None}
+                )
             )
 
-        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
-        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
-
-        # Return raw input as body with inputType in header (more efficient for large text)
-        return Response(
-            content=input_value,
-            media_type="text/plain",
-            headers={"X-Input-Type": input_type or ""},
-        )
+        return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
 
     @app.get(
         "/scans/{scan}/{scanner}",
-        summary="Get scanner dataframe",
+        summary="Get scanner dataframe containing results for all transcripts",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
         "Excludes input column for efficiency; use the input endpoint for input text.",
     )
@@ -280,17 +308,18 @@ def v2_api_app(
         )
 
     @app.get(
-        "/scans/{scan}",
-        response_model=RestScanStatus,
-        response_class=InspectPydanticJSONResponse,
-        summary="Get scan status",
-        description="Returns detailed status and metadata for a single scan.",
+        "/scans/{scan}/{scanner}/{uuid}/input",
+        summary="Get scanner input for a specific transcript",
+        description="Returns the original input text for a specific scanner result. "
+        "The input type is returned in the X-Input-Type response header.",
     )
-    async def scan(
+    async def scanner_input(
         request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
-    ) -> RestScanStatus:
-        """Get detailed status for a single scan."""
+        scanner: str = Path(description="Scanner name"),
+        uuid: str = Path(description="UUID of the specific result row"),
+    ) -> Response:
+        """Retrieve original input text for a scanner result."""
         scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
             validated_results_dir = _ensure_not_none(
@@ -301,19 +330,21 @@ def v2_api_app(
 
         await _validate_read(request, scan_path)
 
-        # read the results and return
-        recorder_status_with_df = await scan_results_df_async(
-            str(scan_path), rows="transcripts"
-        )
-
-        # clear the transcript data
-        if recorder_status_with_df.spec.transcripts:
-            recorder_status_with_df.spec.transcripts = (
-                recorder_status_with_df.spec.transcripts.model_copy(
-                    update={"data": None}
-                )
+        result = await scan_results_arrow_async(str(scan_path))
+        if scanner not in result.scanners:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
+        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
+        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
+
+        # Return raw input as body with inputType in header (more efficient for large text)
+        return Response(
+            content=input_value,
+            media_type="text/plain",
+            headers={"X-Input-Type": input_type or ""},
+        )
 
     return app

@@ -4,7 +4,6 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import { GridState } from "ag-grid-community";
-import { ColumnTable } from "arquero";
 import { createContext, useContext } from "react";
 import { StateSnapshot } from "react-virtuoso";
 import { create } from "zustand";
@@ -13,14 +12,12 @@ import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
 import {
-  ScanResultInputData,
   ErrorScope,
-  Input,
   ResultGroup,
   ScanResultSummary,
   SortColumn,
 } from "../app/types";
-import { Status, TranscriptInfo } from "../types";
+import { TranscriptInfo } from "../types";
 import { debounce } from "../utils/sync";
 
 // Transcripts table UI state
@@ -32,24 +29,6 @@ interface TranscriptsTableState {
   focusedRowId: string | null;
 }
 
-// Holds the currently selected scan result data in a ref
-// Keeping it out of the zustand state to avoid serialization and performance issues
-const selectedScanResultDataRef: {
-  data: ColumnTable | undefined;
-  scanner: string | undefined;
-  previews: ScanResultSummary[] | undefined;
-  input: Input | undefined;
-  inputUuid: string | undefined;
-  inputType: string | undefined;
-} = {
-  data: undefined,
-  scanner: undefined,
-  previews: undefined,
-  input: undefined,
-  inputUuid: undefined,
-  inputType: undefined,
-};
-
 interface StoreState {
   // App status
   singleFileMode?: boolean;
@@ -60,11 +39,8 @@ interface StoreState {
   scopedErrors: Record<ErrorScope, string | undefined>;
 
   // Scans
-  resultsDir?: string;
-  scans: Status[];
   visibleScanJobCount?: number;
   selectedScanLocation?: string;
-  selectedScanStatus?: Status;
 
   // Scanner
   visibleScannerResults: ScanResultSummary[];
@@ -120,37 +96,15 @@ interface StoreState {
   setLoading: (loading: boolean) => void;
   setLoadingData: (loading: boolean) => void;
 
-  // Scan directory for this viewer instance
-  setResultsDir: (dir: string) => void;
-
   // List of scans
-  setScans: (scans: Status[]) => void;
   setVisibleScanJobCount: (count: number) => void;
 
-  // Selected scan status (heading information)
+  // Selected scan location (for nav restoration)
   setSelectedScanLocation: (location: string) => void;
-  setSelectedScanStatus: (status: Status) => void;
-  clearSelectedScanStatus: () => void;
 
   // Track the select result and data
   setSelectedScanner: (scanner: string) => void;
   setSelectedScanResult: (result: string) => void;
-  setSelectedScanResultData: (scanner: string, data: ColumnTable) => void;
-  getSelectedScanResultData: (scanner?: string) => ColumnTable | undefined;
-  setSelectedScanResultInputData: (
-    uuid: string,
-    inputData: ScanResultInputData
-  ) => void;
-  getSelectedScanResultInputData: (
-    uuid: string
-  ) => ScanResultInputData | undefined;
-  setSelectedScanResultSummaries: (
-    scanner?: string,
-    previews?: ScanResultSummary[]
-  ) => void;
-  getSelectedScanResultSummaries: (
-    scanner?: string
-  ) => ScanResultSummary[] | undefined;
   setVisibleScannerResults: (results: ScanResultSummary[]) => void;
   setVisibleScannerResultsCount: (count: number) => void;
 
@@ -254,7 +208,6 @@ export const createStore = (api: ScanApi) =>
       persist(
         immer((set, get) => ({
           // Initial state
-          scans: [],
           resultsStoredInRef: false,
           resultDataInState: false,
           properties: {},
@@ -324,14 +277,6 @@ export const createStore = (api: ScanApi) =>
               }
             });
           },
-          setResultsDir: (dir: string) =>
-            set((state) => {
-              state.resultsDir = dir;
-            }),
-          setScans: (scans: Status[]) =>
-            set((state) => {
-              state.scans = scans;
-            }),
           setVisibleScanJobCount: (count: number) =>
             set((state) => {
               state.visibleScanJobCount = count;
@@ -340,16 +285,6 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.selectedScanLocation = location;
             }),
-          setSelectedScanStatus: (status: Status) => {
-            set((state) => {
-              state.selectedScanStatus = status;
-            });
-          },
-          clearSelectedScanStatus: () => {
-            set((state) => {
-              state.selectedScanStatus = undefined;
-            });
-          },
           setSelectedScanner: (scanner: string) => {
             set((state) => {
               state.selectedScanner = scanner;
@@ -359,50 +294,6 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.selectedScanResult = result;
             }),
-          setSelectedScanResultData: (scanner: string, data: ColumnTable) => {
-            // Use ref for large objects with identifier
-            selectedScanResultDataRef.data = data;
-            selectedScanResultDataRef.scanner = scanner;
-            selectedScanResultDataRef.previews = undefined;
-          },
-          getSelectedScanResultData: (scanner?: string) => {
-            // Only return data that mathches the requested scanner
-            if (selectedScanResultDataRef.scanner === scanner) {
-              return selectedScanResultDataRef.data;
-            }
-            return undefined;
-          },
-          setSelectedScanResultInputData: (
-            uuid?: string,
-            inputData?: ScanResultInputData
-          ) => {
-            selectedScanResultDataRef.input = inputData?.input;
-            selectedScanResultDataRef.inputUuid = uuid;
-            selectedScanResultDataRef.inputType = inputData?.inputType;
-          },
-          getSelectedScanResultInputData: (uuid: string) => {
-            if (
-              !selectedScanResultDataRef.inputType ||
-              !selectedScanResultDataRef.input
-            ) {
-              return undefined;
-            }
-
-            // Only return data that matches the requested uuid
-            if (selectedScanResultDataRef.inputUuid === uuid) {
-              return {
-                inputType: selectedScanResultDataRef.inputType as
-                  | "transcript"
-                  | "message"
-                  | "messages"
-                  | "event"
-                  | "events",
-                input: selectedScanResultDataRef.input,
-              };
-            }
-
-            return undefined;
-          },
           setVisibleScannerResults: (results: ScanResultSummary[]) => {
             set((state) => {
               state.visibleScannerResults = results;
@@ -412,27 +303,6 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.visibleScannerResultsCount = count;
             });
-          },
-          setSelectedScanResultSummaries: (
-            scanner?: string,
-            previews?: ScanResultSummary[]
-          ) => {
-            if (selectedScanResultDataRef.scanner === scanner) {
-              selectedScanResultDataRef.previews = previews;
-            } else {
-              throw new Error(
-                "Attempting to store previews for unmatched scanner"
-              );
-            }
-          },
-          getSelectedScanResultSummaries: (
-            scanner?: string
-          ): ScanResultSummary[] | undefined => {
-            // Only return data that matches the requested scanner
-            if (selectedScanResultDataRef.scanner === scanner) {
-              return selectedScanResultDataRef.previews;
-            }
-            return undefined;
           },
           clearScanState: () => {
             set((state) => {
@@ -446,12 +316,7 @@ export const createStore = (api: ScanApi) =>
             });
           },
           clearScansState: () => {
-            // Clear the ref
-            selectedScanResultDataRef.data = undefined;
-            selectedScanResultDataRef.scanner = undefined;
             set((state) => {
-              state.clearSelectedScanStatus();
-              state.selectedScanStatus = undefined;
               state.selectedResultsView = undefined;
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;

@@ -35,8 +35,6 @@ export interface AppRouterConfig {
 const createAppLayout = (config: AppRouterConfig) => {
   const AppLayout = () => {
     const navigate = useNavigate();
-    const setResultsDir = useStore((state) => state.setResultsDir);
-    const resultsDir = useStore((state) => state.resultsDir);
     const selectedScanner = useStore((state) => state.selectedScanner);
     const setSingleFileMode = useStore((state) => state.setSingleFileMode);
     const hasInitializedEmbeddedData = useStore(
@@ -57,8 +55,7 @@ const createAppLayout = (config: AppRouterConfig) => {
       (state) => state.setHasInitializedRouting
     );
 
-    const hasRestoredState =
-      resultsDir !== undefined && selectedScanner !== undefined;
+    const hasRestoredState = selectedScanner !== undefined;
 
     useEffect(() => {
       if (hasInitializedEmbeddedData) {
@@ -68,10 +65,9 @@ const createAppLayout = (config: AppRouterConfig) => {
       // Check for embedded state on initial load
       const embeddedState = getEmbeddedScanState();
       if (embeddedState && !hasRestoredState) {
-        const { dir, scan, scanner } = embeddedState;
+        const { scan, scanner } = embeddedState;
 
         // Set the results directory in the store
-        setResultsDir(dir);
         setSingleFileMode(true);
         if (scanner) {
           setSelectedScanner(scanner);
@@ -87,7 +83,6 @@ const createAppLayout = (config: AppRouterConfig) => {
       hasInitializedEmbeddedData,
       setSingleFileMode,
       setHasInitializedEmbeddedData,
-      setResultsDir,
       setSelectedScanner,
       hasRestoredState,
     ]);

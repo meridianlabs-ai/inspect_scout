@@ -11,7 +11,7 @@ import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
-  useServerTranscripts();
+  useServerTranscripts(undefined);
 
   const transcripts = useStore((state) => state.transcripts);
   const error = useStore((state) => state.scopedErrors["transcripts"]);

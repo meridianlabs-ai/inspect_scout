@@ -19,15 +19,16 @@ import styles from "./ScansNavbar.module.css";
 import { useBreadcrumbTruncation } from "./useBreadcrumbTruncation";
 
 interface ScansNavbarProps {
+  resultsDir?: string;
   children?: ReactNode;
   bordered?: boolean;
 }
 
 export const ScansNavbar: FC<ScansNavbarProps> = ({
+  resultsDir,
   bordered = true,
   children,
 }) => {
-  const resultsDir = useStore((state) => state.resultsDir);
   const baseResultsDir = dirname(resultsDir || "");
   const baseResultsName = basename(resultsDir || "");
 

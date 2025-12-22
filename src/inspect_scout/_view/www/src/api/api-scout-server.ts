@@ -1,5 +1,5 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
-import { Scans, Status } from "../types";
+import { Status } from "../types";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -35,6 +35,9 @@ export const apiScoutServer = (
       }
       return parsedResult;
     },
+    getScansDir: async (): Promise<string> => {
+      return (await requestApi.fetchString("GET", `/scans-dir`)).raw;
+    },
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",
@@ -44,12 +47,16 @@ export const apiScoutServer = (
       return asyncJsonParse<Status>(result.raw);
     },
 
-    getScans: async (): Promise<Scans> => {
-      let query = "/scans";
-      if (resultsDir) {
-        query += `&results_dir=${encodeURIComponent(resultsDir)}`;
-      }
-      return (await requestApi.fetchType<Scans>("GET", query)).parsed;
+    getScans: async (scansDir?: string): Promise<Status[]> => {
+      const dir = scansDir ?? resultsDir;
+      const query = dir
+        ? `/scans?results_dir=${encodeURIComponent(dir)}`
+        : "/scans";
+      return (
+        await requestApi.fetchType<Status[]>("GET", query, {
+          enableBrowserCache: true,
+        })
+      ).parsed;
     },
     getScannerDataframe: async (
       scanLocation: string,

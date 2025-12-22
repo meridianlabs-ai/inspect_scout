@@ -6,11 +6,13 @@ import { EditableText } from "./EditableText";
 import { Navbar } from "./Navbar";
 
 interface TranscriptsNavbarProps {
+  transcriptDir?: string;
   bordered?: boolean;
   children?: React.ReactNode;
 }
 
 export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
+  transcriptDir,
   bordered = true,
   children,
 }) => {
@@ -22,7 +24,11 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   );
   const left = (
     <EditableText
-      text={transcriptsDatabasePath || "Select Transcripts Database"}
+      text={
+        transcriptsDatabasePath ||
+        transcriptDir ||
+        "Select Transcripts Database"
+      }
       onChange={setTranscriptsDatabasePath}
     />
   );

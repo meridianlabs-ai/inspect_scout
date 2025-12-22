@@ -19,7 +19,7 @@ interface ResultSidebarProps {
 
 export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {
   const dfInput = useSelectedScanResultInputData();
-  const refs: MarkdownReference[] = useMarkdownRefs(resultData, dfInput);
+  const refs: MarkdownReference[] = useMarkdownRefs(resultData, dfInput.data);
 
   if (!resultData) {
     return <NoContentsPanel text="No result to display." />;

@@ -3,6 +3,7 @@
 import tempfile
 from pathlib import Path
 
+import pytest
 from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._transcript.columns import Condition
 from inspect_scout._transcript.columns import columns as c
@@ -23,7 +24,8 @@ def where_test_scanner_factory() -> Scanner[Transcript]:
     return scan_transcript
 
 
-def test_scan_with_simple_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_simple_where_clause() -> None:
     """Test that a simple where clause is persisted in the scan spec."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with where clause
@@ -41,19 +43,19 @@ def test_scan_with_simple_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the condition structure
-        condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "simple"
-        assert dumped["column"] == "task_set"
-        assert dumped["operator"] == "EQ"
-        assert dumped["value"] == "popularity"
+        condition = status.spec.transcripts.conditions[0]
+        assert condition.is_compound is False
+        assert condition.left == "task_set"
+        assert condition.operator is not None and condition.operator.name == "EQ"
+        assert condition.right == "popularity"
 
 
-def test_scan_with_compound_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_compound_where_clause() -> None:
     """Test that compound conditions (AND/OR) are persisted."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with compound where clause
@@ -73,23 +75,27 @@ def test_scan_with_compound_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the compound condition structure
-        condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "compound"
-        assert dumped["operator"] == "OR"
-        assert dumped["left"]["type"] == "simple"
-        assert dumped["left"]["column"] == "task_set"
-        assert dumped["left"]["value"] == "popularity"
-        assert dumped["right"]["type"] == "simple"
-        assert dumped["right"]["column"] == "task_set"
-        assert dumped["right"]["value"] == "theory-of-mind"
+        condition = status.spec.transcripts.conditions[0]
+        assert condition.is_compound is True
+        assert condition.operator is not None and condition.operator.name == "OR"
+        # Check left operand
+        assert isinstance(condition.left, Condition)
+        assert condition.left.is_compound is False
+        assert condition.left.left == "task_set"
+        assert condition.left.right == "popularity"
+        # Check right operand
+        assert isinstance(condition.right, Condition)
+        assert condition.right.is_compound is False
+        assert condition.right.left == "task_set"
+        assert condition.right.right == "theory-of-mind"
 
 
-def test_scan_with_in_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_in_where_clause() -> None:
     """Test where clause using IN operator."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with IN where clause
@@ -109,19 +115,19 @@ def test_scan_with_in_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the IN condition structure
-        condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "simple"
-        assert dumped["column"] == "task_set"
-        assert dumped["operator"] == "IN"
-        assert dumped["value"] == ["popularity", "security-guide"]
+        condition = status.spec.transcripts.conditions[0]
+        assert condition.is_compound is False
+        assert condition.left == "task_set"
+        assert condition.operator is not None and condition.operator.name == "IN"
+        assert condition.right == ["popularity", "security-guide"]
 
 
-def test_scan_with_and_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_and_where_clause() -> None:
     """Test where clause using AND operator."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with AND where clause
@@ -141,17 +147,17 @@ def test_scan_with_and_where_clause() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the AND condition structure
-        condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "compound"
-        assert dumped["operator"] == "AND"
+        condition = status.spec.transcripts.conditions[0]
+        assert condition.is_compound is True
+        assert condition.operator is not None and condition.operator.name == "AND"
 
 
-def test_where_clause_roundtrip() -> None:
+@pytest.mark.asyncio
+async def test_where_clause_roundtrip() -> None:
     """Test that where conditions can be serialized and deserialized correctly."""
     # Create various conditions
     conditions = [
@@ -175,7 +181,8 @@ def test_where_clause_roundtrip() -> None:
         assert original.to_sql("postgres") == restored.to_sql("postgres")
 
 
-def test_scan_with_multiple_where_calls() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_multiple_where_calls() -> None:
     """Test that multiple .where() calls accumulate conditions."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with multiple where calls
@@ -197,12 +204,13 @@ def test_scan_with_multiple_where_calls() -> None:
 
         # Verify where clauses were stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
+        assert status.spec.transcripts.conditions is not None
         # Multiple where() calls should accumulate
-        assert len(status.spec.transcripts.where) >= 1
+        assert len(status.spec.transcripts.conditions) >= 1
 
 
-def test_scan_without_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_without_where_clause() -> None:
     """Test scan without where clause has empty/None where."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts without where clause
@@ -221,11 +229,12 @@ def test_scan_without_where_clause() -> None:
         # Verify transcripts are present but where is None or empty
         assert status.spec.transcripts is not None
         # where should be None or empty list when no filter applied
-        where = status.spec.transcripts.where
+        where = status.spec.transcripts.conditions
         assert where is None or len(where) == 0
 
 
-def test_where_clause_with_comparison_operators() -> None:
+@pytest.mark.asyncio
+async def test_where_clause_with_comparison_operators() -> None:
     """Test where clause with various comparison operators."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Test with greater than operator
@@ -243,19 +252,19 @@ def test_where_clause_with_comparison_operators() -> None:
 
         # Verify where clause was stored
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        assert len(status.spec.transcripts.where) == 1
+        assert status.spec.transcripts.conditions is not None
+        assert len(status.spec.transcripts.conditions) == 1
 
         # Verify the condition structure
-        condition = status.spec.transcripts.where[0]
-        dumped = condition.model_dump()
-        assert dumped["type"] == "simple"
-        assert dumped["column"] == "score"
-        assert dumped["operator"] == "GT"
-        assert dumped["value"] == 0.5
+        condition = status.spec.transcripts.conditions[0]
+        assert condition.is_compound is False
+        assert condition.left == "score"
+        assert condition.operator is not None and condition.operator.name == "GT"
+        assert condition.right == 0.5
 
 
-def test_where_clause_preserves_sql_generation() -> None:
+@pytest.mark.asyncio
+async def test_where_clause_preserves_sql_generation() -> None:
     """Test that restored where clause generates same SQL as original."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a condition and get its SQL
@@ -277,8 +286,8 @@ def test_where_clause_preserves_sql_generation() -> None:
 
         # Get the restored condition
         assert status.spec.transcripts is not None
-        assert status.spec.transcripts.where is not None
-        restored_condition = status.spec.transcripts.where[0]
+        assert status.spec.transcripts.conditions is not None
+        restored_condition = status.spec.transcripts.conditions[0]
 
         # Verify SQL generation matches
         restored_sql = restored_condition.to_sql("sqlite")

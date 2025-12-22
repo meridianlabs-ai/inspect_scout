@@ -150,7 +150,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
 
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_EVAL_LOG,
-            where=self._query.where if self._query.where else None,
+            conditions=self._query.where if self._query.where else None,
             transcript_ids=dict(zip(transcript_ids, logs, strict=True)),
         )
 
@@ -310,11 +310,11 @@ class EvalLogTranscriptsDB:
                 for k, v in row_dict.items()
                 if v is not None and k not in RESERVED_COLUMNS
             }
-            metadata = LazyJSONDict(metadata_dict, json_keys=JSON_COLUMNS)
+            lazy_metadata = LazyJSONDict(metadata_dict, json_keys=JSON_COLUMNS)
 
-            # Use model_construct to bypass Pydantic validation which would
-            # convert LazyJSONDict to a plain dict, defeating lazy parsing
-            yield TranscriptInfo.model_construct(
+            # Use normal constructor for type validation/coercion, then inject LazyJSONDict
+            # for metadata for lazy parsing behavior
+            info = TranscriptInfo(
                 transcript_id=transcript_id,
                 source_type=EVAL_LOG_SOURCE_TYPE,
                 source_id=transcript_source_id,
@@ -332,8 +332,10 @@ class EvalLogTranscriptsDB:
                 total_tokens=transcript_total_tokens,
                 error=transcript_error,
                 limit=transcript_limit,
-                metadata=metadata,
+                metadata={},
             )
+            object.__setattr__(info, "metadata", lazy_metadata)
+            yield info
 
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         id_, epoch = self._transcripts_df[

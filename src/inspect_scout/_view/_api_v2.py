@@ -19,6 +19,7 @@ from starlette.status import (
 )
 from upath import UPath
 
+from .._concurrency.common import ScanMetrics
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjob import ScanJobConfig
 from .._scanlist import scan_list_async
@@ -35,10 +36,94 @@ from ._server_common import (
     default_transcripts_dir,
 )
 
-# TODO: temporary simulation tracking currently running scans (by location path)
-_running_scans: set[str] = set()
+# Track currently running scans with their metrics
+_running_scans: dict[str, ScanMetrics] = {}
 
 API_VERSION = "2.0.0-alpha"
+
+
+class _MetricsCapturingScanDisplay:
+    """ScanDisplay wrapper that captures metrics to _running_scans dict."""
+
+    def __init__(self, location: str) -> None:
+        self._location = location
+
+    def results(
+        self,
+        _transcript: TranscriptInfo,
+        _scanner: str,
+        _results: Any,
+        _metrics: dict[str, dict[str, float]] | None,
+    ) -> None:
+        pass
+
+    def metrics(self, metrics: ScanMetrics) -> None:
+        _running_scans[self._location] = metrics
+
+
+class _MetricsCapturingDisplay:
+    """Display wrapper that captures metrics for API-launched scans."""
+
+    def __init__(self, location: str) -> None:
+        self._location = location
+
+    def print(self, _message: str, **_kwargs: Any) -> None:
+        pass
+
+    def text_progress(self, _caption: str, _count: int) -> Any:
+        from contextlib import contextmanager
+        from typing import Iterator
+
+        @contextmanager
+        def _no_op() -> Iterator[None]:
+            yield None
+
+        return _no_op()
+
+    def scan_display(
+        self,
+        _scan: Any,
+        _scan_location: str,
+        _summary: Any,
+        _total: int,
+        _skipped: int,
+    ) -> Any:
+        from contextlib import contextmanager
+        from typing import Iterator
+
+        @contextmanager
+        def _scan_display() -> Iterator[_MetricsCapturingScanDisplay]:
+            yield _MetricsCapturingScanDisplay(self._location)
+
+        return _scan_display()
+
+    def scan_complete(self, _status: RecorderStatus) -> None:
+        pass
+
+    def scan_interrupted(self, _message_or_exc: str | Exception, _status: RecorderStatus) -> None:
+        pass
+
+    def scan_status(self, _status: RecorderStatus) -> None:
+        pass
+
+
+async def _run_scan_background(config: ScanJobConfig, location: str) -> None:
+    """Run scan in background with metrics capturing."""
+    from typing import cast
+
+    import inspect_scout._display._display as display_module
+    from inspect_scout._display.protocol import Display
+    from inspect_scout._scan import scan_async
+
+    original_display = display_module._display
+
+    try:
+        _running_scans[location] = ScanMetrics()
+        display_module._display = cast(Display, _MetricsCapturingDisplay(location))
+        await scan_async(scanners=config)
+    finally:
+        display_module._display = original_display
+        _running_scans.pop(location, None)
 
 
 def _compute_scans_etag(scans_location: str) -> str | None:
@@ -126,7 +211,7 @@ def v2_api_app(
         return value
 
     async def _to_rest_scan(
-        request: Request, scan: RecorderStatus, running_scans: set[str]
+        request: Request, scan: RecorderStatus, running_scans: dict[str, ScanMetrics]
     ) -> RestScanStatus:
         return scan
 
@@ -222,25 +307,12 @@ def v2_api_app(
         request: Request,
         body: ScanJobConfig,
     ) -> RestScanStatus:
-        """Create and execute new scan."""
-        from inspect_scout._scan import scan_async
+        """Create and execute new scan in background."""
+        import asyncio
 
-        # Validate required fields
-        if body.transcripts is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="'transcripts' required",
-            )
-
-        if (
-            body.scanners is None
-            or (isinstance(body.scanners, list) and len(body.scanners) == 0)
-            or (isinstance(body.scanners, dict) and len(body.scanners) == 0)
-        ):
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="'scanners' required and must not be empty",
-            )
+        from inspect_scout._recorder.factory import scan_recorder_for_location
+        from inspect_scout._scancontext import create_scan as create_scan_context
+        from inspect_scout._scanjob import ScanJob
 
         # Use server's configured results_dir
         if results_dir is None:
@@ -255,13 +327,19 @@ def v2_api_app(
         # Override results to use server's results_dir
         scan_config = body.model_copy(update={"results": results_dir})
 
-        print(f"in create_scan with {scan_config.model_dump_json(exclude_none=True)}")
-
-        # Execute scan
+        # Initialize scan to get location
         try:
-            status = await scan_async(scanners=scan_config)
-            _running_scans.add(status.location)
-            return status
+            scanjob = ScanJob.from_config(scan_config)
+            scan_ctx = await create_scan_context(scanjob)
+            recorder = scan_recorder_for_location(results_dir)
+            await recorder.init(scan_ctx.spec, results_dir)
+            location = await recorder.location()
+
+            # Launch scan in background
+            asyncio.create_task(_run_scan_background(scan_config, location))
+
+            # Return initial status
+            return await recorder.status(location)
         except ValueError as e:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e
         except PrerequisiteError as e:
@@ -315,6 +393,36 @@ def v2_api_app(
             )
 
         return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
+
+    @app.get(
+        "/scans/{scan}/metrics",
+        response_model=ScanMetrics,
+        summary="Get in-progress scan metrics",
+        description="Returns worker/process metrics for a currently running scan. Returns 404 if scan is not running.",
+    )
+    async def scan_metrics(
+        request: Request,
+        scan: str = Path(description="Scan path (base64url-encoded)"),
+    ) -> ScanMetrics:
+        """Get metrics for an in-progress scan."""
+        scan_path = UPath(decode_base64url(scan))
+        if not scan_path.is_absolute():
+            validated_results_dir = _ensure_not_none(
+                results_dir, "results_dir is required"
+            )
+            results_path = UPath(validated_results_dir)
+            scan_path = results_path / scan_path
+
+        await _validate_read(request, scan_path)
+
+        location = str(scan_path)
+        if location not in _running_scans:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Scan is not currently running or has completed",
+            )
+
+        return _running_scans[location]
 
     @app.get(
         "/scans/{scan}/{scanner}",

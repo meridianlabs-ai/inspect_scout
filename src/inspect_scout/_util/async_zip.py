@@ -6,7 +6,6 @@ stored locally or remotely (e.g., S3) using async range requests.
 
 from __future__ import annotations
 
-import contextlib
 import struct
 import zlib
 from collections.abc import AsyncIterator
@@ -42,8 +41,8 @@ class ZipEntry:
 # and the filesystem class.
 
 central_directories_cache: dict[str, list[ZipEntry]] = {}
-_filename_locks: dict[str, contextlib.AbstractAsyncContextManager[Any]] = {}
-_locks_lock = contextlib.nullcontext()
+_filename_locks: dict[str, anyio.Lock] = {}
+_locks_lock = anyio.Lock()
 
 
 class _DecompressStream(AsyncIterator[bytes]):

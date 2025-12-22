@@ -26,6 +26,9 @@ async def test_lazy_dict_survives_parquet_select(
     info = results[0]
     assert isinstance(info.metadata, LazyJSONDict)
 
+    # Verify success field is bool, not int (DuckDB may return int for bool columns)
+    assert isinstance(info.success, bool)
+
     # Verify JSON is NOT parsed yet (should be string)
     # Use dict.__getitem__ to bypass LazyJSONDict's __getitem__ override
     config_raw = dict.__getitem__(info.metadata, "config")
@@ -139,6 +142,9 @@ async def test_lazy_dict_survives_eval_log_query(
     # Verify metadata is a LazyJSONDict
     info = results[0]
     assert isinstance(info.metadata, LazyJSONDict)
+
+    # Verify success field is bool, not int (DuckDB returns int for bool columns)
+    assert isinstance(info.success, bool)
 
     # Verify known JSON columns are NOT parsed yet
     if "eval_metadata" in info.metadata:
@@ -290,6 +296,7 @@ async def parquet_db_with_nested_metadata(
         source_id="source-1",
         source_uri="file:///test",
         model="gpt-4",
+        success=True,
         metadata={
             "config": {"temperature": 0.7, "top_p": 0.9},
             "tags": ["math", "reasoning"],
@@ -315,6 +322,7 @@ async def eval_log_db_with_json_metadata() -> EvalLogTranscriptsDB:
             "log": ["file:///test.log"],
             "id": ["id-1"],
             "epoch": [1],
+            "success": [1],
             "eval_metadata": ['{"key": "value"}'],
             "task_args": ['{"arg1": "val1"}'],
         }

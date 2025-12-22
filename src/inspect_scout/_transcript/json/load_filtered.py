@@ -69,6 +69,7 @@ class RawTranscript:
     agent: str | None
     agent_args: dict[str, Any] | None
     model: str | None
+    model_options: dict[str, Any] | None
     score: JsonValue
     success: bool | None
     total_time: float | None
@@ -148,6 +149,7 @@ async def _load_with_json5_fallback(
                 agent=t.agent,
                 agent_args=t.agent_args,
                 model=t.model,
+                model_options=t.model_options,
                 score=t.score,
                 success=t.success,
                 total_time=t.total_time,
@@ -280,6 +282,7 @@ async def _parse_and_filter(
             agent=t.agent,
             agent_args=t.agent_args,
             model=t.model,
+            model_options=t.model_options,
             score=t.score,
             success=t.success,
             total_time=t.total_time,
@@ -355,6 +358,7 @@ def _resolve_attachments(
             "agent": transcript.agent,
             "agent_args": transcript.agent_args,
             "model": transcript.model,
+            "model_options": transcript.model_options,
             "score": transcript.score,
             "success": transcript.success,
             "total_time": transcript.total_time,

@@ -7,7 +7,7 @@ from inspect_ai.log._file import (
     EvalLogInfo,
 )
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
@@ -75,6 +75,9 @@ class TranscriptInfo(BaseModel):
     model: str | None = Field(default=None)
     """Main model used by agent."""
 
+    model_options: dict[str, Any] | None = Field(default=None)
+    """Generation options for main model."""
+
     score: JsonValue | None = Field(default=None)
     """Value indicating score on task."""
 
@@ -95,6 +98,8 @@ class TranscriptInfo(BaseModel):
 
     metadata: dict[str, Any] = Field(default_factory=dict)
     """Transcript source specific metadata."""
+
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class Transcript(TranscriptInfo):
@@ -121,6 +126,7 @@ RESERVED_COLUMNS = {
     "agent",
     "agent_args",
     "model",
+    "model_options",
     "score",
     "success",
     "total_time",

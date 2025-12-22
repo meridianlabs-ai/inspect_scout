@@ -121,6 +121,7 @@ export interface TranscriptInfo {
   agent?: string;
   agent_args?: string;
   model?: string;
+  model_options?: string;
   score?: string;
   success?: boolean;
   total_time?: number;

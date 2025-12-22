@@ -42,6 +42,7 @@ The data frame includes the following fields (note that some fields included emb
 | `transcript_agent` | str | Agent used to to execute task. |
 | `transcript_agent_args` | dict </br><small>JSON</small> | Arguments passed to create agent. |
 | `transcript_model` | str | Main model used by agent. |
+| `transcript_model_options` | JsonValue<br/><small>JSON</small> | Generation options for main model. |
 | `transcript_score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
 | `transcript_success` | bool |  Boolean reduction of `score` to succeeded/failed. |
 | `transcript_total_time` | number | Time required to execute task (seconds) |

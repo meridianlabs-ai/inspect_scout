@@ -300,6 +300,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 transcript_agent = row_dict.get("agent")
                 transcript_agent_args = row_dict.get("agent_args")
                 transcript_model = row_dict.get("model")
+                transcript_model_options = row_dict.get("model_options")
                 transcript_score = row_dict.get("score")
                 transcript_success = row_dict.get("success")
                 transcript_total_time = row_dict.get("total_time")
@@ -310,6 +311,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 # resolve json
                 if transcript_agent_args is not None:
                     transcript_agent_args = json.loads(transcript_agent_args)
+                if transcript_model_options is not None:
+                    transcript_model_options = json.loads(transcript_model_options)
                 if isinstance(transcript_score, str) and (
                     transcript_score.startswith("{") or transcript_score.startswith("[")
                 ):
@@ -338,6 +341,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     agent=transcript_agent,
                     agent_args=transcript_agent_args,
                     model=transcript_model,
+                    model_options=transcript_model_options,
                     score=transcript_score,
                     success=transcript_success,
                     total_time=transcript_total_time,
@@ -423,6 +427,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 agent=t.agent,
                 agent_args=t.agent_args,
                 model=t.model,
+                model_options=t.model_options,
                 score=t.score,
                 success=t.success,
                 total_time=t.total_time,
@@ -720,8 +725,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "task_id": transcript.task_id,
             "task_repeat": transcript.task_repeat,
             "agent": transcript.agent,
-            "agent_args": json.dumps(transcript.agent_args),
+            "agent_args": json.dumps(transcript.agent_args)
+            if transcript.agent_args is not None
+            else None,
             "model": transcript.model,
+            "model_options": json.dumps(transcript.model_options)
+            if transcript.model_options is not None
+            else None,
             "score": (
                 json.dumps(transcript.score)
                 if isinstance(transcript.score, (dict, list))
@@ -846,6 +856,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "agent",
             "agent_args",
             "model",
+            "model_options",
             "score",
             "error",
             "limit",
@@ -904,6 +915,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "agent",
             "agent_args",
             "model",
+            "model_options",
             "error",
             "limit",
             "messages",
@@ -1052,6 +1064,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             ("agent", pa.string()),
             ("agent_args", pa.string()),
             ("model", pa.string()),
+            ("model_options", pa.string()),
             ("score", pa.string()),
             ("success", pa.bool_()),
             ("total_time", pa.float64()),
@@ -1371,6 +1384,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 ''::VARCHAR AS agent,
                 ''::VARCHAR AS agent_args,
                 ''::VARCHAR AS model,
+                ''::VARCHAR AS model_options,
                 FALSE::BOOLEAN AS success,
                 0.0::DOUBLE AS total_time,
                 0::BIGINT AS total_tokens,

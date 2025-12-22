@@ -10,15 +10,18 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from inspect_scout._recorder.recorder import ScanResultsArrow, ScanResultsDF, Status
 from inspect_scout._recorder.summary import Summary
+from inspect_scout._scanjob import ScanJobConfig
 from inspect_scout._scanner.result import Error
-from inspect_scout._scanspec import ScanSpec
+from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
@@ -428,3 +431,103 @@ class TestViewServerAppEdgeCases:
         assert data["complete"] is False
         assert len(data["errors"]) == 1
         assert data["errors"][0]["error"] == "Test error"
+
+
+class TestCreateScanEndpoint:
+    """Tests for POST /scans endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_create_scan_success(
+        self, app_with_results_dir: TestClient, sample_status: Status
+    ) -> None:
+        """Test successful scan creation."""
+        with patch(
+            "inspect_scout._scan.scan_async", return_value=sample_status
+        ):
+            scan_config = {
+                "name": "test_scan",
+                "transcripts": "/path/to/transcripts",
+                "scanners": [{"name": "test_scanner"}],
+            }
+            response = app_with_results_dir.post("/scans", json=scan_config)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location"] == "/test/scan"
+        assert data["complete"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_scan_missing_transcripts(
+        self, app_with_results_dir: TestClient
+    ) -> None:
+        """Test 400 when transcripts missing."""
+        scan_config = {
+            "name": "test_scan",
+            "scanners": [{"name": "test_scanner"}],
+        }
+        response = app_with_results_dir.post("/scans", json=scan_config)
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+        assert "'transcripts' required" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_scan_missing_scanners(
+        self, app_with_results_dir: TestClient
+    ) -> None:
+        """Test 400 when scanners missing."""
+        scan_config = {
+            "name": "test_scan",
+            "transcripts": "/path/to/transcripts",
+        }
+        response = app_with_results_dir.post("/scans", json=scan_config)
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+        assert "'scanners' required" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_scan_empty_scanners(
+        self, app_with_results_dir: TestClient
+    ) -> None:
+        """Test 400 when scanners list is empty."""
+        scan_config = {
+            "name": "test_scan",
+            "transcripts": "/path/to/transcripts",
+            "scanners": [],
+        }
+        response = app_with_results_dir.post("/scans", json=scan_config)
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+        assert "'scanners' required" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_scan_no_results_dir(self) -> None:
+        """Test 500 when server results_dir not configured."""
+        client = TestClient(v2_api_app(results_dir=None))
+        scan_config = {
+            "name": "test_scan",
+            "transcripts": "/path/to/transcripts",
+            "scanners": [{"name": "test_scanner"}],
+        }
+        response = client.post("/scans", json=scan_config)
+
+        assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+        assert "results_dir not configured" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_scan_concurrent_scan_running(
+        self, app_with_results_dir: TestClient
+    ) -> None:
+        """Test 409 when another scan is already running."""
+        with patch(
+            "inspect_scout._scan.scan_async",
+            side_effect=RuntimeError("single scan running"),
+        ):
+            scan_config = {
+                "name": "test_scan",
+                "transcripts": "/path/to/transcripts",
+                "scanners": [{"name": "test_scanner"}],
+            }
+            response = app_with_results_dir.post("/scans", json=scan_config)
+
+        assert response.status_code == HTTP_409_CONFLICT
+        assert "single scan" in response.json()["detail"].lower()

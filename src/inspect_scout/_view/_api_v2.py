@@ -5,17 +5,21 @@ from typing import Any, Iterable, TypeVar
 import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import AccessPolicy
 from starlette.status import (
     HTTP_304_NOT_MODIFIED,
+    HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from upath import UPath
 
 from .._recorder.recorder import Status as RecorderStatus
+from .._scanjob import ScanJobConfig
 from .._scanlist import scan_list_async
 from .._scanresults import (
     scan_results_arrow_async,
@@ -99,6 +103,12 @@ def v2_api_app(
 
     async def _validate_list(request: Request, file: str | UPath) -> None:
         if access_policy is not None:
+            if not await access_policy.can_list(request, str(file)):
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+
+    async def _validate_write(request: Request, file: str | UPath) -> None:
+        if access_policy is not None:
+            # Use can_list as proxy since AccessPolicy lacks can_write
             if not await access_policy.can_list(request, str(file)):
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN)
 
@@ -199,6 +209,75 @@ def v2_api_app(
             await _to_rest_scan(request, scan, _running_scans)
             for scan in await scan_list_async(validated_results_dir)
         ]
+
+    @app.post(
+        "/scans",
+        response_model=RestScanStatus,
+        response_class=InspectPydanticJSONResponse,
+        summary="Create and execute a scan",
+        description="Accepts scan job config, executes scan, returns status.",
+    )
+    async def create_scan(
+        request: Request,
+        body: ScanJobConfig,
+    ) -> RestScanStatus:
+        """Create and execute new scan."""
+        from inspect_scout._scan import scan_async
+
+        # Validate required fields
+        if body.transcripts is None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="'transcripts' required",
+            )
+
+        if body.scanners is None or (
+            isinstance(body.scanners, list) and len(body.scanners) == 0
+        ) or (isinstance(body.scanners, dict) and len(body.scanners) == 0):
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="'scanners' required and must not be empty",
+            )
+
+        # Use server's configured results_dir
+        if results_dir is None:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Server results_dir not configured",
+            )
+
+        # Validate write access
+        await _validate_write(request, results_dir)
+
+        # Override results to use server's results_dir
+        scan_config = body.model_copy(update={"results": results_dir})
+
+        # Execute scan
+        try:
+            status = await scan_async(scanners=scan_config)
+            _running_scans.add(status.location)
+            return status
+        except ValueError as e:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST, detail=str(e)
+            ) from e
+        except PrerequisiteError as e:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST, detail=str(e)
+            ) from e
+        except RuntimeError as e:
+            if "single scan" in str(e).lower():
+                raise HTTPException(
+                    status_code=HTTP_409_CONFLICT, detail=str(e)
+                ) from e
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            ) from e
+        except Exception as e:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Scan failed: {str(e)}",
+            ) from e
 
     @app.get(
         "/scans/{scan}",

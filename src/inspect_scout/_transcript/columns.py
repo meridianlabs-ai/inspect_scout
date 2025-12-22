@@ -68,20 +68,22 @@ class LogicalOperator(Enum):
 
 
 class Condition(BaseModel):
-    """WHERE clause condition that can be combined with others."""
+    """WHERE clause condition that can be combined with others.
 
-    left: Union[str, "Condition", None] = Field(default=None)
+    Note: `left` and `right` use `Any` type hints instead of recursive
+    `Condition` references to avoid Pydantic's `model_rebuild()` requirement.
+    This prevents issues with cloudpickle serialization in multiprocessing
+    contexts. At runtime, `left` can be str or Condition, and `right` can be
+    Condition, list, tuple, or scalar value.
+    """
+
+    left: Any = Field(default=None)
     """Column name (simple) or left operand (compound)."""
 
     operator: Union[Operator, LogicalOperator, None] = Field(default=None)
     """Comparison operator (simple) or logical operator (compound)."""
 
-    right: Union[
-        "Condition",
-        list[ScalarValue],
-        tuple[ScalarValue, ScalarValue],
-        ScalarValue,
-    ] = Field(default=None)
+    right: Any = Field(default=None)
     """Comparison value (simple) or right operand (compound)."""
 
     is_compound: bool = Field(default=False)
@@ -537,10 +539,6 @@ class Condition(BaseModel):
             return ", ".join([f"${offset + i + 1}" for i in range(count)])
         else:  # SQLite and DuckDB use ?
             return ", ".join(["?" for _ in range(count)])
-
-
-# Rebuild model to resolve forward references for recursive type
-Condition.model_rebuild()
 
 
 class Column:

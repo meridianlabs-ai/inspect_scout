@@ -17195,7 +17195,7 @@ function requireTexSvgFullBI3fonbT() {
         } };
         throw TypeError(t3 ? `Object is not iterable.` : `Symbol.iterator is not defined.`);
       };
-      Object.defineProperty(t2, `__esModule`, { value: true }), t2.LinkedList = t2.ListItem = t2.END = void 0, t2.END = Symbol();
+      Object.defineProperty(t2, `__esModule`, { value: true }), t2.LinkedList = t2.ListItem = t2.END = void 0, t2.END = /* @__PURE__ */ Symbol();
       var o = function(e3) {
         e3 === void 0 && (e3 = null), this.next = null, this.prev = null, this.data = e3;
       };
@@ -17964,38 +17964,6 @@ function requireTexSvgFullBI3fonbT() {
         return e3.trim().split(/\s+/);
       };
     }, 7718: function(e2, t2) {
-      /*!
-      *************************************************************************
-      *
-      *  mhchemParser.ts
-      *  4.1.1
-      *
-      *  Parser for the \ce command and \pu command for MathJax and Co.
-      *
-      *  mhchem's \ce is a tool for writing beautiful chemical equations easily.
-      *  mhchem's \pu is a tool for writing physical units easily.
-      *
-      *  ----------------------------------------------------------------------
-      *
-      *  Copyright (c) 2015-2021 Martin Hensel
-      *
-      *  Licensed under the Apache License, Version 2.0 (the "License");
-      *  you may not use this file except in compliance with the License.
-      *  You may obtain a copy of the License at
-      *
-      *      http://www.apache.org/licenses/LICENSE-2.0
-      *
-      *  Unless required by applicable law or agreed to in writing, software
-      *  distributed under the License is distributed on an "AS IS" BASIS,
-      *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-      *  See the License for the specific language governing permissions and
-      *  limitations under the License.
-      *
-      *  ----------------------------------------------------------------------
-      *
-      *  https://github.com/mhchem/mhchemParser
-      *
-      */
       Object.defineProperty(t2, `__esModule`, { value: true }), t2.mhchemParser = void 0;
       var n2 = (function() {
         function e3() {

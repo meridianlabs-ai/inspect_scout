@@ -1,7 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ColumnTable } from "arquero";
 
-import { useMapAsyncData } from "../../hooks/useMapAsyncData";
 import { useApi } from "../../state/store";
 import { Status } from "../../types";
 import { decodeArrowBytes } from "../../utils/arrow";

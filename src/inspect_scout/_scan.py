@@ -552,9 +552,9 @@ async def _scan_async_inner(
                 async def _transcripts_reader() -> TranscriptsReader:
                     global _process_transcripts_reader
                     if _process_transcripts_reader is None:
-                        _process_transcripts_reader = await transcripts_for_closure.reader(
-                            snapshot
-                        ).__aenter__()
+                        _process_transcripts_reader = (
+                            await transcripts_for_closure.reader(snapshot).__aenter__()
+                        )
                     return _process_transcripts_reader
 
                 async def _strategy_completed() -> None:

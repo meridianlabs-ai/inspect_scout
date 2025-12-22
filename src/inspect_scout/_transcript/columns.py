@@ -24,7 +24,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # Scalar values that can be used in conditions
 ScalarValue = str | int | float | bool | datetime | date | None
@@ -88,6 +88,24 @@ class Condition(BaseModel):
 
     is_compound: bool = Field(default=False)
     """True for AND/OR/NOT conditions, False for simple comparisons."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _convert_nested_conditions(cls, data: Any) -> Any:
+        """Convert nested dict values to Condition objects during validation.
+
+        Since we use `Any` type hints for `left` and `right` to avoid recursive
+        forward references, Pydantic won't automatically convert nested dicts
+        to Condition objects. This validator handles that conversion.
+        """
+        if isinstance(data, dict):
+            # Convert left if it's a dict (compound condition's left operand)
+            if "left" in data and isinstance(data["left"], dict):
+                data["left"] = cls.model_validate(data["left"])
+            # Convert right if it's a dict (compound condition's right operand)
+            if "right" in data and isinstance(data["right"], dict):
+                data["right"] = cls.model_validate(data["right"])
+        return data
 
     @property
     def params(self) -> list[ScalarValue]:

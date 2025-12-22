@@ -35,6 +35,7 @@ def test_scan_with_simple_where_clause() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed
@@ -66,6 +67,7 @@ def test_scan_with_compound_where_clause() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed
@@ -105,6 +107,7 @@ def test_scan_with_in_where_clause() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed
@@ -136,6 +139,7 @@ def test_scan_with_and_where_clause() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed
@@ -191,6 +195,7 @@ def test_scan_with_multiple_where_calls() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed
@@ -214,6 +219,7 @@ def test_scan_without_where_clause() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed
@@ -237,6 +243,7 @@ def test_where_clause_with_comparison_operators() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed
@@ -270,6 +277,7 @@ def test_where_clause_preserves_sql_generation() -> None:
             transcripts=transcripts,
             results=tmpdir,
             limit=1,
+            max_processes=1,
         )
 
         # Verify scan completed

@@ -26,11 +26,3 @@ Here are the available `Transcript` fields:
 
 : {tbl-colwidths=\[20,30,50\]}
 
-
-::: {.callout-note}
-Note that many of the fields described above are available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-```python
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
-```
-:::

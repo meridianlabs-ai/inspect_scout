@@ -111,14 +111,6 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 In addition, you can use the `template_variables` option to pass additional variables for use in your template.
 
 
-::: {.callout-note}
-Note that many of the fields described above are available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-```python
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
-```
-:::
-
 ## Scanner Results
 
 The following provides an end to end example of a scanner, generated prompt, model response, and results yielded back from the scanner.

@@ -11,7 +11,6 @@ from pydantic import (
 from shortuuid import uuid
 from typing_extensions import Literal, NotRequired, Required, TypedDict
 
-from inspect_scout._transcript.columns import Condition
 from inspect_scout._validation.types import ValidationSet
 
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
@@ -93,8 +92,8 @@ class ScanTranscripts(BaseModel):
     location: str | None = Field(default=None)
     """Location of transcript collection (e.g. database location)."""
 
-    conditions: list[Condition] | None = Field(default=None)
-    """Selection criteria for transcripts."""
+    conditions: list[dict[str, Any]] | None = Field(default=None)
+    """Selection criteria for transcripts (serialized as dicts)."""
 
     transcript_ids: dict[str, str | None] = Field(default_factory=dict)
     """IDs of transcripts mapped to optional location hints.

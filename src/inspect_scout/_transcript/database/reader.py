@@ -74,6 +74,8 @@ class TranscriptsDBReader(TranscriptsReader):
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_DATABASE,
             location=self._db._location,
-            conditions=self._db._where,
+            conditions=[c.model_dump(mode="json") for c in self._db._where]
+            if self._db._where
+            else None,
             transcript_ids=await self._db.transcript_ids(),
         )

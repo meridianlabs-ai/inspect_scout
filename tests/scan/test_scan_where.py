@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._transcript.columns import Condition
@@ -44,12 +45,12 @@ def test_scan_with_simple_where_clause() -> None:
         assert status.spec.transcripts.conditions is not None
         assert len(status.spec.transcripts.conditions) == 1
 
-        # Verify the condition structure
-        condition = status.spec.transcripts.conditions[0]
-        assert condition.is_compound is False
-        assert condition.left == "task_set"
-        assert condition.operator is not None and condition.operator.name == "EQ"
-        assert condition.right == "popularity"
+        # Verify the condition structure (now stored as dict)
+        condition: dict[str, Any] = status.spec.transcripts.conditions[0]
+        assert condition["is_compound"] is False
+        assert condition["left"] == "task_set"
+        assert condition["operator"] == "="  # EQ operator value
+        assert condition["right"] == "popularity"
 
 
 def test_scan_with_compound_where_clause() -> None:
@@ -75,20 +76,20 @@ def test_scan_with_compound_where_clause() -> None:
         assert status.spec.transcripts.conditions is not None
         assert len(status.spec.transcripts.conditions) == 1
 
-        # Verify the compound condition structure
-        condition = status.spec.transcripts.conditions[0]
-        assert condition.is_compound is True
-        assert condition.operator is not None and condition.operator.name == "OR"
+        # Verify the compound condition structure (now stored as dict)
+        condition: dict[str, Any] = status.spec.transcripts.conditions[0]
+        assert condition["is_compound"] is True
+        assert condition["operator"] == "OR"  # OR operator value
         # Check left operand
-        assert isinstance(condition.left, Condition)
-        assert condition.left.is_compound is False
-        assert condition.left.left == "task_set"
-        assert condition.left.right == "popularity"
+        assert isinstance(condition["left"], dict)
+        assert condition["left"]["is_compound"] is False
+        assert condition["left"]["left"] == "task_set"
+        assert condition["left"]["right"] == "popularity"
         # Check right operand
-        assert isinstance(condition.right, Condition)
-        assert condition.right.is_compound is False
-        assert condition.right.left == "task_set"
-        assert condition.right.right == "theory-of-mind"
+        assert isinstance(condition["right"], dict)
+        assert condition["right"]["is_compound"] is False
+        assert condition["right"]["left"] == "task_set"
+        assert condition["right"]["right"] == "theory-of-mind"
 
 
 def test_scan_with_in_where_clause() -> None:
@@ -114,12 +115,12 @@ def test_scan_with_in_where_clause() -> None:
         assert status.spec.transcripts.conditions is not None
         assert len(status.spec.transcripts.conditions) == 1
 
-        # Verify the IN condition structure
-        condition = status.spec.transcripts.conditions[0]
-        assert condition.is_compound is False
-        assert condition.left == "task_set"
-        assert condition.operator is not None and condition.operator.name == "IN"
-        assert condition.right == ["popularity", "security-guide"]
+        # Verify the IN condition structure (now stored as dict)
+        condition: dict[str, Any] = status.spec.transcripts.conditions[0]
+        assert condition["is_compound"] is False
+        assert condition["left"] == "task_set"
+        assert condition["operator"] == "IN"  # IN operator value
+        assert condition["right"] == ["popularity", "security-guide"]
 
 
 def test_scan_with_and_where_clause() -> None:
@@ -145,10 +146,10 @@ def test_scan_with_and_where_clause() -> None:
         assert status.spec.transcripts.conditions is not None
         assert len(status.spec.transcripts.conditions) == 1
 
-        # Verify the AND condition structure
-        condition = status.spec.transcripts.conditions[0]
-        assert condition.is_compound is True
-        assert condition.operator is not None and condition.operator.name == "AND"
+        # Verify the AND condition structure (now stored as dict)
+        condition: dict[str, Any] = status.spec.transcripts.conditions[0]
+        assert condition["is_compound"] is True
+        assert condition["operator"] == "AND"  # AND operator value
 
 
 def test_where_clause_roundtrip() -> None:
@@ -246,12 +247,12 @@ def test_where_clause_with_comparison_operators() -> None:
         assert status.spec.transcripts.conditions is not None
         assert len(status.spec.transcripts.conditions) == 1
 
-        # Verify the condition structure
-        condition = status.spec.transcripts.conditions[0]
-        assert condition.is_compound is False
-        assert condition.left == "score"
-        assert condition.operator is not None and condition.operator.name == "GT"
-        assert condition.right == 0.5
+        # Verify the condition structure (now stored as dict)
+        condition: dict[str, Any] = status.spec.transcripts.conditions[0]
+        assert condition["is_compound"] is False
+        assert condition["left"] == "score"
+        assert condition["operator"] == ">"  # GT operator value
+        assert condition["right"] == 0.5
 
 
 def test_where_clause_preserves_sql_generation() -> None:
@@ -274,10 +275,11 @@ def test_where_clause_preserves_sql_generation() -> None:
         # Verify scan completed
         assert status.complete
 
-        # Get the restored condition
+        # Get the stored condition dict and restore to Condition object
         assert status.spec.transcripts is not None
         assert status.spec.transcripts.conditions is not None
-        restored_condition = status.spec.transcripts.conditions[0]
+        condition_dict: dict[str, Any] = status.spec.transcripts.conditions[0]
+        restored_condition = Condition.model_validate(condition_dict)
 
         # Verify SQL generation matches
         restored_sql = restored_condition.to_sql("sqlite")

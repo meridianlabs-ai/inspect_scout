@@ -2,27 +2,32 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
-import { useStore } from "../../state/store";
+import { LoadingBar } from "../../components/LoadingBar";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { useServerTranscripts } from "../server/hooks";
+import { useServerTranscripts, useServerTranscriptsDir } from "../server/hooks";
 
 import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
-  useServerTranscripts(undefined);
-
-  const transcripts = useStore((state) => state.transcripts);
-  const error = useStore((state) => state.scopedErrors["transcripts"]);
+  const {
+    data: transcriptDir,
+    error: errorDir,
+    loading: loadingDir,
+  } = useServerTranscriptsDir();
+  const { data: transcripts, error, loading } = useServerTranscripts(undefined);
 
   return (
     <div className={clsx(styles.container)}>
-      <TranscriptsNavbar bordered={true} />
-      {error && (
+      <TranscriptsNavbar bordered={true} transcriptDir={transcriptDir} />
+      <LoadingBar loading={!!loading || !!loadingDir} />
+      {(errorDir || error) && (
         <ErrorPanel
           title="Error Loading Transcript"
-          error={{ message: error }}
+          error={{
+            message: errorDir?.message || error?.message || "Unknown Error",
+          }}
         />
       )}
       {!error && <TranscriptsGrid transcripts={transcripts} />}

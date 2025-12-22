@@ -1,4 +1,4 @@
-import { FC, useState, useRef, useEffect, useCallback } from "react";
+import { FC, useRef, useCallback } from "react";
 
 import styles from "./EditableText.module.css";
 
@@ -19,74 +19,77 @@ export const EditableText: FC<EditableTextProps> = ({
   placeholder,
   icon,
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [draftValue, setDraftValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const initialValueRef = useRef<string>("");
 
-  // Focus input when starting editing
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+  const handleFocus = () => {
+    // Store the initial value when focusing
+    if (spanRef.current) {
+      initialValueRef.current = spanRef.current.textContent || "";
+      // Select all text on focus
+      const range = document.createRange();
+      range.selectNodeContents(spanRef.current);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
     }
-  }, [isEditing]);
-
-  const commitChanges = useCallback(() => {
-    if (draftValue.trim() !== "") {
-      onValueChanged(draftValue);
-    }
-  }, [draftValue, onValueChanged]);
-
-  const handleEditClick = () => {
-    setDraftValue(value || "");
-    setIsEditing(true);
   };
 
+  const commitChanges = useCallback(() => {
+    if (spanRef.current) {
+      const newValue = spanRef.current.textContent?.trim() || "";
+      if (newValue !== "" && newValue !== initialValueRef.current) {
+        onValueChanged(newValue);
+      } else if (newValue === "") {
+        // Restore the original value if empty
+        spanRef.current.textContent = initialValueRef.current;
+      }
+    }
+  }, [onValueChanged]);
+
   const handleBlur = () => {
-    setIsEditing(false);
     commitChanges();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDraftValue(e.target.value);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLSpanElement>) => {
     if (e.key === "Enter") {
-      setIsEditing(false);
-      commitChanges();
+      e.preventDefault();
+      spanRef.current?.blur();
     } else if (e.key === "Escape") {
-      setIsEditing(false);
+      e.preventDefault();
+      // Restore original value on escape
+      if (spanRef.current) {
+        spanRef.current.textContent = initialValueRef.current;
+      }
+      spanRef.current?.blur();
     }
   };
+
+  const handleInput = () => {
+    // Prevent empty content from collapsing the span
+    if (spanRef.current && spanRef.current.textContent === "") {
+      spanRef.current.textContent = "";
+    }
+  };
+
+  const displayValue = value || placeholder || "";
 
   return (
     <div className={`${styles.container} ${className || ""}`}>
       {icon && <i className={`${icon} ${styles.icon}`} />}
 
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          className={styles.input}
-          value={draftValue}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-        />
-      ) : (
-        <>
-          <span className={styles.text}>{value || placeholder}</span>
-          <button
-            className={styles.editButton}
-            onClick={handleEditClick}
-            aria-label="Edit"
-          >
-            <i className="bi bi-pencil-square" />
-          </button>
-        </>
-      )}
+      <span
+        ref={spanRef}
+        contentEditable="true"
+        className={`${styles.text} ${!value ? styles.placeholder : ""}`}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        onInput={handleInput}
+        suppressContentEditableWarning
+      >
+        {displayValue}
+      </span>
     </div>
   );
 };

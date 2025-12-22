@@ -1,7 +1,9 @@
+import clsx from "clsx";
 import { FC } from "react";
 
-import { EditableText } from "./EditableText";
+import { EditablePath } from "./EditablePath";
 import { Navbar } from "./Navbar";
+import styles from "./TranscriptsNavbar.module.css";
 
 interface TranscriptsNavbarProps {
   transcriptDir?: string;
@@ -17,11 +19,24 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   children,
 }) => {
   const left = (
-    <EditableText
-      value={transcriptDir}
-      onValueChanged={setTranscriptDir}
-      placeholder="Select Transcripts Database"
-    />
+    <div className={styles.navbarLeft}>
+      <div
+        className={clsx(
+          "text-style-label",
+          "text-style-secondary",
+          "text-size-smallest",
+          styles.label
+        )}
+      >
+        Transcripts
+      </div>
+      <EditablePath
+        path={transcriptDir}
+        onPathChanged={setTranscriptDir}
+        placeholder="Select Transcripts Folder"
+        className={clsx(styles.pathInput, "text-size-smallest")}
+      />
+    </div>
   );
 
   return <Navbar bordered={bordered} left={left} right={children} />;

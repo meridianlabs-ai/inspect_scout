@@ -258,63 +258,61 @@
   height: 100%;
   row-gap: 0;
 }
-._container_vny9l_1 {
+._container_1nr70_1 {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-._icon_vny9l_7 {
+._icon_1nr70_7 {
   color: var(--bs-body-color);
   opacity: 0.7;
 }
 
-._text_vny9l_12 {
+._text_1nr70_12 {
   color: var(--bs-body-color);
   white-space: nowrap;
-}
-
-._editButton_vny9l_17 {
-  background: none;
-  border: none;
-  color: var(--bs-secondary);
-  cursor: pointer;
-  padding: 0.25rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  cursor: text;
+  padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  opacity: 0.6;
-  transition:
-    opacity 0.2s,
-    color 0.2s;
+  transition: background-color 0.2s;
+  min-width: 2ch;
+  display: inline-block;
 }
 
-._editButton_vny9l_17:hover {
-  opacity: 1;
-  color: var(--bs-primary);
+._text_1nr70_12:hover {
+  background-color: var(--bs-secondary-bg);
 }
 
-._editButton_vny9l_17:focus {
-  outline: 2px solid var(--bs-primary);
-  outline-offset: 2px;
-}
-
-._input_vny9l_43 {
-  background: var(--bs-body-bg);
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  color: var(--bs-body-color);
-  padding: 0.25rem 0.5rem;
-  font-size: inherit;
-  font-family: inherit;
-  min-width: 400px;
-}
-
-._input_vny9l_43:focus {
-  outline: 2px solid var(--bs-primary);
+._text_1nr70_12:focus {
+  outline: 1px solid var(--bs-primary);
   outline-offset: 0;
-  border-color: var(--bs-primary);
+  background-color: var(--bs-body-bg);
+}
+
+._text_1nr70_12._placeholder_1nr70_33 {
+  color: var(--bs-secondary-color);
+  opacity: 0.6;
+}
+._navbarLeft_13byk_1 {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0rem;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+}
+
+._label_13byk_9 {
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+  border-right: solid 1px var(--bs-border-color);
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+._pathInput_13byk_18 {
+  background-color: var(--bs-body-bg);
 }
 ._container_1swz0_1 {
   overflow: auto;

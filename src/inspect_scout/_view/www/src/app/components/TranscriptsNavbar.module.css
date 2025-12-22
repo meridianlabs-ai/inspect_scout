@@ -1,0 +1,20 @@
+.navbarLeft {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0rem;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+}
+
+.label {
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+  border-right: solid 1px var(--bs-border-color);
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.pathInput {
+  background-color: var(--bs-body-bg);
+}

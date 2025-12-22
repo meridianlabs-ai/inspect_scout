@@ -12,47 +12,25 @@
 .text {
   color: var(--bs-body-color);
   white-space: nowrap;
-}
-
-.editButton {
-  background: none;
-  border: none;
-  color: var(--bs-secondary);
-  cursor: pointer;
-  padding: 0.25rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  cursor: text;
+  padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  opacity: 0.6;
-  transition:
-    opacity 0.2s,
-    color 0.2s;
+  transition: background-color 0.2s;
+  min-width: 2ch;
+  display: inline-block;
 }
 
-.editButton:hover {
-  opacity: 1;
-  color: var(--bs-primary);
+.text:hover {
+  background-color: var(--bs-secondary-bg);
 }
 
-.editButton:focus {
-  outline: 2px solid var(--bs-primary);
-  outline-offset: 2px;
-}
-
-.input {
-  background: var(--bs-body-bg);
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  color: var(--bs-body-color);
-  padding: 0.25rem 0.5rem;
-  font-size: inherit;
-  font-family: inherit;
-  min-width: 400px;
-}
-
-.input:focus {
-  outline: 2px solid var(--bs-primary);
+.text:focus {
+  outline: 1px solid var(--bs-primary);
   outline-offset: 0;
-  border-color: var(--bs-primary);
+  background-color: var(--bs-body-bg);
+}
+
+.text.placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 0.6;
 }

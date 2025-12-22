@@ -31,7 +31,6 @@ export interface ServerRequestApi {
     headers?: Record<string, string>,
     body?: string
   ) => Promise<{
-    parsed: any;
     raw: string;
   }>;
   fetchBytes: (method: HttpMethod, path: string) => Promise<ArrayBuffer>;
@@ -136,7 +135,7 @@ export function serverRequestApi(
     path: string,
     headers?: Record<string, string>,
     body?: string
-  ): Promise<{ parsed: any; raw: string; headers: Headers }> => {
+  ): Promise<{ raw: string; headers: Headers }> => {
     const url = buildApiUrl(path);
 
     const requestHeaders: HeadersInit = {
@@ -166,7 +165,6 @@ export function serverRequestApi(
     if (response.ok) {
       const text = await response.text();
       return {
-        parsed: await asyncJsonParse(text),
         raw: text,
         headers: response.headers,
       };

@@ -275,11 +275,19 @@ def verify_scanner_results(
 # ============================================================================
 
 
-@pytest.mark.asyncio
-async def test_worklist_basic_filtering() -> None:
+def test_worklist_basic_filtering() -> None:
     """Verify that a worklist correctly restricts which transcripts are processed."""
     # Get 5 transcript IDs
-    transcript_ids = await get_n_transcript_ids(5)
+    transcript_ids = [
+        "MUBxLNC9YwakjPFXaFuEZ4",
+        "mTiLhkqVEN7PTKpDjLjeAi",
+        "RPwen98ZVF6Dw9Aknws3Lz",
+        "nSoKtwzHMgBNURMayevtNg",
+        "XRuS97Qk2EwCeyt5iMcT5M",
+    ]
+    # transcript_ids = await get_n_transcript_ids(5)
+    # with open("ids.txt", "w") as f:
+    #     f.write(str(transcript_ids))
 
     # Create worklist with overlap
     # counter_a processes transcripts [0, 1, 2]

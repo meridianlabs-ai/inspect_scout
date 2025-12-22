@@ -18,8 +18,9 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
 }) => {
   const left = (
     <EditableText
-      text={transcriptDir || "Select Transcripts Database"}
-      onChange={setTranscriptDir}
+      value={transcriptDir}
+      onValueChanged={setTranscriptDir}
+      placeholder="Select Transcripts Database"
     />
   );
 

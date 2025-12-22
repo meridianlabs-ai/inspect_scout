@@ -1,33 +1,29 @@
-import { FC, useState, useRef, useEffect, useMemo } from "react";
-
-import { debounce } from "../../utils/sync";
+import { FC, useState, useRef, useEffect, useCallback } from "react";
 
 import styles from "./EditableText.module.css";
 
 interface EditableTextProps {
-  text: string;
-  onChange: (newText: string) => void;
-  className?: string;
-  placeholder?: string;
+  value?: string;
+  onValueChanged: (value: string) => void;
+
   icon?: string;
+  placeholder?: string;
+
+  className?: string;
 }
 
 export const EditableText: FC<EditableTextProps> = ({
-  text,
-  onChange,
+  value,
+  onValueChanged,
   className,
   placeholder,
   icon,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(text);
+  const [draftValue, setDraftValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setValue(text);
-  }, [text]);
-
-  // Focuses input when starting editing
+  // Focus input when starting editing
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
@@ -35,27 +31,31 @@ export const EditableText: FC<EditableTextProps> = ({
     }
   }, [isEditing]);
 
+  const commitChanges = useCallback(() => {
+    if (draftValue.trim() !== "") {
+      onValueChanged(draftValue);
+    }
+  }, [draftValue, onValueChanged]);
+
   const handleEditClick = () => {
+    setDraftValue(value || "");
     setIsEditing(true);
   };
 
   const handleBlur = () => {
     setIsEditing(false);
+    commitChanges();
   };
 
-  const debouncedOnChange = useMemo(() => debounce(onChange, 300), [onChange]);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setValue(newValue);
-    debouncedOnChange(newValue);
+    setDraftValue(e.target.value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       setIsEditing(false);
+      commitChanges();
     } else if (e.key === "Escape") {
-      setValue(text);
       setIsEditing(false);
     }
   };
@@ -69,7 +69,7 @@ export const EditableText: FC<EditableTextProps> = ({
           ref={inputRef}
           type="text"
           className={styles.input}
-          value={value}
+          value={draftValue}
           onChange={handleChange}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
@@ -77,7 +77,7 @@ export const EditableText: FC<EditableTextProps> = ({
         />
       ) : (
         <>
-          <span className={styles.text}>{text || placeholder}</span>
+          <span className={styles.text}>{value || placeholder}</span>
           <button
             className={styles.editButton}
             onClick={handleEditClick}

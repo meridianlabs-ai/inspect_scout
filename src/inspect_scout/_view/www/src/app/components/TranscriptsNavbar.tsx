@@ -7,29 +7,21 @@ import { Navbar } from "./Navbar";
 
 interface TranscriptsNavbarProps {
   transcriptDir?: string;
+  setTranscriptDir: (path: string) => void;
   bordered?: boolean;
   children?: React.ReactNode;
 }
 
 export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   transcriptDir,
+  setTranscriptDir,
   bordered = true,
   children,
 }) => {
-  const transcriptsDatabasePath = useStore(
-    (state) => state.transcriptsDatabasePath
-  );
-  const setTranscriptsDatabasePath = useStore(
-    (state) => state.setTranscriptsDatabasePath
-  );
   const left = (
     <EditableText
-      text={
-        transcriptsDatabasePath ||
-        transcriptDir ||
-        "Select Transcripts Database"
-      }
-      onChange={setTranscriptsDatabasePath}
+      text={transcriptDir || "Select Transcripts Database"}
+      onChange={setTranscriptDir}
     />
   );
 

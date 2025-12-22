@@ -1,7 +1,5 @@
 import { FC } from "react";
 
-import { useStore } from "../../state/store";
-
 import { EditableText } from "./EditableText";
 import { Navbar } from "./Navbar";
 

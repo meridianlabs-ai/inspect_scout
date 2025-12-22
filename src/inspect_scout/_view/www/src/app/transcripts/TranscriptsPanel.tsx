@@ -23,22 +23,24 @@ export const TranscriptsPanel: FC = () => {
   const setTranscriptsDatabasePath = useStore(
     (state) => state.setTranscriptsDatabasePath
   );
+  const resolvedTranscriptDir = transcriptsDatabasePath || transcriptDir;
 
   const {
     data: transcripts,
     error,
     loading,
-  } = useServerTranscripts(transcriptsDatabasePath || transcriptDir);
+  } = useServerTranscripts(resolvedTranscriptDir);
+  const hasError = errorDir || error;
 
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
         bordered={true}
-        transcriptDir={transcriptsDatabasePath || transcriptDir}
+        transcriptDir={resolvedTranscriptDir}
         setTranscriptDir={setTranscriptsDatabasePath}
       />
-      <LoadingBar loading={!!loading || !!loadingDir} />
-      {(errorDir || error) && (
+      <LoadingBar loading={loading || loadingDir} />
+      {hasError && (
         <ErrorPanel
           title="Error Loading Transcript"
           error={{
@@ -46,7 +48,7 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!error && <TranscriptsGrid transcripts={transcripts} />}
+      {!hasError && <TranscriptsGrid transcripts={transcripts} />}
       <Footer
         itemCount={transcripts?.length || 0}
         id={"transcripts-footer"}

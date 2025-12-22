@@ -1,5 +1,6 @@
 import hashlib
 import io
+import traceback
 from typing import Any, Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
@@ -231,9 +232,11 @@ def v2_api_app(
                 detail="'transcripts' required",
             )
 
-        if body.scanners is None or (
-            isinstance(body.scanners, list) and len(body.scanners) == 0
-        ) or (isinstance(body.scanners, dict) and len(body.scanners) == 0):
+        if (
+            body.scanners is None
+            or (isinstance(body.scanners, list) and len(body.scanners) == 0)
+            or (isinstance(body.scanners, dict) and len(body.scanners) == 0)
+        ):
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail="'scanners' required and must not be empty",
@@ -252,28 +255,25 @@ def v2_api_app(
         # Override results to use server's results_dir
         scan_config = body.model_copy(update={"results": results_dir})
 
+        print(f"in create_scan with {scan_config.model_dump_json(exclude_none=True)}")
+
         # Execute scan
         try:
             status = await scan_async(scanners=scan_config)
             _running_scans.add(status.location)
             return status
         except ValueError as e:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST, detail=str(e)
-            ) from e
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e
         except PrerequisiteError as e:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST, detail=str(e)
-            ) from e
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e)) from e
         except RuntimeError as e:
             if "single scan" in str(e).lower():
-                raise HTTPException(
-                    status_code=HTTP_409_CONFLICT, detail=str(e)
-                ) from e
+                raise HTTPException(status_code=HTTP_409_CONFLICT, detail=str(e)) from e
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
             ) from e
         except Exception as e:
+            print(f"caught {e}\n{''.join(traceback.format_exception(e))}")
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Scan failed: {str(e)}",

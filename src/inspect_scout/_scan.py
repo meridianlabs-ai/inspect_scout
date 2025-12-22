@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
 from typing import Any, AsyncIterator, Mapping, Sequence
@@ -540,10 +541,18 @@ async def _scan_async_inner(
                 # create metrics accumulator
                 metrics_accum = metrics_accumulators(scan.scanners)
 
+                # Create a copy of transcripts with cleared conditions for closures.
+                # The conditions are already captured in the snapshot (as dicts).
+                # Clearing them here prevents cloudpickle from serializing the
+                # recursive Condition Pydantic model, which causes pytest hangs
+                # on Linux CI with spawn multiprocessing.
+                transcripts_for_closure = deepcopy(transcripts)
+                transcripts_for_closure._query.where.clear()
+
                 async def _transcripts_reader() -> TranscriptsReader:
                     global _process_transcripts_reader
                     if _process_transcripts_reader is None:
-                        _process_transcripts_reader = await transcripts.reader(
+                        _process_transcripts_reader = await transcripts_for_closure.reader(
                             snapshot
                         ).__aenter__()
                     return _process_transcripts_reader

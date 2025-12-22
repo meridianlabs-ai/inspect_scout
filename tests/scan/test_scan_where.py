@@ -3,6 +3,7 @@
 import tempfile
 from pathlib import Path
 
+import pytest
 from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._transcript.columns import Condition
 from inspect_scout._transcript.columns import columns as c
@@ -23,7 +24,8 @@ def where_test_scanner_factory() -> Scanner[Transcript]:
     return scan_transcript
 
 
-def test_scan_with_simple_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_simple_where_clause() -> None:
     """Test that a simple where clause is persisted in the scan spec."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with where clause
@@ -52,7 +54,8 @@ def test_scan_with_simple_where_clause() -> None:
         assert condition.right == "popularity"
 
 
-def test_scan_with_compound_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_compound_where_clause() -> None:
     """Test that compound conditions (AND/OR) are persisted."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with compound where clause
@@ -91,7 +94,8 @@ def test_scan_with_compound_where_clause() -> None:
         assert condition.right.right == "theory-of-mind"
 
 
-def test_scan_with_in_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_in_where_clause() -> None:
     """Test where clause using IN operator."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with IN where clause
@@ -122,7 +126,8 @@ def test_scan_with_in_where_clause() -> None:
         assert condition.right == ["popularity", "security-guide"]
 
 
-def test_scan_with_and_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_and_where_clause() -> None:
     """Test where clause using AND operator."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with AND where clause
@@ -151,7 +156,8 @@ def test_scan_with_and_where_clause() -> None:
         assert condition.operator is not None and condition.operator.name == "AND"
 
 
-def test_where_clause_roundtrip() -> None:
+@pytest.mark.asyncio
+async def test_where_clause_roundtrip() -> None:
     """Test that where conditions can be serialized and deserialized correctly."""
     # Create various conditions
     conditions = [
@@ -175,7 +181,8 @@ def test_where_clause_roundtrip() -> None:
         assert original.to_sql("postgres") == restored.to_sql("postgres")
 
 
-def test_scan_with_multiple_where_calls() -> None:
+@pytest.mark.asyncio
+async def test_scan_with_multiple_where_calls() -> None:
     """Test that multiple .where() calls accumulate conditions."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with multiple where calls
@@ -202,7 +209,8 @@ def test_scan_with_multiple_where_calls() -> None:
         assert len(status.spec.transcripts.conditions) >= 1
 
 
-def test_scan_without_where_clause() -> None:
+@pytest.mark.asyncio
+async def test_scan_without_where_clause() -> None:
     """Test scan without where clause has empty/None where."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts without where clause
@@ -225,7 +233,8 @@ def test_scan_without_where_clause() -> None:
         assert where is None or len(where) == 0
 
 
-def test_where_clause_with_comparison_operators() -> None:
+@pytest.mark.asyncio
+async def test_where_clause_with_comparison_operators() -> None:
     """Test where clause with various comparison operators."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Test with greater than operator
@@ -254,7 +263,8 @@ def test_where_clause_with_comparison_operators() -> None:
         assert condition.right == 0.5
 
 
-def test_where_clause_preserves_sql_generation() -> None:
+@pytest.mark.asyncio
+async def test_where_clause_preserves_sql_generation() -> None:
     """Test that restored where clause generates same SQL as original."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a condition and get its SQL

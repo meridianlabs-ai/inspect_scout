@@ -87,6 +87,30 @@ Run all checks (lint, format, typecheck):
 pnpm check
 ```
 
+## TypeScript Types from OpenAPI
+
+Types are auto-generated from the FastAPI OpenAPI spec to keep client/server in sync.
+
+### Updating Types After API Changes
+
+When Python Pydantic models change:
+
+```bash
+# 1. Export updated OpenAPI schema
+.venv/bin/python scripts/export_openapi_schema.py
+
+# 2. Types regenerate automatically on next build
+pnpm build
+```
+
+Types generate via `prebuild` hook, no manual step needed during normal development.
+
+### Manual Type Generation
+
+```bash
+pnpm types:generate
+```
+
 ## Tech Stack
 
 - React 19

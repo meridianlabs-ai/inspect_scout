@@ -19,7 +19,7 @@ export const ScansPanelTitle: FC<{
       ? "scan"
       : selectedScan.spec.scan_name;
 
-  const scannerModel = selectedScan.spec.model.model;
+  const scannerModel = selectedScan.spec.model?.model;
 
   // Awesome
   const deprecatedCount = selectedScan.spec.transcripts?.count || 0;

@@ -8,15 +8,18 @@ import {
   Events,
 } from "./log";
 
-// Scout types dervice from Python types
-// TODO: generate with schema
-export interface Status {
-  complete: boolean;
-  spec: ScanSpec;
-  location: string;
-  summary: Summary;
-  errors: Error[];
-}
+// Scout types generated from OpenAPI schema
+// To regenerate: .venv/bin/python scripts/export_openapi_schema.py
+export type {
+  Status,
+  ScanSpec,
+  Summary,
+  Error,
+  ScannerSpec as Scanner,
+  ScannerSummary,
+  ModelUsage,
+  ModelConfig as Model,
+} from "./api-types";
 
 export interface IPCDataframe {
   format: "arrow.feather";
@@ -25,73 +28,6 @@ export interface IPCDataframe {
   data: string;
   column_names: string[];
   row_count: number;
-}
-
-export interface Summary {
-  scanners: Record<string, ScannerSummary>;
-}
-
-export interface Error {
-  transcript_id: string;
-  scanner: string;
-  error: string;
-  trqaceback: string;
-}
-
-export interface Model {
-  model: string;
-  config: Record<string, unknown>;
-  args: Record<string, unknown>;
-}
-
-export interface ScanSpec {
-  scan_file?: string;
-  scan_id: string;
-  scan_name: string;
-  scan_args?: Record<string, unknown>;
-  timestamp: string;
-
-  model: Model;
-
-  metadata?: Record<string, unknown>;
-  options?: Record<string, unknown>;
-  packages?: Record<string, unknown>;
-  revision?: Record<string, unknown>;
-
-  scanners: Record<string, Scanner>;
-  transcripts?: {
-    type: string;
-    location?: string;
-    transcript_ids: Record<string, string | null>;
-
-    // deprecated value for compatibility with old scans
-    count?: number;
-  };
-}
-
-export interface Scanner {
-  name: string;
-  file: string;
-  params: Record<string, unknown>;
-}
-
-export interface ScannerSummary {
-  scans: number;
-  results: number;
-  errors: number;
-  tokens: number;
-  model_usage: Record<string, ModelUsage>;
-  validations: Array<boolean | Record<string, boolean>>;
-  metrics: Record<string, Record<string, number>>;
-}
-
-export interface ModelUsage {
-  input_tokens: number;
-  output_tokens: number;
-  total_tokens: number;
-  input_tokens_cache_write?: number;
-  input_tokens_cache_read?: number;
-  reasoning_tokens?: number;
 }
 
 export type ChatMessages = ChatMessage[];

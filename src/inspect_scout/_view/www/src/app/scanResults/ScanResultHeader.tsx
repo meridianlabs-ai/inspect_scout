@@ -115,7 +115,7 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
 
   // Model info
   const transcriptModel = transcript.model || transcript.metadata?.model;
-  const scanningModel = status?.spec.model.model;
+  const scanningModel = status?.spec.model?.model;
 
   // Task information
   const taskSet = transcript.task_set || transcript.metadata?.task_name;
@@ -139,7 +139,7 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
     },
   ];
 
-  if (status?.spec.model.model) {
+  if (status?.spec.model?.model) {
     cols.push({
       label: "Scanning Model",
       value: scanningModel,
@@ -173,7 +173,7 @@ const messageCols = (message: MessageType, status?: Status) => {
     });
   }
 
-  if (status?.spec.model.model) {
+  if (status?.spec.model?.model) {
     cols.push({
       label: "Scanning Model",
       value: status.spec.model.model,

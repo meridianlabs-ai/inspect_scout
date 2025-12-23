@@ -70,7 +70,9 @@ export const useSelectedScanner = (): AsyncData<string> => {
 };
 
 const _get_default_scanner = (s: Status): string => {
-  const result = Object.keys(s.summary.scanners)[0];
+  const result = s.summary.scanners
+    ? Object.keys(s.summary.scanners)[0]
+    : undefined;
   if (!result) {
     throw new Error("Scan must have a scanner");
   }

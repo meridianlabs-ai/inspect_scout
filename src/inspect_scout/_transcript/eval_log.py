@@ -27,7 +27,6 @@ from inspect_ai.analysis._dataframe.evals.columns import (
 from inspect_ai.analysis._dataframe.extract import (
     list_as_str,
     remove_namespace,
-    score_value,
     score_values,
 )
 from inspect_ai.analysis._dataframe.samples.columns import SampleColumn
@@ -45,7 +44,7 @@ from inspect_ai.log import EvalLog, EvalSampleSummary
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
-from inspect_ai.scorer import value_to_float
+from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
@@ -441,6 +440,20 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
         return samples_df_with_caching(read_samples, logs)
 
 
+def sample_score(sample: EvalSampleSummary) -> Value | None:
+    if not sample.scores:
+        return None
+
+    score = next(iter(sample.scores.values()), None)
+    if score is None:
+        return None
+
+    if isinstance(score.value, dict) and "value" in score.value:
+        return score.value.get("value", None)
+    else:
+        return score.value
+
+
 def sample_success(sample: EvalSampleSummary) -> bool | None:
     if not sample.scores:
         return None
@@ -536,7 +549,7 @@ TranscriptColumns: list[Column] = (
         SampleColumn("input", path=sample_input_as_str, required=True),
         SampleColumn("target", path="target", required=True, value=list_as_str),
         SampleColumn("sample_metadata", path="metadata", default={}),
-        SampleColumn("score", path="scores", value=score_value),
+        SampleColumn("score", path=sample_score),
         SampleColumn("success", path=sample_success),
         SampleColumn("score_*", path="scores", value=score_values),
         SampleColumn("total_tokens", path=sample_total_tokens),

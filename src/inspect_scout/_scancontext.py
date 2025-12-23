@@ -6,7 +6,7 @@ import importlib_metadata
 from inspect_ai._util.constants import PKG_NAME as INSPECT_PKG_NAME
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.module import load_module
-from inspect_ai._util.path import cwd_relative_path
+from inspect_ai._util.path import add_to_syspath, cwd_relative_path
 from inspect_ai._util.registry import (
     is_registry_object,
     registry_info,
@@ -185,7 +185,9 @@ def _scanners_from_spec(
 
 def scanner_from_spec(scanner: ScannerSpec) -> Scanner[Any]:
     if scanner.file is not None:
-        load_module(Path(scanner.file))
+        scanner_dir = Path(scanner.file).parent.as_posix()
+        with add_to_syspath(scanner_dir):
+            load_module(Path(scanner.file))
     return scanner_create(scanner.name, scanner.params)
 
 

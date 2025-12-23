@@ -2,12 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ColumnTable } from "arquero";
 
 import { useApi } from "../../state/store";
-import { TranscriptInfo } from "../../types";
-import { Status } from "../../types";
+import { TranscriptInfo, Status, ScanResultInputData } from "../../types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
-import { ScanResultInputData } from "../types";
 import { expandResultsetRows } from "../utils/arrow";
 
 // Returns the server's configured scans directory

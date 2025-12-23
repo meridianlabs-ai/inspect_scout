@@ -1,7 +1,7 @@
 import JSON5 from "json5";
 
 import { Input, InputType } from "../app/types";
-import { Status } from "../types";
+import { Status, ScanResultInputData } from "../types";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
@@ -97,8 +97,8 @@ export const apiVscode = (
         }
 
         const input = JSON5.parse<Input>(inputRaw);
-        const inputType = inputTypeRaw as InputType;
-        return { input, inputType };
+        const input_type = inputTypeRaw as InputType;
+        return { input, input_type } as ScanResultInputData;
       } else {
         throw new Error("Invalid response for getScans");
       }

@@ -6,6 +6,7 @@ import { useMapAsyncData } from "../hooks/useMapAsyncData";
 import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
 import { useStore } from "../state/store";
 import { Status } from "../types";
+import { ScanResultInputData } from "../types";
 import { AsyncData, data, loading } from "../utils/asyncData";
 import { join } from "../utils/uri";
 
@@ -16,11 +17,7 @@ import {
   useServerScanDataframe,
   useServerScanDataframeInput,
 } from "./server/hooks";
-import {
-  ScanResultData,
-  ScanResultInputData,
-  ScanResultSummary,
-} from "./types";
+import { ScanResultData, ScanResultSummary } from "./types";
 
 const useSelectedScanLocation = () => {
   const params = useParams<{ "*": string }>();

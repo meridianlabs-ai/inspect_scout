@@ -1,5 +1,5 @@
 import { EventType } from "../transcript/types";
-import { ModelUsage, Transcript } from "../types";
+import { ModelUsage, Transcript, ScanResultInputData } from "../types";
 import {
   JsonValue,
   ChatMessageSystem,
@@ -10,19 +10,9 @@ import {
   Messages,
 } from "../types/log";
 
-export interface ScanResultInputData {
-  input: Input;
-  inputType: InputType;
-}
-
-export type Input = Transcript | Messages | Events | MessageType | EventType;
-
-export type InputType =
-  | "transcript"
-  | "message"
-  | "messages"
-  | "event"
-  | "events";
+// Derive Input and InputType from the generated ScanResultInputData discriminated union
+export type Input = ScanResultInputData["input"];
+export type InputType = ScanResultInputData["input_type"];
 
 export interface ScanResultSummary {
   // Basic Info
@@ -172,32 +162,35 @@ export function isObjectValue(
 export function isTranscriptInput(
   input: ScanResultInputData
 ): input is ScanResultInputData & {
-  inputType: "transcript";
+  input_type: "transcript";
   input: Transcript;
 } {
-  return input.inputType === "transcript";
+  return input.input_type === "transcript";
 }
 
 export function isMessageInput(
   input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "message"; input: MessageType } {
-  return input.inputType === "message";
+): input is ScanResultInputData & {
+  input_type: "message";
+  input: MessageType;
+} {
+  return input.input_type === "message";
 }
 
 export function isMessagesInput(
   input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "messages"; input: Messages } {
-  return input.inputType === "messages";
+): input is ScanResultInputData & { input_type: "messages"; input: Messages } {
+  return input.input_type === "messages";
 }
 
 export function isEventInput(
   input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "event"; input: EventType } {
-  return input.inputType === "event";
+): input is ScanResultInputData & { input_type: "event"; input: EventType } {
+  return input.input_type === "event";
 }
 
 export function isEventsInput(
   input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "events"; input: Events } {
-  return input.inputType === "events";
+): input is ScanResultInputData & { input_type: "events"; input: Events } {
+  return input.input_type === "events";
 }

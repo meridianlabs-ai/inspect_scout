@@ -3,10 +3,10 @@ import { FC, ReactNode } from "react";
 
 import { EventType } from "../../transcript/types";
 import { Status, Transcript } from "../../types";
+import { ScanResultInputData } from "../../types";
 import { Events, Messages } from "../../types/log";
 import { TaskName } from "../components/TaskName";
 import {
-  ScanResultInputData,
   isEventInput,
   isEventsInput,
   isMessageInput,

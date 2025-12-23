@@ -1,7 +1,6 @@
 import { StateStorage } from "zustand/middleware";
 
-import { ScanResultInputData } from "../app/types";
-import { Status } from "../types";
+import { Status, ScanResultInputData } from "../types";
 
 export type ClientStorage = StateStorage;
 

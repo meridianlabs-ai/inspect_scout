@@ -5,9 +5,9 @@ import { useSearchParams } from "react-router-dom";
 import { ChatViewVirtualList } from "../../../chat/ChatViewVirtualList";
 import { useStore } from "../../../state/store";
 import { TranscriptView } from "../../../transcript/TranscriptView";
+import { ScanResultInputData } from "../../../types";
 import { ColumnHeader } from "../../components/ColumnHeader";
 import {
-  ScanResultInputData,
   isEventInput,
   isEventsInput,
   isMessageInput,

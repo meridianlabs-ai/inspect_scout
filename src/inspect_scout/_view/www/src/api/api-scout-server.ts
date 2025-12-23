@@ -1,8 +1,4 @@
-import { ScanResultInputData, Input, InputType } from "../app/types.ts";
-import {
-  Status,
-  ScanResultInputData as GeneratedInputResponse,
-} from "../types";
+import { Status, ScanResultInputData } from "../types";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -75,18 +71,11 @@ export const apiScoutServer = (
       scanner: string,
       uuid: string
     ): Promise<ScanResultInputData> => {
-      // Fetch the data as JSON
-      const response = await requestApi.fetchType<GeneratedInputResponse>(
+      const response = await requestApi.fetchType<ScanResultInputData>(
         "GET",
         `/scans/${base64url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
-      const data = response.parsed;
-
-      // Map snake_case → camelCase for frontend convention
-      return {
-        input: data.input as Input,
-        inputType: data.input_type as InputType,
-      };
+      return response.parsed;
     },
     storage: NoPersistence,
   };

@@ -9,8 +9,8 @@ import {
   scanResultRoute,
 } from "../../router/url";
 import { TranscriptView } from "../../transcript/TranscriptView";
+import { ChatMessage, ScanResultInputData } from "../../types";
 import {
-  ScanResultInputData,
   isEventInput,
   isEventsInput,
   isMessageInput,
@@ -121,6 +121,7 @@ const referenceTable = (
   } else if (isMessagesInput(inputData)) {
     return inputData.input.reduce<Record<string, () => ReactNode>>(
       (acc, msg) => {
+        const foo: ChatMessage = msg;
         if (msg.id) {
           acc[msg.id] = () => {
             return (

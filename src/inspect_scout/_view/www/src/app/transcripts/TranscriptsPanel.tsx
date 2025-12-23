@@ -3,6 +3,7 @@ import { FC } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
+import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
@@ -31,6 +32,7 @@ export const TranscriptsPanel: FC = () => {
     loading,
   } = useServerTranscripts(resolvedTranscriptDir);
   const hasError = errorDir || error;
+  const hasTranscripts = transcripts && transcripts.length > 0;
 
   return (
     <div className={clsx(styles.container)}>
@@ -48,7 +50,12 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!hasError && <TranscriptsGrid transcripts={transcripts ?? []} />}
+      {!hasError && hasTranscripts && (
+        <TranscriptsGrid transcripts={transcripts} />
+      )}
+      {!hasError && !hasTranscripts ? (
+        <NoContentsPanel text="No transcripts found." />
+      ) : null}
       <Footer
         itemCount={transcripts?.length || 0}
         id={"transcripts-footer"}

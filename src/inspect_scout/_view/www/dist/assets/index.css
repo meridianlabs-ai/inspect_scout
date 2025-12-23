@@ -252,6 +252,18 @@
   height: 100%;
   row-gap: 0;
 }
+._panel_twp3v_1 {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+._container_twp3v_7 {
+  margin-top: 3em;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.3em;
+}
 ._container_dsuk5_1 {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -983,18 +995,6 @@
 ._cite_1t1bm_1:hover {
   text-decoration-style: solid;
   background-color: var(--bs-primary-bg-subtle);
-}
-._panel_twp3v_1 {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-._container_twp3v_7 {
-  margin-top: 3em;
-  display: grid;
-  grid-template-columns: max-content max-content;
-  column-gap: 0.3em;
 }
 ._content_13ihw_1 {
   white-space: pre-wrap;

@@ -369,11 +369,8 @@ async def test_success_column_values(
             if success is not None:
                 success = bool(success)
             log_success_mapping[info.transcript_id] = success
-            # score is a dict with 'value' key
-            score_value = None
-            if isinstance(info.score, dict):
-                score_value = info.score.get("value")
-            log_score_value_mapping[info.transcript_id] = score_value
+            # score is now the raw value directly (e.g., "C" or "I")
+            log_score_value_mapping[info.transcript_id] = info.score
 
     # Check success values from parquet source
     async with parquet_filtered.reader() as reader:
@@ -385,11 +382,8 @@ async def test_success_column_values(
             if success is not None:
                 success = bool(success)
             parquet_success_mapping[info.transcript_id] = success
-            # score is a dict with 'value' key
-            score_value = None
-            if isinstance(info.score, dict):
-                score_value = info.score.get("value")
-            parquet_score_value_mapping[info.transcript_id] = score_value
+            # score is now the raw value directly (e.g., "C" or "I")
+            parquet_score_value_mapping[info.transcript_id] = info.score
 
     # Verify both sources have the same number of transcripts
     assert len(log_success_mapping) > 0, "Should have popularity transcripts"

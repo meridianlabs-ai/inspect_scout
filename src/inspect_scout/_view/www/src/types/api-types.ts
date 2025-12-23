@@ -1,5 +1,5 @@
 // Re-export API types from generated OpenAPI schema
-import type { components } from "./generated";
+import type { components, operations } from "./generated";
 
 export type Status = components["schemas"]["Status"];
 export type ScanSpec = components["schemas"]["ScanSpec"];
@@ -17,10 +17,6 @@ export type MessagesInput = components["schemas"]["MessagesInput"];
 export type EventInput = components["schemas"]["EventInput"];
 export type EventsInput = components["schemas"]["EventsInput"];
 
-// Scanner input discriminated union
+// Scanner input discriminated union (from operation response type)
 export type ScanResultInputData =
-  | TranscriptInput
-  | MessageInput
-  | MessagesInput
-  | EventInput
-  | EventsInput;
+  operations["scanner_input_scans__scan___scanner___uuid__input_get"]["responses"][200]["content"]["application/json"];

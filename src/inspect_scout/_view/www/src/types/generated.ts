@@ -640,7 +640,10 @@ export interface components {
             /** Traceback Ansi */
             traceback_ansi: string;
         };
-        /** EventInput */
+        /**
+         * EventInput
+         * @description Single event input variant.
+         */
         EventInput: {
             /** Input */
             input: components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"];
@@ -650,7 +653,10 @@ export interface components {
              */
             input_type: "event";
         };
-        /** EventsInput */
+        /**
+         * EventsInput
+         * @description Multiple events input variant.
+         */
         EventsInput: {
             /** Input */
             input: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
@@ -929,7 +935,10 @@ export interface components {
             /** Content */
             content: components["schemas"]["Logprob"][];
         };
-        /** MessageInput */
+        /**
+         * MessageInput
+         * @description Single message input variant.
+         */
         MessageInput: {
             /** Input */
             input: components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"];
@@ -939,7 +948,10 @@ export interface components {
              */
             input_type: "message";
         };
-        /** MessagesInput */
+        /**
+         * MessagesInput
+         * @description Multiple messages input variant.
+         */
         MessagesInput: {
             /** Input */
             input: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
@@ -2085,7 +2097,10 @@ export interface components {
             /** Transcript Id */
             transcript_id: string;
         };
-        /** TranscriptInput */
+        /**
+         * TranscriptInput
+         * @description Transcript input variant.
+         */
         TranscriptInput: {
             input: components["schemas"]["Transcript"];
             /**

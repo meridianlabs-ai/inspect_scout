@@ -1552,6 +1552,7 @@
         "type": "object"
       },
       "EventInput": {
+        "description": "Single event input variant.",
         "properties": {
           "input": {
             "anyOf": [
@@ -1626,6 +1627,7 @@
         "type": "object"
       },
       "EventsInput": {
+        "description": "Multiple events input variant.",
         "properties": {
           "input": {
             "items": {
@@ -2681,6 +2683,7 @@
         "type": "object"
       },
       "MessageInput": {
+        "description": "Single message input variant.",
         "properties": {
           "input": {
             "anyOf": [
@@ -2713,6 +2716,7 @@
         "type": "object"
       },
       "MessagesInput": {
+        "description": "Multiple messages input variant.",
         "properties": {
           "input": {
             "items": {
@@ -6172,6 +6176,7 @@
         "type": "object"
       },
       "TranscriptInput": {
+        "description": "Transcript input variant.",
         "properties": {
           "input": {
             "$ref": "#/components/schemas/Transcript"

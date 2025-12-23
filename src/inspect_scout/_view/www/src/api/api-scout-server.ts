@@ -82,6 +82,12 @@ export const apiScoutServer = (
       );
       const data = response.parsed;
 
+      if (data.input_type === "event") {
+        const foo = data.input;
+      } else if (data.input_type === "message") {
+        const foo = data.input;
+      }
+
       // Map snake_case → camelCase for frontend convention
       return {
         input: data.input as Input,

@@ -252,7 +252,7 @@
   height: 100%;
   row-gap: 0;
 }
-._container_1gw4b_1 {
+._container_dsuk5_1 {
   display: grid;
   grid-template-columns: max-content 1fr;
   align-items: center;
@@ -261,18 +261,21 @@
   width: 100%;
 }
 
-._labelContainer_1gw4b_10 {
+._labelContainer_dsuk5_10 {
   border-right: solid 1px var(--bs-border-color);
   padding: 0 0.25rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
 }
 
-._icon_1gw4b_15 {
+._icon_dsuk5_18 {
   color: var(--bs-body-color);
   opacity: 0.7;
   margin-right: 0.35rem;
 }
 
-._text_1gw4b_21 {
+._text_dsuk5_24 {
   color: var(--bs-body-color);
   white-space: nowrap;
   cursor: text;
@@ -285,19 +288,61 @@
   background-color: var(--bs-body-bg);
 }
 
-._text_1gw4b_21:hover {
+._text_dsuk5_24:hover {
   background-color: var(--bs-secondary-bg);
 }
 
-._text_1gw4b_21:focus {
+._text_dsuk5_24:focus {
   outline: 1px solid var(--bs-primary);
   outline-offset: 0;
   background-color: var(--bs-body-bg);
 }
 
-._text_1gw4b_21._placeholder_1gw4b_44 {
+._text_dsuk5_24._placeholder_dsuk5_47 {
   color: var(--bs-secondary-color);
   opacity: 0.6;
+}
+
+._mruPopover_dsuk5_52 {
+  padding: 0 !important;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 80%;
+}
+
+._mruList_dsuk5_59 {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+._mruItem_dsuk5_65 {
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.15s;
+  color: var(--bs-body-color);
+}
+
+._mruItem_dsuk5_65:hover,
+._mruItemSelected_dsuk5_76 {
+  background-color: var(--bs-secondary-bg);
+}
+
+._mruItem_dsuk5_65:active {
+  background-color: var(--bs-tertiary-bg);
+}
+
+._mruItem_dsuk5_65:first-child {
+  border-top-left-radius: var(--bs-border-radius);
+  border-top-right-radius: var(--bs-border-radius);
+}
+
+._mruItem_dsuk5_65:last-child {
+  border-bottom-left-radius: var(--bs-border-radius);
+  border-bottom-right-radius: var(--bs-border-radius);
 }
 ._container_1swz0_1 {
   overflow: auto;

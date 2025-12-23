@@ -10,6 +10,9 @@
 .labelContainer {
   border-right: solid 1px var(--bs-border-color);
   padding: 0 0.25rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .icon {
@@ -44,4 +47,46 @@
 .text.placeholder {
   color: var(--bs-secondary-color);
   opacity: 0.6;
+}
+
+.mruPopover {
+  padding: 0 !important;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 80%;
+}
+
+.mruList {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.mruItem {
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.15s;
+  color: var(--bs-body-color);
+}
+
+.mruItem:hover,
+.mruItemSelected {
+  background-color: var(--bs-secondary-bg);
+}
+
+.mruItem:active {
+  background-color: var(--bs-tertiary-bg);
+}
+
+.mruItem:first-child {
+  border-top-left-radius: var(--bs-border-radius);
+  border-top-right-radius: var(--bs-border-radius);
+}
+
+.mruItem:last-child {
+  border-bottom-left-radius: var(--bs-border-radius);
+  border-bottom-right-radius: var(--bs-border-radius);
 }

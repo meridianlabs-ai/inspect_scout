@@ -1,3 +1,8 @@
+import {
+  ColumnSizingState,
+  RowSelectionState,
+  SortingState,
+} from "@tanstack/react-table";
 import { GridState } from "ag-grid-community";
 import { createContext, useContext } from "react";
 import { StateSnapshot } from "react-virtuoso";
@@ -12,7 +17,17 @@ import {
   ScanResultSummary,
   SortColumn,
 } from "../app/types";
+import { TranscriptInfo } from "../types";
 import { debounce } from "../utils/sync";
+
+// Transcripts table UI state
+interface TranscriptsTableState {
+  columnSizing: ColumnSizingState;
+  columnOrder: string[];
+  sorting: SortingState;
+  rowSelection: RowSelectionState;
+  focusedRowId: string | null;
+}
 
 interface StoreState {
   // App status
@@ -61,6 +76,14 @@ interface StoreState {
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
+
+  // User selected / visible transcript path
+  transcriptsDatabasePath?: string;
+
+  // Transcript Data (loaded data + source directory)
+  transcripts?: TranscriptInfo[];
+  transcriptsDir?: string;
+  transcriptsTableState: TranscriptsTableState;
 
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
@@ -146,6 +169,15 @@ interface StoreState {
   setDataframeWrapText: (wrap: boolean) => void;
   setDataframeFilterColumns: (columns: string[]) => void;
   setDataframeShowFilterColumns: (show: boolean) => void;
+
+  setTranscriptsDatabasePath: (path: string) => void;
+  setTranscripts: (transcripts: TranscriptInfo[]) => void;
+  setTranscriptsDir: (path: string) => void;
+  setTranscriptsTableState: (
+    updater:
+      | TranscriptsTableState
+      | ((prev: TranscriptsTableState) => TranscriptsTableState)
+  ) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -191,6 +223,13 @@ export const createStore = (api: ScanApi) =>
           visibleScannerResults: [],
           visibleScannerResultsCount: 0,
           highlightLabeled: false,
+          transcriptsTableState: {
+            columnSizing: {},
+            columnOrder: [],
+            sorting: [],
+            rowSelection: {},
+            focusedRowId: null,
+          },
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -511,6 +550,29 @@ export const createStore = (api: ScanApi) =>
           setDataframeShowFilterColumns: (show: boolean) => {
             set((state) => {
               state.dataframeShowFilterColumns = show;
+            });
+          },
+          setTranscriptsDatabasePath: (path: string) => {
+            set((state) => {
+              state.transcriptsDatabasePath = path;
+            });
+          },
+          setTranscripts: (transcripts: TranscriptInfo[]) => {
+            set((state) => {
+              state.transcripts = transcripts;
+            });
+          },
+          setTranscriptsDir: (path: string) => {
+            set((state) => {
+              state.transcriptsDir = path;
+            });
+          },
+          setTranscriptsTableState: (updater) => {
+            set((state) => {
+              state.transcriptsTableState =
+                typeof updater === "function"
+                  ? updater(state.transcriptsTableState)
+                  : updater;
             });
           },
         })),

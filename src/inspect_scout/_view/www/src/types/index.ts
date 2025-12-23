@@ -6,6 +6,7 @@ import {
   ContentImage,
   ContentText,
   Events,
+  Score,
 } from "./log";
 
 // Scout types generated from OpenAPI schema
@@ -39,26 +40,33 @@ export type ChatMessage =
   | ChatMessageTool;
 
 export interface TranscriptInfo {
-  id: string;
-  source_id: string;
-  source_uri: string;
-  source_type: string;
-  filename?: string;
-  date?: string;
-  task_set?: string;
-  task_id?: string;
-  task_repeat?: number;
   agent?: string;
   agent_args?: string;
-  model?: string;
-  model_options?: string;
-  score?: string;
-  success?: boolean;
-  total_time?: number;
-  total_tokens?: number;
+  date?: string;
   error?: string;
   limit?: string;
+
   metadata: TranscriptMetadata;
+
+  model?: string;
+  model_options?: string;
+
+  score?: Score;
+
+  source_id: string;
+  source_type: string;
+  source_uri: string;
+
+  success?: boolean;
+
+  task_id?: string;
+  task_repeat?: number;
+  task_set?: string;
+
+  total_time?: number;
+  total_tokens?: number;
+
+  transcript_id: string;
 }
 
 export interface Transcript extends TranscriptInfo {

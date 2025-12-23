@@ -22,8 +22,6 @@ if (!container) {
   );
 }
 
-// TODO: When restoring vscode state, look for specific scan from parquet file
-
 // Render into the root
 const root = createRoot(container);
 
@@ -43,12 +41,16 @@ const api = selectApi();
 const store = createStore(api);
 const queryClient = new QueryClient();
 
+// Read showActivityBar from query parameters
+const urlParams = new URLSearchParams(window.location.search);
+const workbenchMode = urlParams.get("workbench") !== null;
+
 // Render the app
 root.render(
   <QueryClientProvider client={queryClient}>
     <ApiProvider value={api}>
       <StoreProvider value={store}>
-        <App />
+        <App mode={workbenchMode ? "workbench" : "scans"} />
       </StoreProvider>
     </ApiProvider>
     <ReactQueryDevtools initialIsOpen={false} />

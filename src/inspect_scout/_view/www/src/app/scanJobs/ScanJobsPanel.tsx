@@ -1,12 +1,12 @@
 import { clsx } from "clsx";
 import { FC, useEffect } from "react";
 
-import { ActivityBar } from "../../components/ActivityBar";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
-import { Navbar } from "../components/Navbar";
+import { ScansNavbar } from "../components/ScansNavbar";
 import { useServerScansDir, useServerScans } from "../server/hooks";
 
 import { ScanJobGrid } from "./ScanJobGrid";
@@ -26,8 +26,8 @@ export const ScanJobsPanel: FC = () => {
 
   return (
     <div className={clsx(styles.container)}>
-      <Navbar bordered={false} resultsDir={resultsDir} />
-      <ActivityBar animating={loading} />
+      <ScansNavbar bordered={false} />
+      <LoadingBar loading={!!loading} />
       <ExtendedFindProvider>
         {error && (
           <ErrorPanel

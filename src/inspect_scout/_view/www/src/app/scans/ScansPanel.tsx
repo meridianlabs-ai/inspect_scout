@@ -2,11 +2,11 @@ import clsx from "clsx";
 import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { LoadingBar } from "../../components/LoadingBar";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
-import { Navbar } from "../components/Navbar";
+import { ScansNavbar } from "../components/ScansNavbar";
 import { useSelectedScan } from "../hooks";
 import { useServerScansDir, useServerScans } from "../server/hooks";
 
@@ -39,8 +39,8 @@ export const ScansPanel: React.FC = () => {
   }, [searchParams, setSelectedScanner]);
   return (
     <div className={clsx(styles.root)}>
-      <Navbar resultsDir={resultsDir} />
-      <ActivityBar animating={!!loading} />
+      <ScansNavbar resultsDir={resultsDir} />
+      <LoadingBar loading={!!loading} />
       {selectedScan && (
         <>
           <ScansPanelTitle

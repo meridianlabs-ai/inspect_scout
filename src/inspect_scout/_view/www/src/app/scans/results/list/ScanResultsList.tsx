@@ -4,8 +4,8 @@ import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
-import { ActivityBar } from "../../../../components/ActivityBar";
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
+import { LoadingBar } from "../../../../components/LoadingBar";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
 import {
   getRelativePathFromParams,
@@ -388,7 +388,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   return (
     <div className={clsx(styles.container)}>
       <ScanResultsHeader gridDescriptor={gridDescriptor} />
-      <ActivityBar animating={isLoading} />
+      <LoadingBar loading={isLoading} />
       {noContentMessage && <NoContentsPanel text={noContentMessage} />}
       {!busy && filteredSummaries.length > 0 && (
         <LiveVirtualList<ScanResultSummary | ResultGroup>

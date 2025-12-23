@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ColumnTable } from "arquero";
 
 import { useApi } from "../../state/store";
+import { TranscriptInfo } from "../../types";
 import { Status } from "../../types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
@@ -103,7 +104,7 @@ export const useServerTranscriptsDir = (): AsyncData<string> => {
 
 export const useServerTranscripts = (
   location: string | undefined
-): AsyncData<unknown[]> => {
+): AsyncData<TranscriptInfo[]> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({

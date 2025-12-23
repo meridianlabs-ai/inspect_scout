@@ -1,0 +1,42 @@
+.activityBar {
+  height: 100vh;
+  width: 78px;
+  border-right: solid 1px var(--bs-border-color);
+  background-color: var(--bs-light);
+}
+
+.activityHost {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  display: grid;
+  justify-content: center;
+  grid-auto-rows: max-content;
+  row-gap: 1rem;
+}
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 1;
+  padding: 0.3rem;
+  border-radius: var(--bs-border-radius);
+}
+
+.activity:hover {
+  background-color: var(--bs-body-bg);
+  cursor: pointer;
+}
+
+.activity.selected {
+  background-color: var(--bs-primary-bg-subtle);
+}
+
+.icon {
+  font-size: 1.1rem;
+}
+
+.label {
+  font-size: 0.5rem;
+  text-transform: uppercase;
+}

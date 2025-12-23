@@ -2,9 +2,9 @@ import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
-import { ActivityBar } from "../../components/ActivityBar";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import JSONPanel from "../../components/JsonPanel";
+import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import {
   getRelativePathFromParams,
@@ -14,7 +14,7 @@ import {
 import { useStore } from "../../state/store";
 import { EventNode, EventType } from "../../transcript/types";
 import { ApplicationIcons } from "../appearance/icons";
-import { Navbar } from "../components/Navbar";
+import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
 import {
   useSelectedScan,
@@ -142,11 +142,12 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <Navbar resultsDir={resultsDir}>
+      <ScansNavbar resultsDir={resultsDir}>
         {visibleScannerResults.length > 0 && <ScanResultNav />}
-      </Navbar>
-      <ActivityBar animating={!!loading || resultLoading} />
+      </ScansNavbar>
+      <LoadingBar loading={!!loading || resultLoading} />
       <ScanResultHeader inputData={inputData.data} scan={selectedScan} />
+
       {selectedResult && (
         <ExtendedFindProvider>
           <TabSet

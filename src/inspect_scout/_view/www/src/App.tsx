@@ -1,7 +1,7 @@
-import { FC } from "react";
+import { FC, useMemo } from "react";
 import { RouterProvider } from "react-router-dom";
 
-import { AppRouter } from "./AppRouter";
+import { createAppRouter } from "./AppRouter";
 import "prismjs";
 import "prismjs/components/prism-bash";
 import "prismjs/components/prism-clike";
@@ -11,6 +11,12 @@ import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import "./app/App.css";
 
-export const App: FC = () => {
-  return <RouterProvider router={AppRouter} />;
+export interface AppProps {
+  mode?: "scans" | "workbench";
+}
+
+export const App: FC<AppProps> = ({ mode = "scans" }) => {
+  const router = useMemo(() => createAppRouter({ mode }), [mode]);
+
+  return <RouterProvider router={router} />;
 };

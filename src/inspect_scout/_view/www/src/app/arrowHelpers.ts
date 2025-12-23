@@ -2,6 +2,7 @@ import { ColumnTable } from "arquero";
 
 import { ModelUsage } from "../types";
 import { Events, JsonValue } from "../types/log";
+import { isJson } from "../utils/json";
 import { asyncJsonParse } from "../utils/json-worker";
 
 import {
@@ -59,13 +60,13 @@ export const parseScanResultData = async (
     transcript_agent_args_raw
       ? parseJson(transcript_agent_args_raw)
       : Promise.resolve(undefined),
-    transcript_score_raw
+    transcript_score_raw && isJson(transcript_score_raw)
       ? parseJson(transcript_score_raw)
       : Promise.resolve(undefined),
   ]);
 
   const uuid = filtered.get("uuid", 0) as string | undefined;
-  const timestamp = getOptionalDateColumn(filtered, "timestamp");
+  const timestamp = getOptionalColumn<string>(filtered, "timestamp");
   const answer = filtered.get("answer", 0) as string | undefined;
   const label = getOptionalColumn<string>(filtered, "label");
   const explanation = filtered.get("explanation", 0) as string | undefined;
@@ -105,7 +106,7 @@ export const parseScanResultData = async (
     filtered,
     "transcript_task_repeat"
   );
-  const transcriptDate = getOptionalDateColumn(filtered, "transcript_date");
+  const transcriptDate = getOptionalColumn<string>(filtered, "transcript_date");
   const transcriptAgent = getOptionalColumn<string>(
     filtered,
     "transcript_agent"
@@ -186,6 +187,8 @@ export const parseScanResultData = async (
   // these fields
   resolveTranscriptPropertiesFromMetadata(baseData);
 
+  console.log({ baseData });
+
   return { ...baseData, inputType };
 };
 
@@ -232,7 +235,7 @@ export const parseScanResultSummaries = async (
         transcriptSourceId: r.transcript_source_id as string,
         scanError: r.scan_error as string,
         scanErrorRefusal: r.scan_error_refusal as boolean,
-        timestamp: r.timestamp ? new Date(r.timestamp as string) : undefined,
+        timestamp: r.timestamp ? (r.timestamp as string) : undefined,
       };
 
       resolveTranscriptPropertiesFromMetadata(baseSummary);
@@ -297,13 +300,4 @@ function getOptionalColumn<T>(
   return table.columnNames().includes(columnName)
     ? (table.get(columnName, rowIndex) as T)
     : undefined;
-}
-
-function getOptionalDateColumn(
-  table: ColumnTable,
-  columnName: string,
-  rowIndex: number = 0
-): Date | undefined {
-  const value = getOptionalColumn<string>(table, columnName, rowIndex);
-  return value ? new Date(value) : undefined;
 }

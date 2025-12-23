@@ -29,7 +29,7 @@ export interface ScanResultSummary {
   uuid?: string;
   explanation?: string;
   label?: string;
-  timestamp?: Date;
+  timestamp?: string;
 
   // Input
   inputType: InputType;
@@ -80,7 +80,7 @@ export interface ScanResultData extends ScanResultSummary {
   transcriptId: string;
   transcriptSourceUri: string;
 
-  transcriptDate?: Date;
+  transcriptDate?: string;
   transcriptAgent?: string;
   transcriptAgentArgs?: Record<string, unknown>;
   transcriptScore?: JsonValue;

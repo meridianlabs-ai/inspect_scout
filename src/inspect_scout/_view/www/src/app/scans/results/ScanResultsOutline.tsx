@@ -168,7 +168,9 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
       : undefined;
 
     const metrics =
-      summary && summary.metrics && Object.keys(summary.metrics).includes(scanner)
+      summary &&
+      summary.metrics &&
+      Object.keys(summary.metrics).includes(scanner)
         ? summary.metrics[scanner]!
         : {};
 

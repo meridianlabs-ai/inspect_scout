@@ -1,10 +1,15 @@
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from typing import Annotated, Literal, TypeAlias, Union
+
+from inspect_ai.event import Event
+from inspect_ai.model import ChatMessage
+from pydantic import Field
 
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
+from .._transcript.types import Transcript
 
 
 @dataclass
@@ -51,3 +56,51 @@ class IPCSerializableResults(RecorderStatus):
 
 
 RestScanStatus: TypeAlias = RecorderStatus
+
+
+# Individual variants for discriminated union
+@dataclass
+class TranscriptInput:
+    """Transcript input variant."""
+
+    input: Transcript
+    input_type: Literal["transcript"] = "transcript"
+
+
+@dataclass
+class MessageInput:
+    """Single message input variant."""
+
+    input: ChatMessage
+    input_type: Literal["message"] = "message"
+
+
+@dataclass
+class MessagesInput:
+    """Multiple messages input variant."""
+
+    input: list[ChatMessage]
+    input_type: Literal["messages"] = "messages"
+
+
+@dataclass
+class EventInput:
+    """Single event input variant."""
+
+    input: Event
+    input_type: Literal["event"] = "event"
+
+
+@dataclass
+class EventsInput:
+    """Multiple events input variant."""
+
+    input: list[Event]
+    input_type: Literal["events"] = "events"
+
+
+# Discriminated union for scanner input
+ScanResultInputData = Annotated[
+    Union[TranscriptInput, MessageInput, MessagesInput, EventInput, EventsInput],
+    Field(discriminator="input_type"),
+]

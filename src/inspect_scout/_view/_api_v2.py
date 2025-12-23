@@ -23,7 +23,7 @@ from .._scanresults import (
 )
 from .._transcript.factory import transcripts_from
 from .._transcript.types import TranscriptInfo
-from ._api_v2_types import RestScanStatus
+from ._api_v2_types import RestScanStatus, ScanResultInputData
 from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
@@ -310,8 +310,8 @@ def v2_api_app(
     @app.get(
         "/scans/{scan}/{scanner}/{uuid}/input",
         summary="Get scanner input for a specific transcript",
-        description="Returns the original input text for a specific scanner result. "
-        "The input type is returned in the X-Input-Type response header.",
+        description="Returns the original input text for a specific scanner result.",
+        response_model=ScanResultInputData,
     )
     async def scanner_input(
         request: Request,
@@ -340,11 +340,12 @@ def v2_api_app(
         input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
         input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
 
-        # Return raw input as body with inputType in header (more efficient for large text)
+        # Manually construct JSON response without parsing input_value
+        json_str = f'{{"input":{input_value},"input_type":"{input_type}"}}'
+
         return Response(
-            content=input_value,
-            media_type="text/plain",
-            headers={"X-Input-Type": input_type or ""},
+            content=json_str,
+            media_type="application/json",
         )
 
     return app

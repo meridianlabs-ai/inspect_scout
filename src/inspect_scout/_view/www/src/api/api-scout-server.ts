@@ -1,5 +1,8 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
-import { Status } from "../types";
+import {
+  Status,
+  ScanResultInputData as GeneratedInputResponse,
+} from "../types";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -72,28 +75,18 @@ export const apiScoutServer = (
       scanner: string,
       uuid: string
     ): Promise<ScanResultInputData> => {
-      // Fetch the data
-      const response = await requestApi.fetchType<Input>(
+      // Fetch the data as JSON
+      const response = await requestApi.fetchType<GeneratedInputResponse>(
         "GET",
         `/scans/${base64url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
-      const input = response.parsed;
+      const data = response.parsed;
 
-      // Read header to determine the input type
-      const inputType = response.headers.get("X-Input-Type");
-      if (!inputType) {
-        throw new Error("Missing input type from server");
-      }
-      if (
-        !["transcript", "message", "messages", "event", "events"].includes(
-          inputType
-        )
-      ) {
-        throw new Error(`Unknown input type from server: ${inputType}`);
-      }
-
-      // Return the DataFrameInput
-      return { input, inputType: inputType as InputType };
+      // Map snake_case → camelCase for frontend convention
+      return {
+        input: data.input as Input,
+        inputType: data.input_type as InputType,
+      };
     },
     storage: NoPersistence,
   };

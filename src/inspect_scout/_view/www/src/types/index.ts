@@ -20,6 +20,12 @@ export type {
   ScannerSummary,
   ModelUsage,
   ModelConfig as Model,
+  ScanResultInputData,
+  TranscriptInput,
+  MessageInput,
+  MessagesInput,
+  EventInput,
+  EventsInput,
 } from "./api-types";
 
 export interface IPCDataframe {

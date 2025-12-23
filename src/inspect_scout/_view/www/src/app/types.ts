@@ -86,7 +86,7 @@ export interface ScanResultData extends ScanResultSummary {
   transcriptScore?: JsonValue;
   transcriptSuccess?: boolean;
   transcriptTotalTime?: number;
-  transcroptTotalTokens?: number;
+  transcriptTotalTokens?: number;
   transcriptError?: string;
   transcriptLimit?: string;
 }

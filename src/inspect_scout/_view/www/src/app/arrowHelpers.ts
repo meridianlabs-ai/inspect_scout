@@ -60,8 +60,10 @@ export const parseScanResultData = async (
     transcript_agent_args_raw
       ? parseJson(transcript_agent_args_raw)
       : Promise.resolve(undefined),
-    transcript_score_raw && isJson(transcript_score_raw)
-      ? parseJson(transcript_score_raw)
+    transcript_score_raw !== null && transcript_score_raw !== undefined
+      ? isJson(transcript_score_raw)
+        ? parseJson(transcript_score_raw)
+        : transcript_score_raw
       : Promise.resolve(undefined),
   ]);
 
@@ -123,9 +125,9 @@ export const parseScanResultData = async (
     filtered,
     "transcript_total_time"
   );
-  const transcroptTotalTokens = getOptionalColumn<number>(
+  const transcriptTotalTokens = getOptionalColumn<number>(
     filtered,
-    "transcropt_total_tokens"
+    "transcript_total_tokens"
   );
   const transcriptError = getOptionalColumn<string>(
     filtered,
@@ -173,7 +175,7 @@ export const parseScanResultData = async (
     transcriptScore,
     transcriptSuccess,
     transcriptTotalTime,
-    transcroptTotalTokens,
+    transcriptTotalTokens,
     transcriptError,
     transcriptLimit,
     validationResult: validationResult as boolean | Record<string, boolean>,
@@ -186,8 +188,6 @@ export const parseScanResultData = async (
   // this should only be hit if the scan was old enough to not have
   // these fields
   resolveTranscriptPropertiesFromMetadata(baseData);
-
-  console.log({ baseData });
 
   return { ...baseData, inputType };
 };

@@ -3,6 +3,7 @@ import { FC } from "react";
 
 import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { LabeledValue } from "../../../components/LabeledValue";
+import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
 import { ModelUsage, ModelUsage2 } from "../../../types/log";
 import { ModelTokenTable } from "../../../usage/ModelTokenTable";
@@ -25,6 +26,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
             <ScannerInfoPanel resultData={resultData} />
           </CardBody>
         </Card>
+
+        <Card>
+          <CardHeader label="Transcript Info" type="modern" />
+          <CardBody>
+            <TranscriptInfoPanel resultData={resultData} />
+          </CardBody>
+        </Card>
+
         {resultData?.scanModelUsage &&
           Object.keys(resultData?.scanModelUsage).length > 0 && (
             <Card>
@@ -87,6 +96,29 @@ export const ScannerInfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
             />
           </LabeledValue>
         )}
+    </div>
+  );
+};
+
+export const TranscriptInfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
+  return (
+    <div className={clsx("text-size-small")}>
+      <MetaDataGrid
+        entries={{
+          "source id": resultData?.transcriptSourceId,
+          source_uri: resultData?.transcriptSourceUri,
+          date: resultData?.transcriptDate,
+          model: resultData?.transcriptModel,
+          agent: resultData?.transcriptAgent,
+          "agent args": resultData?.transcriptAgentArgs,
+          score: resultData?.transcriptScore,
+          success: resultData?.transcriptSuccess,
+          limit: resultData?.transcriptLimit,
+          error: resultData?.transcriptError,
+          total_time: resultData?.transcriptTotalTime,
+          total_tokens: resultData?.transcriptTotalTokens,
+        }}
+      />
     </div>
   );
 };

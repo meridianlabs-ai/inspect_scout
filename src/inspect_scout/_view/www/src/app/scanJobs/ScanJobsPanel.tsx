@@ -26,7 +26,7 @@ export const ScanJobsPanel: FC = () => {
 
   return (
     <div className={clsx(styles.container)}>
-      <ScansNavbar bordered={false} />
+      <ScansNavbar resultsDir={resultsDir} bordered={false} />
       <LoadingBar loading={!!loading} />
       <ExtendedFindProvider>
         {error && (

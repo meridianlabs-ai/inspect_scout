@@ -29,17 +29,16 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const GRID_STATE_NAME = "ScanJobsGrid";
 
 interface ScanJobSummary {
-  status: "incomplete" | "complete" | "error";
-  color: "green" | "yellow" | "red" | "blue";
+  status?: "incomplete" | "complete" | "error";
   type: "file" | "directory";
-  icon: string;
-  model: string;
-  timestamp: string;
-  location: string;
+  model?: string;
+  timestamp?: string;
+  location?: string;
   relativeLocation: string;
-  scanId: string;
-  scanName: string;
-  scanners: string[];
+  scanId?: string;
+  name: string;
+  scanners?: string[];
+  errors?: boolean;
 }
 
 export const ScanJobGrid: FC<{
@@ -80,28 +79,16 @@ export const ScanJobGrid: FC<{
 
     scans.forEach((scan) => {
       const relativeLocation = toRelativePath(scan.location, resultsDir);
-      const icon = scan.complete
-        ? ApplicationIcons.success
-        : scan.errors.length > 0
-          ? ApplicationIcons.error
-          : ApplicationIcons.pendingTask;
-      const color = scan.complete
-        ? "green"
-        : scan.errors.length > 0
-          ? "red"
-          : "yellow";
 
       const dir = dirname(relativeLocation);
       if (dir === paramsRelativePath) {
         const row: ScanJobSummary = {
-          icon,
-          color,
           type: "file",
           timestamp: scan.spec.timestamp ?? "",
           location: scan.location,
           relativeLocation: relativeLocation,
           scanId: scan.spec.scan_id ?? "",
-          scanName: scan.spec.scan_name ?? "",
+          name: scan.spec.scan_name ?? "",
           model: scan.spec.model?.model ?? "unknown",
           status:
             scan.errors.length > 1
@@ -110,6 +97,7 @@ export const ScanJobGrid: FC<{
                 ? "complete"
                 : "incomplete",
           scanners: Object.keys(scan.spec.scanners).map((s) => s),
+          errors: scan.errors.length > 0,
         };
         rows.push(row);
       }
@@ -117,17 +105,9 @@ export const ScanJobGrid: FC<{
       if (!dirs.has(dir) && dir !== "" && dir !== paramsRelativePath) {
         dirs.add(dir);
         const dirRow: ScanJobSummary = {
-          timestamp: "",
-          location: "",
-          icon: ApplicationIcons.folder,
           type: "directory",
-          color: "blue",
           relativeLocation: dir,
-          scanId: "",
-          scanName: dir,
-          model: "",
-          status: "incomplete",
-          scanners: [],
+          name: dir,
         };
         rows.push(dirRow);
       }
@@ -144,7 +124,7 @@ export const ScanJobGrid: FC<{
   const columnDefs = useMemo((): ColDef<ScanJobSummary>[] => {
     const baseColumns: ColDef<ScanJobSummary>[] = [
       {
-        field: "icon",
+        field: "status",
         headerName: "",
         initialWidth: 60,
         minWidth: 60,
@@ -156,14 +136,35 @@ export const ScanJobGrid: FC<{
           value: string;
           data: Record<string, unknown>;
         }) => {
-          const color = params.data.color as string;
-          return (
-            <i className={clsx(params.value, classNameForColor(color))}></i>
-          );
+          if (params.data.type === "directory") {
+            return (
+              <i
+                className={clsx(
+                  ApplicationIcons["folder-fill"],
+                  classNameForColor("blue")
+                )}
+              ></i>
+            );
+          } else {
+            const icon =
+              params.data.status === "complete"
+                ? ApplicationIcons.success
+                : params.data.errors
+                  ? ApplicationIcons.error
+                  : ApplicationIcons.pendingTask;
+            const color =
+              params.data.status === "complete"
+                ? "green"
+                : params.data.errors
+                  ? "red"
+                  : "yellow";
+
+            return <i className={clsx(icon, classNameForColor(color))}></i>;
+          }
         },
       },
       {
-        field: "scanName",
+        field: "name",
         headerName: "Name",
         initialWidth: 120,
         minWidth: 80,
@@ -181,7 +182,7 @@ export const ScanJobGrid: FC<{
         resizable: true,
         valueGetter: (params) => {
           const scanners = params.data?.scanners;
-          return Array.isArray(scanners) ? scanners.join(", ") : "";
+          return Array.isArray(scanners) ? scanners.join(", ") : "-";
         },
       },
 
@@ -193,6 +194,9 @@ export const ScanJobGrid: FC<{
         sortable: true,
         filter: true,
         resizable: true,
+        valueFormatter: (params) => {
+          return params.data?.scanId ?? "-";
+        },
       },
       {
         field: "model",
@@ -202,6 +206,9 @@ export const ScanJobGrid: FC<{
         sortable: true,
         filter: true,
         resizable: true,
+        valueFormatter: (params) => {
+          return params.data?.model ?? "-";
+        },
       },
       {
         field: "timestamp",
@@ -213,7 +220,7 @@ export const ScanJobGrid: FC<{
         resizable: true,
         valueFormatter: (params) => {
           const timestamp = params.value;
-          return timestamp ? new Date(timestamp).toLocaleString() : "";
+          return timestamp ? new Date(timestamp).toLocaleString() : "-";
         },
         comparator: (valueA: string, valueB: string) => {
           // Handle empty timestamps (directories)

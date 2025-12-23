@@ -147,9 +147,10 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
     return [];
   }
   const entries: ScanResultsOutlineEntry[] = [];
-  for (const scanner of Object.keys(status.summary.scanners)) {
+  const scanners = status.summary.scanners || {};
+  for (const scanner of Object.keys(scanners)) {
     // The summary
-    const summary = status.summary.scanners[scanner];
+    const summary = scanners[scanner];
 
     // The configuration
     const scanInfo = status.spec.scanners[scanner];
@@ -167,7 +168,9 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
       : undefined;
 
     const metrics =
-      summary && Object.keys(summary?.metrics || {}).includes(scanner)
+      summary &&
+      summary.metrics &&
+      Object.keys(summary.metrics).includes(scanner)
         ? summary.metrics[scanner]!
         : {};
 

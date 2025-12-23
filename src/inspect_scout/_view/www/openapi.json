@@ -1,0 +1,2150 @@
+{
+  "components": {
+    "schemas": {
+      "BatchConfig": {
+        "description": "Batch processing configuration.",
+        "properties": {
+          "max_batches": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Batches"
+          },
+          "max_consecutive_check_failures": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Consecutive Check Failures"
+          },
+          "max_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Size"
+          },
+          "send_delay": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send Delay"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "tick": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tick"
+          }
+        },
+        "title": "BatchConfig",
+        "type": "object"
+      },
+      "CachePolicy": {
+        "description": "Caching options for model generation.",
+        "properties": {
+          "expiry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "1W",
+            "title": "Expiry"
+          },
+          "per_epoch": {
+            "default": true,
+            "title": "Per Epoch",
+            "type": "boolean"
+          },
+          "scopes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "object"
+          }
+        },
+        "title": "CachePolicy",
+        "type": "object"
+      },
+      "Condition": {
+        "description": "WHERE clause condition that can be combined with others.",
+        "properties": {
+          "is_compound": {
+            "default": false,
+            "title": "Is Compound",
+            "type": "boolean"
+          },
+          "left": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left"
+          },
+          "operator": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Operator"
+              },
+              {
+                "$ref": "#/components/schemas/LogicalOperator"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator"
+          },
+          "right": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "format": "date",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "format": "date",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Right"
+          }
+        },
+        "title": "Condition",
+        "type": "object"
+      },
+      "Error": {
+        "description": "Scan error (runtime error which occurred during scan).",
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "refusal": {
+            "title": "Refusal",
+            "type": "boolean"
+          },
+          "scanner": {
+            "title": "Scanner",
+            "type": "string"
+          },
+          "traceback": {
+            "title": "Traceback",
+            "type": "string"
+          },
+          "transcript_id": {
+            "title": "Transcript Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript_id",
+          "scanner",
+          "error",
+          "traceback",
+          "refusal"
+        ],
+        "title": "Error",
+        "type": "object"
+      },
+      "GenerateConfig": {
+        "description": "Model generation options.",
+        "properties": {
+          "attempt_timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Timeout"
+          },
+          "batch": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "$ref": "#/components/schemas/BatchConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch"
+          },
+          "best_of": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Of"
+          },
+          "cache": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "$ref": "#/components/schemas/CachePolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache"
+          },
+          "cache_prompt": {
+            "anyOf": [
+              {
+                "const": "auto",
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Prompt"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
+          },
+          "extra_body": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Body"
+          },
+          "frequency_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Penalty"
+          },
+          "internal_tools": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Tools"
+          },
+          "logit_bias": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logit Bias"
+          },
+          "logprobs": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logprobs"
+          },
+          "max_connections": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Connections"
+          },
+          "max_retries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Retries"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "max_tool_output": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tool Output"
+          },
+          "num_choices": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Choices"
+          },
+          "parallel_tool_calls": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parallel Tool Calls"
+          },
+          "presence_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presence Penalty"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          },
+          "reasoning_history": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "all",
+                  "last",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning History"
+          },
+          "reasoning_summary": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "concise",
+                  "detailed",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Summary"
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Tokens"
+          },
+          "response_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResponseSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "stop_seqs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Seqs"
+          },
+          "system_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Message"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K"
+          },
+          "top_logprobs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Logprobs"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "verbosity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verbosity"
+          }
+        },
+        "title": "GenerateConfig",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JSONSchema": {
+        "description": "JSON Schema for type.",
+        "properties": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JSONSchema"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additionalproperties"
+          },
+          "anyOf": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JSONSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anyof"
+          },
+          "default": {
+            "title": "Default"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enum": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enum"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JSONSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "properties": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JSONSchema"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "string",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "array",
+                  "object",
+                  "null"
+                ],
+                "type": "string"
+              },
+              {
+                "items": {
+                  "enum": [
+                    "string",
+                    "integer",
+                    "number",
+                    "boolean",
+                    "array",
+                    "object",
+                    "null"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "title": "JSONSchema",
+        "type": "object"
+      },
+      "JsonValue": {},
+      "LogicalOperator": {
+        "description": "Logical operators for combining conditions.",
+        "enum": [
+          "AND",
+          "OR",
+          "NOT"
+        ],
+        "title": "LogicalOperator",
+        "type": "string"
+      },
+      "ModelConfig": {
+        "description": "Model config.",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "config": {
+            "$ref": "#/components/schemas/GenerateConfig"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "ModelConfig",
+        "type": "object"
+      },
+      "ModelUsage": {
+        "description": "Token usage for completion.",
+        "properties": {
+          "input_tokens": {
+            "default": 0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "input_tokens_cache_read": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens Cache Read"
+          },
+          "input_tokens_cache_write": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens Cache Write"
+          },
+          "output_tokens": {
+            "default": 0,
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Tokens"
+          },
+          "total_tokens": {
+            "default": 0,
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "title": "ModelUsage",
+        "type": "object"
+      },
+      "Operator": {
+        "description": "SQL comparison operators.",
+        "enum": [
+          "=",
+          "!=",
+          "<",
+          "<=",
+          ">",
+          ">=",
+          "IN",
+          "NOT IN",
+          "LIKE",
+          "NOT LIKE",
+          "ILIKE",
+          "NOT ILIKE",
+          "IS NULL",
+          "IS NOT NULL",
+          "BETWEEN",
+          "NOT BETWEEN"
+        ],
+        "title": "Operator",
+        "type": "string"
+      },
+      "ResponseSchema": {
+        "description": "Schema for model response when using Structured Output.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "json_schema": {
+            "$ref": "#/components/schemas/JSONSchema"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "strict": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strict"
+          }
+        },
+        "required": [
+          "name",
+          "json_schema"
+        ],
+        "title": "ResponseSchema",
+        "type": "object"
+      },
+      "ScanOptions": {
+        "description": "Options used for scan.",
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "max_processes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Processes"
+          },
+          "max_transcripts": {
+            "default": 25,
+            "title": "Max Transcripts",
+            "type": "integer"
+          },
+          "shuffle": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shuffle"
+          }
+        },
+        "title": "ScanOptions",
+        "type": "object"
+      },
+      "ScanRevision": {
+        "description": "Git revision for scan.",
+        "properties": {
+          "commit": {
+            "title": "Commit",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "type": {
+            "const": "git",
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "default": "0.0.0-dev.0+unknown",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "origin",
+          "commit"
+        ],
+        "title": "ScanRevision",
+        "type": "object"
+      },
+      "ScanSpec": {
+        "description": "Scan specification (scanners, transcripts, config).",
+        "properties": {
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_roles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ModelConfig"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Roles"
+          },
+          "options": {
+            "$ref": "#/components/schemas/ScanOptions"
+          },
+          "packages": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Packages",
+            "type": "object"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanRevision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scan_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Args"
+          },
+          "scan_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan File"
+          },
+          "scan_id": {
+            "title": "Scan Id",
+            "type": "string"
+          },
+          "scan_name": {
+            "title": "Scan Name",
+            "type": "string"
+          },
+          "scanners": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ScannerSpec"
+            },
+            "title": "Scanners",
+            "type": "object"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "transcripts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanTranscripts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ValidationSet"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation"
+          },
+          "worklist": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Worklist"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worklist"
+          }
+        },
+        "required": [
+          "scan_name",
+          "scanners"
+        ],
+        "title": "ScanSpec",
+        "type": "object"
+      },
+      "ScanTranscripts": {
+        "description": "Transcripts targeted by a scan.",
+        "properties": {
+          "conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Condition"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conditions"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TranscriptField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "transcript_ids": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Transcript Ids",
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "eval_log",
+              "database"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ScanTranscripts",
+        "type": "object"
+      },
+      "ScannerSpec": {
+        "description": "Scanner used by scan.",
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "package_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Version"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "version": {
+            "default": 0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ScannerSpec",
+        "type": "object"
+      },
+      "ScannerSummary": {
+        "description": "Summary of scanner results.",
+        "properties": {
+          "errors": {
+            "default": 0,
+            "title": "Errors",
+            "type": "integer"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "model_usage": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelUsage"
+            },
+            "title": "Model Usage",
+            "type": "object"
+          },
+          "results": {
+            "default": 0,
+            "title": "Results",
+            "type": "integer"
+          },
+          "scans": {
+            "default": 0,
+            "title": "Scans",
+            "type": "integer"
+          },
+          "tokens": {
+            "default": 0,
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "validations": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "title": "Validations",
+            "type": "array"
+          }
+        },
+        "title": "ScannerSummary",
+        "type": "object"
+      },
+      "Status": {
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/ScanSpec"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          }
+        },
+        "required": [
+          "complete",
+          "spec",
+          "location",
+          "summary",
+          "errors"
+        ],
+        "title": "Status",
+        "type": "object"
+      },
+      "Summary": {
+        "description": "Summary of scan results.",
+        "properties": {
+          "complete": {
+            "default": true,
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "scanners": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ScannerSummary"
+            },
+            "title": "Scanners",
+            "type": "object"
+          }
+        },
+        "title": "Summary",
+        "type": "object"
+      },
+      "TranscriptField": {
+        "description": "Field in transcript data frame.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "tz": {
+            "title": "Tz",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "TranscriptField",
+        "type": "object"
+      },
+      "TranscriptInfo": {
+        "description": "Transcript identifier, location, and metadata.",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "agent_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Args"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_options": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Options"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          },
+          "source_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Uri"
+          },
+          "success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "task_repeat": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Repeat"
+          },
+          "task_set": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Set"
+          },
+          "total_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Time"
+          },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tokens"
+          },
+          "transcript_id": {
+            "title": "Transcript Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript_id"
+        ],
+        "title": "TranscriptInfo",
+        "type": "object"
+      },
+      "ValidationCase": {
+        "description": "Validation case for comparing to scanner results.\n\nA `ValidationCase` specifies the ground truth for a scan of particular id (e.g. transcript id, message id, etc.\n\nUse `target` for single-value or dict validation.\nUse `labels` for validating resultsets with label-specific expectations.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Id"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "ValidationCase",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationSet": {
+        "description": "Validation set for a scanner.",
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationCase"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "predicate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicate"
+          }
+        },
+        "required": [
+          "cases"
+        ],
+        "title": "ValidationSet",
+        "type": "object"
+      },
+      "Worklist": {
+        "description": "List of transcript ids to process for a scanner.",
+        "properties": {
+          "scanner": {
+            "title": "Scanner",
+            "type": "string"
+          },
+          "transcripts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Transcripts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scanner",
+          "transcripts"
+        ],
+        "title": "Worklist",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Inspect Scout Viewer API",
+    "version": "2.0.0-alpha"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/scans": {
+      "get": {
+        "description": "Returns all scans in the results directory. Supports ETag caching.",
+        "operationId": "scans_scans_get",
+        "parameters": [
+          {
+            "description": "Results directory containing scans. Required if not configured server-side.",
+            "in": "query",
+            "name": "results_dir",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Results directory containing scans. Required if not configured server-side.",
+              "examples": [
+                "/path/to/results"
+              ],
+              "title": "Results Dir"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Status"
+                  },
+                  "title": "Response Scans Scans Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List scans"
+      }
+    },
+    "/scans-dir": {
+      "get": {
+        "description": "Returns the default directory path where scans are stored.",
+        "operationId": "scans_dir_scans_dir_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get default scans directory"
+      }
+    },
+    "/scans/{scan}": {
+      "get": {
+        "description": "Returns detailed status and metadata for a single scan.",
+        "operationId": "scan_scans__scan__get",
+        "parameters": [
+          {
+            "description": "Scan path (base64url-encoded)",
+            "in": "path",
+            "name": "scan",
+            "required": true,
+            "schema": {
+              "description": "Scan path (base64url-encoded)",
+              "title": "Scan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get scan status"
+      }
+    },
+    "/scans/{scan}/{scanner}": {
+      "get": {
+        "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.",
+        "operationId": "scan_df_scans__scan___scanner__get",
+        "parameters": [
+          {
+            "description": "Scan path (base64url-encoded)",
+            "in": "path",
+            "name": "scan",
+            "required": true,
+            "schema": {
+              "description": "Scan path (base64url-encoded)",
+              "title": "Scan",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Scanner name",
+            "in": "path",
+            "name": "scanner",
+            "required": true,
+            "schema": {
+              "description": "Scanner name",
+              "title": "Scanner",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get scanner dataframe containing results for all transcripts"
+      }
+    },
+    "/scans/{scan}/{scanner}/{uuid}/input": {
+      "get": {
+        "description": "Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.",
+        "operationId": "scanner_input_scans__scan___scanner___uuid__input_get",
+        "parameters": [
+          {
+            "description": "Scan path (base64url-encoded)",
+            "in": "path",
+            "name": "scan",
+            "required": true,
+            "schema": {
+              "description": "Scan path (base64url-encoded)",
+              "title": "Scan",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Scanner name",
+            "in": "path",
+            "name": "scanner",
+            "required": true,
+            "schema": {
+              "description": "Scanner name",
+              "title": "Scanner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "UUID of the specific result row",
+            "in": "path",
+            "name": "uuid",
+            "required": true,
+            "schema": {
+              "description": "UUID of the specific result row",
+              "title": "Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get scanner input for a specific transcript"
+      }
+    },
+    "/transcripts": {
+      "get": {
+        "description": "Returns metadata for all transcripts in the specified directory.",
+        "operationId": "transcripts_transcripts_get",
+        "parameters": [
+          {
+            "description": "Transcripts directory path. Uses default if not specified.",
+            "in": "query",
+            "name": "dir",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcripts directory path. Uses default if not specified.",
+              "examples": [
+                "/path/to/transcripts"
+              ],
+              "title": "Dir"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TranscriptInfo"
+                  },
+                  "title": "Response Transcripts Transcripts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List transcripts"
+      }
+    },
+    "/transcripts-dir": {
+      "get": {
+        "description": "Returns the default directory path where transcripts are stored.",
+        "operationId": "transcripts_dir_transcripts_dir_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get default transcripts directory"
+      }
+    }
+  }
+}

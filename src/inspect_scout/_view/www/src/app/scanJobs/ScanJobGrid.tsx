@@ -97,12 +97,12 @@ export const ScanJobGrid: FC<{
           icon,
           color,
           type: "file",
-          timestamp: scan.spec.timestamp,
+          timestamp: scan.spec.timestamp ?? "",
           location: scan.location,
           relativeLocation: relativeLocation,
-          scanId: scan.spec.scan_id,
-          scanName: scan.spec.scan_name,
-          model: scan.spec.model.model,
+          scanId: scan.spec.scan_id ?? "",
+          scanName: scan.spec.scan_name ?? "",
+          model: scan.spec.model?.model ?? "unknown",
           status:
             scan.errors.length > 1
               ? "error"

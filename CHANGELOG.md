@@ -1,3 +1,7 @@
+## 0.4.4 (24 December 2025)
+
+- Bugfix: Restore compatibility with v1 view server API.
+
 ## 0.4.3 (22 December 2025)
 
 - Add more standard fields to the [transcript database schema](https://meridianlabs-ai.github.io/inspect_scout/db_schema.html).

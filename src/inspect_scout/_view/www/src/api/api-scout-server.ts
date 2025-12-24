@@ -18,6 +18,7 @@ export const apiScoutServer = (
   const requestApi = serverRequestApi(apiBaseUrl || "/api/v2", headerProvider);
 
   return {
+    capability: "workbench",
     getTranscriptsDir: async (): Promise<string> => {
       return (await requestApi.fetchString("GET", `/transcripts-dir`)).raw;
     },

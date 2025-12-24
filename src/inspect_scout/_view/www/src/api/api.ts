@@ -22,6 +22,7 @@ export interface ScanApi {
   ): Promise<ScanResultInputData>;
 
   storage: ClientStorage;
+  capability: "scans" | "workbench";
 }
 
 export const NoPersistence: ClientStorage = {

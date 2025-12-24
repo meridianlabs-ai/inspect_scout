@@ -43,7 +43,8 @@ const queryClient = new QueryClient();
 
 // Read showActivityBar from query parameters
 const urlParams = new URLSearchParams(window.location.search);
-const workbenchMode = urlParams.get("workbench") !== null;
+const workbenchMode =
+  urlParams.get("workbench") !== null && api.capability === "workbench";
 
 // Render the app
 root.render(

@@ -50,6 +50,7 @@ from ._display._display import (
     display_type_initialized,
     init_display_type,
 )
+from ._recorder import summary as recorder_summary
 from ._recorder.factory import (
     scan_recorder_for_location,
     scan_recorder_type_for_location,
@@ -100,6 +101,7 @@ def scan(
     display: DisplayType | None = None,
     log_level: str | None = None,
     fail_on_error: bool = False,
+    dry_run: bool = False,
 ) -> Status:
     """Scan transcripts.
 
@@ -131,6 +133,7 @@ def scan(
         log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
+        dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
 
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -157,6 +160,7 @@ def scan(
             metadata=metadata,
             log_level=log_level,
             fail_on_error=fail_on_error,
+            dry_run=dry_run,
         )
     )
 
@@ -185,6 +189,7 @@ async def scan_async(
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
     fail_on_error: bool = False,
+    dry_run: bool = False,
 ) -> Status:
     """Scan transcripts.
 
@@ -215,6 +220,7 @@ async def scan_async(
         log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
+        dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
 
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -282,12 +288,13 @@ async def scan_async(
     scanjob._model_args = resolved_model_args
     scanjob._model_roles = resolved_model_roles
 
-    # create job and recorder
     scan = await create_scan(scanjob)
+    if dry_run:
+        return await _scan_dry_run(scan)
+
     recorder = scan_recorder_for_location(scanjob._results)
     await recorder.init(scan.spec, scanjob._results)
 
-    # run the scan
     return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
 
 
@@ -487,16 +494,7 @@ async def _scan_async_inner(
         # initialize task local files cache
         init_task_files_cache()
 
-        # apply limits/shuffle
-        transcripts = scan.transcripts
-        if scan.spec.options.limit is not None:
-            transcripts = transcripts.limit(scan.spec.options.limit)
-        if scan.spec.options.shuffle is not None:
-            transcripts = transcripts.shuffle(
-                scan.spec.options.shuffle
-                if isinstance(scan.spec.options.shuffle, int)
-                else None
-            )
+        transcripts = _transcripts_for_scan_options(scan)
 
         async with transcripts.reader() as tr:
             # get the snapshot
@@ -834,7 +832,7 @@ async def handle_scan_interrupted(
 
 async def _parse_jobs(
     context: ScanContext,
-    recorder: ScanRecorder,
+    recorder: ScanRecorder | None,
     tr: TranscriptsReader,
 ) -> AsyncIterator[ParseJob]:
     """Yield `ParseJob` objects for transcripts needing scanning.
@@ -866,8 +864,9 @@ async def _parse_jobs(
                 not in scanner_to_transcript_ids.get(name, [])
             ):
                 continue
-            # if its already recorded then move on
-            if await recorder.is_recorded(transcript_info.transcript_id, name):
+            if recorder is not None and await recorder.is_recorded(
+                transcript_info.transcript_id, name
+            ):
                 continue
             scanner_indices_for_transcript.append(name_to_index[name])
         if not scanner_indices_for_transcript:
@@ -876,6 +875,86 @@ async def _parse_jobs(
             transcript_info=transcript_info,
             scanner_indices=set(scanner_indices_for_transcript),
         )
+
+
+def _transcripts_for_scan_options(scan: ScanContext) -> Transcripts:
+    transcripts = scan.transcripts
+    if scan.spec.options.limit is not None:
+        transcripts = transcripts.limit(scan.spec.options.limit)
+    shuffle = scan.spec.options.shuffle
+    if shuffle is not None:
+        transcripts = transcripts.shuffle(int(shuffle))
+    return transcripts
+
+
+async def _scan_dry_run(scan: ScanContext) -> Status:
+    transcripts = _transcripts_for_scan_options(scan)
+
+    scanner_names = [*scan.scanners]
+    per_scanner_counts = {name: 0 for name in scanner_names}
+
+    async with transcripts.reader() as tr:
+        snapshot = await tr.snapshot()
+        scan.spec.transcripts = snapshot
+
+        async for job in _parse_jobs(scan, None, tr):
+            for scanner_idx in job.scanner_indices:
+                per_scanner_counts[scanner_names[scanner_idx]] += 1
+
+    total_scans = sum(per_scanner_counts.values())
+
+    lines = [("Scanners", "Count")]
+    for name in scanner_names:
+        lines.append((name, str(per_scanner_counts[name])))
+    lines.append(("Total", str(total_scans)))
+
+    max_name_length = max(len(line[0]) for line in lines)
+    max_count_length = max(len(line[1]) for line in lines)
+
+    display().print("Dry run - no scan will be executed")
+    display().print("")
+    header_line = lines.pop(0)
+    total_line = lines.pop()
+    _print_table_line(
+        [
+            (header_line[0], max_name_length, True),
+            (header_line[1], max_count_length, False),
+        ]
+    )
+    _print_table_line([("", max_name_length, True), ("", max_count_length, True)])
+    for name in scanner_names:
+        _print_table_line(
+            [
+                (name, max_name_length, True),
+                (per_scanner_counts[name], max_count_length, False),
+            ]
+        )
+    _print_table_line([("", max_name_length, True), ("", max_count_length, True)])
+    _print_table_line(
+        [
+            (total_line[0], max_name_length, True),
+            (total_line[1], max_count_length, False),
+        ]
+    )
+
+    return Status(
+        complete=True,
+        spec=scan.spec,
+        location="(dry-run)",
+        summary=recorder_summary.Summary(scanners=scanner_names),
+        errors=[],
+    )
+
+
+def _print_table_line(fields: list[tuple[Any, int, bool]]) -> None:
+    line = "| "
+    for field, size, is_left in fields:
+        field = str(field)
+        fillchar = " " if field else "-"
+        just = field.ljust if is_left else field.rjust
+        line += just(size, fillchar)
+        line += " | "
+    display().print(line.rstrip())
 
 
 def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:

@@ -219,6 +219,13 @@ class ScanGroup(click.Group):
     envvar=["SCOUT_SCAN_SHUFFLE"],
 )
 @click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Print resolved scanners and transcript counts without scanning.",
+    envvar="SCOUT_SCAN_DRY_RUN",
+)
+@click.option(
     "--tags",
     type=str,
     help="Tags to associate with this scan job (comma separated)",
@@ -339,6 +346,7 @@ def scan_command(
     max_processes: int | None,
     limit: int | None,
     shuffle: int | None,
+    dry_run: bool,
     tags: str | None,
     metadata: tuple[str, ...] | None,
     cache: int | str | None,
@@ -580,6 +588,7 @@ def scan_command(
         metadata=scan_metadata,
         fail_on_error=common["fail_on_error"],
         log_level=scan_log_level,
+        dry_run=dry_run,
     )
 
 

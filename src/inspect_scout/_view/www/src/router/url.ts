@@ -46,6 +46,13 @@ export const scanResultRoute = (
     : route;
 };
 
+export const transcriptsRoute = (searchParams?: URLSearchParams) => {
+  const route = `/transcripts`;
+  return searchParams?.toString()
+    ? `${route}?${searchParams.toString()}`
+    : route;
+};
+
 export const transcriptRoute = (transcriptId: string) => {
   return `/transcripts/${transcriptId}`;
 };

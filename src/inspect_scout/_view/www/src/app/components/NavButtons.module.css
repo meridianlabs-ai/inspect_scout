@@ -1,0 +1,7 @@
+.toolbarButton {
+  color: var(--bs-body-color);
+}
+
+.toolbarButton:hover {
+  color: var(--bs-link-hover-color);
+}

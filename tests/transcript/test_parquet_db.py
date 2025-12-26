@@ -1,7 +1,7 @@
 """Tests for ParquetTranscriptDB implementation."""
 
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Literal
 
 import pyarrow as pa
 import pytest
@@ -310,7 +310,7 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
 async def test_select_with_order_by_single_column(
     populated_db: ParquetTranscriptsDB,
     column: str,
-    direction: str,
+    direction: Literal["ASC", "DESC"],
     extractor: Any,
     reverse: bool,
 ) -> None:

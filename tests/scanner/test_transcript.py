@@ -1,7 +1,7 @@
 """Comprehensive tests for the _transcript module."""
 
 import uuid
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import pandas as pd
 import pytest
@@ -660,7 +660,11 @@ async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
     ],
 )
 async def test_query_with_order_by_single_column(
-    db: EvalLogTranscriptsDB, column: str, direction: str, extractor: Any, reverse: bool
+    db: EvalLogTranscriptsDB,
+    column: str,
+    direction: Literal["ASC", "DESC"],
+    extractor: Any,
+    reverse: bool,
 ) -> None:
     """Test ordering by single column with various directions."""
     results = [

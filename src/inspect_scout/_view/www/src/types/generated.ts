@@ -111,13 +111,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        get?: never;
+        put?: never;
         /**
          * List transcripts
-         * @description Returns metadata for all transcripts in the specified directory.
+         * @description Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
          */
-        get: operations["transcripts_transcripts_get"];
-        put?: never;
-        post?: never;
+        post: operations["transcripts_transcripts_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -190,18 +190,38 @@ export interface components {
          * Condition
          * @description WHERE clause condition that can be combined with others.
          */
-        Condition: {
+        "Condition-Input": {
             /**
              * Is Compound
              * @default false
              */
             is_compound: boolean;
             /** Left */
-            left?: string | components["schemas"]["Condition"] | null;
+            left?: string | components["schemas"]["Condition-Input"] | null;
             /** Operator */
             operator?: components["schemas"]["Operator"] | components["schemas"]["LogicalOperator"] | null;
             /** Right */
-            right?: components["schemas"]["Condition"] | (string | number | boolean | null)[] | [
+            right?: components["schemas"]["Condition-Input"] | (string | number | boolean | null)[] | [
+                string | number | boolean | null,
+                string | number | boolean | null
+            ] | string | number | boolean | null;
+        };
+        /**
+         * Condition
+         * @description WHERE clause condition that can be combined with others.
+         */
+        "Condition-Output": {
+            /**
+             * Is Compound
+             * @default false
+             */
+            is_compound: boolean;
+            /** Left */
+            left?: string | components["schemas"]["Condition-Output"] | null;
+            /** Operator */
+            operator?: components["schemas"]["Operator"] | components["schemas"]["LogicalOperator"] | null;
+            /** Right */
+            right?: components["schemas"]["Condition-Output"] | (string | number | boolean | null)[] | [
                 string | number | boolean | null,
                 string | number | boolean | null
             ] | string | number | boolean | null;
@@ -382,6 +402,30 @@ export interface components {
          * @enum {string}
          */
         Operator: "=" | "!=" | "<" | "<=" | ">" | ">=" | "IN" | "NOT IN" | "LIKE" | "NOT LIKE" | "ILIKE" | "NOT ILIKE" | "IS NULL" | "IS NOT NULL" | "BETWEEN" | "NOT BETWEEN";
+        /** OrderBy */
+        OrderBy: {
+            /** Column */
+            column: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "ASC" | "DESC";
+        };
+        /** Pagination */
+        Pagination: {
+            /** Cursor */
+            cursor: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "forward" | "backward";
+            /** Limit */
+            limit: number;
+        };
         /**
          * ResponseSchema
          * @description Schema for model response when using Structured Output.
@@ -484,7 +528,7 @@ export interface components {
          */
         ScanTranscripts: {
             /** Conditions */
-            conditions?: components["schemas"]["Condition"][] | null;
+            conditions?: components["schemas"]["Condition-Output"][] | null;
             /**
              * Count
              * @default 0
@@ -653,6 +697,24 @@ export interface components {
             total_tokens?: number | null;
             /** Transcript Id */
             transcript_id: string;
+        };
+        /** TranscriptsRequest */
+        TranscriptsRequest: {
+            /** Dir */
+            dir?: string | null;
+            filter?: components["schemas"]["Condition-Input"] | null;
+            /** Order By */
+            order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
+            pagination?: components["schemas"]["Pagination"] | null;
+        };
+        /** TranscriptsResponse */
+        TranscriptsResponse: {
+            /** Items */
+            items: components["schemas"]["TranscriptInfo"][];
+            /** Next Cursor */
+            next_cursor?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * ValidationCase
@@ -828,17 +890,18 @@ export interface operations {
             };
         };
     };
-    transcripts_transcripts_get: {
+    transcripts_transcripts_post: {
         parameters: {
-            query?: {
-                /** @description Transcripts directory path. Uses default if not specified. */
-                dir?: string | null;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TranscriptsRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -846,7 +909,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TranscriptInfo"][];
+                    "application/json": components["schemas"]["TranscriptsResponse"];
                 };
             };
         };

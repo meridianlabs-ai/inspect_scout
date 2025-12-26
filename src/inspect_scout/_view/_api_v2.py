@@ -21,9 +21,20 @@ from .._scanresults import (
     scan_results_arrow_async,
     scan_results_df_async,
 )
+from .._transcript.columns import Column
 from .._transcript.factory import transcripts_from
-from .._transcript.types import TranscriptInfo
-from ._api_v2_types import RestScanStatus
+from ._api_v2_helpers import (
+    _apply_cursor_pagination,
+    _build_cursor,
+    _ensure_tiebreaker,
+    _has_more_results,
+)
+from ._api_v2_types import (
+    OrderBy,
+    RestScanStatus,
+    TranscriptsRequest,
+    TranscriptsResponse,
+)
 from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
@@ -139,27 +150,77 @@ def v2_api_app(
         """Return default scans directory path."""
         return _ensure_not_none(results_dir, "results_dir is not configured")
 
-    @app.get(
+    @app.post(
         "/transcripts",
         summary="List transcripts",
-        description="Returns metadata for all transcripts in the specified directory.",
+        description="Returns transcripts from specified directory (defaults to system transcripts dir). "
+        "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
+        "Optional pagination for cursor-based pagination.",
     )
     async def transcripts(
-        request_transcripts_dir: str | None = Query(
-            None,
-            alias="dir",
-            description="Transcripts directory path. Uses default if not specified.",
-            examples=["/path/to/transcripts"],
-        ),
-    ) -> list[TranscriptInfo]:
-        """List transcript metadata from the transcripts directory."""
-        transcripts_dir = request_transcripts_dir or await default_transcripts_dir()
-        print(f"/transcripts got\n\t{request_transcripts_dir=}\n\t{transcripts_dir=}")
+        body: TranscriptsRequest | None = None,
+    ) -> TranscriptsResponse:
+        """Filter transcript metadata from the transcripts directory."""
+        transcripts_dir = (
+            body.dir if body else None
+        ) or await default_transcripts_dir()
+
         try:
-            async with transcripts_from(transcripts_dir).reader() as tr:
-                return [t async for t in tr.index()]
+            transcripts_query = transcripts_from(transcripts_dir)
+            if body and body.filter:
+                transcripts_query = transcripts_query.where(body.filter)
+
+            # Push order_by to database layer
+            # When pagination used, apply tiebreaker. Otherwise just apply user's order_by.
+            use_pagination = body and body.pagination
+            if use_pagination:
+                # Determine order with tiebreaker
+                order_by = body.order_by if body else None
+                if not order_by:
+                    order_by = OrderBy(column="transcript_id", direction="ASC")
+                order_columns = _ensure_tiebreaker(order_by)
+
+                # Apply to database query
+                for col, direction in order_columns:
+                    transcripts_query = transcripts_query.order_by(
+                        Column(col), direction
+                    )
+            elif body and body.order_by:
+                # No pagination - just apply user's order_by
+                order_bys = (
+                    body.order_by
+                    if isinstance(body.order_by, list)
+                    else [body.order_by]
+                )
+                for ob in order_bys:
+                    transcripts_query = transcripts_query.order_by(
+                        Column(ob.column), ob.direction
+                    )
+
+            async with transcripts_query.reader() as tr:
+                results = [t async for t in tr.index()]
+
+            # Apply pagination if requested
+            if use_pagination:
+                assert body and body.pagination  # type narrowing
+                paginated = _apply_cursor_pagination(
+                    results, body.pagination, order_columns
+                )
+
+                # Build next cursor if more results exist
+                next_cursor = None
+                if _has_more_results(results, paginated, body.pagination):
+                    if body.pagination.direction == "forward":
+                        next_cursor = _build_cursor(paginated[-1], order_columns)
+                    else:
+                        next_cursor = _build_cursor(paginated[0], order_columns)
+
+                return TranscriptsResponse(items=paginated, next_cursor=next_cursor)
+
+            # No pagination - return all results
+            return TranscriptsResponse(items=results, next_cursor=None)
         except FileNotFoundError:
-            return []
+            return TranscriptsResponse(items=[], next_cursor=None)
 
     @app.get(
         "/scans",

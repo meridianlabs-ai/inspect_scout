@@ -1,10 +1,31 @@
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
+from .._transcript.columns import Condition
+from .._transcript.types import TranscriptInfo
+
+
+@dataclass
+class OrderBy:
+    column: str
+    direction: Literal["ASC", "DESC"]
+
+
+@dataclass
+class Pagination:
+    limit: int
+    cursor: dict[str, Any] | None
+    direction: Literal["forward", "backward"]
+
+
+@dataclass
+class TranscriptsResponse:
+    items: list[TranscriptInfo]
+    next_cursor: dict[str, Any] | None = None
 
 
 @dataclass
@@ -51,3 +72,11 @@ class IPCSerializableResults(RecorderStatus):
 
 
 RestScanStatus: TypeAlias = RecorderStatus
+
+
+@dataclass
+class TranscriptsRequest:
+    filter: Condition | None = None
+    order_by: OrderBy | list[OrderBy] | None = None
+    dir: str | None = None
+    pagination: Pagination | None = None

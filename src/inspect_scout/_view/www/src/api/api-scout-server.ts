@@ -1,4 +1,5 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
+import type { Condition, OrderByModel } from "../query";
 import { Status } from "../types";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
@@ -22,12 +23,20 @@ export const apiScoutServer = (
     getTranscriptsDir: async (): Promise<string> => {
       return (await requestApi.fetchString("GET", `/transcripts-dir`)).raw;
     },
-    getTranscripts: async (transcriptsDir?: string): Promise<unknown[]> => {
+    getTranscripts: async (
+      transcriptsDir?: string,
+      filter?: Condition,
+      orderBy?: OrderByModel | OrderByModel[]
+    ): Promise<unknown[]> => {
       const result = await requestApi.fetchString(
-        "GET",
-        transcriptsDir
-          ? `/transcripts?dir=${encodeURIComponent(transcriptsDir)}`
-          : `/transcripts`
+        "POST",
+        `/transcripts`,
+        {},
+        JSON.stringify({
+          filter: filter ?? null,
+          order_by: orderBy ?? null,
+          dir: transcriptsDir ?? null,
+        })
       );
 
       const parsedResult = await asyncJsonParse<unknown[]>(result.raw);

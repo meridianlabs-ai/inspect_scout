@@ -5,6 +5,13 @@ from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
+from .._transcript.columns import Condition
+
+
+@dataclass
+class OrderBy:
+    column: str
+    direction: Literal["asc", "desc"]
 
 
 @dataclass
@@ -51,3 +58,10 @@ class IPCSerializableResults(RecorderStatus):
 
 
 RestScanStatus: TypeAlias = RecorderStatus
+
+
+@dataclass
+class TranscriptsRequest:
+    filter: Condition | None = None
+    order_by: OrderBy | list[OrderBy] | None = None
+    dir: str | None = None

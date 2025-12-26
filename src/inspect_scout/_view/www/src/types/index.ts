@@ -22,6 +22,15 @@ export type {
   ModelConfig as Model,
 } from "./api-types";
 
+// Query builder
+export {
+  transcriptColumns,
+  Column,
+  ConditionBuilder,
+  TranscriptColumns,
+} from "../query";
+export type { ConditionModel, ScalarValue } from "../query";
+
 export interface IPCDataframe {
   format: "arrow.feather";
   version: number;

@@ -428,3 +428,202 @@ class TestViewServerAppEdgeCases:
         assert data["complete"] is False
         assert len(data["errors"]) == 1
         assert data["errors"][0]["error"] == "Test error"
+
+
+class TestSortTranscripts:
+    """Tests for _sort_transcripts helper function."""
+
+    def test_sort_single_column_asc(self) -> None:
+        """Test sorting by single column ascending."""
+        from inspect_scout._transcript.types import TranscriptInfo
+        from inspect_scout._view._api_v2 import _sort_transcripts
+        from inspect_scout._view._api_v2_types import OrderBy
+
+        transcripts = [
+            TranscriptInfo(
+                transcript_id="t1",
+                source_id="s1",
+                source_type="file",
+                source_uri="",
+                model="gpt-4",
+            ),
+            TranscriptInfo(
+                transcript_id="t2",
+                source_id="s2",
+                source_type="file",
+                source_uri="",
+                model="claude-3",
+            ),
+            TranscriptInfo(
+                transcript_id="t3",
+                source_id="s3",
+                source_type="file",
+                source_uri="",
+                model="gpt-3.5",
+            ),
+        ]
+
+        _sort_transcripts(transcripts, OrderBy(column="model", direction="asc"))
+
+        assert [t.model for t in transcripts] == ["claude-3", "gpt-3.5", "gpt-4"]
+
+    def test_sort_single_column_desc(self) -> None:
+        """Test sorting by single column descending."""
+        from inspect_scout._transcript.types import TranscriptInfo
+        from inspect_scout._view._api_v2 import _sort_transcripts
+        from inspect_scout._view._api_v2_types import OrderBy
+
+        transcripts = [
+            TranscriptInfo(
+                transcript_id="t1",
+                source_id="s1",
+                source_type="file",
+                source_uri="",
+                score=0.5,
+            ),
+            TranscriptInfo(
+                transcript_id="t2",
+                source_id="s2",
+                source_type="file",
+                source_uri="",
+                score=0.9,
+            ),
+            TranscriptInfo(
+                transcript_id="t3",
+                source_id="s3",
+                source_type="file",
+                source_uri="",
+                score=0.7,
+            ),
+        ]
+
+        _sort_transcripts(transcripts, OrderBy(column="score", direction="desc"))
+
+        assert [t.score for t in transcripts] == [0.9, 0.7, 0.5]
+
+    def test_sort_multi_column(self) -> None:
+        """Test multi-column sorting."""
+        from inspect_scout._transcript.types import TranscriptInfo
+        from inspect_scout._view._api_v2 import _sort_transcripts
+        from inspect_scout._view._api_v2_types import OrderBy
+
+        transcripts = [
+            TranscriptInfo(
+                transcript_id="t1",
+                source_id="s1",
+                source_type="file",
+                source_uri="",
+                model="gpt-4",
+                score=0.5,
+            ),
+            TranscriptInfo(
+                transcript_id="t2",
+                source_id="s2",
+                source_type="file",
+                source_uri="",
+                model="gpt-4",
+                score=0.9,
+            ),
+            TranscriptInfo(
+                transcript_id="t3",
+                source_id="s3",
+                source_type="file",
+                source_uri="",
+                model="claude-3",
+                score=0.7,
+            ),
+            TranscriptInfo(
+                transcript_id="t4",
+                source_id="s4",
+                source_type="file",
+                source_uri="",
+                model="claude-3",
+                score=0.3,
+            ),
+        ]
+
+        # Sort by model ASC, then score DESC
+        _sort_transcripts(
+            transcripts,
+            [
+                OrderBy(column="model", direction="asc"),
+                OrderBy(column="score", direction="desc"),
+            ],
+        )
+
+        # Within each model group, scores should be descending
+        assert transcripts[0].model == "claude-3"
+        assert transcripts[0].score == 0.7
+        assert transcripts[1].model == "claude-3"
+        assert transcripts[1].score == 0.3
+        assert transcripts[2].model == "gpt-4"
+        assert transcripts[2].score == 0.9
+        assert transcripts[3].model == "gpt-4"
+        assert transcripts[3].score == 0.5
+
+    def test_sort_with_none_values(self) -> None:
+        """Test sorting handles None values correctly."""
+        from inspect_scout._transcript.types import TranscriptInfo
+        from inspect_scout._view._api_v2 import _sort_transcripts
+        from inspect_scout._view._api_v2_types import OrderBy
+
+        transcripts = [
+            TranscriptInfo(
+                transcript_id="t1",
+                source_id="s1",
+                source_type="file",
+                source_uri="",
+                model="gpt-4",
+            ),
+            TranscriptInfo(
+                transcript_id="t2",
+                source_id="s2",
+                source_type="file",
+                source_uri="",
+                model=None,
+            ),
+            TranscriptInfo(
+                transcript_id="t3",
+                source_id="s3",
+                source_type="file",
+                source_uri="",
+                model="claude-3",
+            ),
+        ]
+
+        _sort_transcripts(transcripts, OrderBy(column="model", direction="asc"))
+
+        # None values treated as empty strings, so should sort first
+        assert transcripts[0].model is None
+        assert transcripts[1].model == "claude-3"
+        assert transcripts[2].model == "gpt-4"
+
+    def test_sort_missing_attribute(self) -> None:
+        """Test sorting handles missing attributes correctly."""
+        from inspect_scout._transcript.types import TranscriptInfo
+        from inspect_scout._view._api_v2 import _sort_transcripts
+        from inspect_scout._view._api_v2_types import OrderBy
+
+        transcripts = [
+            TranscriptInfo(
+                transcript_id="t1",
+                source_id="s1",
+                source_type="file",
+                source_uri="",
+                model="gpt-4",
+            ),
+            TranscriptInfo(
+                transcript_id="t2",
+                source_id="s2",
+                source_type="file",
+                source_uri="",
+                model="claude-3",
+            ),
+        ]
+
+        # Sort by non-existent attribute - should treat as empty string
+        _sort_transcripts(transcripts, OrderBy(column="nonexistent", direction="asc"))
+
+        # Order should remain unchanged since all values are treated as ""
+        assert transcripts[0].transcript_id == "t1"
+        assert transcripts[1].transcript_id == "t2"

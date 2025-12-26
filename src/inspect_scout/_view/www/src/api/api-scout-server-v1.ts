@@ -48,7 +48,10 @@ export const apiScoutServerV1 = (
     getTranscriptsDir: (): Promise<string> => {
       throw new Error("Not implemented in API v1");
     },
-    getTranscripts: (_transcriptsDir?: string): Promise<unknown[]> => {
+    getTranscripts: (
+      _transcriptsDir?: string,
+      _filter?: unknown
+    ): Promise<unknown[]> => {
       throw new Error("Not implemented in API v1");
     },
     getScansDir: async (): Promise<string> => {

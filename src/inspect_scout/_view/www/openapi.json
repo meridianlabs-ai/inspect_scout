@@ -105,7 +105,7 @@
         "title": "CachePolicy",
         "type": "object"
       },
-      "Condition": {
+      "Condition-Input": {
         "description": "WHERE clause condition that can be combined with others.",
         "properties": {
           "is_compound": {
@@ -119,7 +119,7 @@
                 "type": "string"
               },
               {
-                "$ref": "#/components/schemas/Condition"
+                "$ref": "#/components/schemas/Condition-Input"
               },
               {
                 "type": "null"
@@ -144,7 +144,169 @@
           "right": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Condition"
+                "$ref": "#/components/schemas/Condition-Input"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "format": "date",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "format": "date",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Right"
+          }
+        },
+        "title": "Condition",
+        "type": "object"
+      },
+      "Condition-Output": {
+        "description": "WHERE clause condition that can be combined with others.",
+        "properties": {
+          "is_compound": {
+            "default": false,
+            "title": "Is Compound",
+            "type": "boolean"
+          },
+          "left": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/Condition-Output"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left"
+          },
+          "operator": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Operator"
+              },
+              {
+                "$ref": "#/components/schemas/LogicalOperator"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator"
+          },
+          "right": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition-Output"
               },
               {
                 "items": {
@@ -989,6 +1151,28 @@
         "title": "Operator",
         "type": "string"
       },
+      "OrderBy": {
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Direction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "direction"
+        ],
+        "title": "OrderBy",
+        "type": "object"
+      },
       "ResponseSchema": {
         "description": "Schema for model response when using Structured Output.",
         "properties": {
@@ -1275,7 +1459,7 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/Condition"
+                  "$ref": "#/components/schemas/Condition-Output"
                 },
                 "type": "array"
               },
@@ -1752,6 +1936,50 @@
         "title": "TranscriptInfo",
         "type": "object"
       },
+      "TranscriptsRequest": {
+        "properties": {
+          "dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dir"
+          },
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderBy"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OrderBy"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order By"
+          }
+        },
+        "title": "TranscriptsRequest",
+        "type": "object"
+      },
       "ValidationCase": {
         "description": "Validation case for comparing to scanner results.\n\nA `ValidationCase` specifies the ground truth for a scan of particular id (e.g. transcript id, message id, etc.\n\nUse `target` for single-value or dict validation.\nUse `labels` for validating resultsets with label-specific expectations.",
         "properties": {
@@ -2082,32 +2310,26 @@
       }
     },
     "/transcripts": {
-      "get": {
-        "description": "Returns metadata for all transcripts in the specified directory.",
-        "operationId": "transcripts_transcripts_get",
-        "parameters": [
-          {
-            "description": "Transcripts directory path. Uses default if not specified.",
-            "in": "query",
-            "name": "dir",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Transcripts directory path. Uses default if not specified.",
-              "examples": [
-                "/path/to/transcripts"
-              ],
-              "title": "Dir"
+      "post": {
+        "description": "Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Both filter and directory are optional.",
+        "operationId": "transcripts_transcripts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TranscriptsRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "content": {
@@ -2116,7 +2338,7 @@
                   "items": {
                     "$ref": "#/components/schemas/TranscriptInfo"
                   },
-                  "title": "Response Transcripts Transcripts Get",
+                  "title": "Response Transcripts Transcripts Post",
                   "type": "array"
                 }
               }

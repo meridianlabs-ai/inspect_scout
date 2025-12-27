@@ -97,6 +97,7 @@ Here are the available `Transcript` fields:
 | `agent` | str | Agent used to to execute task. |
 | `agent_args` | dict JSON | Arguments passed to create agent. |
 | `model` | str | Main model used by agent. |
+| `model_options` | dict JSON | Generation options for main model. |
 | `score` | JsonValueJSON | Value indicating score on task. |
 | `success` | bool | Boolean reduction of `score` to succeeded/failed. |
 | `total_time` | number | Time required to execute task (seconds) |
@@ -106,16 +107,6 @@ Here are the available `Transcript` fields:
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
-
-> [!NOTE]
->
-> Note that many of the fields described above are available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
 
 ## Scanning Transcripts
 

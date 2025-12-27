@@ -590,216 +590,207 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Main model used by agent.</td>
 </tr>
 <tr class="even">
+<td><code>transcript_model_options</code></td>
+<td>JsonValue<br><small>JSON</small></td>
+<td>Generation options for main model.</td>
+</tr>
+<tr class="odd">
 <td><code>transcript_score</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value indicating score on task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>transcript_success</code></td>
 <td>bool</td>
 <td>Boolean reduction of <code>score</code> to succeeded/failed.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>transcript_total_time</code></td>
 <td>number</td>
 <td>Time required to execute task (seconds)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>transcript_total_tokens</code></td>
 <td>number</td>
 <td>Tokens spent in execution of task.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>transcript_error</code></td>
 <td>str</td>
 <td>Error message that terminated the task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>transcript_limit</code></td>
 <td>str</td>
 <td>Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages, etc.)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>transcript_metadata</code></td>
 <td>dict <br><small>JSON</small></td>
 <td>Source specific metadata.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_id</code></td>
 <td>str</td>
 <td>Globally unique identifier for scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_tags</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Tags associated with the scan.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Additional scan metadata.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_git_origin</code></td>
 <td>str</td>
 <td>Git origin for repo where scan was run from.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_git_version</code></td>
 <td>str</td>
 <td>Git version (based on tags) for repo where scan was run from.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_git_commit</code></td>
 <td>str</td>
 <td>Git commit for repo where scan was run from.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_key</code></td>
 <td>str</td>
 <td>Unique key for scan within scan job (defaults to <code>scanner_name</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_name</code></td>
 <td>str</td>
 <td>Scanner name.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_version</code></td>
 <td>int</td>
 <td>Scanner version.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_package_version</code></td>
 <td>int</td>
 <td>Scanner package version.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_file</code></td>
 <td>str</td>
 <td>Source file for scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_params</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Params used to create scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input_type</code></td>
 <td>transcript | message | messages | event | events</td>
 <td>Input type received by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>input_ids</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Unique ids of scanner input.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input</code></td>
 <td>ScannerInput<br><small>JSON</small></td>
 <td>Scanner input value.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>uuid</code></td>
 <td>str</td>
 <td>Globally unique id for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>label</code></td>
 <td>str</td>
 <td>Label for the origin of the result (optional).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>value</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value returned by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>value_type</code></td>
 <td>string | boolean | number | array | object | null</td>
 <td>Type of value returned by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>answer</code></td>
 <td>str</td>
 <td>Answer extracted from scanner generation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>explanation</code></td>
 <td>str</td>
 <td>Explanation for scan result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Metadata for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>message_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Messages referenced by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>event_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Events referenced by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>validation_target</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Target value from validation set.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>validation_result</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error</code></td>
 <td>str</td>
 <td>Error which occurred during scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_error_traceback</code></td>
 <td>str</td>
 <td>Traceback for error (if any)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error_type</code></td>
 <td>str</td>
 <td>Error type (either “refusal” for refusals or null for other errors).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
 <td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_total_tokens</code></td>
 <td>number</td>
 <td>Total tokens used by scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_model_usage</code></td>
 <td>dict [str, ModelUsage]<br><small>JSON</small></td>
 <td>Token usage by model for scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
 </tbody>
 </table>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>Note that the <code>transcript_*</code> fields are available only in the development version of Inspect Scout. Install the development version from GitHub with:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pip install git<span class="op">+</span>https:<span class="op">//</span>github.com<span class="op">/</span>meridianlabs<span class="op">-</span>ai<span class="op">/</span>inspect_scout</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-</div>
 
 
 </section>

@@ -187,9 +187,11 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#unreleased" id="toc-unreleased" class="nav-link active" data-scroll-target="#unreleased">Unreleased</a></li>
-  <li><a href="#december-2025" id="toc-december-2025" class="nav-link" data-scroll-target="#december-2025">0.4.2 (14 December 2025)</a></li>
-  <li><a href="#december-2025-1" id="toc-december-2025-1" class="nav-link" data-scroll-target="#december-2025-1">0.4.1 (12 December 2025)</a></li>
-  <li><a href="#december-2025-2" id="toc-december-2025-2" class="nav-link" data-scroll-target="#december-2025-2">0.4.0 (11 December 2025)</a></li>
+  <li><a href="#december-2025" id="toc-december-2025" class="nav-link" data-scroll-target="#december-2025">0.4.4 (24 December 2025)</a></li>
+  <li><a href="#december-2025-1" id="toc-december-2025-1" class="nav-link" data-scroll-target="#december-2025-1">0.4.3 (22 December 2025)</a></li>
+  <li><a href="#december-2025-2" id="toc-december-2025-2" class="nav-link" data-scroll-target="#december-2025-2">0.4.2 (14 December 2025)</a></li>
+  <li><a href="#december-2025-3" id="toc-december-2025-3" class="nav-link" data-scroll-target="#december-2025-3">0.4.1 (12 December 2025)</a></li>
+  <li><a href="#december-2025-4" id="toc-december-2025-4" class="nav-link" data-scroll-target="#december-2025-4">0.4.0 (11 December 2025)</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -202,28 +204,42 @@ ul.task-list li input[type="checkbox"] {
 <section id="unreleased" class="level2">
 <h2 class="anchored" data-anchor-id="unreleased">Unreleased</h2>
 <ul>
-<li>Add more standard fields to the <a href="https://meridianlabs-ai.github.io/inspect_scout/db_schema.html">transcript database schema</a>.</li>
-<li>Add an optional index to transcript database for higher performance queries on very large databases.</li>
-<li>Add <code>as_json</code> option to <code>messages_as_str</code> for JSON output format.</li>
+<li>Scanning: Add <code>--dry-run</code> option for previewing scanner counts.</li>
 </ul>
 </section>
 <section id="december-2025" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025">0.4.2 (14 December 2025)</h2>
+<h2 class="anchored" data-anchor-id="december-2025">0.4.4 (24 December 2025)</h2>
+<ul>
+<li>Bugfix: Restore compatibility with v1 view server API.</li>
+</ul>
+</section>
+<section id="december-2025-1" class="level2">
+<h2 class="anchored" data-anchor-id="december-2025-1">0.4.3 (22 December 2025)</h2>
+<ul>
+<li>Add more standard fields to the <a href="https://meridianlabs-ai.github.io/inspect_scout/db_schema.html">transcript database schema</a>.</li>
+<li>Add an optional index to transcript database for higher performance queries on very large databases.</li>
+<li>Add <code>as_json</code> option to <code>messages_as_str</code> for JSON output format.</li>
+<li>Persist transcripts.where() clauses as part of scan specification.</li>
+<li>Bugfix: Fix LLM answer parsing for decimals, negatives, and markdown.</li>
+</ul>
+</section>
+<section id="december-2025-2" class="level2">
+<h2 class="anchored" data-anchor-id="december-2025-2">0.4.2 (14 December 2025)</h2>
 <ul>
 <li>Scanning: Switch from <code>dill</code> to <code>cloudpickle</code> and restore default <code>max_processes</code> to 4 after resolving multiprocessing serialization issues.</li>
 <li>Track scan job completion status explicitly in the filesystem (vs.&nbsp;merely looking at whether buffer dir exists).</li>
 <li>Transcript databases: Include all <code>.parquet</code> files in directory (don’t require <code>transcripts_</code> prefix).</li>
 </ul>
 </section>
-<section id="december-2025-1" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025-1">0.4.1 (12 December 2025)</h2>
+<section id="december-2025-3" class="level2">
+<h2 class="anchored" data-anchor-id="december-2025-3">0.4.1 (12 December 2025)</h2>
 <ul>
 <li>Scan jobs: Correct resolution order for options (CLI, then scanjob config, then environment variables).</li>
 <li>Scanning: Restore default <code>max_processes</code> to 1 while we resolve some multiprocessing serialization issues.</li>
 </ul>
 </section>
-<section id="december-2025-2" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025-2">0.4.0 (11 December 2025)</h2>
+<section id="december-2025-4" class="level2">
+<h2 class="anchored" data-anchor-id="december-2025-4">0.4.0 (11 December 2025)</h2>
 <ul>
 <li>Initial release.</li>
 </ul>

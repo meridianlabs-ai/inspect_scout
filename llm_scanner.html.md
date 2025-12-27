@@ -114,6 +114,7 @@ The following substitutable values are available for prompt templates:
 | `{{ agent }}` | str | Agent used to to execute task. |
 | `{{ agent_args }}` | dict | Arguments passed to create agent. |
 | `{{ model }}` | str | Main model used by agent. |
+| `{{ model_options }}` | dict | Generation options for main model. |
 | `{{ score }}` | JsonValue | Value indicating score on task. |
 | `{{ success }}` | bool | Boolean reduction of `score` to succeeded/failed. |
 | `{{ total_time }}` | number | Time required to execute task (seconds) |
@@ -124,16 +125,6 @@ The following substitutable values are available for prompt templates:
 
 In addition, you can use the `template_variables` option to pass
 additional variables for use in your template.
-
-> [!NOTE]
->
-> Note that many of the fields described above are available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
 
 ## Scanner Results
 

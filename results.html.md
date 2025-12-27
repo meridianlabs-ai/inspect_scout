@@ -140,6 +140,7 @@ included embedded JSON data, these are all noted below):
 | `transcript_agent` | str | Agent used to to execute task. |
 | `transcript_agent_args` | dict JSON | Arguments passed to create agent. |
 | `transcript_model` | str | Main model used by agent. |
+| `transcript_model_options` | JsonValueJSON | Generation options for main model. |
 | `transcript_score` | JsonValueJSON | Value indicating score on task. |
 | `transcript_success` | bool | Boolean reduction of `score` to succeeded/failed. |
 | `transcript_total_time` | number | Time required to execute task (seconds) |
@@ -179,13 +180,3 @@ included embedded JSON data, these are all noted below):
 | `scan_events` | list\[Event\]JSON | Scan events (e.g. model event, log event, etc.) |
 | `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
 | `scan_model_usage` | dict \[str, ModelUsage\]JSON | Token usage by model for scan (only included when `rows = "transcripts"`). |
-
-> [!NOTE]
->
-> Note that the `transcript_*` fields are available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```

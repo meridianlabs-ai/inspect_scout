@@ -832,216 +832,207 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Main model used by agent.</td>
 </tr>
 <tr class="even">
+<td><code>transcript_model_options</code></td>
+<td>JsonValue<br><small>JSON</small></td>
+<td>Generation options for main model.</td>
+</tr>
+<tr class="odd">
 <td><code>transcript_score</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value indicating score on task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>transcript_success</code></td>
 <td>bool</td>
 <td>Boolean reduction of <code>score</code> to succeeded/failed.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>transcript_total_time</code></td>
 <td>number</td>
 <td>Time required to execute task (seconds)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>transcript_total_tokens</code></td>
 <td>number</td>
 <td>Tokens spent in execution of task.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>transcript_error</code></td>
 <td>str</td>
 <td>Error message that terminated the task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>transcript_limit</code></td>
 <td>str</td>
 <td>Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages, etc.)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>transcript_metadata</code></td>
 <td>dict <br><small>JSON</small></td>
 <td>Source specific metadata.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_id</code></td>
 <td>str</td>
 <td>Globally unique identifier for scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_tags</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Tags associated with the scan.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Additional scan metadata.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_git_origin</code></td>
 <td>str</td>
 <td>Git origin for repo where scan was run from.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_git_version</code></td>
 <td>str</td>
 <td>Git version (based on tags) for repo where scan was run from.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_git_commit</code></td>
 <td>str</td>
 <td>Git commit for repo where scan was run from.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_key</code></td>
 <td>str</td>
 <td>Unique key for scan within scan job (defaults to <code>scanner_name</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_name</code></td>
 <td>str</td>
 <td>Scanner name.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_version</code></td>
 <td>int</td>
 <td>Scanner version.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_package_version</code></td>
 <td>int</td>
 <td>Scanner package version.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scanner_file</code></td>
 <td>str</td>
 <td>Source file for scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scanner_params</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Params used to create scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input_type</code></td>
 <td>transcript | message | messages | event | events</td>
 <td>Input type received by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>input_ids</code></td>
 <td>list[str]<br><small>JSON</small></td>
 <td>Unique ids of scanner input.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>input</code></td>
 <td>ScannerInput<br><small>JSON</small></td>
 <td>Scanner input value.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>uuid</code></td>
 <td>str</td>
 <td>Globally unique id for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>label</code></td>
 <td>str</td>
 <td>Label for the origin of the result (optional).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>value</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Value returned by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>value_type</code></td>
 <td>string | boolean | number | array | object | null</td>
 <td>Type of value returned by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>answer</code></td>
 <td>str</td>
 <td>Answer extracted from scanner generation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>explanation</code></td>
 <td>str</td>
 <td>Explanation for scan result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>metadata</code></td>
 <td>dict<br><small>JSON</small></td>
 <td>Metadata for scan result.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>message_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Messages referenced by scanner.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>event_references</code></td>
 <td>list[Reference]<br><small>JSON</small></td>
 <td>Events referenced by scanner.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>validation_target</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Target value from validation set.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>validation_result</code></td>
 <td>JsonValue<br><small>JSON</small></td>
 <td>Result returned from comparing <code>validation_target</code> to <code>value</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error</code></td>
 <td>str</td>
 <td>Error which occurred during scan.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_error_traceback</code></td>
 <td>str</td>
 <td>Traceback for error (if any)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_error_type</code></td>
 <td>str</td>
 <td>Error type (either “refusal” for refusals or null for other errors).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
 <td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>scan_total_tokens</code></td>
 <td>number</td>
 <td>Total tokens used by scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scan_model_usage</code></td>
 <td>dict [str, ModelUsage]<br><small>JSON</small></td>
 <td>Token usage by model for scan (only included when <code>rows = "transcripts"</code>).</td>
 </tr>
 </tbody>
 </table>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>Note that the <code>transcript_*</code> fields are available only in the development version of Inspect Scout. Install the development version from GitHub with:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>pip install git<span class="op">+</span>https:<span class="op">//</span>github.com<span class="op">/</span>meridianlabs<span class="op">-</span>ai<span class="op">/</span>inspect_scout</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-</div>
 </section>
 </section>
 </section>
@@ -1055,25 +1046,25 @@ Note
 <div class="code-with-filename-file">
 <pre><strong>cybench_scan.py</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from, columns <span class="im">as</span> c</span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
-<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(logs)</span>
-<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(c.task <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
-<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts,</span>
-<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
-<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>        model <span class="op">=</span> <span class="st">"openai/gpt-5"</span>,</span>
-<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>        max_transcripts <span class="op">=</span> <span class="dv">50</span>,</span>
-<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>        max_processes <span class="op">=</span> <span class="dv">8</span></span>
-<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from, columns <span class="im">as</span> c</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(logs)</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(c.task <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts,</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>        model <span class="op">=</span> <span class="st">"openai/gpt-5"</span>,</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>        max_transcripts <span class="op">=</span> <span class="dv">50</span>,</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>        max_processes <span class="op">=</span> <span class="dv">8</span></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>There are a few things to note about this example:</p>
 <ol type="1">
@@ -1082,7 +1073,7 @@ Note
 <li>We include additional options controlling parallelism.</li>
 </ol>
 <p>We can invoke this scan job from the CLI by just referencing it’s Python script:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench_scan.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench_scan.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="parallelism" class="level3">
 <h3 class="anchored" data-anchor-id="parallelism">Parallelism</h3>
@@ -1119,7 +1110,7 @@ Note
 <h3 class="anchored" data-anchor-id="batch-mode">Batch Mode</h3>
 <p>Inspect AI supports calling the batch processing APIs for the <a href="https://platform.openai.com/docs/guides/batch">OpenAI</a>,&nbsp;<a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing">Anthropic</a>,&nbsp;<a href="https://ai.google.dev/gemini-api/docs/batch-api?batch=file">Google</a>, and <a href="https://docs.together.ai/docs/batch-inference">Together AI</a> providers. Batch processing has lower token costs (typically 50% of normal costs) and higher rate limits, but also substantially longer processing times—batched generations typically complete within an hour but can take much longer (up to 24 hours).</p>
 <p>Use batch processing by passing the <code>--batch</code> CLI argument or the <code>batch</code> option from <code>GenerateConfig</code>. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench_scan.py <span class="at">--batch</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench_scan.py <span class="at">--batch</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If you don’t require immediate results then batch processing can be an excellent way to save inference costs. A few notes about using batch mode with scanning:</p>
 <ul>
 <li><p>Batch processing can often take several hours so please be patient!. The scan status display shows the number of batches in flight and the average total time take per batch.</p></li>
@@ -1133,23 +1124,23 @@ Note
 <p><img src="images/scan-resume.png" class="img-fluid"></p>
 <p>Generally you should use Scout View to review errors in more details to determine if they are fundamental problems (e.g.&nbsp;bugs in your code) or transient infrastructure errors that it might be acceptable to exclude from scan results.</p>
 <p>If you prefer to fail immediately when an error occurs rather than capturing errors in results, use the <code>--fail-on-error</code> flag:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--fail-on-error</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--fail-on-error</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>With this flag, any exception will cause the entire scan to terminate immediately. This can be valuable when developing a scanner.</p>
 </section>
 <section id="online-scanning" class="level3">
 <h3 class="anchored" data-anchor-id="online-scanning">Online Scanning</h3>
 <p>Once you have developed a scanner that you find produces good results across a variety of transcripts, you may want run it “online” as part of evaluations. You can do this by using your <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> directly as an Inspect <code>Scorer</code>.</p>
 <p>For example, if we wanted to run the reward hacking scanner from above as a scorer we could do this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> reward_hacking</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="at">@task</span></span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mytask():</span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Task(</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>        ...,</span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>        scorer <span class="op">=</span> [match(), reward_hacking()]</span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> reward_hacking</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="at">@task</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mytask():</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Task(</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>        ...,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>        scorer <span class="op">=</span> [match(), reward_hacking()]</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>We can also use it with the <code>inspect score</code> command to add scores to existing logs:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">inspect</span> score <span class="at">--scorer</span> scanners.py@reward_hacking logfile.eval</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">inspect</span> score <span class="at">--scorer</span> scanners.py@reward_hacking logfile.eval</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="section" class="level2">

@@ -416,43 +416,49 @@ ul.task-list li input[type="checkbox"] {
 <td>Optional. Main model used by agent.</td>
 </tr>
 <tr class="even">
+<td><code>model_options</code></td>
+<td>dict[str,Any]<br>
+<small>JSON</small></td>
+<td>Optional. Generation options for main model.</td>
+</tr>
+<tr class="odd">
 <td><code>score</code></td>
 <td>JsonValue<br>
 <small>JSON</small></td>
 <td>Optional. Value indicating score on task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>success</code></td>
 <td>bool</td>
 <td>Optional. Boolean reduction of <code>score</code> to succeeded/failed.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>total_time</code></td>
 <td>float</td>
 <td>Optional. Time (in seconds) required to execute task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>total_tokens</code></td>
 <td>int</td>
 <td>Optional. Tokens spent in execution of task.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>error</code></td>
 <td>string</td>
 <td>Optional. Error message that terminated the task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>limit</code></td>
 <td>string</td>
 <td>Optional. Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages, etc.)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>messages</code></td>
 <td>list[ChatMessage]<br>
 <small>JSON</small></td>
 <td>Optional. List of <a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages">ChatMessage</a> with message history.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>events</code></td>
 <td>list[Event]<br>
 <small>JSON</small></td>

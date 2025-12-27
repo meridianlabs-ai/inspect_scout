@@ -219,13 +219,6 @@ class ScanGroup(click.Group):
     envvar=["SCOUT_SCAN_SHUFFLE"],
 )
 @click.option(
-    "--dry-run",
-    is_flag=True,
-    default=False,
-    help="Print resolved scanners and transcript counts without scanning.",
-    envvar="SCOUT_SCAN_DRY_RUN",
-)
-@click.option(
     "--tags",
     type=str,
     help="Tags to associate with this scan job (comma separated)",
@@ -328,6 +321,13 @@ class ScanGroup(click.Group):
     help="JSON schema for desired response format (output should still be validated). OpenAI, Google, and Mistral only.",
     envvar="SCOUT_SCAN_RESPONSE_SCHEMA",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Print resolved scanners and transcript counts without scanning.",
+    envvar="SCOUT_SCAN_DRY_RUN",
+)
 @common_options
 @click.pass_context
 def scan_command(
@@ -346,7 +346,6 @@ def scan_command(
     max_processes: int | None,
     limit: int | None,
     shuffle: int | None,
-    dry_run: bool,
     tags: str | None,
     metadata: tuple[str, ...] | None,
     cache: int | str | None,
@@ -362,6 +361,7 @@ def scan_command(
     reasoning_tokens: int | None,
     reasoning_summary: Literal["concise", "detailed", "auto"] | None,
     reasoning_history: Literal["none", "all", "last", "auto"] | None,
+    dry_run: bool,
     **common: Unpack[CommonOptions],
 ) -> None:
     """Scan transcripts and read results.

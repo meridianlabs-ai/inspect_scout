@@ -1,4 +1,5 @@
 import pathlib
+import re
 
 import inspect_scout
 import pytest
@@ -35,4 +36,6 @@ def test_scan_dry_run_does_not_execute_scanners_or_create_results_dir(
 
     assert status.complete
     assert not results_dir.exists()
-    assert f"| dry_run_never_called |     {limit:,} |" in capsys.readouterr().out
+    assert re.match(
+        rf"|\s+dry_run_never_called\s+|\s+{limit:,}", capsys.readouterr().out
+    )

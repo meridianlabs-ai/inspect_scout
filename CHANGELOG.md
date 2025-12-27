@@ -1,3 +1,7 @@
+## Unreleased
+
+- Scanning: Add `--dry-run` option for previewing scanner counts.
+
 ## 0.4.4 (24 December 2025)
 
 - Bugfix: Restore compatibility with v1 view server API.

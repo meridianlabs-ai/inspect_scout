@@ -28,6 +28,8 @@ from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
+from rich import box
+from rich.table import Column, Table
 
 from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._scanner.metrics import metrics_accumulators
@@ -901,41 +903,26 @@ async def _scan_dry_run(scan: ScanContext) -> Status:
             for scanner_idx in job.scanner_indices:
                 per_scanner_counts[scanner_names[scanner_idx]] += 1
 
-    total_scans = sum(per_scanner_counts.values())
-
-    lines = [("Scanners", "Count")]
-    for name in scanner_names:
-        lines.append((name, str(per_scanner_counts[name])))
-    lines.append(("Total", str(total_scans)))
-
-    max_name_length = max(len(line[0]) for line in lines)
-    max_count_length = max(len(line[1]) for line in lines)
-
-    display().print("Dry run - no scan will be executed")
-    display().print("")
-    header_line = lines.pop(0)
-    total_line = lines.pop()
-    _print_table_line(
-        [
-            (header_line[0], max_name_length, True),
-            (header_line[1], max_count_length, False),
-        ]
+    # create table
+    table = Table(
+        Column("Scanner", footer="Total"),
+        Column("Count", footer=f"{sum(per_scanner_counts.values()):,}"),
+        title="Dry Run (no scans executed)",
+        box=box.MARKDOWN,
+        title_style="bold",
+        title_justify="left",
+        pad_edge=False,
+        padding=(0, 1),
+        show_footer=True,
+        min_width=60,
     )
-    _print_table_line([("", max_name_length, True), ("", max_count_length, True)])
+
     for name in scanner_names:
-        _print_table_line(
-            [
-                (name, max_name_length, True),
-                (per_scanner_counts[name], max_count_length, False),
-            ]
-        )
-    _print_table_line([("", max_name_length, True), ("", max_count_length, True)])
-    _print_table_line(
-        [
-            (total_line[0], max_name_length, True),
-            (total_line[1], max_count_length, False),
-        ]
-    )
+        table.add_row(name, f"{per_scanner_counts[name]:,}")
+
+    table.add_section()
+
+    display().print(table)
 
     return Status(
         complete=True,
@@ -944,17 +931,6 @@ async def _scan_dry_run(scan: ScanContext) -> Status:
         summary=recorder_summary.Summary(scanners=scanner_names),
         errors=[],
     )
-
-
-def _print_table_line(fields: list[tuple[Any, int, bool]]) -> None:
-    line = "| "
-    for field, size, is_left in fields:
-        field = str(field)
-        fillchar = " " if field else "-"
-        just = field.ljust if is_left else field.rjust
-        line += just(size, fillchar)
-        line += " | "
-    display().print(line.rstrip())
 
 
 def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:

@@ -12,7 +12,7 @@ from .._transcript.types import TranscriptInfo
 @dataclass
 class OrderBy:
     column: str
-    direction: Literal["asc", "desc"]
+    direction: Literal["ASC", "DESC"]
 
 
 @dataclass

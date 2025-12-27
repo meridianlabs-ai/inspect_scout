@@ -1,80 +1,35 @@
-from collections.abc import Callable
 from typing import Any, Literal
 
 from .._transcript.types import TranscriptInfo
 from ._api_v2_types import OrderBy, Pagination
 
 
-def _make_sort_key(
-    column: str,
-) -> Callable[[TranscriptInfo], str | int | float | bool]:
-    """Create a sort key function for the given column name.
-
-    Args:
-        column: Name of the attribute to sort by
-
-    Returns:
-        A function that extracts the sort key from a TranscriptInfo
-    """
-
-    def sort_key(t: TranscriptInfo) -> str | int | float | bool:
-        val = getattr(t, column, "")
-        return val if val is not None else ""
-
-    return sort_key
-
-
-def _sort_transcripts(
-    transcripts: list[TranscriptInfo], order_by: OrderBy | list[OrderBy]
-) -> None:
-    """Sort transcripts in-place by one or more columns.
-
-    Uses stable sort with reverse column order to handle multi-column sorting.
-    Missing/None values are treated as empty strings for sorting.
-
-    Args:
-        transcripts: List of transcripts to sort in-place
-        order_by: Single OrderBy or list of OrderBy specifications
-    """
-    order_bys = order_by if isinstance(order_by, list) else [order_by]
-
-    # Sort in reverse order of columns to handle multi-column sorting. Python's
-    # sort is stable, so sorting by secondary keys first, then primary keys last
-    # produces correct multi-column ordering. E.g., for [model ASC, score DESC]:
-    # first sort by score DESC, then sort by model ASC (stable sort preserves score
-    # order within each model group).
-    for order_by_spec in reversed(order_bys):
-        transcripts.sort(
-            key=_make_sort_key(order_by_spec.column),
-            reverse=(order_by_spec.direction == "desc"),
-        )
-
-
 def _ensure_tiebreaker(
     order_by: OrderBy | list[OrderBy] | None,
-) -> list[tuple[str, Literal["asc", "desc"]]]:
+) -> list[tuple[str, Literal["ASC", "DESC"]]]:
     """Ensure sort order has transcript_id as final tiebreaker.
 
-    Returns list of (column, direction) tuples.
-    If order_by is None, returns [("transcript_id", "asc")].
+    Returns list of (column, direction) tuples with directions in uppercase.
+    If order_by is None, returns [("transcript_id", "ASC")].
     If transcript_id already in sort, don't add duplicate.
     """
     if order_by is None:
-        return [("transcript_id", "asc")]
+        return [("transcript_id", "ASC")]
 
     order_bys = order_by if isinstance(order_by, list) else [order_by]
+    # Already uppercase from Pydantic model
     columns = [(ob.column, ob.direction) for ob in order_bys]
 
     if any(col == "transcript_id" for col, _ in columns):
         return columns
 
-    return columns + [("transcript_id", "asc")]
+    return columns + [("transcript_id", "ASC")]
 
 
 def _compare_to_cursor(
     transcript: TranscriptInfo,
     cursor: dict[str, Any],
-    order_columns: list[tuple[str, Literal["asc", "desc"]]],
+    order_columns: list[tuple[str, Literal["ASC", "DESC"]]],
     direction: Literal["forward", "backward"],
 ) -> bool:
     """Check if transcript should be included based on cursor comparison.
@@ -94,8 +49,8 @@ def _compare_to_cursor(
             continue
 
         is_greater = transcript_val > cursor_val
-        want_greater = (direction == "forward" and sort_dir == "asc") or (
-            direction == "backward" and sort_dir == "desc"
+        want_greater = (direction == "forward" and sort_dir == "ASC") or (
+            direction == "backward" and sort_dir == "DESC"
         )
 
         return is_greater if want_greater else not is_greater
@@ -107,7 +62,7 @@ def _compare_to_cursor(
 def _apply_cursor_pagination(
     transcripts: list[TranscriptInfo],
     pagination: Pagination,
-    order_columns: list[tuple[str, Literal["asc", "desc"]]],
+    order_columns: list[tuple[str, Literal["ASC", "DESC"]]],
 ) -> list[TranscriptInfo]:
     """Apply cursor-based pagination to sorted transcripts.
 
@@ -141,7 +96,7 @@ def _apply_cursor_pagination(
 
 def _build_cursor(
     transcript: TranscriptInfo,
-    order_columns: list[tuple[str, Literal["asc", "desc"]]],
+    order_columns: list[tuple[str, Literal["ASC", "DESC"]]],
 ) -> dict[str, Any]:
     """Build cursor from transcript using sort columns."""
     cursor: dict[str, Any] = {}

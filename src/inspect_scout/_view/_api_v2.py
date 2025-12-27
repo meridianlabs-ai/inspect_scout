@@ -21,13 +21,13 @@ from .._scanresults import (
     scan_results_arrow_async,
     scan_results_df_async,
 )
+from .._transcript.columns import Column
 from .._transcript.factory import transcripts_from
 from ._api_v2_helpers import (
     _apply_cursor_pagination,
     _build_cursor,
     _ensure_tiebreaker,
     _has_more_results,
-    _sort_transcripts,
 )
 from ._api_v2_types import (
     OrderBy,
@@ -169,23 +169,34 @@ def v2_api_app(
             transcripts_query = transcripts_from(transcripts_dir)
             if body and body.filter:
                 transcripts_query = transcripts_query.where(body.filter)
+
+            # Push order_by to database layer
+            # When pagination used, apply tiebreaker. Otherwise just apply user's order_by.
+            use_pagination = body and body.pagination
+            if use_pagination:
+                # Determine order with tiebreaker
+                order_by = body.order_by if body else None
+                if not order_by:
+                    order_by = OrderBy(column="transcript_id", direction="ASC")
+                order_columns = _ensure_tiebreaker(order_by)
+
+                # Apply to database query
+                for col, direction in order_columns:
+                    transcripts_query = transcripts_query.order_by(Column(col), direction)
+            elif body and body.order_by:
+                # No pagination - just apply user's order_by
+                order_bys = (
+                    body.order_by
+                    if isinstance(body.order_by, list)
+                    else [body.order_by]
+                )
+                for ob in order_bys:
+                    transcripts_query = transcripts_query.order_by(
+                        Column(ob.column), ob.direction
+                    )
+
             async with transcripts_query.reader() as tr:
                 results = [t async for t in tr.index()]
-
-            # Determine if pagination requested
-            use_pagination = body and body.pagination
-
-            # Determine final sort order with tiebreaker
-            # When pagination used without order_by, default to transcript_id ASC
-            order_by = body.order_by if body else None
-            if use_pagination and not order_by:
-                order_by = OrderBy(column="transcript_id", direction="asc")
-
-            order_columns = _ensure_tiebreaker(order_by)
-
-            # Sort if needed
-            if order_by:
-                _sort_transcripts(results, order_by)
 
             # Apply pagination if requested
             if use_pagination:

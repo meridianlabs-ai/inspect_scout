@@ -129,7 +129,12 @@ class EvalLogTranscriptsReader(TranscriptsReader):
 
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        return self._db.query(self._query.where, self._query.limit, self._query.shuffle, self._query.order_by)
+        return self._db.query(
+            self._query.where,
+            self._query.limit,
+            self._query.shuffle,
+            self._query.order_by,
+        )
 
     @override
     async def read(

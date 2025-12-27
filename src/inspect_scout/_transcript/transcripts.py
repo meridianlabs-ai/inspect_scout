@@ -192,7 +192,9 @@ class Transcripts(abc.ABC):
         transcripts._query.shuffle = seed if seed is not None else True
         return transcripts
 
-    def order_by(self, column: Column, direction: Literal["ASC", "DESC"] = "ASC") -> "Transcripts":
+    def order_by(
+        self, column: Column, direction: Literal["ASC", "DESC"] = "ASC"
+    ) -> "Transcripts":
         """Order transcripts by column.
 
         Can be chained multiple times for tie-breaking.

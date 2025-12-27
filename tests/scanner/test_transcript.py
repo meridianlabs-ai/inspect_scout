@@ -663,7 +663,9 @@ async def test_query_with_order_by_single_column(
     db: EvalLogTranscriptsDB, column: str, direction: str, extractor: Any, reverse: bool
 ) -> None:
     """Test ordering by single column with various directions."""
-    results = [item async for item in db.query(where=[], order_by=[(column, direction)])]
+    results = [
+        item async for item in db.query(where=[], order_by=[(column, direction)])
+    ]
     values = [extractor(r) for r in results if extractor(r) is not None]
     assert values == sorted(values, reverse=reverse)
 
@@ -745,7 +747,8 @@ async def test_order_by_with_shuffle(db: EvalLogTranscriptsDB) -> None:
 
     # Get results without shuffle - should be different
     results3 = [
-        item async for item in db.query(where=[], order_by=[(c.score.name, "ASC")], limit=10)
+        item
+        async for item in db.query(where=[], order_by=[(c.score.name, "ASC")], limit=10)
     ]
     ids3 = [r.transcript_id for r in results3]
     assert ids1 != ids3  # Shuffled vs ordered should differ

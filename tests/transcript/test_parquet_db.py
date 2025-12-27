@@ -308,16 +308,27 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
     ],
 )
 async def test_select_with_order_by_single_column(
-    populated_db: ParquetTranscriptsDB, column: str, direction: str, extractor: Any, reverse: bool
+    populated_db: ParquetTranscriptsDB,
+    column: str,
+    direction: str,
+    extractor: Any,
+    reverse: bool,
 ) -> None:
     """Test ordering by single column with various directions."""
-    results = [info async for info in populated_db.select([], None, False, order_by=[(column, direction)])]
+    results = [
+        info
+        async for info in populated_db.select(
+            [], None, False, order_by=[(column, direction)]
+        )
+    ]
     values = [extractor(info) for info in results if extractor(info) is not None]
     assert values == sorted(values, reverse=reverse)
 
 
 @pytest.mark.asyncio
-async def test_select_with_order_by_chaining(populated_db: ParquetTranscriptsDB) -> None:
+async def test_select_with_order_by_chaining(
+    populated_db: ParquetTranscriptsDB,
+) -> None:
     """Test ordering with multiple columns (tie-breaking)."""
     # Order by task_set ASC, then index DESC
     results = [
@@ -331,7 +342,11 @@ async def test_select_with_order_by_chaining(populated_db: ParquetTranscriptsDB)
     from itertools import groupby
 
     for _task_set, group in groupby(results, key=lambda r: r.task_set):
-        indices = [r.metadata.get("index") for r in group]
+        indices: list[int] = [
+            r.metadata.get("index")
+            for r in group
+            if r.metadata.get("index") is not None
+        ]  # type: ignore[misc]
         assert indices == sorted(indices, reverse=True)
 
 
@@ -339,7 +354,11 @@ async def test_select_with_order_by_chaining(populated_db: ParquetTranscriptsDB)
 @pytest.mark.parametrize(
     "where_clause,limit,expected_results",
     [
-        ([c.task_set == "math"], None, lambda results: all(r.task_set == "math" for r in results)),
+        (
+            [c.task_set == "math"],
+            None,
+            lambda results: all(r.task_set == "math" for r in results),
+        ),
         ([], 5, lambda results: len(results) == 5),
     ],
 )
@@ -361,7 +380,11 @@ async def test_order_by_with_where_and_limit(
     assert expected_results(results)
 
     # Verify ordering
-    indices = [result.metadata.get("index") for result in results]
+    indices: list[int] = [
+        result.metadata.get("index")
+        for result in results
+        if result.metadata.get("index") is not None
+    ]  # type: ignore[misc]
     assert indices == sorted(indices)
 
 
@@ -388,7 +411,8 @@ async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None
     # Get results without shuffle - should be different
     results3 = [
         info.transcript_id
-        async for info in populated_db.select([], limit=10, shuffle=False, order_by=[(c.index.name, "ASC")]
+        async for info in populated_db.select(
+            [], limit=10, shuffle=False, order_by=[(c.index.name, "ASC")]
         )
     ]
     assert results1 != results3  # Shuffled vs ordered should differ

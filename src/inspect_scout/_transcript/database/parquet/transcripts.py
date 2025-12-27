@@ -246,6 +246,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
+        order_by: list[tuple[str, str]] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         """Query transcripts matching conditions.
 
@@ -253,6 +254,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             where: List of conditions to filter by.
             limit: Optional limit on results.
             shuffle: If True or int seed, shuffle results deterministically.
+            order_by: List of (column_name, direction) tuples for ordering.
 
         Yields:
             TranscriptInfo instances (metadata only, no content).
@@ -264,11 +266,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Note: transcripts table already excludes messages/events, so just SELECT *
         sql = f"SELECT * FROM transcripts{where_clause}"
 
-        # Add ORDER BY for shuffle
+        # Build ORDER BY clause
+        order_by_clauses = []
         if shuffle:
             seed = 0 if shuffle is True else shuffle
             self._register_shuffle_function(seed)
-            sql += " ORDER BY shuffle_hash(transcript_id)"
+            order_by_clauses.append("shuffle_hash(transcript_id)")
+        if order_by:
+            for column_name, direction in order_by:
+                order_by_clauses.append(f'"{column_name}" {direction}')
+        if order_by_clauses:
+            sql += " ORDER BY " + ", ".join(order_by_clauses)
 
         # Add LIMIT
         params = where_params.copy()
@@ -360,6 +368,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
+        order_by: list[tuple[str, str]] | None = None,
     ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
@@ -370,6 +379,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             where: Condition(s) to filter by.
             limit: Maximum number to return.
             shuffle: Randomly shuffle results (pass `int` for reproducible seed).
+            order_by: List of (column_name, direction) tuples for ordering.
 
         Returns:
             Dict of transcript IDs and parquet filenames
@@ -380,11 +390,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # No conditions - query index table directly (faster, in-memory)
             sql = "SELECT transcript_id, filename FROM transcript_index"
 
-            # Add ORDER BY for shuffle
+            # Build ORDER BY clause
+            order_by_clauses = []
             if shuffle:
                 seed = 0 if shuffle is True else shuffle
                 self._register_shuffle_function(seed)
-                sql += " ORDER BY shuffle_hash(transcript_id)"
+                order_by_clauses.append("shuffle_hash(transcript_id)")
+            if order_by:
+                for column_name, direction in order_by:
+                    order_by_clauses.append(f'"{column_name}" {direction}')
+            if order_by_clauses:
+                sql += " ORDER BY " + ", ".join(order_by_clauses)
 
             # Add LIMIT
             params: list[Any] = []
@@ -397,7 +413,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         else:
             # Has conditions - need to query VIEW for metadata filtering
             transcript_ids: dict[str, str | None] = {}
-            async for info in self.select(where, limit, shuffle):
+            async for info in self.select(where, limit, shuffle, order_by):
                 parquet_info = cast(ParquetTranscriptInfo, info)
                 transcript_ids[parquet_info.transcript_id] = parquet_info.filename
 
@@ -1333,10 +1349,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
             filter_sql += where_clause
             params.extend(where_params)
 
+        # Build ORDER BY clause
+        order_by_clauses = []
         if self._query.shuffle:
             seed = 0 if self._query.shuffle is True else self._query.shuffle
             self._register_shuffle_function(seed)
-            filter_sql += " ORDER BY shuffle_hash(transcript_id)"
+            order_by_clauses.append("shuffle_hash(transcript_id)")
+        if self._query.order_by:
+            for column_name, direction in self._query.order_by:
+                order_by_clauses.append(f'"{column_name}" {direction}')
+        if order_by_clauses:
+            filter_sql += " ORDER BY " + ", ".join(order_by_clauses)
 
         if self._query.limit:
             filter_sql += " LIMIT ?"
@@ -1460,11 +1483,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 index_sql += where_clause
                 params.extend(where_params)
 
-            # Apply SHUFFLE (register UDF first)
+            # Build ORDER BY clause
+            order_by_clauses = []
             if self._query.shuffle:
                 seed = 0 if self._query.shuffle is True else self._query.shuffle
                 self._register_shuffle_function(seed)
-                index_sql += " ORDER BY shuffle_hash(transcript_id)"
+                order_by_clauses.append("shuffle_hash(transcript_id)")
+            if self._query.order_by:
+                for column_name, direction in self._query.order_by:
+                    order_by_clauses.append(f'"{column_name}" {direction}')
+            if order_by_clauses:
+                index_sql += " ORDER BY " + ", ".join(order_by_clauses)
 
             # Apply LIMIT
             if self._query.limit:

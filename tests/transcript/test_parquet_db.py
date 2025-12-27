@@ -298,6 +298,142 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "column,direction,extractor,reverse",
+    [
+        (c.index.name, "ASC", lambda info: info.metadata.get("index"), False),
+        (c.index.name, "DESC", lambda info: info.metadata.get("index"), True),
+        (c.task_set.name, "ASC", lambda info: info.task_set, False),
+        (c.task_set.name, "DESC", lambda info: info.task_set, True),
+    ],
+)
+async def test_select_with_order_by_single_column(
+    populated_db: ParquetTranscriptsDB,
+    column: str,
+    direction: str,
+    extractor: Any,
+    reverse: bool,
+) -> None:
+    """Test ordering by single column with various directions."""
+    results = [
+        info
+        async for info in populated_db.select(
+            [], None, False, order_by=[(column, direction)]
+        )
+    ]
+    values = [extractor(info) for info in results if extractor(info) is not None]
+    assert values == sorted(values, reverse=reverse)
+
+
+@pytest.mark.asyncio
+async def test_select_with_order_by_chaining(
+    populated_db: ParquetTranscriptsDB,
+) -> None:
+    """Test ordering with multiple columns (tie-breaking)."""
+    # Order by task_set ASC, then index DESC
+    results = [
+        info
+        async for info in populated_db.select(
+            [], None, False, order_by=[(c.task_set.name, "ASC"), (c.index.name, "DESC")]
+        )
+    ]
+
+    # Group by task_set and verify indices are descending within each task_set
+    from itertools import groupby
+    from typing import cast
+
+    for _task_set, group in groupby(results, key=lambda r: r.task_set):
+        indices = [
+            cast(int, r.metadata.get("index"))
+            for r in group
+            if r.metadata.get("index") is not None
+        ]
+        assert indices == sorted(indices, reverse=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "where_clause,limit,expected_results",
+    [
+        (
+            [c.task_set == "math"],
+            None,
+            lambda results: all(r.task_set == "math" for r in results),
+        ),
+        ([], 5, lambda results: len(results) == 5),
+    ],
+)
+async def test_order_by_with_where_and_limit(
+    populated_db: ParquetTranscriptsDB,
+    where_clause: list[Any],
+    limit: int | None,
+    expected_results: Any,
+) -> None:
+    """Test combining where clause and limit with order_by."""
+    results = [
+        info
+        async for info in populated_db.select(
+            where_clause, limit, False, order_by=[(c.index.name, "ASC")]
+        )
+    ]
+
+    # Verify results match expectations
+    assert expected_results(results)
+
+    # Verify ordering
+    from typing import cast
+
+    indices = [
+        cast(int, result.metadata.get("index"))
+        for result in results
+        if result.metadata.get("index") is not None
+    ]
+    assert indices == sorted(indices)
+
+
+@pytest.mark.asyncio
+async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
+    """Test that shuffle takes precedence over order_by."""
+    # Get results with shuffle and order_by (shuffle should win)
+    results1 = [
+        info.transcript_id
+        async for info in populated_db.select(
+            [], limit=10, shuffle=42, order_by=[(c.index.name, "ASC")]
+        )
+    ]
+
+    # Get results with same shuffle seed - should be same order
+    results2 = [
+        info.transcript_id
+        async for info in populated_db.select(
+            [], limit=10, shuffle=42, order_by=[(c.index.name, "ASC")]
+        )
+    ]
+    assert results1 == results2
+
+    # Get results without shuffle - should be different
+    results3 = [
+        info.transcript_id
+        async for info in populated_db.select(
+            [], limit=10, shuffle=False, order_by=[(c.index.name, "ASC")]
+        )
+    ]
+    assert results1 != results3  # Shuffled vs ordered should differ
+
+
+@pytest.mark.asyncio
+async def test_order_by_empty_results(populated_db: ParquetTranscriptsDB) -> None:
+    """Test order_by on empty result set."""
+    results = [
+        info
+        async for info in populated_db.select(
+            [c.task_set == "nonexistent"], None, False, order_by=[(c.index.name, "ASC")]
+        )
+    ]
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
 async def test_metadata_dsl_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test various Condition operators."""
     # Greater than

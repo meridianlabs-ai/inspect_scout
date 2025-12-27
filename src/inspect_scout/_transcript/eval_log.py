@@ -129,7 +129,12 @@ class EvalLogTranscriptsReader(TranscriptsReader):
 
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        return self._db.query(self._query.where, self._query.limit, self._query.shuffle)
+        return self._db.query(
+            self._query.where,
+            self._query.limit,
+            self._query.shuffle,
+            self._query.order_by,
+        )
 
     @override
     async def read(
@@ -235,6 +240,7 @@ class EvalLogTranscriptsDB:
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
+        order_by: list[tuple[str, str]] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
 
@@ -242,12 +248,18 @@ class EvalLogTranscriptsDB:
         where_clause, where_params = self._build_where_clause(where)
         sql = f"SELECT * FROM {TRANSCRIPTS}{where_clause}"
 
-        # add ORDER BY if shuffle is enabled
+        # Build ORDER BY clause
+        order_by_clauses = []
         if shuffle:
             # If shuffle is True, use a default seed of 0; otherwise use the provided seed
             seed = 0 if shuffle is True else shuffle
             self._register_shuffle_function(seed)
-            sql += " ORDER BY shuffle_hash(sample_id)"
+            order_by_clauses.append("shuffle_hash(sample_id)")
+        if order_by:
+            for column_name, direction in order_by:
+                order_by_clauses.append(f'"{column_name}" {direction}')
+        if order_by_clauses:
+            sql += " ORDER BY " + ", ".join(order_by_clauses)
 
         # add LIMIT to SQL if specified
         sql_params = where_params.copy()

@@ -9,3 +9,4 @@ export type ScannerSpec = components["schemas"]["ScannerSpec"];
 export type ScannerSummary = components["schemas"]["ScannerSummary"];
 export type ModelUsage = components["schemas"]["ModelUsage"];
 export type ModelConfig = components["schemas"]["ModelConfig"];
+export type TranscriptsResponse = components["schemas"]["TranscriptsResponse"];

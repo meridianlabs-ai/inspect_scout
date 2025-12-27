@@ -1,6 +1,6 @@
 import abc
 from types import TracebackType
-from typing import AsyncIterable, AsyncIterator, Iterable, Type
+from typing import AsyncIterable, AsyncIterator, Iterable, Literal, Type
 
 import pyarrow as pa
 
@@ -75,7 +75,7 @@ class TranscriptsDB(abc.ABC):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, str]] | None = None,
+        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
     ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
@@ -100,7 +100,7 @@ class TranscriptsDB(abc.ABC):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, str]] | None = None,
+        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         """Select transcripts matching a condition.
 

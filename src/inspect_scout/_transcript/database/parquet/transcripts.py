@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterable, AsyncIterator, Iterable, cast
+from typing import Any, AsyncIterable, AsyncIterator, Iterable, Literal, cast
 
 import duckdb
 import pandas as pd
@@ -246,7 +246,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, str]] | None = None,
+        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         """Query transcripts matching conditions.
 
@@ -255,11 +255,16 @@ class ParquetTranscriptsDB(TranscriptsDB):
             limit: Optional limit on results.
             shuffle: If True or int seed, shuffle results deterministically.
             order_by: List of (column_name, direction) tuples for ordering.
+                If None and self._query has order_by, uses query's order_by.
 
         Yields:
             TranscriptInfo instances (metadata only, no content).
         """
         assert self._conn is not None
+
+        # Use query's order_by if not provided explicitly
+        if order_by is None and self._query and self._query.order_by:
+            order_by = self._query.order_by
 
         # Build WHERE clause
         where_clause, where_params = self._build_where_clause(where)
@@ -368,7 +373,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, str]] | None = None,
+        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
     ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 

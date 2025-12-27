@@ -2,10 +2,7 @@ import abc
 from copy import deepcopy
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import (
-    AsyncIterator,
-    Literal,
-)
+from typing import AsyncIterator, Literal
 
 from inspect_scout._validation.types import ValidationCase, ValidationSet
 
@@ -67,7 +64,7 @@ class TranscriptsQuery:
     shuffle: bool | int = False
     """Shuffle results randomly (use with limit to take random draws)."""
 
-    order_by: list[tuple[str, str]] = field(default_factory=list)
+    order_by: list[tuple[str, Literal["ASC", "DESC"]]] = field(default_factory=list)
     """Column names and directions for ordering (ASC/DESC)."""
 
 

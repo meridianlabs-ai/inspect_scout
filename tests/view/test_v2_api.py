@@ -1,6 +1,9 @@
 """Tests for the view server and API endpoints."""
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -21,6 +24,9 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+
+if TYPE_CHECKING:
+    from inspect_scout._transcript.types import Transcript
 
 
 def base64url(s: str) -> str:
@@ -428,3 +434,447 @@ class TestViewServerAppEdgeCases:
         assert data["complete"] is False
         assert len(data["errors"]) == 1
         assert data["errors"][0]["error"] == "Test error"
+
+
+def _create_test_transcripts_for_api(count: int) -> list[Transcript]:
+    """Create transcripts with varied metadata for API pagination tests."""
+    from inspect_ai.model._chat_message import ChatMessageUser
+    from inspect_scout._transcript.types import Transcript
+
+    transcripts: list[Transcript] = []
+    for i in range(count):
+        transcripts.append(
+            Transcript(
+                transcript_id=f"t{i:03d}",
+                source_type="test",
+                source_id=f"src-{i}",
+                source_uri=f"test://uri/{i}",
+                model=["gpt-4", "claude"][i % 2],
+                task_set=["math", "code"][i % 2],
+                score=float(i) * 0.1,
+                metadata={"index": i},
+                messages=[ChatMessageUser(content=f"Q{i}")],
+                events=[],
+            )
+        )
+    return transcripts
+
+
+async def _populate_transcripts(location: Path, transcripts: list[Transcript]) -> None:
+    """Populate transcript database for testing."""
+    from inspect_scout import transcripts_from
+    from inspect_scout._transcript.database.reader import TranscriptsDBReader
+
+    transcripts_obj = transcripts_from(str(location))
+    async with transcripts_obj.reader() as reader:
+        if isinstance(reader, TranscriptsDBReader):
+            await reader._db.insert(transcripts)
+
+
+class TestTranscriptsPagination:
+    """Tests for /transcripts endpoint pagination."""
+
+    def test_transcripts_response_structure(self, tmp_path: Path) -> None:
+        """Verify response has items and next_cursor fields."""
+        # Create test client
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Make request (empty dir)
+        response = client.post("/transcripts", json={})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+        assert "next_cursor" in data
+        assert isinstance(data["items"], list)
+        assert data["next_cursor"] is None
+
+    @pytest.mark.asyncio
+    async def test_transcripts_no_pagination(self, tmp_path: Path) -> None:
+        """Returns all results with next_cursor=None when no pagination specified."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        # Make request without pagination, explicitly pass dir
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        response = client.post("/transcripts", json={"dir": str(tmp_path)})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 10
+        assert data["next_cursor"] is None
+
+    @pytest.mark.asyncio
+    async def test_pagination_first_page_forward(self, tmp_path: Path) -> None:
+        """First page without cursor."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        # Request first 3 items
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 3
+        # Default sort is transcript_id ASC when pagination without order_by
+        assert data["items"][0]["transcript_id"] == "t000"
+        assert data["items"][1]["transcript_id"] == "t001"
+        assert data["items"][2]["transcript_id"] == "t002"
+        assert data["next_cursor"] is not None
+        assert data["next_cursor"]["transcript_id"] == "t002"
+
+    @pytest.mark.asyncio
+    async def test_pagination_next_page_forward(self, tmp_path: Path) -> None:
+        """Next page with cursor."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Get first page
+        response1 = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
+            },
+        )
+        data1 = response1.json()
+        cursor = data1["next_cursor"]
+
+        # Get second page using cursor
+        response2 = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 3, "cursor": cursor, "direction": "forward"},
+            },
+        )
+
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert len(data2["items"]) == 3
+        assert data2["items"][0]["transcript_id"] == "t003"
+        assert data2["items"][1]["transcript_id"] == "t004"
+        assert data2["items"][2]["transcript_id"] == "t005"
+        assert data2["next_cursor"] is not None
+
+    @pytest.mark.asyncio
+    async def test_pagination_backward(self, tmp_path: Path) -> None:
+        """Backward pagination."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Get last 3 items (backward from end)
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 3, "cursor": None, "direction": "backward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 3
+        # Backward without cursor returns last N items
+        assert data["items"][0]["transcript_id"] == "t007"
+        assert data["items"][1]["transcript_id"] == "t008"
+        assert data["items"][2]["transcript_id"] == "t009"
+        assert data["next_cursor"] is not None
+
+    def test_pagination_empty_results(self, tmp_path: Path) -> None:
+        """Empty dataset."""
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        response = client.post(
+            "/transcripts",
+            json={"pagination": {"limit": 10, "cursor": None, "direction": "forward"}},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["items"] == []
+        assert data["next_cursor"] is None
+
+    @pytest.mark.asyncio
+    async def test_pagination_single_column_sort(self, tmp_path: Path) -> None:
+        """Single column sort with pagination."""
+        # Populate with 10 transcripts (alternating gpt-4, claude)
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Sort by model ASC, paginate
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "order_by": {"column": "model", "direction": "ASC"},
+                "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 3
+        # Should get claude items first (alphabetically)
+        assert all(item["model"] == "claude" for item in data["items"])
+        assert data["next_cursor"] is not None
+        assert "model" in data["next_cursor"]
+        assert "transcript_id" in data["next_cursor"]  # tiebreaker added
+
+    @pytest.mark.asyncio
+    async def test_pagination_multi_column_sort(self, tmp_path: Path) -> None:
+        """Multi-column sort with pagination."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Sort by model ASC, then score DESC
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "order_by": [
+                    {"column": "model", "direction": "ASC"},
+                    {"column": "score", "direction": "DESC"},
+                ],
+                "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 3
+        # Within same model, scores should descend
+        assert data["items"][0]["model"] == "claude"
+        assert data["next_cursor"] is not None
+        assert "model" in data["next_cursor"]
+        assert "score" in data["next_cursor"]
+        assert "transcript_id" in data["next_cursor"]
+
+    @pytest.mark.asyncio
+    async def test_pagination_explicit_transcript_id_sort(self, tmp_path: Path) -> None:
+        """User sorts by transcript_id (no duplicate tiebreaker)."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Sort explicitly by transcript_id
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "order_by": {"column": "transcript_id", "direction": "DESC"},
+                "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 3
+        # Should be descending
+        assert data["items"][0]["transcript_id"] == "t009"
+        assert data["items"][1]["transcript_id"] == "t008"
+        assert data["items"][2]["transcript_id"] == "t007"
+        # Cursor should only have transcript_id (no duplicate)
+        assert data["next_cursor"] == {"transcript_id": "t007"}
+
+    @pytest.mark.asyncio
+    async def test_pagination_default_sort(self, tmp_path: Path) -> None:
+        """No order_by with pagination (defaults to transcript_id ASC)."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Paginate without order_by
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 3
+        # Should default to transcript_id ASC
+        assert data["items"][0]["transcript_id"] == "t000"
+        assert data["items"][1]["transcript_id"] == "t001"
+        assert data["items"][2]["transcript_id"] == "t002"
+        assert data["next_cursor"] == {"transcript_id": "t002"}
+
+    @pytest.mark.asyncio
+    async def test_pagination_none_values(self, tmp_path: Path) -> None:
+        """None values in sort columns."""
+        from inspect_ai.model._chat_message import ChatMessageUser
+        from inspect_scout._transcript.types import Transcript
+
+        # Create transcripts with None scores
+        transcripts = [
+            Transcript(
+                transcript_id="t000",
+                source_type="test",
+                source_id="src",
+                source_uri="test://uri",
+                model="gpt-4",
+                score=None,
+                metadata={},
+                messages=[ChatMessageUser(content="Q")],
+                events=[],
+            ),
+            Transcript(
+                transcript_id="t001",
+                source_type="test",
+                source_id="src",
+                source_uri="test://uri",
+                model="gpt-4",
+                score=0.5,
+                metadata={},
+                messages=[ChatMessageUser(content="Q")],
+                events=[],
+            ),
+            Transcript(
+                transcript_id="t002",
+                source_type="test",
+                source_id="src",
+                source_uri="test://uri",
+                model="gpt-4",
+                score=None,
+                metadata={},
+                messages=[ChatMessageUser(content="Q")],
+                events=[],
+            ),
+        ]
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Sort by score (None values treated as empty string)
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "order_by": {"column": "score", "direction": "ASC"},
+                "pagination": {"limit": 2, "cursor": None, "direction": "forward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 2
+        # Database sorts None values last (SQL NULL behavior)
+        # First two results should be non-None scores
+        assert data["items"][0]["score"] is not None
+        assert data["next_cursor"] is not None
+
+    @pytest.mark.asyncio
+    async def test_pagination_last_page(self, tmp_path: Path) -> None:
+        """Cursor is None at end."""
+        # Populate with 5 transcripts
+        transcripts = _create_test_transcripts_for_api(5)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Get first page of 3
+        response1 = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
+            },
+        )
+        data1 = response1.json()
+        cursor = data1["next_cursor"]
+
+        # Get second (last) page - should have 2 items and no next_cursor
+        response2 = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 3, "cursor": cursor, "direction": "forward"},
+            },
+        )
+
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert len(data2["items"]) == 2
+        assert data2["items"][0]["transcript_id"] == "t003"
+        assert data2["items"][1]["transcript_id"] == "t004"
+        assert data2["next_cursor"] is None  # Last page
+
+    @pytest.mark.asyncio
+    async def test_pagination_limit_larger_than_results(self, tmp_path: Path) -> None:
+        """Limit exceeds available results."""
+        # Populate with 5 transcripts
+        transcripts = _create_test_transcripts_for_api(5)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Request 100 items when only 5 exist
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {"limit": 100, "cursor": None, "direction": "forward"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 5
+        assert data["next_cursor"] is None
+
+    @pytest.mark.asyncio
+    async def test_pagination_cursor_mismatch(self, tmp_path: Path) -> None:
+        """Mismatched cursor keys handled gracefully."""
+        # Populate with 10 transcripts
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        # Provide cursor with extra keys and missing expected keys
+        fake_cursor = {"transcript_id": "t005", "extra_key": "ignored"}
+
+        response = client.post(
+            "/transcripts",
+            json={
+                "dir": str(tmp_path),
+                "pagination": {
+                    "limit": 3,
+                    "cursor": fake_cursor,
+                    "direction": "forward",
+                },
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should continue from t005 (extra keys ignored, missing keys treated as None)
+        assert len(data["items"]) == 3
+        assert data["items"][0]["transcript_id"] == "t006"

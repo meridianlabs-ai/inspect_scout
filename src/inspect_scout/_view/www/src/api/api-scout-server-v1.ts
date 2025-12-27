@@ -1,5 +1,6 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import { Status } from "../types";
+import { TranscriptsResponse } from "../types/api-types.ts";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -48,7 +49,10 @@ export const apiScoutServerV1 = (
     getTranscriptsDir: (): Promise<string> => {
       throw new Error("Not implemented in API v1");
     },
-    getTranscripts: (_transcriptsDir?: string): Promise<unknown[]> => {
+    getTranscripts: (
+      _transcriptsDir?: string,
+      _filter?: unknown
+    ): Promise<TranscriptsResponse> => {
       throw new Error("Not implemented in API v1");
     },
     getScansDir: async (): Promise<string> => {

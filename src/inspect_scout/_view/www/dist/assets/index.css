@@ -3804,12 +3804,10 @@ button._segment_19z32_10 {
   font-weight: 400;
   color: var(--bs-secondary-text-color);
 }
-._container_l1vwr_1 {
-  display: flex;
-  flex-direction: column;
-  padding: 1rem;
+._container_vb45h_1 {
   height: 100%;
-  overflow: auto;
+  display: grid;
+  grid-template-rows: max-content max-content 1fr;
 }
 /**
  * prism.js default theme for JavaScript, CSS and HTML

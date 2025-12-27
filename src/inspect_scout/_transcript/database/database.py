@@ -75,6 +75,7 @@ class TranscriptsDB(abc.ABC):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
+        order_by: list[tuple[str, str]] | None = None,
     ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
@@ -86,6 +87,7 @@ class TranscriptsDB(abc.ABC):
             where: Condition(s) to filter by.
             limit: Maximum number to return.
             shuffle: Randomly shuffle results (pass `int` for reproducible seed).
+            order_by: List of (column_name, direction) tuples for ordering.
 
         Returns:
             Dict of transcript IDs => location | None
@@ -98,6 +100,7 @@ class TranscriptsDB(abc.ABC):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
+        order_by: list[tuple[str, str]] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         """Select transcripts matching a condition.
 
@@ -105,6 +108,7 @@ class TranscriptsDB(abc.ABC):
             where: Condition(s) to select for.
             limit: Maximum number to select.
             shuffle: Randomly shuffle transcripts selected (pass `int` for reproducible seed).
+            order_by: List of (column_name, direction) tuples for ordering.
         """
         ...
 

@@ -650,6 +650,120 @@ async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "column,direction,extractor,reverse",
+    [
+        (c.score.name, "ASC", lambda r: cast(float, r.score), False),
+        (c.score.name, "DESC", lambda r: cast(float, r.score), True),
+        (c.model.name, "ASC", lambda r: r.model, False),
+        (c.model.name, "DESC", lambda r: r.model, True),
+    ],
+)
+async def test_query_with_order_by_single_column(
+    db: EvalLogTranscriptsDB, column: str, direction: str, extractor: Any, reverse: bool
+) -> None:
+    """Test ordering by single column with various directions."""
+    results = [item async for item in db.query(where=[], order_by=[(column, direction)])]
+    values = [extractor(r) for r in results if extractor(r) is not None]
+    assert values == sorted(values, reverse=reverse)
+
+
+@pytest.mark.asyncio
+async def test_query_with_order_by_chaining(db: EvalLogTranscriptsDB) -> None:
+    """Test ordering with multiple columns (tie-breaking)."""
+    # Order by model ASC, then score DESC
+    results = [
+        item
+        async for item in db.query(
+            where=[], order_by=[(c.model.name, "ASC"), (c.score.name, "DESC")]
+        )
+    ]
+
+    # Group by model and verify scores are descending within each model
+    from itertools import groupby
+
+    for _model, group in groupby(results, key=lambda r: r.model):
+        scores = [cast(float, r.score) for r in group]
+        assert scores == sorted(scores, reverse=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "where_clause,limit,expected_min_results",
+    [
+        ([c.model == "gpt-4"], None, 1),
+        ([], 5, 5),
+    ],
+)
+async def test_order_by_with_where_and_limit(
+    db: EvalLogTranscriptsDB,
+    where_clause: list[Any],
+    limit: int | None,
+    expected_min_results: int,
+) -> None:
+    """Test combining where clause and limit with order_by."""
+    results = [
+        item
+        async for item in db.query(
+            where=where_clause, order_by=[(c.score.name, "ASC")], limit=limit
+        )
+    ]
+
+    # Verify results match expectations
+    if where_clause:
+        for result in results:
+            assert result.model == "gpt-4"
+    if limit:
+        assert len(results) == expected_min_results
+
+    # Verify ordering
+    scores = [cast(float, r.score) for r in results]
+    assert scores == sorted(scores)
+
+
+@pytest.mark.asyncio
+async def test_order_by_with_shuffle(db: EvalLogTranscriptsDB) -> None:
+    """Test that shuffle takes precedence over order_by."""
+    # Get results with shuffle and order_by (shuffle should win)
+    results1 = [
+        item
+        async for item in db.query(
+            where=[], shuffle=42, order_by=[(c.score.name, "ASC")], limit=10
+        )
+    ]
+    ids1 = [r.transcript_id for r in results1]
+
+    # Get results with same shuffle seed - should be same order
+    results2 = [
+        item
+        async for item in db.query(
+            where=[], shuffle=42, order_by=[(c.score.name, "ASC")], limit=10
+        )
+    ]
+    ids2 = [r.transcript_id for r in results2]
+    assert ids1 == ids2
+
+    # Get results without shuffle - should be different
+    results3 = [
+        item async for item in db.query(where=[], order_by=[(c.score.name, "ASC")], limit=10)
+    ]
+    ids3 = [r.transcript_id for r in results3]
+    assert ids1 != ids3  # Shuffled vs ordered should differ
+
+
+@pytest.mark.asyncio
+async def test_order_by_empty_results(db: EvalLogTranscriptsDB) -> None:
+    """Test order_by on empty result set."""
+    results = [
+        item
+        async for item in db.query(
+            where=[c.model == "nonexistent"], order_by=[(c.score.name, "ASC")]
+        )
+    ]
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
 async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
     """Test complex queries with multiple operators."""
     # Complex condition

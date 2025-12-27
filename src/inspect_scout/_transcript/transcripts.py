@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from types import TracebackType
 from typing import (
     AsyncIterator,
+    Literal,
 )
 
 from inspect_scout._validation.types import ValidationCase, ValidationSet
@@ -66,12 +67,15 @@ class TranscriptsQuery:
     shuffle: bool | int = False
     """Shuffle results randomly (use with limit to take random draws)."""
 
+    order_by: list[tuple[str, str]] = field(default_factory=list)
+    """Column names and directions for ordering (ASC/DESC)."""
+
 
 class Transcripts(abc.ABC):
     """Collection of transcripts for scanning.
 
     Transcript collections can be filtered using the `where()`,
-    `limit()`, and 'shuffle()` methods. The transcripts are
+    `limit()`, `shuffle()`, and `order_by()` methods. The transcripts are
     not modified in place so the filtered transcripts should be
     referenced via the return value. For example:
 
@@ -186,6 +190,23 @@ class Transcripts(abc.ABC):
         """
         transcripts = deepcopy(self)
         transcripts._query.shuffle = seed if seed is not None else True
+        return transcripts
+
+    def order_by(self, column: Column, direction: Literal["ASC", "DESC"] = "ASC") -> "Transcripts":
+        """Order transcripts by column.
+
+        Can be chained multiple times for tie-breaking.
+        If shuffle() is also used, shuffle takes precedence.
+
+        Args:
+            column: Column to sort by.
+            direction: Sort direction ("ASC" or "DESC").
+
+        Returns:
+            Transcripts for scanning.
+        """
+        transcripts = deepcopy(self)
+        transcripts._query.order_by.append((column.name, direction))
         return transcripts
 
     @abc.abstractmethod

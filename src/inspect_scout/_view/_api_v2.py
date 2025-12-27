@@ -1,6 +1,5 @@
 import hashlib
 import io
-from collections.abc import Callable
 from typing import Any, Iterable, TypeVar
 
 import pyarrow.ipc as pa_ipc
@@ -23,8 +22,19 @@ from .._scanresults import (
     scan_results_df_async,
 )
 from .._transcript.factory import transcripts_from
-from .._transcript.types import TranscriptInfo
-from ._api_v2_types import OrderBy, RestScanStatus, TranscriptsRequest
+from ._api_v2_helpers import (
+    _apply_cursor_pagination,
+    _build_cursor,
+    _ensure_tiebreaker,
+    _has_more_results,
+    _sort_transcripts,
+)
+from ._api_v2_types import (
+    OrderBy,
+    RestScanStatus,
+    TranscriptsRequest,
+    TranscriptsResponse,
+)
 from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
@@ -35,51 +45,6 @@ from ._server_common import (
 _running_scans: set[str] = set()
 
 API_VERSION = "2.0.0-alpha"
-
-
-def _make_sort_key(
-    column: str,
-) -> Callable[[TranscriptInfo], str | int | float | bool]:
-    """Create a sort key function for the given column name.
-
-    Args:
-        column: Name of the attribute to sort by
-
-    Returns:
-        A function that extracts the sort key from a TranscriptInfo
-    """
-
-    def sort_key(t: TranscriptInfo) -> str | int | float | bool:
-        val = getattr(t, column, "")
-        return val if val is not None else ""
-
-    return sort_key
-
-
-def _sort_transcripts(
-    transcripts: list[TranscriptInfo], order_by: OrderBy | list[OrderBy]
-) -> None:
-    """Sort transcripts in-place by one or more columns.
-
-    Uses stable sort with reverse column order to handle multi-column sorting.
-    Missing/None values are treated as empty strings for sorting.
-
-    Args:
-        transcripts: List of transcripts to sort in-place
-        order_by: Single OrderBy or list of OrderBy specifications
-    """
-    order_bys = order_by if isinstance(order_by, list) else [order_by]
-
-    # Sort in reverse order of columns to handle multi-column sorting. Python's
-    # sort is stable, so sorting by secondary keys first, then primary keys last
-    # produces correct multi-column ordering. E.g., for [model ASC, score DESC]:
-    # first sort by score DESC, then sort by model ASC (stable sort preserves score
-    # order within each model group).
-    for order_by_spec in reversed(order_bys):
-        transcripts.sort(
-            key=_make_sort_key(order_by_spec.column),
-            reverse=(order_by_spec.direction == "desc"),
-        )
 
 
 def _compute_scans_etag(scans_location: str) -> str | None:
@@ -190,29 +155,59 @@ def v2_api_app(
         summary="List transcripts",
         description="Returns transcripts from specified directory (defaults to system transcripts dir). "
         "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
-        "Both filter and directory are optional.",
+        "Optional pagination for cursor-based pagination.",
     )
     async def transcripts(
         body: TranscriptsRequest | None = None,
-    ) -> list[TranscriptInfo]:
+    ) -> TranscriptsResponse:
         """Filter transcript metadata from the transcripts directory."""
         transcripts_dir = (
             body.dir if body else None
         ) or await default_transcripts_dir()
+
         try:
-            transcripts = transcripts_from(transcripts_dir)
+            transcripts_query = transcripts_from(transcripts_dir)
             if body and body.filter:
-                transcripts = transcripts.where(body.filter)
-            async with transcripts.reader() as tr:
+                transcripts_query = transcripts_query.where(body.filter)
+            async with transcripts_query.reader() as tr:
                 results = [t async for t in tr.index()]
 
-            # TODO: push sorting down to transcripts.order_by() for better performance
-            if body and body.order_by:
-                _sort_transcripts(results, body.order_by)
+            # Determine if pagination requested
+            use_pagination = body and body.pagination
 
-            return results
+            # Determine final sort order with tiebreaker
+            # When pagination used without order_by, default to transcript_id ASC
+            order_by = body.order_by if body else None
+            if use_pagination and not order_by:
+                order_by = OrderBy(column="transcript_id", direction="asc")
+
+            order_columns = _ensure_tiebreaker(order_by)
+
+            # Sort if needed
+            if order_by:
+                _sort_transcripts(results, order_by)
+
+            # Apply pagination if requested
+            if use_pagination:
+                assert body and body.pagination  # type narrowing
+                paginated = _apply_cursor_pagination(
+                    results, body.pagination, order_columns
+                )
+
+                # Build next cursor if more results exist
+                next_cursor = None
+                if _has_more_results(results, paginated, body.pagination):
+                    if body.pagination.direction == "forward":
+                        next_cursor = _build_cursor(paginated[-1], order_columns)
+                    else:
+                        next_cursor = _build_cursor(paginated[0], order_columns)
+
+                return TranscriptsResponse(items=paginated, next_cursor=next_cursor)
+
+            # No pagination - return all results
+            return TranscriptsResponse(items=results, next_cursor=None)
         except FileNotFoundError:
-            return []
+            return TranscriptsResponse(items=[], next_cursor=None)
 
     @app.get(
         "/scans",

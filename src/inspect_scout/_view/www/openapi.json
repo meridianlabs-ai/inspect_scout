@@ -1173,6 +1173,41 @@
         "title": "OrderBy",
         "type": "object"
       },
+      "Pagination": {
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "direction": {
+            "enum": [
+              "forward",
+              "backward"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "cursor",
+          "direction"
+        ],
+        "title": "Pagination",
+        "type": "object"
+      },
       "ResponseSchema": {
         "description": "Schema for model response when using Structured Output.",
         "properties": {
@@ -1975,9 +2010,48 @@
               }
             ],
             "title": "Order By"
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "TranscriptsRequest",
+        "type": "object"
+      },
+      "TranscriptsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptInfo"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "TranscriptsResponse",
         "type": "object"
       },
       "ValidationCase": {
@@ -2311,7 +2385,7 @@
     },
     "/transcripts": {
       "post": {
-        "description": "Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Both filter and directory are optional.",
+        "description": "Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
         "operationId": "transcripts_transcripts_post",
         "requestBody": {
           "content": {
@@ -2335,11 +2409,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/TranscriptInfo"
-                  },
-                  "title": "Response Transcripts Transcripts Post",
-                  "type": "array"
+                  "$ref": "#/components/schemas/TranscriptsResponse"
                 }
               }
             },

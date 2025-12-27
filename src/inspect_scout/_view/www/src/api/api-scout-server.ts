@@ -1,6 +1,7 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import type { Condition, OrderByModel } from "../query";
 import { Status } from "../types";
+import { TranscriptsResponse } from "../types/api-types.ts";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -27,7 +28,7 @@ export const apiScoutServer = (
       transcriptsDir?: string,
       filter?: Condition,
       orderBy?: OrderByModel | OrderByModel[]
-    ): Promise<unknown[]> => {
+    ): Promise<TranscriptsResponse> => {
       const result = await requestApi.fetchString(
         "POST",
         `/transcripts`,
@@ -39,10 +40,9 @@ export const apiScoutServer = (
         })
       );
 
-      const parsedResult = await asyncJsonParse<unknown[]>(result.raw);
-      if (!Array.isArray(parsedResult)) {
-        throw new Error("Expected array from /transcripts endpoint");
-      }
+      const parsedResult = await asyncJsonParse<TranscriptsResponse>(
+        result.raw
+      );
       return parsedResult;
     },
     getScansDir: async (): Promise<string> => {

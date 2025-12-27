@@ -3,8 +3,8 @@ import { ColumnTable } from "arquero";
 
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
-import { TranscriptInfo } from "../../types";
 import { Status } from "../../types";
+import { TranscriptsResponse } from "../../types/api-types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
@@ -107,7 +107,7 @@ export const useServerTranscripts = (
   location?: string,
   filter?: Condition,
   orderBy?: OrderByModel | OrderByModel[]
-): AsyncData<TranscriptInfo[]> => {
+): AsyncData<TranscriptsResponse> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({

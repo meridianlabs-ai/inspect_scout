@@ -115,7 +115,7 @@ export interface paths {
         put?: never;
         /**
          * List transcripts
-         * @description Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Both filter and directory are optional.
+         * @description Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
          */
         post: operations["transcripts_transcripts_post"];
         delete?: never;
@@ -412,6 +412,20 @@ export interface components {
              */
             direction: "asc" | "desc";
         };
+        /** Pagination */
+        Pagination: {
+            /** Cursor */
+            cursor: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "forward" | "backward";
+            /** Limit */
+            limit: number;
+        };
         /**
          * ResponseSchema
          * @description Schema for model response when using Structured Output.
@@ -691,6 +705,16 @@ export interface components {
             filter?: components["schemas"]["Condition-Input"] | null;
             /** Order By */
             order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
+            pagination?: components["schemas"]["Pagination"] | null;
+        };
+        /** TranscriptsResponse */
+        TranscriptsResponse: {
+            /** Items */
+            items: components["schemas"]["TranscriptInfo"][];
+            /** Next Cursor */
+            next_cursor: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * ValidationCase
@@ -885,7 +909,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TranscriptInfo"][];
+                    "application/json": components["schemas"]["TranscriptsResponse"];
                 };
             };
         };

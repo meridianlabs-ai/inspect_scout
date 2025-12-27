@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
 import { resolve } from "path";
+import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
 export default defineConfig(({ mode }) => {
@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
           formats: ["es"],
         },
         rollupOptions: {
-          external: ["react", "react-dom"],
+          external: ["react", "react-dom", "@tanstack/react-query"],
           output: {
             globals: {
               react: "React",

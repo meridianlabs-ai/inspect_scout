@@ -340,13 +340,14 @@ async def test_select_with_order_by_chaining(
 
     # Group by task_set and verify indices are descending within each task_set
     from itertools import groupby
+    from typing import cast
 
     for _task_set, group in groupby(results, key=lambda r: r.task_set):
-        indices: list[int] = [
-            r.metadata.get("index")
+        indices = [
+            cast(int, r.metadata.get("index"))
             for r in group
             if r.metadata.get("index") is not None
-        ]  # type: ignore[misc]
+        ]
         assert indices == sorted(indices, reverse=True)
 
 
@@ -380,11 +381,13 @@ async def test_order_by_with_where_and_limit(
     assert expected_results(results)
 
     # Verify ordering
-    indices: list[int] = [
-        result.metadata.get("index")
+    from typing import cast
+
+    indices = [
+        cast(int, result.metadata.get("index"))
         for result in results
         if result.metadata.get("index") is not None
-    ]  # type: ignore[misc]
+    ]
     assert indices == sorted(indices)
 
 

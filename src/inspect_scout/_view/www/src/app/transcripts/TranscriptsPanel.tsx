@@ -5,6 +5,8 @@ import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
+import { basename, dirname } from "../../utils/path";
+import { BreadCrumbs } from "../components/BreadCrumbs";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useServerTranscripts, useServerTranscriptsDir } from "../server/hooks";
@@ -33,6 +35,9 @@ export const TranscriptsPanel: FC = () => {
   const hasError = errorDir || error;
   const hasTranscripts = transcripts && transcripts.length > 0;
 
+  const baseDir = dirname(resolvedTranscriptDir || "");
+  const relativePath = basename(resolvedTranscriptDir || "");
+
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
@@ -56,8 +61,15 @@ export const TranscriptsPanel: FC = () => {
         <NoContentsPanel text="No transcripts found." />
       ) : null}
       <Footer
-        itemCount={transcripts?.length || 0}
         id={"transcripts-footer"}
+        itemCount={transcripts?.length || 0}
+        left={
+          <BreadCrumbs
+            baseDir={baseDir}
+            relativePath={relativePath}
+            className="text-size-smallest"
+          />
+        }
         paginated={false}
       />
     </div>

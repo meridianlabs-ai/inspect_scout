@@ -20,8 +20,8 @@ export const TranscriptsPanel: FC = () => {
     error: errorDir,
     loading: loadingDir,
   } = useServerTranscriptsDir();
-  const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
 
+  const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
@@ -42,8 +42,8 @@ export const TranscriptsPanel: FC = () => {
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
         bordered={true}
-        transcriptDir={resolvedTranscriptDir}
-        setTranscriptDir={setUserTranscriptsDir}
+        transcriptsDir={resolvedTranscriptDir}
+        setTranscriptsDir={setUserTranscriptsDir}
       />
       <LoadingBar loading={loading || loadingDir} />
       {hasError && (

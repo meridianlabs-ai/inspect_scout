@@ -1,5 +1,5 @@
 import { FC, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { transcriptsRoute } from "../../router/url";
 import { useStore } from "../../state/store";
@@ -10,20 +10,23 @@ import { Navbar } from "./Navbar";
 import { NavButton } from "./NavButtons";
 
 interface TranscriptsNavbarProps {
-  transcriptDir?: string;
-  setTranscriptDir: (path: string) => void;
+  transcriptsDir?: string;
+  setTranscriptsDir: (path: string) => void;
   bordered?: boolean;
   children?: React.ReactNode;
 }
 
 export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
-  transcriptDir,
-  setTranscriptDir,
+  transcriptsDir,
+  setTranscriptsDir,
   bordered = true,
   children,
 }) => {
   const singleFileMode = useStore((state) => state.singleFileMode);
   const [searchParams] = useSearchParams();
+
+  const params = useParams<{ "*": string }>();
+  const transcriptId = params["transcriptId"];
 
   // Check if we're on a scan result page and calculate the appropriate back URL
   const backUrl = !singleFileMode ? transcriptsRoute(searchParams) : undefined;
@@ -36,7 +39,7 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
         title: "Back",
         icon: ApplicationIcons.navbar.back,
         route: backUrl,
-        enabled: false,
+        enabled: !!transcriptId,
       });
     }
 
@@ -45,7 +48,7 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
         title: "Home",
         icon: ApplicationIcons.navbar.home,
         route: transcriptsRoute(),
-        enabled: false,
+        enabled: !!transcriptId,
       });
     }
 
@@ -58,10 +61,10 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
       leftButtons={navButtons}
       left={
         <EditablePath
-          path={transcriptDir}
+          path={transcriptsDir}
           label="Transcripts Dir"
           icon={ApplicationIcons.transcript}
-          onPathChanged={setTranscriptDir}
+          onPathChanged={setTranscriptsDir}
           placeholder="Select Transcripts Folder"
           className="text-size-smallest"
         />

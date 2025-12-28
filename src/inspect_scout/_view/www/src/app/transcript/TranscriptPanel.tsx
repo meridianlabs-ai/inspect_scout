@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 
 import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
-import { TranscriptNavbar } from "../components/TranscriptNavBar";
+import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useServerTranscriptsDir } from "../server/hooks";
 
 import styles from "./TranscriptPanel.module.css";
@@ -14,10 +14,17 @@ export const TranscriptPanel: FC = () => {
   const { data: transcriptsDir, error, loading } = useServerTranscriptsDir();
 
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
+  const setUserTranscriptsDir = useStore(
+    (state) => state.setUserTranscriptsDir
+  );
+  const resolvedTranscriptsDir = userTranscriptsDir || transcriptsDir;
 
   return (
     <div className={clsx(styles.container)}>
-      <TranscriptNavbar transcriptsDir={userTranscriptsDir || transcriptsDir} />
+      <TranscriptsNavbar
+        transcriptsDir={resolvedTranscriptsDir || ""}
+        setTranscriptsDir={setUserTranscriptsDir}
+      />
       <LoadingBar loading={loading} />
       {!loading && !error && (
         <div>

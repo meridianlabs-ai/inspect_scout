@@ -85,10 +85,10 @@ export class Column {
 
   // Sorting
   asc(): OrderByModel {
-    return { column: this.name, direction: "asc" };
+    return { column: this.name, direction: "ASC" };
   }
 
   desc(): OrderByModel {
-    return { column: this.name, direction: "desc" };
+    return { column: this.name, direction: "DESC" };
   }
 }

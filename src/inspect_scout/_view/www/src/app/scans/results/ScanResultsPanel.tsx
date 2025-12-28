@@ -1,10 +1,19 @@
 import clsx from "clsx";
 import { FC } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
+import {
+  getRelativePathFromParams,
+  scansRoute,
+  isValidScanPath,
+  scanRoute,
+} from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
+import { BreadCrumbs } from "../../components/BreadCrumbs";
 import { Footer } from "../../components/Footer";
 import { useSelectedScanDataframe, useSelectedScanner } from "../../hooks";
+import { useServerScansDir } from "../../server/hooks";
 
 import { ScanResultsBody } from "./ScanResultsBody";
 import { ScanResultsOutline } from "./ScanResultsOutline";
@@ -17,6 +26,8 @@ export const ScanResultsPanel: FC<{ selectedScan: Status }> = ({
     (state) => state.visibleScannerResultsCount
   );
   const selectedScanner = useSelectedScanner();
+  const { data: scansDir } = useServerScansDir();
+
   const {
     data: columnTable,
     loading: isLoading,
@@ -26,6 +37,21 @@ export const ScanResultsPanel: FC<{ selectedScan: Status }> = ({
     columnTable,
     isLoading,
     error: error?.message,
+  };
+
+  const params = useParams<{ "*": string }>();
+  const currentPath = getRelativePathFromParams(params);
+  const [searchParams] = useSearchParams();
+
+  const getRouteForSegment = (path: string): string => {
+    if (!path) {
+      return scansRoute();
+    }
+    // Check if this segment path contains a valid scan_id pattern
+    // If so, use scanRoute instead of scansRoute
+    return isValidScanPath(path)
+      ? scanRoute(path, searchParams)
+      : scansRoute(path);
   };
 
   return (
@@ -40,6 +66,15 @@ export const ScanResultsPanel: FC<{ selectedScan: Status }> = ({
       />
       <Footer
         id={""}
+        left={
+          <BreadCrumbs
+            baseDir={scansDir}
+            relativePath={currentPath}
+            getRouteForSegment={getRouteForSegment}
+            className={clsx("text-size-smallest", styles.breadcrumbs)}
+            disableLastSegment={true}
+          />
+        }
         className={styles.footer}
         itemCount={visibleItemsCount}
         paginated={false}

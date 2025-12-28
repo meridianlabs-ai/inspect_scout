@@ -2,7 +2,7 @@
   border-top: solid var(--bs-light-border-subtle) 1px;
   background: var(--bs-light-bg-subtle);
   display: grid;
-  grid-template-columns: 0.5fr 1fr 0.5fr;
+  grid-template-columns: max-content 1fr max-content;
   justify-content: space-between;
 
   padding: 0.2em 1em;

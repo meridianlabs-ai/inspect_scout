@@ -36,7 +36,6 @@ export const ScanJobsPanel: FC = () => {
 
   const params = useParams<{ "*": string }>();
   const currentPath = getRelativePathFromParams(params);
-  const singleFileMode = useStore((state) => state.singleFileMode);
   const [searchParams] = useSearchParams();
 
   const getRouteForSegment = (path: string): string => {

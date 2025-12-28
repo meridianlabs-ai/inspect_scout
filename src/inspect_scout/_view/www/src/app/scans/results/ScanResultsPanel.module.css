@@ -8,3 +8,7 @@
 .footer {
   grid-column: 1 / -1;
 }
+
+.breadcrumbs {
+  min-width: 600px !important;
+}

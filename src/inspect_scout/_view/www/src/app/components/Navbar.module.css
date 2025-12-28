@@ -7,7 +7,7 @@
   overflow: hidden;
 }
 
-.header .bordered {
+.bordered {
   border-bottom: solid var(--bs-border-color) 1px;
 }
 

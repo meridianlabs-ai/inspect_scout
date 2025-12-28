@@ -4,18 +4,16 @@ import { useParams, useSearchParams } from "react-router-dom";
 import {
   getRelativePathFromParams,
   isValidTranscriptPath,
-  parseScanResultPath,
   transcriptRoute,
   transcriptsRoute,
 } from "../../router/url";
 import { useStore } from "../../state/store";
-import { dirname } from "../../utils/path";
 import { ApplicationIcons } from "../appearance/icons";
 
 import { BreadCrumbs } from "./BreadCrumbs";
 import { Navbar } from "./Navbar";
 import { NavButton, NavButtons } from "./NavButtons";
-import styles from "./ScansNavbar.module.css";
+import styles from "./TranscriptNavbar.module.css";
 
 interface TranscriptNavbarProps {
   transcriptsDir?: string;
@@ -34,13 +32,7 @@ export const TranscriptNavbar: FC<TranscriptNavbarProps> = ({
   const [searchParams] = useSearchParams();
 
   // Check if we're on a scan result page and calculate the appropriate back URL
-  const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
-  const transcriptsPath = dirname(transcriptsDir || "");
-  const backUrl = scanResultUuid
-    ? transcriptRoute(transcriptsPath, searchParams)
-    : !singleFileMode
-      ? transcriptsRoute(searchParams)
-      : undefined;
+  const backUrl = !singleFileMode ? transcriptsRoute(searchParams) : undefined;
 
   const getRouteForSegment = (path: string): string => {
     if (!path) {

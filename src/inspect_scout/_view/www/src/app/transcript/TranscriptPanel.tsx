@@ -21,7 +21,6 @@ export const TranscriptPanel: FC = () => {
     <div className={clsx(styles.container)}>
       <TranscriptNavbar
         transcriptsDir={transcriptsDatabasePath || transcriptsDir}
-        bordered={true}
       />
       <LoadingBar loading={loading} />
       {!loading && !error && (

@@ -13,6 +13,9 @@ export interface NavButton {
 
   // The route URL for the navigation button
   route: string;
+
+  // Whether the button is enabled or disabled (optional)
+  enabled?: boolean;
 }
 
 interface NavButtonsProps {
@@ -22,17 +25,26 @@ interface NavButtonsProps {
 export const NavButtons: FC<NavButtonsProps> = ({ buttons }) => {
   return (
     <>
-      {buttons.map((button, index) => (
-        <Link
-          key={index}
-          to={button.route}
-          className={clsx(styles.toolbarButton)}
-          title={button.title}
-          aria-label={button.title}
-        >
-          <i className={clsx(button.icon)} />
-        </Link>
-      ))}
+      {buttons.map((button, index) =>
+        button.enabled !== false ? (
+          <Link
+            key={index}
+            to={button.route}
+            className={clsx(styles.toolbarButton)}
+            title={button.title}
+            aria-label={button.title}
+          >
+            <i className={clsx(button.icon)} />
+          </Link>
+        ) : (
+          <span
+            key={index}
+            className={clsx(styles.toolbarButton, styles.disabled)}
+          >
+            <i className={clsx(button.icon)} />
+          </span>
+        )
+      )}
     </>
   );
 };

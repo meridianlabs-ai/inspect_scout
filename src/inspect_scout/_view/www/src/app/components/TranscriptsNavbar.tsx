@@ -59,7 +59,7 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
       left={
         <EditablePath
           path={transcriptDir}
-          label="Transcripts"
+          label="Transcripts Dir"
           icon={ApplicationIcons.transcript}
           onPathChanged={setTranscriptDir}
           placeholder="Select Transcripts Folder"

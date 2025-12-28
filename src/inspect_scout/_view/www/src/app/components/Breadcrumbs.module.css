@@ -1,5 +1,6 @@
 .breadcrumbs {
-  --bs-breadcrumb-divider: ">";
+  --bs-breadcrumb-divider: "/";
+  --bs-breadcrumb-item-padding-x: 0.1rem !important;
 
   margin-bottom: 0 !important;
   min-width: 0;

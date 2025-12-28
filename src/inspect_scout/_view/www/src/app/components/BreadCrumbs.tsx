@@ -26,6 +26,8 @@ interface BreadCrumbsProps {
 
   // Whether to disable navigation for the last segment (defaults to false)
   disableLastSegment?: boolean;
+
+  className?: string | string[];
 }
 
 export const BreadCrumbs: FC<BreadCrumbsProps> = ({
@@ -33,6 +35,7 @@ export const BreadCrumbs: FC<BreadCrumbsProps> = ({
   relativePath,
   getRouteForSegment,
   disableLastSegment = false,
+  className,
 }) => {
   const pathContainerRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +81,10 @@ export const BreadCrumbs: FC<BreadCrumbsProps> = ({
   );
 
   return (
-    <div className={clsx(styles.pathContainer)} ref={pathContainerRef}>
+    <div
+      className={clsx(styles.pathContainer, className)}
+      ref={pathContainerRef}
+    >
       <ol className={clsx("breadcrumb", styles.breadcrumbs)}>
         {visibleSegments.map((segment, index) => {
           const isLast = index === visibleSegments.length - 1;

@@ -16,10 +16,10 @@
 }
 
 .spinner {
-  height: 11px;
-  width: 11px;
-  color: var(--bs-secondary);
-  border-width: 1px;
+  height: 11px !important;
+  width: 11px !important;
+  color: var(--bs-secondary) !important;
+  border-width: 1px !important;
 }
 
 .label {

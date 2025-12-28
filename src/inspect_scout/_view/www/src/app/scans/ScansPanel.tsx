@@ -20,6 +20,9 @@ export const ScansPanel: React.FC = () => {
   const { data: resultsDir } = useServerScansDir();
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
+  const userScansDir = useStore((state) => state.userScansDir);
+  const setUserScansDir = useStore((state) => state.setUserScansDir);
+
   const loading = scansLoading || scanLoading;
 
   // Clear scan state from the store on mount
@@ -39,7 +42,10 @@ export const ScansPanel: React.FC = () => {
   }, [searchParams, setSelectedScanner]);
   return (
     <div className={clsx(styles.root)}>
-      <ScansNavbar scanDir={resultsDir} />
+      <ScansNavbar
+        scansDir={userScansDir || resultsDir}
+        setScansDir={setUserScansDir}
+      />
       <LoadingBar loading={!!loading} />
       {selectedScan && (
         <>

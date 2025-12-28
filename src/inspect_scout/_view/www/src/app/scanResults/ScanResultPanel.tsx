@@ -50,6 +50,8 @@ export const ScanResultPanel: FC = () => {
   // Required server data
   const { data: resultsDir } = useServerScansDir();
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
+  const userScansDir = useStore((state) => state.userScansDir);
+  const setUserScansDir = useStore((state) => state.setUserScansDir);
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
@@ -142,7 +144,10 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <ScansNavbar scanDir={resultsDir}>
+      <ScansNavbar
+        scansDir={userScansDir || resultsDir}
+        setScansDir={setUserScansDir}
+      >
         {visibleScannerResults.length > 0 && <ScanResultNav />}
       </ScansNavbar>
       <LoadingBar loading={!!loading || resultLoading} />

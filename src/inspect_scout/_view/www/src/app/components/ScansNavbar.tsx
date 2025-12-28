@@ -3,7 +3,6 @@ import { useParams, useSearchParams } from "react-router-dom";
 
 import {
   getRelativePathFromParams,
-  isValidScanPath,
   parseScanResultPath,
   scanRoute,
   scansRoute,
@@ -17,15 +16,15 @@ import { Navbar } from "./Navbar";
 import { NavButton } from "./NavButtons";
 
 interface ScansNavbarProps {
-  scanDir?: string;
-  setScanDir: (path: string) => void;
+  scansDir?: string;
+  setScansDir: (path: string) => void;
   children?: ReactNode;
   bordered?: boolean;
 }
 
 export const ScansNavbar: FC<ScansNavbarProps> = ({
-  scanDir,
-  setScanDir,
+  scansDir,
+  setScansDir,
   bordered = true,
   children,
 }) => {
@@ -73,12 +72,12 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
       right={children}
       leftButtons={navButtons}
       left={
-        scanDir ? (
+        scansDir ? (
           <EditablePath
-            path={scanDir}
+            path={scansDir}
             label="Scans"
             icon={ApplicationIcons.scanner}
-            onPathChanged={setScanDir}
+            onPathChanged={setScansDir}
             placeholder="Select Scans Folder"
             className="text-size-smallest"
           />

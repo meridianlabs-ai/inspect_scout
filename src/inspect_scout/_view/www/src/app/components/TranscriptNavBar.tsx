@@ -12,8 +12,7 @@ import { ApplicationIcons } from "../appearance/icons";
 
 import { BreadCrumbs } from "./BreadCrumbs";
 import { Navbar } from "./Navbar";
-import { NavButton, NavButtons } from "./NavButtons";
-import styles from "./TranscriptNavbar.module.css";
+import { NavButton } from "./NavButtons";
 
 interface TranscriptNavbarProps {
   transcriptsDir?: string;
@@ -71,17 +70,15 @@ export const TranscriptNavbar: FC<TranscriptNavbarProps> = ({
     <Navbar
       bordered={bordered}
       right={children}
+      leftButtons={navButtons}
       left={
         transcriptsDir ? (
-          <div className={styles.leftContainer}>
-            <NavButtons buttons={navButtons} />
-            <BreadCrumbs
-              baseDir={transcriptsDir}
-              relativePath={currentPath}
-              getRouteForSegment={getRouteForSegment}
-              disableLastSegment={!singleFileMode}
-            />
-          </div>
+          <BreadCrumbs
+            baseDir={transcriptsDir}
+            relativePath={currentPath}
+            getRouteForSegment={getRouteForSegment}
+            disableLastSegment={!singleFileMode}
+          />
         ) : undefined
       }
     />

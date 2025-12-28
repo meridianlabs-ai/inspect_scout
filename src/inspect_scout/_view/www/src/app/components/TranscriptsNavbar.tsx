@@ -74,19 +74,16 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   return (
     <Navbar
       bordered={bordered}
+      leftButtons={navButtons}
       left={
-        <div className={styles.leftContainer}>
-          <NavButtons buttons={navButtons} />
-          <div className={styles.divider} />
-          <EditablePath
-            path={transcriptDir}
-            label="Transcripts"
-            icon={ApplicationIcons.transcript}
-            onPathChanged={setTranscriptDir}
-            placeholder="Select Transcripts Folder"
-            className="text-size-smallest"
-          />
-        </div>
+        <EditablePath
+          path={transcriptDir}
+          label="Transcripts"
+          icon={ApplicationIcons.transcript}
+          onPathChanged={setTranscriptDir}
+          placeholder="Select Transcripts Folder"
+          className="text-size-smallest"
+        />
       }
       right={children}
     />

@@ -1,8 +1,6 @@
 .breadcrumbs {
   --bs-breadcrumb-divider: ">";
 
-  border-left: solid var(--bs-border-color) 1px;
-  padding-left: 0.5em !important;
   margin-bottom: 0 !important;
   min-width: 0;
   overflow: hidden;

@@ -17,6 +17,7 @@ export const ScanJobsPanel: FC = () => {
   const { loading, error, data: scans } = useServerScans();
   const { data: resultsDir } = useServerScansDir();
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
+  const setScanDir = useStore((state) => state.setScansDatabasePath);
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);
@@ -26,7 +27,11 @@ export const ScanJobsPanel: FC = () => {
 
   return (
     <div className={clsx(styles.container)}>
-      <ScansNavbar resultsDir={resultsDir} bordered={false} />
+      <ScansNavbar
+        scanDir={resultsDir}
+        setScanDir={setScanDir}
+        bordered={false}
+      />
       <LoadingBar loading={!!loading} />
       <ExtendedFindProvider>
         {error && (

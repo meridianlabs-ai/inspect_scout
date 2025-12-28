@@ -13,15 +13,11 @@ export const TranscriptPanel: FC = () => {
   const { transcriptId } = useParams<{ transcriptId: string }>();
   const { data: transcriptsDir, error, loading } = useServerTranscriptsDir();
 
-  const transcriptsDatabasePath = useStore(
-    (state) => state.transcriptsDatabasePath
-  );
+  const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
 
   return (
     <div className={clsx(styles.container)}>
-      <TranscriptNavbar
-        transcriptsDir={transcriptsDatabasePath || transcriptsDir}
-      />
+      <TranscriptNavbar transcriptsDir={userTranscriptsDir || transcriptsDir} />
       <LoadingBar loading={loading} />
       {!loading && !error && (
         <div>

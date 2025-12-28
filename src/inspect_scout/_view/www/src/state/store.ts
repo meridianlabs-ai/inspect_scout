@@ -78,7 +78,8 @@ interface StoreState {
   transcriptOutlineId?: string;
 
   // User selected / visible transcript path
-  transcriptsDatabasePath?: string;
+  userTranscriptsDir?: string;
+  userScansDir?: string;
 
   // Transcript Data (loaded data + source directory)
   transcripts?: TranscriptInfo[];
@@ -170,7 +171,8 @@ interface StoreState {
   setDataframeFilterColumns: (columns: string[]) => void;
   setDataframeShowFilterColumns: (show: boolean) => void;
 
-  setTranscriptsDatabasePath: (path: string) => void;
+  setUserScansDir: (path: string) => void;
+  setUserTranscriptsDir: (path: string) => void;
   setTranscripts: (transcripts: TranscriptInfo[]) => void;
   setTranscriptsDir: (path: string) => void;
   setTranscriptsTableState: (
@@ -552,9 +554,14 @@ export const createStore = (api: ScanApi) =>
               state.dataframeShowFilterColumns = show;
             });
           },
-          setTranscriptsDatabasePath: (path: string) => {
+          setUserScansDir: (path: string) => {
             set((state) => {
-              state.transcriptsDatabasePath = path;
+              state.userScansDir = path;
+            });
+          },
+          setUserTranscriptsDir: (path: string) => {
+            set((state) => {
+              state.userTranscriptsDir = path;
             });
           },
           setTranscripts: (transcripts: TranscriptInfo[]) => {

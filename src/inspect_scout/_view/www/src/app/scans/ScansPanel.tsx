@@ -39,7 +39,7 @@ export const ScansPanel: React.FC = () => {
   }, [searchParams, setSelectedScanner]);
   return (
     <div className={clsx(styles.root)}>
-      <ScansNavbar resultsDir={resultsDir} />
+      <ScansNavbar scanDir={resultsDir} />
       <LoadingBar loading={!!loading} />
       {selectedScan && (
         <>

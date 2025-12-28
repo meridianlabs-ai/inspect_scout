@@ -142,7 +142,7 @@ export const ScanResultPanel: FC = () => {
 
   return (
     <div className={clsx(styles.root)}>
-      <ScansNavbar resultsDir={resultsDir}>
+      <ScansNavbar scanDir={resultsDir}>
         {visibleScannerResults.length > 0 && <ScanResultNav />}
       </ScansNavbar>
       <LoadingBar loading={!!loading || resultLoading} />

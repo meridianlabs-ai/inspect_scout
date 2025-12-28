@@ -13,18 +13,21 @@ import { dirname } from "../../utils/path";
 import { ApplicationIcons } from "../appearance/icons";
 
 import { BreadCrumbs } from "./BreadCrumbs";
+import { EditablePath } from "./EditablePath";
 import { Navbar } from "./Navbar";
 import { NavButton, NavButtons } from "./NavButtons";
 import styles from "./ScansNavbar.module.css";
 
 interface ScansNavbarProps {
-  resultsDir?: string;
+  scanDir?: string;
+  setScanDir: (path: string) => void;
   children?: ReactNode;
   bordered?: boolean;
 }
 
 export const ScansNavbar: FC<ScansNavbarProps> = ({
-  resultsDir,
+  scanDir,
+  setScanDir,
   bordered = true,
   children,
 }) => {
@@ -60,6 +63,7 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
         title: "Back",
         icon: ApplicationIcons.navbar.back,
         route: backUrl,
+        enabled: false,
       });
     }
 
@@ -68,6 +72,7 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
         title: "Home",
         icon: ApplicationIcons.navbar.home,
         route: scansRoute(),
+        enabled: false,
       });
     }
 
@@ -79,14 +84,17 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
       bordered={bordered}
       right={children}
       left={
-        resultsDir ? (
+        scanDir ? (
           <div className={styles.leftContainer}>
             <NavButtons buttons={navButtons} />
-            <BreadCrumbs
-              baseDir={resultsDir}
-              relativePath={currentPath}
-              getRouteForSegment={getRouteForSegment}
-              disableLastSegment={!singleFileMode}
+            <div className={styles.divider} />
+            <EditablePath
+              path={scanDir}
+              label="Scans"
+              icon={ApplicationIcons.scanner}
+              onPathChanged={setScanDir}
+              placeholder="Select Scans Folder"
+              className="text-size-smallest"
             />
           </div>
         ) : undefined

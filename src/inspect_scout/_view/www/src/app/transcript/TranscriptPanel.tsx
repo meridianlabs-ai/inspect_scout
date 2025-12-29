@@ -1,17 +1,21 @@
 import clsx from "clsx";
 import { FC } from "react";
-import { useParams } from "react-router-dom";
 
 import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
+import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { useServerTranscriptsDir } from "../server/hooks";
+import { useServerTranscript, useServerTranscriptsDir } from "../server/hooks";
 
 import styles from "./TranscriptPanel.module.css";
 
 export const TranscriptPanel: FC = () => {
-  const { transcriptId } = useParams<{ transcriptId: string }>();
-  const { data: transcriptsDir, error, loading } = useServerTranscriptsDir();
+  const { transcriptId } = useRequiredParams("transcriptId");
+  const transcriptsDir = useServerTranscriptsDir();
+  const { loading, data: transcript } = useServerTranscript(
+    transcriptsDir,
+    transcriptId
+  );
 
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
@@ -26,10 +30,11 @@ export const TranscriptPanel: FC = () => {
         setTranscriptsDir={setUserTranscriptsDir}
       />
       <LoadingBar loading={loading} />
-      {!loading && !error && (
+      {transcript && (
         <div>
           <h1>Transcript Detail</h1>
           <p>Transcript ID: {transcriptId}</p>
+          {`${transcript.messages?.length} messages / ${transcript.events?.length} events`}
         </div>
       )}
     </div>

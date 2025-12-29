@@ -17,7 +17,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getRelativePathFromParams } from "../../router/url";
 import { useStore } from "../../state/store";
 import type { Status } from "../../types";
-import { dirname, toRelativePath } from "../../utils/path";
+import { toRelativePath } from "../../utils/path";
 import { debounce } from "../../utils/sync";
 import { ApplicationIcons } from "../appearance/icons";
 
@@ -74,43 +74,29 @@ export const ScanJobGrid: FC<{
 
   // Transform logDetails into flat rows
   const data = useMemo(() => {
-    const dirs = new Set<string>();
     const rows: ScanJobSummary[] = [];
 
     scans.forEach((scan) => {
       const relativeLocation = toRelativePath(scan.location, resultsDir);
 
-      const dir = dirname(relativeLocation);
-      if (dir === paramsRelativePath) {
-        const row: ScanJobSummary = {
-          type: "file",
-          timestamp: scan.spec.timestamp ?? "",
-          location: scan.location,
-          relativeLocation: relativeLocation,
-          scanId: scan.spec.scan_id ?? "",
-          name: scan.spec.scan_name ?? "",
-          model: scan.spec.model?.model ?? "unknown",
-          status:
-            scan.errors.length > 1
-              ? "error"
-              : scan.complete
-                ? "complete"
-                : "incomplete",
-          scanners: Object.keys(scan.spec.scanners).map((s) => s),
-          errors: scan.errors.length > 0,
-        };
-        rows.push(row);
-      }
-
-      if (!dirs.has(dir) && dir !== "" && dir !== paramsRelativePath) {
-        dirs.add(dir);
-        const dirRow: ScanJobSummary = {
-          type: "directory",
-          relativeLocation: dir,
-          name: dir,
-        };
-        rows.push(dirRow);
-      }
+      const row: ScanJobSummary = {
+        type: "file",
+        timestamp: scan.spec.timestamp ?? "",
+        location: scan.location,
+        relativeLocation: relativeLocation,
+        scanId: scan.spec.scan_id ?? "",
+        name: scan.spec.scan_name ?? "",
+        model: scan.spec.model?.model ?? "unknown",
+        status:
+          scan.errors.length > 1
+            ? "error"
+            : scan.complete
+              ? "complete"
+              : "incomplete",
+        scanners: Object.keys(scan.spec.scanners).map((s) => s),
+        errors: scan.errors.length > 0,
+      };
+      rows.push(row);
     });
 
     return rows;
@@ -208,6 +194,18 @@ export const ScanJobGrid: FC<{
         resizable: true,
         valueFormatter: (params) => {
           return params.data?.model ?? "-";
+        },
+      },
+      {
+        field: "relativeLocation",
+        headerName: "Path",
+        initialWidth: 120,
+        minWidth: 80,
+        sortable: true,
+        filter: true,
+        resizable: true,
+        valueFormatter: (params) => {
+          return params.data?.relativeLocation ?? "-";
         },
       },
       {

@@ -98,6 +98,12 @@ export const useServerScanDataframeInput = (
   });
 };
 
+export const useServerTranscriptsDirSync = (): string => {
+  const { data } = useServerTranscriptsDir();
+  if (!data) throw new Error(`Must find transcripts dir`);
+  return data;
+};
+
 export const useServerTranscriptsDir = (): AsyncData<string> => {
   const api = useApi();
 
@@ -105,6 +111,7 @@ export const useServerTranscriptsDir = (): AsyncData<string> => {
     queryKey: ["transcripts-dir"],
     queryFn: async () => await api.getTranscriptsDir(),
     staleTime: 10000,
+    placeholderData: keepPreviousData,
   });
 };
 

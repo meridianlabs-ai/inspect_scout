@@ -98,12 +98,30 @@ export const useServerScanDataframeInput = (
   });
 };
 
+/**
+ * Returns transcripts dir for use in components after data loaded globally.
+ *
+ * Use this hook in regular components throughout the app. Assumes the async
+ * data has already been loaded at app initialization via useServerTranscriptsDirAsync.
+ * Throws if data not yet available.
+ *
+ * @throws Error if transcripts dir not loaded
+ */
 export const useServerTranscriptsDir = (): string => {
   const { data } = useServerTranscriptsDirAsync();
   if (!data) throw new Error(`Must find transcripts dir`);
   return data;
 };
 
+/**
+ * Loads transcripts dir asynchronously at app initialization.
+ *
+ * Use this hook only at the top of the app before rendering to load the
+ * transcripts dir data globally. After this completes, all other components
+ * should use useServerTranscriptsDir to access the loaded value synchronously.
+ *
+ * @returns AsyncData with loading states for initial data fetch
+ */
 export const useServerTranscriptsDirAsync = (): AsyncData<string> => {
   const api = useApi();
 

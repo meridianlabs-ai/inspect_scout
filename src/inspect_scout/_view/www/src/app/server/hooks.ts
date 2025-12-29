@@ -1,5 +1,7 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
+import { SortingState } from "@tanstack/react-table";
 import { ColumnTable } from "arquero";
+import { useMemo } from "react";
 
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
@@ -10,6 +12,9 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 import { ScanResultInputData } from "../types";
 import { expandResultsetRows } from "../utils/arrow";
+
+const sortingStateToOrderBy = (sorting: SortingState): OrderByModel[] =>
+  sorting.map((s) => ({ column: s.id, direction: s.desc ? "DESC" : "ASC" }));
 
 // Returns the server's configured scans directory
 export const useServerScansDir = (): AsyncData<string> => {
@@ -106,14 +111,20 @@ export const useServerTranscriptsDir = (): AsyncData<string> => {
 export const useServerTranscripts = (
   location?: string,
   filter?: Condition,
-  orderBy?: OrderByModel | OrderByModel[]
+  sorting?: SortingState
 ): AsyncData<TranscriptsResponse> => {
   const api = useApi();
+
+  const orderBy = useMemo(
+    () => (sorting ? sortingStateToOrderBy(sorting) : undefined),
+    [sorting]
+  );
 
   return useAsyncDataFromQuery({
     queryKey: ["transcripts", location, filter, orderBy],
     queryFn: async () => await api.getTranscripts(location, filter, orderBy),
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 };

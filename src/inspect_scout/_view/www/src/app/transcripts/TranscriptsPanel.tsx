@@ -25,13 +25,14 @@ export const TranscriptsPanel: FC = () => {
   const setTranscriptsDatabasePath = useStore(
     (state) => state.setTranscriptsDatabasePath
   );
+  const sorting = useStore((state) => state.transcriptsTableState.sorting);
   const resolvedTranscriptDir = transcriptsDatabasePath || transcriptDir;
 
   const {
     data: transcriptsResponse,
     error,
     loading,
-  } = useServerTranscripts(resolvedTranscriptDir);
+  } = useServerTranscripts(resolvedTranscriptDir, undefined, sorting);
   const transcripts = (transcriptsResponse?.items ?? []) as TranscriptInfo[];
   const hasError = errorDir || error;
   const hasTranscripts = transcripts && transcripts.length > 0;

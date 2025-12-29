@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
 import { Status } from "../../types";
-import { TranscriptsResponse } from "../../types/api-types";
+import { Transcript, TranscriptsResponse } from "../../types/api-types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
@@ -128,5 +128,19 @@ export const useServerTranscripts = (
     refetchInterval: 10 * 60 * 1000,
     placeholderData: keepPreviousData,
     enabled: !!location,
+  });
+};
+
+export const useServerTranscript = (
+  location: string | undefined,
+  id: string | undefined
+): AsyncData<Transcript> => {
+  const api = useApi();
+
+  return useAsyncDataFromQuery({
+    queryKey: ["transcript", location, id],
+    queryFn: () => api.getTranscript(location!, id!),
+    enabled: !!location && !!id,
+    staleTime: Infinity,
   });
 };

@@ -340,7 +340,7 @@ export const PopOver: React.FC<PopOverProps> = ({
   const defaultPopperStyles: CSSProperties = {
     backgroundColor: "var(--bs-body-bg)",
     padding: "12px",
-    borderRadius: "4px",
+    borderRadius: "var(--bs-border-radius)",
     boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
     border: "solid 1px var(--bs-border-color)",
     zIndex: 1200,

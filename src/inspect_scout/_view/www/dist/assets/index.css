@@ -406,31 +406,32 @@
   background: var(--bs-light);
   color: var(--bs-secondary);
 }
-._container_1g8b9_1 {
+._container_1b6j7_1 {
   overflow: auto;
   outline: none;
 }
 
-._table_1g8b9_6 {
+._table_1b6j7_6 {
   display: grid;
   width: 100%;
 }
 
-._thead_1g8b9_11 {
+._thead_1b6j7_11 {
   display: grid;
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--bs-light);
+  background: var(--bs-light-bg-subtle);
   border-bottom: 1px solid var(--bs-border-color);
 }
 
-._headerRow_1g8b9_20 {
+._headerRow_1b6j7_20 {
   display: flex;
   width: 100%;
+  height: 32px;
 }
 
-._headerCell_1g8b9_25 {
+._headerCell_1b6j7_26 {
   display: flex;
   position: relative;
   align-items: center;
@@ -438,13 +439,13 @@
   gap: 4px;
   padding: 4px 0px 4px 8px;
   text-align: left;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--bs-secondary);
-  font-size: 12px !important;
+  font-size: var(--inspect-font-size-small) !important;
   transition: background-color 0.15s ease;
 }
 
-._headerContent_1g8b9_39 {
+._headerContent_1b6j7_40 {
   flex: 1;
   display: flex;
   align-items: center;
@@ -453,35 +454,35 @@
   user-select: none;
 }
 
-._headerText_1g8b9_48 {
+._headerText_1b6j7_49 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-._headerContent_1g8b9_39:active {
+._headerContent_1b6j7_40:active {
   cursor: grabbing;
 }
 
-._sortIcon_1g8b9_58 {
+._sortIcon_1b6j7_59 {
   font-size: 10px;
   margin-left: 2px;
 }
 
-._headerCellDragging_1g8b9_63 {
+._headerCellDragging_1b6j7_64 {
   opacity: 1;
   background: var(--bs-light-bg-subtle);
 }
 
-._headerCellDragOverLeft_1g8b9_68 {
+._headerCellDragOverLeft_1b6j7_69 {
   border-left: 3px solid var(--bs-primary);
 }
 
-._headerCellDragOverRight_1g8b9_72 {
+._headerCellDragOverRight_1b6j7_73 {
   border-right: 3px solid var(--bs-primary);
 }
 
-._resizer_1g8b9_76 {
+._resizer_1b6j7_77 {
   position: absolute;
   right: 0;
   top: 0;
@@ -498,30 +499,30 @@
   pointer-events: auto;
 }
 
-._headerCellDragging_1g8b9_63 ._resizer_1g8b9_76 {
+._headerCellDragging_1b6j7_64 ._resizer_1b6j7_77 {
   border-right: none;
 }
 
-._resizer_1g8b9_76:hover {
+._resizer_1b6j7_77:hover {
   background: var(--bs-primary);
   opacity: 0.5;
 }
 
-._resizerActive_1g8b9_102 {
+._resizerActive_1b6j7_103 {
   background: var(--bs-primary);
   opacity: 1;
 }
 
-._headerCell_1g8b9_25:last-child {
+._headerCell_1b6j7_26:last-child {
   border-right: none;
 }
 
-._tbody_1g8b9_111 {
+._tbody_1b6j7_112 {
   display: grid;
   position: relative;
 }
 
-._row_1g8b9_116 {
+._row_1b6j7_117 {
   display: flex;
   position: absolute;
   width: 100%;
@@ -532,24 +533,24 @@
   user-select: none;
 }
 
-._row_1g8b9_116:hover {
+._row_1b6j7_117:hover {
   background: var(--bs-light);
 }
 
-._rowSelected_1g8b9_131 {
+._rowSelected_1b6j7_132 {
   background: var(--bs-primary-bg-subtle) !important;
 }
 
-._rowFocused_1g8b9_135 {
+._rowFocused_1b6j7_136 {
   outline: 2px solid var(--bs-primary-bg-subtle);
   outline-offset: 0px;
 }
 
-._rowSelected_1g8b9_131._rowFocused_1g8b9_135 {
+._rowSelected_1b6j7_132._rowFocused_1b6j7_136 {
   background: var(--bs-primary-bg-subtle) !important;
 }
 
-._cell_1g8b9_144 {
+._cell_1b6j7_145 {
   display: flex;
   align-items: center;
   padding: 4px 8px;
@@ -559,27 +560,27 @@
   font-size: 12px !important;
 }
 
-._cell_1g8b9_144:last-child {
+._cell_1b6j7_145:last-child {
   border-right: none;
 }
 
-._cellCenter_1g8b9_158 {
+._cellCenter_1b6j7_159 {
   justify-content: center;
 }
 
-._headerCellCenter_1g8b9_162 {
+._headerCellCenter_1b6j7_163 {
   justify-content: center;
 }
 
-._green_1g8b9_166 {
+._green_1b6j7_167 {
   color: var(--bs-success);
 }
 
-._red_1g8b9_170 {
+._red_1b6j7_171 {
   color: var(--bs-danger);
 }
 
-._noMatching_1g8b9_174 {
+._noMatching_1b6j7_175 {
   grid-column: 1 / -1;
   margin-left: auto;
   margin-right: auto;
@@ -4043,7 +4044,7 @@ body:not([class^="vscode-"]) button {
 body {
   --ag-background-color: var(--bs-body-bg);
   --ag-foreground-color: var(--bs-body-color);
-  --ag-header-background-color: var(--bs-light-bg);
+  --ag-header-background-color: var(--bs-light-bg-subtle);
   --ag-header-font-size: var(--inspect-font-size-small);
   --ag-header-font-weight: 500;
   --ag-header-text-color: var(--bs-secondary);
@@ -4051,6 +4052,7 @@ body {
   --ag-wrapper-border: none;
   --ag-row-hover-color: var(--bs-secondary-bg-subtle);
   --ag-selected-row-background-color: var(--bs-secondary-bg-subtle);
+  --ag-border-radius: var(--bs-border-radius);
 }
 
 .ag-cell-auto-height {

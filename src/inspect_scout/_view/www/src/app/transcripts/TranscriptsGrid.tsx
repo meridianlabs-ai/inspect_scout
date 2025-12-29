@@ -1,7 +1,6 @@
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
   ColumnDef,
   flexRender,
   OnChangeFn,
@@ -320,7 +319,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     data: transcripts,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualSorting: true,
     columnResizeMode: "onChange",
     enableColumnResizing: true,
     enableSorting: true,

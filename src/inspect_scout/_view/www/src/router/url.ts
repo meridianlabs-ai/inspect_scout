@@ -1,11 +1,15 @@
+import { encodeBase64Url } from "../utils/base64url";
+
 // Route URL patterns
 export const kScansRouteUrlPattern = "/scans";
 export const kScansWithPathRouteUrlPattern = "/scans/*";
 export const kScanRouteUrlPattern = "/scan/*";
 export const kScanResultRouteUrlPattern = "/scan/*/*";
 export const kTranscriptsRouteUrlPattern = "/transcripts";
-export const kTranscriptDetailRoute = "/transcripts/:transcriptId";
-export const kTranscriptDetailRouteUrlPattern = /\/transcripts\/[^\s/]+$/;
+export const kTranscriptDetailRoute =
+  "/transcripts/:transcriptsDir/:transcriptId";
+export const kTranscriptDetailRouteUrlPattern =
+  /\/transcripts\/[^\s/]+\/[^\s/]+$/;
 
 // Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
 export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
@@ -55,10 +59,12 @@ export const transcriptsRoute = (searchParams?: URLSearchParams) => {
 };
 
 export const transcriptRoute = (
+  transcriptsDir: string,
   transcriptId: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = `/transcripts/${transcriptId}`;
+  const encodedDir = encodeBase64Url(transcriptsDir);
+  const route = `/transcripts/${encodedDir}/${transcriptId}`;
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
     : route;
@@ -92,6 +98,22 @@ export const getRelativePathFromParams = (
   params: Readonly<Partial<{ "*": string }>>
 ): string => {
   return params["*"] || "";
+};
+
+export const parseTranscriptParams = (
+  params: Readonly<Partial<{ transcriptsDir: string; transcriptId: string }>>
+): { transcriptsDir?: string; transcriptId?: string } => {
+  const transcriptId = params.transcriptId;
+  const encodedDir = params.transcriptsDir;
+  if (!encodedDir) {
+    return { transcriptId };
+  }
+
+  try {
+    return { transcriptsDir: decodeBase64Url(encodedDir), transcriptId };
+  } catch {
+    return { transcriptId };
+  }
 };
 
 // Extracts the scanPath and scanResultUuid from a full path.

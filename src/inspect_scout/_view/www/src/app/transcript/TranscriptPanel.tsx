@@ -1,23 +1,29 @@
 import clsx from "clsx";
 import { FC } from "react";
-import { useParams } from "react-router-dom";
 
 import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useTranscriptRoute } from "../hooks";
 import { useServerTranscriptsDir } from "../server/hooks";
 
 import styles from "./TranscriptPanel.module.css";
 
 export const TranscriptPanel: FC = () => {
-  const { transcriptId } = useParams<{ transcriptId: string }>();
+  // Transcript data from route
+  const { transcriptsDir: decodedTranscriptsDir, transcriptId } =
+    useTranscriptRoute();
+
+  // Server transcripts directory
   const { data: transcriptsDir, error, loading } = useServerTranscriptsDir();
 
+  // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
-  const resolvedTranscriptsDir = userTranscriptsDir || transcriptsDir;
+  const resolvedTranscriptsDir =
+    decodedTranscriptsDir || userTranscriptsDir || transcriptsDir;
 
   return (
     <div className={clsx(styles.container)}>

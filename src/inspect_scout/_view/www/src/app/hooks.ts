@@ -3,7 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { useMapAsyncData } from "../hooks/useMapAsyncData";
-import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
+import {
+  getRelativePathFromParams,
+  parseScanResultPath,
+  parseTranscriptParams,
+} from "../router/url";
 import { useStore } from "../state/store";
 import { Status } from "../types";
 import { AsyncData, data, loading } from "../utils/asyncData";
@@ -102,6 +106,26 @@ export const useSelectedScanResultInputData =
 
     return useServerScanDataframeInput(location, scanner.data, scanResultUuid);
   };
+
+export const useTranscriptRoute = (): {
+  transcriptsDir?: string;
+  transcriptId?: string;
+} => {
+  const params = useParams<{ transcriptsDir?: string; transcriptId?: string }>();
+  const setUserTranscriptsDir = useStore(
+    (state) => state.setUserTranscriptsDir
+  );
+
+  const route = useMemo(() => parseTranscriptParams(params), [params]);
+
+  useEffect(() => {
+    if (route.transcriptsDir) {
+      setUserTranscriptsDir(route.transcriptsDir);
+    }
+  }, [route.transcriptsDir, setUserTranscriptsDir]);
+
+  return route;
+};
 
 export const useScanResultSummaries = (columnTable?: ColumnTable) => {
   const [scanResultSummaries, setScanResultsSummaries] = useState<

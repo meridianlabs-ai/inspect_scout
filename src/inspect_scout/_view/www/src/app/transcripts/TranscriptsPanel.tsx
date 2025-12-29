@@ -64,7 +64,12 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!hasError && <TranscriptsGrid transcripts={transcripts} />}
+      {!hasError && (
+        <TranscriptsGrid
+          transcripts={transcripts}
+          transcriptsDir={resolvedTranscriptDir}
+        />
+      )}
       <Footer
         id={"transcripts-footer"}
         itemCount={transcripts?.length || 0}

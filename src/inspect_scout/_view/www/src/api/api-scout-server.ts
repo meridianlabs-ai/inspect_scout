@@ -1,7 +1,7 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import type { Condition, OrderByModel } from "../query";
 import { Status } from "../types";
-import { TranscriptsResponse } from "../types/api-types.ts";
+import { Transcript, TranscriptsResponse } from "../types/api-types.ts";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -43,6 +43,16 @@ export const apiScoutServer = (
         result.raw
       );
       return parsedResult;
+    },
+    getTranscript: async (
+      transcriptsDir: string,
+      id: string
+    ): Promise<Transcript> => {
+      const result = await requestApi.fetchString(
+        "GET",
+        `/transcripts/${base64url(transcriptsDir)}/${encodeURIComponent(id)}`
+      );
+      return asyncJsonParse<Transcript>(result.raw);
     },
     getScansDir: async (): Promise<string> => {
       return (await requestApi.fetchString("GET", `/scans-dir`)).raw;

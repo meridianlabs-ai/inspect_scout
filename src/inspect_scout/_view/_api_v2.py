@@ -23,6 +23,7 @@ from .._scanresults import (
 )
 from .._transcript.columns import Column
 from .._transcript.factory import transcripts_from
+from .._transcript.types import Transcript, TranscriptContent
 from ._api_v2_helpers import (
     _apply_cursor_pagination,
     _build_cursor,
@@ -220,6 +221,34 @@ def v2_api_app(
             return TranscriptsResponse(items=results, next_cursor=None)
         except FileNotFoundError:
             return TranscriptsResponse(items=[], next_cursor=None)
+
+    @app.get(
+        "/transcripts/{dir}/{id}",
+        response_model=Transcript,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get transcript",
+        description="Returns a single transcript with full content (messages and events).",
+    )
+    async def transcript(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+    ) -> Transcript:
+        """Get a single transcript by ID."""
+        transcripts_dir = decode_base64url(dir)
+
+        transcripts_query = transcripts_from(transcripts_dir).where(
+            Column("transcript_id") == id
+        )
+
+        async with transcripts_query.reader() as reader:
+            infos = [info async for info in reader.index()]
+            if not infos:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Transcript not found"
+                )
+
+            content = TranscriptContent(messages="all", events="all")
+            return await reader.read(infos[0], content)
 
     @app.get(
         "/scans",

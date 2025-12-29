@@ -104,26 +104,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/transcripts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * List transcripts
-         * @description Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
-         */
-        post: operations["transcripts_transcripts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/transcripts-dir": {
         parameters: {
             query?: never;
@@ -144,10 +124,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/transcripts/{dir}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List transcripts
+         * @description Returns transcripts from specified directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
+         */
+        post: operations["transcripts_transcripts__dir__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/transcripts/{dir}/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get transcript
+         * @description Returns a single transcript with full content (messages and events).
+         */
+        get: operations["transcript_transcripts__dir___id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApprovalEvent
+         * @description Tool approval.
+         */
+        ApprovalEvent: {
+            /** Approver */
+            approver: string;
+            call: components["schemas"]["ToolCall"];
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "modify" | "reject" | "escalate" | "terminate";
+            /**
+             * Event
+             * @default approval
+             * @constant
+             */
+            event: "approval";
+            /** Explanation */
+            explanation?: string | null;
+            /** Message */
+            message: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            modified?: components["schemas"]["ToolCall"] | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            view?: components["schemas"]["ToolCallView"] | null;
+            /** Working Start */
+            working_start?: number;
+        };
         /**
          * BatchConfig
          * @description Batch processing configuration.
@@ -185,6 +245,119 @@ export interface components {
             scopes?: {
                 [key: string]: string;
             };
+        };
+        /**
+         * ChatCompletionChoice
+         * @description Choice generated for completion.
+         */
+        ChatCompletionChoice: {
+            logprobs?: components["schemas"]["Logprobs"] | null;
+            message: components["schemas"]["ChatMessageAssistant"];
+            /**
+             * Stop Reason
+             * @default unknown
+             * @enum {string}
+             */
+            stop_reason: "stop" | "max_tokens" | "model_length" | "tool_calls" | "content_filter" | "unknown";
+        };
+        /**
+         * ChatMessageAssistant
+         * @description Assistant chat message.
+         */
+        ChatMessageAssistant: {
+            /** Content */
+            content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
+            /** Id */
+            id?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /**
+             * Role
+             * @default assistant
+             * @constant
+             */
+            role: "assistant";
+            /** Source */
+            source?: ("input" | "generate") | null;
+            /** Tool Calls */
+            tool_calls?: components["schemas"]["ToolCall"][] | null;
+        };
+        /**
+         * ChatMessageSystem
+         * @description System chat message.
+         */
+        ChatMessageSystem: {
+            /** Content */
+            content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
+            /** Id */
+            id?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Role
+             * @default system
+             * @constant
+             */
+            role: "system";
+            /** Source */
+            source?: ("input" | "generate") | null;
+        };
+        /**
+         * ChatMessageTool
+         * @description Tool chat message.
+         */
+        ChatMessageTool: {
+            /** Content */
+            content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
+            error?: components["schemas"]["ToolCallError"] | null;
+            /** Function */
+            function?: string | null;
+            /** Id */
+            id?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Role
+             * @default tool
+             * @constant
+             */
+            role: "tool";
+            /** Source */
+            source?: ("input" | "generate") | null;
+            /** Tool Call Id */
+            tool_call_id?: string | null;
+        };
+        /**
+         * ChatMessageUser
+         * @description User chat message.
+         */
+        ChatMessageUser: {
+            /** Content */
+            content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
+            /** Id */
+            id?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Role
+             * @default user
+             * @constant
+             */
+            role: "user";
+            /** Source */
+            source?: ("input" | "generate") | null;
+            /** Tool Call Id */
+            tool_call_id?: string[] | null;
         };
         /**
          * Condition
@@ -227,6 +400,232 @@ export interface components {
             ] | string | number | boolean | null;
         };
         /**
+         * ContentAudio
+         * @description Audio content.
+         */
+        ContentAudio: {
+            /** Audio */
+            audio: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "wav" | "mp3";
+            internal?: components["schemas"]["JsonValue"] | null;
+            /**
+             * Type
+             * @default audio
+             * @constant
+             */
+            type: "audio";
+        };
+        /**
+         * ContentCitation
+         * @description A generic content citation.
+         */
+        ContentCitation: {
+            /** Cited Text */
+            cited_text?: string | number[] | null;
+            /** Internal */
+            internal?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Title */
+            title?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "content";
+        };
+        /**
+         * ContentData
+         * @description Model internal.
+         */
+        ContentData: {
+            /** Data */
+            data: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            internal?: components["schemas"]["JsonValue"] | null;
+            /**
+             * Type
+             * @default data
+             * @constant
+             */
+            type: "data";
+        };
+        /**
+         * ContentDocument
+         * @description Document content (e.g. a PDF).
+         */
+        ContentDocument: {
+            /** Document */
+            document: string;
+            /** Filename */
+            filename?: string;
+            internal?: components["schemas"]["JsonValue"] | null;
+            /** Mime Type */
+            mime_type?: string;
+            /**
+             * Type
+             * @default document
+             * @constant
+             */
+            type: "document";
+        };
+        /**
+         * ContentImage
+         * @description Image content.
+         */
+        ContentImage: {
+            /**
+             * Detail
+             * @default auto
+             * @enum {string}
+             */
+            detail: "auto" | "low" | "high";
+            /** Image */
+            image: string;
+            internal?: components["schemas"]["JsonValue"] | null;
+            /**
+             * Type
+             * @default image
+             * @constant
+             */
+            type: "image";
+        };
+        /**
+         * ContentReasoning
+         * @description Reasoning content.
+         *
+         *     See the specification for [thinking blocks](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#understanding-thinking-blocks) for Claude models.
+         */
+        ContentReasoning: {
+            internal?: components["schemas"]["JsonValue"] | null;
+            /** Reasoning */
+            reasoning: string;
+            /**
+             * Redacted
+             * @default false
+             */
+            redacted: boolean;
+            /** Signature */
+            signature?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /**
+             * Type
+             * @default reasoning
+             * @constant
+             */
+            type: "reasoning";
+        };
+        /**
+         * ContentText
+         * @description Text content.
+         */
+        ContentText: {
+            /** Citations */
+            citations?: (components["schemas"]["ContentCitation"] | components["schemas"]["DocumentCitation"] | components["schemas"]["UrlCitation"])[] | null;
+            internal?: components["schemas"]["JsonValue"] | null;
+            /** Refusal */
+            refusal?: boolean | null;
+            /** Text */
+            text: string;
+            /**
+             * Type
+             * @default text
+             * @constant
+             */
+            type: "text";
+        };
+        /**
+         * ContentToolUse
+         * @description Server side tool use.
+         */
+        ContentToolUse: {
+            /** Arguments */
+            arguments: string;
+            /** Context */
+            context?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Id */
+            id: string;
+            internal?: components["schemas"]["JsonValue"] | null;
+            /** Name */
+            name: string;
+            /** Result */
+            result: string;
+            /**
+             * Tool Type
+             * @enum {string}
+             */
+            tool_type: "web_search" | "mcp_call" | "code_execution";
+            /**
+             * Type
+             * @default tool_use
+             * @constant
+             */
+            type: "tool_use";
+        };
+        /**
+         * ContentVideo
+         * @description Video content.
+         */
+        ContentVideo: {
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "mp4" | "mpeg" | "mov";
+            internal?: components["schemas"]["JsonValue"] | null;
+            /**
+             * Type
+             * @default video
+             * @constant
+             */
+            type: "video";
+            /** Video */
+            video: string;
+        };
+        /**
+         * DocumentCitation
+         * @description A citation that refers to a page range in a document.
+         */
+        DocumentCitation: {
+            /** Cited Text */
+            cited_text?: string | number[] | null;
+            /** Internal */
+            internal?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            range?: components["schemas"]["DocumentRange"] | null;
+            /** Title */
+            title?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "document";
+        };
+        /**
+         * DocumentRange
+         * @description A range specifying a section of a document.
+         */
+        DocumentRange: {
+            /** End Index */
+            end_index: number;
+            /** Start Index */
+            start_index: number;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "block" | "page" | "char";
+        };
+        /**
          * Error
          * @description Scan error (runtime error which occurred during scan).
          */
@@ -241,6 +640,45 @@ export interface components {
             traceback: string;
             /** Transcript Id */
             transcript_id: string;
+        };
+        /**
+         * ErrorEvent
+         * @description Event with sample error.
+         */
+        ErrorEvent: {
+            error: components["schemas"]["EvalError"];
+            /**
+             * Event
+             * @default error
+             * @constant
+             */
+            event: "error";
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * EvalError
+         * @description Eval error details.
+         */
+        EvalError: {
+            /** Message */
+            message: string;
+            /** Traceback */
+            traceback: string;
+            /** Traceback Ansi */
+            traceback_ansi: string;
         };
         /**
          * GenerateConfig
@@ -321,6 +759,65 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * InfoEvent
+         * @description Event with custom info/data.
+         */
+        InfoEvent: {
+            data: components["schemas"]["JsonValue"];
+            /**
+             * Event
+             * @default info
+             * @constant
+             */
+            event: "info";
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Source */
+            source?: string | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * InputEvent
+         * @description Input screen interaction.
+         */
+        InputEvent: {
+            /**
+             * Event
+             * @default input
+             * @constant
+             */
+            event: "input";
+            /** Input */
+            input: string;
+            /** Input Ansi */
+            input_ansi: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
          * JSONSchema
          * @description JSON Schema for type.
          */
@@ -347,13 +844,127 @@ export interface components {
             /** Type */
             type?: ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null") | ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null")[] | null;
         };
+        /**
+         * JsonChange
+         * @description Describes a change to data using JSON Patch format.
+         */
+        JsonChange: {
+            /** From */
+            from?: string | null;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "remove" | "add" | "replace" | "move" | "test" | "copy";
+            /** Path */
+            path: string;
+            replaced?: components["schemas"]["JsonValue"];
+            value?: components["schemas"]["JsonValue"];
+        };
         JsonValue: unknown;
+        /**
+         * LoggerEvent
+         * @description Log message recorded with Python logger.
+         */
+        LoggerEvent: {
+            /**
+             * Event
+             * @default logger
+             * @constant
+             */
+            event: "logger";
+            message: components["schemas"]["LoggingMessage"];
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * LoggingMessage
+         * @description Message written to Python log.
+         */
+        LoggingMessage: {
+            /** Created */
+            created: number;
+            /**
+             * Filename
+             * @default unknown
+             */
+            filename: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "debug" | "trace" | "http" | "sandbox" | "info" | "warning" | "error" | "critical";
+            /**
+             * Lineno
+             * @default 0
+             */
+            lineno: number;
+            /** Message */
+            message: string;
+            /**
+             * Module
+             * @default unknown
+             */
+            module: string;
+            /** Name */
+            name?: string | null;
+        };
         /**
          * LogicalOperator
          * @description Logical operators for combining conditions.
          * @enum {string}
          */
         LogicalOperator: "AND" | "OR" | "NOT";
+        /**
+         * Logprob
+         * @description Log probability for a token.
+         */
+        Logprob: {
+            /** Bytes */
+            bytes?: number[] | null;
+            /** Logprob */
+            logprob: number;
+            /** Token */
+            token: string;
+            /** Top Logprobs */
+            top_logprobs?: components["schemas"]["TopLogprob"][] | null;
+        };
+        /**
+         * Logprobs
+         * @description Log probability information for a completion choice.
+         */
+        Logprobs: {
+            /** Content */
+            content: components["schemas"]["Logprob"][];
+        };
+        /**
+         * ModelCall
+         * @description Model call (raw request/response data).
+         */
+        ModelCall: {
+            /** Request */
+            request: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Response */
+            response: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Time */
+            time?: number | null;
+        };
         /**
          * ModelConfig
          * @description Model config.
@@ -368,6 +979,82 @@ export interface components {
             config?: components["schemas"]["GenerateConfig"];
             /** Model */
             model: string;
+        };
+        /**
+         * ModelEvent
+         * @description Call to a language model.
+         */
+        ModelEvent: {
+            /** Cache */
+            cache?: ("read" | "write") | null;
+            call?: components["schemas"]["ModelCall"] | null;
+            /** Completed */
+            completed?: string | null;
+            config: components["schemas"]["GenerateConfig"];
+            /** Error */
+            error?: string | null;
+            /**
+             * Event
+             * @default model
+             * @constant
+             */
+            event: "model";
+            /** Input */
+            input: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model: string;
+            output: components["schemas"]["ModelOutput"];
+            /** Pending */
+            pending?: boolean | null;
+            /** Retries */
+            retries?: number | null;
+            /** Role */
+            role?: string | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Tool Choice */
+            tool_choice: ("auto" | "any" | "none") | components["schemas"]["ToolFunction"];
+            /** Tools */
+            tools: components["schemas"]["ToolInfo"][];
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+            /** Working Time */
+            working_time?: number | null;
+        };
+        /**
+         * ModelOutput
+         * @description Output from model generation.
+         */
+        ModelOutput: {
+            /**
+             * Choices
+             * @default []
+             */
+            choices: components["schemas"]["ChatCompletionChoice"][];
+            /**
+             * Completion
+             * @default
+             */
+            completion: string;
+            /** Error */
+            error?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string;
+            /** Time */
+            time?: number | null;
+            usage?: components["schemas"]["ModelUsage"] | null;
         };
         /**
          * ModelUsage
@@ -427,6 +1114,25 @@ export interface components {
             limit: number;
         };
         /**
+         * ProvenanceData
+         * @description Metadata about who made an edit and why.
+         */
+        ProvenanceData: {
+            /** Author */
+            author: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp?: string;
+        };
+        /**
          * ResponseSchema
          * @description Schema for model response when using Structured Output.
          */
@@ -438,6 +1144,151 @@ export interface components {
             name: string;
             /** Strict */
             strict?: boolean | null;
+        };
+        /**
+         * Sample
+         * @description Sample for an evaluation task.
+         */
+        Sample: {
+            /** Choices */
+            choices?: string[] | null;
+            /** Files */
+            files?: {
+                [key: string]: string;
+            } | null;
+            /** Id */
+            id?: number | string | null;
+            /** Input */
+            input: string | (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            sandbox?: components["schemas"]["SandboxEnvironmentSpec"] | null;
+            /** Setup */
+            setup?: string | null;
+            /** Target */
+            target?: string | string[];
+        };
+        /**
+         * SampleInitEvent
+         * @description Beginning of processing a Sample.
+         */
+        SampleInitEvent: {
+            /**
+             * Event
+             * @default sample_init
+             * @constant
+             */
+            event: "sample_init";
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            sample: components["schemas"]["Sample"];
+            /** Span Id */
+            span_id?: string | null;
+            state: components["schemas"]["JsonValue"];
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * SampleLimitEvent
+         * @description The sample was unable to finish processing due to a limit
+         */
+        SampleLimitEvent: {
+            /**
+             * Event
+             * @default sample_limit
+             * @constant
+             */
+            event: "sample_limit";
+            /** Limit */
+            limit?: number | null;
+            /** Message */
+            message: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "message" | "time" | "working" | "token" | "operator" | "custom";
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * SandboxEnvironmentSpec
+         * @description Specification of a SandboxEnvironment.
+         */
+        SandboxEnvironmentSpec: {
+            /** Config */
+            config?: unknown;
+            /** Type */
+            type: string;
+        };
+        /**
+         * SandboxEvent
+         * @description Sandbox execution or I/O
+         */
+        SandboxEvent: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "exec" | "read_file" | "write_file";
+            /** Cmd */
+            cmd?: string | null;
+            /** Completed */
+            completed?: string | null;
+            /**
+             * Event
+             * @default sandbox
+             * @constant
+             */
+            event: "sandbox";
+            /** File */
+            file?: string | null;
+            /** Input */
+            input?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Options */
+            options?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Output */
+            output?: string | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Result */
+            result?: number | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
         };
         /**
          * ScanOptions
@@ -611,6 +1462,213 @@ export interface components {
                 [key: string]: boolean;
             })[];
         };
+        /**
+         * Score
+         * @description Score generated by a scorer.
+         */
+        Score: {
+            /** Answer */
+            answer?: string | null;
+            /** Explanation */
+            explanation?: string | null;
+            /** History */
+            history?: components["schemas"]["ScoreEdit"][];
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Value */
+            value: string | number | boolean | (string | number | boolean)[] | {
+                [key: string]: string | number | boolean | null;
+            };
+        };
+        /**
+         * ScoreEdit
+         * @description A single edit to a score.
+         */
+        ScoreEdit: {
+            /**
+             * Answer
+             * @default UNCHANGED
+             */
+            answer: string | "UNCHANGED" | null;
+            /**
+             * Explanation
+             * @default UNCHANGED
+             */
+            explanation: string | "UNCHANGED" | null;
+            /**
+             * Metadata
+             * @default UNCHANGED
+             */
+            metadata: {
+                [key: string]: unknown;
+            } | "UNCHANGED";
+            provenance?: components["schemas"]["ProvenanceData"] | null;
+            /**
+             * Value
+             * @default UNCHANGED
+             */
+            value: string | number | boolean | (string | number | boolean)[] | {
+                [key: string]: string | number | boolean | null;
+            } | "UNCHANGED";
+        };
+        /**
+         * ScoreEditEvent
+         * @description Event recorded when a score is edited.
+         */
+        ScoreEditEvent: {
+            edit: components["schemas"]["ScoreEdit"];
+            /**
+             * Event
+             * @default score_edit
+             * @constant
+             */
+            event: "score_edit";
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Score Name */
+            score_name: string;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * ScoreEvent
+         * @description Event with score.
+         *
+         *     Can be the final score for a `Sample`, or can be an intermediate score
+         *     resulting from a call to `score`.
+         */
+        ScoreEvent: {
+            /**
+             * Event
+             * @default score
+             * @constant
+             */
+            event: "score";
+            /**
+             * Intermediate
+             * @default false
+             */
+            intermediate: boolean;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            score: components["schemas"]["Score"];
+            /** Span Id */
+            span_id?: string | null;
+            /** Target */
+            target?: string | string[] | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * SpanBeginEvent
+         * @description Mark the beginning of a transcript span.
+         */
+        SpanBeginEvent: {
+            /**
+             * Event
+             * @default span_begin
+             * @constant
+             */
+            event: "span_begin";
+            /** Id */
+            id: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id?: string | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Type */
+            type?: string | null;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * SpanEndEvent
+         * @description Mark the end of a transcript span.
+         */
+        SpanEndEvent: {
+            /**
+             * Event
+             * @default span_end
+             * @constant
+             */
+            event: "span_end";
+            /** Id */
+            id: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * StateEvent
+         * @description Change to the current `TaskState`
+         */
+        StateEvent: {
+            /** Changes */
+            changes: components["schemas"]["JsonChange"][];
+            /**
+             * Event
+             * @default state
+             * @constant
+             */
+            event: "state";
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
         /** Status */
         Status: {
             /** Complete */
@@ -621,6 +1679,111 @@ export interface components {
             location: string;
             spec: components["schemas"]["ScanSpec"];
             summary: components["schemas"]["Summary"];
+        };
+        /**
+         * StepEvent
+         * @description Step within current sample or subtask.
+         */
+        StepEvent: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "begin" | "end";
+            /**
+             * Event
+             * @default step
+             * @constant
+             */
+            event: "step";
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Name */
+            name: string;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Type */
+            type?: string | null;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * StoreEvent
+         * @description Change to data within the current `Store`.
+         */
+        StoreEvent: {
+            /** Changes */
+            changes: components["schemas"]["JsonChange"][];
+            /**
+             * Event
+             * @default store
+             * @constant
+             */
+            event: "store";
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+        };
+        /**
+         * SubtaskEvent
+         * @description Subtask spawned.
+         */
+        SubtaskEvent: {
+            /** Completed */
+            completed?: string | null;
+            /**
+             * Event
+             * @default subtask
+             * @constant
+             */
+            event: "subtask";
+            /** Events */
+            events?: unknown[];
+            /** Input */
+            input: {
+                [key: string]: unknown;
+            };
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Name */
+            name: string;
+            /** Pending */
+            pending?: boolean | null;
+            /** Result */
+            result?: unknown;
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Type */
+            type?: string | null;
+            /** Uuid */
+            uuid?: string | null;
+            /** Working Start */
+            working_start?: number;
+            /** Working Time */
+            working_time?: number | null;
         };
         /**
          * Summary
@@ -636,6 +1799,254 @@ export interface components {
             scanners?: {
                 [key: string]: components["schemas"]["ScannerSummary"];
             };
+        };
+        /** ToolCall */
+        ToolCall: {
+            /** Arguments */
+            arguments: {
+                [key: string]: unknown;
+            };
+            /** Function */
+            function: string;
+            /** Id */
+            id: string;
+            /** Parse Error */
+            parse_error?: string | null;
+            /**
+             * Type
+             * @default function
+             * @enum {string}
+             */
+            type: "function" | "custom";
+            view?: components["schemas"]["ToolCallContent"] | null;
+        };
+        /**
+         * ToolCallContent
+         * @description Content to include in tool call view.
+         */
+        ToolCallContent: {
+            /** Content */
+            content?: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "text" | "markdown";
+            /** Title */
+            title?: string | null;
+        };
+        /** ToolCallError */
+        ToolCallError: {
+            /** Message */
+            message: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "parsing" | "timeout" | "unicode_decode" | "permission" | "file_not_found" | "is_a_directory" | "limit" | "approval" | "unknown" | "output_limit";
+        };
+        /**
+         * ToolCallView
+         * @description Custom view of a tool call.
+         *
+         *     Both `context` and `call` are optional. If `call` is not specified
+         *     then the view will default to a syntax highlighted Python function call.
+         */
+        ToolCallView: {
+            call?: components["schemas"]["ToolCallContent"] | null;
+            context?: components["schemas"]["ToolCallContent"] | null;
+        };
+        /**
+         * ToolEvent
+         * @description Call to a tool.
+         */
+        ToolEvent: {
+            /** Agent */
+            agent?: string | null;
+            /** Arguments */
+            arguments: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Completed */
+            completed?: string | null;
+            error?: components["schemas"]["ToolCallError"] | null;
+            /**
+             * Event
+             * @default tool
+             * @constant
+             */
+            event: "tool";
+            /** Events */
+            events?: unknown[];
+            /** Failed */
+            failed?: boolean | null;
+            /** Function */
+            function: string;
+            /** Id */
+            id: string;
+            /** Message Id */
+            message_id?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Pending */
+            pending?: boolean | null;
+            /** Result */
+            result?: string | number | boolean | components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | (components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"])[];
+            /** Span Id */
+            span_id?: string | null;
+            /** Timestamp */
+            timestamp?: string;
+            /** Truncated */
+            truncated?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Type
+             * @default function
+             * @constant
+             */
+            type: "function";
+            /** Uuid */
+            uuid?: string | null;
+            view?: components["schemas"]["ToolCallContent"] | null;
+            /** Working Start */
+            working_start?: number;
+            /** Working Time */
+            working_time?: number | null;
+        };
+        /** ToolFunction */
+        ToolFunction: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * ToolInfo
+         * @description Specification of a tool (JSON Schema compatible)
+         *
+         *     If you are implementing a ModelAPI, most LLM libraries can
+         *     be passed this object (dumped to a dict) directly as a function
+         *     specification. For example, in the OpenAI provider:
+         *
+         *     ```python
+         *     ChatCompletionToolParam(
+         *         type="function",
+         *         function=tool.model_dump(exclude_none=True),
+         *     )
+         *     ```
+         *
+         *     In some cases the field names don't match up exactly. In that case
+         *     call `model_dump()` on the `parameters` field. For example, in the
+         *     Anthropic provider:
+         *
+         *     ```python
+         *     ToolParam(
+         *         name=tool.name,
+         *         description=tool.description,
+         *         input_schema=tool.parameters.model_dump(exclude_none=True),
+         *     )
+         *     ```
+         */
+        ToolInfo: {
+            /** Description */
+            description: string;
+            /** Name */
+            name: string;
+            /** Options */
+            options?: {
+                [key: string]: unknown;
+            } | null;
+            parameters?: components["schemas"]["ToolParams"];
+        };
+        /**
+         * ToolParams
+         * @description Description of tool parameters object in JSON Schema format.
+         */
+        ToolParams: {
+            /**
+             * Additionalproperties
+             * @default false
+             */
+            additionalProperties: boolean;
+            /** Properties */
+            properties?: {
+                [key: string]: components["schemas"]["JSONSchema"];
+            };
+            /** Required */
+            required?: string[];
+            /**
+             * Type
+             * @default object
+             * @constant
+             */
+            type: "object";
+        };
+        /**
+         * TopLogprob
+         * @description List of the most likely tokens and their log probability, at this token position.
+         */
+        TopLogprob: {
+            /** Bytes */
+            bytes?: number[] | null;
+            /** Logprob */
+            logprob: number;
+            /** Token */
+            token: string;
+        };
+        /**
+         * Transcript
+         * @description Transcript info and transcript content (messages and events).
+         */
+        Transcript: {
+            /** Agent */
+            agent?: string | null;
+            /** Agent Args */
+            agent_args?: {
+                [key: string]: unknown;
+            } | null;
+            /** Date */
+            date?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Events */
+            events?: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
+            /** Limit */
+            limit?: string | null;
+            /** Messages */
+            messages?: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Model */
+            model?: string | null;
+            /** Model Options */
+            model_options?: {
+                [key: string]: unknown;
+            } | null;
+            score?: components["schemas"]["JsonValue"] | null;
+            /** Source Id */
+            source_id?: string | null;
+            /** Source Type */
+            source_type?: string | null;
+            /** Source Uri */
+            source_uri?: string | null;
+            /** Success */
+            success?: boolean | null;
+            /** Task Id */
+            task_id?: string | null;
+            /** Task Repeat */
+            task_repeat?: number | null;
+            /** Task Set */
+            task_set?: string | null;
+            /** Total Time */
+            total_time?: number | null;
+            /** Total Tokens */
+            total_tokens?: number | null;
+            /** Transcript Id */
+            transcript_id: string;
         };
         /**
          * TranscriptField
@@ -700,8 +2111,6 @@ export interface components {
         };
         /** TranscriptsRequest */
         TranscriptsRequest: {
-            /** Dir */
-            dir?: string | null;
             filter?: components["schemas"]["Condition-Input"] | null;
             /** Order By */
             order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
@@ -715,6 +2124,27 @@ export interface components {
             next_cursor?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * UrlCitation
+         * @description A citation that refers to a URL.
+         */
+        UrlCitation: {
+            /** Cited Text */
+            cited_text?: string | number[] | null;
+            /** Internal */
+            internal?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Title */
+            title?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "url";
+            /** Url */
+            url: string;
         };
         /**
          * ValidationCase
@@ -890,11 +2320,34 @@ export interface operations {
             };
         };
     };
-    transcripts_transcripts_post: {
+    transcripts_dir_transcripts_dir_get: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
+    transcripts_transcripts__dir__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Transcripts directory (base64url-encoded) */
+                dir: string;
+            };
             cookie?: never;
         };
         requestBody?: {
@@ -914,11 +2367,16 @@ export interface operations {
             };
         };
     };
-    transcripts_dir_transcripts_dir_get: {
+    transcript_transcripts__dir___id__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Transcripts directory (base64url-encoded) */
+                dir: string;
+                /** @description Transcript ID */
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -929,7 +2387,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/json": components["schemas"]["Transcript"];
                 };
             };
         };

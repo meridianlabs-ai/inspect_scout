@@ -122,9 +122,11 @@ export const useServerTranscripts = (
 
   return useAsyncDataFromQuery({
     queryKey: ["transcripts", location, filter, orderBy],
-    queryFn: async () => await api.getTranscripts(location, filter, orderBy),
+    queryFn: async () =>
+      await api.getTranscripts(location ?? "", filter, orderBy),
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     placeholderData: keepPreviousData,
+    enabled: !!location,
   });
 };

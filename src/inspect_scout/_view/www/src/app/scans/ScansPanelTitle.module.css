@@ -3,7 +3,6 @@
   grid-template-columns: max-content max-content;
   justify-content: space-between;
   column-gap: 1em;
-  border-top: solid 1px var(--bs-border-color);
   padding: 0.5em;
 }
 

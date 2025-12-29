@@ -12,6 +12,9 @@ interface FooterProps {
   itemCount: number;
   filteredCount?: number;
 
+  // left side controls (replaced by progress when there is progress)
+  left?: ReactNode;
+
   // Progress
   progressText?: string;
   progressBar?: ReactNode;
@@ -36,6 +39,7 @@ export const Footer: FC<FooterProps> = ({
   itemCount,
   paginated,
   filteredCount,
+  left,
   progressText,
   progressBar,
   page,
@@ -76,7 +80,9 @@ export const Footer: FC<FooterProps> = ({
               {progressText}...
             </div>
           </div>
-        ) : undefined}
+        ) : (
+          left
+        )}
       </div>
       <div className={clsx(styles.center)}>
         {paginated && (

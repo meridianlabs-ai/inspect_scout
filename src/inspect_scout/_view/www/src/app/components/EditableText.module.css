@@ -34,6 +34,10 @@
   background-color: var(--bs-body-bg);
 }
 
+.text.readOnly {
+  background-color: var(--bs-light);
+}
+
 .text:hover {
   background-color: var(--bs-secondary-bg);
 }

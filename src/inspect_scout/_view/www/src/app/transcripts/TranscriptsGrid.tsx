@@ -23,6 +23,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types";
@@ -31,11 +32,14 @@ import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
 import { ApplicationIcons } from "../appearance/icons";
 
+import { ColumnFilterControl, FilterType } from "./ColumnFilterControl";
 import styles from "./TranscriptsGrid.module.css";
 
 type TranscriptColumn = ColumnDef<TranscriptInfo> & {
   meta?: {
     align?: "left" | "center" | "right";
+    filterable?: boolean;
+    filterType?: FilterType;
   };
 };
 
@@ -44,7 +48,11 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
   accessorKey: K;
   header: string;
   size?: number;
-  meta?: { align?: "left" | "center" | "right" };
+  meta?: {
+    align?: "left" | "center" | "right";
+    filterable?: boolean;
+    filterType?: FilterType;
+  };
   cell?: (value: TranscriptInfo[K]) => React.ReactNode;
 }): TranscriptColumn {
   return {
@@ -89,10 +97,24 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const rowSelection = useStore(
     (state) => state.transcriptsTableState.rowSelection
   );
+  const columnFilters =
+    useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
   const focusedRowId = useStore(
     (state) => state.transcriptsTableState.focusedRowId
   );
   const setTableState = useStore((state) => state.setTranscriptsTableState);
+  const handleColumnFilterChange = useCallback(
+    (columnId: string, condition: SimpleCondition | null) => {
+      setTableState((prev) => ({
+        ...prev,
+        columnFilters: {
+          ...(prev.columnFilters ?? {}),
+          [columnId]: condition,
+        },
+      }));
+    },
+    [setTableState]
+  );
 
   // Column sizing
   const handleColumnSizingChange: OnChangeFn<ColumnSizingState> = useCallback(
@@ -232,6 +254,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         size: 68,
         meta: {
           align: "center",
+          filterable: true,
+          filterType: "boolean",
         },
         cell: (value) => {
           // value is now strongly typed as boolean | undefined
@@ -251,26 +275,46 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         accessorKey: "task_set",
         header: "Task Set",
         size: 150,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
       }),
       createColumn({
         accessorKey: "task_id",
         header: "Task ID",
         size: 150,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
       }),
       createColumn({
         accessorKey: "task_repeat",
         header: "Repeat",
         size: 80,
+        meta: {
+          filterable: true,
+          filterType: "number",
+        },
       }),
       createColumn({
         accessorKey: "model",
         header: "Model",
         size: 200,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
       }),
       createColumn({
         accessorKey: "score",
         header: "Score",
         size: 100,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
         cell: (value) => {
           if (!value) {
             return "-";
@@ -292,6 +336,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         accessorKey: "total_tokens",
         header: "Total Tokens",
         size: 120,
+        meta: {
+          filterable: true,
+          filterType: "number",
+        },
         cell: (value) => {
           if (value === undefined) {
             return "-";
@@ -303,6 +351,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         accessorKey: "total_time",
         header: "Total Time",
         size: 120,
+        meta: {
+          filterable: true,
+          filterType: "number",
+        },
         cell: (value) => {
           if (value === undefined) {
             return "-";
@@ -601,8 +653,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className={styles.headerRow}>
               {headerGroup.headers.map((header) => {
-                const align = (header.column.columnDef as TranscriptColumn).meta
-                  ?.align;
+                const columnMeta = (header.column.columnDef as TranscriptColumn)
+                  .meta;
+                const align = columnMeta?.align;
+                const filterType = columnMeta?.filterType;
                 return (
                   <th
                     key={header.id}
@@ -629,14 +683,19 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                       onDragStart={(e) => handleDragStart(e, header.column.id)}
                       onDragEnd={handleDragEnd}
                       onClick={header.column.getToggleSortingHandler()}
-                      style={{ cursor: "pointer" }}
+                      style={{
+                        cursor: "pointer",
+                        maxWidth: `calc(${header.getSize()}px - 32px)`,
+                      }}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      <span className={styles.headerText}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </span>
                       {{
                         asc: (
                           <i
@@ -656,6 +715,16 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                         ),
                       }[header.column.getIsSorted() as string] ?? null}
                     </div>
+                    {columnMeta?.filterable && filterType ? (
+                      <ColumnFilterControl
+                        columnId={header.column.id}
+                        filterType={filterType}
+                        condition={columnFilters[header.column.id] ?? null}
+                        onChange={(condition) =>
+                          handleColumnFilterChange(header.column.id, condition)
+                        }
+                      />
+                    ) : null}
                     <div
                       className={clsx(
                         styles.resizer,
@@ -672,46 +741,52 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           ))}
         </thead>
         <tbody className={styles.tbody} style={{ height: `${totalSize}px` }}>
-          {virtualItems.map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            if (!row) return null;
+          {virtualItems.length > 0 ? (
+            virtualItems.map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              if (!row) return null;
 
-            const isSelected = row.getIsSelected();
-            const isFocused = focusedRowId === row.id;
+              const isSelected = row.getIsSelected();
+              const isFocused = focusedRowId === row.id;
 
-            return (
-              <tr
-                key={row.id}
-                className={clsx(
-                  styles.row,
-                  isSelected && styles.rowSelected,
-                  isFocused && styles.rowFocused
-                )}
-                style={{ transform: `translateY(${virtualRow.start}px)` }}
-                onClick={(e) => handleRowClick(e, row.id, virtualRow.index)}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const align = (cell.column.columnDef as TranscriptColumn).meta
-                    ?.align;
-                  return (
-                    <td
-                      key={cell.id}
-                      className={clsx(
-                        styles.cell,
-                        align === "center" && styles.cellCenter
-                      )}
-                      style={{ width: cell.column.getSize() }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
+              return (
+                <tr
+                  key={row.id}
+                  className={clsx(
+                    styles.row,
+                    isSelected && styles.rowSelected,
+                    isFocused && styles.rowFocused
+                  )}
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                  onClick={(e) => handleRowClick(e, row.id, virtualRow.index)}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const align = (cell.column.columnDef as TranscriptColumn)
+                      .meta?.align;
+                    return (
+                      <td
+                        key={cell.id}
+                        className={clsx(
+                          styles.cell,
+                          align === "center" && styles.cellCenter
+                        )}
+                        style={{ width: cell.column.getSize() }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })
+          ) : (
+            <tr className={clsx(styles.noMatching, "text-size-smaller")}>
+              <td>No matching transcripts</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

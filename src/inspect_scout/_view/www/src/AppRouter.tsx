@@ -22,7 +22,7 @@ import {
   getRelativePathFromParams,
   parseScanResultPath,
   kTranscriptsRouteUrlPattern,
-  kTranscriptDetailRouteUrlPattern,
+  kTranscriptDetailRoute,
 } from "./router/url";
 import { useStore } from "./state/store";
 import { getEmbeddedScanState } from "./utils/embeddedState";
@@ -191,7 +191,7 @@ export const createAppRouter = (config: AppRouterConfig) => {
             element: <TranscriptsPanel />,
           },
           {
-            path: kTranscriptDetailRouteUrlPattern,
+            path: kTranscriptDetailRoute,
             element: <TranscriptPanel />,
           },
         ],

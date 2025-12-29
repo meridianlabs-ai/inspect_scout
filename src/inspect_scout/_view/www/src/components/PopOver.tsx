@@ -20,6 +20,7 @@ interface PopOverProps {
   offset?: [number, number];
   usePortal?: boolean;
   hoverDelay?: number;
+  closeOnMouseLeave?: boolean;
 
   className?: string | string[];
   arrowClassName?: string | string[];
@@ -44,6 +45,7 @@ export const PopOver: React.FC<PopOverProps> = ({
   arrowClassName = "",
   usePortal = true,
   hoverDelay = 250,
+  closeOnMouseLeave = true,
   styles = {},
 }) => {
   const popperRef = useRef<HTMLDivElement | null>(null);
@@ -285,6 +287,9 @@ export const PopOver: React.FC<PopOverProps> = ({
       ) {
         return;
       }
+      if (!closeOnMouseLeave) {
+        return;
+      }
       isOverPopoverRef.current = false;
       // Dismiss when leaving the popover
       setShouldShowPopover(false);
@@ -317,7 +322,7 @@ export const PopOver: React.FC<PopOverProps> = ({
         );
       }
     };
-  }, [isOpen, shouldShowPopover, state?.placement]);
+  }, [isOpen, shouldShowPopover, state?.placement, closeOnMouseLeave]);
 
   // Define arrow data-* attribute based on placement
   const getArrowDataPlacement = () => {
@@ -335,7 +340,7 @@ export const PopOver: React.FC<PopOverProps> = ({
   const defaultPopperStyles: CSSProperties = {
     backgroundColor: "var(--bs-body-bg)",
     padding: "12px",
-    borderRadius: "4px",
+    borderRadius: "var(--bs-border-radius)",
     boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
     border: "solid 1px var(--bs-border-color)",
     zIndex: 1200,

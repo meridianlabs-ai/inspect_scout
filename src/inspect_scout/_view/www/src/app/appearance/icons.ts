@@ -132,6 +132,7 @@ export const ApplicationIcons = {
   sample: "bi bi-database",
   samples: "bi bi-file-spreadsheet",
   sandbox: "bi bi-box-seam",
+  scanner: "bi bi-radar",
   scorer: "bi bi-calculator",
   search: "bi bi-search",
   sidebar: "bi bi-list",

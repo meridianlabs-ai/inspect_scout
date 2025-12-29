@@ -1,6 +1,6 @@
 import { useEffect, useState, RefObject } from "react";
 
-interface BreadcrumbSegment {
+export interface BreadcrumbSegment {
   text: string;
   url?: string;
 }

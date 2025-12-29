@@ -3,7 +3,7 @@ import { FC } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
-import { NoContentsPanel } from "../../components/NoContentsPanel";
+import { Condition, SimpleCondition } from "../../query/types";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types";
 import { Footer } from "../components/Footer";
@@ -14,35 +14,46 @@ import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
+  // Resolve the active transcripts directory
   const {
     data: transcriptDir,
     error: errorDir,
     loading: loadingDir,
   } = useServerTranscriptsDir();
-  const transcriptsDatabasePath = useStore(
-    (state) => state.transcriptsDatabasePath
+  const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
+  const setUserTranscriptsDir = useStore(
+    (state) => state.setUserTranscriptsDir
   );
-  const setTranscriptsDatabasePath = useStore(
-    (state) => state.setTranscriptsDatabasePath
+  const resolvedTranscriptDir = userTranscriptsDir || transcriptDir;
+
+  // Filtering
+  const columnFilters =
+    useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
+  const filterConditions = Object.values(columnFilters).filter(
+    (filter): filter is SimpleCondition => Boolean(filter)
+  );
+
+  // Sorting
+  const condition = filterConditions.reduce<Condition | undefined>(
+    (acc, condition) => (acc ? acc.and(condition) : condition),
+    undefined
   );
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
-  const resolvedTranscriptDir = transcriptsDatabasePath || transcriptDir;
 
   const {
     data: transcriptsResponse,
     error,
     loading,
-  } = useServerTranscripts(resolvedTranscriptDir, undefined, sorting);
+  } = useServerTranscripts(resolvedTranscriptDir, condition, sorting);
   const transcripts = (transcriptsResponse?.items ?? []) as TranscriptInfo[];
   const hasError = errorDir || error;
-  const hasTranscripts = transcripts && transcripts.length > 0;
 
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
         bordered={true}
-        transcriptDir={resolvedTranscriptDir}
-        setTranscriptDir={setTranscriptsDatabasePath}
+        transcriptsDir={resolvedTranscriptDir}
+        setTranscriptsDir={setUserTranscriptsDir}
       />
       <LoadingBar loading={loading || loadingDir} />
       {hasError && (
@@ -53,15 +64,10 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!hasError && hasTranscripts && (
-        <TranscriptsGrid transcripts={transcripts} />
-      )}
-      {!hasError && !hasTranscripts ? (
-        <NoContentsPanel text="No transcripts found." />
-      ) : null}
+      {!hasError && <TranscriptsGrid transcripts={transcripts} />}
       <Footer
-        itemCount={transcripts?.length || 0}
         id={"transcripts-footer"}
+        itemCount={transcripts?.length || 0}
         paginated={false}
       />
     </div>

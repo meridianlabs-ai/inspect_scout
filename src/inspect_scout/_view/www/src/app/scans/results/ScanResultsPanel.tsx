@@ -17,6 +17,7 @@ export const ScanResultsPanel: FC<{ selectedScan: Status }> = ({
     (state) => state.visibleScannerResultsCount
   );
   const selectedScanner = useSelectedScanner();
+
   const {
     data: columnTable,
     loading: isLoading,

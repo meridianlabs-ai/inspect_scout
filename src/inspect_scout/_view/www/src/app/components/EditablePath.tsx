@@ -14,6 +14,8 @@ interface EditablePathProps {
   icon?: string;
   placeholder?: string;
 
+  editable?: boolean;
+
   className?: string;
 }
 
@@ -24,6 +26,7 @@ export const EditablePath: FC<EditablePathProps> = ({
   label,
   icon,
   placeholder,
+  editable = true,
   className,
 }) => {
   // Format a local path without the file:// prefix
@@ -47,6 +50,7 @@ export const EditablePath: FC<EditablePathProps> = ({
       icon={icon}
       placeholder={placeholder}
       className={className}
+      editable={editable}
     />
   );
 };

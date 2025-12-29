@@ -4,7 +4,8 @@ export const kScansWithPathRouteUrlPattern = "/scans/*";
 export const kScanRouteUrlPattern = "/scan/*";
 export const kScanResultRouteUrlPattern = "/scan/*/*";
 export const kTranscriptsRouteUrlPattern = "/transcripts";
-export const kTranscriptDetailRouteUrlPattern = "/transcripts/:transcriptId";
+export const kTranscriptDetailRoute = "/transcripts/:transcriptId";
+export const kTranscriptDetailRouteUrlPattern = /\/transcripts\/[^\s/]+$/;
 
 // Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
 export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
@@ -46,8 +47,21 @@ export const scanResultRoute = (
     : route;
 };
 
-export const transcriptRoute = (transcriptId: string) => {
-  return `/transcripts/${transcriptId}`;
+export const transcriptsRoute = (searchParams?: URLSearchParams) => {
+  const route = `/transcripts`;
+  return searchParams?.toString()
+    ? `${route}?${searchParams.toString()}`
+    : route;
+};
+
+export const transcriptRoute = (
+  transcriptId: string,
+  searchParams?: URLSearchParams
+) => {
+  const route = `/transcripts/${transcriptId}`;
+  return searchParams?.toString()
+    ? `${route}?${searchParams.toString()}`
+    : route;
 };
 
 /**
@@ -60,6 +74,10 @@ export const transcriptRoute = (transcriptId: string) => {
 export const isValidScanPath = (path: string): boolean => {
   path = path.startsWith("/") ? path : "/" + path;
   return kScanIdPattern.test(path);
+};
+
+export const isValidTranscriptPath = (path: string): boolean => {
+  return kTranscriptDetailRouteUrlPattern.test(path);
 };
 
 /**

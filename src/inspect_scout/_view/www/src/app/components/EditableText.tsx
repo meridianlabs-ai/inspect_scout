@@ -16,6 +16,8 @@ interface EditableTextProps {
   icon?: string;
   placeholder?: string;
 
+  editable?: boolean;
+
   className?: string;
 }
 
@@ -27,6 +29,7 @@ export const EditableText: FC<EditableTextProps> = ({
   label,
   icon,
   placeholder,
+  editable = true,
   className,
 }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
@@ -201,8 +204,12 @@ export const EditableText: FC<EditableTextProps> = ({
         </div>
         <span
           ref={spanRef}
-          contentEditable="true"
-          className={`${styles.text} ${!value ? styles.placeholder : ""}`}
+          contentEditable={editable}
+          className={clsx(
+            styles.text,
+            !value ? styles.placeholder : "",
+            !editable ? styles.readOnly : ""
+          )}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}

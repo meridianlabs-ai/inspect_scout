@@ -98,13 +98,13 @@ export const useServerScanDataframeInput = (
   });
 };
 
-export const useServerTranscriptsDirSync = (): string => {
-  const { data } = useServerTranscriptsDir();
+export const useServerTranscriptsDir = (): string => {
+  const { data } = useServerTranscriptsDirAsync();
   if (!data) throw new Error(`Must find transcripts dir`);
   return data;
 };
 
-export const useServerTranscriptsDir = (): AsyncData<string> => {
+export const useServerTranscriptsDirAsync = (): AsyncData<string> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
@@ -116,7 +116,7 @@ export const useServerTranscriptsDir = (): AsyncData<string> => {
 };
 
 export const useServerTranscripts = (
-  location?: string,
+  location: string,
   filter?: Condition,
   sorting?: SortingState
 ): AsyncData<TranscriptsResponse> => {
@@ -129,12 +129,10 @@ export const useServerTranscripts = (
 
   return useAsyncDataFromQuery({
     queryKey: ["transcripts", location, filter, orderBy],
-    queryFn: async () =>
-      await api.getTranscripts(location ?? "", filter, orderBy),
+    queryFn: async () => await api.getTranscripts(location, filter, orderBy),
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     placeholderData: keepPreviousData,
-    enabled: !!location,
   });
 };
 

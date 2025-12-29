@@ -5,16 +5,13 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import {
-  useServerTranscript,
-  useServerTranscriptsDirSync,
-} from "../server/hooks";
+import { useServerTranscript, useServerTranscriptsDir } from "../server/hooks";
 
 import styles from "./TranscriptPanel.module.css";
 
 export const TranscriptPanel: FC = () => {
   const { transcriptId } = useRequiredParams("transcriptId");
-  const transcriptsDir = useServerTranscriptsDirSync();
+  const transcriptsDir = useServerTranscriptsDir();
   const { loading, data: transcript } = useServerTranscript(
     transcriptsDir,
     transcriptId

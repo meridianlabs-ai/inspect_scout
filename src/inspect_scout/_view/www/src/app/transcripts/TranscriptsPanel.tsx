@@ -15,11 +15,7 @@ import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
   // Resolve the active transcripts directory
-  const {
-    data: transcriptDir,
-    error: errorDir,
-    loading: loadingDir,
-  } = useServerTranscriptsDir();
+  const transcriptDir = useServerTranscriptsDir();
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
@@ -46,7 +42,6 @@ export const TranscriptsPanel: FC = () => {
     loading,
   } = useServerTranscripts(resolvedTranscriptDir, condition, sorting);
   const transcripts = (transcriptsResponse?.items ?? []) as TranscriptInfo[];
-  const hasError = errorDir || error;
 
   return (
     <div className={clsx(styles.container)}>
@@ -55,16 +50,16 @@ export const TranscriptsPanel: FC = () => {
         transcriptsDir={resolvedTranscriptDir}
         setTranscriptsDir={setUserTranscriptsDir}
       />
-      <LoadingBar loading={loading || loadingDir} />
-      {hasError && (
+      <LoadingBar loading={loading} />
+      {error && (
         <ErrorPanel
           title="Error Loading Transcript"
           error={{
-            message: errorDir?.message || error?.message || "Unknown Error",
+            message: error.message || "Unknown Error",
           }}
         />
       )}
-      {!hasError && <TranscriptsGrid transcripts={transcripts} />}
+      {!error && <TranscriptsGrid transcripts={transcripts} />}
       <Footer
         id={"transcripts-footer"}
         itemCount={transcripts?.length || 0}

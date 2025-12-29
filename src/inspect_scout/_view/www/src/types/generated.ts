@@ -104,26 +104,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/transcripts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * List transcripts
-         * @description Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
-         */
-        post: operations["transcripts_transcripts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/transcripts-dir": {
         parameters: {
             query?: never;
@@ -138,6 +118,26 @@ export interface paths {
         get: operations["transcripts_dir_transcripts_dir_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/transcripts/{dir}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List transcripts
+         * @description Returns transcripts from specified directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
+         */
+        post: operations["transcripts_transcripts__dir__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -700,8 +700,6 @@ export interface components {
         };
         /** TranscriptsRequest */
         TranscriptsRequest: {
-            /** Dir */
-            dir?: string | null;
             filter?: components["schemas"]["Condition-Input"] | null;
             /** Order By */
             order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
@@ -890,30 +888,6 @@ export interface operations {
             };
         };
     };
-    transcripts_transcripts_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["TranscriptsRequest"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TranscriptsResponse"];
-                };
-            };
-        };
-    };
     transcripts_dir_transcripts_dir_get: {
         parameters: {
             query?: never;
@@ -930,6 +904,33 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+        };
+    };
+    transcripts_transcripts__dir__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Transcripts directory (base64url-encoded) */
+                dir: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TranscriptsRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranscriptsResponse"];
                 };
             };
         };

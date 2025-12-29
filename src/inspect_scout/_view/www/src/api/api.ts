@@ -10,7 +10,7 @@ export type ClientStorage = StateStorage;
 export interface ScanApi {
   getTranscriptsDir(): Promise<string>;
   getTranscripts(
-    transcriptsDir?: string,
+    transcriptsDir: string,
     filter?: Condition,
     orderBy?: OrderByModel | OrderByModel[]
   ): Promise<TranscriptsResponse>;

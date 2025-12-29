@@ -1973,17 +1973,6 @@
       },
       "TranscriptsRequest": {
         "properties": {
-          "dir": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dir"
-          },
           "filter": {
             "anyOf": [
               {
@@ -2382,10 +2371,42 @@
         "summary": "Get scanner input for a specific transcript"
       }
     },
-    "/transcripts": {
+    "/transcripts-dir": {
+      "get": {
+        "description": "Returns the default directory path where transcripts are stored.",
+        "operationId": "transcripts_dir_transcripts_dir_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get default transcripts directory"
+      }
+    },
+    "/transcripts/{dir}": {
       "post": {
-        "description": "Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
-        "operationId": "transcripts_transcripts_post",
+        "description": "Returns transcripts from specified directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
+        "operationId": "transcripts_transcripts__dir__post",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2416,25 +2437,6 @@
           }
         },
         "summary": "List transcripts"
-      }
-    },
-    "/transcripts-dir": {
-      "get": {
-        "description": "Returns the default directory path where transcripts are stored.",
-        "operationId": "transcripts_dir_transcripts_dir_get",
-        "responses": {
-          "200": {
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get default transcripts directory"
       }
     }
   }

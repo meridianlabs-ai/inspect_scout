@@ -151,19 +151,18 @@ def v2_api_app(
         return _ensure_not_none(results_dir, "results_dir is not configured")
 
     @app.post(
-        "/transcripts",
+        "/transcripts/{dir}",
         summary="List transcripts",
-        description="Returns transcripts from specified directory (defaults to system transcripts dir). "
+        description="Returns transcripts from specified directory. "
         "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
         "Optional pagination for cursor-based pagination.",
     )
     async def transcripts(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
         body: TranscriptsRequest | None = None,
     ) -> TranscriptsResponse:
         """Filter transcript metadata from the transcripts directory."""
-        transcripts_dir = (
-            body.dir if body else None
-        ) or await default_transcripts_dir()
+        transcripts_dir = decode_base64url(dir)
 
         try:
             transcripts_query = transcripts_from(transcripts_dir)

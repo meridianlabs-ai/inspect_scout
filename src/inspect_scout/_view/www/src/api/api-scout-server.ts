@@ -25,18 +25,17 @@ export const apiScoutServer = (
       return (await requestApi.fetchString("GET", `/transcripts-dir`)).raw;
     },
     getTranscripts: async (
-      transcriptsDir?: string,
+      transcriptsDir: string,
       filter?: Condition,
       orderBy?: OrderByModel | OrderByModel[]
     ): Promise<TranscriptsResponse> => {
       const result = await requestApi.fetchString(
         "POST",
-        `/transcripts`,
+        `/transcripts/${base64url(transcriptsDir)}`,
         {},
         JSON.stringify({
           filter: filter ?? null,
           order_by: orderBy ?? null,
-          dir: transcriptsDir ?? null,
         })
       );
 

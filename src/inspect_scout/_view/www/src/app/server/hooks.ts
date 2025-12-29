@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ColumnTable } from "arquero";
 
+import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
-import { TranscriptInfo } from "../../types";
 import { Status } from "../../types";
+import { TranscriptsResponse } from "../../types/api-types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
@@ -103,13 +104,15 @@ export const useServerTranscriptsDir = (): AsyncData<string> => {
 };
 
 export const useServerTranscripts = (
-  location: string | undefined
-): AsyncData<TranscriptInfo[]> => {
+  location?: string,
+  filter?: Condition,
+  orderBy?: OrderByModel | OrderByModel[]
+): AsyncData<TranscriptsResponse> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["transcripts", location],
-    queryFn: async () => await api.getTranscripts(location),
+    queryKey: ["transcripts", location, filter, orderBy],
+    queryFn: async () => await api.getTranscripts(location, filter, orderBy),
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
   });

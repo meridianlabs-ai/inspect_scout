@@ -5,6 +5,7 @@ import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
+import { TranscriptInfo } from "../../types";
 import { basename, dirname } from "../../utils/path";
 import { BreadCrumbs } from "../components/BreadCrumbs";
 import { Footer } from "../components/Footer";
@@ -28,10 +29,11 @@ export const TranscriptsPanel: FC = () => {
   const resolvedTranscriptDir = userTranscriptsDir || transcriptDir;
 
   const {
-    data: transcripts,
+    data: transcriptsResponse,
     error,
     loading,
   } = useServerTranscripts(resolvedTranscriptDir);
+  const transcripts = (transcriptsResponse?.items ?? []) as TranscriptInfo[];
   const hasError = errorDir || error;
   const hasTranscripts = transcripts && transcripts.length > 0;
 

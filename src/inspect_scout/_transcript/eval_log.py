@@ -11,6 +11,7 @@ from typing import (
     Any,
     AsyncIterator,
     Final,
+    Literal,
     Sequence,
     TypeAlias,
     cast,
@@ -240,7 +241,7 @@ class EvalLogTranscriptsDB:
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, str]] | None = None,
+        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
 

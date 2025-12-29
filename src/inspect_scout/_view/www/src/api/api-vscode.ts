@@ -1,7 +1,9 @@
 import JSON5 from "json5";
 
 import { Input, InputType } from "../app/types";
+import { Condition } from "../query/types";
 import { Status } from "../types";
+import { TranscriptsResponse } from "../types/api-types";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
@@ -50,7 +52,10 @@ export const apiVscode = (
       throw new Error("Not Yet Implemented");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
-    getTranscripts: async (_transcriptsDir?: string): Promise<unknown[]> => {
+    getTranscripts: async (
+      _transcriptsDir?: string,
+      _filter?: Condition
+    ): Promise<TranscriptsResponse> => {
       throw new Error("Not Yet Implemented");
     },
     getScansDir: async (): Promise<string> => {

@@ -75,7 +75,7 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
         scansDir ? (
           <EditablePath
             path={scansDir}
-            label="Scans Dir"
+            label="Scans"
             icon={ApplicationIcons.scanner}
             onPathChanged={setScansDir}
             placeholder="Select Scans Folder"

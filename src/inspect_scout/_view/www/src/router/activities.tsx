@@ -24,9 +24,9 @@ export const activities: ActivityConfig[] = [
     element: <TranscriptsPanel />,
   },
   {
-    id: "results",
-    label: "Results",
-    icon: ApplicationIcons.metrics,
+    id: "scans",
+    label: "Scans",
+    icon: ApplicationIcons.scanner,
     route: "/scans",
     routePatterns: ["/scans", "/scan"],
     description: "View results",

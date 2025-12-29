@@ -1,18 +1,10 @@
 import { clsx } from "clsx";
 import { FC, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { LoadingBar } from "../../components/LoadingBar";
-import {
-  scansRoute,
-  isValidScanPath,
-  scanRoute,
-  getRelativePathFromParams,
-} from "../../router/url";
 import { useStore } from "../../state/store";
-import { BreadCrumbs } from "../components/BreadCrumbs";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useServerScansDir, useServerScans } from "../server/hooks";
@@ -34,21 +26,6 @@ export const ScanJobsPanel: FC = () => {
     clearScansState();
   }, []);
 
-  const params = useParams<{ "*": string }>();
-  const currentPath = getRelativePathFromParams(params);
-  const [searchParams] = useSearchParams();
-
-  const getRouteForSegment = (path: string): string => {
-    if (!path) {
-      return scansRoute();
-    }
-    // Check if this segment path contains a valid scan_id pattern
-    // If so, use scanRoute instead of scansRoute
-    return isValidScanPath(path)
-      ? scanRoute(path, searchParams)
-      : scansRoute(path);
-  };
-
   return (
     <div className={clsx(styles.container)}>
       <ScansNavbar
@@ -69,14 +46,6 @@ export const ScanJobsPanel: FC = () => {
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}
           paginated={false}
-          left={
-            <BreadCrumbs
-              baseDir={resultsDir}
-              relativePath={currentPath}
-              getRouteForSegment={getRouteForSegment}
-              className={"text-size-smallest"}
-            />
-          }
         />
       </ExtendedFindProvider>
     </div>

@@ -17,6 +17,7 @@ import {
   ScanResultSummary,
   SortColumn,
 } from "../app/types";
+import type { SimpleCondition } from "../query/types";
 import { TranscriptInfo } from "../types";
 import { debounce } from "../utils/sync";
 
@@ -27,6 +28,7 @@ interface TranscriptsTableState {
   sorting: SortingState;
   rowSelection: RowSelectionState;
   focusedRowId: string | null;
+  columnFilters: Record<string, SimpleCondition | null>;
 }
 
 interface StoreState {
@@ -231,6 +233,7 @@ export const createStore = (api: ScanApi) =>
             sorting: [],
             rowSelection: {},
             focusedRowId: null,
+            columnFilters: {},
           },
 
           // Actions

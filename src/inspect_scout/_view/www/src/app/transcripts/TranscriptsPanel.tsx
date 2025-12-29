@@ -3,11 +3,8 @@ import { FC } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
-import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types";
-import { basename, dirname } from "../../utils/path";
-import { BreadCrumbs } from "../components/BreadCrumbs";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useServerTranscripts, useServerTranscriptsDir } from "../server/hooks";
@@ -28,17 +25,24 @@ export const TranscriptsPanel: FC = () => {
   );
   const resolvedTranscriptDir = userTranscriptsDir || transcriptDir;
 
+  // Filtering, sorting of transcripts
+  const columnFilters =
+    useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
+  const filterConditions = Object.values(columnFilters).filter(
+    (filter): filter is SimpleCondition => Boolean(filter)
+  );
+  const condition = filterConditions.reduce<Condition | undefined>(
+    (acc, condition) => (acc ? acc.and(condition) : condition),
+    undefined
+  );
+
   const {
     data: transcriptsResponse,
     error,
     loading,
-  } = useServerTranscripts(resolvedTranscriptDir);
+  } = useServerTranscripts(resolvedTranscriptDir, condition);
   const transcripts = (transcriptsResponse?.items ?? []) as TranscriptInfo[];
   const hasError = errorDir || error;
-  const hasTranscripts = transcripts && transcripts.length > 0;
-
-  const baseDir = dirname(resolvedTranscriptDir || "");
-  const relativePath = basename(resolvedTranscriptDir || "");
 
   return (
     <div className={clsx(styles.container)}>
@@ -56,22 +60,10 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!hasError && hasTranscripts && (
-        <TranscriptsGrid transcripts={transcripts} />
-      )}
-      {!hasError && !hasTranscripts ? (
-        <NoContentsPanel text="No transcripts found." />
-      ) : null}
+      {!hasError && <TranscriptsGrid transcripts={transcripts} />}
       <Footer
         id={"transcripts-footer"}
         itemCount={transcripts?.length || 0}
-        left={
-          <BreadCrumbs
-            baseDir={baseDir}
-            relativePath={relativePath}
-            className="text-size-smallest"
-          />
-        }
         paginated={false}
       />
     </div>

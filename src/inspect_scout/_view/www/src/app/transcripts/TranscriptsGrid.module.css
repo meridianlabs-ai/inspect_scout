@@ -45,6 +45,12 @@
   user-select: none;
 }
 
+.headerText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .headerContent:active {
   cursor: grabbing;
 }
@@ -163,4 +169,11 @@
 
 .red {
   color: var(--bs-danger);
+}
+
+.noMatching {
+  grid-column: 1 / -1;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 3rem;
 }

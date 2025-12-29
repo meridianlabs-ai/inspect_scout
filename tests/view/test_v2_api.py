@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -24,6 +25,12 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+
+
+def _base64url(s: str) -> str:
+    """Encode string as base64url (URL-safe base64 without padding)."""
+    return base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
+
 
 if TYPE_CHECKING:
     from inspect_scout._transcript.types import Transcript
@@ -480,7 +487,7 @@ class TestTranscriptsPagination:
         client = TestClient(v2_api_app(results_dir=str(tmp_path)))
 
         # Make request (empty dir)
-        response = client.post("/transcripts", json={})
+        response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -496,9 +503,9 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        # Make request without pagination, explicitly pass dir
+        # Make request without pagination
         client = TestClient(v2_api_app(results_dir=str(tmp_path)))
-        response = client.post("/transcripts", json={"dir": str(tmp_path)})
+        response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -515,9 +522,8 @@ class TestTranscriptsPagination:
         # Request first 3 items
         client = TestClient(v2_api_app(results_dir=str(tmp_path)))
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
         )
@@ -543,9 +549,8 @@ class TestTranscriptsPagination:
 
         # Get first page
         response1 = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
         )
@@ -554,9 +559,8 @@ class TestTranscriptsPagination:
 
         # Get second page using cursor
         response2 = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 3, "cursor": cursor, "direction": "forward"},
             },
         )
@@ -580,9 +584,8 @@ class TestTranscriptsPagination:
 
         # Get last 3 items (backward from end)
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 3, "cursor": None, "direction": "backward"},
             },
         )
@@ -601,7 +604,7 @@ class TestTranscriptsPagination:
         client = TestClient(v2_api_app(results_dir=str(tmp_path)))
 
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={"pagination": {"limit": 10, "cursor": None, "direction": "forward"}},
         )
 
@@ -621,9 +624,8 @@ class TestTranscriptsPagination:
 
         # Sort by model ASC, paginate
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "order_by": {"column": "model", "direction": "ASC"},
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
@@ -649,9 +651,8 @@ class TestTranscriptsPagination:
 
         # Sort by model ASC, then score DESC
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "order_by": [
                     {"column": "model", "direction": "ASC"},
                     {"column": "score", "direction": "DESC"},
@@ -681,9 +682,8 @@ class TestTranscriptsPagination:
 
         # Sort explicitly by transcript_id
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "order_by": {"column": "transcript_id", "direction": "DESC"},
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
@@ -710,9 +710,8 @@ class TestTranscriptsPagination:
 
         # Paginate without order_by
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
         )
@@ -774,9 +773,8 @@ class TestTranscriptsPagination:
 
         # Sort by score (None values treated as empty string)
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "order_by": {"column": "score", "direction": "ASC"},
                 "pagination": {"limit": 2, "cursor": None, "direction": "forward"},
             },
@@ -801,9 +799,8 @@ class TestTranscriptsPagination:
 
         # Get first page of 3
         response1 = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
         )
@@ -812,9 +809,8 @@ class TestTranscriptsPagination:
 
         # Get second (last) page - should have 2 items and no next_cursor
         response2 = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 3, "cursor": cursor, "direction": "forward"},
             },
         )
@@ -837,9 +833,8 @@ class TestTranscriptsPagination:
 
         # Request 100 items when only 5 exist
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {"limit": 100, "cursor": None, "direction": "forward"},
             },
         )
@@ -862,9 +857,8 @@ class TestTranscriptsPagination:
         fake_cursor = {"transcript_id": "t005", "extra_key": "ignored"}
 
         response = client.post(
-            "/transcripts",
+            f"/transcripts/{_base64url(str(tmp_path))}",
             json={
-                "dir": str(tmp_path),
                 "pagination": {
                     "limit": 3,
                     "cursor": fake_cursor,

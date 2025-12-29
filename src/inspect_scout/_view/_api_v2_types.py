@@ -78,5 +78,4 @@ RestScanStatus: TypeAlias = RecorderStatus
 class TranscriptsRequest:
     filter: Condition | None = None
     order_by: OrderBy | list[OrderBy] | None = None
-    dir: str | None = None
     pagination: Pagination | None = None

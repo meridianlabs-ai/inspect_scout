@@ -58,6 +58,10 @@ export const apiVscode = (
     ): Promise<TranscriptsResponse> => {
       throw new Error("Not Yet Implemented");
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getTranscript: async (): Promise<never> => {
+      throw new Error("Not Yet Implemented");
+    },
     getScansDir: async (): Promise<string> => {
       const data = await fetchScansData();
       return data.results_dir;

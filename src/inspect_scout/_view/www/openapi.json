@@ -1,6 +1,131 @@
 {
   "components": {
     "schemas": {
+      "ApprovalEvent": {
+        "description": "Tool approval.",
+        "properties": {
+          "approver": {
+            "title": "Approver",
+            "type": "string"
+          },
+          "call": {
+            "$ref": "#/components/schemas/ToolCall"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "modify",
+              "reject",
+              "escalate",
+              "terminate"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "event": {
+            "const": "approval",
+            "default": "approval",
+            "title": "Event",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "modified": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "message",
+          "call",
+          "approver",
+          "decision"
+        ],
+        "title": "ApprovalEvent",
+        "type": "object"
+      },
       "BatchConfig": {
         "description": "Batch processing configuration.",
         "properties": {
@@ -103,6 +228,485 @@
           }
         },
         "title": "CachePolicy",
+        "type": "object"
+      },
+      "ChatCompletionChoice": {
+        "description": "Choice generated for completion.",
+        "properties": {
+          "logprobs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Logprobs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "$ref": "#/components/schemas/ChatMessageAssistant"
+          },
+          "stop_reason": {
+            "default": "unknown",
+            "enum": [
+              "stop",
+              "max_tokens",
+              "model_length",
+              "tool_calls",
+              "content_filter",
+              "unknown"
+            ],
+            "title": "Stop Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatCompletionChoice",
+        "type": "object"
+      },
+      "ChatMessageAssistant": {
+        "description": "Assistant chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "role": {
+            "const": "assistant",
+            "default": "assistant",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ToolCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Calls"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ChatMessageAssistant",
+        "type": "object"
+      },
+      "ChatMessageSystem": {
+        "description": "System chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "system",
+            "default": "system",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ChatMessageSystem",
+        "type": "object"
+      },
+      "ChatMessageTool": {
+        "description": "Tool chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "tool",
+            "default": "tool",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ChatMessageTool",
+        "type": "object"
+      },
+      "ChatMessageUser": {
+        "description": "User chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "user",
+            "default": "user",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ChatMessageUser",
         "type": "object"
       },
       "Condition-Input": {
@@ -429,6 +1033,556 @@
         "title": "Condition",
         "type": "object"
       },
+      "ContentAudio": {
+        "description": "Audio content.",
+        "properties": {
+          "audio": {
+            "title": "Audio",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "wav",
+              "mp3"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "const": "audio",
+            "default": "audio",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audio",
+          "format"
+        ],
+        "title": "ContentAudio",
+        "type": "object"
+      },
+      "ContentCitation": {
+        "description": "A generic content citation.",
+        "properties": {
+          "cited_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cited Text"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "type": {
+            "const": "content",
+            "default": "content",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "ContentCitation",
+        "type": "object"
+      },
+      "ContentData": {
+        "description": "Model internal.",
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "const": "data",
+            "default": "data",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ContentData",
+        "type": "object"
+      },
+      "ContentDocument": {
+        "description": "Document content (e.g. a PDF).",
+        "properties": {
+          "document": {
+            "title": "Document",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "type": {
+            "const": "document",
+            "default": "document",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document"
+        ],
+        "title": "ContentDocument",
+        "type": "object"
+      },
+      "ContentImage": {
+        "description": "Image content.",
+        "properties": {
+          "detail": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "low",
+              "high"
+            ],
+            "title": "Detail",
+            "type": "string"
+          },
+          "image": {
+            "title": "Image",
+            "type": "string"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "const": "image",
+            "default": "image",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image"
+        ],
+        "title": "ContentImage",
+        "type": "object"
+      },
+      "ContentReasoning": {
+        "description": "Reasoning content.\n\nSee the specification for [thinking blocks](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#understanding-thinking-blocks) for Claude models.",
+        "properties": {
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning": {
+            "title": "Reasoning",
+            "type": "string"
+          },
+          "redacted": {
+            "default": false,
+            "title": "Redacted",
+            "type": "boolean"
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "type": {
+            "const": "reasoning",
+            "default": "reasoning",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reasoning"
+        ],
+        "title": "ContentReasoning",
+        "type": "object"
+      },
+      "ContentText": {
+        "description": "Text content.",
+        "properties": {
+          "citations": {
+            "anyOf": [
+              {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "content": "#/components/schemas/ContentCitation",
+                      "document": "#/components/schemas/DocumentCitation",
+                      "url": "#/components/schemas/UrlCitation"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DocumentCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlCitation"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citations"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refusal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "default": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ContentText",
+        "type": "object"
+      },
+      "ContentToolUse": {
+        "description": "Server side tool use.",
+        "properties": {
+          "arguments": {
+            "title": "Arguments",
+            "type": "string"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "tool_type": {
+            "enum": [
+              "web_search",
+              "mcp_call",
+              "code_execution"
+            ],
+            "title": "Tool Type",
+            "type": "string"
+          },
+          "type": {
+            "const": "tool_use",
+            "default": "tool_use",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_type",
+          "id",
+          "name",
+          "arguments",
+          "result"
+        ],
+        "title": "ContentToolUse",
+        "type": "object"
+      },
+      "ContentVideo": {
+        "description": "Video content.",
+        "properties": {
+          "format": {
+            "enum": [
+              "mp4",
+              "mpeg",
+              "mov"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "const": "video",
+            "default": "video",
+            "title": "Type",
+            "type": "string"
+          },
+          "video": {
+            "title": "Video",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video",
+          "format"
+        ],
+        "title": "ContentVideo",
+        "type": "object"
+      },
+      "DocumentCitation": {
+        "description": "A citation that refers to a page range in a document.",
+        "properties": {
+          "cited_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cited Text"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "type": {
+            "const": "document",
+            "default": "document",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "DocumentCitation",
+        "type": "object"
+      },
+      "DocumentRange": {
+        "description": "A range specifying a section of a document.",
+        "properties": {
+          "end_index": {
+            "title": "End Index",
+            "type": "integer"
+          },
+          "start_index": {
+            "title": "Start Index",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "block",
+              "page",
+              "char"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "start_index",
+          "end_index"
+        ],
+        "title": "DocumentRange",
+        "type": "object"
+      },
       "Error": {
         "description": "Scan error (runtime error which occurred during scan).",
         "properties": {
@@ -461,6 +1615,102 @@
           "refusal"
         ],
         "title": "Error",
+        "type": "object"
+      },
+      "ErrorEvent": {
+        "description": "Event with sample error.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/EvalError"
+          },
+          "event": {
+            "const": "error",
+            "default": "error",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorEvent",
+        "type": "object"
+      },
+      "EvalError": {
+        "description": "Eval error details.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "traceback": {
+            "title": "Traceback",
+            "type": "string"
+          },
+          "traceback_ansi": {
+            "title": "Traceback Ansi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "traceback",
+          "traceback_ansi"
+        ],
+        "title": "EvalError",
         "type": "object"
       },
       "GenerateConfig": {
@@ -884,6 +2134,167 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InfoEvent": {
+        "description": "Event with custom info/data.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "event": {
+            "const": "info",
+            "default": "info",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "InfoEvent",
+        "type": "object"
+      },
+      "InputEvent": {
+        "description": "Input screen interaction.",
+        "properties": {
+          "event": {
+            "const": "input",
+            "default": "input",
+            "title": "Event",
+            "type": "string"
+          },
+          "input": {
+            "title": "Input",
+            "type": "string"
+          },
+          "input_ansi": {
+            "title": "Input Ansi",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "input",
+          "input_ansi"
+        ],
+        "title": "InputEvent",
+        "type": "object"
+      },
       "JSONSchema": {
         "description": "JSON Schema for type.",
         "properties": {
@@ -1029,7 +2440,183 @@
         "title": "JSONSchema",
         "type": "object"
       },
+      "JsonChange": {
+        "description": "Describes a change to data using JSON Patch format.",
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "op": {
+            "enum": [
+              "remove",
+              "add",
+              "replace",
+              "move",
+              "test",
+              "copy"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "replaced": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "value": {
+            "$ref": "#/components/schemas/JsonValue"
+          }
+        },
+        "required": [
+          "op",
+          "path"
+        ],
+        "title": "JsonChange",
+        "type": "object"
+      },
       "JsonValue": {},
+      "LoggerEvent": {
+        "description": "Log message recorded with Python logger.",
+        "properties": {
+          "event": {
+            "const": "logger",
+            "default": "logger",
+            "title": "Event",
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/LoggingMessage"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "LoggerEvent",
+        "type": "object"
+      },
+      "LoggingMessage": {
+        "description": "Message written to Python log.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "number"
+          },
+          "filename": {
+            "default": "unknown",
+            "title": "Filename",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "debug",
+              "trace",
+              "http",
+              "sandbox",
+              "info",
+              "warning",
+              "error",
+              "critical"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "lineno": {
+            "default": 0,
+            "title": "Lineno",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "module": {
+            "default": "unknown",
+            "title": "Module",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "level",
+          "message",
+          "created"
+        ],
+        "title": "LoggingMessage",
+        "type": "object"
+      },
       "LogicalOperator": {
         "description": "Logical operators for combining conditions.",
         "enum": [
@@ -1039,6 +2626,106 @@
         ],
         "title": "LogicalOperator",
         "type": "string"
+      },
+      "Logprob": {
+        "description": "Log probability for a token.",
+        "properties": {
+          "bytes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "logprob": {
+            "title": "Logprob",
+            "type": "number"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "top_logprobs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TopLogprob"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Logprobs"
+          }
+        },
+        "required": [
+          "token",
+          "logprob"
+        ],
+        "title": "Logprob",
+        "type": "object"
+      },
+      "Logprobs": {
+        "description": "Log probability information for a completion choice.",
+        "properties": {
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/Logprob"
+            },
+            "title": "Content",
+            "type": "array"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "Logprobs",
+        "type": "object"
+      },
+      "ModelCall": {
+        "description": "Model call (raw request/response data).",
+        "properties": {
+          "request": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Request",
+            "type": "object"
+          },
+          "response": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Response",
+            "type": "object"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "required": [
+          "request",
+          "response"
+        ],
+        "title": "ModelCall",
+        "type": "object"
       },
       "ModelConfig": {
         "description": "Model config.",
@@ -1071,6 +2758,281 @@
           "model"
         ],
         "title": "ModelConfig",
+        "type": "object"
+      },
+      "ModelEvent": {
+        "description": "Call to a language model.",
+        "properties": {
+          "cache": {
+            "anyOf": [
+              {
+                "enum": [
+                  "read",
+                  "write"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache"
+          },
+          "call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed"
+          },
+          "config": {
+            "$ref": "#/components/schemas/GenerateConfig"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "event": {
+            "const": "model",
+            "default": "model",
+            "title": "Event",
+            "type": "string"
+          },
+          "input": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ChatMessageSystem"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageUser"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageAssistant"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageTool"
+                }
+              ]
+            },
+            "title": "Input",
+            "type": "array"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "output": {
+            "$ref": "#/components/schemas/ModelOutput"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "retries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retries"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "tool_choice": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto",
+                  "any",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/ToolFunction"
+              }
+            ],
+            "title": "Tool Choice"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/ToolInfo"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          },
+          "working_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Working Time"
+          }
+        },
+        "required": [
+          "model",
+          "input",
+          "tools",
+          "tool_choice",
+          "config",
+          "output"
+        ],
+        "title": "ModelEvent",
+        "type": "object"
+      },
+      "ModelOutput": {
+        "description": "Output from model generation.",
+        "properties": {
+          "choices": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ChatCompletionChoice"
+            },
+            "title": "Choices",
+            "type": "array"
+          },
+          "completion": {
+            "default": "",
+            "title": "Completion",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelUsage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ModelOutput",
         "type": "object"
       },
       "ModelUsage": {
@@ -1208,6 +3170,41 @@
         "title": "Pagination",
         "type": "object"
       },
+      "ProvenanceData": {
+        "description": "Metadata about who made an edit and why.",
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "author"
+        ],
+        "title": "ProvenanceData",
+        "type": "object"
+      },
       "ResponseSchema": {
         "description": "Schema for model response when using Structured Output.",
         "properties": {
@@ -1246,6 +3243,480 @@
           "json_schema"
         ],
         "title": "ResponseSchema",
+        "type": "object"
+      },
+      "Sample": {
+        "description": "Sample for an evaluation task.",
+        "properties": {
+          "choices": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choices"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ChatMessageSystem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChatMessageUser"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChatMessageAssistant"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChatMessageTool"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Input"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "sandbox": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SandboxEnvironmentSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "setup": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "Sample",
+        "type": "object"
+      },
+      "SampleInitEvent": {
+        "description": "Beginning of processing a Sample.",
+        "properties": {
+          "event": {
+            "const": "sample_init",
+            "default": "sample_init",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "sample": {
+            "$ref": "#/components/schemas/Sample"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "sample",
+          "state"
+        ],
+        "title": "SampleInitEvent",
+        "type": "object"
+      },
+      "SampleLimitEvent": {
+        "description": "The sample was unable to finish processing due to a limit",
+        "properties": {
+          "event": {
+            "const": "sample_limit",
+            "default": "sample_limit",
+            "title": "Event",
+            "type": "string"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "message",
+              "time",
+              "working",
+              "token",
+              "operator",
+              "custom"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "title": "SampleLimitEvent",
+        "type": "object"
+      },
+      "SandboxEnvironmentSpec": {
+        "description": "Specification of a SandboxEnvironment.",
+        "properties": {
+          "config": {
+            "title": "Config"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "SandboxEnvironmentSpec",
+        "type": "object"
+      },
+      "SandboxEvent": {
+        "description": "Sandbox execution or I/O",
+        "properties": {
+          "action": {
+            "enum": [
+              "exec",
+              "read_file",
+              "write_file"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "cmd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cmd"
+          },
+          "completed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed"
+          },
+          "event": {
+            "const": "sandbox",
+            "default": "sandbox",
+            "title": "Event",
+            "type": "string"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "SandboxEvent",
         "type": "object"
       },
       "ScanOptions": {
@@ -1688,6 +4159,661 @@
         "title": "ScannerSummary",
         "type": "object"
       },
+      "Score": {
+        "description": "Score generated by a scorer.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreEdit"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "Score",
+        "type": "object"
+      },
+      "ScoreEdit": {
+        "description": "A single edit to a score.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "const": "UNCHANGED",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "UNCHANGED",
+            "title": "Answer"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "const": "UNCHANGED",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "UNCHANGED",
+            "title": "Explanation"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "const": "UNCHANGED",
+                "type": "string"
+              }
+            ],
+            "default": "UNCHANGED",
+            "title": "Metadata"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProvenanceData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "const": "UNCHANGED",
+                "type": "string"
+              }
+            ],
+            "default": "UNCHANGED",
+            "title": "Value"
+          }
+        },
+        "title": "ScoreEdit",
+        "type": "object"
+      },
+      "ScoreEditEvent": {
+        "description": "Event recorded when a score is edited.",
+        "properties": {
+          "edit": {
+            "$ref": "#/components/schemas/ScoreEdit"
+          },
+          "event": {
+            "const": "score_edit",
+            "default": "score_edit",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "score_name": {
+            "title": "Score Name",
+            "type": "string"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score_name",
+          "edit"
+        ],
+        "title": "ScoreEditEvent",
+        "type": "object"
+      },
+      "ScoreEvent": {
+        "description": "Event with score.\n\nCan be the final score for a `Sample`, or can be an intermediate score\nresulting from a call to `score`.",
+        "properties": {
+          "event": {
+            "const": "score",
+            "default": "score",
+            "title": "Event",
+            "type": "string"
+          },
+          "intermediate": {
+            "default": false,
+            "title": "Intermediate",
+            "type": "boolean"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "score": {
+            "$ref": "#/components/schemas/Score"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score"
+        ],
+        "title": "ScoreEvent",
+        "type": "object"
+      },
+      "SpanBeginEvent": {
+        "description": "Mark the beginning of a transcript span.",
+        "properties": {
+          "event": {
+            "const": "span_begin",
+            "default": "span_begin",
+            "title": "Event",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SpanBeginEvent",
+        "type": "object"
+      },
+      "SpanEndEvent": {
+        "description": "Mark the end of a transcript span.",
+        "properties": {
+          "event": {
+            "const": "span_end",
+            "default": "span_end",
+            "title": "Event",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "SpanEndEvent",
+        "type": "object"
+      },
+      "StateEvent": {
+        "description": "Change to the current `TaskState`",
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/JsonChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "event": {
+            "const": "state",
+            "default": "state",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "changes"
+        ],
+        "title": "StateEvent",
+        "type": "object"
+      },
       "Status": {
         "properties": {
           "complete": {
@@ -1722,6 +4848,295 @@
         "title": "Status",
         "type": "object"
       },
+      "StepEvent": {
+        "description": "Step within current sample or subtask.",
+        "properties": {
+          "action": {
+            "enum": [
+              "begin",
+              "end"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "event": {
+            "const": "step",
+            "default": "step",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "action",
+          "name"
+        ],
+        "title": "StepEvent",
+        "type": "object"
+      },
+      "StoreEvent": {
+        "description": "Change to data within the current `Store`.",
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/JsonChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "event": {
+            "const": "store",
+            "default": "store",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "changes"
+        ],
+        "title": "StoreEvent",
+        "type": "object"
+      },
+      "SubtaskEvent": {
+        "description": "Subtask spawned.",
+        "properties": {
+          "completed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed"
+          },
+          "event": {
+            "const": "subtask",
+            "default": "subtask",
+            "title": "Event",
+            "type": "string"
+          },
+          "events": {
+            "items": {},
+            "title": "Events",
+            "type": "array"
+          },
+          "input": {
+            "additionalProperties": true,
+            "title": "Input",
+            "type": "object"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "result": {
+            "title": "Result"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          },
+          "working_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Working Time"
+          }
+        },
+        "required": [
+          "name",
+          "input"
+        ],
+        "title": "SubtaskEvent",
+        "type": "object"
+      },
       "Summary": {
         "description": "Summary of scan results.",
         "properties": {
@@ -1739,6 +5154,792 @@
           }
         },
         "title": "Summary",
+        "type": "object"
+      },
+      "ToolCall": {
+        "properties": {
+          "arguments": {
+            "additionalProperties": true,
+            "title": "Arguments",
+            "type": "object"
+          },
+          "function": {
+            "title": "Function",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "parse_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parse Error"
+          },
+          "type": {
+            "default": "function",
+            "enum": [
+              "function",
+              "custom"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "function",
+          "arguments"
+        ],
+        "title": "ToolCall",
+        "type": "object"
+      },
+      "ToolCallContent": {
+        "description": "Content to include in tool call view.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "text",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "format"
+        ],
+        "title": "ToolCallContent",
+        "type": "object"
+      },
+      "ToolCallError": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "parsing",
+              "timeout",
+              "unicode_decode",
+              "permission",
+              "file_not_found",
+              "is_a_directory",
+              "limit",
+              "approval",
+              "unknown",
+              "output_limit"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "title": "ToolCallError",
+        "type": "object"
+      },
+      "ToolCallView": {
+        "description": "Custom view of a tool call.\n\nBoth `context` and `call` are optional. If `call` is not specified\nthen the view will default to a syntax highlighted Python function call.",
+        "properties": {
+          "call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ToolCallView",
+        "type": "object"
+      },
+      "ToolEvent": {
+        "description": "Call to a tool.",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "arguments": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Arguments",
+            "type": "object"
+          },
+          "completed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event": {
+            "const": "tool",
+            "default": "tool",
+            "title": "Event",
+            "type": "string"
+          },
+          "events": {
+            "items": {},
+            "title": "Events",
+            "type": "array"
+          },
+          "failed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed"
+          },
+          "function": {
+            "title": "Function",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "$ref": "#/components/schemas/ContentText"
+              },
+              {
+                "$ref": "#/components/schemas/ContentImage"
+              },
+              {
+                "$ref": "#/components/schemas/ContentAudio"
+              },
+              {
+                "$ref": "#/components/schemas/ContentVideo"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Result"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "truncated": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truncated"
+          },
+          "type": {
+            "const": "function",
+            "default": "function",
+            "title": "Type",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          },
+          "working_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Working Time"
+          }
+        },
+        "required": [
+          "id",
+          "function",
+          "arguments"
+        ],
+        "title": "ToolEvent",
+        "type": "object"
+      },
+      "ToolFunction": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ToolFunction",
+        "type": "object"
+      },
+      "ToolInfo": {
+        "description": "Specification of a tool (JSON Schema compatible)\n\nIf you are implementing a ModelAPI, most LLM libraries can\nbe passed this object (dumped to a dict) directly as a function\nspecification. For example, in the OpenAI provider:\n\n```python\nChatCompletionToolParam(\n    type=\"function\",\n    function=tool.model_dump(exclude_none=True),\n)\n```\n\nIn some cases the field names don't match up exactly. In that case\ncall `model_dump()` on the `parameters` field. For example, in the\nAnthropic provider:\n\n```python\nToolParam(\n    name=tool.name,\n    description=tool.description,\n    input_schema=tool.parameters.model_dump(exclude_none=True),\n)\n```",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/ToolParams"
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "ToolInfo",
+        "type": "object"
+      },
+      "ToolParams": {
+        "description": "Description of tool parameters object in JSON Schema format.",
+        "properties": {
+          "additionalProperties": {
+            "default": false,
+            "title": "Additionalproperties",
+            "type": "boolean"
+          },
+          "properties": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JSONSchema"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "required": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required",
+            "type": "array"
+          },
+          "type": {
+            "const": "object",
+            "default": "object",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "ToolParams",
+        "type": "object"
+      },
+      "TopLogprob": {
+        "description": "List of the most likely tokens and their log probability, at this token position.",
+        "properties": {
+          "bytes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "logprob": {
+            "title": "Logprob",
+            "type": "number"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "logprob"
+        ],
+        "title": "TopLogprob",
+        "type": "object"
+      },
+      "Transcript": {
+        "description": "Transcript info and transcript content (messages and events).",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "agent_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Args"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "events": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SampleInitEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SampleLimitEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SandboxEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/StateEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/StoreEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ModelEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ToolEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ApprovalEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/InputEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ScoreEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ScoreEditEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ErrorEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/LoggerEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/InfoEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SpanBeginEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SpanEndEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/StepEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SubtaskEvent"
+                }
+              ]
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "messages": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ChatMessageSystem"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageUser"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageAssistant"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageTool"
+                }
+              ]
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_options": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Options"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          },
+          "source_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Uri"
+          },
+          "success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "task_repeat": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Repeat"
+          },
+          "task_set": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Set"
+          },
+          "total_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Time"
+          },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tokens"
+          },
+          "transcript_id": {
+            "title": "Transcript Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript_id"
+        ],
+        "title": "Transcript",
         "type": "object"
       },
       "TranscriptField": {
@@ -1973,17 +6174,6 @@
       },
       "TranscriptsRequest": {
         "properties": {
-          "dir": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dir"
-          },
           "filter": {
             "anyOf": [
               {
@@ -2051,6 +6241,70 @@
           "items"
         ],
         "title": "TranscriptsResponse",
+        "type": "object"
+      },
+      "UrlCitation": {
+        "description": "A citation that refers to a URL.",
+        "properties": {
+          "cited_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cited Text"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "type": {
+            "const": "url",
+            "default": "url",
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "UrlCitation",
         "type": "object"
       },
       "ValidationCase": {
@@ -2382,10 +6636,42 @@
         "summary": "Get scanner input for a specific transcript"
       }
     },
-    "/transcripts": {
+    "/transcripts-dir": {
+      "get": {
+        "description": "Returns the default directory path where transcripts are stored.",
+        "operationId": "transcripts_dir_transcripts_dir_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get default transcripts directory"
+      }
+    },
+    "/transcripts/{dir}": {
       "post": {
-        "description": "Returns transcripts from specified directory (defaults to system transcripts dir). Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
-        "operationId": "transcripts_transcripts_post",
+        "description": "Returns transcripts from specified directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
+        "operationId": "transcripts_transcripts__dir__post",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2418,23 +6704,47 @@
         "summary": "List transcripts"
       }
     },
-    "/transcripts-dir": {
+    "/transcripts/{dir}/{id}": {
       "get": {
-        "description": "Returns the default directory path where transcripts are stored.",
-        "operationId": "transcripts_dir_transcripts_dir_get",
+        "description": "Returns a single transcript with full content (messages and events).",
+        "operationId": "transcript_transcripts__dir___id__get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Transcript"
                 }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Get default transcripts directory"
+        "summary": "Get transcript"
       }
     }
   }

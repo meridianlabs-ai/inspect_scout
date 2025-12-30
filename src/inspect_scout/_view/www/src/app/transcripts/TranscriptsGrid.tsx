@@ -76,12 +76,11 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
 
 interface TranscriptGridProps {
   transcripts: TranscriptInfo[];
-  transcriptsDir?: string;
+  transcriptsDir: string;
   className?: string | string[];
-  // Infinite scroll props
   onScrollNearEnd: (distanceFromBottom: number) => void;
   hasMore: boolean;
-  /** Distance from bottom (in px) at which to trigger callback. See TranscriptsPanel.tsx for tuning rationale. */
+  /** Distance from bottom (in px) at which to trigger callback. */
   fetchThreshold: number;
 }
 
@@ -464,9 +463,6 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           }));
         }
       } else {
-        if (!transcriptsDir) {
-          return;
-        }
         // Normal click: Navigate to transcript
         void navigate(transcriptRoute(transcriptsDir, rowId));
       }
@@ -655,7 +651,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     [onScrollNearEnd, hasMore, fetchThreshold]
   );
 
-  // Check on mount/data change if we need to fetch more
+  // Check on mount if we need to fetch more
   useEffect(() => {
     checkScrollNearEnd(containerRef.current);
   }, [checkScrollNearEnd]);
@@ -678,6 +674,11 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     }
   }, [focusedRowId, rows, rowVirtualizer]);
 
+  const onScroll = useCallback(
+    (e) => checkScrollNearEnd(e.currentTarget),
+    [checkScrollNearEnd]
+  );
+
   // Render the grid
   return (
     <div
@@ -685,7 +686,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       className={clsx(className, styles.container)}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      onScroll={(e) => checkScrollNearEnd(e.currentTarget)}
+      onScroll={onScroll}
     >
       <table className={styles.table}>
         <thead className={styles.thead}>

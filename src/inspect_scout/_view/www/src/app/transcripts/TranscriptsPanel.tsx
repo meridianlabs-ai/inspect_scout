@@ -81,6 +81,7 @@ export const TranscriptsPanel: FC = () => {
       {!error && (
         <TranscriptsGrid
           transcripts={transcripts}
+          transcriptsDir={resolvedTranscriptDir}
           onScrollNearEnd={handleScrollNearEnd}
           hasMore={hasNextPage}
           fetchThreshold={infiniteScrollConfig.threshold}

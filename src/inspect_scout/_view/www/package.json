@@ -114,7 +114,6 @@
     "prismjs": "^1.30.0",
     "react-popper": "^2.3.0",
     "react-router-dom": "^7.11.0",
-    "react-virtual=3.13.12": "link:@tanstack/react-virtual=3.13.12",
     "react-virtuoso": "^4.17.0",
     "zustand": "^5.0.9"
   },

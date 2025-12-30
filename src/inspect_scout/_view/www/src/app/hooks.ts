@@ -7,6 +7,7 @@ import { parseScanParams, parseTranscriptParams } from "../router/url";
 import { useStore } from "../state/store";
 import { Status } from "../types";
 import { AsyncData, data, loading } from "../utils/asyncData";
+import { decodeBase64Url } from "../utils/base64url";
 import { join } from "../utils/uri";
 
 import { parseScanResultData, parseScanResultSummaries } from "./arrowHelpers";
@@ -116,29 +117,6 @@ export const useSelectedScanResultInputData =
 
     return useServerScanDataframeInput(location, scanner.data, scanResultUuid);
   };
-
-export const useTranscriptRoute = (): {
-  transcriptsDir?: string;
-  transcriptId?: string;
-} => {
-  const params = useParams<{
-    transcriptsDir?: string;
-    transcriptId?: string;
-  }>();
-  const setUserTranscriptsDir = useStore(
-    (state) => state.setUserTranscriptsDir
-  );
-
-  const route = useMemo(() => parseTranscriptParams(params), [params]);
-
-  useEffect(() => {
-    if (route.transcriptsDir) {
-      setUserTranscriptsDir(route.transcriptsDir);
-    }
-  }, [route.transcriptsDir, setUserTranscriptsDir]);
-
-  return route;
-};
 
 export const useScanResultSummaries = (columnTable?: ColumnTable) => {
   const [scanResultSummaries, setScanResultsSummaries] = useState<

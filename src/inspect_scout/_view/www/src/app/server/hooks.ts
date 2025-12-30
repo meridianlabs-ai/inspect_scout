@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
 import { Status } from "../../types";
-import { TranscriptsResponse } from "../../types/api-types";
+import { Transcript, TranscriptsResponse } from "../../types/api-types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
@@ -98,18 +98,43 @@ export const useServerScanDataframeInput = (
   });
 };
 
-export const useServerTranscriptsDir = (): AsyncData<string> => {
+/**
+ * Returns transcripts dir for use in components after data loaded globally.
+ *
+ * Use this hook in regular components throughout the app. Assumes the async
+ * data has already been loaded at app initialization via useServerTranscriptsDirAsync.
+ * Throws if data not yet available.
+ *
+ * @throws Error if transcripts dir not loaded
+ */
+export const useServerTranscriptsDir = (): string => {
+  const { data } = useServerTranscriptsDirAsync();
+  if (!data) throw new Error(`Must find transcripts dir`);
+  return data;
+};
+
+/**
+ * Loads transcripts dir asynchronously at app initialization.
+ *
+ * Use this hook only at the top of the app before rendering to load the
+ * transcripts dir data globally. After this completes, all other components
+ * should use useServerTranscriptsDir to access the loaded value synchronously.
+ *
+ * @returns AsyncData with loading states for initial data fetch
+ */
+export const useServerTranscriptsDirAsync = (): AsyncData<string> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
     queryKey: ["transcripts-dir"],
     queryFn: async () => await api.getTranscriptsDir(),
     staleTime: 10000,
+    placeholderData: keepPreviousData,
   });
 };
 
 export const useServerTranscripts = (
-  location?: string,
+  location: string,
   filter?: Condition,
   sorting?: SortingState
 ): AsyncData<TranscriptsResponse> => {
@@ -122,11 +147,23 @@ export const useServerTranscripts = (
 
   return useAsyncDataFromQuery({
     queryKey: ["transcripts", location, filter, orderBy],
-    queryFn: async () =>
-      await api.getTranscripts(location ?? "", filter, orderBy),
+    queryFn: async () => await api.getTranscripts(location, filter, orderBy),
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     placeholderData: keepPreviousData,
-    enabled: !!location,
+  });
+};
+
+export const useServerTranscript = (
+  location: string | undefined,
+  id: string | undefined
+): AsyncData<Transcript> => {
+  const api = useApi();
+
+  return useAsyncDataFromQuery({
+    queryKey: ["transcript", location, id],
+    queryFn: () => api.getTranscript(location!, id!),
+    enabled: !!location && !!id,
+    staleTime: Infinity,
   });
 };

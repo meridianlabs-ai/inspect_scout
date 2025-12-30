@@ -15,16 +15,13 @@ import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
   // Resolve the active transcripts directory
-  const {
-    data: transcriptDir,
-    error: errorDir,
-    loading: loadingDir,
-  } = useServerTranscriptsDir();
+  const transcriptDir = useServerTranscriptsDir();
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
   const resolvedTranscriptDir = userTranscriptsDir || transcriptDir;
+  console.log({ resolvedTranscriptDir });
 
   // Filtering
   const columnFilters =
@@ -46,7 +43,6 @@ export const TranscriptsPanel: FC = () => {
     loading,
   } = useServerTranscripts(resolvedTranscriptDir, condition, sorting);
   const transcripts = (transcriptsResponse?.items ?? []) as TranscriptInfo[];
-  const hasError = errorDir || error;
 
   return (
     <div className={clsx(styles.container)}>
@@ -55,16 +51,16 @@ export const TranscriptsPanel: FC = () => {
         transcriptsDir={resolvedTranscriptDir}
         setTranscriptsDir={setUserTranscriptsDir}
       />
-      <LoadingBar loading={loading || loadingDir} />
-      {hasError && (
+      <LoadingBar loading={loading} />
+      {error && (
         <ErrorPanel
           title="Error Loading Transcript"
           error={{
-            message: errorDir?.message || error?.message || "Unknown Error",
+            message: error.message || "Unknown Error",
           }}
         />
       )}
-      {!hasError && (
+      {!error && (
         <TranscriptsGrid
           transcripts={transcripts}
           transcriptsDir={resolvedTranscriptDir}

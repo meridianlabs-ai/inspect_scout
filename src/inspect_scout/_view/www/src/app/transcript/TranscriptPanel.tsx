@@ -3,19 +3,25 @@ import { FC } from "react";
 
 import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
+import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { useTranscriptRoute } from "../hooks";
-import { useServerTranscriptsDir } from "../server/hooks";
+import { useServerTranscript, useServerTranscriptsDir } from "../server/hooks";
+import { useTranscriptDirParams } from "../utils/router";
 
 import styles from "./TranscriptPanel.module.css";
 
 export const TranscriptPanel: FC = () => {
   // Transcript data from route
-  const { transcriptsDir: decodedTranscriptsDir, transcriptId } =
-    useTranscriptRoute();
+  const { transcriptId } = useRequiredParams("transcriptId");
+  const routeTranscriptsDir = useTranscriptDirParams();
 
   // Server transcripts directory
-  const { data: transcriptsDir, error, loading } = useServerTranscriptsDir();
+
+  const transcriptsDir = useServerTranscriptsDir();
+  const { loading, data: transcript } = useServerTranscript(
+    transcriptsDir,
+    transcriptId
+  );
 
   // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
@@ -23,7 +29,7 @@ export const TranscriptPanel: FC = () => {
     (state) => state.setUserTranscriptsDir
   );
   const resolvedTranscriptsDir =
-    decodedTranscriptsDir || userTranscriptsDir || transcriptsDir;
+    routeTranscriptsDir || userTranscriptsDir || transcriptsDir;
 
   return (
     <div className={clsx(styles.container)}>
@@ -32,10 +38,11 @@ export const TranscriptPanel: FC = () => {
         setTranscriptsDir={setUserTranscriptsDir}
       />
       <LoadingBar loading={loading} />
-      {!loading && !error && (
+      {transcript && (
         <div>
           <h1>Transcript Detail</h1>
           <p>Transcript ID: {transcriptId}</p>
+          {`${transcript.messages?.length} messages / ${transcript.events?.length} events`}
         </div>
       )}
     </div>

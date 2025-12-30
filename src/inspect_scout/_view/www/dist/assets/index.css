@@ -5269,10 +5269,16 @@ button._segment_19z32_10 {
   font-weight: 400;
   color: var(--bs-secondary-text-color);
 }
-._container_vb45h_1 {
+._container_rctht_1 {
   height: 100%;
   display: grid;
   grid-template-rows: max-content max-content 1fr;
+}
+
+._transcriptContainer_rctht_7 {
+  height: 100%;
+  display: grid;
+  grid-template-rows: max-content 1fr;
 }
 /*!
  * Bootstrap  v5.3.8 (https://getbootstrap.com/)

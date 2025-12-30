@@ -75,11 +75,13 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
 
 interface TranscriptGridProps {
   transcripts: TranscriptInfo[];
+  transcriptsDir?: string;
   className?: string | string[];
 }
 
 export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   transcripts,
+  transcriptsDir,
   className,
 }) => {
   // The table container which provides the scrollable region
@@ -452,11 +454,14 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           }));
         }
       } else {
+        if (!transcriptsDir) {
+          return;
+        }
         // Normal click: Navigate to transcript
-        void navigate(transcriptRoute(rowId));
+        void navigate(transcriptRoute(transcriptsDir, rowId));
       }
     },
-    [rows, rowSelection, setTableState, navigate]
+    [rows, rowSelection, setTableState, navigate, transcriptsDir]
   );
 
   // Keyboard navigation handler
@@ -503,8 +508,11 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           if (focusedIndex !== -1) {
             const row = rows[focusedIndex];
             if (row) {
+              if (!transcriptsDir) {
+                return;
+              }
               // Navigate to transcript
-              void navigate(transcriptRoute(row.id));
+              void navigate(transcriptRoute(transcriptsDir, row.id));
             }
           }
           return;
@@ -606,7 +614,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         }
       }
     },
-    [rows, focusedRowId, rowSelection, setTableState, navigate]
+    [rows, focusedRowId, rowSelection, setTableState, navigate, transcriptsDir]
   );
 
   // Create virtualizer

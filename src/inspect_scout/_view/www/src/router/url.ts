@@ -1,11 +1,16 @@
+import { decodeBase64Url, encodeBase64Url } from "../utils/base64url";
+
 // Route URL patterns
-export const kScansRouteUrlPattern = "/scans";
-export const kScansWithPathRouteUrlPattern = "/scans/*";
-export const kScanRouteUrlPattern = "/scan/*";
-export const kScanResultRouteUrlPattern = "/scan/*/*";
+export const kScansRootRouteUrlPattern = "/scans";
+export const kScansRouteUrlPattern = "/scans/:scansDir";
+export const kScansWithPathRouteUrlPattern = "/scans/:scansDir/*";
+export const kScanRouteUrlPattern = "/scan/:scansDir/*";
+export const kScanResultRouteUrlPattern = "/scan/:scansDir/*/*";
 export const kTranscriptsRouteUrlPattern = "/transcripts";
-export const kTranscriptDetailRoute = "/transcripts/:transcriptId";
-export const kTranscriptDetailRouteUrlPattern = /\/transcripts\/[^\s/]+$/;
+export const kTranscriptDetailRoute =
+  "/transcripts/:transcriptsDir/:transcriptId";
+export const kTranscriptDetailRouteUrlPattern =
+  /\/transcripts\/[^\s/]+\/[^\s/]+$/;
 
 // Regex pattern for valid scan IDs (22 characters: alphanumeric, underscore, dot, or dash)
 export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
@@ -15,10 +20,12 @@ export const kScannerQueryParam = "scanner";
 
 // Helper functions to generate routes
 export const scanRoute = (
+  scansDir: string,
   relativePath: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = `/scan/${relativePath}`;
+  const encodedDir = encodeBase64Url(scansDir);
+  const route = `/scan/${encodedDir}/${relativePath}`;
   searchParams?.delete("tab");
 
   return searchParams?.toString()
@@ -27,21 +34,26 @@ export const scanRoute = (
 };
 
 export const scansRoute = (
+  scansDir: string,
   relativePath?: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = relativePath ? `/scans/${relativePath}` : "/scans";
+  const encodedDir = encodeBase64Url(scansDir);
+  const baseRoute = `/scans/${encodedDir}`;
+  const route = relativePath ? `${baseRoute}/${relativePath}` : baseRoute;
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
     : route;
 };
 
 export const scanResultRoute = (
+  scansDir: string,
   scanRelativePath: string,
   scanResultId?: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = `/scan/${scanRelativePath}/${scanResultId}`;
+  const encodedDir = encodeBase64Url(scansDir);
+  const route = `/scan/${encodedDir}/${scanRelativePath}/${scanResultId}`;
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
     : route;
@@ -55,10 +67,12 @@ export const transcriptsRoute = (searchParams?: URLSearchParams) => {
 };
 
 export const transcriptRoute = (
+  transcriptsDir: string,
   transcriptId: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = `/transcripts/${transcriptId}`;
+  const encodedDir = encodeBase64Url(transcriptsDir);
+  const route = `/transcripts/${encodedDir}/${transcriptId}`;
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
     : route;
@@ -92,6 +106,50 @@ export const getRelativePathFromParams = (
   params: Readonly<Partial<{ "*": string }>>
 ): string => {
   return params["*"] || "";
+};
+
+export const parseTranscriptParams = (
+  params: Readonly<Partial<{ transcriptsDir: string; transcriptId: string }>>
+): { transcriptsDir?: string; transcriptId?: string } => {
+  const transcriptId = params.transcriptId;
+  const encodedDir = params.transcriptsDir;
+  if (!encodedDir) {
+    return { transcriptId };
+  }
+
+  try {
+    return { transcriptsDir: decodeBase64Url(encodedDir), transcriptId };
+  } catch {
+    return { transcriptId };
+  }
+};
+
+export const parseScanParams = (
+  params: Readonly<Partial<{ scansDir: string; "*": string }>>
+): {
+  scansDir?: string;
+  relativePath: string;
+  scanPath: string;
+  scanResultUuid?: string;
+} => {
+  const relativePath = getRelativePathFromParams(params);
+  const { scanPath, scanResultUuid } = parseScanResultPath(relativePath);
+  const encodedDir = params.scansDir;
+
+  if (!encodedDir) {
+    return { relativePath, scanPath, scanResultUuid };
+  }
+
+  try {
+    return {
+      scansDir: decodeBase64Url(encodedDir),
+      relativePath,
+      scanPath,
+      scanResultUuid,
+    };
+  } catch {
+    return { relativePath, scanPath, scanResultUuid };
+  }
 };
 
 // Extracts the scanPath and scanResultUuid from a full path.

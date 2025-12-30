@@ -6,22 +6,30 @@ import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useServerTranscript, useServerTranscriptsDir } from "../server/hooks";
+import { useTranscriptDirParams } from "../utils/router";
 
 import styles from "./TranscriptPanel.module.css";
 
 export const TranscriptPanel: FC = () => {
+  // Transcript data from route
   const { transcriptId } = useRequiredParams("transcriptId");
+  const routeTranscriptsDir = useTranscriptDirParams();
+
+  // Server transcripts directory
+
   const transcriptsDir = useServerTranscriptsDir();
   const { loading, data: transcript } = useServerTranscript(
     transcriptsDir,
     transcriptId
   );
 
+  // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
-  const resolvedTranscriptsDir = userTranscriptsDir || transcriptsDir;
+  const resolvedTranscriptsDir =
+    routeTranscriptsDir || userTranscriptsDir || transcriptsDir;
 
   return (
     <div className={clsx(styles.container)}>

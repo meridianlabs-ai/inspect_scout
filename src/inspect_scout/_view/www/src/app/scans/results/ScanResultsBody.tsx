@@ -2,18 +2,15 @@ import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useMemo } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { DataframeView } from "../../../components/DataframeView";
 import { ErrorPanel } from "../../../components/ErrorPanel";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
-import {
-  getRelativePathFromParams,
-  parseScanResultPath,
-  scanResultRoute,
-} from "../../../router/url";
+import { scanResultRoute } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types";
+import { useScanRoute } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScansPanelBody";
 
 import { ScanResultsList } from "./list/ScanResultsList";
@@ -49,10 +46,8 @@ export const ScanResultsBody: FC<{
 
   // Navigation setup
   const navigate = useNavigate();
-  const params = useParams<{ "*": string }>();
   const [searchParams] = useSearchParams();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanPath } = parseScanResultPath(relativePath);
+  const { scansDir, scanPath } = useScanRoute();
 
   const dataframeFilterColumns = useStore(
     (state) => state.dataframeFilterColumns
@@ -84,8 +79,13 @@ export const ScanResultsBody: FC<{
               onRowDoubleClicked={(row) => {
                 // Navigate to the result detail view
                 const uuid = (row as { uuid?: string }).uuid;
-                if (uuid) {
-                  const route = scanResultRoute(scanPath, uuid, searchParams);
+                if (uuid && scansDir) {
+                  const route = scanResultRoute(
+                    scansDir,
+                    scanPath,
+                    uuid,
+                    searchParams
+                  );
                   void navigate(route);
                 }
               }}

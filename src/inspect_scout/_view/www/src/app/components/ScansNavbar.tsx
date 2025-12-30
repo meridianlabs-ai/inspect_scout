@@ -1,15 +1,11 @@
 import { FC, ReactNode, useMemo } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
-import {
-  getRelativePathFromParams,
-  parseScanResultPath,
-  scanRoute,
-  scansRoute,
-} from "../../router/url";
+import { scanRoute, scansRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import { dirname } from "../../utils/path";
 import { ApplicationIcons } from "../appearance/icons";
+import { useScanRoute } from "../hooks";
 
 import { EditablePath } from "./EditablePath";
 import { Navbar } from "./Navbar";
@@ -28,19 +24,24 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
   bordered = true,
   children,
 }) => {
-  const params = useParams<{ "*": string }>();
-  const currentPath = getRelativePathFromParams(params);
+  const {
+    relativePath,
+    scanPath,
+    scanResultUuid,
+    scansDir: routeScansDir,
+  } = useScanRoute();
   const singleFileMode = useStore((state) => state.singleFileMode);
   const [searchParams] = useSearchParams();
 
   // Check if we're on a scan result page and calculate the appropriate back URL
-  const { scanPath, scanResultUuid } = parseScanResultPath(currentPath);
+  const resolvedScansDir = routeScansDir || scansDir;
 
-  const backUrl = scanResultUuid
-    ? scanRoute(scanPath, searchParams)
-    : !singleFileMode
-      ? scansRoute(dirname(currentPath || ""))
-      : undefined;
+  const backUrl =
+    resolvedScansDir && scanResultUuid
+      ? scanRoute(resolvedScansDir, scanPath, searchParams)
+      : !singleFileMode && resolvedScansDir
+        ? scansRoute(resolvedScansDir, dirname(relativePath || ""))
+        : undefined;
 
   const navButtons: NavButton[] = useMemo(() => {
     const buttons: NavButton[] = [];
@@ -54,17 +55,17 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
       });
     }
 
-    if (!singleFileMode) {
+    if (!singleFileMode && resolvedScansDir) {
       buttons.push({
         title: "Home",
         icon: ApplicationIcons.navbar.home,
-        route: scansRoute(),
+        route: scansRoute(resolvedScansDir),
         enabled: !!scanPath,
       });
     }
 
     return buttons;
-  }, [backUrl, singleFileMode, scanPath]);
+  }, [backUrl, singleFileMode, scanPath, resolvedScansDir]);
 
   return (
     <Navbar

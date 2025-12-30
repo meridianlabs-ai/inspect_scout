@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { useMapAsyncData } from "../hooks/useMapAsyncData";
-import { getRelativePathFromParams, parseScanResultPath } from "../router/url";
+import { parseScanParams } from "../router/url";
 import { useStore } from "../state/store";
 import { Status } from "../types";
 import { AsyncData, data, loading } from "../utils/asyncData";
@@ -22,22 +22,39 @@ import {
   ScanResultSummary,
 } from "./types";
 
-const useSelectedScanLocation = () => {
-  const params = useParams<{ "*": string }>();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanPath } = parseScanResultPath(relativePath);
+export const useScanRoute = (): {
+  scansDir?: string;
+  relativePath: string;
+  scanPath: string;
+  scanResultUuid?: string;
+  resolvedScansDir?: string;
+  location?: string;
+} => {
+  const params = useParams<{ scansDir?: string; "*": string }>();
+  const setUserScansDir = useStore((state) => state.setUserScansDir);
   const { data: resultsDir } = useServerScansDir();
-  const location = join(scanPath, resultsDir);
-  // E.g.:
-  //  scanPath:   "scan_id=3G7xoo4YV3KffYkZEtWqGw"
-  //  resultsDir: "/Users/me/project/scans"
-  //  location:   "/Users/me/project/scans/scan_id=3G7xoo4YV3KffYkZEtWqGw"
 
-  return { location, scanPath };
+  const route = useMemo(() => parseScanParams(params), [params]);
+  const resolvedScansDir = route.scansDir || resultsDir;
+  const location = resolvedScansDir
+    ? join(route.scanPath, resolvedScansDir)
+    : undefined;
+
+  useEffect(() => {
+    if (route.scansDir) {
+      setUserScansDir(route.scansDir);
+    }
+  }, [route.scansDir, setUserScansDir]);
+
+  return {
+    ...route,
+    resolvedScansDir,
+    location,
+  };
 };
 
 export const useSelectedScan = (): AsyncData<Status> => {
-  const { location, scanPath } = useSelectedScanLocation();
+  const { location, scanPath } = useScanRoute();
 
   // Set selectedScanLocation for nav restoration
   const setSelectedScanLocation = useStore(
@@ -79,7 +96,7 @@ const _get_default_scanner = (s: Status): string => {
   return result;
 };
 export const useSelectedScanDataframe = (): AsyncData<ColumnTable> => {
-  const { location } = useSelectedScanLocation();
+  const { location } = useScanRoute();
   const scanner = useSelectedScanner();
 
   return useServerScanDataframe(location, scanner.data);
@@ -94,11 +111,8 @@ export const useSelectedScanResultData = (
 
 export const useSelectedScanResultInputData =
   (): AsyncData<ScanResultInputData> => {
-    const { location } = useSelectedScanLocation();
+    const { location, scanResultUuid } = useScanRoute();
     const scanner = useSelectedScanner();
-    const params = useParams<{ "*": string }>();
-    const relativePath = getRelativePathFromParams(params);
-    const { scanResultUuid } = parseScanResultPath(relativePath);
 
     return useServerScanDataframeInput(location, scanner.data, scanResultUuid);
   };

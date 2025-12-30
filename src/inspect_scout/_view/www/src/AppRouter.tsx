@@ -11,18 +11,22 @@ import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
+import { useServerScansDir } from "./app/server/hooks";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import {
+  kScansRootRouteUrlPattern,
   kScansRouteUrlPattern,
   kScansWithPathRouteUrlPattern,
   kScanRouteUrlPattern,
   isValidScanPath,
-  getRelativePathFromParams,
-  parseScanResultPath,
+  parseScanParams,
   kTranscriptsRouteUrlPattern,
   kTranscriptDetailRoute,
+  scanResultRoute,
+  scanRoute,
+  scansRoute,
 } from "./router/url";
 import { useStore } from "./state/store";
 import { getEmbeddedScanState } from "./utils/embeddedState";
@@ -47,6 +51,8 @@ const createAppLayout = (config: AppRouterConfig) => {
     const selectedScanLocation = useStore(
       (state) => state.selectedScanLocation
     );
+    const userScansDir = useStore((state) => state.userScansDir);
+    const { data: serverScansDir } = useServerScansDir();
     const setSelectedScanner = useStore((state) => state.setSelectedScanner);
     const setHasInitializedEmbeddedData = useStore(
       (state) => state.setHasInitializedEmbeddedData
@@ -65,7 +71,7 @@ const createAppLayout = (config: AppRouterConfig) => {
       // Check for embedded state on initial load
       const embeddedState = getEmbeddedScanState();
       if (embeddedState && !hasRestoredState) {
-        const { scan, scanner } = embeddedState;
+        const { scan, scanner, dir } = embeddedState;
 
         // Set the results directory in the store
         setSingleFileMode(true);
@@ -74,7 +80,7 @@ const createAppLayout = (config: AppRouterConfig) => {
         }
 
         // Navigate to the scan
-        void navigate(`/scan/${scan}`, { replace: true });
+        void navigate(scanRoute(dir, scan), { replace: true });
       }
 
       setHasInitializedEmbeddedData(true);
@@ -100,15 +106,23 @@ const createAppLayout = (config: AppRouterConfig) => {
         currentPath === "/" || currentPath === "/scans" || currentPath === "";
 
       // If we're on a default route and have persisted state, navigate to the appropriate view
-      if (isDefaultRoute && selectedScanLocation) {
+      const resolvedScansDir = userScansDir || serverScansDir;
+      if (isDefaultRoute && selectedScanLocation && resolvedScansDir) {
         if (selectedScanResult) {
           // Navigate to scan result view
-          void navigate(`/scan/${selectedScanLocation}/${selectedScanResult}`, {
-            replace: true,
-          });
+          void navigate(
+            scanResultRoute(
+              resolvedScansDir,
+              selectedScanLocation,
+              selectedScanResult
+            ),
+            { replace: true }
+          );
         } else {
           // Navigate to scanner view
-          void navigate(`/scan/${selectedScanLocation}`, { replace: true });
+          void navigate(scanRoute(resolvedScansDir, selectedScanLocation), {
+            replace: true,
+          });
         }
       }
 
@@ -122,6 +136,8 @@ const createAppLayout = (config: AppRouterConfig) => {
       selectedScanResult,
       navigate,
       setHasInitializedRouting,
+      serverScansDir,
+      userScansDir,
     ]);
 
     const content = <Outlet />;
@@ -141,11 +157,8 @@ const createAppLayout = (config: AppRouterConfig) => {
 
 // Wrapper component that validates scan path before rendering
 const ScanOrScanResultsRoute = () => {
-  const params = useParams<{ "*": string }>();
-  const relativePath = getRelativePathFromParams(params);
-
-  // Parse the path to check if it contains a scan result UUID
-  const { scanResultUuid } = parseScanResultPath(relativePath);
+  const params = useParams<{ scansDir?: string; "*": string }>();
+  const { scansDir, relativePath, scanResultUuid } = parseScanParams(params);
 
   // If there's a scan result UUID, render the ScanResultPanel
   if (scanResultUuid) {
@@ -155,7 +168,10 @@ const ScanOrScanResultsRoute = () => {
   // Validate that the path ends with the correct scan_id pattern
   if (!isValidScanPath(relativePath)) {
     // Redirect to /scans preserving the path structure
-    return <Navigate to={`/scans/${relativePath}`} replace />;
+    if (scansDir) {
+      return <Navigate to={scansRoute(scansDir, relativePath)} replace />;
+    }
+    return <Navigate to="/scans" replace />;
   }
 
   return <ScansPanel />;
@@ -173,6 +189,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             index: true,
             element: <Navigate to="/scans" replace />,
+          },
+          {
+            path: kScansRootRouteUrlPattern,
+            element: <ScanJobsPanel />,
           },
           {
             path: kScansRouteUrlPattern,

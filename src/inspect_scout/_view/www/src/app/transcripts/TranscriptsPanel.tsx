@@ -21,6 +21,7 @@ export const TranscriptsPanel: FC = () => {
     (state) => state.setUserTranscriptsDir
   );
   const resolvedTranscriptDir = userTranscriptsDir || transcriptDir;
+  console.log({ resolvedTranscriptDir });
 
   // Filtering
   const columnFilters =
@@ -59,7 +60,12 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!error && <TranscriptsGrid transcripts={transcripts} />}
+      {!error && (
+        <TranscriptsGrid
+          transcripts={transcripts}
+          transcriptsDir={resolvedTranscriptDir}
+        />
+      )}
       <Footer
         id={"transcripts-footer"}
         itemCount={transcripts?.length || 0}

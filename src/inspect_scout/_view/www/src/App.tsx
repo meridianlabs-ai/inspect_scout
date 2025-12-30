@@ -20,7 +20,5 @@ export const App: FC<AppProps> = ({ mode = "scans" }) => {
   const router = useMemo(() => createAppRouter({ mode }), [mode]);
   const { data: transcriptsDir } = useServerTranscriptsDirAsync();
 
-  console.log(`XXXXX ${transcriptsDir}`);
-
   return transcriptsDir ? <RouterProvider router={router} /> : null;
 };

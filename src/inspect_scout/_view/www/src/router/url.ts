@@ -1,10 +1,11 @@
-import { encodeBase64Url } from "../utils/base64url";
+import { decodeBase64Url, encodeBase64Url } from "../utils/base64url";
 
 // Route URL patterns
-export const kScansRouteUrlPattern = "/scans";
-export const kScansWithPathRouteUrlPattern = "/scans/*";
-export const kScanRouteUrlPattern = "/scan/*";
-export const kScanResultRouteUrlPattern = "/scan/*/*";
+export const kScansRootRouteUrlPattern = "/scans";
+export const kScansRouteUrlPattern = "/scans/:scansDir";
+export const kScansWithPathRouteUrlPattern = "/scans/:scansDir/*";
+export const kScanRouteUrlPattern = "/scan/:scansDir/*";
+export const kScanResultRouteUrlPattern = "/scan/:scansDir/*/*";
 export const kTranscriptsRouteUrlPattern = "/transcripts";
 export const kTranscriptDetailRoute =
   "/transcripts/:transcriptsDir/:transcriptId";
@@ -19,10 +20,12 @@ export const kScannerQueryParam = "scanner";
 
 // Helper functions to generate routes
 export const scanRoute = (
+  scansDir: string,
   relativePath: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = `/scan/${relativePath}`;
+  const encodedDir = encodeBase64Url(scansDir);
+  const route = `/scan/${encodedDir}/${relativePath}`;
   searchParams?.delete("tab");
 
   return searchParams?.toString()
@@ -31,21 +34,26 @@ export const scanRoute = (
 };
 
 export const scansRoute = (
+  scansDir: string,
   relativePath?: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = relativePath ? `/scans/${relativePath}` : "/scans";
+  const encodedDir = encodeBase64Url(scansDir);
+  const baseRoute = `/scans/${encodedDir}`;
+  const route = relativePath ? `${baseRoute}/${relativePath}` : baseRoute;
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
     : route;
 };
 
 export const scanResultRoute = (
+  scansDir: string,
   scanRelativePath: string,
   scanResultId?: string,
   searchParams?: URLSearchParams
 ) => {
-  const route = `/scan/${scanRelativePath}/${scanResultId}`;
+  const encodedDir = encodeBase64Url(scansDir);
+  const route = `/scan/${encodedDir}/${scanRelativePath}/${scanResultId}`;
   return searchParams?.toString()
     ? `${route}?${searchParams.toString()}`
     : route;
@@ -113,6 +121,34 @@ export const parseTranscriptParams = (
     return { transcriptsDir: decodeBase64Url(encodedDir), transcriptId };
   } catch {
     return { transcriptId };
+  }
+};
+
+export const parseScanParams = (
+  params: Readonly<Partial<{ scansDir: string; "*": string }>>
+): {
+  scansDir?: string;
+  relativePath: string;
+  scanPath: string;
+  scanResultUuid?: string;
+} => {
+  const relativePath = getRelativePathFromParams(params);
+  const { scanPath, scanResultUuid } = parseScanResultPath(relativePath);
+  const encodedDir = params.scansDir;
+
+  if (!encodedDir) {
+    return { relativePath, scanPath, scanResultUuid };
+  }
+
+  try {
+    return {
+      scansDir: decodeBase64Url(encodedDir),
+      relativePath,
+      scanPath,
+      scanResultUuid,
+    };
+  } catch {
+    return { relativePath, scanPath, scanResultUuid };
   }
 };
 

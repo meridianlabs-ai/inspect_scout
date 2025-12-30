@@ -1,21 +1,17 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
 import { LoadingBar } from "../../../../components/LoadingBar";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
-import {
-  getRelativePathFromParams,
-  parseScanResultPath,
-  scanResultRoute,
-} from "../../../../router/url";
+import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Status } from "../../../../types";
 import { basename } from "../../../../utils/path";
-import { useScanResultSummaries } from "../../../hooks";
+import { useScanResultSummaries, useScanRoute } from "../../../hooks";
 import { ScanResultSummary, SortColumn } from "../../../types";
 import {
   resultIdentifier,
@@ -49,10 +45,8 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 }) => {
   // Url data
   const navigate = useNavigate();
-  const params = useParams<{ "*": string }>();
   const [searchParams] = useSearchParams();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanPath } = parseScanResultPath(relativePath);
+  const { scansDir, scanPath } = useScanRoute();
 
   // Data
   const { data: scannerSummaries, isLoading } =
@@ -232,7 +226,11 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const handleEnter = useCallback(
     (newWindow?: boolean) => {
       const selectedResult = filteredSummaries[currentIndex];
+      if (!scansDir) {
+        return;
+      }
       const route = scanResultRoute(
+        scansDir,
         scanPath,
         selectedResult?.uuid,
         searchParams
@@ -243,7 +241,14 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
         void navigate(route);
       }
     },
-    [currentIndex, filteredSummaries, navigate, scanPath, searchParams]
+    [
+      currentIndex,
+      filteredSummaries,
+      navigate,
+      scanPath,
+      searchParams,
+      scansDir,
+    ]
   );
 
   const hasPrevious = currentIndex > 0;

@@ -14,7 +14,7 @@ import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getRelativePathFromParams } from "../../router/url";
+import { getRelativePathFromParams, scanRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import type { Status } from "../../types";
 import { toRelativePath } from "../../utils/path";
@@ -278,7 +278,10 @@ export const ScanJobGrid: FC<{
         rowClass={styles.row}
         onRowClicked={(e: RowClickedEvent<ScanJobSummary>) => {
           if (e.data) {
-            void navigate(`/scan/${e.data.relativeLocation}`);
+            if (!resultsDir) {
+              return;
+            }
+            void navigate(scanRoute(resultsDir, e.data.relativeLocation));
           }
         }}
         onGridSizeChanged={resizeGridColumns}

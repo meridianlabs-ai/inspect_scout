@@ -1,18 +1,16 @@
 import clsx from "clsx";
 import { FC, memo } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { MarkdownReference } from "../../../../components/MarkdownDivWithReferences";
-import {
-  getRelativePathFromParams,
-  scanResultRoute,
-} from "../../../../router/url";
+import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Error } from "../../../components/Error";
 import { Explanation } from "../../../components/Explanation";
 import { TaskName } from "../../../components/TaskName";
 import { ValidationResult } from "../../../components/ValidationResult";
 import { Value } from "../../../components/Value";
+import { useScanRoute } from "../../../hooks";
 import { ScanResultSummary } from "../../../types";
 import { useMarkdownRefs } from "../../../utils/refs";
 
@@ -30,8 +28,7 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   gridDescriptor,
 }) => {
   // Path information
-  const params = useParams<{ "*": string }>();
-  const relativePath = getRelativePathFromParams(params);
+  const { scansDir, scanPath } = useScanRoute();
   const [searchParams] = useSearchParams();
 
   // selected scan result
@@ -41,9 +38,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   );
 
   // Generate the route to the scan result using the current scan path and the entry's uuid
-  const isNavigable = summary.uuid !== undefined;
+  const isNavigable = summary.uuid !== undefined && !!scansDir;
   const scanResultUrl = isNavigable
-    ? scanResultRoute(relativePath, summary.uuid, searchParams)
+    ? scanResultRoute(scansDir, scanPath, summary.uuid, searchParams)
     : "";
   const navigate = useNavigate();
 
@@ -142,6 +139,9 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking an inner link
     if ((e.target as HTMLElement).closest("a")) {
+      return;
+    }
+    if (!scanResultUrl) {
       return;
     }
     void navigate(scanResultUrl);

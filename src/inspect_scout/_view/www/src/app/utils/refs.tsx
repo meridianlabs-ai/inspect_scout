@@ -1,14 +1,10 @@
 import { ReactNode, useMemo } from "react";
-import { useParams } from "react-router-dom";
 
 import { ChatView } from "../../chat/ChatView";
 import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
-import {
-  getRelativePathFromParams,
-  parseScanResultPath,
-  scanResultRoute,
-} from "../../router/url";
+import { scanResultRoute } from "../../router/url";
 import { TranscriptView } from "../../transcript/TranscriptView";
+import { useScanRoute } from "../hooks";
 import {
   ScanResultInputData,
   isEventInput,
@@ -28,22 +24,21 @@ export const useMarkdownRefs = (
   summary?: ScanResultSummary,
   inputData?: ScanResultInputData
 ) => {
-  const params = useParams<{ "*": string }>();
+  const { scansDir, scanPath } = useScanRoute();
   // Build URL to the scan result with the appropriate query parameters
   const buildUrl = useMemo(() => {
     if (!summary?.uuid) {
       return (queryParams: string) => `?${queryParams}`;
     }
 
-    // Get the scan path from the current URL params
-    const relativePath = getRelativePathFromParams(params);
-    const { scanPath } = parseScanResultPath(relativePath);
-
     return (queryParams: string) => {
+      if (!scansDir) {
+        return `?${queryParams}`;
+      }
       const searchParams = new URLSearchParams(queryParams);
-      return `#${scanResultRoute(scanPath, summary.uuid, searchParams)}`;
+      return `#${scanResultRoute(scansDir, scanPath, summary.uuid, searchParams)}`;
     };
-  }, [summary?.uuid, params]);
+  }, [summary?.uuid, scanPath, scansDir]);
 
   const refs: MarkdownReference[] = summary
     ? toMarkdownRefs(

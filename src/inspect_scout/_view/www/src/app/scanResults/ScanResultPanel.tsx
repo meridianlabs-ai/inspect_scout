@@ -1,22 +1,19 @@
 import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import JSONPanel from "../../components/JsonPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
-import {
-  getRelativePathFromParams,
-  getScannerParam,
-  parseScanResultPath,
-} from "../../router/url";
+import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { EventNode, EventType } from "../../transcript/types";
 import { ApplicationIcons } from "../appearance/icons";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
 import {
+  useScanRoute,
   useSelectedScan,
   useSelectedScanResultData,
   useSelectedScanResultInputData,
@@ -42,9 +39,7 @@ const kTabIdMetadata = "Metadata";
 
 export const ScanResultPanel: FC = () => {
   // Url data
-  const params = useParams<{ "*": string }>();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanResultUuid } = parseScanResultPath(relativePath);
+  const { scanResultUuid } = useScanRoute();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Required server data

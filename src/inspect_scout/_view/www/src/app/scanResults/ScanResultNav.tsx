@@ -1,25 +1,19 @@
 import clsx from "clsx";
 import { FC, useEffect, useMemo } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import {
-  getRelativePathFromParams,
-  parseScanResultPath,
-  scanResultRoute,
-} from "../../router/url";
+import { scanResultRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ApplicationIcons } from "../appearance/icons";
+import { useScanRoute } from "../hooks";
 import { IdentifierInfo, resultIdentifier } from "../utils/results";
 
 import styles from "./ScanResultNav.module.css";
 
 export const ScanResultNav: FC = () => {
   const navigate = useNavigate();
-  const params = useParams<{ "*": string }>();
   const [searchParams] = useSearchParams();
-  const relativePath = getRelativePathFromParams(params);
-  const { scanPath } = parseScanResultPath(relativePath);
-  const { scanResultUuid } = parseScanResultPath(relativePath);
+  const { scansDir, scanPath, scanResultUuid } = useScanRoute();
 
   const visibleScannerResults = useStore(
     (state) => state.visibleScannerResults
@@ -43,7 +37,15 @@ export const ScanResultNav: FC = () => {
       return;
     }
     const previousResult = visibleScannerResults[currentIndex - 1];
-    const route = scanResultRoute(scanPath, previousResult?.uuid, searchParams);
+    if (!scansDir) {
+      return;
+    }
+    const route = scanResultRoute(
+      scansDir,
+      scanPath,
+      previousResult?.uuid,
+      searchParams
+    );
     void navigate(route);
   };
 
@@ -52,7 +54,15 @@ export const ScanResultNav: FC = () => {
       return;
     }
     const nextResult = visibleScannerResults[currentIndex + 1];
-    const route = scanResultRoute(scanPath, nextResult?.uuid, searchParams);
+    if (!scansDir) {
+      return;
+    }
+    const route = scanResultRoute(
+      scansDir,
+      scanPath,
+      nextResult?.uuid,
+      searchParams
+    );
     void navigate(route);
   };
 

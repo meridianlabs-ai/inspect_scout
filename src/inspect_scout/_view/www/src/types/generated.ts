@@ -260,6 +260,7 @@ export interface components {
              */
             stop_reason: "stop" | "max_tokens" | "model_length" | "tool_calls" | "content_filter" | "unknown";
         };
+        ChatMessage: components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"];
         /**
          * ChatMessageAssistant
          * @description Assistant chat message.
@@ -267,24 +268,39 @@ export interface components {
         ChatMessageAssistant: {
             /** Content */
             content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
-            /** Id */
-            id?: string | null;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Id
+             * @default null
+             */
+            id: string | null;
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Model */
-            model?: string | null;
+            /**
+             * Model
+             * @default null
+             */
+            model: string | null;
             /**
              * Role
              * @default assistant
              * @constant
              */
             role: "assistant";
-            /** Source */
-            source?: ("input" | "generate") | null;
-            /** Tool Calls */
-            tool_calls?: components["schemas"]["ToolCall"][] | null;
+            /**
+             * Source
+             * @default null
+             */
+            source: ("input" | "generate") | null;
+            /**
+             * Tool Calls
+             * @default null
+             */
+            tool_calls: components["schemas"]["ToolCall"][] | null;
         };
         /**
          * ChatMessageSystem
@@ -293,10 +309,16 @@ export interface components {
         ChatMessageSystem: {
             /** Content */
             content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
-            /** Id */
-            id?: string | null;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Id
+             * @default null
+             */
+            id: string | null;
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /**
@@ -305,8 +327,11 @@ export interface components {
              * @constant
              */
             role: "system";
-            /** Source */
-            source?: ("input" | "generate") | null;
+            /**
+             * Source
+             * @default null
+             */
+            source: ("input" | "generate") | null;
         };
         /**
          * ChatMessageTool
@@ -315,13 +340,23 @@ export interface components {
         ChatMessageTool: {
             /** Content */
             content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
-            error?: components["schemas"]["ToolCallError"] | null;
-            /** Function */
-            function?: string | null;
-            /** Id */
-            id?: string | null;
-            /** Metadata */
-            metadata?: {
+            /** @default null */
+            error: components["schemas"]["ToolCallError"] | null;
+            /**
+             * Function
+             * @default null
+             */
+            function: string | null;
+            /**
+             * Id
+             * @default null
+             */
+            id: string | null;
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /**
@@ -330,10 +365,16 @@ export interface components {
              * @constant
              */
             role: "tool";
-            /** Source */
-            source?: ("input" | "generate") | null;
-            /** Tool Call Id */
-            tool_call_id?: string | null;
+            /**
+             * Source
+             * @default null
+             */
+            source: ("input" | "generate") | null;
+            /**
+             * Tool Call Id
+             * @default null
+             */
+            tool_call_id: string | null;
         };
         /**
          * ChatMessageUser
@@ -342,10 +383,16 @@ export interface components {
         ChatMessageUser: {
             /** Content */
             content: string | (components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"])[];
-            /** Id */
-            id?: string | null;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Id
+             * @default null
+             */
+            id: string | null;
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /**
@@ -354,10 +401,16 @@ export interface components {
              * @constant
              */
             role: "user";
-            /** Source */
-            source?: ("input" | "generate") | null;
-            /** Tool Call Id */
-            tool_call_id?: string[] | null;
+            /**
+             * Source
+             * @default null
+             */
+            source: ("input" | "generate") | null;
+            /**
+             * Tool Call Id
+             * @default null
+             */
+            tool_call_id: string[] | null;
         };
         /**
          * Condition
@@ -411,7 +464,8 @@ export interface components {
              * @enum {string}
              */
             format: "wav" | "mp3";
-            internal?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
             /**
              * Type
              * @default audio
@@ -424,14 +478,23 @@ export interface components {
          * @description A generic content citation.
          */
         ContentCitation: {
-            /** Cited Text */
-            cited_text?: string | number[] | null;
-            /** Internal */
-            internal?: {
+            /**
+             * Cited Text
+             * @default null
+             */
+            cited_text: string | number[] | null;
+            /**
+             * Internal
+             * @default null
+             */
+            internal: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
-            /** Title */
-            title?: string | null;
+            /**
+             * Title
+             * @default null
+             */
+            title: string | null;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -447,7 +510,8 @@ export interface components {
             data: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            internal?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
             /**
              * Type
              * @default data
@@ -464,7 +528,8 @@ export interface components {
             document: string;
             /** Filename */
             filename?: string;
-            internal?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
             /** Mime Type */
             mime_type?: string;
             /**
@@ -487,7 +552,8 @@ export interface components {
             detail: "auto" | "low" | "high";
             /** Image */
             image: string;
-            internal?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
             /**
              * Type
              * @default image
@@ -502,7 +568,8 @@ export interface components {
          *     See the specification for [thinking blocks](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#understanding-thinking-blocks) for Claude models.
          */
         ContentReasoning: {
-            internal?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
             /** Reasoning */
             reasoning: string;
             /**
@@ -510,10 +577,16 @@ export interface components {
              * @default false
              */
             redacted: boolean;
-            /** Signature */
-            signature?: string | null;
-            /** Summary */
-            summary?: string | null;
+            /**
+             * Signature
+             * @default null
+             */
+            signature: string | null;
+            /**
+             * Summary
+             * @default null
+             */
+            summary: string | null;
             /**
              * Type
              * @default reasoning
@@ -526,11 +599,18 @@ export interface components {
          * @description Text content.
          */
         ContentText: {
-            /** Citations */
-            citations?: (components["schemas"]["ContentCitation"] | components["schemas"]["DocumentCitation"] | components["schemas"]["UrlCitation"])[] | null;
-            internal?: components["schemas"]["JsonValue"] | null;
-            /** Refusal */
-            refusal?: boolean | null;
+            /**
+             * Citations
+             * @default null
+             */
+            citations: (components["schemas"]["ContentCitation"] | components["schemas"]["DocumentCitation"] | components["schemas"]["UrlCitation"])[] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
+            /**
+             * Refusal
+             * @default null
+             */
+            refusal: boolean | null;
             /** Text */
             text: string;
             /**
@@ -547,13 +627,20 @@ export interface components {
         ContentToolUse: {
             /** Arguments */
             arguments: string;
-            /** Context */
-            context?: string | null;
-            /** Error */
-            error?: string | null;
+            /**
+             * Context
+             * @default null
+             */
+            context: string | null;
+            /**
+             * Error
+             * @default null
+             */
+            error: string | null;
             /** Id */
             id: string;
-            internal?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
             /** Name */
             name: string;
             /** Result */
@@ -580,7 +667,8 @@ export interface components {
              * @enum {string}
              */
             format: "mp4" | "mpeg" | "mov";
-            internal?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            internal: components["schemas"]["JsonValue"] | null;
             /**
              * Type
              * @default video
@@ -595,15 +683,25 @@ export interface components {
          * @description A citation that refers to a page range in a document.
          */
         DocumentCitation: {
-            /** Cited Text */
-            cited_text?: string | number[] | null;
-            /** Internal */
-            internal?: {
+            /**
+             * Cited Text
+             * @default null
+             */
+            cited_text: string | number[] | null;
+            /**
+             * Internal
+             * @default null
+             */
+            internal: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
-            range?: components["schemas"]["DocumentRange"] | null;
-            /** Title */
-            title?: string | null;
+            /** @default null */
+            range: components["schemas"]["DocumentRange"] | null;
+            /**
+             * Title
+             * @default null
+             */
+            title: string | null;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -1810,15 +1908,19 @@ export interface components {
             function: string;
             /** Id */
             id: string;
-            /** Parse Error */
-            parse_error?: string | null;
+            /**
+             * Parse Error
+             * @default null
+             */
+            parse_error: string | null;
             /**
              * Type
              * @default function
              * @enum {string}
              */
             type: "function" | "custom";
-            view?: components["schemas"]["ToolCallContent"] | null;
+            /** @default null */
+            view: components["schemas"]["ToolCallContent"] | null;
         };
         /**
          * ToolCallContent
@@ -1832,8 +1934,11 @@ export interface components {
              * @enum {string}
              */
             format: "text" | "markdown";
-            /** Title */
-            title?: string | null;
+            /**
+             * Title
+             * @default null
+             */
+            title: string | null;
         };
         /** ToolCallError */
         ToolCallError: {
@@ -2130,14 +2235,23 @@ export interface components {
          * @description A citation that refers to a URL.
          */
         UrlCitation: {
-            /** Cited Text */
-            cited_text?: string | number[] | null;
-            /** Internal */
-            internal?: {
+            /**
+             * Cited Text
+             * @default null
+             */
+            cited_text: string | number[] | null;
+            /**
+             * Internal
+             * @default null
+             */
+            internal: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
-            /** Title */
-            title?: string | null;
+            /**
+             * Title
+             * @default null
+             */
+            title: string | null;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -2158,11 +2272,15 @@ export interface components {
         ValidationCase: {
             /** Id */
             id: string | string[];
-            /** Labels */
-            labels?: {
+            /**
+             * Labels
+             * @default null
+             */
+            labels: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
-            target?: components["schemas"]["JsonValue"] | null;
+            /** @default null */
+            target: components["schemas"]["JsonValue"] | null;
         };
         /** ValidationError */
         ValidationError: {

@@ -1,12 +1,13 @@
 import hashlib
 import io
-from typing import Any, Iterable, TypeVar
+from typing import Any, Iterable, TypeVar, Union, get_args, get_origin
 
 import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import AccessPolicy
+from inspect_ai.model import ChatMessage
 from starlette.status import (
     HTTP_304_NOT_MODIFIED,
     HTTP_403_FORBIDDEN,
@@ -24,6 +25,7 @@ from .._scanresults import (
 from .._transcript.columns import Column
 from .._transcript.factory import transcripts_from
 from .._transcript.types import Transcript, TranscriptContent
+from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
     _apply_cursor_pagination,
     _build_cursor,
@@ -94,6 +96,43 @@ def v2_api_app(
                 for operation in path.values():
                     if isinstance(operation, dict):
                         operation.get("responses", {}).pop("422", None)
+
+            # Force additional types into schema even if not referenced by endpoints.
+            # Format: list of (schema_name, type) tuples.
+            # - For Union types (type aliases): creates a oneOf schema with the
+            #   given name, plus schemas for each member type. Python type aliases
+            #   don't preserve their name at runtime, so we must provide it explicitly.
+            # - For Pydantic models: creates a schema with the given name.
+            extra_schemas = [
+                ("ChatMessage", ChatMessage),
+                ("ValidationCase", ValidationCase),
+            ]
+            ref_template = "#/components/schemas/{model}"
+            schemas = openapi_schema.setdefault("components", {}).setdefault(
+                "schemas", {}
+            )
+            for name, t in extra_schemas:
+                if get_origin(t) is Union:
+                    # Union type: create oneOf schema and add member schemas
+                    members = get_args(t)
+                    for m in members:
+                        schema = m.model_json_schema(ref_template=ref_template)
+                        schemas.update(schema.get("$defs", {}))
+                        schemas[m.__name__] = {
+                            k: v for k, v in schema.items() if k != "$defs"
+                        }
+                    schemas[name] = {
+                        "oneOf": [
+                            {"$ref": f"#/components/schemas/{m.__name__}"}
+                            for m in members
+                        ]
+                    }
+                elif hasattr(t, "model_json_schema"):
+                    # Pydantic model: add directly
+                    schema = t.model_json_schema(ref_template=ref_template)
+                    schemas.update(schema.get("$defs", {}))
+                    schemas[name] = {k: v for k, v in schema.items() if k != "$defs"}
+
             app.openapi_schema = openapi_schema
         return app.openapi_schema
 

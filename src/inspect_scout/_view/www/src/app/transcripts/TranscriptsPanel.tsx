@@ -21,7 +21,6 @@ export const TranscriptsPanel: FC = () => {
     (state) => state.setUserTranscriptsDir
   );
   const resolvedTranscriptDir = userTranscriptsDir || transcriptDir;
-  console.log({ resolvedTranscriptDir });
 
   // Filtering
   const columnFilters =

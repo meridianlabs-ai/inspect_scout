@@ -16,7 +16,6 @@ export const TranscriptPanel: FC = () => {
   const routeTranscriptsDir = useTranscriptDirParams();
 
   // Server transcripts directory
-
   const transcriptsDir = useServerTranscriptsDir();
   const { loading, data: transcript } = useServerTranscript(
     transcriptsDir,

@@ -1,32 +1,33 @@
 import {
-  useReactTable,
-  getCoreRowModel,
   ColumnDef,
-  flexRender,
-  OnChangeFn,
   ColumnSizingState,
-  SortingState,
+  flexRender,
+  getCoreRowModel,
+  OnChangeFn,
   RowSelectionState,
+  SortingState,
+  useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
 import {
-  FC,
-  useRef,
-  useMemo,
-  useState,
   DragEvent,
-  useCallback,
-  useEffect,
+  FC,
   KeyboardEvent,
   MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import { TranscriptInfo } from "../../types";
+import { TranscriptInfo } from "../../types/api-types";
+import { Score } from "../../types/log";
 import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
@@ -330,7 +331,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             return "-";
           }
 
-          const scoreValue = value.value;
+          // TODO: Fixme
+          const scoreValue = (value as Score).value;
           if (Array.isArray(scoreValue)) {
             return printArray(scoreValue, 1000);
           } else if (typeof scoreValue === "object") {
@@ -351,7 +353,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           filterType: "number",
         },
         cell: (value) => {
-          if (value === undefined) {
+          if (value == null) {
             return "-";
           }
           return formatNumber(value);
@@ -366,7 +368,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           filterType: "number",
         },
         cell: (value) => {
-          if (value === undefined) {
+          if (value == null) {
             return "-";
           }
           return formatPrettyDecimal(value);

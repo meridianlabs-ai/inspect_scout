@@ -5,7 +5,7 @@ import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { Condition, SimpleCondition } from "../../query/types";
 import { useStore } from "../../state/store";
-import { TranscriptInfo } from "../../types";
+import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import {
@@ -47,8 +47,8 @@ export const TranscriptsPanel: FC = () => {
       sorting
     );
 
-  const transcripts = useMemo(
-    () => (data?.pages.flatMap((page) => page.items) ?? []) as TranscriptInfo[],
+  const transcripts: TranscriptInfo[] = useMemo(
+    () => data?.pages.flatMap((page) => page.items) ?? [],
     [data]
   );
 

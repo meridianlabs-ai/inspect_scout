@@ -62,8 +62,6 @@ export const TranscriptsPanel: FC = () => {
     [fetchNextPage]
   );
 
-  const hasError = errorDir || error;
-
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
@@ -71,8 +69,8 @@ export const TranscriptsPanel: FC = () => {
         transcriptsDir={resolvedTranscriptDir}
         setTranscriptsDir={setUserTranscriptsDir}
       />
-      <LoadingBar loading={isFetching || loadingDir} />
-      {hasError && (
+      <LoadingBar loading={isFetching} />
+      {error && (
         <ErrorPanel
           title="Error Loading Transcript"
           error={{
@@ -80,7 +78,7 @@ export const TranscriptsPanel: FC = () => {
           }}
         />
       )}
-      {!hasError && (
+      {!error && (
         <TranscriptsGrid
           transcripts={transcripts}
           onScrollNearEnd={handleScrollNearEnd}

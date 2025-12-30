@@ -1,6 +1,7 @@
 import {
   InfiniteData,
   keepPreviousData,
+  QueryKey,
   useInfiniteQuery,
   UseInfiniteQueryResult,
   useQueryClient,
@@ -174,13 +175,15 @@ export const useServerTranscript = (
   });
 };
 
+type CursorType = { [key: string]: unknown };
+
 export const useServerTranscriptsInfinite = (
   location?: string,
   pageSize: number = 50,
   filter?: Condition,
   sorting?: SortingState
 ): UseInfiniteQueryResult<
-  InfiniteData<TranscriptsResponse, { [key: string]: unknown } | undefined>,
+  InfiniteData<TranscriptsResponse, CursorType | undefined>,
   Error
 > => {
   const api = useApi();
@@ -190,7 +193,13 @@ export const useServerTranscriptsInfinite = (
     [sorting]
   );
 
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    TranscriptsResponse,
+    Error,
+    InfiniteData<TranscriptsResponse, CursorType | undefined>,
+    QueryKey,
+    CursorType | undefined
+  >({
     queryKey: ["transcripts-infinite", location, filter, orderBy, pageSize],
     queryFn: async ({ pageParam }) => {
       const pagination = pageParam
@@ -204,7 +213,7 @@ export const useServerTranscriptsInfinite = (
         pagination
       );
     },
-    initialPageParam: undefined as undefined | { [key: string]: unknown },
+    initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,

@@ -78,7 +78,9 @@ interface TranscriptGridProps {
   transcripts: TranscriptInfo[];
   transcriptsDir: string;
   className?: string | string[];
+  /** Called when scroll position nears end; receives distance from bottom in px. */
   onScrollNearEnd: (distanceFromBottom: number) => void;
+  /** Whether more data is available to fetch. */
   hasMore: boolean;
   /** Distance from bottom (in px) at which to trigger callback. */
   fetchThreshold: number;

@@ -18,8 +18,8 @@ import {
   SortColumn,
 } from "../app/types";
 import type { SimpleCondition } from "../query/types";
-import { debounce } from "../utils/sync";
 import { TranscriptInfo } from "../types/api-types";
+import { debounce } from "../utils/sync";
 
 // Transcripts table UI state
 interface TranscriptsTableState {

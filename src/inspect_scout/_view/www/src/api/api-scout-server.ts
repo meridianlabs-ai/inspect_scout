@@ -1,7 +1,11 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import type { Condition, OrderByModel } from "../query";
 import { Status } from "../types";
-import { Transcript, TranscriptsResponse } from "../types/api-types.ts";
+import {
+  Pagination,
+  Transcript,
+  TranscriptsResponse,
+} from "../types/api-types.ts";
 import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
@@ -28,7 +32,8 @@ export const apiScoutServer = (
     getTranscripts: async (
       transcriptsDir: string,
       filter?: Condition,
-      orderBy?: OrderByModel | OrderByModel[]
+      orderBy?: OrderByModel | OrderByModel[],
+      pagination?: Pagination
     ): Promise<TranscriptsResponse> => {
       const result = await requestApi.fetchString(
         "POST",
@@ -37,6 +42,7 @@ export const apiScoutServer = (
         JSON.stringify({
           filter: filter ?? null,
           order_by: orderBy ?? null,
+          pagination: pagination ?? null,
         })
       );
 

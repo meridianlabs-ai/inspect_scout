@@ -94,7 +94,7 @@
   "dependencies": {
     "@popperjs/core": "^2.11.8",
     "@tanstack/react-table": "^8.21.3",
-    "@tanstack/react-virtual": "^3.13.13",
+    "@tanstack/react-virtual": "^3.13.12",
     "ag-grid-community": "^34.3.1",
     "ag-grid-react": "^34.3.1",
     "ansi-output": "^0.0.9",

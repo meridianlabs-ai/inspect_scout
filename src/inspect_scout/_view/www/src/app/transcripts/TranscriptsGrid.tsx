@@ -1,32 +1,33 @@
 import {
-  useReactTable,
-  getCoreRowModel,
   ColumnDef,
-  flexRender,
-  OnChangeFn,
   ColumnSizingState,
-  SortingState,
+  flexRender,
+  getCoreRowModel,
+  OnChangeFn,
   RowSelectionState,
+  SortingState,
+  useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
 import {
-  FC,
-  useRef,
-  useMemo,
-  useState,
   DragEvent,
-  useCallback,
-  useEffect,
+  FC,
   KeyboardEvent,
   MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import { TranscriptInfo } from "../../types";
+import { TranscriptInfo } from "../../types/api-types";
+import { Score } from "../../types/log";
 import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
@@ -75,14 +76,23 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
 
 interface TranscriptGridProps {
   transcripts: TranscriptInfo[];
-  transcriptsDir?: string;
+  transcriptsDir: string;
   className?: string | string[];
+  /** Called when scroll position nears end; receives distance from bottom in px. */
+  onScrollNearEnd: (distanceFromBottom: number) => void;
+  /** Whether more data is available to fetch. */
+  hasMore: boolean;
+  /** Distance from bottom (in px) at which to trigger callback. */
+  fetchThreshold: number;
 }
 
 export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   transcripts,
   transcriptsDir,
   className,
+  onScrollNearEnd,
+  hasMore,
+  fetchThreshold,
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
@@ -322,7 +332,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             return "-";
           }
 
-          const scoreValue = value.value;
+          // TODO: Fixme
+          const scoreValue = (value as Score).value;
           if (Array.isArray(scoreValue)) {
             return printArray(scoreValue, 1000);
           } else if (typeof scoreValue === "object") {
@@ -343,7 +354,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           filterType: "number",
         },
         cell: (value) => {
-          if (value === undefined) {
+          if (value == null) {
             return "-";
           }
           return formatNumber(value);
@@ -358,7 +369,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           filterType: "number",
         },
         cell: (value) => {
-          if (value === undefined) {
+          if (value == null) {
             return "-";
           }
           return formatPrettyDecimal(value);
@@ -454,9 +465,6 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           }));
         }
       } else {
-        if (!transcriptsDir) {
-          return;
-        }
         // Normal click: Navigate to transcript
         void navigate(transcriptRoute(transcriptsDir, rowId));
       }
@@ -630,6 +638,26 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
+  // Infinite scroll: notify parent when scrolled near bottom
+  const checkScrollNearEnd = useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      if (!containerRefElement || !hasMore) return;
+
+      const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      if (distanceFromBottom < fetchThreshold) {
+        onScrollNearEnd(distanceFromBottom);
+      }
+    },
+    [onScrollNearEnd, hasMore, fetchThreshold]
+  );
+
+  // Check on mount if we need to fetch more
+  useEffect(() => {
+    checkScrollNearEnd(containerRef.current);
+  }, [checkScrollNearEnd]);
+
   // Scroll focused row into view when it changes
   useEffect(() => {
     if (focusedRowId && containerRef.current) {
@@ -648,6 +676,11 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     }
   }, [focusedRowId, rows, rowVirtualizer]);
 
+  const onScroll = useCallback(
+    (e) => checkScrollNearEnd(e.currentTarget),
+    [checkScrollNearEnd]
+  );
+
   // Render the grid
   return (
     <div
@@ -655,6 +688,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       className={clsx(className, styles.container)}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onScroll={onScroll}
     >
       <table className={styles.table}>
         <thead className={styles.thead}>

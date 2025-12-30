@@ -1,4 +1,11 @@
-import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
+import {
+  InfiniteData,
+  keepPreviousData,
+  QueryKey,
+  useInfiniteQuery,
+  UseInfiniteQueryResult,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { ColumnTable } from "arquero";
 import { useMemo } from "react";
@@ -165,5 +172,52 @@ export const useServerTranscript = (
     queryFn: () => api.getTranscript(location!, id!),
     enabled: !!location && !!id,
     staleTime: Infinity,
+  });
+};
+
+type CursorType = { [key: string]: unknown };
+
+export const useServerTranscriptsInfinite = (
+  location?: string,
+  pageSize: number = 50,
+  filter?: Condition,
+  sorting?: SortingState
+): UseInfiniteQueryResult<
+  InfiniteData<TranscriptsResponse, CursorType | undefined>,
+  Error
+> => {
+  const api = useApi();
+
+  const orderBy = useMemo(
+    () => (sorting ? sortingStateToOrderBy(sorting) : undefined),
+    [sorting]
+  );
+
+  return useInfiniteQuery<
+    TranscriptsResponse,
+    Error,
+    InfiniteData<TranscriptsResponse, CursorType | undefined>,
+    QueryKey,
+    CursorType | undefined
+  >({
+    queryKey: ["transcripts-infinite", location, filter, orderBy, pageSize],
+    queryFn: async ({ pageParam }) => {
+      const pagination = pageParam
+        ? { limit: pageSize, cursor: pageParam, direction: "forward" as const }
+        : { limit: pageSize, cursor: null, direction: "forward" as const };
+
+      return await api.getTranscripts(
+        location ?? "",
+        filter,
+        orderBy,
+        pagination
+      );
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
+    enabled: !!location,
+    placeholderData: keepPreviousData,
   });
 };

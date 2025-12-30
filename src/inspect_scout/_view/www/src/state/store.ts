@@ -18,7 +18,7 @@ import {
   SortColumn,
 } from "../app/types";
 import type { SimpleCondition } from "../query/types";
-import { TranscriptInfo } from "../types";
+import { TranscriptInfo } from "../types/api-types";
 import { debounce } from "../utils/sync";
 
 // Transcripts table UI state

@@ -79,6 +79,9 @@ interface StoreState {
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
 
+  // Transcript Detail properties (clear when switching transcripts)
+  selectedTranscriptTab?: string;
+
   // User selected / visible transcript path
   userTranscriptsDir?: string;
   userScansDir?: string;
@@ -147,6 +150,8 @@ interface StoreState {
 
   setTranscriptOutlineId: (id: string) => void;
   clearTranscriptOutlineId: () => void;
+
+  setSelectedTranscriptTab: (tab: string) => void;
 
   setTranscriptCollapsedEvent: (
     scope: string,
@@ -470,6 +475,11 @@ export const createStore = (api: ScanApi) =>
           clearTranscriptOutlineId: () => {
             set((state) => {
               state.transcriptOutlineId = undefined;
+            });
+          },
+          setSelectedTranscriptTab: (tab: string) => {
+            set((state) => {
+              state.selectedTranscriptTab = tab;
             });
           },
           setTranscriptCollapsedEvent: (

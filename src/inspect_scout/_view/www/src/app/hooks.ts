@@ -3,11 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { useMapAsyncData } from "../hooks/useMapAsyncData";
-import { parseScanParams, parseTranscriptParams } from "../router/url";
+import { parseScanParams } from "../router/url";
 import { useStore } from "../state/store";
 import { Status } from "../types";
 import { AsyncData, data, loading } from "../utils/asyncData";
-import { decodeBase64Url } from "../utils/base64url";
 import { join } from "../utils/uri";
 
 import { parseScanResultData, parseScanResultSummaries } from "./arrowHelpers";

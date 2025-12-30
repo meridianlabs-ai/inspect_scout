@@ -77,12 +77,20 @@ interface TranscriptGridProps {
   transcripts: TranscriptInfo[];
   transcriptsDir?: string;
   className?: string | string[];
+  // Infinite scroll props
+  onScrollNearEnd: (distanceFromBottom: number) => void;
+  hasMore: boolean;
+  /** Distance from bottom (in px) at which to trigger callback. See TranscriptsPanel.tsx for tuning rationale. */
+  fetchThreshold: number;
 }
 
 export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   transcripts,
   transcriptsDir,
   className,
+  onScrollNearEnd,
+  hasMore,
+  fetchThreshold,
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
@@ -630,6 +638,26 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
+  // Infinite scroll: notify parent when scrolled near bottom
+  const checkScrollNearEnd = useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      if (!containerRefElement || !hasMore) return;
+
+      const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      if (distanceFromBottom < fetchThreshold) {
+        onScrollNearEnd(distanceFromBottom);
+      }
+    },
+    [onScrollNearEnd, hasMore, fetchThreshold]
+  );
+
+  // Check on mount/data change if we need to fetch more
+  useEffect(() => {
+    checkScrollNearEnd(containerRef.current);
+  }, [checkScrollNearEnd]);
+
   // Scroll focused row into view when it changes
   useEffect(() => {
     if (focusedRowId && containerRef.current) {
@@ -655,6 +683,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       className={clsx(className, styles.container)}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onScroll={(e) => checkScrollNearEnd(e.currentTarget)}
     >
       <table className={styles.table}>
         <thead className={styles.thead}>

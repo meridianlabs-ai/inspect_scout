@@ -3,7 +3,11 @@ import { StateStorage } from "zustand/middleware";
 import { ScanResultInputData } from "../app/types";
 import type { Condition, OrderByModel } from "../query";
 import { Status } from "../types";
-import { Transcript, TranscriptsResponse } from "../types/api-types";
+import {
+  Pagination,
+  Transcript,
+  TranscriptsResponse,
+} from "../types/api-types";
 
 export type ClientStorage = StateStorage;
 
@@ -12,7 +16,8 @@ export interface ScanApi {
   getTranscripts(
     transcriptsDir: string,
     filter?: Condition,
-    orderBy?: OrderByModel | OrderByModel[]
+    orderBy?: OrderByModel | OrderByModel[],
+    pagination?: Pagination
   ): Promise<TranscriptsResponse>;
   getTranscript(transcriptsDir: string, id: string): Promise<Transcript>;
   getScansDir(): Promise<string>;

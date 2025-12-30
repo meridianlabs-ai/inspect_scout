@@ -266,6 +266,22 @@
         "title": "ChatCompletionChoice",
         "type": "object"
       },
+      "ChatMessage": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ChatMessageSystem"
+          },
+          {
+            "$ref": "#/components/schemas/ChatMessageUser"
+          },
+          {
+            "$ref": "#/components/schemas/ChatMessageAssistant"
+          },
+          {
+            "$ref": "#/components/schemas/ChatMessageTool"
+          }
+        ]
+      },
       "ChatMessageAssistant": {
         "description": "Assistant chat message.",
         "properties": {
@@ -317,6 +333,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -329,6 +346,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "model": {
@@ -340,6 +358,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Model"
           },
           "role": {
@@ -361,6 +380,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Source"
           },
           "tool_calls": {
@@ -375,6 +395,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Tool Calls"
           }
         },
@@ -435,6 +456,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -447,6 +469,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "role": {
@@ -468,6 +491,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Source"
           }
         },
@@ -527,7 +551,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "function": {
             "anyOf": [
@@ -538,6 +563,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Function"
           },
           "id": {
@@ -549,6 +575,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -561,6 +588,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "role": {
@@ -582,6 +610,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Source"
           },
           "tool_call_id": {
@@ -593,6 +622,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Tool Call Id"
           }
         },
@@ -653,6 +683,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -665,6 +696,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "role": {
@@ -686,6 +718,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Source"
           },
           "tool_call_id": {
@@ -700,6 +733,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Tool Call Id"
           }
         },
@@ -1056,7 +1090,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "type": {
             "const": "audio",
@@ -1092,6 +1127,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cited Text"
           },
           "internal": {
@@ -1106,6 +1142,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Internal"
           },
           "title": {
@@ -1117,6 +1154,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Title"
           },
           "type": {
@@ -1147,7 +1185,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "type": {
             "const": "data",
@@ -1181,7 +1220,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "mime_type": {
             "title": "Mime Type",
@@ -1225,7 +1265,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "type": {
             "const": "image",
@@ -1251,7 +1292,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "reasoning": {
             "title": "Reasoning",
@@ -1271,6 +1313,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Signature"
           },
           "summary": {
@@ -1282,6 +1325,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Summary"
           },
           "type": {
@@ -1330,6 +1374,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Citations"
           },
           "internal": {
@@ -1340,7 +1385,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "refusal": {
             "anyOf": [
@@ -1351,6 +1397,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Refusal"
           },
           "text": {
@@ -1386,6 +1433,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Context"
           },
           "error": {
@@ -1397,6 +1445,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Error"
           },
           "id": {
@@ -1411,7 +1460,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "name": {
             "title": "Name",
@@ -1467,7 +1517,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "type": {
             "const": "video",
@@ -1507,6 +1558,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cited Text"
           },
           "internal": {
@@ -1521,6 +1573,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Internal"
           },
           "range": {
@@ -1531,7 +1584,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "title": {
             "anyOf": [
@@ -1542,6 +1596,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Title"
           },
           "type": {
@@ -5180,6 +5235,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Parse Error"
           },
           "type": {
@@ -5199,7 +5255,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           }
         },
         "required": [
@@ -5234,6 +5291,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Title"
           }
         },
@@ -6263,6 +6321,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cited Text"
           },
           "internal": {
@@ -6277,6 +6336,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Internal"
           },
           "title": {
@@ -6288,6 +6348,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Title"
           },
           "type": {
@@ -6336,6 +6397,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Labels"
           },
           "target": {
@@ -6346,7 +6408,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           }
         },
         "required": [

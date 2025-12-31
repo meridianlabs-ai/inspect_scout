@@ -23,7 +23,7 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "types:generate": "openapi-typescript ./openapi.json -o ./src/types/generated.ts && node scripts/fix-json-value.js",
+    "types:generate": "node scripts/generate-types.js",
     "prebuild": "pnpm types:generate",
     "build": "npm run build:app",
     "build:lib": "vite build --mode library",

@@ -45,11 +45,14 @@ class CustomJsonSchemaGenerator(GenerateJsonSchema):
         return result
 
     def _fix_json_value_defs(self, schema: dict[str, Any]) -> None:
-        """Replace empty JsonValue definition with proper recursive JSON schema."""
+        """Replace empty JsonValue definition with proper JSON schema.
+
+        Uses non-recursive definition since openapi-typescript inlines recursive
+        refs, causing TS2502 circular reference errors. Uses additionalProperties: true
+        for object to generate Record<string, unknown> instead of Record<string, never>.
+        """
         defs = schema.get("$defs", {})
         if "JsonValue" in defs and defs["JsonValue"] == {}:
-            # Use OpenAPI ref format since FastAPI moves $defs to components/schemas
-            ref = "#/components/schemas/JsonValue"
             defs["JsonValue"] = {
                 "oneOf": [
                     {"type": "null"},
@@ -57,8 +60,8 @@ class CustomJsonSchemaGenerator(GenerateJsonSchema):
                     {"type": "integer"},
                     {"type": "number"},
                     {"type": "string"},
-                    {"type": "array", "items": {"$ref": ref}},
-                    {"type": "object", "additionalProperties": {"$ref": ref}},
+                    {"type": "array", "items": {}},
+                    {"type": "object", "additionalProperties": {}},
                 ]
             }
 

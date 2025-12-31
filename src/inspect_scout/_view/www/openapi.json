@@ -2607,15 +2607,11 @@
             "type": "string"
           },
           {
-            "items": {
-              "$ref": "#/components/schemas/JsonValue"
-            },
+            "items": {},
             "type": "array"
           },
           {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/JsonValue"
-            },
+            "additionalProperties": {},
             "type": "object"
           }
         ]

@@ -98,8 +98,8 @@ def test_default_pydantic_treats_defaulted_fields_as_optional() -> None:
     assert "field" in custom_schema.get("required", [])
 
 
-def test_json_value_generates_recursive_schema() -> None:
-    """JsonValue should generate a proper recursive oneOf schema, not empty {}."""
+def test_json_value_generates_proper_schema() -> None:
+    """JsonValue should generate a proper oneOf schema, not empty {}."""
     schema = get_schema(WithJsonValue)
     defs = schema.get("$defs", {})
 
@@ -125,26 +125,22 @@ def test_json_value_generates_recursive_schema() -> None:
     }
 
 
-def test_json_value_array_is_recursive() -> None:
-    """JsonValue array items should reference JsonValue recursively."""
+def test_json_value_is_not_recursive() -> None:
+    """JsonValue uses non-recursive schema (openapi-typescript can't handle recursive)."""
     schema = get_schema(WithJsonValue)
     json_value_schema = schema["$defs"]["JsonValue"]
 
+    # Array items should be {} (any), not a $ref to JsonValue
     array_schema = next(
         s for s in json_value_schema["oneOf"] if s.get("type") == "array"
     )
-    assert array_schema["items"] == {"$ref": "#/components/schemas/JsonValue"}
+    assert array_schema["items"] == {}
 
-
-def test_json_value_object_is_recursive() -> None:
-    """JsonValue object additionalProperties should reference JsonValue recursively."""
-    schema = get_schema(WithJsonValue)
-    json_value_schema = schema["$defs"]["JsonValue"]
-
+    # Object additionalProperties should be {} (any), not a $ref to JsonValue
     object_schema = next(
         s for s in json_value_schema["oneOf"] if s.get("type") == "object"
     )
-    assert object_schema["additionalProperties"] == {"$ref": "#/components/schemas/JsonValue"}
+    assert object_schema["additionalProperties"] == {}
 
 
 def test_default_pydantic_json_value_is_empty() -> None:

@@ -2059,7 +2059,7 @@ so disabling selection can break that functionality */
   font-size: 0.5rem;
   text-transform: uppercase;
 }
-._layout_1b1lv_1 {
+._layout_hstd9_1 {
   display: flex;
   flex-direction: row;
   height: 100vh;
@@ -2067,10 +2067,14 @@ so disabling selection can break that functionality */
   overflow: hidden;
 }
 
-._content_1b1lv_9 {
+._content_hstd9_9 {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   height: 100vh;
+}
+
+._content_hstd9_9._scrolling_hstd9_15 {
+  overflow: auto;
 }
 .json-panel {
   width: 100%;
@@ -5269,19 +5273,19 @@ button._segment_19z32_10 {
   font-weight: 400;
   color: var(--bs-secondary-text-color);
 }
-._tabs_24oap_1 {
+._tabs_478d8_1 {
 }
 
-._tabSet_24oap_4 {
+._tabSet_478d8_4 {
   height: 100%;
 }
 
-._chatTab_24oap_8 {
+._chatTab_478d8_8 {
   height: 100%;
 }
 
-._chatList_24oap_12 {
-  height: 600px;
+._chatListContainer_478d8_12 {
+  border: solid red 1px;
 }
 ._container_rctht_1 {
   height: 100%;

@@ -5273,19 +5273,29 @@ button._segment_19z32_10 {
   font-weight: 400;
   color: var(--bs-secondary-text-color);
 }
-._tabs_478d8_1 {
+._tabContainer_12q76_1 {
+  display: grid;
+  grid-template-rows: max-content 1fr;
 }
 
-._tabSet_478d8_4 {
+.nav._tabs_12q76_6 {
+  border-bottom: solid 1px var(--bs-border-color);
+  padding-bottom: 0.5rem;
+  padding-top: 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+._tabSet_12q76_14 {
   height: 100%;
 }
 
-._chatTab_478d8_8 {
+._chatTab_12q76_18 {
   height: 100%;
 }
 
-._chatListContainer_478d8_12 {
-  border: solid red 1px;
+._chatTab_12q76_18 > * > * {
+  padding: 0.5rem;
 }
 ._container_rctht_1 {
   height: 100%;
@@ -5297,6 +5307,10 @@ button._segment_19z32_10 {
   height: 100%;
   display: grid;
   grid-template-rows: max-content 1fr;
+}
+._titleContainer_tjn1j_1 {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
 /*!
  * Bootstrap  v5.3.8 (https://getbootstrap.com/)

@@ -1,4 +1,14 @@
-.tabs {
+.tabContainer {
+  display: grid;
+  grid-template-rows: max-content 1fr;
+}
+
+:global(.nav).tabs {
+  border-bottom: solid 1px var(--bs-border-color);
+  padding-bottom: 0.5rem;
+  padding-top: 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 .tabSet {
@@ -9,6 +19,6 @@
   height: 100%;
 }
 
-.chatListContainer {
-  border: solid red 1px;
+.chatTab > * > * {
+  padding: 0.5rem;
 }

@@ -2589,7 +2589,33 @@
         "title": "JsonChange",
         "type": "object"
       },
-      "JsonValue": {},
+      "JsonValue": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "items": {},
+            "type": "array"
+          },
+          {
+            "additionalProperties": {},
+            "type": "object"
+          }
+        ]
+      },
       "LoggerEvent": {
         "description": "Log message recorded with Python logger.",
         "properties": {

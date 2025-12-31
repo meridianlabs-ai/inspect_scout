@@ -12,6 +12,7 @@ export default tseslint.config(
       "dist/",
       "node_modules/",
       "build/",
+      "scripts/",
       "*.config.?s",
       "*.config.cjs",
       "src/types/generated.ts",

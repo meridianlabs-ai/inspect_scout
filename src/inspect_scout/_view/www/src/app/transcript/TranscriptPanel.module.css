@@ -1,11 +1,11 @@
 .container {
   height: 100%;
   display: grid;
-  grid-template-rows: max-content max-content 1fr;
+  grid-template-rows: max-content max-content minmax(0, 1fr);
 }
 
 .transcriptContainer {
   height: 100%;
   display: grid;
-  grid-template-rows: max-content 1fr;
+  grid-template-rows: max-content minmax(0, 1fr);
 }

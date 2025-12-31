@@ -75,7 +75,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
             handleTabChange(kTranscriptEventsTabId);
           }}
           selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
-          scrollable={false}
+          scrollable={true}
         >
           <TranscriptView
             id={"transcript-events-list"}
@@ -91,12 +91,15 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
             handleTabChange(kTranscriptMetadataTabId);
           }}
           selected={resolvedSelectedTranscriptTab === kTranscriptMetadataTabId}
-          scrollable={false}
+          scrollable={true}
         >
-          <MetaDataGrid
-            id="transcript-metadata-grid"
-            entries={transcript.metadata || {}}
-          />
+          <div className={styles.scrollable}>
+            <MetaDataGrid
+              id="transcript-metadata-grid"
+              entries={transcript.metadata || {}}
+              className={clsx(styles.metadata)}
+            />
+          </div>
         </TabPanel>
       </TabSet>
     </div>

@@ -1,0 +1,210 @@
+---
+title: "Grep Scanner"
+---
+
+## Overview
+
+The `grep_scanner()` provides pattern-based scanning of transcripts using grep-style matching. Unlike [LLM Scanner](llm_scanner.qmd) which uses a language model for analysis, `grep_scanner()` performs fast, deterministic text pattern matching.
+
+Key features:
+
+- Simple string matching by default (literal patterns)
+- Optional regex mode for complex patterns
+- Case-insensitive matching by default
+- Word boundary matching
+- Multiple patterns with OR logic
+- Labeled patterns for categorized results
+
+## Basic Usage
+
+Here is a simple example that finds occurrences of "error" in assistant messages:
+
+```python
+from inspect_scout import Scanner, Transcript, grep_scanner, scanner
+
+@scanner(messages=["assistant"])
+def find_errors() -> Scanner[Transcript]:
+    return grep_scanner("error")
+```
+
+The scanner returns a `Result` with:
+
+- `value`: Count of matches found (integer)
+- `explanation`: Context snippets showing each match
+- `references`: Message references for match locations
+
+## Pattern Types
+
+### Single Pattern
+
+The simplest form takes a single string pattern:
+
+```python
+grep_scanner("error")
+```
+
+### Multiple Patterns
+
+Pass a list to match any of multiple patterns (OR logic):
+
+```python
+grep_scanner(["error", "failed", "exception"])
+```
+
+All matches across all patterns are aggregated into a single count.
+
+### Labeled Patterns
+
+Pass a dict to get separate results for each category:
+
+```python
+@scanner(messages="all")
+def categorized_issues() -> Scanner[Transcript]:
+    return grep_scanner({
+        "errors": ["error", "failed", "exception"],
+        "warnings": ["warning", "caution"],
+        "security": ["password", "secret", "token"],
+    })
+```
+
+This returns a `list[Result]`, one per label:
+
+```python
+# Returns:
+# - Result(label="errors", value=3, ...)
+# - Result(label="warnings", value=1, ...)
+# - Result(label="security", value=0, ...)
+```
+
+## Options
+
+### Case Sensitivity
+
+By default, matching is case-insensitive (like `grep -i`):
+
+```python
+grep_scanner("error")  # Matches "error", "ERROR", "Error"
+```
+
+For case-sensitive matching:
+
+```python
+grep_scanner("error", ignore_case=False)  # Only matches "error"
+```
+
+### Regex Mode
+
+By default, patterns are treated as literal strings:
+
+```python
+grep_scanner("file.*txt")  # Matches literal "file.*txt"
+```
+
+Enable regex mode for regular expression patterns:
+
+```python
+grep_scanner(r"https?://\S+", regex=True)  # Matches URLs
+grep_scanner(r"\d{3}-\d{4}", regex=True)   # Matches phone patterns
+```
+
+### Word Boundary
+
+Match whole words only:
+
+```python
+grep_scanner("error", word_boundary=True)
+# Matches "error" but not "errorCode" or "myerror"
+```
+
+This adds `\b` word boundary anchors around the pattern.
+
+## Scanner Results
+
+### Result Structure
+
+For single/list patterns:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `value` | `int` | Count of matches found |
+| `explanation` | `str \| None` | Context snippets for each match |
+| `references` | `list[Reference]` | Message citations |
+
+For labeled patterns (dict), each label produces its own `Result` with the same structure, plus:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | `str` | The category label |
+
+### Context Snippets
+
+The `explanation` field shows context around each match:
+
+```
+[M1]: ...request returned an **error** code 500...
+[M2]: ...operation **error**: connection timeout...
+```
+
+- Up to 50 characters before/after each match
+- Match text highlighted with `**bold**`
+- Ellipsis (`...`) when context is truncated
+- Message reference prefix (`[M1]`, `[M2]`, etc.)
+
+## Examples
+
+### Finding Profanity
+
+```python
+@scanner(messages=["assistant"])
+def profanity_check() -> Scanner[Transcript]:
+    return grep_scanner(
+        ["damn", "hell", "crap"],
+        word_boundary=True,  # Avoid partial matches
+    )
+```
+
+### Detecting URLs
+
+```python
+@scanner(messages="all")
+def url_detection() -> Scanner[Transcript]:
+    return grep_scanner(
+        r"https?://[^\s<>\"']+",
+        regex=True,
+    )
+```
+
+### Multi-Category Analysis
+
+```python
+@scanner(messages=["assistant"])
+def content_analysis() -> Scanner[Transcript]:
+    return grep_scanner({
+        "code_snippets": [r"```", "def ", "class ", "function"],
+        "questions": [r"\?$"],
+        "commands": ["please", "could you", "can you"],
+    }, regex=True)
+```
+
+## Comparison with LLM Scanner
+
+| Feature | grep_scanner | llm_scanner |
+|---------|--------------|-------------|
+| Speed | Fast (regex) | Slower (API calls) |
+| Cost | Free | Model API costs |
+| Determinism | Deterministic | Non-deterministic |
+| Pattern matching | Exact/regex | Semantic |
+| Context understanding | None | Full |
+| Use case | Keywords, formats | Intent, meaning |
+
+Use `grep_scanner()` when you need:
+
+- Fast, deterministic pattern matching
+- Exact keyword or format detection
+- No API costs
+
+Use `llm_scanner()` when you need:
+
+- Semantic understanding
+- Context-aware analysis
+- Complex judgment calls

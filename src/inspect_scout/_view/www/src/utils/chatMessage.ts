@@ -1,7 +1,7 @@
-import { ChatMessage, ChatMessages } from "../types";
+import { ChatMessage } from "../types/api-types";
 
 export const lastAssistantMessage = (
-  messages: ChatMessages
+  messages: ChatMessage[]
 ): ChatMessage | undefined => {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i]?.role === "assistant") {
@@ -12,7 +12,7 @@ export const lastAssistantMessage = (
 };
 
 export const firstUserMessage = (
-  messages: ChatMessages
+  messages: ChatMessage[]
 ): ChatMessage | undefined => {
   for (let i = 0; i < messages.length; i++) {
     if (messages[i]?.role === "user") {

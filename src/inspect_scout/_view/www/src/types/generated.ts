@@ -959,7 +959,9 @@ export interface components {
             replaced: components["schemas"]["JsonValue"];
             value: components["schemas"]["JsonValue"];
         };
-        JsonValue: unknown;
+        JsonValue: null | boolean | number | string | components["schemas"]["JsonValue"][] | {
+            [key: string]: components["schemas"]["JsonValue"];
+        };
         /**
          * LoggerEvent
          * @description Log message recorded with Python logger.

@@ -88,10 +88,10 @@ def v2_api_app(
             from fastapi._compat import v2
             from fastapi.openapi.utils import get_openapi
 
-            from ._server_common import NullableIsOptionalJsonSchema
+            from ._server_common import CustomJsonSchemaGenerator
 
-            # Monkey-patch so nullable fields are optional regardless of defaults
-            v2.GenerateJsonSchema = NullableIsOptionalJsonSchema  # type: ignore
+            # Monkey-patch custom schema generator for response-oriented schemas
+            v2.GenerateJsonSchema = CustomJsonSchemaGenerator  # type: ignore
 
             openapi_schema = get_openapi(
                 title=app.title,
@@ -124,7 +124,7 @@ def v2_api_app(
                     for m in members:
                         schema = m.model_json_schema(
                             ref_template=ref_template,
-                            schema_generator=NullableIsOptionalJsonSchema,
+                            schema_generator=CustomJsonSchemaGenerator,
                         )
                         schemas.update(schema.get("$defs", {}))
                         schemas[m.__name__] = {
@@ -140,7 +140,7 @@ def v2_api_app(
                     # Pydantic model: add directly
                     schema = t.model_json_schema(
                         ref_template=ref_template,
-                        schema_generator=NullableIsOptionalJsonSchema,
+                        schema_generator=CustomJsonSchemaGenerator,
                     )
                     schemas.update(schema.get("$defs", {}))
                     schemas[name] = {k: v for k, v in schema.items() if k != "$defs"}

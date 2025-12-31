@@ -1,6 +1,6 @@
 import hashlib
 import io
-from typing import Any, Iterable, TypeVar, Union, get_args, get_origin
+from typing import Any, Iterable, Literal, TypeVar, Union, get_args, get_origin
 
 import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
@@ -27,10 +27,10 @@ from .._transcript.factory import transcripts_from
 from .._transcript.types import Transcript, TranscriptContent
 from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
-    _apply_cursor_pagination,
-    _build_cursor,
-    _ensure_tiebreaker,
-    _has_more_results,
+    build_cursor,
+    cursor_to_condition,
+    ensure_tiebreaker,
+    reverse_order_columns,
 )
 from ._api_v2_types import (
     OrderBy,
@@ -211,19 +211,44 @@ def v2_api_app(
 
             # Push order_by to database layer
             # When pagination used, apply tiebreaker. Otherwise just apply user's order_by.
-            use_pagination = body and body.pagination
+            use_pagination = body is not None and body.pagination is not None
+            order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
+            needs_reverse = False
             if use_pagination:
+                assert body is not None and body.pagination is not None
+                pagination = body.pagination
+
                 # Determine order with tiebreaker
-                order_by = body.order_by if body else None
+                order_by = body.order_by
                 if not order_by:
                     order_by = OrderBy(column="transcript_id", direction="ASC")
-                order_columns = _ensure_tiebreaker(order_by)
+                order_columns = ensure_tiebreaker(order_by)
 
-                # Apply to database query
-                for col, direction in order_columns:
+                # For backward pagination WITHOUT cursor (first page from end), reverse
+                # sort order to get last N rows, then reverse results back to original
+                # order. With a cursor, cursor_to_condition() handles direction via < vs >.
+                db_order_columns = order_columns
+                if pagination.direction == "backward" and not pagination.cursor:
+                    db_order_columns = reverse_order_columns(order_columns)
+                    needs_reverse = True
+
+                # Apply order_by to database query
+                for col, direction in db_order_columns:
                     transcripts_query = transcripts_query.order_by(
                         Column(col), direction
                     )
+
+                # Push cursor condition to DB
+                if pagination.cursor:
+                    cursor_cond = cursor_to_condition(
+                        pagination.cursor,
+                        order_columns,
+                        pagination.direction,
+                    )
+                    transcripts_query = transcripts_query.where(cursor_cond)
+
+                # Push limit to DB
+                transcripts_query = transcripts_query.limit(pagination.limit)
             elif body and body.order_by:
                 # No pagination - just apply user's order_by
                 order_bys = (
@@ -239,22 +264,24 @@ def v2_api_app(
             async with transcripts_query.reader() as tr:
                 results = [t async for t in tr.index()]
 
-            # Apply pagination if requested
+            # Handle pagination response
             if use_pagination:
-                assert body and body.pagination  # type narrowing
-                paginated = _apply_cursor_pagination(
-                    results, body.pagination, order_columns
-                )
+                assert body is not None and body.pagination is not None
+                pag = body.pagination
 
-                # Build next cursor if more results exist
+                # Reverse results back to original order if we reversed for backward
+                if needs_reverse:
+                    results = list(reversed(results))
+
+                # If we got exactly limit rows, assume more exist
                 next_cursor = None
-                if _has_more_results(results, paginated, body.pagination):
-                    if body.pagination.direction == "forward":
-                        next_cursor = _build_cursor(paginated[-1], order_columns)
+                if len(results) == pag.limit and results:
+                    if pag.direction == "forward":
+                        next_cursor = build_cursor(results[-1], order_columns)
                     else:
-                        next_cursor = _build_cursor(paginated[0], order_columns)
+                        next_cursor = build_cursor(results[0], order_columns)
 
-                return TranscriptsResponse(items=paginated, next_cursor=next_cursor)
+                return TranscriptsResponse(items=results, next_cursor=next_cursor)
 
             # No pagination - return all results
             return TranscriptsResponse(items=results, next_cursor=None)

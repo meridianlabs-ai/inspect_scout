@@ -36,13 +36,6 @@ export type ToolEvent = components["schemas"]["ToolEvent"];
 export type Event = components["schemas"]["Event"];
 
 export type JsonChange = components["schemas"]["JsonChange"];
-export type JsonChangeOp =
-  | "remove"
-  | "add"
-  | "replace"
-  | "move"
-  | "test"
-  | "copy";
 
 export type ChatMessage = components["schemas"]["ChatMessage"];
 export type ChatMessageAssistant =
@@ -72,10 +65,16 @@ export type ContentCitation = components["schemas"]["ContentCitation"];
 export type DocumentCitation = components["schemas"]["DocumentCitation"];
 export type UrlCitation = components["schemas"]["UrlCitation"];
 
+// TODO: Events have timestamp as optional (because value isn't required but they use a factory to always have a value). Consider the distinction between input and output types.
+// TODO: ContentDocument type mime_type optional?
+
 // TODO: app/types.ts
+// This type is unknown in TS, but could probably be narrower
 export type JsonValue = components["schemas"]["JsonValue"];
 
-// TODO: Sample Event Limit
+// TODO: Sample Event Limit (Literal that doesn't have a type alias)
+// Literals that don't have type aliases aren't being exported.
+// TODO: Emit properly in _api_v2 for literals
 export type Type17 =
   | "message"
   | "time"
@@ -83,21 +82,24 @@ export type Type17 =
   | "token"
   | "operator"
   | "custom";
-// TODO: Events have timestamp as optional (because value isn't required but they use a factory to always have a value). Consider the distinction between input and output types.
 
-// TODO: ContentDocument type mime_type optional?
-
-// TODO: ModelEventView
-export type ToolChoice = ("auto" | "any" | "none") | ToolFunction;
-export interface ToolFunction {
-  name: string;
-}
-
-// TODO: tool.ts (Arguments1 from log.d.ts)
-export interface Arguments {
-  [key: string]: unknown;
-}
+// TODO: ??
+export type JsonChangeOp =
+  | "remove"
+  | "add"
+  | "replace"
+  | "move"
+  | "test"
+  | "copy";
 
 // TODO: Format1, Format2, MessageContent.tsx
 export type Format1 = "wav" | "mp3";
 export type Format2 = "mp4" | "mpeg" | "mov";
+
+// TODO: ModelEventView
+// This blows up generation because of the Union of a literal and a type
+export type ToolChoice = ("auto" | "any" | "none") | ToolFunction;
+
+export interface ToolFunction {
+  name: string;
+}

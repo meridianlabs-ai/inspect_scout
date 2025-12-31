@@ -1,5 +1,3 @@
-import { Arguments } from "../../types/api-types";
-
 export const kToolTodoContentType = "agent/todo-list";
 export interface ToolCallResult {
   name: string;
@@ -14,15 +12,12 @@ export interface ToolCallResult {
  */
 export const resolveToolInput = (
   fn: string,
-  toolArgs: Arguments
+  toolArgs: Record<string, unknown>
 ): ToolCallResult => {
   const toolName = fn;
 
   const inputDescriptor = extractInputMetadata(toolName);
-  const { input, description, args } = extractInput(
-    toolArgs as Record<string, unknown>,
-    inputDescriptor
-  );
+  const { input, description, args } = extractInput(toolArgs, inputDescriptor);
   const functionCall =
     args.length > 0 ? `${toolName}(${args.join(", ")})` : toolName;
   return {

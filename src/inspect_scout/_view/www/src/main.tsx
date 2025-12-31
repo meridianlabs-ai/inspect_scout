@@ -9,6 +9,7 @@ import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
 import { getVscodeApi } from "./utils/vscode";
 
@@ -51,7 +52,9 @@ root.render(
   <QueryClientProvider client={queryClient}>
     <ApiProvider value={api}>
       <StoreProvider value={store}>
-        <App mode={workbenchMode ? "workbench" : "scans"} />
+        <ExtendedFindProvider>
+          <App mode={workbenchMode ? "workbench" : "scans"} />
+        </ExtendedFindProvider>
       </StoreProvider>
     </ApiProvider>
     <ReactQueryDevtools initialIsOpen={false} />

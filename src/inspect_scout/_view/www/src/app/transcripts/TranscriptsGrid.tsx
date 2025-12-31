@@ -289,7 +289,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         size: 180,
         meta: {
           filterable: true,
-          filterType: "unknown",
+          filterType: "date",
         },
         cell: (value) => {
           if (!value) {

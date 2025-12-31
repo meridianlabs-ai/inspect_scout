@@ -292,6 +292,22 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         },
       }),
       createColumn({
+        accessorKey: "date",
+        header: "date",
+        size: 180,
+        meta: {
+          filterable: true,
+          filterType: "unknown",
+        },
+        cell: (value) => {
+          if (!value) {
+            return "-";
+          }
+          const date = new Date(value);
+          return date.toLocaleString();
+        },
+      }),
+      createColumn({
         accessorKey: "task_set",
         header: "Task Set",
         size: 150,

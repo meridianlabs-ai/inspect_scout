@@ -1,5 +1,4 @@
 import { EventType } from "../transcript/types";
-import { Transcript } from "../types";
 import {
   ModelUsage,
   JsonValue,
@@ -9,6 +8,7 @@ import {
   ChatMessageTool,
   Event,
   ChatMessage,
+  Transcript,
 } from "../types/api-types";
 
 export interface ScanResultInputData {

@@ -2,8 +2,8 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { EventType } from "../../transcript/types";
-import { Status, Transcript } from "../../types";
-import { Event, ChatMessage } from "../../types/api-types";
+import { Status } from "../../types";
+import { Event, ChatMessage, Transcript } from "../../types/api-types";
 import { TaskName } from "../components/TaskName";
 import {
   ScanResultInputData,
@@ -111,16 +111,27 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
   // added to the main Transcript schema (so we're doing this mainly for backwards
   // compatibility with old scan results)
   // Source info
-  const sourceUri = transcript.source_uri || transcript.metadata?.log;
+  const sourceUri =
+    transcript.source_uri ||
+    (transcript.metadata?.log as string | undefined) ||
+    "";
 
   // Model info
-  const transcriptModel = transcript.model || transcript.metadata?.model;
+  const transcriptModel =
+    transcript.model ||
+    (transcript.metadata?.model as string | undefined) ||
+    "";
   const scanningModel = status?.spec.model?.model;
 
   // Task information
-  const taskSet = transcript.task_set || transcript.metadata?.task_name;
-  const taskId = transcript.task_id || transcript.metadata?.id;
-  const taskRepeat = transcript.task_repeat || transcript.metadata?.epoch;
+  const taskSet =
+    transcript.task_set ||
+    (transcript.metadata?.task_name as string | undefined) ||
+    "";
+  const taskId =
+    transcript.task_id || (transcript.metadata?.id as string | undefined) || "";
+  const taskRepeat =
+    transcript.task_repeat || (transcript.metadata?.epoch as number) || -1;
 
   const cols: Column[] = [
     {

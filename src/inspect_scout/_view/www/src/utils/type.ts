@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Checks if a given value is numeric.
  */
@@ -18,4 +17,11 @@ export const toArray = <T>(val: T | T[]): Array<T> => {
   } else {
     return [val];
   }
+};
+
+/**
+ * Checks if a given value is a Record.
+ */
+export const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 };

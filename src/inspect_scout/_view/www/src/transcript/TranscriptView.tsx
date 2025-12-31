@@ -2,7 +2,7 @@ import { FC, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { useStore } from "../state/store";
-import { Events } from "../types/log";
+import { Event } from "../types/api-types";
 
 import styles from "./TranscriptView.module.css";
 import { TranscriptVirtualList } from "./TranscriptVirtualList";
@@ -12,7 +12,7 @@ import { EventNode, EventType, kTranscriptCollapseScope } from "./types";
 
 interface TranscriptViewProps {
   id: string;
-  events?: Events;
+  events?: Event[];
   nodeFilter?: (node: EventNode<EventType>[]) => EventNode<EventType>[];
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   initialEventId?: string | null;

@@ -15,7 +15,7 @@ import {
   ContentVideo,
   Format1,
   Format2,
-} from "../types/log";
+} from "../types/api-types";
 import { isJson } from "../utils/json";
 
 import { ContentDataView } from "./content-data/ContentDataView";

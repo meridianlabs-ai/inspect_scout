@@ -1,4 +1,4 @@
-import { Events, SpanBeginEvent, SpanEndEvent } from "../../types/log";
+import { Event, SpanBeginEvent, SpanEndEvent } from "../../types/api-types";
 import { EventNode, EventType } from "../types";
 
 import { transformTree } from "./transform";
@@ -12,7 +12,7 @@ import {
   hasSpans,
 } from "./utils";
 
-export function treeifyEvents(events: Events, depth: number): EventNode[] {
+export function treeifyEvents(events: Event[], depth: number): EventNode[] {
   const useSpans = hasSpans(events);
 
   // First inject spans that may be needed
@@ -25,7 +25,7 @@ export function treeifyEvents(events: Events, depth: number): EventNode[] {
   return useSpans ? transformTree(nodes) : nodes;
 }
 
-const treeifyWithSpans = (events: Events, depth: number): EventNode[] => {
+const treeifyWithSpans = (events: Event[], depth: number): EventNode[] => {
   const { rootNodes, createNode } = createNodeFactory(depth);
   const spanNodes = new Map<string, EventNode>();
 
@@ -62,7 +62,7 @@ const treeifyWithSpans = (events: Events, depth: number): EventNode[] => {
   return rootNodes;
 };
 
-const treeifyWithSteps = (events: Events, depth: number): EventNode[] => {
+const treeifyWithSteps = (events: Event[], depth: number): EventNode[] => {
   const { rootNodes, createNode } = createNodeFactory(depth);
   const stack: EventNode[] = [];
 
@@ -177,13 +177,13 @@ const getEventSpanId = (event: EventType): string | null => {
 const kBeginScorerId = "E617087FA405";
 const kEndScorerId = "C39922B09481";
 const kScorersSpanId = "C5A831026F2C";
-const injectScorersSpan = (events: Events): Events => {
-  const results: Events = [];
-  const collectedScorerEvents: Events = [];
+const injectScorersSpan = (events: Event[]): Event[] => {
+  const results: Event[] = [];
+  const collectedScorerEvents: Event[] = [];
   let hasCollectedScorers = false;
   let collecting: string | null = null;
 
-  const flushCollected = (): Events => {
+  const flushCollected = (): Event[] => {
     if (collectedScorerEvents.length > 0) {
       const beginSpan: SpanBeginEvent = {
         name: "scorers",
@@ -199,7 +199,7 @@ const injectScorersSpan = (events: Events): Events => {
         metadata: null,
       };
 
-      const scoreEvents: Events = collectedScorerEvents.map(
+      const scoreEvents: Event[] = collectedScorerEvents.map(
         (event: EventType) => {
           return {
             ...event,

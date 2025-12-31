@@ -3,7 +3,7 @@ import { FC, ReactNode } from "react";
 
 import { EventType } from "../../transcript/types";
 import { Status, Transcript } from "../../types";
-import { Events, Messages } from "../../types/log";
+import { Event, ChatMessage } from "../../types/api-types";
 import { TaskName } from "../components/TaskName";
 import {
   ScanResultInputData,
@@ -183,7 +183,7 @@ const messageCols = (message: MessageType, status?: Status) => {
   return cols;
 };
 
-const messagesCols = (messages: Messages): Column[] => {
+const messagesCols = (messages: ChatMessage[]): Column[] => {
   return [
     {
       label: "Message Count",
@@ -200,12 +200,14 @@ const eventCols = (event: EventType): Column[] => {
     },
     {
       label: "Timestamp",
-      value: new Date(event.timestamp).toLocaleString(),
+      value: event.timestamp
+        ? new Date(event.timestamp).toLocaleString()
+        : undefined,
     },
   ];
 };
 
-const eventsCols = (events: Events): Column[] => {
+const eventsCols = (events: Event[]): Column[] => {
   return [
     {
       label: "Event Count",

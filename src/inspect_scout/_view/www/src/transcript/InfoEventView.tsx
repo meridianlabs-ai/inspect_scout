@@ -4,7 +4,7 @@ import { FC, ReactNode } from "react";
 import { ApplicationIcons } from "../app/appearance/icons";
 import { JSONPanel } from "../components/JsonPanel";
 import { RenderedText } from "../content/RenderedText";
-import { InfoEvent } from "../types/log";
+import { InfoEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 
 import { EventPanel } from "./event/EventPanel";
@@ -42,7 +42,9 @@ export const InfoEventView: FC<InfoEventViewProps> = ({
       depth={eventNode.depth}
       title={"Info" + (event.source ? ": " + event.source : "")}
       className={className}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
       icon={ApplicationIcons.info}
     >
       {panels}

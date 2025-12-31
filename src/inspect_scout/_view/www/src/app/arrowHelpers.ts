@@ -1,7 +1,6 @@
 import { ColumnTable } from "arquero";
 
-import { ModelUsage } from "../types";
-import { Events, JsonValue } from "../types/log";
+import { Event, JsonValue, ModelUsage } from "../types/api-types";
 import { isJson } from "../utils/json";
 import { asyncJsonParse } from "../utils/json-worker";
 
@@ -151,7 +150,7 @@ export const parseScanResultData = async (
     scanError,
     scanErrorTraceback,
     scanErrorRefusal,
-    scanEvents: scanEvents as Events,
+    scanEvents: scanEvents as Event[],
     scanId,
     scanMetadata: scanMetadata as Record<string, JsonValue>,
     scanModelUsage: scanModelUsage as Record<string, ModelUsage>,

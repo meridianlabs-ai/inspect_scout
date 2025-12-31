@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC, Fragment, ReactNode } from "react";
 
 import { ContentTool } from "../types";
-import { ChatMessageTool } from "../types/log";
+import { ChatMessageTool } from "../types/api-types";
 
 import { ChatMessage } from "./ChatMessage";
 import styles from "./ChatMessageRow.module.css";

@@ -5,8 +5,9 @@ import { ApplicationIcons } from "../app/appearance/icons";
 import { MetaDataGrid } from "../content/MetaDataGrid";
 import { RecordTree } from "../content/RecordTree";
 import { RenderedText } from "../content/RenderedText";
-import { ScoreEvent, Value1 } from "../types/log";
+import { ScoreEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
+import { isRecord } from "../utils/type";
 
 import { EventPanel } from "./event/EventPanel";
 import styles from "./ScoreEventView.module.css";
@@ -37,7 +38,9 @@ export const ScoreEventView: FC<ScoreEventViewProps> = ({
       depth={eventNode.depth}
       title={(event.intermediate ? "Intermediate " : "") + "Score"}
       className={clsx(className, "text-size-small")}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
       icon={ApplicationIcons.scorer}
       collapsibleContent={true}
     >
@@ -82,12 +85,12 @@ export const ScoreEventView: FC<ScoreEventViewProps> = ({
   );
 };
 
-export const renderScore = (value: Value1) => {
+export const renderScore = (value: unknown) => {
   if (Array.isArray(value)) {
     return value.join(" ");
-  } else if (typeof value === "object") {
+  } else if (isRecord(value) && typeof value === "object") {
     return <MetaDataGrid entries={value} />;
   } else {
-    return value;
+    return String(value);
   }
 };

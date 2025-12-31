@@ -5,7 +5,7 @@ import { ApplicationIcons } from "../../app/appearance/icons";
 import ExpandablePanel from "../../components/ExpandablePanel";
 import { RecordTree } from "../../content/RecordTree";
 import { RenderedContent } from "../../content/RenderedContent";
-import { ContentToolUse } from "../../types/log";
+import { ContentToolUse } from "../../types/api-types";
 import { asJsonObjArray, isJson } from "../../utils/json";
 
 import styles from "./ServerToolCall.module.css";

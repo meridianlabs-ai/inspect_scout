@@ -6,7 +6,9 @@ import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
+from inspect_ai._util.json import JsonChange
 from inspect_ai._view.fastapi_server import AccessPolicy
+from inspect_ai.event._event import Event
 from inspect_ai.model import ChatMessage
 from starlette.status import (
     HTTP_304_NOT_MODIFIED,
@@ -112,6 +114,8 @@ def v2_api_app(
             extra_schemas = [
                 ("ChatMessage", ChatMessage),
                 ("ValidationCase", ValidationCase),
+                ("Event", Event),
+                ("JsonChange", JsonChange),
             ]
             ref_template = "#/components/schemas/{model}"
             schemas = openapi_schema.setdefault("components", {}).setdefault(

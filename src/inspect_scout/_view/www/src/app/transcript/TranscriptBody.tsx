@@ -2,7 +2,6 @@ import clsx from "clsx";
 import { FC } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { ChatViewVirtualList } from "../../chat/ChatViewVirtualList";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
@@ -15,8 +14,8 @@ interface TranscriptBodyProps {
   transcript: Transcript;
 }
 
-export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+export const TranscriptBody: FC<TranscriptBodyProps> = () => {
+  const [_searchParams, setSearchParams] = useSearchParams();
 
   const selectedTranscriptTab = useStore(
     (state) => state.selectedTranscriptTab

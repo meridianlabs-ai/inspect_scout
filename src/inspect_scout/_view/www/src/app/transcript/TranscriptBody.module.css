@@ -9,6 +9,6 @@
   height: 100%;
 }
 
-.chatList {
-  height: 600px;
+.chatListContainer {
+  border: solid red 1px;
 }

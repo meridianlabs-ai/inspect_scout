@@ -4,7 +4,7 @@ from typing import Any
 from fastapi.responses import JSONResponse
 from inspect_ai._util.json import to_json_safe
 from pydantic.json_schema import GenerateJsonSchema
-from pydantic_core import core_schema
+from pydantic_core import CoreSchema, core_schema
 from typing_extensions import override
 from upath import UPath
 
@@ -16,7 +16,7 @@ class NullableIsOptionalJsonSchema(GenerateJsonSchema):
     - `str` -> required (even with default)
     """
 
-    def _is_nullable_schema(self, schema: dict[str, Any]) -> bool:
+    def _is_nullable_schema(self, schema: CoreSchema) -> bool:
         """Check if schema represents a nullable type."""
         schema_type = schema.get("type")
         if schema_type == "nullable":
@@ -27,7 +27,9 @@ class NullableIsOptionalJsonSchema(GenerateJsonSchema):
 
     def field_is_required(
         self,
-        field: core_schema.ModelField | core_schema.DataclassField | core_schema.TypedDictField,
+        field: core_schema.ModelField
+        | core_schema.DataclassField
+        | core_schema.TypedDictField,
         total: bool,
     ) -> bool:
         schema = field.get("schema", {})

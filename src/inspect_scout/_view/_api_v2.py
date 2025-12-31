@@ -91,7 +91,7 @@ def v2_api_app(
             from ._server_common import NullableIsOptionalJsonSchema
 
             # Monkey-patch so nullable fields are optional regardless of defaults
-            v2.GenerateJsonSchema = NullableIsOptionalJsonSchema
+            v2.GenerateJsonSchema = NullableIsOptionalJsonSchema  # type: ignore
 
             openapi_schema = get_openapi(
                 title=app.title,

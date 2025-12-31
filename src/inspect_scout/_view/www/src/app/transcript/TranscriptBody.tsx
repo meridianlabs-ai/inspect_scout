@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { FC } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { ChatViewVirtualList } from "../../chat/ChatViewVirtualList";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
@@ -14,7 +15,7 @@ interface TranscriptBodyProps {
   transcript: Transcript;
 }
 
-export const TranscriptBody: FC<TranscriptBodyProps> = () => {
+export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
   const [_searchParams, setSearchParams] = useSearchParams();
 
   const selectedTranscriptTab = useStore(
@@ -23,6 +24,8 @@ export const TranscriptBody: FC<TranscriptBodyProps> = () => {
   const setSelectedTranscriptTab = useStore(
     (state) => state.setSelectedTranscriptTab
   );
+  const resolvedSelectedTranscriptTab =
+    selectedTranscriptTab || kTranscriptMessagesTabId;
 
   // Helper function to update both store and URL
   const handleTabChange = (tabId: string) => {
@@ -42,15 +45,21 @@ export const TranscriptBody: FC<TranscriptBodyProps> = () => {
         <TabPanel
           key={kTranscriptMessagesTabId}
           id={kTranscriptMessagesTabId}
-          className={clsx("sample-tab", styles.fullWidth, styles.chat)}
+          className={clsx(styles.chatTab)}
           title="Messages"
           onSelected={() => {
             handleTabChange(kTranscriptMessagesTabId);
           }}
-          selected={selectedTranscriptTab === kTranscriptMessagesTabId}
+          selected={resolvedSelectedTranscriptTab === kTranscriptMessagesTabId}
           scrollable={false}
         >
-          <div>CHAT LIST</div>
+          <ChatViewVirtualList
+            id={"transcript-id"}
+            messages={transcript.messages || []}
+            toolCallStyle={"complete"}
+            indented={false}
+            className={styles.chatList}
+          />
         </TabPanel>
       </TabSet>
     </div>

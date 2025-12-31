@@ -1,6 +1,7 @@
 .tabContainer {
   display: grid;
-  grid-template-rows: max-content 1fr;
+  grid-template-rows: max-content minmax(0, 1fr);
+  height: 100%;
 }
 
 :global(.nav).tabs {
@@ -11,14 +12,26 @@
   padding-right: 0.5rem;
 }
 
-.tabSet {
-  height: 100%;
+:global(.nav).tabs :global(.nav-link) {
+  padding: 0.3rem 0.5rem;
+  font-size: var(--inspect-font-size-smallest) !important;
 }
 
-.chatTab {
+.tabSet {
   height: 100%;
 }
 
 .chatTab > * > * {
   padding: 0.5rem;
+}
+
+.metadata {
+  padding: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+.scrollable {
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
 }

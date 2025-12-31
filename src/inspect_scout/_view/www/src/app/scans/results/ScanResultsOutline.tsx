@@ -7,7 +7,7 @@ import { LabeledValue } from "../../../components/LabeledValue";
 import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
-import { Status } from "../../../types";
+import { Status } from "../../../types/api-types";
 import { formatPercent, formatPrettyDecimal } from "../../../utils/format";
 import { ApplicationIcons } from "../../appearance/icons";
 import { useSelectedScanner } from "../../hooks";

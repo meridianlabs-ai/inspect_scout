@@ -16,7 +16,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { getRelativePathFromParams, scanRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import type { Status } from "../../types";
+import type { Status } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
 import { debounce } from "../../utils/sync";
 import { ApplicationIcons } from "../appearance/icons";

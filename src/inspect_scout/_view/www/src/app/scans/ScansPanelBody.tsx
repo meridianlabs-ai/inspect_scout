@@ -7,7 +7,7 @@ import JSONPanel from "../../components/JsonPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { useStore } from "../../state/store";
-import { Status } from "../../types";
+import { Status } from "../../types/api-types";
 import { ApplicationIcons } from "../appearance/icons";
 import { ResultGroup } from "../types";
 import { resultIdentifierStr, resultLog } from "../utils/results";

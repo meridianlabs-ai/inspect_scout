@@ -2,8 +2,7 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { EventType } from "../../transcript/types";
-import { Status } from "../../types";
-import { Event, ChatMessage, Transcript } from "../../types/api-types";
+import { Event, ChatMessage, Status, Transcript } from "../../types/api-types";
 import { TaskName } from "../components/TaskName";
 import {
   ScanResultInputData,

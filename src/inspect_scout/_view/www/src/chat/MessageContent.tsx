@@ -3,7 +3,6 @@ import { FC, Fragment, ReactNode } from "react";
 
 import ExpandablePanel from "../components/ExpandablePanel";
 import { RenderedText } from "../content/RenderedText";
-import { ContentTool } from "../types";
 import {
   ContentAudio,
   ContentData,
@@ -26,7 +25,7 @@ import styles from "./MessageContent.module.css";
 import { MessagesContext } from "./MessageContents";
 import { ServerToolCall } from "./server-tools/ServerToolCall";
 import { ToolOutput } from "./tools/ToolOutput";
-import { Citation } from "./types";
+import { Citation, ContentTool } from "./types";
 
 type ContentObject =
   | ContentText

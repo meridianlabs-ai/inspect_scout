@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence, Set, cast
+from typing import Any, Iterable, Sequence, Set, cast
 
 import importlib_metadata
 from inspect_ai._util.constants import PKG_NAME as INSPECT_PKG_NAME
@@ -133,7 +133,7 @@ async def resume_scan(scan_location: str) -> ScanContext:
     if spec.transcripts is None:
         raise RuntimeError("Cannot resume scan because it has no transcripts snapshot.")
     transcripts = await transcripts_from_snapshot(spec.transcripts)
-    scanners = _scanners_from_spec(spec.scanners)
+    scanners = scanners_from_spec_dict(spec.scanners)
     return ScanContext(
         spec=spec,
         transcripts=transcripts,
@@ -166,27 +166,28 @@ def _scanner_package_version(scanner: Scanner[Any]) -> str | None:
         return None
 
 
-def _scanners_from_spec(
+def scanners_from_spec_dict(
     scanner_specs: dict[str, ScannerSpec],
 ) -> dict[str, Scanner[Any]]:
+    scanners = scanners_from_spec_list(scanner_specs.values())
+    return dict(zip(scanner_specs.keys(), scanners, strict=True))
+
+
+def scanners_from_spec_list(
+    scanner_specs: Iterable[ScannerSpec],
+) -> list[Scanner[Any]]:
     loaded: Set[str] = set()
-    scanners: dict[str, Scanner[Any]] = {}
-    for name, scanner in scanner_specs.items():
+    scanners: list[Scanner[Any]] = []
+    for scanner in scanner_specs:
         # we need to ensure that any files scanners were defined in have been loaded/parsed
         if scanner.file is not None and scanner.file not in loaded:
-            load_module(Path(scanner.file))
+            load_scanner_file(Path(scanner.file))
             loaded.add(scanner.file)
 
         # create the scanner
-        scanners[name] = scanner_create(scanner.name, scanner.params)
+        scanners.append(scanner_create(scanner.name, scanner.params))
 
     return scanners
-
-
-def scanner_from_spec(scanner: ScannerSpec) -> Scanner[Any]:
-    if scanner.file is not None:
-        load_module(Path(scanner.file))
-    return scanner_create(scanner.name, scanner.params)
 
 
 def scanner_file(scanner: Scanner[Any]) -> str | None:
@@ -210,3 +211,7 @@ def job_args(scanjob: ScanJob) -> dict[str, Any] | None:
         return dict(registry_params(scanjob))
     else:
         return None
+
+
+def load_scanner_file(file: Path) -> None:
+    load_module(file)

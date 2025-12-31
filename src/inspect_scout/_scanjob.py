@@ -189,18 +189,19 @@ class ScanJob:
 
     @staticmethod
     def from_config(config: ScanJobConfig) -> "ScanJob":
-        from inspect_scout._scancontext import _scanners_from_spec, scanner_from_spec
+        from inspect_scout._scancontext import (
+            scanners_from_spec_dict,
+            scanners_from_spec_list,
+        )
 
         # base config
         kwargs = config.model_dump(exclude_none=True)
 
         # realize scanners
         if isinstance(config.scanners, list):
-            kwargs["scanners"] = [
-                scanner_from_spec(scanner) for scanner in config.scanners
-            ]
+            kwargs["scanners"] = scanners_from_spec_list(config.scanners)
         elif isinstance(config.scanners, dict):
-            kwargs["scanners"] = _scanners_from_spec(config.scanners)
+            kwargs["scanners"] = scanners_from_spec_dict(config.scanners)
 
         # realize transcripts
         if config.transcripts is not None:

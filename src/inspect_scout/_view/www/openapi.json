@@ -118,6 +118,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "message",
           "call",
           "approver",
@@ -227,6 +230,10 @@
             "type": "object"
           }
         },
+        "required": [
+          "per_epoch",
+          "scopes"
+        ],
         "title": "CachePolicy",
         "type": "object"
       },
@@ -261,7 +268,8 @@
           }
         },
         "required": [
-          "message"
+          "message",
+          "stop_reason"
         ],
         "title": "ChatCompletionChoice",
         "type": "object"
@@ -400,7 +408,8 @@
           }
         },
         "required": [
-          "content"
+          "content",
+          "role"
         ],
         "title": "ChatMessageAssistant",
         "type": "object"
@@ -496,7 +505,8 @@
           }
         },
         "required": [
-          "content"
+          "content",
+          "role"
         ],
         "title": "ChatMessageSystem",
         "type": "object"
@@ -627,7 +637,8 @@
           }
         },
         "required": [
-          "content"
+          "content",
+          "role"
         ],
         "title": "ChatMessageTool",
         "type": "object"
@@ -738,7 +749,8 @@
           }
         },
         "required": [
-          "content"
+          "content",
+          "role"
         ],
         "title": "ChatMessageUser",
         "type": "object"
@@ -902,6 +914,9 @@
             "title": "Right"
           }
         },
+        "required": [
+          "is_compound"
+        ],
         "title": "Condition",
         "type": "object"
       },
@@ -1064,6 +1079,9 @@
             "title": "Right"
           }
         },
+        "required": [
+          "is_compound"
+        ],
         "title": "Condition",
         "type": "object"
       },
@@ -1101,6 +1119,7 @@
           }
         },
         "required": [
+          "type",
           "audio",
           "format"
         ],
@@ -1164,6 +1183,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "type"
+        ],
         "title": "ContentCitation",
         "type": "object"
       },
@@ -1196,6 +1218,7 @@
           }
         },
         "required": [
+          "type",
           "data"
         ],
         "title": "ContentData",
@@ -1235,7 +1258,10 @@
           }
         },
         "required": [
-          "document"
+          "type",
+          "document",
+          "filename",
+          "mime_type"
         ],
         "title": "ContentDocument",
         "type": "object"
@@ -1276,7 +1302,9 @@
           }
         },
         "required": [
-          "image"
+          "type",
+          "image",
+          "detail"
         ],
         "title": "ContentImage",
         "type": "object"
@@ -1336,7 +1364,9 @@
           }
         },
         "required": [
-          "reasoning"
+          "type",
+          "reasoning",
+          "redacted"
         ],
         "title": "ContentReasoning",
         "type": "object"
@@ -1412,6 +1442,7 @@
           }
         },
         "required": [
+          "type",
           "text"
         ],
         "title": "ContentText",
@@ -1488,6 +1519,7 @@
           }
         },
         "required": [
+          "type",
           "tool_type",
           "id",
           "name",
@@ -1532,6 +1564,7 @@
           }
         },
         "required": [
+          "type",
           "video",
           "format"
         ],
@@ -1606,6 +1639,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "type"
+        ],
         "title": "DocumentCitation",
         "type": "object"
       },
@@ -1739,6 +1775,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "error"
         ],
         "title": "ErrorEvent",
@@ -2267,6 +2306,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "data"
         ],
         "title": "InfoEvent",
@@ -2344,6 +2386,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "input",
           "input_ansi"
         ],
@@ -2492,6 +2537,9 @@
             "title": "Type"
           }
         },
+        "required": [
+          "default"
+        ],
         "title": "JSONSchema",
         "type": "object"
       },
@@ -2534,7 +2582,9 @@
         },
         "required": [
           "op",
-          "path"
+          "path",
+          "value",
+          "replaced"
         ],
         "title": "JsonChange",
         "type": "object"
@@ -2607,6 +2657,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "message"
         ],
         "title": "LoggerEvent",
@@ -2667,7 +2720,10 @@
         "required": [
           "level",
           "message",
-          "created"
+          "created",
+          "filename",
+          "module",
+          "lineno"
         ],
         "title": "LoggingMessage",
         "type": "object"
@@ -2810,7 +2866,9 @@
           }
         },
         "required": [
-          "model"
+          "model",
+          "config",
+          "args"
         ],
         "title": "ModelConfig",
         "type": "object"
@@ -3012,6 +3070,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "model",
           "input",
           "tools",
@@ -3087,6 +3148,11 @@
             ]
           }
         },
+        "required": [
+          "model",
+          "choices",
+          "completion"
+        ],
         "title": "ModelOutput",
         "type": "object"
       },
@@ -3142,6 +3208,11 @@
             "type": "integer"
           }
         },
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "total_tokens"
+        ],
         "title": "ModelUsage",
         "type": "object"
       },
@@ -3219,7 +3290,6 @@
         },
         "required": [
           "limit",
-          "cursor",
           "direction"
         ],
         "title": "Pagination",
@@ -3255,7 +3325,9 @@
           }
         },
         "required": [
-          "author"
+          "timestamp",
+          "author",
+          "metadata"
         ],
         "title": "ProvenanceData",
         "type": "object"
@@ -3421,7 +3493,8 @@
           }
         },
         "required": [
-          "input"
+          "input",
+          "target"
         ],
         "title": "Sample",
         "type": "object"
@@ -3496,6 +3569,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "sample",
           "state"
         ],
@@ -3593,6 +3669,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "type",
           "message"
         ],
@@ -3611,7 +3690,8 @@
           }
         },
         "required": [
-          "type"
+          "type",
+          "config"
         ],
         "title": "SandboxEnvironmentSpec",
         "type": "object"
@@ -3769,6 +3849,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "action"
         ],
         "title": "SandboxEvent",
@@ -3819,6 +3902,9 @@
             "title": "Shuffle"
           }
         },
+        "required": [
+          "max_transcripts"
+        ],
         "title": "ScanOptions",
         "type": "object"
       },
@@ -3847,6 +3933,7 @@
         "required": [
           "type",
           "origin",
+          "version",
           "commit"
         ],
         "title": "ScanRevision",
@@ -4007,7 +4094,11 @@
           }
         },
         "required": [
+          "scan_id",
           "scan_name",
+          "timestamp",
+          "packages",
+          "options",
           "scanners"
         ],
         "title": "ScanSpec",
@@ -4095,7 +4186,9 @@
           }
         },
         "required": [
-          "type"
+          "type",
+          "transcript_ids",
+          "count"
         ],
         "title": "ScanTranscripts",
         "type": "object"
@@ -4141,7 +4234,9 @@
           }
         },
         "required": [
-          "name"
+          "name",
+          "version",
+          "params"
         ],
         "title": "ScannerSpec",
         "type": "object"
@@ -4211,6 +4306,14 @@
             "type": "array"
           }
         },
+        "required": [
+          "scans",
+          "results",
+          "errors",
+          "validations",
+          "tokens",
+          "model_usage"
+        ],
         "title": "ScannerSummary",
         "type": "object"
       },
@@ -4318,7 +4421,8 @@
           }
         },
         "required": [
-          "value"
+          "value",
+          "history"
         ],
         "title": "Score",
         "type": "object"
@@ -4446,6 +4550,10 @@
             "title": "Value"
           }
         },
+        "required": [
+          "value",
+          "metadata"
+        ],
         "title": "ScoreEdit",
         "type": "object"
       },
@@ -4520,6 +4628,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "score_name",
           "edit"
         ],
@@ -4615,7 +4726,11 @@
           }
         },
         "required": [
-          "score"
+          "timestamp",
+          "working_start",
+          "event",
+          "score",
+          "intermediate"
         ],
         "title": "ScoreEvent",
         "type": "object"
@@ -4714,6 +4829,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "id",
           "name"
         ],
@@ -4788,6 +4906,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "id"
         ],
         "title": "SpanEndEvent",
@@ -4864,6 +4985,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "changes"
         ],
         "title": "StateEvent",
@@ -4990,6 +5114,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "action",
           "name"
         ],
@@ -5067,6 +5194,9 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "changes"
         ],
         "title": "StoreEvent",
@@ -5186,8 +5316,13 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
           "name",
-          "input"
+          "input",
+          "result",
+          "events"
         ],
         "title": "SubtaskEvent",
         "type": "object"
@@ -5208,6 +5343,10 @@
             "type": "object"
           }
         },
+        "required": [
+          "complete",
+          "scanners"
+        ],
         "title": "Summary",
         "type": "object"
       },
@@ -5262,7 +5401,8 @@
         "required": [
           "id",
           "function",
-          "arguments"
+          "arguments",
+          "type"
         ],
         "title": "ToolCall",
         "type": "object"
@@ -5296,7 +5436,8 @@
           }
         },
         "required": [
-          "format"
+          "format",
+          "content"
         ],
         "title": "ToolCallContent",
         "type": "object"
@@ -5592,9 +5733,15 @@
           }
         },
         "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "type",
           "id",
           "function",
-          "arguments"
+          "arguments",
+          "result",
+          "events"
         ],
         "title": "ToolEvent",
         "type": "object"
@@ -5641,7 +5788,8 @@
         },
         "required": [
           "name",
-          "description"
+          "description",
+          "parameters"
         ],
         "title": "ToolInfo",
         "type": "object"
@@ -5675,6 +5823,12 @@
             "type": "string"
           }
         },
+        "required": [
+          "type",
+          "properties",
+          "required",
+          "additionalProperties"
+        ],
         "title": "ToolParams",
         "type": "object"
       },
@@ -5995,7 +6149,10 @@
           }
         },
         "required": [
-          "transcript_id"
+          "transcript_id",
+          "metadata",
+          "messages",
+          "events"
         ],
         "title": "Transcript",
         "type": "object"
@@ -6018,7 +6175,8 @@
         },
         "required": [
           "name",
-          "type"
+          "type",
+          "tz"
         ],
         "title": "TranscriptField",
         "type": "object"
@@ -6225,7 +6383,8 @@
           }
         },
         "required": [
-          "transcript_id"
+          "transcript_id",
+          "metadata"
         ],
         "title": "TranscriptInfo",
         "type": "object"
@@ -6363,6 +6522,7 @@
           }
         },
         "required": [
+          "type",
           "url"
         ],
         "title": "UrlCitation",
@@ -6474,7 +6634,8 @@
           }
         },
         "required": [
-          "cases"
+          "cases",
+          "predicate"
         ],
         "title": "ValidationSet",
         "type": "object"

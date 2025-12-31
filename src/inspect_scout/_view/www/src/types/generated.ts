@@ -201,12 +201,12 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             view?: components["schemas"]["ToolCallView"] | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * BatchConfig
@@ -242,7 +242,7 @@ export interface components {
              */
             per_epoch: boolean;
             /** Scopes */
-            scopes?: {
+            scopes: {
                 [key: string]: string;
             };
         };
@@ -527,11 +527,11 @@ export interface components {
             /** Document */
             document: string;
             /** Filename */
-            filename?: string;
+            filename: string;
             /** @default null */
             internal: components["schemas"]["JsonValue"] | null;
             /** Mime Type */
-            mime_type?: string;
+            mime_type: string;
             /**
              * Type
              * @default document
@@ -760,11 +760,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * EvalError
@@ -879,11 +879,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * InputEvent
@@ -909,11 +909,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * JSONSchema
@@ -925,7 +925,7 @@ export interface components {
             /** Anyof */
             anyOf?: components["schemas"]["JSONSchema"][] | null;
             /** Default */
-            default?: unknown;
+            default: unknown;
             /** Description */
             description?: string | null;
             /** Enum */
@@ -956,8 +956,8 @@ export interface components {
             op: "remove" | "add" | "replace" | "move" | "test" | "copy";
             /** Path */
             path: string;
-            replaced?: components["schemas"]["JsonValue"];
-            value?: components["schemas"]["JsonValue"];
+            replaced: components["schemas"]["JsonValue"];
+            value: components["schemas"]["JsonValue"];
         };
         JsonValue: unknown;
         /**
@@ -981,11 +981,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * LoggingMessage
@@ -1069,12 +1069,12 @@ export interface components {
          */
         ModelConfig: {
             /** Args */
-            args?: {
+            args: {
                 [key: string]: unknown;
             };
             /** Base Url */
             base_url?: string | null;
-            config?: components["schemas"]["GenerateConfig"];
+            config: components["schemas"]["GenerateConfig"];
             /** Model */
             model: string;
         };
@@ -1115,7 +1115,7 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Tool Choice */
             tool_choice: ("auto" | "any" | "none") | components["schemas"]["ToolFunction"];
             /** Tools */
@@ -1123,7 +1123,7 @@ export interface components {
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
             /** Working Time */
             working_time?: number | null;
         };
@@ -1149,7 +1149,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Model */
-            model?: string;
+            model: string;
             /** Time */
             time?: number | null;
             usage?: components["schemas"]["ModelUsage"] | null;
@@ -1200,7 +1200,7 @@ export interface components {
         /** Pagination */
         Pagination: {
             /** Cursor */
-            cursor: {
+            cursor?: {
                 [key: string]: unknown;
             } | null;
             /**
@@ -1219,7 +1219,7 @@ export interface components {
             /** Author */
             author: string;
             /** Metadata */
-            metadata?: {
+            metadata: {
                 [key: string]: unknown;
             };
             /** Reason */
@@ -1228,7 +1228,7 @@ export interface components {
              * Timestamp
              * Format: date-time
              */
-            timestamp?: string;
+            timestamp: string;
         };
         /**
          * ResponseSchema
@@ -1266,7 +1266,7 @@ export interface components {
             /** Setup */
             setup?: string | null;
             /** Target */
-            target?: string | string[];
+            target: string | string[];
         };
         /**
          * SampleInitEvent
@@ -1290,11 +1290,11 @@ export interface components {
             span_id?: string | null;
             state: components["schemas"]["JsonValue"];
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * SampleLimitEvent
@@ -1320,7 +1320,7 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /**
              * Type
              * @enum {string}
@@ -1329,7 +1329,7 @@ export interface components {
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * SandboxEnvironmentSpec
@@ -1337,7 +1337,7 @@ export interface components {
          */
         SandboxEnvironmentSpec: {
             /** Config */
-            config?: unknown;
+            config: unknown;
             /** Type */
             type: string;
         };
@@ -1382,11 +1382,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * ScanOptions
@@ -1439,9 +1439,9 @@ export interface components {
             model_roles?: {
                 [key: string]: components["schemas"]["ModelConfig"];
             } | null;
-            options?: components["schemas"]["ScanOptions"];
+            options: components["schemas"]["ScanOptions"];
             /** Packages */
-            packages?: {
+            packages: {
                 [key: string]: string;
             };
             revision?: components["schemas"]["ScanRevision"] | null;
@@ -1452,7 +1452,7 @@ export interface components {
             /** Scan File */
             scan_file?: string | null;
             /** Scan Id */
-            scan_id?: string;
+            scan_id: string;
             /** Scan Name */
             scan_name: string;
             /** Scanners */
@@ -1462,7 +1462,7 @@ export interface components {
             /** Tags */
             tags?: string[] | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             transcripts?: components["schemas"]["ScanTranscripts"] | null;
             /** Validation */
             validation?: {
@@ -1490,7 +1490,7 @@ export interface components {
             /** Location */
             location?: string | null;
             /** Transcript Ids */
-            transcript_ids?: {
+            transcript_ids: {
                 [key: string]: string | null;
             };
             /**
@@ -1511,7 +1511,7 @@ export interface components {
             /** Package Version */
             package_version?: string | null;
             /** Params */
-            params?: {
+            params: {
                 [key: string]: unknown;
             };
             /**
@@ -1537,7 +1537,7 @@ export interface components {
                 };
             } | null;
             /** Model Usage */
-            model_usage?: {
+            model_usage: {
                 [key: string]: components["schemas"]["ModelUsage"];
             };
             /**
@@ -1556,7 +1556,7 @@ export interface components {
              */
             tokens: number;
             /** Validations */
-            validations?: (boolean | {
+            validations: (boolean | {
                 [key: string]: boolean;
             })[];
         };
@@ -1570,7 +1570,7 @@ export interface components {
             /** Explanation */
             explanation?: string | null;
             /** History */
-            history?: components["schemas"]["ScoreEdit"][];
+            history: components["schemas"]["ScoreEdit"][];
             /** Metadata */
             metadata?: {
                 [key: string]: unknown;
@@ -1634,11 +1634,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * ScoreEvent
@@ -1671,11 +1671,11 @@ export interface components {
             /** Target */
             target?: string | string[] | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * SpanBeginEvent
@@ -1703,13 +1703,13 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Type */
             type?: string | null;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * SpanEndEvent
@@ -1733,11 +1733,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * StateEvent
@@ -1761,11 +1761,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /** Status */
         Status: {
@@ -1805,13 +1805,13 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Type */
             type?: string | null;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * StoreEvent
@@ -1835,11 +1835,11 @@ export interface components {
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
         };
         /**
          * SubtaskEvent
@@ -1855,7 +1855,7 @@ export interface components {
              */
             event: "subtask";
             /** Events */
-            events?: unknown[];
+            events: unknown[];
             /** Input */
             input: {
                 [key: string]: unknown;
@@ -1869,17 +1869,17 @@ export interface components {
             /** Pending */
             pending?: boolean | null;
             /** Result */
-            result?: unknown;
+            result: unknown;
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Type */
             type?: string | null;
             /** Uuid */
             uuid?: string | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
             /** Working Time */
             working_time?: number | null;
         };
@@ -1894,7 +1894,7 @@ export interface components {
              */
             complete: boolean;
             /** Scanners */
-            scanners?: {
+            scanners: {
                 [key: string]: components["schemas"]["ScannerSummary"];
             };
         };
@@ -1928,7 +1928,7 @@ export interface components {
          */
         ToolCallContent: {
             /** Content */
-            content?: string;
+            content: string;
             /**
              * Format
              * @enum {string}
@@ -1982,7 +1982,7 @@ export interface components {
              */
             event: "tool";
             /** Events */
-            events?: unknown[];
+            events: unknown[];
             /** Failed */
             failed?: boolean | null;
             /** Function */
@@ -1998,11 +1998,11 @@ export interface components {
             /** Pending */
             pending?: boolean | null;
             /** Result */
-            result?: string | number | boolean | components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | (components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"])[];
+            result: string | number | boolean | components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | (components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"])[];
             /** Span Id */
             span_id?: string | null;
             /** Timestamp */
-            timestamp?: string;
+            timestamp: string;
             /** Truncated */
             truncated?: [
                 number,
@@ -2018,7 +2018,7 @@ export interface components {
             uuid?: string | null;
             view?: components["schemas"]["ToolCallContent"] | null;
             /** Working Start */
-            working_start?: number;
+            working_start: number;
             /** Working Time */
             working_time?: number | null;
         };
@@ -2063,7 +2063,7 @@ export interface components {
             options?: {
                 [key: string]: unknown;
             } | null;
-            parameters?: components["schemas"]["ToolParams"];
+            parameters: components["schemas"]["ToolParams"];
         };
         /**
          * ToolParams
@@ -2076,11 +2076,11 @@ export interface components {
              */
             additionalProperties: boolean;
             /** Properties */
-            properties?: {
+            properties: {
                 [key: string]: components["schemas"]["JSONSchema"];
             };
             /** Required */
-            required?: string[];
+            required: string[];
             /**
              * Type
              * @default object
@@ -2116,13 +2116,13 @@ export interface components {
             /** Error */
             error?: string | null;
             /** Events */
-            events?: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
+            events: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
             /** Limit */
             limit?: string | null;
             /** Messages */
-            messages?: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+            messages: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
             /** Metadata */
-            metadata?: {
+            metadata: {
                 [key: string]: unknown;
             };
             /** Model */
@@ -2163,7 +2163,7 @@ export interface components {
             /** Type */
             type: string;
             /** Tz */
-            tz?: string;
+            tz: string;
         };
         /**
          * TranscriptInfo
@@ -2183,7 +2183,7 @@ export interface components {
             /** Limit */
             limit?: string | null;
             /** Metadata */
-            metadata?: {
+            metadata: {
                 [key: string]: unknown;
             };
             /** Model */
@@ -2299,7 +2299,7 @@ export interface components {
             /** Cases */
             cases: components["schemas"]["ValidationCase"][];
             /** Predicate */
-            predicate?: string | null;
+            predicate: string | null;
         };
         /**
          * Worklist

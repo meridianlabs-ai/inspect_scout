@@ -85,7 +85,13 @@ def v2_api_app(
     # Remove implied and noisy 422 responses from OpenAPI schema
     def custom_openapi() -> dict[str, Any]:
         if not app.openapi_schema:
+            from fastapi._compat import v2
             from fastapi.openapi.utils import get_openapi
+
+            from ._server_common import NullableIsOptionalJsonSchema
+
+            # Monkey-patch so nullable fields are optional regardless of defaults
+            v2.GenerateJsonSchema = NullableIsOptionalJsonSchema
 
             openapi_schema = get_openapi(
                 title=app.title,
@@ -116,7 +122,10 @@ def v2_api_app(
                     # Union type: create oneOf schema and add member schemas
                     members = get_args(t)
                     for m in members:
-                        schema = m.model_json_schema(ref_template=ref_template)
+                        schema = m.model_json_schema(
+                            ref_template=ref_template,
+                            schema_generator=NullableIsOptionalJsonSchema,
+                        )
                         schemas.update(schema.get("$defs", {}))
                         schemas[m.__name__] = {
                             k: v for k, v in schema.items() if k != "$defs"
@@ -129,7 +138,10 @@ def v2_api_app(
                     }
                 elif hasattr(t, "model_json_schema"):
                     # Pydantic model: add directly
-                    schema = t.model_json_schema(ref_template=ref_template)
+                    schema = t.model_json_schema(
+                        ref_template=ref_template,
+                        schema_generator=NullableIsOptionalJsonSchema,
+                    )
                     schemas.update(schema.get("$defs", {}))
                     schemas[name] = {k: v for k, v in schema.items() if k != "$defs"}
 

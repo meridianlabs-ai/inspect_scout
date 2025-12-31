@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../chat/ChatViewVirtualList";
@@ -20,6 +20,7 @@ interface TranscriptBodyProps {
 }
 
 export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
   const [_searchParams, setSearchParams] = useSearchParams();
 
   const selectedTranscriptTab = useStore(
@@ -37,7 +38,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
     setSearchParams({ tab: tabId });
   };
   return (
-    <div>
+    <div className={clsx(styles.tabContainer)}>
       <TabSet
         id={"transcript-body"}
         type="pills"
@@ -55,7 +56,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
             handleTabChange(kTranscriptMessagesTabId);
           }}
           selected={resolvedSelectedTranscriptTab === kTranscriptMessagesTabId}
-          scrollable={false}
+          scrollable={true}
         >
           <ChatViewVirtualList
             id={"transcript-id"}

@@ -57,9 +57,7 @@ export function formatDateTimeForInput(
  * @param value - The date/datetime string from the native input
  * @returns ISO 8601 datetime string, or undefined if invalid
  */
-export function parseDateFromInput(
-  value: string
-): string | undefined {
+export function parseDateFromInput(value: string): string | undefined {
   if (!value || value.trim() === "") {
     return undefined;
   }

@@ -61,7 +61,7 @@ export const parseScanResultData = async (
       : Promise.resolve(undefined),
     transcript_score_raw !== null && transcript_score_raw !== undefined
       ? isJson(transcript_score_raw)
-        ? parseJson(transcript_score_raw)
+        ? parseJson<JsonValue>(transcript_score_raw)
         : transcript_score_raw
       : Promise.resolve(undefined),
   ]);
@@ -210,7 +210,7 @@ export const parseScanResultSummaries = async (
       ] = await Promise.all([
         parseJson(r.validation_result as string),
         parseJson(r.validation_target as string),
-        parseJson<Record<string, unknown>>(r.transcript_metadata as string),
+        parseJson<Record<string, JsonValue>>(r.transcript_metadata as string),
         parseJson(r.event_references as string),
         parseJson(r.message_references as string),
         parseSimpleValue(r.value, valueType),

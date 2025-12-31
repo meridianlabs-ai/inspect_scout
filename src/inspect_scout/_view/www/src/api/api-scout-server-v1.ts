@@ -1,6 +1,9 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
-import { Status } from "../types";
-import { ScanJobsResponse, TranscriptsResponse } from "../types/api-types.ts";
+import {
+  ScanJobsResponse,
+  Status,
+  TranscriptsResponse,
+} from "../types/api-types.ts";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";

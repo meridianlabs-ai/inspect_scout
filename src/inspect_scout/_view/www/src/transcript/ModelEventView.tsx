@@ -121,7 +121,7 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
 
           <EventSection title="Timing" className={styles.tableSelection}>
             <EventTimingPanel
-              timestamp={event.timestamp!}
+              timestamp={event.timestamp}
               completed={event.completed}
               working_start={event.working_start}
               working_time={event.working_time}

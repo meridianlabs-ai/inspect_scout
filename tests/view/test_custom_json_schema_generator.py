@@ -2,8 +2,10 @@
 
 Verifies:
 1. Field requiredness is determined by nullability, not defaults
-2. JsonValue generates a proper recursive schema instead of empty {}
+2. JsonValue generates a proper oneOf schema instead of empty {}
 """
+
+from typing import Any
 
 import pytest
 from inspect_scout._view._server_common import CustomJsonSchemaGenerator
@@ -48,7 +50,7 @@ class WithNullableJsonValue(BaseModel):
     value: JsonValue | None = Field(default=None)
 
 
-def get_schema(model: type[BaseModel]) -> dict[str, object]:
+def get_schema(model: type[BaseModel]) -> dict[str, Any]:
     """Get JSON schema using CustomJsonSchemaGenerator."""
     return model.model_json_schema(schema_generator=CustomJsonSchemaGenerator)
 

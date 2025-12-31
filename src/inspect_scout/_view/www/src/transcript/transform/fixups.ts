@@ -1,11 +1,9 @@
-// This is a special name that signals a group of sandbox events.
-
 import {
-  Events,
+  Event,
+  StepEvent,
   SpanBeginEvent,
   SpanEndEvent,
-  StepEvent,
-} from "../../types/log";
+} from "../../types/api-types";
 
 import { hasSpans } from "./utils";
 
@@ -16,7 +14,7 @@ export const kSandboxSignalName = "53787D8A-D3FC-426D-B383-9F880B70E4AA";
  * Normalizes event content
  */
 export const fixupEventStream = (
-  events: Events,
+  events: Event[],
   filterPending: boolean = true
 ) => {
   // We ignore pending events sometimes (when an eval is complete) and
@@ -30,13 +28,13 @@ export const fixupEventStream = (
   return groupSandboxEvents(fixedUp);
 };
 
-const processPendingEvents = (events: Events, filter: boolean): Events => {
+const processPendingEvents = (events: Event[], filter: boolean): Event[] => {
   // If filtering pending, just remove all pending events
   // otherise, collapse sequential pending events of the same
   // type
   return filter
     ? events.filter((e) => !e.pending)
-    : events.reduce<Events>((acc, event) => {
+    : events.reduce<Event[]>((acc, event) => {
         // Collapse sequential pending events of the same type
         if (!event.pending) {
           // Not a pending event
@@ -60,7 +58,7 @@ const processPendingEvents = (events: Events, filter: boolean): Events => {
       }, []);
 };
 
-const collapseSampleInit = (events: Events): Events => {
+const collapseSampleInit = (events: Event[]): Event[] => {
   // Don't performance sample init logic if spans are present
   const hasSpans = events.some((e) => {
     return e.event === "span_begin" || e.event === "span_end";
@@ -117,9 +115,9 @@ const collapseSampleInit = (events: Events): Events => {
   return fixedUp;
 };
 
-const groupSandboxEvents = (events: Events): Events => {
-  const result: Events = [];
-  const pendingSandboxEvents: Events = [];
+const groupSandboxEvents = (events: Event[]): Event[] => {
+  const result: Event[] = [];
+  const pendingSandboxEvents: Event[] = [];
 
   const useSpans = hasSpans(events);
 

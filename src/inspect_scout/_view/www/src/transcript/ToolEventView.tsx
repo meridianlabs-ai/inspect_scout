@@ -6,7 +6,7 @@ import { ChatView } from "../chat/ChatView";
 import { resolveToolInput } from "../chat/tools/tool";
 import { ToolCallView } from "../chat/tools/ToolCallView";
 import { PulsingDots } from "../components/PulsingDots";
-import { ApprovalEvent, ModelEvent, ToolEvent } from "../types/log";
+import { ApprovalEvent, ModelEvent, ToolEvent } from "../types/api-types";
 
 import { ApprovalEventView } from "./ApprovalEventView";
 import { EventPanel } from "./event/EventPanel";
@@ -60,7 +60,11 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
       depth={eventNode.depth}
       title={formatTitle(title, undefined, event.working_time)}
       className={className}
-      subTitle={formatTiming(event.timestamp, event.working_start)}
+      subTitle={
+        event.timestamp
+          ? formatTiming(event.timestamp, event.working_start)
+          : undefined
+      }
       icon={ApplicationIcons.solvers.use_tools}
       childIds={children.map((child) => child.id)}
       collapseControl="bottom"
@@ -73,7 +77,7 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
           input={input}
           description={description}
           contentType={contentType}
-          output={event.error?.message || event.result}
+          output={event.error?.message || event.result || ""}
           mode="compact"
           view={event.view ? event.view : undefined}
         />

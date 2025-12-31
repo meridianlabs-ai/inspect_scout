@@ -1,18 +1,18 @@
 import { useMemo } from "react";
 
 import {
-  Events,
+  Event,
   SpanBeginEvent,
   StepEvent,
   SubtaskEvent,
   ToolEvent,
-} from "../../types/log";
+} from "../../types/api-types";
 import { EventNode, EventType, kCollapsibleEventTypes } from "../types";
 
 import { fixupEventStream, kSandboxSignalName } from "./fixups";
 import { treeifyEvents } from "./treeify";
 
-export const useEventNodes = (events: Events, running: boolean) => {
+export const useEventNodes = (events: Event[], running: boolean) => {
   // Normalize Events in a flattened filtered list
   const { eventTree, defaultCollapsedIds } = useMemo((): {
     eventTree: EventNode[];

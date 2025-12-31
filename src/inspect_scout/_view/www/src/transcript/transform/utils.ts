@@ -1,4 +1,3 @@
-import { Events } from "../../types/log";
 import { EventType } from "../types";
 
 export const STEP = "step";
@@ -20,6 +19,6 @@ export const TYPE_HANDOFF = "handoff";
 export const TYPE_SCORERS = "scorers";
 export const TYPE_SCORER = "scorer";
 
-export const hasSpans = (events: Events): boolean => {
+export const hasSpans = (events: EventType[]): boolean => {
   return events.some((event: EventType) => event.event === SPAN_BEGIN);
 };

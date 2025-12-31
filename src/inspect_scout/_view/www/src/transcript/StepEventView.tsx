@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { StepEvent } from "../types/log";
+import { StepEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 
 import { EventPanel } from "./event/EventPanel";
@@ -36,7 +36,9 @@ export const StepEventView: FC<StepEventViewProps> = ({
       childIds={children.map((child) => child.id)}
       className={clsx("transcript-step", className)}
       title={title}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
       icon={descriptor.icon}
       text={text}
     />

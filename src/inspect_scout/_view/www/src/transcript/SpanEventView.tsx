@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC, useMemo } from "react";
 
-import { SpanBeginEvent } from "../types/log";
+import { SpanBeginEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 
 import { EventPanel } from "./event/EventPanel";
@@ -38,7 +38,9 @@ export const SpanEventView: FC<SpanEventViewProps> = ({
       childIds={childIds}
       className={clsx("transcript-span", className)}
       title={title}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
       text={text}
       icon={descriptor.icon}
     />

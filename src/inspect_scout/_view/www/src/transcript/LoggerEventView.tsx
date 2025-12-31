@@ -3,7 +3,7 @@ import { FC } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
 import { MetaDataGrid } from "../content/MetaDataGrid";
-import { LoggerEvent } from "../types/log";
+import { LoggerEvent } from "../types/api-types";
 import { parsedJson as maybeParseJson } from "../utils/json";
 
 import { EventRow } from "./event/EventRow";

@@ -3,12 +3,11 @@ import { FC, ReactNode, useEffect, useMemo } from "react";
 
 import { useStore } from "../../state/store";
 import {
-  Changes,
   JsonChange,
-  Op,
+  JsonChangeOp,
   StateEvent,
   StoreEvent,
-} from "../../types/log";
+} from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
 import { EventPanel } from "../event/EventPanel";
 import { EventNode, kTranscriptCollapseScope } from "../types";
@@ -76,7 +75,9 @@ export const StateEventView: FC<StateEventViewProps> = ({
       depth={eventNode.depth}
       title={title}
       className={className}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
       text={!changePreview ? summary : undefined}
       collapsibleContent={true}
     >
@@ -182,7 +183,7 @@ const generatePreview = (
  * Renders the value of a change based on its type.
  */
 const summarizeChanges = (changes: JsonChange[]): string => {
-  const changeMap: Record<Op, string[]> = {
+  const changeMap: Record<JsonChangeOp, string[]> = {
     add: [],
     copy: [],
     move: [],
@@ -215,19 +216,19 @@ const summarizeChanges = (changes: JsonChange[]): string => {
 
   const changeList: string[] = [];
   const totalOpCount = Object.keys(changeMap).reduce((prev, current) => {
-    return prev + changeMap[current as Op].length;
+    return prev + changeMap[current as JsonChangeOp].length;
   }, 0);
 
   if (totalOpCount > 2) {
     Object.keys(changeMap).forEach((key) => {
-      const opChanges = changeMap[key as Op];
+      const opChanges = changeMap[key as JsonChangeOp];
       if (opChanges.length > 0) {
         changeList.push(`${key} ${opChanges.length}`);
       }
     });
   } else {
     Object.keys(changeMap).forEach((key) => {
-      const opChanges = changeMap[key as Op];
+      const opChanges = changeMap[key as JsonChangeOp];
       if (opChanges.length > 0) {
         changeList.push(`${key} ${opChanges.join(", ")}`);
       }
@@ -239,7 +240,7 @@ const summarizeChanges = (changes: JsonChange[]): string => {
 /**
  * Renders a view displaying a list of state changes.
  */
-const synthesizeComparable = (changes: Changes) => {
+const synthesizeComparable = (changes: JsonChange[]) => {
   const before = {};
   const after = {};
 

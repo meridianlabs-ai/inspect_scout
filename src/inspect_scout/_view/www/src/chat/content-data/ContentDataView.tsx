@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { RecordTree } from "../../content/RecordTree";
-import { ContentData } from "../../types/log";
+import { ContentData } from "../../types/api-types";
 
 import styles from "./ContentDataView.module.css";
 import { WebSearch } from "./WebSearch";

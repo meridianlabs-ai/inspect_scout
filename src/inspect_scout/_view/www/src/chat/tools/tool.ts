@@ -1,4 +1,4 @@
-import { Arguments1 } from "../../types/log";
+import { Arguments } from "../../types/api-types";
 
 export const kToolTodoContentType = "agent/todo-list";
 export interface ToolCallResult {
@@ -14,7 +14,7 @@ export interface ToolCallResult {
  */
 export const resolveToolInput = (
   fn: string,
-  toolArgs: Arguments1
+  toolArgs: Arguments
 ): ToolCallResult => {
   const toolName = fn;
 

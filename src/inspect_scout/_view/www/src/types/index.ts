@@ -5,9 +5,9 @@ import {
   ChatMessageUser,
   ContentImage,
   ContentText,
-  Events,
+  Event,
   Score,
-} from "./log";
+} from "./api-types";
 
 // Scout types generated from OpenAPI schema
 // To regenerate: .venv/bin/python scripts/export_openapi_schema.py
@@ -18,7 +18,6 @@ export type {
   Error,
   ScannerSpec as Scanner,
   ScannerSummary,
-  ModelUsage,
   ModelConfig as Model,
 } from "./api-types";
 
@@ -80,7 +79,7 @@ export interface TranscriptInfo {
 
 export interface Transcript extends TranscriptInfo {
   messages: ChatMessages;
-  events: Events;
+  events: Event[];
 }
 
 export interface TranscriptMetadata {

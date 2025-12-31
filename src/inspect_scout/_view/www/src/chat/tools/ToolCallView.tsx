@@ -11,7 +11,7 @@ import {
   ContentText,
   ContentVideo,
   ToolCallContent,
-} from "../../types/log";
+} from "../../types/api-types";
 import { MessageContent } from "../MessageContent";
 import { defaultContext } from "../MessageContents";
 

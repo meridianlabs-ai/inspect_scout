@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { iconForMimeType } from "../../app/appearance/icons";
-import { ContentDocument } from "../../types/log";
+import { ContentDocument } from "../../types/api-types";
 import { isImage } from "../../utils/mime";
 
 import styles from "./ContentDocumentView.module.css";
@@ -18,7 +18,7 @@ export const ContentDocumentView: FC<ContentDocumentProps> = ({
 }) => {
   const canDownloadFiles = false;
 
-  if (isImage(document.mime_type)) {
+  if (isImage(document.mime_type || "")) {
     return (
       <ContentDocumentFrame document={document} downloadable={canDownloadFiles}>
         <img
@@ -59,7 +59,7 @@ const ContentDocumentFrame: FC<ContentDocumentFrameProps> = ({
       )}
     >
       <div className={clsx(styles.documentFrameTitle)}>
-        <i className={clsx(iconForMimeType(document.mime_type))} />
+        <i className={clsx(iconForMimeType(document.mime_type || ""))} />
         <div>
           {downloadable ? (
             <a

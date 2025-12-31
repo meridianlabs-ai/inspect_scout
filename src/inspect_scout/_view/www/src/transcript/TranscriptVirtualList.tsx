@@ -19,7 +19,7 @@ import {
   StoreEvent,
   SubtaskEvent,
   ToolEvent,
-} from "../types/log";
+} from "../types/api-types";
 
 import { ApprovalEventView } from "./ApprovalEventView";
 import { ErrorEventView } from "./ErrorEventView";

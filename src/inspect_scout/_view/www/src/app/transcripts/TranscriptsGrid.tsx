@@ -332,6 +332,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             return "-";
           }
 
+          // TODO: Fixme
           const scoreValue = (value as unknown as Score).value;
           if (Array.isArray(scoreValue)) {
             return printArray(scoreValue, 1000);

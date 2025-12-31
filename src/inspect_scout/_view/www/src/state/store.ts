@@ -235,7 +235,7 @@ export const createStore = (api: ScanApi) =>
           transcriptsTableState: {
             columnSizing: {},
             columnOrder: [],
-            sorting: [],
+            sorting: [{ id: "date", desc: true }],
             rowSelection: {},
             focusedRowId: null,
             columnFilters: {},

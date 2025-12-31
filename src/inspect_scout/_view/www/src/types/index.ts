@@ -1,5 +1,3 @@
-import { ContentImage, ContentText } from "./api-types";
-
 // Query builder
 export {
   transcriptColumns,
@@ -8,8 +6,3 @@ export {
   TranscriptColumns,
 } from "../query";
 export type { ConditionModel, ScalarValue } from "../query";
-
-export interface ContentTool {
-  type: "tool";
-  content: (ContentImage | ContentText)[];
-}

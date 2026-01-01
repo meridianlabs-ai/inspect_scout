@@ -362,10 +362,16 @@ def _find_pydantic_model(
 
                                     # Extract potential model names from type annotation
                                     # Handles wrapped types like list[Model], Model | None
-                                    potential_models = _extract_model_names(field.field_type)
+                                    potential_models = _extract_model_names(
+                                        field.field_type
+                                    )
                                     for nested_name in potential_models:
-                                        if nested_name != model_name:  # Avoid self-reference
-                                            nested = _find_pydantic_model(tree, nested_name)
+                                        if (
+                                            nested_name != model_name
+                                        ):  # Avoid self-reference
+                                            nested = _find_pydantic_model(
+                                                tree, nested_name
+                                            )
                                             if nested and nested not in nested_models:
                                                 nested_models.append(nested)
 

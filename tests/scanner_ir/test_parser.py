@@ -1,6 +1,5 @@
 """Tests for scanner IR parser."""
 
-
 from inspect_scout._scanner_ir import parse_scanner_file
 
 
@@ -9,7 +8,7 @@ class TestParseLLMScanner:
 
     def test_parse_simple_boolean_scanner(self) -> None:
         """Parse a simple boolean llm_scanner."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -20,7 +19,7 @@ def refusal_detected() -> Scanner[Transcript]:
         question="Did the assistant refuse the request?",
         answer="boolean",
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -28,13 +27,16 @@ def refusal_detected() -> Scanner[Transcript]:
         assert result.scanner.function_name == "refusal_detected"
         assert result.scanner.scanner_type == "llm"
         assert result.scanner.llm_scanner is not None
-        assert result.scanner.llm_scanner.question == "Did the assistant refuse the request?"
+        assert (
+            result.scanner.llm_scanner.question
+            == "Did the assistant refuse the request?"
+        )
         assert result.scanner.llm_scanner.answer_type == "boolean"
         assert result.scanner.decorator.messages == "all"
 
     def test_parse_numeric_scanner_with_model(self) -> None:
         """Parse a numeric scanner with model specified."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -47,7 +49,7 @@ def efficiency() -> Scanner[Transcript]:
         model="openai/gpt-4o",
         retry_refusals=5,
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -59,7 +61,7 @@ def efficiency() -> Scanner[Transcript]:
 
     def test_parse_labels_scanner(self) -> None:
         """Parse a scanner with label list answer."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -70,7 +72,7 @@ def quality() -> Scanner[Transcript]:
         question="Rate quality",
         answer=["Excellent", "Good", "Poor"],
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -81,7 +83,7 @@ def quality() -> Scanner[Transcript]:
 
     def test_parse_multi_labels_scanner(self) -> None:
         """Parse a scanner with AnswerMultiLabel."""
-        source = '''
+        source = """
 from inspect_scout import AnswerMultiLabel, Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -92,7 +94,7 @@ def categories() -> Scanner[Transcript]:
         question="Select categories",
         answer=AnswerMultiLabel(labels=["A", "B", "C"]),
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -103,7 +105,7 @@ def categories() -> Scanner[Transcript]:
 
     def test_parse_scanner_with_template(self) -> None:
         """Parse a scanner with custom template."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -115,7 +117,7 @@ def custom() -> Scanner[Transcript]:
         answer="boolean",
         template="Custom template: {{ question }}",
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -125,7 +127,7 @@ def custom() -> Scanner[Transcript]:
 
     def test_parse_structured_answer(self) -> None:
         """Parse a scanner with AnswerStructured and Pydantic model."""
-        source = '''
+        source = """
 from pydantic import BaseModel, Field
 from inspect_scout import AnswerStructured, Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
@@ -142,7 +144,7 @@ def analyze() -> Scanner[Transcript]:
         question="Analyze this",
         answer=AnswerStructured(type=Analysis),
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -156,7 +158,7 @@ def analyze() -> Scanner[Transcript]:
 
     def test_parse_with_comments(self) -> None:
         """Parse scanner with comments in function body."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -168,7 +170,7 @@ def with_comments() -> Scanner[Transcript]:
         question="Question?",
         answer="boolean",
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -180,7 +182,7 @@ class TestParseGrepScanner:
 
     def test_parse_single_pattern(self) -> None:
         """Parse grep_scanner with single pattern."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, grep_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -188,7 +190,7 @@ from inspect_scout._transcript.types import Transcript
 @scanner(messages="all")
 def find_error() -> Scanner[Transcript]:
     return grep_scanner(pattern="error")
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -200,7 +202,7 @@ def find_error() -> Scanner[Transcript]:
 
     def test_parse_pattern_list(self) -> None:
         """Parse grep_scanner with pattern list."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, grep_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -208,7 +210,7 @@ from inspect_scout._transcript.types import Transcript
 @scanner(messages="all")
 def find_issues() -> Scanner[Transcript]:
     return grep_scanner(pattern=["error", "warning", "failed"])
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -219,7 +221,7 @@ def find_issues() -> Scanner[Transcript]:
 
     def test_parse_labeled_patterns(self) -> None:
         """Parse grep_scanner with labeled dict patterns."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, grep_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -232,7 +234,7 @@ def categorize() -> Scanner[Transcript]:
             "warnings": ["warning", "caution"],
         }
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -246,7 +248,7 @@ def categorize() -> Scanner[Transcript]:
 
     def test_parse_grep_with_options(self) -> None:
         """Parse grep_scanner with regex and other options."""
-        source = r'''
+        source = r"""
 from inspect_scout import Scanner, grep_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -258,7 +260,7 @@ def find_url() -> Scanner[Transcript]:
         regex=True,
         ignore_case=False,
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -273,7 +275,7 @@ class TestParseAdvancedScanner:
 
     def test_dynamic_question_is_advanced(self) -> None:
         """Scanner with callable question is advanced."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -288,7 +290,7 @@ def dynamic() -> Scanner[Transcript]:
         question=get_question,
         answer="boolean",
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is False
@@ -297,7 +299,7 @@ def dynamic() -> Scanner[Transcript]:
 
     def test_template_variables_is_advanced(self) -> None:
         """Scanner with template_variables is advanced."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -309,7 +311,7 @@ def with_vars() -> Scanner[Transcript]:
         answer="boolean",
         template_variables={"key": "value"},
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is False
@@ -318,7 +320,7 @@ def with_vars() -> Scanner[Transcript]:
 
     def test_custom_scanner_is_advanced(self) -> None:
         """Custom scanner implementation is advanced."""
-        source = '''
+        source = """
 from inspect_scout import Result, Scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -328,7 +330,7 @@ def custom() -> Scanner[Transcript]:
     async def scan(t):
         return Result(value=True)
     return scan
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is False
@@ -337,10 +339,10 @@ def custom() -> Scanner[Transcript]:
 
     def test_no_scanner_decorator(self) -> None:
         """File without @scanner decorator."""
-        source = '''
+        source = """
 def not_a_scanner():
     pass
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is False
@@ -353,7 +355,7 @@ class TestParseDecorator:
 
     def test_parse_messages_list(self) -> None:
         """Parse messages as list."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -361,7 +363,7 @@ from inspect_scout._transcript.types import Transcript
 @scanner(messages=["user", "assistant"])
 def filtered() -> Scanner[Transcript]:
     return llm_scanner(question="Q?", answer="boolean")
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -370,7 +372,7 @@ def filtered() -> Scanner[Transcript]:
 
     def test_parse_events(self) -> None:
         """Parse events filter."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -378,7 +380,7 @@ from inspect_scout._transcript.types import Transcript
 @scanner(messages="all", events=["tool", "error"])
 def with_events() -> Scanner[Transcript]:
     return llm_scanner(question="Q?", answer="boolean")
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -387,7 +389,7 @@ def with_events() -> Scanner[Transcript]:
 
     def test_parse_version(self) -> None:
         """Parse version number."""
-        source = '''
+        source = """
 from inspect_scout import Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
@@ -395,7 +397,7 @@ from inspect_scout._transcript.types import Transcript
 @scanner(messages="all", version=2)
 def versioned() -> Scanner[Transcript]:
     return llm_scanner(question="Q?", answer="boolean")
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -408,7 +410,7 @@ class TestNestedPydanticModels:
 
     def test_parse_simple_nested_model(self) -> None:
         """Parse scanner with simple nested Pydantic model."""
-        source = '''
+        source = """
 from pydantic import BaseModel, Field
 from inspect_scout import AnswerStructured, Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
@@ -430,7 +432,7 @@ def analyze() -> Scanner[Transcript]:
         question="Analyze this",
         answer=AnswerStructured(type=Analysis),
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -444,7 +446,7 @@ def analyze() -> Scanner[Transcript]:
 
     def test_parse_optional_nested_model(self) -> None:
         """Parse scanner with optional nested model (Model | None)."""
-        source = '''
+        source = """
 from pydantic import BaseModel, Field
 from inspect_scout import AnswerStructured, Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
@@ -465,7 +467,7 @@ def check() -> Scanner[Transcript]:
         question="Check this",
         answer=AnswerStructured(type=Result),
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -477,7 +479,7 @@ def check() -> Scanner[Transcript]:
 
     def test_parse_list_nested_model(self) -> None:
         """Parse scanner with list of nested models (list[Model])."""
-        source = '''
+        source = """
 from pydantic import BaseModel, Field
 from inspect_scout import AnswerStructured, Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
@@ -498,7 +500,7 @@ def extract() -> Scanner[Transcript]:
         question="Extract items",
         answer=AnswerStructured(type=Container),
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True
@@ -510,7 +512,7 @@ def extract() -> Scanner[Transcript]:
 
     def test_parse_deeply_nested_models(self) -> None:
         """Parse scanner with multiple levels of nesting."""
-        source = '''
+        source = """
 from pydantic import BaseModel, Field
 from inspect_scout import AnswerStructured, Scanner, llm_scanner, scanner
 from inspect_scout._transcript.types import Transcript
@@ -537,7 +539,7 @@ def analyze_company() -> Scanner[Transcript]:
         question="Analyze the company",
         answer=AnswerStructured(type=Company),
     )
-'''
+"""
         result = parse_scanner_file(source)
 
         assert result.editable is True

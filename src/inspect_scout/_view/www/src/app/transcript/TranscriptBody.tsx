@@ -80,6 +80,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
           <TranscriptView
             id={"transcript-events-list"}
             events={transcript.events || []}
+            className={styles.eventsList}
           />
         </TabPanel>
         <TabPanel

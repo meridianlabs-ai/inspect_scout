@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { FC, useMemo, useRef } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
@@ -16,6 +17,7 @@ interface TranscriptViewProps {
   nodeFilter?: (node: EventNode<EventType>[]) => EventNode<EventType>[];
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   initialEventId?: string | null;
+  className?: string | string[];
 }
 
 export const TranscriptView: FC<TranscriptViewProps> = ({
@@ -24,6 +26,7 @@ export const TranscriptView: FC<TranscriptViewProps> = ({
   nodeFilter,
   scrollRef,
   initialEventId,
+  className,
 }) => {
   const listHandle = useRef<VirtuosoHandle | null>(null);
 
@@ -51,7 +54,7 @@ export const TranscriptView: FC<TranscriptViewProps> = ({
       eventNodes={flattenedNodes}
       scrollRef={scrollRef}
       offsetTop={10}
-      className={styles.listContainer}
+      className={clsx(styles.listContainer, className)}
       initialEventId={initialEventId}
     />
   );

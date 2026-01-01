@@ -35,3 +35,7 @@
   min-height: 0;
   height: 100%;
 }
+
+.eventsList {
+  padding-bottom: 1rem;
+}

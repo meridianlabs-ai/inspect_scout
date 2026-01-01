@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useRef } from "react";
+import { FC } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../chat/ChatViewVirtualList";
@@ -20,7 +20,6 @@ interface TranscriptBodyProps {
 }
 
 export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
-  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
   const [_searchParams, setSearchParams] = useSearchParams();
 
   const selectedTranscriptTab = useStore(

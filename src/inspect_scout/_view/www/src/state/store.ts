@@ -117,6 +117,7 @@ interface StoreState {
   // Clearing state
   clearScanState: () => void;
   clearScansState: () => void;
+  clearTranscriptState: () => void;
 
   setPropertyValue: <T>(id: string, propertyName: string, value: T) => void;
   getPropertyValue: <T>(
@@ -332,6 +333,11 @@ export const createStore = (api: ScanApi) =>
               state.selectedScanner = undefined;
               state.selectedScanResult = undefined;
               state.sortResults = undefined;
+            });
+          },
+          clearTranscriptState: () => {
+            set((state) => {
+              state.selectedTranscriptTab = undefined;
             });
           },
           setPropertyValue<T>(id: string, propertyName: string, value: T) {

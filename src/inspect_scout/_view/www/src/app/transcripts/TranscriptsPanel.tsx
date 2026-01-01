@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useMemo } from "react";
+import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
@@ -38,6 +38,12 @@ export const TranscriptsPanel: FC = () => {
     undefined
   );
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
+
+  // Clear detail state
+  const clearTranscriptState = useStore((state) => state.clearTranscriptState);
+  useEffect(() => {
+    clearTranscriptState();
+  }, [clearTranscriptState]);
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../chat/ChatViewVirtualList";
@@ -20,7 +20,7 @@ interface TranscriptBodyProps {
 }
 
 export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
-  const [_searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const selectedTranscriptTab = useStore(
     (state) => state.selectedTranscriptTab
@@ -28,8 +28,9 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
   const setSelectedTranscriptTab = useStore(
     (state) => state.setSelectedTranscriptTab
   );
+  const tabParam = searchParams.get("tab");
   const resolvedSelectedTranscriptTab =
-    selectedTranscriptTab || kTranscriptMessagesTabId;
+    tabParam || selectedTranscriptTab || kTranscriptMessagesTabId;
 
   // Helper function to update both store and URL
   const handleTabChange = (tabId: string) => {

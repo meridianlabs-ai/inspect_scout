@@ -41,6 +41,7 @@ website:
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd
+                - href: grep_scanner.qmd
                 - href: results.qmd
                 - href: validation.qmd
           - text: "Transcripts"
@@ -77,6 +78,7 @@ website:
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd
+                - href: grep_scanner.qmd
                 - href: results.qmd
                 - href: validation.qmd
            - text: Transcripts Database

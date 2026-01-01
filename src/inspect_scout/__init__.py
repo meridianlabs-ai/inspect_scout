@@ -1,5 +1,6 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
 
+from ._grep_scanner import grep_scanner
 from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
 from ._recorder.recorder import (
     ScanResultsArrow,
@@ -123,6 +124,7 @@ __all__ = [
     "llm_scanner",
     "AnswerMultiLabel",
     "AnswerStructured",
+    "grep_scanner",
     # validation
     "ValidationSet",
     "ValidationCase",

@@ -12,10 +12,12 @@ reference: "inspect_scout"
 ### Error
 ### Loader
 
-## LLM Scanner
+## Scanners
 
 ### llm_scanner
+### grep_scanner
 ### AnswerMultiLabel
+### AnswerStructured
 
 ## Utils
 

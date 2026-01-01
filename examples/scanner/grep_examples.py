@@ -3,6 +3,10 @@
 from inspect_scout import Scanner, grep_scanner, scanner
 from inspect_scout._transcript.types import Transcript
 
+# =============================================================================
+# Message-based scanners
+# =============================================================================
+
 
 @scanner(messages=["assistant"])
 def error_keywords() -> Scanner[Transcript]:
@@ -77,4 +81,58 @@ def sensitive_content() -> Scanner[Transcript]:
             ],
         },
         regex=True,
+    )
+
+
+# =============================================================================
+# Event-based scanners
+# =============================================================================
+
+
+@scanner(events=["tool"])
+def tool_errors() -> Scanner[Transcript]:
+    """Find errors in tool execution results.
+
+    Searches tool events for common error indicators like
+    timeouts, permission issues, and connection failures.
+    """
+    return grep_scanner(
+        ["timeout", "permission denied", "connection refused", "not found"],
+        ignore_case=True,
+    )
+
+
+@scanner(events=["error"])
+def runtime_errors() -> Scanner[Transcript]:
+    """Find specific runtime error types in error events.
+
+    Categorizes error events by common exception types.
+    """
+    return grep_scanner(
+        {
+            "type_errors": ["TypeError", "AttributeError"],
+            "value_errors": ["ValueError", "KeyError", "IndexError"],
+            "io_errors": ["FileNotFoundError", "PermissionError", "IOError"],
+        },
+        regex=False,
+    )
+
+
+# =============================================================================
+# Combined message and event scanners
+# =============================================================================
+
+
+@scanner(messages="all", events=["tool", "error"])
+def comprehensive_error_scan() -> Scanner[Transcript]:
+    """Search both messages and events for error indicators.
+
+    Provides a comprehensive view of errors across the entire
+    transcript, including both conversation content and tool execution.
+    """
+    return grep_scanner(
+        {
+            "errors": ["error", "failed", "exception"],
+            "warnings": ["warning", "deprecated", "caution"],
+        },
     )

@@ -6,14 +6,7 @@ title: "Grep Scanner"
 
 The `grep_scanner()` provides pattern-based scanning of transcripts using grep-style matching. Unlike [LLM Scanner](llm_scanner.qmd) which uses a language model for analysis, `grep_scanner()` performs fast, deterministic text pattern matching.
 
-Key features:
-
-- Simple string matching by default (literal patterns)
-- Optional regex mode for complex patterns
-- Case-insensitive matching by default
-- Word boundary matching
-- Multiple patterns with OR logic
-- Labeled patterns for categorized results
+The grep scanner does simple string matching by default (literal patterns) and has an optional regex mode for complex patterns You can also search for multiple patterns with OR composition or alternatively labeled patterns for categorized results.
 
 ## Basic Usage
 
@@ -128,7 +121,7 @@ For single/list patterns:
 |-------|------|-------------|
 | `value` | `int` | Count of matches found |
 | `explanation` | `str \| None` | Context snippets for each match |
-| `references` | `list[Reference]` | Message citations |
+| `references` | `list[Reference]` | Message/event citations |
 
 For labeled patterns (dict), each label produces its own `Result` with the same structure, plus:
 
@@ -143,12 +136,53 @@ The `explanation` field shows context around each match:
 ```
 [M1]: ...request returned an **error** code 500...
 [M2]: ...operation **error**: connection timeout...
+[E1]: TOOL (search_files): Result: Found **error** in file.py...
 ```
 
 - Up to 50 characters before/after each match
 - Match text highlighted with `**bold**`
 - Ellipsis (`...`) when context is truncated
-- Message reference prefix (`[M1]`, `[M2]`, etc.)
+- Reference prefix (`[M1]`, `[M2]` for messages, `[E1]`, `[E2]` for events)
+
+
+## Searching Events
+
+To search events (tool calls, errors, etc.), use the `events` parameter in the `@scanner` decorator:
+
+### Events Only
+
+```python
+@scanner(events=["tool", "error"])
+def find_tool_errors() -> Scanner[Transcript]:
+    return grep_scanner("timeout")
+```
+
+### Both Messages and Events
+
+```python
+@scanner(messages="all", events=["tool", "error"])
+def find_all_errors() -> Scanner[Transcript]:
+    return grep_scanner("error")
+```
+
+The scanner automatically searches whatever is populated in the transcript:
+
+- Messages are searched if `transcript.messages` is populated
+- Events are searched if `transcript.events` is populated
+
+References use `[M1]`, `[M2]` for messages and `[E1]`, `[E2]` for events.
+
+### Supported Event Types
+
+| Event Type | What's Searched |
+|------------|-----------------|
+| `model` | Model output completion text |
+| `tool` | Function name, arguments, and result |
+| `error` | Error message |
+| `info` | Data field (JSON stringified if object) |
+| `logger` | Log message text |
+| `approval` | Message, tool call, and decision |
+
 
 ## Examples
 
@@ -186,25 +220,24 @@ def content_analysis() -> Scanner[Transcript]:
     }, regex=True)
 ```
 
-## Comparison with LLM Scanner
+### Searching Tool Events
 
-| Feature | grep_scanner | llm_scanner |
-|---------|--------------|-------------|
-| Speed | Fast (regex) | Slower (API calls) |
-| Cost | Free | Model API costs |
-| Determinism | Deterministic | Non-deterministic |
-| Pattern matching | Exact/regex | Semantic |
-| Context understanding | None | Full |
-| Use case | Keywords, formats | Intent, meaning |
+```python
+@scanner(events=["tool"])
+def tool_failures() -> Scanner[Transcript]:
+    return grep_scanner(
+        ["timeout", "connection refused", "permission denied"],
+        ignore_case=True,
+    )
+```
 
-Use `grep_scanner()` when you need:
+### Messages and Events
 
-- Fast, deterministic pattern matching
-- Exact keyword or format detection
-- No API costs
-
-Use `llm_scanner()` when you need:
-
-- Semantic understanding
-- Context-aware analysis
-- Complex judgment calls
+```python
+@scanner(messages="all", events=["tool", "error"])
+def comprehensive_error_check() -> Scanner[Transcript]:
+    return grep_scanner({
+        "errors": ["error", "exception", "failed"],
+        "warnings": ["warning", "deprecated"],
+    })
+```

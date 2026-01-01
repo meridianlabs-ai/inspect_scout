@@ -115,6 +115,20 @@ def ctf_environment() -> Scanner[Transcript]:
 
 For additional details on using this scanner, see the [LLM Scanner](llm_scanner.qmd) article.
 
+### Grep Scanner
+
+Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the `grep_scanner()`. For example, here we search assistant messages for references to phrases that might indicate secrets:
+
+```python
+from inspect_scout import Transcript, grep_scanner, scanner
+
+@scanner(messages=["assistant"])
+def secrets() -> Scanner[Transcript]:
+    return grep_scanner(["password", "secret", "token"])
+```
+
+For additional details on using this scanner, see the [Grep Scanner](grep_scanner.qmd) article.
+
 ### Running a Scan
 
 Use the `scout scan` command to run one or more scanners on a set of transcripts. The `Scanner` will be called once for `Transcript`:
@@ -334,7 +348,7 @@ Above we provided a high-level tour of Scout features. See the following article
 
 -   [Transcripts](transcripts.qmd): Reading and filtering transcripts for scanning.
 
--   [LLM Scanner](llm_scanner.qmd): High-level LLM scanner for model evaluation of transcripts.
+-   [LLM Scanner](llm_scanner.qmd) and [Grep Scanner](grep_scanner.qmd): Higher-level scanners for model and pattern-based scanning of transcripts.
 
 -   [Workflow](workflow.qmd): Workflow for the stages of a transcript analysis project.
 

@@ -7,6 +7,7 @@ from typing import (
     Union,
     get_args,
     get_origin,
+    get_type_hints,
 )
 
 from inspect_ai.event._event import Event
@@ -80,11 +81,22 @@ def create_implicit_loader(
     Returns:
         Appropriate loader for the scanner's input type.
     """
-    # Get the first parameter's annotation
-    input_annotation = next(
-        iter(inspect.signature(scanner_fn).parameters.values())
-    ).annotation
-    if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
+    first_param = next(iter(inspect.signature(scanner_fn).parameters.values()))
+
+    try:
+        hints = get_type_hints(
+            scanner_fn,
+            localns={
+                "ChatMessage": ChatMessage,
+                "Event": Event,
+                "Transcript": Transcript,
+            },
+        )
+        input_annotation = hints.get(first_param.name)
+    except NameError:
+        input_annotation = first_param.annotation
+
+    if input_annotation is None or input_annotation == Transcript:
         return _IdentityLoader(content)
 
     # Check if it's a list type

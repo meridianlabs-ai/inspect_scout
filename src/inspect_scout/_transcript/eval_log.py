@@ -56,6 +56,7 @@ from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
 from .columns import Condition
+from .database.database import TranscriptsView
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache
 from .transcripts import TranscriptsQuery, TranscriptsReader
@@ -110,7 +111,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         query: TranscriptsQuery,
         files_cache: LocalFilesCache | None = None,
     ) -> None:
-        self._db = EvalLogTranscriptsDB(logs, files_cache)
+        self._db = EvalLogTranscriptsView(logs, files_cache)
         self._query = query
 
     @override
@@ -130,7 +131,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
 
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        return self._db.query(
+        return self._db.select(
             self._query.where,
             self._query.limit,
             self._query.shuffle,
@@ -180,7 +181,7 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
         return df[df["sample_id"].isin(snapshot.transcript_ids.keys())]
 
 
-class EvalLogTranscriptsDB:
+class EvalLogTranscriptsView(TranscriptsView):
     def __init__(
         self,
         logs: Logs | pd.DataFrame,
@@ -236,7 +237,8 @@ class EvalLogTranscriptsDB:
             TRANSCRIPTS, self._conn, index=False, if_exists="replace"
         )
 
-    async def query(
+    @override
+    async def select(
         self,
         where: list[Condition] | None = None,
         limit: int | None = None,
@@ -353,6 +355,48 @@ class EvalLogTranscriptsDB:
             object.__setattr__(info, "metadata", lazy_metadata)
             yield info
 
+    @override
+    async def transcript_ids(
+        self,
+        where: list[Condition] | None = None,
+        limit: int | None = None,
+        shuffle: bool | int = False,
+        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+    ) -> dict[str, str | None]:
+        assert self._conn is not None
+
+        where_clause, where_params = self._build_where_clause(where)
+        sql = f"SELECT * FROM {TRANSCRIPTS}{where_clause}"
+
+        order_by_clauses = []
+        if shuffle:
+            seed = 0 if shuffle is True else shuffle
+            self._register_shuffle_function(seed)
+            order_by_clauses.append("shuffle_hash(sample_id)")
+        if order_by:
+            for column_name, direction in order_by:
+                order_by_clauses.append(f'"{column_name}" {direction}')
+        if order_by_clauses:
+            sql += " ORDER BY " + ", ".join(order_by_clauses)
+
+        sql_params = where_params.copy()
+        if limit is not None:
+            sql += " LIMIT ?"
+            sql_params.append(limit)
+
+        cursor = self._conn.execute(sql, sql_params)
+        column_names = [desc[0] for desc in cursor.description]
+
+        result: dict[str, str | None] = {}
+        for row in cursor:
+            row_dict = dict(zip(column_names, row, strict=True))
+            tid = row_dict.get("transcript_id") or row_dict.get("sample_id")
+            uri = row_dict.get("source_uri") or row_dict.get("log")
+            if tid:
+                result[tid] = uri
+        return result
+
+    @override
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         id_, epoch = self._transcripts_df[
             self._transcripts_df["sample_id"] == t.transcript_id

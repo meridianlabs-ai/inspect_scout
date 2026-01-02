@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
-from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB
+from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 from inspect_scout._transcript.util import LazyJSONDict, filter_transcript
 
@@ -130,12 +130,12 @@ async def test_lazy_dict_survives_filter_transcript(
 
 @pytest.mark.asyncio
 async def test_lazy_dict_survives_eval_log_query(
-    eval_log_db_with_json_metadata: EvalLogTranscriptsDB,
+    eval_log_db_with_json_metadata: EvalLogTranscriptsView,
 ) -> None:
     """Test that LazyJSONDict survives through eval log query()."""
     # Query transcripts
     results = [
-        info async for info in eval_log_db_with_json_metadata.query([], None, False)
+        info async for info in eval_log_db_with_json_metadata.select([], None, False)
     ]
     assert len(results) > 0
 
@@ -310,7 +310,7 @@ async def parquet_db_with_nested_metadata(
 
 
 @pytest_asyncio.fixture
-async def eval_log_db_with_json_metadata() -> EvalLogTranscriptsDB:
+async def eval_log_db_with_json_metadata() -> EvalLogTranscriptsView:
     """Create an eval log DB with JSON metadata for testing."""
     import pandas as pd
 
@@ -328,6 +328,6 @@ async def eval_log_db_with_json_metadata() -> EvalLogTranscriptsDB:
         }
     )
 
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsView(df)
     await db.connect()
     return db

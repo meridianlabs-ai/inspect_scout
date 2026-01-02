@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import pytest_asyncio
 from inspect_scout import columns as c
-from inspect_scout._transcript.eval_log import EvalLogTranscriptsDB
+from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import TranscriptInfo
 
 
@@ -42,7 +42,7 @@ def create_test_dataframe(num_samples: int = 10) -> pd.DataFrame:
 async def db() -> Any:
     """Create and connect to a test database."""
     df = create_test_dataframe(20)
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsView(df)
     await db.connect()
     yield db
     await db.disconnect()
@@ -567,7 +567,7 @@ def test_postgres_parameter_numbering() -> None:
 async def test_connect_disconnect() -> None:
     """Test database connection and disconnection."""
     df = create_test_dataframe(5)
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsView(df)
 
     # Connect
     await db.connect()
@@ -579,9 +579,9 @@ async def test_connect_disconnect() -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_all(db: EvalLogTranscriptsDB) -> None:
+async def test_select_all(db: EvalLogTranscriptsView) -> None:
     """Test querying all records."""
-    results = [item async for item in db.query(where=[])]
+    results = [item async for item in db.select(where=[])]
     assert len(results) == 20
 
     # Check that each result is a TranscriptInfo
@@ -594,24 +594,24 @@ async def test_query_all(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_with_filter(db: EvalLogTranscriptsDB) -> None:
+async def test_select_with_filter(db: EvalLogTranscriptsView) -> None:
     """Test querying with filters."""
     # Filter by model
-    results = [item async for item in db.query(where=[c.model == "gpt-4"])]
+    results = [item async for item in db.select(where=[c.model == "gpt-4"])]
     for result in results:
         assert result.model == "gpt-4"
 
     # Filter by score range
-    results = [item async for item in db.query(where=[c.score > 0.7])]
+    results = [item async for item in db.select(where=[c.score > 0.7])]
     for result in results:
         assert cast(float, result.score) > 0.7
 
 
 @pytest.mark.asyncio
-async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
+async def test_select_with_multiple_conditions(db: EvalLogTranscriptsView) -> None:
     """Test querying with multiple conditions."""
     conditions = [c.model == "gpt-4", c.score > 0.6]
-    results = [item async for item in db.query(where=conditions)]
+    results = [item async for item in db.select(where=conditions)]
 
     for result in results:
         assert result.model == "gpt-4"
@@ -619,32 +619,32 @@ async def test_query_with_multiple_conditions(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_with_limit(db: EvalLogTranscriptsDB) -> None:
+async def test_select_with_limit(db: EvalLogTranscriptsView) -> None:
     """Test querying with limit."""
-    results = [item async for item in db.query(where=[], limit=5)]
+    results = [item async for item in db.select(where=[], limit=5)]
     assert len(results) == 5
 
     # With filter and limit
-    results = [item async for item in db.query(where=[c.model == "gpt-4"], limit=2)]
+    results = [item async for item in db.select(where=[c.model == "gpt-4"], limit=2)]
     assert len(results) <= 2
 
 
 @pytest.mark.asyncio
-async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
+async def test_select_with_shuffle(db: EvalLogTranscriptsView) -> None:
     """Test querying with shuffle."""
     # Get results without shuffle
-    results1 = [item async for item in db.query(where=[], limit=10)]
+    results1 = [item async for item in db.select(where=[], limit=10)]
     ids1 = [r.transcript_id for r in results1]
 
     # Get results with shuffle (seed=42)
-    results2 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
+    results2 = [item async for item in db.select(where=[], limit=10, shuffle=42)]
     ids2 = [r.transcript_id for r in results2]
 
     # Results should be different order (very unlikely to be same)
     assert ids1 != ids2
 
     # Get results with same seed - should be same order
-    results3 = [item async for item in db.query(where=[], limit=10, shuffle=42)]
+    results3 = [item async for item in db.select(where=[], limit=10, shuffle=42)]
     ids3 = [r.transcript_id for r in results3]
     assert ids2 == ids3
 
@@ -659,8 +659,8 @@ async def test_query_with_shuffle(db: EvalLogTranscriptsDB) -> None:
         (c.model.name, "DESC", lambda r: r.model, True),
     ],
 )
-async def test_query_with_order_by_single_column(
-    db: EvalLogTranscriptsDB,
+async def test_select_with_order_by_single_column(
+    db: EvalLogTranscriptsView,
     column: str,
     direction: Literal["ASC", "DESC"],
     extractor: Any,
@@ -668,19 +668,19 @@ async def test_query_with_order_by_single_column(
 ) -> None:
     """Test ordering by single column with various directions."""
     results = [
-        item async for item in db.query(where=[], order_by=[(column, direction)])
+        item async for item in db.select(where=[], order_by=[(column, direction)])
     ]
     values = [extractor(r) for r in results if extractor(r) is not None]
     assert values == sorted(values, reverse=reverse)
 
 
 @pytest.mark.asyncio
-async def test_query_with_order_by_chaining(db: EvalLogTranscriptsDB) -> None:
+async def test_select_with_order_by_chaining(db: EvalLogTranscriptsView) -> None:
     """Test ordering with multiple columns (tie-breaking)."""
     # Order by model ASC, then score DESC
     results = [
         item
-        async for item in db.query(
+        async for item in db.select(
             where=[], order_by=[(c.model.name, "ASC"), (c.score.name, "DESC")]
         )
     ]
@@ -702,7 +702,7 @@ async def test_query_with_order_by_chaining(db: EvalLogTranscriptsDB) -> None:
     ],
 )
 async def test_order_by_with_where_and_limit(
-    db: EvalLogTranscriptsDB,
+    db: EvalLogTranscriptsView,
     where_clause: list[Any],
     limit: int | None,
     expected_min_results: int,
@@ -710,7 +710,7 @@ async def test_order_by_with_where_and_limit(
     """Test combining where clause and limit with order_by."""
     results = [
         item
-        async for item in db.query(
+        async for item in db.select(
             where=where_clause, order_by=[(c.score.name, "ASC")], limit=limit
         )
     ]
@@ -728,12 +728,12 @@ async def test_order_by_with_where_and_limit(
 
 
 @pytest.mark.asyncio
-async def test_order_by_with_shuffle(db: EvalLogTranscriptsDB) -> None:
+async def test_order_by_with_shuffle(db: EvalLogTranscriptsView) -> None:
     """Test that shuffle takes precedence over order_by."""
     # Get results with shuffle and order_by (shuffle should win)
     results1 = [
         item
-        async for item in db.query(
+        async for item in db.select(
             where=[], shuffle=42, order_by=[(c.score.name, "ASC")], limit=10
         )
     ]
@@ -742,7 +742,7 @@ async def test_order_by_with_shuffle(db: EvalLogTranscriptsDB) -> None:
     # Get results with same shuffle seed - should be same order
     results2 = [
         item
-        async for item in db.query(
+        async for item in db.select(
             where=[], shuffle=42, order_by=[(c.score.name, "ASC")], limit=10
         )
     ]
@@ -752,18 +752,20 @@ async def test_order_by_with_shuffle(db: EvalLogTranscriptsDB) -> None:
     # Get results without shuffle - should be different
     results3 = [
         item
-        async for item in db.query(where=[], order_by=[(c.score.name, "ASC")], limit=10)
+        async for item in db.select(
+            where=[], order_by=[(c.score.name, "ASC")], limit=10
+        )
     ]
     ids3 = [r.transcript_id for r in results3]
     assert ids1 != ids3  # Shuffled vs ordered should differ
 
 
 @pytest.mark.asyncio
-async def test_order_by_empty_results(db: EvalLogTranscriptsDB) -> None:
+async def test_order_by_empty_results(db: EvalLogTranscriptsView) -> None:
     """Test order_by on empty result set."""
     results = [
         item
-        async for item in db.query(
+        async for item in db.select(
             where=[c.model == "nonexistent"], order_by=[(c.score.name, "ASC")]
         )
     ]
@@ -771,7 +773,7 @@ async def test_order_by_empty_results(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
+async def test_complex_queries(db: EvalLogTranscriptsView) -> None:
     """Test complex queries with multiple operators."""
     # Complex condition
     conditions = [
@@ -779,7 +781,7 @@ async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
         c.error_message.is_null(),
     ]
 
-    results = [item async for item in db.query(where=conditions)]
+    results = [item async for item in db.select(where=conditions)]
     for result in results:
         assert result.model in ["gpt-4", "claude"]
         assert cast(float, result.score) > 0.6
@@ -787,9 +789,9 @@ async def test_complex_queries(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_metadata_extraction(db: EvalLogTranscriptsDB) -> None:
+async def test_metadata_extraction(db: EvalLogTranscriptsView) -> None:
     """Test that metadata is properly extracted."""
-    results = [item async for item in db.query(where=[], limit=1)]
+    results = [item async for item in db.select(where=[], limit=1)]
     assert len(results) == 1
 
     result = results[0]
@@ -803,19 +805,25 @@ async def test_metadata_extraction(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_none_comparison_in_db(db: EvalLogTranscriptsDB) -> None:
+async def test_none_comparison_in_db(db: EvalLogTranscriptsView) -> None:
     """Test that == None and != None work correctly in database queries."""
     # Using == None (should behave same as is_null())
-    results_eq_none = [item async for item in db.query(where=[c.error_message == None])]  # noqa: E711
+    results_eq_none = [
+        item
+        async for item in db.select(where=[c.error_message == None])  # noqa: E711
+    ]
     results_is_null = [
-        item async for item in db.query(where=[c.error_message.is_null()])
+        item async for item in db.select(where=[c.error_message.is_null()])
     ]
     assert len(results_eq_none) == len(results_is_null)
 
     # Using != None (should behave same as is_not_null())
-    results_ne_none = [item async for item in db.query(where=[c.error_message != None])]  # noqa: E711
+    results_ne_none = [
+        item
+        async for item in db.select(where=[c.error_message != None])  # noqa: E711
+    ]
     results_is_not_null = [
-        item async for item in db.query(where=[c.error_message.is_not_null()])
+        item async for item in db.select(where=[c.error_message.is_not_null()])
     ]
     assert len(results_ne_none) == len(results_is_not_null)
 
@@ -824,10 +832,10 @@ async def test_none_comparison_in_db(db: EvalLogTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
-async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
+async def test_null_value_handling(db: EvalLogTranscriptsView) -> None:
     """Test handling of NULL values in metadata."""
     # Query for null error_message
-    results = [item async for item in db.query(where=[c.error_message.is_null()])]
+    results = [item async for item in db.select(where=[c.error_message.is_null()])]
 
     for result in results:
         # NULL values should not appear in metadata dict
@@ -837,7 +845,7 @@ async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
         )
 
     # Query for non-null error_message
-    results = [item async for item in db.query(where=[c.error_message.is_not_null()])]
+    results = [item async for item in db.select(where=[c.error_message.is_not_null()])]
 
     for result in results:
         assert result.metadata.get("error_message") is not None
@@ -857,10 +865,10 @@ async def test_null_value_handling(db: EvalLogTranscriptsDB) -> None:
 async def test_empty_dataframe() -> None:
     """Test with empty DataFrame."""
     df = pd.DataFrame(columns=["sample_id", "id", "epoch", "eval_id", "log"])
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsView(df)
     await db.connect()
 
-    results = [item async for item in db.query(where=[])]
+    results = [item async for item in db.select(where=[])]
     assert len(results) == 0
 
     await db.disconnect()
@@ -881,12 +889,12 @@ async def test_missing_required_columns() -> None:
         }
     )
 
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsView(df)
     await db.connect()
 
     # Should raise error when trying to query
     with pytest.raises(ValueError, match="Missing required fields"):
-        [item async for item in db.query(where=[])]
+        [item async for item in db.select(where=[])]
 
     await db.disconnect()
 
@@ -895,17 +903,17 @@ async def test_missing_required_columns() -> None:
 async def test_empty_in_clause_in_db(db: Any) -> None:
     """Test that empty IN/NOT IN work correctly in actual queries."""
     # Empty IN should return no results
-    results = [item async for item in db.query(where=[c.model.in_([])])]
+    results = [item async for item in db.select(where=[c.model.in_([])])]
     assert len(results) == 0  # Always false, no results
 
     # Empty NOT IN should return all results
-    results = [item async for item in db.query(where=[c.model.not_in([])])]
+    results = [item async for item in db.select(where=[c.model.not_in([])])]
     assert len(results) == 20  # Always true, all results
 
     # Combined with other conditions
     results = [
         item
-        async for item in db.query(
+        async for item in db.select(
             where=[
                 c.score > 0.5,
                 c.status.not_in([]),  # This is always true, shouldn't affect results
@@ -913,7 +921,7 @@ async def test_empty_in_clause_in_db(db: Any) -> None:
         )
     ]
     # Should be same as just c.score > 0.5
-    results_without = [item async for item in db.query(where=[c.score > 0.5])]
+    results_without = [item async for item in db.select(where=[c.score > 0.5])]
     assert len(results) == len(results_without)
 
 
@@ -921,19 +929,66 @@ async def test_empty_in_clause_in_db(db: Any) -> None:
 async def test_large_in_clause() -> None:
     """Test IN clause with many values."""
     df = create_test_dataframe(100)
-    db = EvalLogTranscriptsDB(df)
+    db = EvalLogTranscriptsView(df)
     await db.connect()
 
     # Create a large list of values
     large_list = [f"model_{i}" for i in range(50)]
     large_list.append("gpt-4")  # Include one that exists
 
-    results = [item async for item in db.query(where=[c.model.in_(large_list)])]
+    results = [item async for item in db.select(where=[c.model.in_(large_list)])]
 
     # Should find some results
     assert len(results) > 0
 
     await db.disconnect()
+
+
+# ============================================================================
+# transcript_ids() Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_transcript_ids_all(db: EvalLogTranscriptsView) -> None:
+    """Test transcript_ids returns all IDs."""
+    ids = await db.transcript_ids()
+    assert len(ids) == 20
+    assert all(isinstance(k, str) for k in ids.keys())
+    assert all(v is None or isinstance(v, str) for v in ids.values())
+
+
+@pytest.mark.asyncio
+async def test_transcript_ids_with_filter(db: EvalLogTranscriptsView) -> None:
+    """Test transcript_ids with where filter."""
+    ids = await db.transcript_ids(where=[c.model == "gpt-4"])
+    # gpt-4 appears every 3rd item (indices 0, 3, 6, ...) in 20 items = ~7
+    assert 0 < len(ids) < 20
+    for tid in ids.keys():
+        # Verify filtered IDs match select results
+        results = [item async for item in db.select(where=[c.model == "gpt-4"])]
+        result_ids = {r.transcript_id for r in results}
+        assert tid in result_ids
+
+
+@pytest.mark.asyncio
+async def test_transcript_ids_with_limit(db: EvalLogTranscriptsView) -> None:
+    """Test transcript_ids respects limit."""
+    ids = await db.transcript_ids(limit=5)
+    assert len(ids) == 5
+
+
+@pytest.mark.asyncio
+async def test_transcript_ids_with_shuffle(db: EvalLogTranscriptsView) -> None:
+    """Test transcript_ids with deterministic shuffle."""
+    ids1 = await db.transcript_ids(shuffle=42)
+    ids2 = await db.transcript_ids(shuffle=42)
+    ids3 = await db.transcript_ids(shuffle=99)
+
+    # Same seed = same order
+    assert list(ids1.keys()) == list(ids2.keys())
+    # Different seed = different order (with high probability)
+    assert list(ids1.keys()) != list(ids3.keys())
 
 
 if __name__ == "__main__":

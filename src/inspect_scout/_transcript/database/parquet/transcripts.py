@@ -38,7 +38,7 @@ from ...transcripts import (
 )
 from ...types import Transcript, TranscriptContent, TranscriptInfo
 from ..database import TranscriptsDB
-from ..reader import TranscriptsDBReader
+from ..reader import TranscriptsViewReader
 from ..source import TranscriptsSource
 from .encryption import (
     ENCRYPTION_KEY_ENV,
@@ -98,7 +98,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             snapshot: Snapshot info. This is a mapping of transcript_id => filename
                 which we can use to avoid crawling.
         """
-        super().__init__(location, query.where if query is not None else None)
+        self._location = location
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
         self._query = query
@@ -1910,7 +1910,7 @@ class ParquetTranscripts(Transcripts):
                 transcript_id => filename mappings)
         """
         db = ParquetTranscriptsDB(self._location, query=self._query, snapshot=snapshot)
-        return TranscriptsDBReader(db)
+        return TranscriptsViewReader(db, self._location, self._query.where)
 
     @staticmethod
     @override

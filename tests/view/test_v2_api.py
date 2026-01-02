@@ -469,13 +469,10 @@ def _create_test_transcripts_for_api(count: int) -> list[Transcript]:
 
 async def _populate_transcripts(location: Path, transcripts: list[Transcript]) -> None:
     """Populate transcript database for testing."""
-    from inspect_scout import transcripts_from
-    from inspect_scout._transcript.database.reader import TranscriptsDBReader
+    from inspect_scout import transcripts_db
 
-    transcripts_obj = transcripts_from(str(location))
-    async with transcripts_obj.reader() as reader:
-        if isinstance(reader, TranscriptsDBReader):
-            await reader._db.insert(transcripts)
+    async with transcripts_db(str(location)) as db:
+        await db.insert(transcripts)
 
 
 class TestTranscriptsPagination:

@@ -22,8 +22,8 @@ from .._scanresults import (
     scan_results_arrow_async,
     scan_results_df_async,
 )
-from .._transcript.columns import Column
-from .._transcript.factory import transcripts_from
+from .._transcript.columns import Column, Condition
+from .._transcript.database.factory import transcripts_view
 from .._transcript.types import Transcript, TranscriptContent
 from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
@@ -217,15 +217,19 @@ def v2_api_app(
         transcripts_dir = decode_base64url(dir)
 
         try:
-            transcripts_query = transcripts_from(transcripts_dir)
+            # Build conditions list
+            conditions: list[Condition] = []
             if body and body.filter:
-                transcripts_query = transcripts_query.where(body.filter)
+                conditions.append(body.filter)
 
             # Push order_by to database layer
             # When pagination used, apply tiebreaker. Otherwise just apply user's order_by.
             use_pagination = body is not None and body.pagination is not None
+            db_order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
             order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
+            limit: int | None = None
             needs_reverse = False
+
             if use_pagination:
                 assert body is not None and body.pagination is not None
                 pagination = body.pagination
@@ -244,12 +248,6 @@ def v2_api_app(
                     db_order_columns = reverse_order_columns(order_columns)
                     needs_reverse = True
 
-                # Apply order_by to database query
-                for col, direction in db_order_columns:
-                    transcripts_query = transcripts_query.order_by(
-                        Column(col), direction
-                    )
-
                 # Push cursor condition to DB
                 if pagination.cursor:
                     cursor_cond = cursor_to_condition(
@@ -257,10 +255,9 @@ def v2_api_app(
                         order_columns,
                         pagination.direction,
                     )
-                    transcripts_query = transcripts_query.where(cursor_cond)
+                    conditions.append(cursor_cond)
 
-                # Push limit to DB
-                transcripts_query = transcripts_query.limit(pagination.limit)
+                limit = pagination.limit
             elif body and body.order_by:
                 # No pagination - just apply user's order_by
                 order_bys = (
@@ -268,13 +265,17 @@ def v2_api_app(
                     if isinstance(body.order_by, list)
                     else [body.order_by]
                 )
-                for ob in order_bys:
-                    transcripts_query = transcripts_query.order_by(
-                        Column(ob.column), ob.direction
-                    )
+                db_order_columns = [(ob.column, ob.direction) for ob in order_bys]
 
-            async with transcripts_query.reader() as tr:
-                results = [t async for t in tr.index()]
+            async with transcripts_view(transcripts_dir) as view:
+                results = [
+                    t
+                    async for t in view.select(
+                        where=conditions or None,
+                        limit=limit,
+                        order_by=db_order_columns or None,
+                    )
+                ]
 
             # Handle pagination response
             if use_pagination:
@@ -314,19 +315,16 @@ def v2_api_app(
         """Get a single transcript by ID."""
         transcripts_dir = decode_base64url(dir)
 
-        transcripts_query = transcripts_from(transcripts_dir).where(
-            Column("transcript_id") == id
-        )
-
-        async with transcripts_query.reader() as reader:
-            infos = [info async for info in reader.index()]
+        async with transcripts_view(transcripts_dir) as view:
+            condition = Column("transcript_id") == id
+            infos = [info async for info in view.select(where=[condition])]
             if not infos:
                 raise HTTPException(
                     status_code=HTTP_404_NOT_FOUND, detail="Transcript not found"
                 )
 
             content = TranscriptContent(messages="all", events="all")
-            return await reader.read(infos[0], content)
+            return await view.read(infos[0], content)
 
     @app.get(
         "/scans",

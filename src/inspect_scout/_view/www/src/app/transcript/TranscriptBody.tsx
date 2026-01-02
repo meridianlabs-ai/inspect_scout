@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useEffect } from "react";
+import { FC } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../chat/ChatViewVirtualList";

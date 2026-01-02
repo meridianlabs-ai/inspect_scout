@@ -17,6 +17,10 @@ website:
           href: reference/scanning.qmd#scan_resume
         - text: scan_complete
           href: reference/scanning.qmd#scan_complete
+        - text: project
+          href: reference/scanning.qmd#project
+        - text: ProjectConfig
+          href: reference/scanning.qmd#projectconfig
         - text: scanjob
           href: reference/scanning.qmd#scanjob
         - text: ScanJob
@@ -112,8 +116,12 @@ website:
           href: reference/scanner.qmd#loader
         - text: llm_scanner
           href: reference/scanner.qmd#llm_scanner
+        - text: grep_scanner
+          href: reference/scanner.qmd#grep_scanner
         - text: AnswerMultiLabel
           href: reference/scanner.qmd#answermultilabel
+        - text: AnswerStructured
+          href: reference/scanner.qmd#answerstructured
         - text: messages_as_str
           href: reference/scanner.qmd#messages_as_str
         - text: MessageFormatOptions

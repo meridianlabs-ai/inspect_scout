@@ -32,6 +32,11 @@ from rich import box
 from rich.table import Column, Table
 
 from inspect_scout._concurrency._mp_common import set_log_level
+from inspect_scout._project import (
+    init_project,
+    merge_project_into_scanjob,
+    project,
+)
 from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
@@ -229,6 +234,9 @@ async def scan_async(
     """
     top_level_async_init(log_level)
 
+    # Get project config for merging/defaults
+    proj = project()
+
     # resolve scanjob
     if isinstance(scanners, ScanJob):
         scanjob = scanners
@@ -237,12 +245,18 @@ async def scan_async(
     else:
         scanjob = ScanJob(scanners=scanners, worklist=await _resolve_worklist(worklist))
 
-    # see if we are overriding the scanjob with additional args
-    scanjob._transcripts = transcripts or scanjob.transcripts
+    # Apply project defaults and merging (handles transcripts, results, model,
+    # worklist union, scanners union, validation union, tags union, metadata union,
+    # generate_config merge)
+    merge_project_into_scanjob(proj, scanjob)
+
+    # Apply function parameter overrides on top of merged values
+    if transcripts:
+        scanjob._transcripts = transcripts
     if scanjob._transcripts is None:
         raise ValueError("No 'transcripts' specified for scan.")
 
-    # resolve results
+    # resolve results (function param takes precedence, then merged value, then env)
     scanjob._results = (
         results or scanjob._results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
     )
@@ -774,14 +788,25 @@ def top_level_sync_init(display: DisplayType | None) -> None:
     init_display_type(display)
 
 
-def top_level_async_init(log_level: str | None, *, main_process: bool = True) -> None:
+def top_level_async_init(
+    log_level: str | None,
+    *,
+    main_process: bool = True,
+) -> None:
     init_platform(hooks=False)
     init_environment()
+
+    # Initialize project from cwd (always reinitialize to support multiple projects)
+    init_project()
+
+    # Use project log_level as fallback
+    effective_log_level = log_level or project().log_level
+
     if not display_type_initialized():
         init_display_type("plain")
-    init_log(log_level)
+    init_log(effective_log_level)
     if main_process:
-        set_log_level(log_level)
+        set_log_level(effective_log_level)
 
 
 def init_environment() -> None:

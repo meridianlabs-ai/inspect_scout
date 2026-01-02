@@ -134,7 +134,7 @@ def parse_class_docs(clz: Class, options: DocParseOptions) -> DocObject:
 
             # Resolve the alias to get the actual member
             try:
-                member = alias.final_target
+                member: Object | Alias = alias.final_target
             except (AliasResolutionError, CyclicAliasError):
                 continue
 

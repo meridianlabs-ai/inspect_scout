@@ -31,6 +31,7 @@ from inspect_scout._scanspec import ScannerSpec, Worklist
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._util.decorator import split_spec
 from inspect_scout._validation.types import ValidationSet
+from inspect_scout._validation.validation import validation_set
 
 from ._concurrency import _mp_common
 from ._scanner.scanner import Scanner, scanner_create
@@ -52,7 +53,7 @@ class ScanJobConfig(BaseModel):
     worklist: list[Worklist] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
-    validation: dict[str, ValidationSet] | None = Field(default=None)
+    validation: dict[str, str | ValidationSet] | None = Field(default=None)
     """Validation cases to apply for scanners."""
 
     results: str | None = Field(default=None)
@@ -206,6 +207,10 @@ class ScanJob:
         # realize transcripts
         if config.transcripts is not None:
             kwargs["transcripts"] = transcripts_from(config.transcripts)
+
+        # realize validation
+        if config.validation is not None:
+            kwargs["validation"] = _validation_from_config(config.validation)
 
         # realize generate_config
         if config.generate_config is not None:
@@ -533,3 +538,12 @@ def safe_scanner_name(scanner: str, max_length: int = 55) -> str:
         raise ValueError(f"Cannot create safe name from: {scanner}")
 
     return safe
+
+
+def _validation_from_config(
+    validation: dict[str, str | ValidationSet],
+) -> dict[str, ValidationSet]:
+    return {
+        k: v if isinstance(v, ValidationSet) else validation_set(v)
+        for k, v in validation.items()
+    }

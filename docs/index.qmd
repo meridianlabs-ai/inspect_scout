@@ -145,14 +145,18 @@ scout scan scanner.py \
    --model openai/gpt-5
 ```
 
-As with Inspect AI, Inspect Scout will read your `.env` file for [environmental options](https://inspect.aisi.org.uk/options.html#env-files). So if your `.env` contained the following:
+Note that when we using a model that requires an API  key you'll need to provide it in the enviroment (e.g. `OPENAI_API_KEY`). As with Inspect AI, you can use a [.env file](https://inspect.aisi.org.uk/options.html#env-files) for providing API keys.
 
-``` {.makefile filename=".env"}
-SCOUT_SCAN_TRANSCRIPTS=s3://weave-rollouts/cybench
-SCOUT_SCAN_MODEL=openai/gpt-5
+### Projects
+
+In some cases you'll prefer to define your transcript source, scanning model, and other configuration once for a project rather than each time you run `scout scan`. You can do this with a `scout.yaml` project file. For example, if we have this project file in our working directory:
+
+```{.yaml filename="scout.yaml"}
+transcripts: s3://weave-rollouts/cybench
+model: openai/gpt-5
 ```
 
-Then you could shorten the above command to:
+Then we can run our scan with simply:
 
 ``` bash
 scout scan scanner.py 
@@ -245,6 +249,8 @@ Which can be executed with:
 ``` bash
 scout scan scan.yaml
 ```
+
+Note that if you had a scout.yaml [project file](#projects) defining the `transcripts` and `model` for your project, you could exclude them from your scan job as they will be automatically merged from the project.
 
 ## Scan Results
 

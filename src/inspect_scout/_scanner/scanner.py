@@ -35,7 +35,7 @@ from inspect_ai.model._chat_message import ChatMessage
 from inspect_ai.scorer import Metric
 from typing_extensions import overload
 
-from inspect_scout._util.decorator import split_spec
+from inspect_scout._util.decorator import fixup_wrapper_annotations, split_spec
 
 from .._concurrency._mp_common import register_plugin_directory
 from .._transcript.types import (
@@ -366,6 +366,10 @@ def scanner(
         scanner_name = registry_name(
             factory_fn, name or str(getattr(factory_fn, "__name__", "scanner"))
         )
+
+        # fixup type annotations (for 'from __future__ import annotations')
+        fixup_wrapper_annotations(factory_wrapper, factory_fn, Scanner[T])
+
         scanner_factory_wrapper = cast(ScannerFactory[P, T], factory_wrapper)
         registry_add(
             scanner_factory_wrapper,

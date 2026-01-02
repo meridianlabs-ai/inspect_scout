@@ -2,6 +2,7 @@
 
 - [Grep Scanner](https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html) for pattern-based scanning of transcripts.
 - Scanning: Add `--dry-run` option for previewing scanner counts.
+- Scanners: Fixup type annotations in @scanner decorator.
 
 ## 0.4.4 (24 December 2025)
 

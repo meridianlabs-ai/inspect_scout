@@ -13,6 +13,7 @@ from typing import (
     Sequence,
     TypeVar,
     cast,
+    get_type_hints,
 )
 
 from inspect_ai._util._async import is_callable_coroutine
@@ -366,6 +367,14 @@ def scanner(
         scanner_name = registry_name(
             factory_fn, name or str(getattr(factory_fn, "__name__", "scanner"))
         )
+
+        # fixup type annotations (for 'from __future__ import annotations')
+        factory_wrapper.__annotations__ = get_type_hints(
+            factory_fn, factory_fn.__globals__
+        )
+        factory_wrapper.__annotations__["return"] = Scanner[T]
+        factory_wrapper.__signature__ = inspect.signature(factory_fn)  # type: ignore[attr-defined]
+
         scanner_factory_wrapper = cast(ScannerFactory[P, T], factory_wrapper)
         registry_add(
             scanner_factory_wrapper,

@@ -156,7 +156,7 @@ class ScanGroup(click.Group):
     "--validation",
     multiple=True,
     type=str,
-    envvar="SCOUT_SCAN_MODEL_ARGS",
+    envvar="SCOUT_SCAN_VALIDATION",
     help="One or more validation sets to apply for scanners (e.g. -V myscanner:deception.csv)",
 )
 @click.option(

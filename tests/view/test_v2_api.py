@@ -490,10 +490,10 @@ class TestTranscriptsPagination:
         data = response.json()
         assert "items" in data
         assert "next_cursor" in data
-        assert "count" in data
+        assert "total_count" in data
         assert isinstance(data["items"], list)
         assert data["next_cursor"] is None
-        assert data["count"] == 0
+        assert data["total_count"] == 0
 
     @pytest.mark.asyncio
     async def test_transcripts_count_no_filter(self, tmp_path: Path) -> None:
@@ -506,7 +506,7 @@ class TestTranscriptsPagination:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["count"] == 10
+        assert data["total_count"] == 10
         assert len(data["items"]) == 10
 
     @pytest.mark.asyncio
@@ -524,7 +524,7 @@ class TestTranscriptsPagination:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["count"] == 5
+        assert data["total_count"] == 5
         assert len(data["items"]) == 5
 
     @pytest.mark.asyncio
@@ -541,7 +541,7 @@ class TestTranscriptsPagination:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["count"] == 10  # Total, not limit
+        assert data["total_count"] == 10  # Total, not limit
         assert len(data["items"]) == 3  # Pagination limit
 
     @pytest.mark.asyncio

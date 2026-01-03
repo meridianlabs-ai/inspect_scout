@@ -232,11 +232,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # refresh the view
         await self._create_transcripts_table()
 
-        # Best-effort compaction - merge index files and clean up orphaned data
+        # Best-effort compaction - merge index files
         try:
-            await compact_index(
-                self._conn, self._index_storage, delete_orphaned_data=True
-            )
+            await compact_index(self._conn, self._index_storage)
         except Exception as e:
             logger.warning(f"Index compaction failed (data is consistent): {e}")
 

@@ -141,5 +141,4 @@ class CompactionResult:
 
     index_files_merged: int
     index_files_deleted: int
-    orphaned_files_deleted: int
     new_index_path: str

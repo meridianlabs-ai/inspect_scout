@@ -120,21 +120,18 @@ async def append_index(
 async def compact_index(
     conn: duckdb.DuckDBPyConnection,
     storage: IndexStorage,
-    delete_orphaned_data: bool = True,
     _retry_count: int = 0,
 ) -> CompactionResult:
-    """Compact multiple index files into one and clean up orphans.
+    """Compact multiple index files into one.
 
     Steps:
     1. Read all index files into merged manifest
     2. Write single compacted manifest file
     3. (Only after success) Delete ALL old index files
-    4. (Only after success) Find and delete orphaned data files
 
     Args:
         conn: DuckDB connection.
         storage: Storage configuration.
-        delete_orphaned_data: Whether to delete orphaned data files.
         _retry_count: Internal retry counter (do not set manually).
 
     Returns:
@@ -151,7 +148,6 @@ async def compact_index(
         return CompactionResult(
             index_files_merged=0,
             index_files_deleted=0,
-            orphaned_files_deleted=0,
             new_index_path="",
         )
 
@@ -178,9 +174,7 @@ async def compact_index(
             logger.warning(
                 f"Index file access failed during compaction (attempt {_retry_count + 1}), retrying"
             )
-            return await compact_index(
-                conn, storage, delete_orphaned_data, _retry_count + 1
-            )
+            return await compact_index(conn, storage, _retry_count + 1)
         raise
 
     # Write compacted manifest (even if only 1 file - converts incremental to manifest)
@@ -196,22 +190,9 @@ async def compact_index(
         except Exception as e:
             logger.warning(f"Failed to delete old index file {old_file}: {e}")
 
-    # Find and delete orphaned data files
-    orphaned_deleted = 0
-    if delete_orphaned_data:
-        data_files = await _discover_data_files(storage)
-        orphaned = _find_orphaned_data_files(data_files, merged_table, storage.location)
-        for orphan in orphaned:
-            try:
-                await _delete_file(storage, orphan)
-                orphaned_deleted += 1
-            except Exception as e:
-                logger.warning(f"Failed to delete orphaned file {orphan}: {e}")
-
     return CompactionResult(
         index_files_merged=len(idx_files),
         index_files_deleted=deleted_idx_count,
-        orphaned_files_deleted=orphaned_deleted,
         new_index_path=new_path,
     )
 
@@ -598,57 +579,6 @@ async def _delete_file(storage: IndexStorage, path: str) -> None:
             pass  # Already deleted by another process - that's fine
     else:
         Path(path).unlink(missing_ok=True)
-
-
-def _find_orphaned_data_files(
-    data_files: list[str],
-    manifest: pa.Table,
-    location: str,
-) -> list[str]:
-    """Find data files not referenced in manifest.
-
-    Args:
-        data_files: List of all data file paths (absolute or relative to cwd).
-        manifest: Arrow table with 'filename' column.
-        location: Database location for computing relative paths.
-
-    Returns:
-        List of data files not referenced in manifest.
-    """
-    if "filename" not in manifest.column_names:
-        # No filename column - can't determine orphans
-        return []
-
-    referenced_files: set[str] = {
-        f for f in manifest.column("filename").to_pylist() if isinstance(f, str)
-    }
-
-    # Build a set of just basenames from referenced files for comparison
-    # This handles backward compat with old indexes that stored absolute paths
-    referenced_basenames = {Path(f).name for f in referenced_files}
-
-    # Normalize location for prefix stripping
-    location_prefix = location.rstrip("/") + "/"
-
-    orphaned = []
-    for f in data_files:
-        # Compute relative path by stripping location prefix
-        if f.startswith(location_prefix):
-            relative_path = f[len(location_prefix) :]
-        else:
-            relative_path = f
-
-        basename = Path(f).name
-
-        # Check: full path (old absolute indexes), relative path (new indexes),
-        # or basename (for insert-based DBs that store just filenames)
-        if (
-            f not in referenced_files
-            and relative_path not in referenced_files
-            and basename not in referenced_basenames
-        ):
-            orphaned.append(f)
-    return orphaned
 
 
 def _is_index_file(filename: str) -> bool:

@@ -16,7 +16,6 @@ from inspect_scout._transcript.database.parquet.index import (
     _discover_data_files,
     _discover_index_files,
     _extract_timestamp,
-    _find_orphaned_data_files,
     _generate_manifest_filename,
     append_index,
     compact_index,
@@ -623,43 +622,6 @@ class TestCreateIndex:
 # --- Maintenance Tests ---
 
 
-class TestFindOrphanedDataFiles:
-    """Tests for find_orphaned_data_files function."""
-
-    def test_find_orphaned_data_files(self) -> None:
-        """Identifies unreferenced files."""
-        data_files = [
-            "/path/data1.parquet",
-            "/path/data2.parquet",
-            "/path/data3.parquet",
-        ]
-        manifest = pa.table(
-            {
-                "transcript_id": ["t1", "t2"],
-                "filename": ["/path/data1.parquet", "/path/data2.parquet"],
-            }
-        )
-
-        orphaned = _find_orphaned_data_files(data_files, manifest, "/path")
-
-        assert len(orphaned) == 1
-        assert "/path/data3.parquet" in orphaned
-
-    def test_find_orphaned_data_files_none(self) -> None:
-        """Returns empty when all files are referenced."""
-        data_files = ["/path/data1.parquet", "/path/data2.parquet"]
-        manifest = pa.table(
-            {
-                "transcript_id": ["t1", "t2"],
-                "filename": ["/path/data1.parquet", "/path/data2.parquet"],
-            }
-        )
-
-        orphaned = _find_orphaned_data_files(data_files, manifest, "/path")
-
-        assert len(orphaned) == 0
-
-
 class TestCompactIndex:
     """Tests for compact_index function."""
 
@@ -675,7 +637,7 @@ class TestCompactIndex:
         await append_index(table1, storage, "index_20250101T100000_a.idx")
         await append_index(table2, storage, "index_20250101T110000_b.idx")
 
-        result = await compact_index(conn, storage, delete_orphaned_data=False)
+        result = await compact_index(conn, storage)
 
         assert isinstance(result, CompactionResult)
         assert result.index_files_merged == 2
@@ -686,27 +648,6 @@ class TestCompactIndex:
 
         table = pq.read_table(result.new_index_path)
         assert table.num_rows == 2
-
-    @pytest.mark.asyncio
-    async def test_compact_index_deletes_orphans(
-        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
-    ) -> None:
-        """Removes orphaned data files during compaction."""
-        location = Path(storage.location)
-
-        # Create data files
-        create_sample_data_file(location / "data1.parquet", ["t1"])
-        create_sample_data_file(location / "orphan.parquet", ["t_orphan"])
-
-        # Create index that only references data1.parquet
-        table = create_sample_index_table(["t1"], [str(location / "data1.parquet")])
-        await append_index(table, storage, "index_20250101T100000_a.idx")
-
-        result = await compact_index(conn, storage, delete_orphaned_data=True)
-
-        assert result.orphaned_files_deleted == 1
-        assert not (location / "orphan.parquet").exists()
-        assert (location / "data1.parquet").exists()
 
     @pytest.mark.asyncio
     async def test_compact_index_preserves_data(
@@ -733,7 +674,7 @@ class TestCompactIndex:
         await append_index(table1, storage, "index_20250101T100000_a.idx")
         await append_index(table2, storage, "index_20250101T110000_b.idx")
 
-        result = await compact_index(conn, storage, delete_orphaned_data=False)
+        result = await compact_index(conn, storage)
 
         # Read compacted manifest
         import pyarrow.parquet as pq
@@ -774,7 +715,7 @@ class TestCompactIndex:
         assert len(idx_files_before) == 4
 
         # Run compact_index - should succeed (only reads valid files)
-        result = await compact_index(conn, storage, delete_orphaned_data=False)
+        result = await compact_index(conn, storage)
 
         # Verify only the new manifest remains
         idx_files_after = list(index_dir.glob("*.idx"))
@@ -862,7 +803,7 @@ class TestConcurrencyProtection:
         # This test verifies the retry mechanism works when files are deleted
         # between discovery and read. Since we can't easily simulate that,
         # we test the simpler case: no files results in empty result.
-        result = await compact_index(conn, storage, delete_orphaned_data=False)
+        result = await compact_index(conn, storage)
 
         assert result.index_files_merged == 0
         assert result.new_index_path == ""

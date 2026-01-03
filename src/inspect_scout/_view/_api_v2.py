@@ -1,15 +1,13 @@
-import hashlib
 import io
 from typing import Any, Iterable, Literal, TypeVar, Union, get_args, get_origin
 
 import pyarrow.ipc as pa_ipc
-from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
+from fastapi import FastAPI, HTTPException, Path, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._view.fastapi_server import AccessPolicy
 from inspect_ai.model import ChatMessage
 from starlette.status import (
-    HTTP_304_NOT_MODIFIED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -17,7 +15,7 @@ from starlette.status import (
 from upath import UPath
 
 from .._recorder.recorder import Status as RecorderStatus
-from .._scanlist import scan_list_async
+from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
     scan_results_arrow_async,
     scan_results_df_async,
@@ -28,13 +26,17 @@ from .._transcript.types import Transcript, TranscriptContent
 from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
     build_cursor,
+    build_scan_cursor,
     cursor_to_condition,
+    ensure_scan_tiebreaker,
     ensure_tiebreaker,
     reverse_order_columns,
 )
 from ._api_v2_types import (
     OrderBy,
     RestScanStatus,
+    ScanJobsRequest,
+    ScanJobsResponse,
     TranscriptsRequest,
     TranscriptsResponse,
 )
@@ -48,22 +50,6 @@ from ._server_common import (
 _running_scans: set[str] = set()
 
 API_VERSION = "2.0.0-alpha"
-
-
-def _compute_scans_etag(scans_location: str) -> str | None:
-    """Compute ETag from API version and _summary.json mtimes."""
-    try:
-        scans_dir = UPath(scans_location)
-        mtimes = sorted(
-            (d.name, (d / "_summary.json").stat().st_mtime)
-            for d in scans_dir.rglob("scan_id=*")
-            if d.is_dir() and (d / "_summary.json").exists()
-        )
-        return hashlib.md5(
-            f"{API_VERSION}:{scans_location}:{mtimes}".encode()
-        ).hexdigest()
-    except Exception:
-        return None
 
 
 def v2_api_app(
@@ -336,45 +322,107 @@ def v2_api_app(
             content = TranscriptContent(messages="all", events="all")
             return await view.read(infos[0], content)
 
-    @app.get(
+    @app.post(
         "/scans",
-        response_model=list[RestScanStatus],
-        response_class=InspectPydanticJSONResponse,
         summary="List scans",
-        description="Returns all scans in the results directory. Supports ETag caching.",
+        description="Returns scans from the results directory. "
+        "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
+        "Optional pagination for cursor-based pagination.",
     )
     async def scans(
         request: Request,
-        response: Response,
-        query_results_dir: str | None = Query(
-            None,
-            alias="results_dir",
-            description="Results directory containing scans. Required if not configured server-side.",
-            examples=["/path/to/results"],
-        ),
-        if_none_match: str | None = Header(
-            None,
-            alias="If-None-Match",
-            include_in_schema=False,
-        ),
-    ) -> list[RestScanStatus] | Response:
-        """List all scans with ETag-based caching support."""
+        body: ScanJobsRequest | None = None,
+    ) -> ScanJobsResponse:
+        """Filter scan jobs from the results directory."""
         validated_results_dir = _ensure_not_none(
-            query_results_dir or results_dir, "results_dir is required"
+            results_dir, "results_dir is required"
         )
         await _validate_list(request, validated_results_dir)
 
-        if etag := _compute_scans_etag(validated_results_dir):
-            if if_none_match and if_none_match.strip('"') == etag:
-                return Response(
-                    status_code=HTTP_304_NOT_MODIFIED, headers={"ETag": f'"{etag}"'}
-                )
-            response.headers["ETag"] = f'"{etag}"'
+        # Build filter condition (for count - excludes cursor)
+        filter_conditions: list[Condition] = []
+        if body and body.filter:
+            filter_conditions.append(body.filter)
 
-        return [
-            await _to_rest_scan(request, scan, _running_scans)
-            for scan in await scan_list_async(validated_results_dir)
-        ]
+        # Build full conditions list (includes cursor for pagination)
+        conditions = filter_conditions.copy()
+
+        # Push order_by to database layer
+        use_pagination = body is not None and body.pagination is not None
+        db_order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
+        order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
+        limit: int | None = None
+        needs_reverse = False
+
+        if use_pagination:
+            assert body is not None and body.pagination is not None
+            pagination = body.pagination
+
+            # Determine order with tiebreaker
+            order_by = body.order_by
+            if not order_by:
+                order_by = OrderBy(column="scan_id", direction="ASC")
+            order_columns = ensure_scan_tiebreaker(order_by)
+
+            # For backward pagination WITHOUT cursor, reverse sort order
+            db_order_columns = order_columns
+            if pagination.direction == "backward" and not pagination.cursor:
+                db_order_columns = reverse_order_columns(order_columns)
+                needs_reverse = True
+
+            # Push cursor condition to DB
+            if pagination.cursor:
+                cursor_cond = cursor_to_condition(
+                    pagination.cursor,
+                    order_columns,
+                    pagination.direction,
+                )
+                conditions.append(cursor_cond)
+
+            limit = pagination.limit
+        elif body and body.order_by:
+            # No pagination - just apply user's order_by
+            order_bys = (
+                body.order_by if isinstance(body.order_by, list) else [body.order_by]
+            )
+            db_order_columns = [(ob.column, ob.direction) for ob in order_bys]
+
+        async with await scan_jobs_view(validated_results_dir) as view:
+            # Get total count (filter only, no cursor)
+            count = await view.count(filter_conditions or None)
+
+            results = [
+                status
+                async for status in view.select(
+                    where=conditions or None,
+                    limit=limit,
+                    order_by=db_order_columns or None,
+                )
+            ]
+
+        # Handle pagination response
+        if use_pagination:
+            assert body is not None and body.pagination is not None
+            pag = body.pagination
+
+            # Reverse results back to original order if we reversed for backward
+            if needs_reverse:
+                results = list(reversed(results))
+
+            # If we got exactly limit rows, assume more exist
+            next_cursor = None
+            if len(results) == pag.limit and results:
+                if pag.direction == "forward":
+                    next_cursor = build_scan_cursor(results[-1], order_columns)
+                else:
+                    next_cursor = build_scan_cursor(results[0], order_columns)
+
+            return ScanJobsResponse(
+                items=results, total_count=count, next_cursor=next_cursor
+            )
+
+        # No pagination - return all results
+        return ScanJobsResponse(items=results, total_count=count, next_cursor=None)
 
     @app.get(
         "/scans/{scan}",

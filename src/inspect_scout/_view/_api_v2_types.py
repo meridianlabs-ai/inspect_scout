@@ -80,3 +80,21 @@ class TranscriptsRequest:
     filter: Condition | None = None
     order_by: OrderBy | list[OrderBy] | None = None
     pagination: Pagination | None = None
+
+
+@dataclass
+class ScanJobsRequest:
+    """Request body for POST /scans endpoint."""
+
+    filter: Condition | None = None
+    order_by: OrderBy | list[OrderBy] | None = None
+    pagination: Pagination | None = None
+
+
+@dataclass
+class ScanJobsResponse:
+    """Response body for POST /scans endpoint."""
+
+    items: list[RecorderStatus]
+    total_count: int
+    next_cursor: dict[str, Any] | None = None

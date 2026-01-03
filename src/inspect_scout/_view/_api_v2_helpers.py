@@ -1,5 +1,6 @@
 from typing import Any, Literal
 
+from .._recorder.recorder import Status
 from .._transcript.columns import Condition, Operator
 from .._transcript.types import TranscriptInfo
 from ._api_v2_types import OrderBy
@@ -104,3 +105,57 @@ def reverse_order_columns(
         (col, "DESC" if direction == "ASC" else "ASC")
         for col, direction in order_columns
     ]
+
+
+def ensure_scan_tiebreaker(
+    order_by: OrderBy | list[OrderBy] | None,
+) -> list[tuple[str, Literal["ASC", "DESC"]]]:
+    """Ensure sort order has scan_id as final tiebreaker.
+
+    Returns list of (column, direction) tuples with directions in uppercase.
+    If order_by is None, returns [("scan_id", "ASC")].
+    If scan_id already in sort, don't add duplicate.
+    """
+    if order_by is None:
+        return [("scan_id", "ASC")]
+
+    order_bys = order_by if isinstance(order_by, list) else [order_by]
+    columns = [(ob.column, ob.direction) for ob in order_bys]
+
+    if any(col == "scan_id" for col, _ in columns):
+        return columns
+
+    return columns + [("scan_id", "ASC")]
+
+
+def build_scan_cursor(
+    status: Status,
+    order_columns: list[tuple[str, Literal["ASC", "DESC"]]],
+) -> dict[str, Any]:
+    """Build cursor from Status using sort columns.
+
+    Maps column names to values from Status object:
+    - scan_id, scan_name, timestamp -> status.spec.*
+    - complete, location -> status.*
+    - scanners, model -> derived from spec
+    """
+    cursor: dict[str, Any] = {}
+    for column, _ in order_columns:
+        if column == "scan_id":
+            cursor[column] = status.spec.scan_id
+        elif column == "scan_name":
+            cursor[column] = status.spec.scan_name
+        elif column == "timestamp":
+            cursor[column] = status.spec.timestamp.isoformat() if status.spec.timestamp else None
+        elif column == "complete":
+            cursor[column] = status.complete
+        elif column == "location":
+            cursor[column] = status.location
+        elif column == "scanners":
+            cursor[column] = ",".join(status.spec.scanners.keys()) if status.spec.scanners else ""
+        elif column == "model":
+            model = status.spec.model
+            cursor[column] = getattr(model, "model", None) or str(model) if model else None
+        else:
+            cursor[column] = None
+    return cursor

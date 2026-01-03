@@ -4,9 +4,33 @@ import pandas as pd
 
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.columns import Column
-from inspect_scout._transcript.database.database import TranscriptsDB
+from inspect_scout._transcript.database.database import TranscriptsDB, TranscriptsView
 from inspect_scout._transcript.transcripts import Transcripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
+
+
+def transcripts_view(location: str) -> TranscriptsView:
+    """Read-only interface to transcripts.
+
+    Supports both parquet databases and eval logs.
+
+    Args:
+        location: Transcripts location (database directory or eval logs path).
+
+    Returns:
+        Read-only view for querying transcripts.
+    """
+    from inspect_scout._scan import init_environment
+    from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+    from inspect_scout._transcript.factory import _location_type
+
+    init_environment()
+    match _location_type(location):
+        case "database":
+            return ParquetTranscriptsDB(location)
+        case "eval_log":
+            return EvalLogTranscriptsView(location)
 
 
 def transcripts_db(location: str) -> TranscriptsDB:
@@ -20,8 +44,14 @@ def transcripts_db(location: str) -> TranscriptsDB:
     """
     from inspect_scout._scan import init_environment
     from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
+    from inspect_scout._transcript.factory import _location_type
 
     init_environment()
+    if _location_type(location) == "eval_log":
+        raise ValueError(
+            "Mutable database not supported for eval logs. "
+            "Use transcripts_view() for read-only access."
+        )
     return ParquetTranscriptsDB(location)
 
 

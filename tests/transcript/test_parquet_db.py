@@ -9,12 +9,12 @@ import pytest_asyncio
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
 from inspect_scout import columns as c
-from inspect_scout import transcripts_from
+from inspect_scout import transcripts_db, transcripts_from
 from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
     ParquetTranscriptsDB,
 )
-from inspect_scout._transcript.database.reader import TranscriptsDBReader
+from inspect_scout._transcript.database.reader import TranscriptsViewReader
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -608,10 +608,8 @@ async def test_factory_function(test_location: Path) -> None:
 
     # Insert some data
     sample_data = create_test_transcripts(5)
-    async with transcripts.reader() as reader:
-        # Access underlying DB to insert data
-        if hasattr(reader, "_db"):
-            await reader._db.insert(sample_data)
+    async with transcripts_db(str(test_location)) as db:
+        await db.insert(sample_data)
 
 
 @pytest.mark.asyncio
@@ -619,9 +617,8 @@ async def test_where_filtering(test_location: Path) -> None:
     """Test .where() method on ParquetTranscripts."""
     # Create and populate
     transcripts_obj = transcripts_from(str(test_location))
-    async with transcripts_obj.reader() as reader:
-        if isinstance(reader, TranscriptsDBReader):
-            await reader._db.insert(create_test_transcripts(20))
+    async with transcripts_db(str(test_location)) as db:
+        await db.insert(create_test_transcripts(20))
 
     # Filter
     filtered = transcripts_obj.where(c.model == "gpt-4")
@@ -636,9 +633,8 @@ async def test_where_filtering(test_location: Path) -> None:
 async def test_limit_method(test_location: Path) -> None:
     """Test .limit() method."""
     transcripts_obj = transcripts_from(str(test_location))
-    async with transcripts_obj.reader() as reader:
-        if isinstance(reader, TranscriptsDBReader):
-            await reader._db.insert(create_test_transcripts(20))
+    async with transcripts_db(str(test_location)) as db:
+        await db.insert(create_test_transcripts(20))
 
     # Limit
     limited = transcripts_obj.limit(5)
@@ -652,9 +648,8 @@ async def test_limit_method(test_location: Path) -> None:
 async def test_shuffle_method(test_location: Path) -> None:
     """Test .shuffle() method."""
     transcripts_obj = transcripts_from(str(test_location))
-    async with transcripts_obj.reader() as reader:
-        if isinstance(reader, TranscriptsDBReader):
-            await reader._db.insert(create_test_transcripts(10))
+    async with transcripts_db(str(test_location)) as db:
+        await db.insert(create_test_transcripts(10))
 
     # Shuffle with seed
     shuffled = transcripts_obj.shuffle(seed=42)
@@ -1549,7 +1544,7 @@ async def test_snapshot_returns_transcript_ids(test_location: Path) -> None:
         await db.insert(transcripts)
 
         # Create reader and get snapshot
-        reader = TranscriptsDBReader(db)
+        reader = TranscriptsViewReader(db, str(test_location), None)
         scan_transcripts = await reader.snapshot()
 
         # Verify ScanTranscripts structure
@@ -1574,7 +1569,7 @@ async def test_snapshot_empty_database(test_location: Path) -> None:
     await db.connect()
 
     try:
-        reader = TranscriptsDBReader(db)
+        reader = TranscriptsViewReader(db, str(test_location), None)
         scan_transcripts = await reader.snapshot()
 
         # Verify empty results

@@ -14,7 +14,6 @@ reference: "inspect_scout"
 
 ### transcripts_db
 ### TranscriptsDB
-### TranscriptsSource
 
 ## Filtering
 

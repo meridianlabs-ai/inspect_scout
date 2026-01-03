@@ -93,8 +93,10 @@ def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "databa
     if parquet_files:
         return TRANSCRIPT_SOURCE_DATABASE
 
-    # Check if directory is empty
-    if location_path.is_dir():
+    # Check if directory doesn't exist or is empty
+    if not location_path.exists():
+        return TRANSCRIPT_SOURCE_DATABASE
+    elif location_path.is_dir():
         # Check if there are any files or subdirectories (efficiently, without materializing the full list)
         if next(location_path.iterdir(), None) is None:
             # Empty directory - treat as database location

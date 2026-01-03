@@ -6,27 +6,32 @@ from typing import AsyncIterator
 from typing_extensions import override
 
 from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.columns import Condition
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
 from ..transcripts import TranscriptsReader
 from ..types import Transcript, TranscriptContent, TranscriptInfo
-from .database import TranscriptsDB
+from .database import TranscriptsView
 
 
-class TranscriptsDBReader(TranscriptsReader):
+class TranscriptsViewReader(TranscriptsReader):
     """TranscriptsReader that delegates to a TranscriptDB backend.
 
     Query filtering (WHERE/SHUFFLE/LIMIT) is applied at database creation time
     via ParquetTranscriptsDB's query parameter, not at the reader level.
     """
 
-    def __init__(self, db: TranscriptsDB) -> None:
-        self._db = db
+    def __init__(
+        self, view: TranscriptsView, location: str, where: list[Condition] | None
+    ) -> None:
+        self._view = view
+        self._location = location
+        self._where = where
 
     @override
-    async def __aenter__(self) -> "TranscriptsDBReader":
+    async def __aenter__(self) -> "TranscriptsViewReader":
         """Enter async context - connect to database."""
-        await self._db.connect()
+        await self._view.connect()
         return self
 
     @override
@@ -37,7 +42,7 @@ class TranscriptsDBReader(TranscriptsReader):
         exc_tb: TracebackType | None,
     ) -> bool | None:
         """Exit async context - disconnect from database."""
-        await self._db.disconnect()
+        await self._view.disconnect()
         return None
 
     @override
@@ -47,7 +52,7 @@ class TranscriptsDBReader(TranscriptsReader):
         Returns:
             Async iterator of TranscriptInfo (metadata only).
         """
-        return self._db.select()
+        return self._view.select()
 
     @override
     async def read(
@@ -62,7 +67,7 @@ class TranscriptsDBReader(TranscriptsReader):
         Returns:
             Full Transcript with content.
         """
-        return await self._db.read(transcript, content)
+        return await self._view.read(transcript, content)
 
     @override
     async def snapshot(self) -> ScanTranscripts:
@@ -73,7 +78,7 @@ class TranscriptsDBReader(TranscriptsReader):
         """
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_DATABASE,
-            location=self._db._location,
-            conditions=self._db._where,
-            transcript_ids=await self._db.transcript_ids(),
+            location=self._location,
+            conditions=self._where,
+            transcript_ids=await self._view.transcript_ids(),
         )

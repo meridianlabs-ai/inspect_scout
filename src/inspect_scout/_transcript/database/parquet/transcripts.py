@@ -38,8 +38,7 @@ from ...transcripts import (
 )
 from ...types import Transcript, TranscriptContent, TranscriptInfo
 from ..database import TranscriptsDB
-from ..reader import TranscriptsDBReader
-from ..source import TranscriptsSource
+from ..reader import TranscriptsViewReader
 from .encryption import (
     ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
@@ -98,7 +97,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             snapshot: Snapshot info. This is a mapping of transcript_id => filename
                 which we can use to avoid crawling.
         """
-        super().__init__(location, query.where if query is not None else None)
+        self._location = location
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
         self._query = query
@@ -193,7 +192,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         transcripts: Iterable[Transcript]
         | AsyncIterable[Transcript]
         | Transcripts
-        | TranscriptsSource
         | pa.RecordBatchReader,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
@@ -232,11 +230,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # refresh the view
         await self._create_transcripts_table()
 
-        # Best-effort compaction - merge index files and clean up orphaned data
+        # Best-effort compaction - merge index files
         try:
-            await compact_index(
-                self._conn, self._index_storage, delete_orphaned_data=True
-            )
+            await compact_index(self._conn, self._index_storage)
         except Exception as e:
             logger.warning(f"Index compaction failed (data is consistent): {e}")
 
@@ -572,10 +568,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     async def _insert_from_transcripts(
         self,
-        transcripts: Iterable[Transcript]
-        | AsyncIterable[Transcript]
-        | Transcripts
-        | TranscriptsSource,
+        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
     ) -> None:
         batch: list[dict[str, Any]] = []
         current_batch_size = 0
@@ -1694,12 +1687,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ext = self._index_storage.index_extension()
         return f"index_{timestamp_uuid}{ext}"
 
-    def _build_index_table(self, table: pa.Table, parquet_path: str) -> pa.Table:
+    def _build_index_table(self, table: pa.Table, parquet_filename: str) -> pa.Table:
         """Build index table from data table (excludes messages/events, adds filename).
 
         Args:
             table: PyArrow table with full transcript data.
-            parquet_path: Full path to the parquet file.
+            parquet_filename: Filename of the parquet file (relative to database location).
 
         Returns:
             Index table with metadata columns and filename.
@@ -1712,8 +1705,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Select only metadata columns
         index_table = table.select(columns_to_keep)
 
-        # Add filename column
-        filename_array = pa.array([parquet_path] * len(table), type=pa.string())
+        # Add filename column (just the filename, not full path)
+        filename_array = pa.array([parquet_filename] * len(table), type=pa.string())
         index_table = index_table.append_column("filename", filename_array)
 
         return index_table
@@ -1725,15 +1718,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Args:
             table: PyArrow table with full transcript data.
-            parquet_path: Full path to the parquet file (for index filename column).
-            parquet_filename: Parquet filename (for deriving index filename).
+            parquet_path: Full path to the parquet file (for cleanup on failure).
+            parquet_filename: Parquet filename (for index and deriving index filename).
 
         Raises:
             RuntimeError: If index write fails (parquet file is deleted first).
         """
         assert self._index_storage is not None
         try:
-            index_table = self._build_index_table(table, parquet_path)
+            index_table = self._build_index_table(table, parquet_filename)
             index_filename = self._index_filename_for_parquet(parquet_filename)
             await append_index(index_table, self._index_storage, index_filename)
         except Exception as e:
@@ -1758,16 +1751,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _as_async_iterator(
         self,
-        transcripts: Iterable[Transcript]
-        | AsyncIterable[Transcript]
-        | Transcripts
-        | TranscriptsSource,
+        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
     ) -> AsyncIterator[Transcript]:
         """Convert various transcript sources to async iterator.
 
         Args:
             transcripts: Transcripts from various sources (iterable, async iterable,
-                Transcripts object, or TranscriptsSource callable).
+                Transcripts object).
 
         Returns:
             AsyncIterator over transcripts, filtered to exclude already-present transcripts.
@@ -1806,15 +1796,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return _iter()
 
-        # TranscriptsSource (callable) - call it to get AsyncIterator
+        # Unexpected type
         else:
-
-            async def _iter() -> AsyncIterator[Transcript]:
-                async for transcript in transcripts():
-                    if not self._have_transcript(transcript.transcript_id):
-                        yield transcript
-
-            return _iter()
+            raise NotImplementedError(
+                f"Unable to insert transcripts from type {type(transcripts)}"
+            )
 
     def _is_s3(self) -> bool:
         return self._location is not None and self._location.startswith("s3://")
@@ -1839,7 +1825,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         with the relative filename.
 
         For backwards compatibility with older indexes that stored absolute
-        paths, this returns absolute paths unchanged.
+        paths or paths that already include the location prefix (due to a
+        previous bug), this returns such paths unchanged.
 
         Args:
             filename: Path from index (relative like 'data/file.parquet' or
@@ -1855,6 +1842,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Relative path - prepend location
         assert self._location is not None
         location = self._location.rstrip("/")
+
+        # Backward compat: check if filename already starts with location prefix
+        # (handles databases created before the fix where full path was stored)
+        location_prefix = location + "/"
+        if filename.startswith(location_prefix):
+            return filename
+
         return f"{location}/{filename}"
 
     def _init_hf_auth(self) -> None:
@@ -1910,7 +1904,7 @@ class ParquetTranscripts(Transcripts):
                 transcript_id => filename mappings)
         """
         db = ParquetTranscriptsDB(self._location, query=self._query, snapshot=snapshot)
-        return TranscriptsDBReader(db)
+        return TranscriptsViewReader(db, self._location, self._query.where)
 
     @staticmethod
     @override

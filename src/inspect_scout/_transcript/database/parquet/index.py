@@ -120,21 +120,18 @@ async def append_index(
 async def compact_index(
     conn: duckdb.DuckDBPyConnection,
     storage: IndexStorage,
-    delete_orphaned_data: bool = True,
     _retry_count: int = 0,
 ) -> CompactionResult:
-    """Compact multiple index files into one and clean up orphans.
+    """Compact multiple index files into one.
 
     Steps:
     1. Read all index files into merged manifest
     2. Write single compacted manifest file
     3. (Only after success) Delete ALL old index files
-    4. (Only after success) Find and delete orphaned data files
 
     Args:
         conn: DuckDB connection.
         storage: Storage configuration.
-        delete_orphaned_data: Whether to delete orphaned data files.
         _retry_count: Internal retry counter (do not set manually).
 
     Returns:
@@ -151,24 +148,18 @@ async def compact_index(
         return CompactionResult(
             index_files_merged=0,
             index_files_deleted=0,
-            orphaned_files_deleted=0,
             new_index_path="",
         )
-
-    # Load all index files into a single table
-    if len(idx_files) == 1:
-        file_pattern = f"'{idx_files[0]}'"
-    else:
-        file_pattern = "[" + ", ".join(f"'{p}'" for p in idx_files) + "]"
-
     # Setup encryption if needed (discover_index_files sets storage.is_encrypted)
     enc_config = setup_encryption(conn, storage)
 
-    # Handle file-not-found errors from concurrent operations with retry
+    # Load all index files into a single table with deduplication.
+    # If the same transcript_id appears in multiple index files (from retried
+    # inserts after partial failures), keep the entry from the newest file.
+    # Index files have timestamps in their names, so newer files sort later.
+    # We tag each file with its position in the sorted list (_file_order).
     try:
-        merged_table = conn.execute(f"""
-            SELECT * FROM read_parquet({file_pattern}, union_by_name=true{enc_config})
-        """).fetch_arrow_table()
+        merged_table = _read_and_deduplicate_index_files(conn, idx_files, enc_config)
     except duckdb.IOException as e:
         error_msg = str(e).lower()
         if (
@@ -178,9 +169,7 @@ async def compact_index(
             logger.warning(
                 f"Index file access failed during compaction (attempt {_retry_count + 1}), retrying"
             )
-            return await compact_index(
-                conn, storage, delete_orphaned_data, _retry_count + 1
-            )
+            return await compact_index(conn, storage, _retry_count + 1)
         raise
 
     # Write compacted manifest (even if only 1 file - converts incremental to manifest)
@@ -196,22 +185,9 @@ async def compact_index(
         except Exception as e:
             logger.warning(f"Failed to delete old index file {old_file}: {e}")
 
-    # Find and delete orphaned data files
-    orphaned_deleted = 0
-    if delete_orphaned_data:
-        data_files = await _discover_data_files(storage)
-        orphaned = _find_orphaned_data_files(data_files, merged_table)
-        for orphan in orphaned:
-            try:
-                await _delete_file(storage, orphan)
-                orphaned_deleted += 1
-            except Exception as e:
-                logger.warning(f"Failed to delete orphaned file {orphan}: {e}")
-
     return CompactionResult(
         index_files_merged=len(idx_files),
         index_files_deleted=deleted_idx_count,
-        orphaned_files_deleted=orphaned_deleted,
         new_index_path=new_path,
     )
 
@@ -270,10 +246,17 @@ async def create_index(
         f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
     )
 
-    # Read metadata into Arrow table
+    # Read metadata into Arrow table with deduplication.
+    # If the same transcript_id exists in multiple data files (e.g., from
+    # retried inserts after partial failures), keep only one entry.
+    # We use ROW_NUMBER() to pick one arbitrarily per transcript_id.
     result = conn.execute(f"""
-        SELECT *{exclude_clause}
-        FROM read_parquet({file_pattern}, union_by_name=true, filename=true{enc_config})
+        SELECT * EXCLUDE (_rn) FROM (
+            SELECT *{exclude_clause},
+                   ROW_NUMBER() OVER (PARTITION BY transcript_id) as _rn
+            FROM read_parquet({file_pattern}, union_by_name=true, filename=true{enc_config})
+        )
+        WHERE _rn = 1
     """).fetch_arrow_table()
 
     # Convert absolute filenames to relative paths (relative to database location)
@@ -600,27 +583,6 @@ async def _delete_file(storage: IndexStorage, path: str) -> None:
         Path(path).unlink(missing_ok=True)
 
 
-def _find_orphaned_data_files(
-    data_files: list[str],
-    manifest: pa.Table,
-) -> list[str]:
-    """Find data files not referenced in manifest.
-
-    Args:
-        data_files: List of all data file paths.
-        manifest: Arrow table with 'filename' column.
-
-    Returns:
-        List of data files not referenced in manifest.
-    """
-    if "filename" not in manifest.column_names:
-        # No filename column - can't determine orphans
-        return []
-
-    referenced_files = set(manifest.column("filename").to_pylist())
-    return [f for f in data_files if f not in referenced_files]
-
-
 def _is_index_file(filename: str) -> bool:
     """Check if a file is an index file (encrypted or not)."""
     return filename.endswith(INDEX_EXTENSION)  # Matches both .idx and .enc.idx
@@ -702,3 +664,54 @@ def _make_filenames_relative(table: pa.Table, location: str) -> pa.Table:
     # Replace the filename column with relative paths
     col_idx = table.column_names.index("filename")
     return table.set_column(col_idx, "filename", relative_filenames)
+
+
+def _read_and_deduplicate_index_files(
+    conn: duckdb.DuckDBPyConnection,
+    idx_files: list[str],
+    enc_config: str,
+) -> pa.Table:
+    """Read index files and deduplicate by transcript_id.
+
+    If the same transcript_id appears in multiple index files (e.g., from
+    retried inserts after partial failures), keeps the entry from the
+    newest file. Index files have timestamps in their names, so we can
+    determine which is newest by sorting.
+
+    Args:
+        conn: DuckDB connection.
+        idx_files: List of index file paths (should be sorted by timestamp).
+        enc_config: DuckDB encryption config string.
+
+    Returns:
+        PyArrow table with deduplicated entries.
+    """
+    if len(idx_files) == 1:
+        # Single file - no deduplication needed
+        return conn.execute(
+            f"SELECT * FROM read_parquet('{idx_files[0]}'{enc_config})"
+        ).fetch_arrow_table()
+
+    # Read each file with an order tag. Higher order = newer file.
+    # The idx_files list is sorted with older files first, so we use
+    # the list index as the order (newer files have higher indices).
+    subqueries = []
+    for i, f in enumerate(sorted(idx_files)):
+        subqueries.append(
+            f"SELECT *, {i} as _file_order FROM read_parquet('{f}'{enc_config})"
+        )
+
+    union_query = " UNION ALL BY NAME ".join(subqueries)
+
+    # Deduplicate: keep entry from newest file (highest _file_order)
+    return conn.execute(f"""
+        SELECT * EXCLUDE (_file_order, _rn) FROM (
+            SELECT *,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY transcript_id
+                       ORDER BY _file_order DESC
+                   ) as _rn
+            FROM ({union_query})
+        )
+        WHERE _rn = 1
+    """).fetch_arrow_table()

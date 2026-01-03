@@ -3,6 +3,7 @@ from types import TracebackType
 from typing import AsyncIterable, AsyncIterator, Iterable, Literal, Type
 
 import pyarrow as pa
+from typing_extensions import Self
 
 from inspect_scout._transcript.transcripts import Transcripts
 
@@ -12,21 +13,10 @@ from ..types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from .source import TranscriptsSource
 
 
-class TranscriptsDB(abc.ABC):
-    """Database of transcripts."""
-
-    def __init__(self, location: str, where: list[Condition] | None = None) -> None:
-        """Create a transcripts database.
-
-        Args:
-            location: Database location (e.g. local or S3 file path)
-            where: Optional list of conditions used to filter transcripts.
-        """
-        self._location: str | None = location
-        self._where = where
+class TranscriptsView(abc.ABC):
+    """Read-only view of transcripts database."""
 
     @abc.abstractmethod
     async def connect(self) -> None:
@@ -35,10 +25,10 @@ class TranscriptsDB(abc.ABC):
 
     @abc.abstractmethod
     async def disconnect(self) -> None:
-        """Disconnect to transcripts database."""
+        """Disconnect from transcripts database."""
         ...
 
-    async def __aenter__(self) -> "TranscriptsDB":
+    async def __aenter__(self) -> Self:
         """Connect to transcripts database."""
         await self.connect()
         return self
@@ -52,22 +42,6 @@ class TranscriptsDB(abc.ABC):
         """Disconnect from transcripts database."""
         await self.disconnect()
         return None
-
-    @abc.abstractmethod
-    async def insert(
-        self,
-        transcripts: Iterable[Transcript]
-        | AsyncIterable[Transcript]
-        | Transcripts
-        | TranscriptsSource
-        | pa.RecordBatchReader,
-    ) -> None:
-        """Insert transcripts into database.
-
-        Args:
-           transcripts: Transcripts to insert (iterable, async iterable, or source).
-        """
-        ...
 
     @abc.abstractmethod
     async def transcript_ids(
@@ -119,5 +93,24 @@ class TranscriptsDB(abc.ABC):
         Args:
             t: Transcript to read.
             content: Content to read (messages, events, etc.)
+        """
+        ...
+
+
+class TranscriptsDB(TranscriptsView):
+    """Database of transcripts with write capability."""
+
+    @abc.abstractmethod
+    async def insert(
+        self,
+        transcripts: Iterable[Transcript]
+        | AsyncIterable[Transcript]
+        | Transcripts
+        | pa.RecordBatchReader,
+    ) -> None:
+        """Insert transcripts into database.
+
+        Args:
+           transcripts: Transcripts to insert (iterable, async iterable, or source).
         """
         ...

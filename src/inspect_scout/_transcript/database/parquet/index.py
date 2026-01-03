@@ -200,7 +200,7 @@ async def compact_index(
     orphaned_deleted = 0
     if delete_orphaned_data:
         data_files = await _discover_data_files(storage)
-        orphaned = _find_orphaned_data_files(data_files, merged_table)
+        orphaned = _find_orphaned_data_files(data_files, merged_table, storage.location)
         for orphan in orphaned:
             try:
                 await _delete_file(storage, orphan)
@@ -603,12 +603,14 @@ async def _delete_file(storage: IndexStorage, path: str) -> None:
 def _find_orphaned_data_files(
     data_files: list[str],
     manifest: pa.Table,
+    location: str,
 ) -> list[str]:
     """Find data files not referenced in manifest.
 
     Args:
-        data_files: List of all data file paths.
+        data_files: List of all data file paths (absolute or relative to cwd).
         manifest: Arrow table with 'filename' column.
+        location: Database location for computing relative paths.
 
     Returns:
         List of data files not referenced in manifest.
@@ -617,8 +619,36 @@ def _find_orphaned_data_files(
         # No filename column - can't determine orphans
         return []
 
-    referenced_files = set(manifest.column("filename").to_pylist())
-    return [f for f in data_files if f not in referenced_files]
+    referenced_files: set[str] = {
+        f for f in manifest.column("filename").to_pylist() if isinstance(f, str)
+    }
+
+    # Build a set of just basenames from referenced files for comparison
+    # This handles backward compat with old indexes that stored absolute paths
+    referenced_basenames = {Path(f).name for f in referenced_files}
+
+    # Normalize location for prefix stripping
+    location_prefix = location.rstrip("/") + "/"
+
+    orphaned = []
+    for f in data_files:
+        # Compute relative path by stripping location prefix
+        if f.startswith(location_prefix):
+            relative_path = f[len(location_prefix) :]
+        else:
+            relative_path = f
+
+        basename = Path(f).name
+
+        # Check: full path (old absolute indexes), relative path (new indexes),
+        # or basename (for insert-based DBs that store just filenames)
+        if (
+            f not in referenced_files
+            and relative_path not in referenced_files
+            and basename not in referenced_basenames
+        ):
+            orphaned.append(f)
+    return orphaned
 
 
 def _is_index_file(filename: str) -> bool:

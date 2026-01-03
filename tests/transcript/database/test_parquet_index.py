@@ -640,7 +640,7 @@ class TestFindOrphanedDataFiles:
             }
         )
 
-        orphaned = _find_orphaned_data_files(data_files, manifest)
+        orphaned = _find_orphaned_data_files(data_files, manifest, "/path")
 
         assert len(orphaned) == 1
         assert "/path/data3.parquet" in orphaned
@@ -655,7 +655,7 @@ class TestFindOrphanedDataFiles:
             }
         )
 
-        orphaned = _find_orphaned_data_files(data_files, manifest)
+        orphaned = _find_orphaned_data_files(data_files, manifest, "/path")
 
         assert len(orphaned) == 0
 

@@ -6478,10 +6478,15 @@
               }
             ],
             "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
           }
         },
         "required": [
-          "items"
+          "items",
+          "total_count"
         ],
         "title": "TranscriptsResponse",
         "type": "object"

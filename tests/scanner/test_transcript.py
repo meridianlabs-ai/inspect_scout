@@ -630,6 +630,21 @@ async def test_select_with_limit(db: EvalLogTranscriptsView) -> None:
 
 
 @pytest.mark.asyncio
+async def test_count_method_all(db: EvalLogTranscriptsView) -> None:
+    """Test count() method with no filter."""
+    count = await db.count()
+    assert count == 20
+
+
+@pytest.mark.asyncio
+async def test_count_method_with_where(db: EvalLogTranscriptsView) -> None:
+    """Test count() method with filter condition."""
+    count = await db.count([c.model == "gpt-4"])
+    # gpt-4 is one of 3 models, so expect ~7 results
+    assert count > 0
+
+
+@pytest.mark.asyncio
 async def test_select_with_shuffle(db: EvalLogTranscriptsView) -> None:
     """Test querying with shuffle."""
     # Get results without shuffle

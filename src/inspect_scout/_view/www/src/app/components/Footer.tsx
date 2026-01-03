@@ -9,7 +9,7 @@ interface FooterProps {
   className?: string | string[];
 
   // Items
-  itemCount: number;
+  itemCount?: number;
   filteredCount?: number;
 
   // left side controls (replaced by progress when there is progress)
@@ -36,7 +36,7 @@ interface FooterProps {
 export const Footer: FC<FooterProps> = ({
   id,
   className,
-  itemCount,
+  itemCount = 0,
   paginated,
   filteredCount,
   left,

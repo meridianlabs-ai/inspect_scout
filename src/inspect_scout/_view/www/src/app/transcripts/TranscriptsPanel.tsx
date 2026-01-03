@@ -89,7 +89,7 @@ export const TranscriptsPanel: FC = () => {
       )}
       <Footer
         id={"transcripts-footer"}
-        itemCount={transcripts.length}
+        itemCount={data?.pages[0]?.total_count}
         paginated={false}
       />
     </div>

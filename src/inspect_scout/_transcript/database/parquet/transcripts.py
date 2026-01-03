@@ -364,6 +364,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 yield info
 
     @override
+    async def count(self, where: list[Condition] | None = None) -> int:
+        assert self._conn is not None
+        where_clause, where_params = self._build_where_clause(where)
+        sql = f"SELECT COUNT(*) FROM transcripts{where_clause}"
+        result = self._conn.execute(sql, where_params).fetchone()
+        assert result is not None
+        return int(result[0])
+
+    @override
     async def transcript_ids(
         self,
         where: list[Condition] | None = None,

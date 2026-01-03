@@ -13,7 +13,11 @@ import { useMemo } from "react";
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
 import { Status } from "../../types";
-import { Transcript, TranscriptsResponse } from "../../types/api-types";
+import {
+  ScanJobsResponse,
+  Transcript,
+  TranscriptsResponse,
+} from "../../types/api-types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
@@ -216,6 +220,44 @@ export const useServerTranscriptsInfinite = (
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     enabled: !!location,
+    placeholderData: keepPreviousData,
+  });
+};
+
+export const useServerScansInfinite = (
+  pageSize: number = 50,
+  filter?: Condition,
+  sorting?: SortingState
+): UseInfiniteQueryResult<
+  InfiniteData<ScanJobsResponse, CursorType | undefined>,
+  Error
+> => {
+  const api = useApi();
+
+  const orderBy = useMemo(
+    () => (sorting ? sortingStateToOrderBy(sorting) : undefined),
+    [sorting]
+  );
+
+  return useInfiniteQuery<
+    ScanJobsResponse,
+    Error,
+    InfiniteData<ScanJobsResponse, CursorType | undefined>,
+    QueryKey,
+    CursorType | undefined
+  >({
+    queryKey: ["scans-infinite", filter, orderBy, pageSize],
+    queryFn: async ({ pageParam }) => {
+      const pagination = pageParam
+        ? { limit: pageSize, cursor: pageParam, direction: "forward" as const }
+        : { limit: pageSize, cursor: null, direction: "forward" as const };
+
+      return await api.getScans(filter, orderBy, pagination);
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    staleTime: 10000,
+    refetchInterval: 10000,
     placeholderData: keepPreviousData,
   });
 };

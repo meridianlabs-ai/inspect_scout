@@ -618,6 +618,36 @@ class TestCreateIndex:
         assert "task_set=test/agent=foo/data1.parquet" in filenames
         assert "data2.parquet" in filenames
 
+    @pytest.mark.asyncio
+    async def test_create_index_deduplicates_by_transcript_id(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Deduplicates transcript_ids when same ID exists in multiple data files."""
+        import pyarrow.parquet as pq
+
+        location = Path(storage.location)
+
+        # Create two data files with the same transcript_id
+        # (simulating a retry after partial failure)
+        create_sample_data_file(location / "data1.parquet", ["t1", "t2"])
+        create_sample_data_file(
+            location / "data2.parquet", ["t1", "t3"]
+        )  # t1 is duplicate
+
+        path = await create_index(conn, storage)
+        assert path is not None
+
+        # Read the index
+        table = pq.read_table(path)
+
+        # Should have 3 unique transcript_ids (t1 deduplicated)
+        transcript_ids = table.column("transcript_id").to_pylist()
+        assert len(transcript_ids) == 3
+        assert set(transcript_ids) == {"t1", "t2", "t3"}
+
+        # t1 should appear only once
+        assert transcript_ids.count("t1") == 1
+
 
 # --- Maintenance Tests ---
 
@@ -687,6 +717,32 @@ class TestCompactIndex:
         # Schema merged (union_by_name)
         assert "task" in table.column_names
         assert "new_field" in table.column_names
+
+    @pytest.mark.asyncio
+    async def test_compact_index_deduplicates_by_transcript_id(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Deduplicates transcript_ids, keeping entry from newest file."""
+        # Create older index file with t1 pointing to data1.parquet
+        table1 = create_sample_index_table(["t1"], ["data1.parquet"])
+        await append_index(table1, storage, "index_20250101T100000_a.idx")
+
+        # Create newer index file with same t1 pointing to data2.parquet
+        # (simulating a retry after partial failure)
+        table2 = create_sample_index_table(["t1"], ["data2.parquet"])
+        await append_index(table2, storage, "index_20250101T110000_b.idx")
+
+        result = await compact_index(conn, storage)
+
+        # Should have only 1 row (deduplicated)
+        import pyarrow.parquet as pq
+
+        table = pq.read_table(result.new_index_path)
+        assert table.num_rows == 1
+
+        # Should keep the entry from the newer file (data2.parquet)
+        filenames = table.column("filename").to_pylist()
+        assert filenames == ["data2.parquet"]
 
     @pytest.mark.asyncio
     async def test_compact_index_cleans_up_all_old_index_files(

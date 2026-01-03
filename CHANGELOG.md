@@ -4,6 +4,8 @@
 - Scanning: Add `--dry-run` option for previewing scanner counts.
 - Scanners: Fixup type annotations in @scanner decorator.
 - Display: Add text progress and metrics support to `display="log"` mode.
+- Transcript DB: Don't remove orphaned data files.
+- Transcript DB: Handle duplicate transcript ids while indexing.
 - Bugfix: Store relative paths in transcript database index.
 
 ## 0.4.4 (24 December 2025)

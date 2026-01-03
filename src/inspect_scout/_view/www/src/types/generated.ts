@@ -2229,6 +2229,8 @@ export interface components {
             next_cursor?: {
                 [key: string]: unknown;
             } | null;
+            /** Total Count */
+            total_count: number;
         };
         /**
          * UrlCitation

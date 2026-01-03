@@ -38,18 +38,16 @@ export const useServerScansDir = (): AsyncData<string> => {
 export const useServerScans = (): AsyncData<Status[]> => {
   const api = useApi();
   const queryClient = useQueryClient();
-  const { data: scansDir } = useServerScansDir();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans", scansDir],
+    queryKey: ["scans"],
     queryFn: async () => {
-      const scans = await api.getScans(scansDir);
-      for (const scan of scans) {
+      const response = await api.getScans();
+      for (const scan of response.items) {
         queryClient.setQueryData(["scan", scan.location], scan);
       }
-      return scans;
+      return response.items;
     },
-    enabled: scansDir !== undefined,
     staleTime: 10000,
     refetchInterval: 10000,
   });

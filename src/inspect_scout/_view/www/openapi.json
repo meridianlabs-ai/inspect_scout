@@ -3883,6 +3883,82 @@
         "title": "SandboxEvent",
         "type": "object"
       },
+      "ScanJobsRequest": {
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderBy"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OrderBy"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order By"
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ScanJobsRequest",
+        "type": "object"
+      },
+      "ScanJobsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Status"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "ScanJobsResponse",
+        "type": "object"
+      },
       "ScanOptions": {
         "description": "Options used for scan.",
         "properties": {
@@ -6702,42 +6778,32 @@
   "openapi": "3.1.0",
   "paths": {
     "/scans": {
-      "get": {
-        "description": "Returns all scans in the results directory. Supports ETag caching.",
-        "operationId": "scans_scans_get",
-        "parameters": [
-          {
-            "description": "Results directory containing scans. Required if not configured server-side.",
-            "in": "query",
-            "name": "results_dir",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Results directory containing scans. Required if not configured server-side.",
-              "examples": [
-                "/path/to/results"
-              ],
-              "title": "Results Dir"
+      "post": {
+        "description": "Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
+        "operationId": "scans_scans_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ScanJobsRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/Status"
-                  },
-                  "title": "Response Scans Scans Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/ScanJobsResponse"
                 }
               }
             },

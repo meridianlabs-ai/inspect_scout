@@ -11,13 +11,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        get?: never;
+        put?: never;
         /**
          * List scans
-         * @description Returns all scans in the results directory. Supports ETag caching.
+         * @description Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
          */
-        get: operations["scans_scans_get"];
-        put?: never;
-        post?: never;
+        post: operations["scans_scans_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1388,6 +1388,24 @@ export interface components {
             /** Working Start */
             working_start: number;
         };
+        /** ScanJobsRequest */
+        ScanJobsRequest: {
+            filter?: components["schemas"]["Condition-Input"] | null;
+            /** Order By */
+            order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
+            pagination?: components["schemas"]["Pagination"] | null;
+        };
+        /** ScanJobsResponse */
+        ScanJobsResponse: {
+            /** Items */
+            items: components["schemas"]["Status"][];
+            /** Next Cursor */
+            next_cursor?: {
+                [key: string]: unknown;
+            } | null;
+            /** Total Count */
+            total_count: number;
+        };
         /**
          * ScanOptions
          * @description Options used for scan.
@@ -2322,17 +2340,18 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    scans_scans_get: {
+    scans_scans_post: {
         parameters: {
-            query?: {
-                /** @description Results directory containing scans. Required if not configured server-side. */
-                results_dir?: string | null;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ScanJobsRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2340,7 +2359,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Status"][];
+                    "application/json": components["schemas"]["ScanJobsResponse"];
                 };
             };
         };

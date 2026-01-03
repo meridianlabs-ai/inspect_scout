@@ -3,6 +3,7 @@ import type { Condition, OrderByModel } from "../query";
 import { Status } from "../types";
 import {
   Pagination,
+  ScanJobsResponse,
   Transcript,
   TranscriptsResponse,
 } from "../types/api-types.ts";
@@ -18,10 +19,9 @@ export const apiScoutServer = (
   options: {
     apiBaseUrl?: string;
     headerProvider?: HeaderProvider;
-    resultsDir?: string;
   } = {}
 ): ScanApi => {
-  const { apiBaseUrl, headerProvider, resultsDir } = options;
+  const { apiBaseUrl, headerProvider } = options;
   const requestApi = serverRequestApi(apiBaseUrl || "/api/v2", headerProvider);
 
   return {
@@ -62,27 +62,33 @@ export const apiScoutServer = (
       return asyncJsonParse<Transcript>(result.raw);
     },
     getScansDir: async (): Promise<string> => {
-      return (await requestApi.fetchString("GET", `/scans-dir`)).raw;
+      return (await requestApi.fetchString("GET", `/scanjobs-dir`)).raw;
     },
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}`
+        `/scanjobs/${encodeBase64Url(scanLocation)}`
       );
 
       return asyncJsonParse<Status>(result.raw);
     },
 
-    getScans: async (scansDir?: string): Promise<Status[]> => {
-      const dir = scansDir ?? resultsDir;
-      const query = dir
-        ? `/scans?results_dir=${encodeURIComponent(dir)}`
-        : "/scans";
-      return (
-        await requestApi.fetchType<Status[]>("GET", query, {
-          enableBrowserCache: true,
+    getScans: async (
+      filter?: Condition,
+      orderBy?: OrderByModel | OrderByModel[],
+      pagination?: Pagination
+    ): Promise<ScanJobsResponse> => {
+      const result = await requestApi.fetchString(
+        "POST",
+        `/scanjobs`,
+        {},
+        JSON.stringify({
+          filter: filter ?? null,
+          order_by: orderBy ?? null,
+          pagination: pagination ?? null,
         })
-      ).parsed;
+      );
+      return asyncJsonParse<ScanJobsResponse>(result.raw);
     },
     getScannerDataframe: async (
       scanLocation: string,
@@ -90,7 +96,7 @@ export const apiScoutServer = (
     ): Promise<ArrayBuffer> => {
       return await requestApi.fetchBytes(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
+        `/scanjobs/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
       );
     },
     getScannerDataframeInput: async (
@@ -101,7 +107,7 @@ export const apiScoutServer = (
       // Fetch the data
       const response = await requestApi.fetchType<Input>(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
+        `/scanjobs/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
       const input = response.parsed;
 

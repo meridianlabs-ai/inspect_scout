@@ -5,6 +5,7 @@ import type { Condition, OrderByModel } from "../query";
 import { Status } from "../types";
 import {
   Pagination,
+  ScanJobsResponse,
   Transcript,
   TranscriptsResponse,
 } from "../types/api-types";
@@ -21,7 +22,11 @@ export interface ScanApi {
   ): Promise<TranscriptsResponse>;
   getTranscript(transcriptsDir: string, id: string): Promise<Transcript>;
   getScansDir(): Promise<string>;
-  getScans(scansDir?: string): Promise<Status[]>;
+  getScans(
+    filter?: Condition,
+    orderBy?: OrderByModel | OrderByModel[],
+    pagination?: Pagination
+  ): Promise<ScanJobsResponse>;
   getScan(scanLocation: string): Promise<Status>;
   getScannerDataframe(
     scanLocation: string,

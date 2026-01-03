@@ -3,6 +3,7 @@ from inspect_ai._util.deprecation import relocated_module_attribute
 from ._grep_scanner import grep_scanner
 from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
 from ._project import ProjectConfig, project
+from ._query.condition import Condition
 from ._recorder.recorder import (
     ScanResultsArrow,
     ScanResultsDF,
@@ -40,7 +41,7 @@ from ._scanspec import (
     TranscriptField,
     Worklist,
 )
-from ._transcript.columns import Column, Columns, Condition, columns
+from ._transcript.columns import Column, Columns, columns
 from ._transcript.database.database import TranscriptsDB
 from ._transcript.database.factory import transcripts_db
 from ._transcript.factory import transcripts_from

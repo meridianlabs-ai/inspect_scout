@@ -275,6 +275,20 @@ async def test_select_with_limit(populated_db: ParquetTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
+async def test_count_method_all(populated_db: ParquetTranscriptsDB) -> None:
+    """Test count() method with no filter."""
+    count = await populated_db.count()
+    assert count == 20
+
+
+@pytest.mark.asyncio
+async def test_count_method_with_where(populated_db: ParquetTranscriptsDB) -> None:
+    """Test count() method with filter condition."""
+    count = await populated_db.count([c.model == "gpt-4"])
+    assert 6 <= count <= 7
+
+
+@pytest.mark.asyncio
 async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
     """Test shuffle with deterministic seed."""
     # Get results with same seed twice

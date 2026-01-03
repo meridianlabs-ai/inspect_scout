@@ -87,6 +87,18 @@ class TranscriptsView(abc.ABC):
         ...
 
     @abc.abstractmethod
+    async def count(self, where: list[Condition] | None = None) -> int:
+        """Count transcripts matching conditions.
+
+        Args:
+            where: Condition(s) to filter by.
+
+        Returns:
+            Number of matching transcripts.
+        """
+        ...
+
+    @abc.abstractmethod
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
         """Read transcript content.
 

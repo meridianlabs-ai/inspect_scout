@@ -32,7 +32,7 @@ export const useServerScansDir = (): AsyncData<string> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans-dir"],
+    queryKey: ["scanjobs-dir"],
     queryFn: async () => await api.getScansDir(),
     staleTime: Infinity,
   });
@@ -44,11 +44,11 @@ export const useServerScans = (): AsyncData<Status[]> => {
   const queryClient = useQueryClient();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans"],
+    queryKey: ["scanjobs"],
     queryFn: async () => {
       const response = await api.getScans();
       for (const scan of response.items) {
-        queryClient.setQueryData(["scan", scan.location], scan);
+        queryClient.setQueryData(["scanjob", scan.location], scan);
       }
       return response.items;
     },
@@ -64,7 +64,7 @@ export const useServerScan = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scan", location],
+    queryKey: ["scanjob", location],
     queryFn: () => api.getScan(location!), // The ! is safe because of enabled below
     enabled: !!location,
     staleTime: 10000,
@@ -82,7 +82,7 @@ export const useServerScanDataframe = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanDataframe", location, scanner],
+    queryKey: ["scanjobDataframe", location, scanner],
     queryFn: async () =>
       expandResultsetRows(
         decodeArrowBytes(await api.getScannerDataframe(location!, scanner!))
@@ -100,7 +100,7 @@ export const useServerScanDataframeInput = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanDataframeInput", location, scanner, uuid],
+    queryKey: ["scanjobDataframeInput", location, scanner, uuid],
     queryFn: () => api.getScannerDataframeInput(location!, scanner!, uuid!),
     enabled: !!location && !!scanner && !!uuid,
     staleTime: Infinity,
@@ -246,7 +246,7 @@ export const useServerScansInfinite = (
     QueryKey,
     CursorType | undefined
   >({
-    queryKey: ["scans-infinite", filter, orderBy, pageSize],
+    queryKey: ["scanjobs-infinite", filter, orderBy, pageSize],
     queryFn: async ({ pageParam }) => {
       const pagination = pageParam
         ? { limit: pageSize, cursor: pageParam, direction: "forward" as const }

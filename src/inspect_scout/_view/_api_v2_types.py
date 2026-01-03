@@ -72,7 +72,7 @@ class IPCSerializableResults(RecorderStatus):
         self.scanners = scanners
 
 
-RestScanStatus: TypeAlias = RecorderStatus
+ScanJobStatus: TypeAlias = RecorderStatus
 
 
 @dataclass

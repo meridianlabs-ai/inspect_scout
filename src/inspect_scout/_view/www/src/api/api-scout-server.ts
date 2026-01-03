@@ -62,12 +62,12 @@ export const apiScoutServer = (
       return asyncJsonParse<Transcript>(result.raw);
     },
     getScansDir: async (): Promise<string> => {
-      return (await requestApi.fetchString("GET", `/scans-dir`)).raw;
+      return (await requestApi.fetchString("GET", `/scanjobs-dir`)).raw;
     },
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}`
+        `/scanjobs/${encodeBase64Url(scanLocation)}`
       );
 
       return asyncJsonParse<Status>(result.raw);
@@ -80,7 +80,7 @@ export const apiScoutServer = (
     ): Promise<ScanJobsResponse> => {
       const result = await requestApi.fetchString(
         "POST",
-        `/scans`,
+        `/scanjobs`,
         {},
         JSON.stringify({
           filter: filter ?? null,
@@ -96,7 +96,7 @@ export const apiScoutServer = (
     ): Promise<ArrayBuffer> => {
       return await requestApi.fetchBytes(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
+        `/scanjobs/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
       );
     },
     getScannerDataframeInput: async (
@@ -107,7 +107,7 @@ export const apiScoutServer = (
       // Fetch the data
       const response = await requestApi.fetchType<Input>(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
+        `/scanjobs/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
       const input = response.parsed;
 

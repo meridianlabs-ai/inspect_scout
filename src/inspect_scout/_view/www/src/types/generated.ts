@@ -4,7 +4,7 @@
  */
 import { JsonValue } from "./json-value";
 export interface paths {
-    "/scans": {
+    "/scanjobs": {
         parameters: {
             query?: never;
             header?: never;
@@ -17,14 +17,14 @@ export interface paths {
          * List scans
          * @description Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
          */
-        post: operations["scans_scans_post"];
+        post: operations["scans_scanjobs_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/scans-dir": {
+    "/scanjobs-dir": {
         parameters: {
             query?: never;
             header?: never;
@@ -35,7 +35,7 @@ export interface paths {
          * Get default scans directory
          * @description Returns the default directory path where scans are stored.
          */
-        get: operations["scans_dir_scans_dir_get"];
+        get: operations["scans_dir_scanjobs_dir_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44,7 +44,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}": {
+    "/scanjobs/{scan}": {
         parameters: {
             query?: never;
             header?: never;
@@ -55,7 +55,7 @@ export interface paths {
          * Get scan status
          * @description Returns detailed status and metadata for a single scan.
          */
-        get: operations["scan_scans__scan__get"];
+        get: operations["scan_scanjobs__scan__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -64,7 +64,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}/{scanner}": {
+    "/scanjobs/{scan}/{scanner}": {
         parameters: {
             query?: never;
             header?: never;
@@ -75,7 +75,7 @@ export interface paths {
          * Get scanner dataframe containing results for all transcripts
          * @description Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.
          */
-        get: operations["scan_df_scans__scan___scanner__get"];
+        get: operations["scan_df_scanjobs__scan___scanner__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -84,7 +84,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}/{scanner}/{uuid}/input": {
+    "/scanjobs/{scan}/{scanner}/{uuid}/input": {
         parameters: {
             query?: never;
             header?: never;
@@ -95,7 +95,7 @@ export interface paths {
          * Get scanner input for a specific transcript
          * @description Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.
          */
-        get: operations["scanner_input_scans__scan___scanner___uuid__input_get"];
+        get: operations["scanner_input_scanjobs__scan___scanner___uuid__input_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2340,7 +2340,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    scans_scans_post: {
+    scans_scanjobs_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2364,7 +2364,7 @@ export interface operations {
             };
         };
     };
-    scans_dir_scans_dir_get: {
+    scans_dir_scanjobs_dir_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2384,7 +2384,7 @@ export interface operations {
             };
         };
     };
-    scan_scans__scan__get: {
+    scan_scanjobs__scan__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2407,7 +2407,7 @@ export interface operations {
             };
         };
     };
-    scan_df_scans__scan___scanner__get: {
+    scan_df_scanjobs__scan___scanner__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2432,7 +2432,7 @@ export interface operations {
             };
         };
     };
-    scanner_input_scans__scan___scanner___uuid__input_get: {
+    scanner_input_scanjobs__scan___scanner___uuid__input_get: {
         parameters: {
             query?: never;
             header?: never;

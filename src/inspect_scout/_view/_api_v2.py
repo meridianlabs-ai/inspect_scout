@@ -30,9 +30,9 @@ from ._api_v2_helpers import (
     build_transcripts_cursor,
 )
 from ._api_v2_types import (
-    RestScanStatus,
     ScanJobsRequest,
     ScanJobsResponse,
+    ScanJobStatus,
     TranscriptsRequest,
     TranscriptsResponse,
 )
@@ -161,7 +161,7 @@ def v2_api_app(
 
     async def _to_rest_scan(
         request: Request, scan: RecorderStatus, running_scans: set[str]
-    ) -> RestScanStatus:
+    ) -> ScanJobStatus:
         return scan
 
     @app.get(
@@ -175,7 +175,7 @@ def v2_api_app(
         return await default_transcripts_dir()
 
     @app.get(
-        "/scans-dir",
+        "/scanjobs-dir",
         response_class=PlainTextResponse,
         summary="Get default scans directory",
         description="Returns the default directory path where scans are stored.",
@@ -261,7 +261,7 @@ def v2_api_app(
             return await view.read(infos[0], content)
 
     @app.post(
-        "/scans",
+        "/scanjobs",
         summary="List scans",
         description="Returns scans from the results directory. "
         "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
@@ -306,8 +306,8 @@ def v2_api_app(
         )
 
     @app.get(
-        "/scans/{scan}",
-        response_model=RestScanStatus,
+        "/scanjobs/{scan}",
+        response_model=ScanJobStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Get scan status",
         description="Returns detailed status and metadata for a single scan.",
@@ -315,7 +315,7 @@ def v2_api_app(
     async def scan(
         request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
-    ) -> RestScanStatus:
+    ) -> ScanJobStatus:
         """Get detailed status for a single scan."""
         scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
@@ -343,7 +343,7 @@ def v2_api_app(
         return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
 
     @app.get(
-        "/scans/{scan}/{scanner}",
+        "/scanjobs/{scan}/{scanner}",
         summary="Get scanner dataframe containing results for all transcripts",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
         "Excludes input column for efficiency; use the input endpoint for input text.",
@@ -412,7 +412,7 @@ def v2_api_app(
         )
 
     @app.get(
-        "/scans/{scan}/{scanner}/{uuid}/input",
+        "/scanjobs/{scan}/{scanner}/{uuid}/input",
         summary="Get scanner input for a specific transcript",
         description="Returns the original input text for a specific scanner result. "
         "The input type is returned in the X-Input-Type response header.",

@@ -42,7 +42,6 @@ from ._scanspec import (
 from ._transcript.columns import Column, Columns, Condition, columns
 from ._transcript.database.database import TranscriptsDB
 from ._transcript.database.factory import transcripts_db
-from ._transcript.database.source import TranscriptsSource
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
@@ -95,7 +94,6 @@ __all__ = [
     "TranscriptsDB",
     "transcripts_from",
     "Transcripts",
-    "TranscriptsSource",
     "TranscriptsReader",
     "Transcript",
     "TranscriptInfo",

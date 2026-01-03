@@ -39,7 +39,6 @@ from ...transcripts import (
 from ...types import Transcript, TranscriptContent, TranscriptInfo
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
-from ..source import TranscriptsSource
 from .encryption import (
     ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
@@ -193,7 +192,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         transcripts: Iterable[Transcript]
         | AsyncIterable[Transcript]
         | Transcripts
-        | TranscriptsSource
         | pa.RecordBatchReader,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
@@ -570,10 +568,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     async def _insert_from_transcripts(
         self,
-        transcripts: Iterable[Transcript]
-        | AsyncIterable[Transcript]
-        | Transcripts
-        | TranscriptsSource,
+        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
     ) -> None:
         batch: list[dict[str, Any]] = []
         current_batch_size = 0
@@ -1756,16 +1751,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _as_async_iterator(
         self,
-        transcripts: Iterable[Transcript]
-        | AsyncIterable[Transcript]
-        | Transcripts
-        | TranscriptsSource,
+        transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
     ) -> AsyncIterator[Transcript]:
         """Convert various transcript sources to async iterator.
 
         Args:
             transcripts: Transcripts from various sources (iterable, async iterable,
-                Transcripts object, or TranscriptsSource callable).
+                Transcripts object).
 
         Returns:
             AsyncIterator over transcripts, filtered to exclude already-present transcripts.
@@ -1804,15 +1796,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return _iter()
 
-        # TranscriptsSource (callable) - call it to get AsyncIterator
+        # Unexpected type
         else:
-
-            async def _iter() -> AsyncIterator[Transcript]:
-                async for transcript in transcripts():
-                    if not self._have_transcript(transcript.transcript_id):
-                        yield transcript
-
-            return _iter()
+            raise NotImplementedError(
+                f"Unable to insert transcripts from type {type(transcripts)}"
+            )
 
     def _is_s3(self) -> bool:
         return self._location is not None and self._location.startswith("s3://")

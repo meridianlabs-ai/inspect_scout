@@ -13,7 +13,6 @@ from ..types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from .source import TranscriptsSource
 
 
 class TranscriptsView(abc.ABC):
@@ -107,7 +106,6 @@ class TranscriptsDB(TranscriptsView):
         transcripts: Iterable[Transcript]
         | AsyncIterable[Transcript]
         | Transcripts
-        | TranscriptsSource
         | pa.RecordBatchReader,
     ) -> None:
         """Insert transcripts into database.

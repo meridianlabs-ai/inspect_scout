@@ -1694,12 +1694,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ext = self._index_storage.index_extension()
         return f"index_{timestamp_uuid}{ext}"
 
-    def _build_index_table(self, table: pa.Table, parquet_path: str) -> pa.Table:
+    def _build_index_table(self, table: pa.Table, parquet_filename: str) -> pa.Table:
         """Build index table from data table (excludes messages/events, adds filename).
 
         Args:
             table: PyArrow table with full transcript data.
-            parquet_path: Full path to the parquet file.
+            parquet_filename: Filename of the parquet file (relative to database location).
 
         Returns:
             Index table with metadata columns and filename.
@@ -1712,8 +1712,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Select only metadata columns
         index_table = table.select(columns_to_keep)
 
-        # Add filename column
-        filename_array = pa.array([parquet_path] * len(table), type=pa.string())
+        # Add filename column (just the filename, not full path)
+        filename_array = pa.array([parquet_filename] * len(table), type=pa.string())
         index_table = index_table.append_column("filename", filename_array)
 
         return index_table
@@ -1725,15 +1725,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Args:
             table: PyArrow table with full transcript data.
-            parquet_path: Full path to the parquet file (for index filename column).
-            parquet_filename: Parquet filename (for deriving index filename).
+            parquet_path: Full path to the parquet file (for cleanup on failure).
+            parquet_filename: Parquet filename (for index and deriving index filename).
 
         Raises:
             RuntimeError: If index write fails (parquet file is deleted first).
         """
         assert self._index_storage is not None
         try:
-            index_table = self._build_index_table(table, parquet_path)
+            index_table = self._build_index_table(table, parquet_filename)
             index_filename = self._index_filename_for_parquet(parquet_filename)
             await append_index(index_table, self._index_storage, index_filename)
         except Exception as e:
@@ -1839,7 +1839,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         with the relative filename.
 
         For backwards compatibility with older indexes that stored absolute
-        paths, this returns absolute paths unchanged.
+        paths or paths that already include the location prefix (due to a
+        previous bug), this returns such paths unchanged.
 
         Args:
             filename: Path from index (relative like 'data/file.parquet' or
@@ -1855,6 +1856,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Relative path - prepend location
         assert self._location is not None
         location = self._location.rstrip("/")
+
+        # Backward compat: check if filename already starts with location prefix
+        # (handles databases created before the fix where full path was stored)
+        location_prefix = location + "/"
+        if filename.startswith(location_prefix):
+            return filename
+
         return f"{location}/{filename}"
 
     def _init_hf_auth(self) -> None:

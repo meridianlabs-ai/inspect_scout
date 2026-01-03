@@ -1,6 +1,6 @@
 """Column definitions for scan job filtering DSL."""
 
-from .._transcript.columns import Column
+from inspect_scout._query import Column
 
 
 class ScanJobColumns:

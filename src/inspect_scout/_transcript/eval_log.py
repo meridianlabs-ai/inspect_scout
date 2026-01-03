@@ -48,9 +48,9 @@ from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
+from inspect_scout._query import OrderBy
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
-from inspect_scout._view._api_v2_types import OrderBy
 
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts

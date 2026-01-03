@@ -23,12 +23,12 @@ from typing_extensions import override
 from upath import UPath
 
 from inspect_scout._display._display import display
+from inspect_scout._query import OrderBy
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
-from inspect_scout._view._api_v2_types import OrderBy
 
 from ...columns import Condition
 from ...json.load_filtered import load_filtered_transcript

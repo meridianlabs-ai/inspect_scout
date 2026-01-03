@@ -5,8 +5,8 @@ from typing import AsyncIterator
 
 from typing_extensions import override
 
+from inspect_scout._query import Condition
 from inspect_scout._scanspec import ScanTranscripts
-from inspect_scout._transcript.columns import Condition
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
 from ..transcripts import TranscriptsReader

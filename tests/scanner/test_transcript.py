@@ -7,9 +7,9 @@ import pandas as pd
 import pytest
 import pytest_asyncio
 from inspect_scout import columns as c
+from inspect_scout._query import OrderBy
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import TranscriptInfo
-from inspect_scout._view._api_v2_types import OrderBy
 
 
 def create_test_dataframe(num_samples: int = 10) -> pd.DataFrame:

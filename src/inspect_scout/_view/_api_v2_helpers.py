@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from .._query import Condition, Operator, OrderBy
 from .._recorder.recorder import Status
-from .._transcript.columns import Condition, Operator
 from .._transcript.types import TranscriptInfo
-from ._api_v2_types import OrderBy, PaginatedRequest
+from ._api_v2_types import PaginatedRequest
 
 
 def ensure_tiebreaker(

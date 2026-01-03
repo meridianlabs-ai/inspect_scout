@@ -5,8 +5,8 @@ from typing import AsyncIterable, AsyncIterator, Iterable, Type
 import pyarrow as pa
 from typing_extensions import Self
 
+from inspect_scout._query import OrderBy
 from inspect_scout._transcript.transcripts import Transcripts
-from inspect_scout._view._api_v2_types import OrderBy
 
 from ..columns import Condition
 from ..types import (

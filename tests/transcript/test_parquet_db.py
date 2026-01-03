@@ -10,6 +10,7 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
 from inspect_scout import columns as c
 from inspect_scout import transcripts_db, transcripts_from
+from inspect_scout._query import OrderBy
 from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
     ParquetTranscriptsDB,
@@ -20,7 +21,6 @@ from inspect_scout._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from inspect_scout._view._api_v2_types import OrderBy
 from pydantic import JsonValue
 
 

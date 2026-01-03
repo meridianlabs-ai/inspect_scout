@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from types import TracebackType
 from typing import AsyncIterator, Literal
 
+from inspect_scout._query import OrderBy
 from inspect_scout._validation.types import ValidationCase, ValidationSet
-from inspect_scout._view._api_v2_types import OrderBy
 
 from .._scanspec import ScanTranscripts
 from .columns import Column, Condition

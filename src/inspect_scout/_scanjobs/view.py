@@ -3,9 +3,8 @@
 import abc
 from typing import AsyncIterator
 
+from .._query import Condition, OrderBy
 from .._recorder.recorder import Status
-from .._transcript.columns import Condition
-from .._view._api_v2_types import OrderBy
 
 
 class ScanJobsView(abc.ABC):

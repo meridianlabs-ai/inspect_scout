@@ -14,13 +14,13 @@ from starlette.status import (
 )
 from upath import UPath
 
+from .._query import Column
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
     scan_results_arrow_async,
     scan_results_df_async,
 )
-from .._transcript.columns import Column
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import Transcript, TranscriptContent
 from .._validation.types import ValidationCase

@@ -5,12 +5,12 @@ from typing import AsyncIterator
 
 import pytest
 import pytest_asyncio
+from inspect_scout._query import OrderBy
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanjobs.columns import scan_job_columns as c
 from inspect_scout._scanjobs.duckdb import DuckDBScanJobsView
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
-from inspect_scout._view._api_v2_types import OrderBy
 
 
 def create_test_status(

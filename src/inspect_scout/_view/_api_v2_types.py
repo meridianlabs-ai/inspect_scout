@@ -1,18 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias
 
+from inspect_scout._query import OrderBy
+
+from .._query import Condition
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
-from .._transcript.columns import Condition
 from .._transcript.types import TranscriptInfo
-
-
-@dataclass
-class OrderBy:
-    column: str
-    direction: Literal["ASC", "DESC"]
 
 
 @dataclass

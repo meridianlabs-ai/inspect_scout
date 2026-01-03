@@ -38,6 +38,7 @@ website:
           - text: "Using"
             menu:
                 - href: workflow.qmd
+                - href: projects.qmd
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd
@@ -75,6 +76,7 @@ website:
              href: workflow.qmd
              contents:
                 - href: workflow.qmd
+                - href: projects.qmd
                 - href: transcripts.qmd
                 - href: scanners.qmd
                 - href: llm_scanner.qmd

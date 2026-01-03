@@ -111,7 +111,13 @@ def load_project_config(path: Path) -> ProjectConfig:
         )
         raise PrerequisiteError(message)
 
-    return ProjectConfig.model_validate(project_config)
+    config = ProjectConfig.model_validate(project_config)
+
+    # Default name to directory name if not specified
+    if config.name == "job":  # default from ScanJobConfig
+        config = config.model_copy(update={"name": path.parent.name})
+
+    return config
 
 
 def create_default_project() -> ProjectConfig:
@@ -132,7 +138,7 @@ def create_default_project() -> ProjectConfig:
         transcripts = None
 
     return ProjectConfig(
-        name="default",
+        name=Path.cwd().name,
         results="./scans",
         transcripts=transcripts,
     )

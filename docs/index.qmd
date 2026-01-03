@@ -162,6 +162,8 @@ Then we can run our scan with simply:
 scout scan scanner.py 
 ```
 
+See the [Projects](projects.qmd) article for more details on managing configuration with projects.
+
 ### Event Scanner
 
 Let's add another scanner that looks for uses of Java in tool calls:
@@ -351,6 +353,8 @@ See the article on [Transcripts](transcripts.qmd) to learn more about the variou
 ## Learning More
 
 Above we provided a high-level tour of Scout features. See the following articles to learn more about using Scout:
+
+-   [Projects](projects.qmd): Managing scanning configuration using project files.
 
 -   [Transcripts](transcripts.qmd): Reading and filtering transcripts for scanning.
 

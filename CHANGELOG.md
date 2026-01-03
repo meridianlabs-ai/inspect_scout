@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.5 (03 January 2026)
 
 - [Projects](https://meridianlabs-ai.github.io/inspect_scout/projects.html) for centrally managing scanning configuration.
 - [Grep Scanner](https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html) for pattern-based scanning of transcripts.

@@ -1,7 +1,6 @@
 """Factory functions for creating ScanJobsView instances."""
 
-from inspect_scout._recorder.file import FileRecorder
-
+from .._recorder.file import FileRecorder
 from .duckdb import DuckDBScanJobsView
 from .view import ScanJobsView
 

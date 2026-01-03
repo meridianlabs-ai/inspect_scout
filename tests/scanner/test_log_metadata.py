@@ -633,7 +633,7 @@ def test_type_hints_preserved() -> None:
     assert isinstance(lc.total_tokens, Column)
 
     # Verify that operations return Condition type
-    from inspect_scout._transcript.columns import Condition
+    from inspect_scout._query.condition import Condition
 
     condition = lc.model == "gpt-4"
     assert isinstance(condition, Condition)

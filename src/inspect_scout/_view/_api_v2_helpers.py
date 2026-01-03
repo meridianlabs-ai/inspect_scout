@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from .._query import Condition, Operator, OrderBy
+from .._query import Operator
+from .._query.condition import Condition
+from .._query.order_by import OrderBy
 from .._recorder.recorder import Status
 from .._transcript.types import TranscriptInfo
 from ._api_v2_types import PaginatedRequest

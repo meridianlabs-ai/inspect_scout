@@ -7,7 +7,8 @@ import duckdb
 import pandas as pd
 from typing_extensions import override
 
-from .._query import Condition, OrderBy
+from .._query.condition import Condition
+from .._query.order_by import OrderBy
 from .._recorder.recorder import Status
 from .view import ScanJobsView
 

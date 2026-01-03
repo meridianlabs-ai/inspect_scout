@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Literal
 
 import pytest
-from inspect_scout._transcript.columns import Condition
+from inspect_scout._query.condition import Condition
 from inspect_scout._transcript.columns import columns as c
 from pydantic import BaseModel
 

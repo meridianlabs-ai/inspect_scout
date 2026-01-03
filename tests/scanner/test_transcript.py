@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import pytest_asyncio
 from inspect_scout import columns as c
-from inspect_scout._query import OrderBy
+from inspect_scout._query.order_by import OrderBy
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import TranscriptInfo
 

@@ -5,7 +5,7 @@ from typing import AsyncIterator
 
 import pytest
 import pytest_asyncio
-from inspect_scout._query import OrderBy
+from inspect_scout._query.order_by import OrderBy
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanjobs.columns import scan_job_columns as c

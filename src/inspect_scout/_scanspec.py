@@ -11,7 +11,7 @@ from pydantic import (
 from shortuuid import uuid
 from typing_extensions import Literal, NotRequired, Required, TypedDict
 
-from inspect_scout._query import Condition
+from inspect_scout._query.condition import Condition
 from inspect_scout._validation.types import ValidationSet
 
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS

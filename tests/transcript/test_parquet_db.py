@@ -10,7 +10,7 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
 from inspect_scout import columns as c
 from inspect_scout import transcripts_db, transcripts_from
-from inspect_scout._query import OrderBy
+from inspect_scout._query.order_by import OrderBy
 from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
     ParquetTranscriptsDB,

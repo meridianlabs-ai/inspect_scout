@@ -3,7 +3,8 @@
 import abc
 from typing import AsyncIterator
 
-from .._query import Condition, OrderBy
+from .._query.condition import Condition
+from .._query.order_by import OrderBy
 from .._recorder.recorder import Status
 
 

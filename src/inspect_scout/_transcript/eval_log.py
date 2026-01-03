@@ -48,14 +48,14 @@ from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
-from inspect_scout._query import OrderBy
+from inspect_scout._query.order_by import OrderBy
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
+from .._query.condition import Condition
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
-from .columns import Condition
 from .database.database import TranscriptsView
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from inspect_scout import Result, Scanner, scan, scanner
-from inspect_scout._transcript.columns import Condition
+from inspect_scout._query.condition import Condition
 from inspect_scout._transcript.columns import columns as c
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript

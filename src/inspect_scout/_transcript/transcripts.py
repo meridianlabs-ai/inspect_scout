@@ -4,11 +4,12 @@ from dataclasses import dataclass, field
 from types import TracebackType
 from typing import AsyncIterator, Literal
 
-from inspect_scout._query import OrderBy
+from inspect_scout._query.order_by import OrderBy
 from inspect_scout._validation.types import ValidationCase, ValidationSet
 
+from .._query.condition import Condition
 from .._scanspec import ScanTranscripts
-from .columns import Column, Condition
+from .columns import Column
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
 

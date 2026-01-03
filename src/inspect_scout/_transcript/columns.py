@@ -20,12 +20,12 @@ Usage:
 
 from inspect_scout._query import (
     Column,
-    Condition,
     LogicalOperator,
     Operator,
     ScalarValue,
     SQLDialect,
 )
+from inspect_scout._query.condition import Condition
 
 # Re-export for backwards compatibility
 __all__ = [

@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterable, AsyncIterator, Iterable, Literal, cast
+from typing import Any, AsyncIterable, AsyncIterator, Iterable, cast
 
 import duckdb
 import pandas as pd
@@ -28,6 +28,7 @@ from inspect_scout._transcript.database.factory import transcripts_from_db_snaps
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
+from inspect_scout._view._api_v2_types import OrderBy
 
 from ...columns import Condition
 from ...json.load_filtered import load_filtered_transcript
@@ -242,7 +243,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         """Query transcripts matching conditions.
 
@@ -274,8 +275,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._register_shuffle_function(seed)
             order_by_clauses.append("shuffle_hash(transcript_id)")
         if order_by:
-            for column_name, direction in order_by:
-                order_by_clauses.append(f'"{column_name}" {direction}')
+            for ob in order_by:
+                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
         if order_by_clauses:
             sql += " ORDER BY " + ", ".join(order_by_clauses)
 
@@ -378,7 +379,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
@@ -407,8 +408,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 self._register_shuffle_function(seed)
                 order_by_clauses.append("shuffle_hash(transcript_id)")
             if order_by:
-                for column_name, direction in order_by:
-                    order_by_clauses.append(f'"{column_name}" {direction}')
+                for ob in order_by:
+                    order_by_clauses.append(f'"{ob.column}" {ob.direction}')
             if order_by_clauses:
                 sql += " ORDER BY " + ", ".join(order_by_clauses)
 
@@ -1363,8 +1364,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._register_shuffle_function(seed)
             order_by_clauses.append("shuffle_hash(transcript_id)")
         if self._query.order_by:
-            for column_name, direction in self._query.order_by:
-                order_by_clauses.append(f'"{column_name}" {direction}')
+            for ob in self._query.order_by:
+                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
         if order_by_clauses:
             filter_sql += " ORDER BY " + ", ".join(order_by_clauses)
 
@@ -1497,8 +1498,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 self._register_shuffle_function(seed)
                 order_by_clauses.append("shuffle_hash(transcript_id)")
             if self._query.order_by:
-                for column_name, direction in self._query.order_by:
-                    order_by_clauses.append(f'"{column_name}" {direction}')
+                for ob in self._query.order_by:
+                    order_by_clauses.append(f'"{ob.column}" {ob.direction}')
             if order_by_clauses:
                 index_sql += " ORDER BY " + ", ".join(order_by_clauses)
 

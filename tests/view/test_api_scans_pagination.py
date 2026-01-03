@@ -87,9 +87,7 @@ class TestScansEndpointPagination:
             return
             yield  # makes this an async generator
 
-        with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view"
-        ) as mock_factory:
+        with patch("inspect_scout._view._api_v2.scan_jobs_view") as mock_factory:
             # Create mock view
             mock_view = AsyncMock()
             mock_view.connect = AsyncMock()
@@ -230,7 +228,11 @@ class TestScansEndpointPagination:
             response2 = client.post(
                 "/scans",
                 json={
-                    "pagination": {"limit": 3, "cursor": cursor, "direction": "forward"},
+                    "pagination": {
+                        "limit": 3,
+                        "cursor": cursor,
+                        "direction": "forward",
+                    },
                     "order_by": {"column": "scan_id", "direction": "ASC"},
                 },
             )

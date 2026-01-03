@@ -1,11 +1,12 @@
 import abc
 from types import TracebackType
-from typing import AsyncIterable, AsyncIterator, Iterable, Literal, Type
+from typing import AsyncIterable, AsyncIterator, Iterable, Type
 
 import pyarrow as pa
 from typing_extensions import Self
 
 from inspect_scout._transcript.transcripts import Transcripts
+from inspect_scout._view._api_v2_types import OrderBy
 
 from ..columns import Condition
 from ..types import (
@@ -49,7 +50,7 @@ class TranscriptsView(abc.ABC):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> dict[str, str | None]:
         """Get transcript IDs matching conditions.
 
@@ -74,7 +75,7 @@ class TranscriptsView(abc.ABC):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         """Select transcripts matching a condition.
 

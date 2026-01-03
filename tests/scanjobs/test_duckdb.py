@@ -10,6 +10,7 @@ from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanjobs.columns import scan_job_columns as c
 from inspect_scout._scanjobs.duckdb import DuckDBScanJobsView
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
+from inspect_scout._view._api_v2_types import OrderBy
 
 
 def create_test_status(
@@ -47,7 +48,11 @@ def create_test_statuses(count: int = 10) -> list[Status]:
     """Create multiple test Status objects with varied data."""
     statuses = []
     models = ["openai/gpt-4", "openai/gpt-3.5-turbo", "anthropic/claude-3-opus"]
-    scanner_sets = [["refusal"], ["reward_hacking", "efficiency"], ["refusal", "deception"]]
+    scanner_sets = [
+        ["refusal"],
+        ["reward_hacking", "efficiency"],
+        ["refusal", "deception"],
+    ]
 
     for i in range(count):
         statuses.append(
@@ -71,7 +76,9 @@ def sample_statuses() -> list[Status]:
 
 
 @pytest_asyncio.fixture
-async def duckdb_view(sample_statuses: list[Status]) -> AsyncIterator[DuckDBScanJobsView]:
+async def duckdb_view(
+    sample_statuses: list[Status],
+) -> AsyncIterator[DuckDBScanJobsView]:
     """Create and connect to a DuckDBScanJobsView with test data."""
     view = DuckDBScanJobsView(sample_statuses)
     await view.connect()
@@ -142,7 +149,7 @@ async def test_select_with_order_by(duckdb_view: DuckDBScanJobsView) -> None:
     """Test ordering results."""
     results = [
         status
-        async for status in duckdb_view.select(order_by=[("timestamp", "ASC")])
+        async for status in duckdb_view.select(order_by=[OrderBy("timestamp", "ASC")])
     ]
 
     timestamps = [status.spec.timestamp for status in results]
@@ -154,7 +161,7 @@ async def test_select_with_order_by_desc(duckdb_view: DuckDBScanJobsView) -> Non
     """Test ordering results descending."""
     results = [
         status
-        async for status in duckdb_view.select(order_by=[("timestamp", "DESC")])
+        async for status in duckdb_view.select(order_by=[OrderBy("timestamp", "DESC")])
     ]
 
     timestamps = [status.spec.timestamp for status in results]
@@ -172,7 +179,9 @@ async def test_select_with_limit(duckdb_view: DuckDBScanJobsView) -> None:
 async def test_select_with_filter_and_limit(duckdb_view: DuckDBScanJobsView) -> None:
     """Test filtering and limiting together."""
     condition = c.complete == True  # noqa: E712
-    results = [status async for status in duckdb_view.select(where=[condition], limit=3)]
+    results = [
+        status async for status in duckdb_view.select(where=[condition], limit=3)
+    ]
     assert len(results) == 3
 
     for status in results:

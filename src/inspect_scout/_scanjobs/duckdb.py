@@ -1,7 +1,7 @@
 """DuckDB implementation of ScanJobsView."""
 
 from functools import reduce
-from typing import AsyncIterator, Literal
+from typing import AsyncIterator
 
 import duckdb
 import pandas as pd
@@ -9,6 +9,7 @@ from typing_extensions import override
 
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._transcript.columns import Condition
+from inspect_scout._view._api_v2_types import OrderBy
 
 from .view import ScanJobsView
 
@@ -64,7 +65,7 @@ class DuckDBScanJobsView(ScanJobsView):
         self,
         where: list[Condition] | None = None,
         limit: int | None = None,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> AsyncIterator[Status]:
         """Select scan jobs matching criteria."""
         assert self._conn is not None, "Not connected"
@@ -75,7 +76,7 @@ class DuckDBScanJobsView(ScanJobsView):
 
         # Add ORDER BY
         if order_by:
-            order_parts = [f'"{col}" {direction}' for col, direction in order_by]
+            order_parts = [f'"{ob.column}" {ob.direction}' for ob in order_by]
             sql += " ORDER BY " + ", ".join(order_parts)
 
         # Add LIMIT

@@ -20,6 +20,7 @@ from inspect_scout._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
+from inspect_scout._view._api_v2_types import OrderBy
 from pydantic import JsonValue
 
 
@@ -332,7 +333,7 @@ async def test_select_with_order_by_single_column(
     results = [
         info
         async for info in populated_db.select(
-            [], None, False, order_by=[(column, direction)]
+            [], None, False, order_by=[OrderBy(column, direction)]
         )
     ]
     values = [extractor(info) for info in results if extractor(info) is not None]
@@ -348,7 +349,10 @@ async def test_select_with_order_by_chaining(
     results = [
         info
         async for info in populated_db.select(
-            [], None, False, order_by=[(c.task_set.name, "ASC"), (c.index.name, "DESC")]
+            [],
+            None,
+            False,
+            order_by=[OrderBy(c.task_set.name, "ASC"), OrderBy(c.index.name, "DESC")],
         )
     ]
 
@@ -387,7 +391,7 @@ async def test_order_by_with_where_and_limit(
     results = [
         info
         async for info in populated_db.select(
-            where_clause, limit, False, order_by=[(c.index.name, "ASC")]
+            where_clause, limit, False, order_by=[OrderBy(c.index.name, "ASC")]
         )
     ]
 
@@ -412,7 +416,7 @@ async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None
     results1 = [
         info.transcript_id
         async for info in populated_db.select(
-            [], limit=10, shuffle=42, order_by=[(c.index.name, "ASC")]
+            [], limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")]
         )
     ]
 
@@ -420,7 +424,7 @@ async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None
     results2 = [
         info.transcript_id
         async for info in populated_db.select(
-            [], limit=10, shuffle=42, order_by=[(c.index.name, "ASC")]
+            [], limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")]
         )
     ]
     assert results1 == results2
@@ -429,7 +433,7 @@ async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None
     results3 = [
         info.transcript_id
         async for info in populated_db.select(
-            [], limit=10, shuffle=False, order_by=[(c.index.name, "ASC")]
+            [], limit=10, shuffle=False, order_by=[OrderBy(c.index.name, "ASC")]
         )
     ]
     assert results1 != results3  # Shuffled vs ordered should differ
@@ -441,7 +445,10 @@ async def test_order_by_empty_results(populated_db: ParquetTranscriptsDB) -> Non
     results = [
         info
         async for info in populated_db.select(
-            [c.task_set == "nonexistent"], None, False, order_by=[(c.index.name, "ASC")]
+            [c.task_set == "nonexistent"],
+            None,
+            False,
+            order_by=[OrderBy(c.index.name, "ASC")],
         )
     ]
     assert len(results) == 0

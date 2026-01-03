@@ -76,19 +76,26 @@ RestScanStatus: TypeAlias = RecorderStatus
 
 
 @dataclass
-class TranscriptsRequest:
+class PaginatedRequest:
+    """Base request with filter, order_by, and pagination."""
+
     filter: Condition | None = None
     order_by: OrderBy | list[OrderBy] | None = None
     pagination: Pagination | None = None
 
 
 @dataclass
-class ScanJobsRequest:
+class TranscriptsRequest(PaginatedRequest):
+    """Request body for POST /transcripts endpoint."""
+
+    pass
+
+
+@dataclass
+class ScanJobsRequest(PaginatedRequest):
     """Request body for POST /scans endpoint."""
 
-    filter: Condition | None = None
-    order_by: OrderBy | list[OrderBy] | None = None
-    pagination: Pagination | None = None
+    pass
 
 
 @dataclass

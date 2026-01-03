@@ -5,6 +5,7 @@ from types import TracebackType
 from typing import AsyncIterator, Literal
 
 from inspect_scout._validation.types import ValidationCase, ValidationSet
+from inspect_scout._view._api_v2_types import OrderBy
 
 from .._scanspec import ScanTranscripts
 from .columns import Column, Condition
@@ -64,7 +65,7 @@ class TranscriptsQuery:
     shuffle: bool | int = False
     """Shuffle results randomly (use with limit to take random draws)."""
 
-    order_by: list[tuple[str, Literal["ASC", "DESC"]]] = field(default_factory=list)
+    order_by: list[OrderBy] = field(default_factory=list)
     """Column names and directions for ordering (ASC/DESC)."""
 
 
@@ -205,7 +206,7 @@ class Transcripts(abc.ABC):
             Transcripts for scanning.
         """
         transcripts = deepcopy(self)
-        transcripts._query.order_by.append((column.name, direction))
+        transcripts._query.order_by.append(OrderBy(column.name, direction))
         return transcripts
 
     @abc.abstractmethod

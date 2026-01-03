@@ -9,6 +9,7 @@ import pytest_asyncio
 from inspect_scout import columns as c
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._view._api_v2_types import OrderBy
 
 
 def create_test_dataframe(num_samples: int = 10) -> pd.DataFrame:
@@ -683,7 +684,8 @@ async def test_select_with_order_by_single_column(
 ) -> None:
     """Test ordering by single column with various directions."""
     results = [
-        item async for item in db.select(where=[], order_by=[(column, direction)])
+        item
+        async for item in db.select(where=[], order_by=[OrderBy(column, direction)])
     ]
     values = [extractor(r) for r in results if extractor(r) is not None]
     assert values == sorted(values, reverse=reverse)
@@ -696,7 +698,8 @@ async def test_select_with_order_by_chaining(db: EvalLogTranscriptsView) -> None
     results = [
         item
         async for item in db.select(
-            where=[], order_by=[(c.model.name, "ASC"), (c.score.name, "DESC")]
+            where=[],
+            order_by=[OrderBy(c.model.name, "ASC"), OrderBy(c.score.name, "DESC")],
         )
     ]
 
@@ -726,7 +729,7 @@ async def test_order_by_with_where_and_limit(
     results = [
         item
         async for item in db.select(
-            where=where_clause, order_by=[(c.score.name, "ASC")], limit=limit
+            where=where_clause, order_by=[OrderBy(c.score.name, "ASC")], limit=limit
         )
     ]
 
@@ -749,7 +752,7 @@ async def test_order_by_with_shuffle(db: EvalLogTranscriptsView) -> None:
     results1 = [
         item
         async for item in db.select(
-            where=[], shuffle=42, order_by=[(c.score.name, "ASC")], limit=10
+            where=[], shuffle=42, order_by=[OrderBy(c.score.name, "ASC")], limit=10
         )
     ]
     ids1 = [r.transcript_id for r in results1]
@@ -758,7 +761,7 @@ async def test_order_by_with_shuffle(db: EvalLogTranscriptsView) -> None:
     results2 = [
         item
         async for item in db.select(
-            where=[], shuffle=42, order_by=[(c.score.name, "ASC")], limit=10
+            where=[], shuffle=42, order_by=[OrderBy(c.score.name, "ASC")], limit=10
         )
     ]
     ids2 = [r.transcript_id for r in results2]
@@ -768,7 +771,7 @@ async def test_order_by_with_shuffle(db: EvalLogTranscriptsView) -> None:
     results3 = [
         item
         async for item in db.select(
-            where=[], order_by=[(c.score.name, "ASC")], limit=10
+            where=[], order_by=[OrderBy(c.score.name, "ASC")], limit=10
         )
     ]
     ids3 = [r.transcript_id for r in results3]
@@ -781,7 +784,7 @@ async def test_order_by_empty_results(db: EvalLogTranscriptsView) -> None:
     results = [
         item
         async for item in db.select(
-            where=[c.model == "nonexistent"], order_by=[(c.score.name, "ASC")]
+            where=[c.model == "nonexistent"], order_by=[OrderBy(c.score.name, "ASC")]
         )
     ]
     assert len(results) == 0

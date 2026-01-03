@@ -11,7 +11,6 @@ from typing import (
     Any,
     AsyncIterator,
     Final,
-    Literal,
     Sequence,
     TypeAlias,
     cast,
@@ -51,6 +50,7 @@ from typing_extensions import override
 
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
+from inspect_scout._view._api_v2_types import OrderBy
 
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
@@ -243,7 +243,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
 
@@ -259,8 +259,8 @@ class EvalLogTranscriptsView(TranscriptsView):
             self._register_shuffle_function(seed)
             order_by_clauses.append("shuffle_hash(sample_id)")
         if order_by:
-            for column_name, direction in order_by:
-                order_by_clauses.append(f'"{column_name}" {direction}')
+            for ob in order_by:
+                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
         if order_by_clauses:
             sql += " ORDER BY " + ", ".join(order_by_clauses)
 
@@ -370,7 +370,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         where: list[Condition] | None = None,
         limit: int | None = None,
         shuffle: bool | int = False,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> dict[str, str | None]:
         assert self._conn is not None
 
@@ -383,8 +383,8 @@ class EvalLogTranscriptsView(TranscriptsView):
             self._register_shuffle_function(seed)
             order_by_clauses.append("shuffle_hash(sample_id)")
         if order_by:
-            for column_name, direction in order_by:
-                order_by_clauses.append(f'"{column_name}" {direction}')
+            for ob in order_by:
+                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
         if order_by_clauses:
             sql += " ORDER BY " + ", ".join(order_by_clauses)
 

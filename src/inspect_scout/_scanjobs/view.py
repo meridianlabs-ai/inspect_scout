@@ -1,10 +1,11 @@
 """Abstract base class for scan jobs view."""
 
 import abc
-from typing import AsyncIterator, Literal
+from typing import AsyncIterator
 
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._transcript.columns import Condition
+from inspect_scout._view._api_v2_types import OrderBy
 
 
 class ScanJobsView(abc.ABC):
@@ -25,7 +26,7 @@ class ScanJobsView(abc.ABC):
         self,
         where: list[Condition] | None = None,
         limit: int | None = None,
-        order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
+        order_by: list[OrderBy] | None = None,
     ) -> AsyncIterator[Status]:
         """Select scan jobs matching criteria.
 

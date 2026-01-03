@@ -1,5 +1,5 @@
 import io
-from typing import Any, Iterable, Literal, TypeVar, Union, get_args, get_origin
+from typing import Any, Iterable, TypeVar, Union, get_args, get_origin
 
 import pyarrow.ipc as pa_ipc
 from fastapi import FastAPI, HTTPException, Path, Request, Response
@@ -20,20 +20,16 @@ from .._scanresults import (
     scan_results_arrow_async,
     scan_results_df_async,
 )
-from .._transcript.columns import Column, Condition
+from .._transcript.columns import Column
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import Transcript, TranscriptContent
 from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
-    build_cursor,
-    build_scan_cursor,
-    cursor_to_condition,
-    ensure_scan_tiebreaker,
-    ensure_tiebreaker,
-    reverse_order_columns,
+    build_pagination_context,
+    build_scanjobs_cursor,
+    build_transcripts_cursor,
 )
 from ._api_v2_types import (
-    OrderBy,
     RestScanStatus,
     ScanJobsRequest,
     ScanJobsResponse,
@@ -203,96 +199,38 @@ def v2_api_app(
         transcripts_dir = decode_base64url(dir)
 
         try:
-            # Build filter condition (for count - excludes cursor)
-            filter_conditions: list[Condition] = []
-            if body and body.filter:
-                filter_conditions.append(body.filter)
-
-            # Build full conditions list (includes cursor for pagination)
-            conditions = filter_conditions.copy()
-
-            # Push order_by to database layer
-            # When pagination used, apply tiebreaker. Otherwise just apply user's order_by.
-            use_pagination = body is not None and body.pagination is not None
-            db_order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
-            order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
-            limit: int | None = None
-            needs_reverse = False
-
-            if use_pagination:
-                assert body is not None and body.pagination is not None
-                pagination = body.pagination
-
-                # Determine order with tiebreaker
-                order_by = body.order_by
-                if not order_by:
-                    order_by = OrderBy(column="transcript_id", direction="ASC")
-                order_columns = ensure_tiebreaker(order_by)
-
-                # For backward pagination WITHOUT cursor (first page from end), reverse
-                # sort order to get last N rows, then reverse results back to original
-                # order. With a cursor, cursor_to_condition() handles direction via < vs >.
-                db_order_columns = order_columns
-                if pagination.direction == "backward" and not pagination.cursor:
-                    db_order_columns = reverse_order_columns(order_columns)
-                    needs_reverse = True
-
-                # Push cursor condition to DB
-                if pagination.cursor:
-                    cursor_cond = cursor_to_condition(
-                        pagination.cursor,
-                        order_columns,
-                        pagination.direction,
-                    )
-                    conditions.append(cursor_cond)
-
-                limit = pagination.limit
-            elif body and body.order_by:
-                # No pagination - just apply user's order_by
-                order_bys = (
-                    body.order_by
-                    if isinstance(body.order_by, list)
-                    else [body.order_by]
-                )
-                db_order_columns = [(ob.column, ob.direction) for ob in order_bys]
+            ctx = build_pagination_context(body, "transcript_id")
 
             async with transcripts_view(transcripts_dir) as view:
-                # Get total count (filter only, no cursor)
-                count = await view.count(filter_conditions or None)
-
+                count = await view.count(ctx.filter_conditions or None)
                 results = [
                     t
                     async for t in view.select(
-                        where=conditions or None,
-                        limit=limit,
-                        order_by=db_order_columns or None,
+                        where=ctx.conditions or None,
+                        limit=ctx.limit,
+                        order_by=ctx.db_order_columns or None,
                     )
                 ]
 
-            # Handle pagination response
-            if use_pagination:
-                assert body is not None and body.pagination is not None
-                pag = body.pagination
+            if ctx.needs_reverse:
+                results = list(reversed(results))
 
-                # Reverse results back to original order if we reversed for backward
-                if needs_reverse:
-                    results = list(reversed(results))
-
-                # If we got exactly limit rows, assume more exist
-                next_cursor = None
-                if len(results) == pag.limit and results:
-                    if pag.direction == "forward":
-                        next_cursor = build_cursor(results[-1], order_columns)
-                    else:
-                        next_cursor = build_cursor(results[0], order_columns)
-
-                return TranscriptsResponse(
-                    items=results, total_count=count, next_cursor=next_cursor
+            next_cursor = None
+            if (
+                body
+                and body.pagination
+                and len(results) == body.pagination.limit
+                and results
+            ):
+                edge = (
+                    results[-1]
+                    if body.pagination.direction == "forward"
+                    else results[0]
                 )
+                next_cursor = build_transcripts_cursor(edge, ctx.order_columns)
 
-            # No pagination - return all results
             return TranscriptsResponse(
-                items=results, total_count=count, next_cursor=None
+                items=results, total_count=count, next_cursor=next_cursor
             )
         except FileNotFoundError:
             return TranscriptsResponse(items=[], total_count=0, next_cursor=None)
@@ -334,95 +272,38 @@ def v2_api_app(
         body: ScanJobsRequest | None = None,
     ) -> ScanJobsResponse:
         """Filter scan jobs from the results directory."""
-        validated_results_dir = _ensure_not_none(
-            results_dir, "results_dir is required"
-        )
+        validated_results_dir = _ensure_not_none(results_dir, "results_dir is required")
         await _validate_list(request, validated_results_dir)
 
-        # Build filter condition (for count - excludes cursor)
-        filter_conditions: list[Condition] = []
-        if body and body.filter:
-            filter_conditions.append(body.filter)
-
-        # Build full conditions list (includes cursor for pagination)
-        conditions = filter_conditions.copy()
-
-        # Push order_by to database layer
-        use_pagination = body is not None and body.pagination is not None
-        db_order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
-        order_columns: list[tuple[str, Literal["ASC", "DESC"]]] = []
-        limit: int | None = None
-        needs_reverse = False
-
-        if use_pagination:
-            assert body is not None and body.pagination is not None
-            pagination = body.pagination
-
-            # Determine order with tiebreaker
-            order_by = body.order_by
-            if not order_by:
-                order_by = OrderBy(column="scan_id", direction="ASC")
-            order_columns = ensure_scan_tiebreaker(order_by)
-
-            # For backward pagination WITHOUT cursor, reverse sort order
-            db_order_columns = order_columns
-            if pagination.direction == "backward" and not pagination.cursor:
-                db_order_columns = reverse_order_columns(order_columns)
-                needs_reverse = True
-
-            # Push cursor condition to DB
-            if pagination.cursor:
-                cursor_cond = cursor_to_condition(
-                    pagination.cursor,
-                    order_columns,
-                    pagination.direction,
-                )
-                conditions.append(cursor_cond)
-
-            limit = pagination.limit
-        elif body and body.order_by:
-            # No pagination - just apply user's order_by
-            order_bys = (
-                body.order_by if isinstance(body.order_by, list) else [body.order_by]
-            )
-            db_order_columns = [(ob.column, ob.direction) for ob in order_bys]
+        ctx = build_pagination_context(body, "scan_id")
 
         async with await scan_jobs_view(validated_results_dir) as view:
-            # Get total count (filter only, no cursor)
-            count = await view.count(filter_conditions or None)
-
+            count = await view.count(ctx.filter_conditions or None)
             results = [
                 status
                 async for status in view.select(
-                    where=conditions or None,
-                    limit=limit,
-                    order_by=db_order_columns or None,
+                    where=ctx.conditions or None,
+                    limit=ctx.limit,
+                    order_by=ctx.db_order_columns or None,
                 )
             ]
 
-        # Handle pagination response
-        if use_pagination:
-            assert body is not None and body.pagination is not None
-            pag = body.pagination
+        if ctx.needs_reverse:
+            results = list(reversed(results))
 
-            # Reverse results back to original order if we reversed for backward
-            if needs_reverse:
-                results = list(reversed(results))
+        next_cursor = None
+        if (
+            body
+            and body.pagination
+            and len(results) == body.pagination.limit
+            and results
+        ):
+            edge = results[-1] if body.pagination.direction == "forward" else results[0]
+            next_cursor = build_scanjobs_cursor(edge, ctx.order_columns)
 
-            # If we got exactly limit rows, assume more exist
-            next_cursor = None
-            if len(results) == pag.limit and results:
-                if pag.direction == "forward":
-                    next_cursor = build_scan_cursor(results[-1], order_columns)
-                else:
-                    next_cursor = build_scan_cursor(results[0], order_columns)
-
-            return ScanJobsResponse(
-                items=results, total_count=count, next_cursor=next_cursor
-            )
-
-        # No pagination - return all results
-        return ScanJobsResponse(items=results, total_count=count, next_cursor=None)
+        return ScanJobsResponse(
+            items=results, total_count=count, next_cursor=next_cursor
+        )
 
     @app.get(
         "/scans/{scan}",

@@ -25,6 +25,7 @@ class Pagination:
 @dataclass
 class TranscriptsResponse:
     items: list[TranscriptInfo]
+    total_count: int
     next_cursor: dict[str, Any] | None = None
 
 

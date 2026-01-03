@@ -217,10 +217,13 @@ def v2_api_app(
         transcripts_dir = decode_base64url(dir)
 
         try:
-            # Build conditions list
-            conditions: list[Condition] = []
+            # Build filter condition (for count - excludes cursor)
+            filter_conditions: list[Condition] = []
             if body and body.filter:
-                conditions.append(body.filter)
+                filter_conditions.append(body.filter)
+
+            # Build full conditions list (includes cursor for pagination)
+            conditions = filter_conditions.copy()
 
             # Push order_by to database layer
             # When pagination used, apply tiebreaker. Otherwise just apply user's order_by.
@@ -268,6 +271,9 @@ def v2_api_app(
                 db_order_columns = [(ob.column, ob.direction) for ob in order_bys]
 
             async with transcripts_view(transcripts_dir) as view:
+                # Get total count (filter only, no cursor)
+                count = await view.count(filter_conditions or None)
+
                 results = [
                     t
                     async for t in view.select(
@@ -294,12 +300,16 @@ def v2_api_app(
                     else:
                         next_cursor = build_cursor(results[0], order_columns)
 
-                return TranscriptsResponse(items=results, next_cursor=next_cursor)
+                return TranscriptsResponse(
+                    items=results, total_count=count, next_cursor=next_cursor
+                )
 
             # No pagination - return all results
-            return TranscriptsResponse(items=results, next_cursor=None)
+            return TranscriptsResponse(
+                items=results, total_count=count, next_cursor=None
+            )
         except FileNotFoundError:
-            return TranscriptsResponse(items=[], next_cursor=None)
+            return TranscriptsResponse(items=[], total_count=0, next_cursor=None)
 
     @app.get(
         "/transcripts/{dir}/{id}",

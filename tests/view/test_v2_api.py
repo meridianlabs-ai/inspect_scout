@@ -479,7 +479,7 @@ class TestTranscriptsPagination:
     """Tests for /transcripts endpoint pagination."""
 
     def test_transcripts_response_structure(self, tmp_path: Path) -> None:
-        """Verify response has items and next_cursor fields."""
+        """Verify response has items, next_cursor, and count fields."""
         # Create test client
         client = TestClient(v2_api_app(results_dir=str(tmp_path)))
 
@@ -490,8 +490,59 @@ class TestTranscriptsPagination:
         data = response.json()
         assert "items" in data
         assert "next_cursor" in data
+        assert "count" in data
         assert isinstance(data["items"], list)
         assert data["next_cursor"] is None
+        assert data["count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_transcripts_count_no_filter(self, tmp_path: Path) -> None:
+        """Count equals total items when no filter."""
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 10
+        assert len(data["items"]) == 10
+
+    @pytest.mark.asyncio
+    async def test_transcripts_count_with_filter(self, tmp_path: Path) -> None:
+        """Count reflects filtered total."""
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        # Filter to gpt-4 only (every other one = 5)
+        response = client.post(
+            f"/transcripts/{_base64url(str(tmp_path))}",
+            json={"filter": {"left": "model", "operator": "=", "right": "gpt-4"}},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 5
+        assert len(data["items"]) == 5
+
+    @pytest.mark.asyncio
+    async def test_transcripts_count_with_pagination(self, tmp_path: Path) -> None:
+        """Count reflects total matching filter, not pagination limit."""
+        transcripts = _create_test_transcripts_for_api(10)
+        await _populate_transcripts(tmp_path, transcripts)
+
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        response = client.post(
+            f"/transcripts/{_base64url(str(tmp_path))}",
+            json={"pagination": {"limit": 3, "cursor": None, "direction": "forward"}},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 10  # Total, not limit
+        assert len(data["items"]) == 3  # Pagination limit
 
     @pytest.mark.asyncio
     async def test_transcripts_no_pagination(self, tmp_path: Path) -> None:

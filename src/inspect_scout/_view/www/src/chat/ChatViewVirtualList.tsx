@@ -12,7 +12,7 @@ import {
 import { ContextProp, ItemProps, VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../components/LiveVirtualList";
-import { Messages } from "../types/log";
+import { ChatMessage } from "../types/api-types";
 
 import { ChatMessageRow } from "./ChatMessageRow";
 import styles from "./ChatViewVirtualList.module.css";
@@ -22,7 +22,7 @@ import { ChatViewToolCallStyle } from "./types";
 interface ChatViewVirtualListProps {
   id: string;
   className?: string | string[];
-  messages: Messages;
+  messages: ChatMessage[];
   initialMessageId?: string | null;
   topOffset?: number;
   toolCallStyle: ChatViewToolCallStyle;

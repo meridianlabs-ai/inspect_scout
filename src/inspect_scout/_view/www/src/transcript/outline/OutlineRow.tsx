@@ -163,8 +163,12 @@ export const summarizeNode = (node: EventNode): ReactNode => {
       entries = {
         sample_id: node.event.sample.id,
         sandbox: node.event.sample.sandbox?.type,
-        started: formatDateTime(new Date(node.event.timestamp)),
-        working_start: formatTime(node.event.working_start),
+        started: node.event.timestamp
+          ? formatDateTime(new Date(node.event.timestamp))
+          : undefined,
+        working_start: node.event.working_start
+          ? formatTime(node.event.working_start)
+          : undefined,
       };
       break;
 
@@ -173,29 +177,45 @@ export const summarizeNode = (node: EventNode): ReactNode => {
         type: node.event.type,
         message: node.event.message,
         limit: node.event.limit,
-        started: formatDateTime(new Date(node.event.timestamp)),
-        working_start: formatTime(node.event.working_start),
+        started: node.event.timestamp
+          ? formatDateTime(new Date(node.event.timestamp))
+          : undefined,
+        working_start: node.event.working_start
+          ? formatTime(node.event.working_start)
+          : undefined,
       };
       break;
     case "score":
       entries = {
         answer: node.event.score.answer,
         score: node.event.score.value,
-        started: formatDateTime(new Date(node.event.timestamp)),
-        working_start: formatTime(node.event.working_start),
+        started: node.event.timestamp
+          ? formatDateTime(new Date(node.event.timestamp))
+          : undefined,
+        working_start: node.event.working_start
+          ? formatTime(node.event.working_start)
+          : undefined,
       };
       break;
     case "span_begin":
       entries = {
         name: node.event.name,
-        started: formatDateTime(new Date(node.event.timestamp)),
-        working_start: formatTime(node.event.working_start),
+        started: node.event.timestamp
+          ? formatDateTime(new Date(node.event.timestamp))
+          : undefined,
+        working_start: node.event.working_start
+          ? formatTime(node.event.working_start)
+          : undefined,
       };
       break;
     default:
       entries = {
-        started: formatDateTime(new Date(node.event.timestamp)),
-        working_start: formatTime(node.event.working_start),
+        started: node.event.timestamp
+          ? formatDateTime(new Date(node.event.timestamp))
+          : undefined,
+        working_start: node.event.working_start
+          ? formatTime(node.event.working_start)
+          : undefined,
       };
   }
 

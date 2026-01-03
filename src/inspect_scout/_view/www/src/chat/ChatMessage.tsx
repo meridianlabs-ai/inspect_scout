@@ -11,7 +11,7 @@ import {
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
-} from "../types/log";
+} from "../types/api-types";
 
 import styles from "./ChatMessage.module.css";
 import { MessageContents } from "./MessageContents";

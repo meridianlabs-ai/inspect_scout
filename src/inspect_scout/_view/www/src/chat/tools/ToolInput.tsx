@@ -3,6 +3,7 @@ import { FC, Ref, useRef } from "react";
 
 import { usePrismHighlight } from "../../components/prism";
 import { RenderedText } from "../../content/RenderedText";
+import { ToolCallContent } from "../../types/api-types";
 
 import { kToolTodoContentType } from "./tool";
 import { TodoWriteInput } from "./tool-input/TodoWriteInput";
@@ -11,7 +12,7 @@ import styles from "./ToolInput.module.css";
 interface ToolInputProps {
   contentType?: string;
   contents?: unknown | object;
-  toolCallView?: { content: string };
+  toolCallView?: ToolCallContent;
   className?: string | string[];
 }
 export const ToolInput: FC<ToolInputProps> = (props) => {
@@ -20,20 +21,20 @@ export const ToolInput: FC<ToolInputProps> = (props) => {
   const sourceCodeRef = useRef<HTMLDivElement | null>(null);
 
   const sourceCodeLength = toolCallView
-    ? toolCallView.content.length
+    ? toolCallView.content?.length
     : contents
       ? typeof contents === "string"
         ? contents.length
         : JSON.stringify(contents).length
       : 0;
-  usePrismHighlight(sourceCodeRef, sourceCodeLength);
+  usePrismHighlight(sourceCodeRef, sourceCodeLength || 0);
 
   if (!contents && !toolCallView?.content) return null;
 
   if (toolCallView) {
     return (
       <RenderedText
-        markdown={toolCallView.content}
+        markdown={toolCallView.content || ""}
         ref={sourceCodeRef}
         className={clsx("tool-output", styles.toolView, className)}
       />

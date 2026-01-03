@@ -9,7 +9,7 @@ import { ErrorPanel } from "../../../components/ErrorPanel";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { scanResultRoute } from "../../../router/url";
 import { useStore } from "../../../state/store";
-import { Status } from "../../../types";
+import { Status } from "../../../types/api-types";
 import { useScanRoute } from "../../hooks";
 import { kSegmentDataframe, kSegmentList } from "../ScansPanelBody";
 

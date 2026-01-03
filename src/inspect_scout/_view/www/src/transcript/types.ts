@@ -1,6 +1,6 @@
 import {
   ApprovalEvent,
-  Changes,
+  JsonChange,
   ErrorEvent,
   InfoEvent,
   InputEvent,
@@ -18,7 +18,7 @@ import {
   StoreEvent,
   SubtaskEvent,
   ToolEvent,
-} from "../types/log";
+} from "../types/api-types";
 
 import { STEP, SPAN_BEGIN, TYPE_TOOL, TYPE_SUBTASK } from "./transform/utils";
 
@@ -26,7 +26,7 @@ export interface StateManager {
   scope: string;
   getState(): object;
   initializeState(state: object): void;
-  applyChanges(changes: Changes): object;
+  applyChanges(changes: JsonChange[]): object;
 }
 
 export const kTranscriptCollapseScope = "transcript-collapse";

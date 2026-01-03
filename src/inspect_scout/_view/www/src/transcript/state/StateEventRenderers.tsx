@@ -6,7 +6,8 @@ import {
   HumanBaselineView,
   SessionLog,
 } from "../../components/HumanBaselineView";
-import { JsonChange, Messages } from "../../types/log";
+import { ChatMessage, JsonChange } from "../../types/api-types";
+import { isRecord } from "../../utils/type";
 
 import styles from "./StateEventRenders.module.css";
 
@@ -43,7 +44,7 @@ const system_msg_added_sig: ChangeType = {
       <ChatView
         key="system_msg_event_preview"
         id="system_msg_event_preview"
-        messages={[message] as Messages}
+        messages={[message] as ChatMessage[]}
         allowLinking={false}
       />
     );
@@ -80,7 +81,11 @@ const messages: ChangeType = {
   type: "messages",
   match: (changes: JsonChange[]) => {
     const allMessages = changes.every((change) => {
-      if (change.op === "add" && change.path.match(/\/messages\/\d+/)) {
+      if (
+        isRecord(change.value) &&
+        change.op === "add" &&
+        change.path.match(/\/messages\/\d+/)
+      ) {
         return (
           typeof change.value["role"] === "string" &&
           ["user", "assistant", "system", "tool"].includes(change.value["role"])
@@ -96,7 +101,7 @@ const messages: ChangeType = {
       <ChatView
         key="system_msg_event_preview"
         id="system_msg_event_preview"
-        messages={messages as unknown as Messages}
+        messages={messages as unknown as ChatMessage[]}
         allowLinking={false}
       />
     );
@@ -260,6 +265,7 @@ const createMessageRenderer = (name: string, role: string): ChangeType => {
         const change = changes[0];
         if (
           change &&
+          isRecord(change.value) &&
           change.op === "add" &&
           change.path.match(/\/messages\/\d+/)
         ) {
@@ -269,12 +275,12 @@ const createMessageRenderer = (name: string, role: string): ChangeType => {
       return false;
     },
     render: (changes) => {
-      const message = changes[0]?.value as unknown;
+      const message = changes[0]?.value;
       return (
         <ChatView
           key="system_msg_event_preview"
           id="system_msg_event_preview"
-          messages={[message] as Messages}
+          messages={[message] as ChatMessage[]}
           allowLinking={false}
         />
       );

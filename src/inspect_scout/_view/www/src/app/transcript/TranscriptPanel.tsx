@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
@@ -8,7 +9,9 @@ import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useServerTranscript, useServerTranscriptsDir } from "../server/hooks";
 import { useTranscriptDirParams } from "../utils/router";
 
+import { TranscriptBody } from "./TranscriptBody";
 import styles from "./TranscriptPanel.module.css";
+import { TranscriptTitle } from "./TranscriptTitle";
 
 export const TranscriptPanel: FC = () => {
   // Transcript data from route
@@ -17,10 +20,11 @@ export const TranscriptPanel: FC = () => {
 
   // Server transcripts directory
   const transcriptsDir = useServerTranscriptsDir();
-  const { loading, data: transcript } = useServerTranscript(
-    transcriptsDir,
-    transcriptId
-  );
+  const {
+    loading,
+    data: transcript,
+    error,
+  } = useServerTranscript(transcriptsDir, transcriptId);
 
   // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
@@ -37,13 +41,14 @@ export const TranscriptPanel: FC = () => {
         setTranscriptsDir={setUserTranscriptsDir}
       />
       <LoadingBar loading={loading} />
-      {transcript && (
-        <div>
-          <h1>Transcript Detail</h1>
-          <p>Transcript ID: {transcriptId}</p>
-          {`${transcript.messages?.length} messages / ${transcript.events?.length} events`}
+
+      {!error && transcript && (
+        <div className={styles.transcriptContainer}>
+          <TranscriptTitle transcript={transcript} />
+          <TranscriptBody transcript={transcript} />
         </div>
       )}
+      {error && <ErrorPanel title="Error Loading Transcript" error={error} />}
     </div>
   );
 };

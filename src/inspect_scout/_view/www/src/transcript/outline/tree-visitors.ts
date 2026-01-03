@@ -1,4 +1,4 @@
-import { ScoreEvent, SpanBeginEvent } from "../../types/log";
+import { ScoreEvent, SpanBeginEvent } from "../../types/api-types";
 import { TYPE_SCORER, TYPE_SCORERS } from "../transform/utils";
 import { EventNode } from "../types";
 

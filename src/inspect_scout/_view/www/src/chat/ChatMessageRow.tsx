@@ -1,15 +1,14 @@
 import clsx from "clsx";
 import { FC, Fragment, ReactNode } from "react";
 
-import { ContentTool } from "../types";
-import { ChatMessageTool } from "../types/log";
+import { ChatMessageTool } from "../types/api-types";
 
 import { ChatMessage } from "./ChatMessage";
 import styles from "./ChatMessageRow.module.css";
 import { ResolvedMessage } from "./messages";
 import { resolveToolInput } from "./tools/tool";
 import { ToolCallView } from "./tools/ToolCallView";
-import { ChatViewToolCallStyle } from "./types";
+import { ChatViewToolCallStyle, ContentTool } from "./types";
 
 interface ChatMessageRowProps {
   index: number;

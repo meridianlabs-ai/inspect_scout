@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import { useMapAsyncData } from "../hooks/useMapAsyncData";
 import { parseScanParams } from "../router/url";
 import { useStore } from "../state/store";
-import { Status } from "../types";
+import { Status } from "../types/api-types";
 import { AsyncData, data, loading } from "../utils/asyncData";
 import { join } from "../utils/uri";
 

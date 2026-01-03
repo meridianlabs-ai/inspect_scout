@@ -5,7 +5,6 @@ import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { LabeledValue } from "../../../components/LabeledValue";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
-import { ModelUsage, ModelUsage2 } from "../../../types/log";
 import { ModelTokenTable } from "../../../usage/ModelTokenTable";
 import { formatNumber } from "../../../utils/format";
 import { ScanResultData } from "../../types";
@@ -39,13 +38,16 @@ export const InfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
             <Card>
               <CardHeader label="Model Usage" type="modern" />
               <CardBody>
-                <ModelTokenTable
-                  model_usage={
-                    resultData?.scanModelUsage as unknown as
-                      | ModelUsage2
-                      | ModelUsage
+                {Object.keys(resultData?.scanModelUsage).map((key) => {
+                  if (!resultData?.scanModelUsage[key]) {
+                    return null;
                   }
-                />
+                  return (
+                    <ModelTokenTable
+                      model_usage={resultData?.scanModelUsage[key]}
+                    />
+                  );
+                })}
               </CardBody>
             </Card>
           )}

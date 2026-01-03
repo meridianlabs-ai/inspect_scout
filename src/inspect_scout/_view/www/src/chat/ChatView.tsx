@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { Messages } from "../types/log";
+import { ChatMessage } from "../types/api-types";
 
 import { ChatMessageRow } from "./ChatMessageRow";
 import { resolveMessages } from "./messages";
@@ -9,7 +9,7 @@ import { ChatViewToolCallStyle } from "./types";
 
 interface ChatViewProps {
   id?: string;
-  messages: Messages;
+  messages: ChatMessage[];
   toolCallStyle?: ChatViewToolCallStyle;
   resolveToolCallsIntoPreviousMessage?: boolean;
   title?: string;

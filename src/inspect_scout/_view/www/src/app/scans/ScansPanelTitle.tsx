@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { CopyButton } from "../../components/CopyButton";
-import { Status } from "../../types";
+import { Status } from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";

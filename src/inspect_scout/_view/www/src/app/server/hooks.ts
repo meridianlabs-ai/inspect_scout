@@ -12,7 +12,7 @@ import { useMemo } from "react";
 
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
-import { Status } from "../../types";
+import { Status } from "../../types/api-types";
 import { Transcript, TranscriptsResponse } from "../../types/api-types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";

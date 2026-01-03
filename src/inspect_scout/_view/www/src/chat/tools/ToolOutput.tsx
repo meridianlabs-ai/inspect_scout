@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
-import { ContentImage, ContentText } from "../../types/log";
+import { ContentImage, ContentText } from "../../types/api-types";
 import { isJson } from "../../utils/json";
 import { JsonMessageContent } from "../JsonMessageContent";
 

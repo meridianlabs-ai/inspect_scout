@@ -145,6 +145,24 @@ def ctf_environment() -> Scanner[Transcript]:
 For additional details on using this scanner, see the [LLM
 Scanner](llm_scanner.qmd) article.
 
+### Grep Scanner
+
+Using an LLM to search transcripts is often required for more nuanced
+judgements, but if you are just looking for text patterns, you can also
+use the `grep_scanner()`. For example, here we search assistant messages
+for references to phrases that might indicate secrets:
+
+``` python
+from inspect_scout import Transcript, grep_scanner, scanner
+
+@scanner(messages=["assistant"])
+def secrets() -> Scanner[Transcript]:
+    return grep_scanner(["password", "secret", "token"])
+```
+
+For additional details on using this scanner, see the [Grep
+Scanner](grep_scanner.qmd) article.
+
 ### Running a Scan
 
 Use the `scout scan` command to run one or more scanners on a set of
@@ -166,23 +184,34 @@ scout scan scanner.py \
    --model openai/gpt-5
 ```
 
-As with Inspect AI, Inspect Scout will read your `.env` file for
-[environmental
-options](https://inspect.aisi.org.uk/options.html#env-files). So if your
-`.env` contained the following:
+Note that when we using a model that requires an API key you’ll need to
+provide it in the enviroment (e.g. `OPENAI_API_KEY`). As with Inspect
+AI, you can use a [.env
+file](https://inspect.aisi.org.uk/options.html#env-files) for providing
+API keys.
 
-**.env**
+### Projects
 
-``` makefile
-SCOUT_SCAN_TRANSCRIPTS=s3://weave-rollouts/cybench
-SCOUT_SCAN_MODEL=openai/gpt-5
+In some cases you’ll prefer to define your transcript source, scanning
+model, and other configuration once for a project rather than each time
+you run `scout scan`. You can do this with a `scout.yaml` project file.
+For example, if we have this project file in our working directory:
+
+**scout.yaml**
+
+``` yaml
+transcripts: s3://weave-rollouts/cybench
+model: openai/gpt-5
 ```
 
-Then you could shorten the above command to:
+Then we can run our scan with simply:
 
 ``` bash
 scout scan scanner.py 
 ```
+
+See the [Projects](projects.qmd) article for more details on managing
+configuration with projects.
 
 ### Event Scanner
 
@@ -293,6 +322,10 @@ Which can be executed with:
 ``` bash
 scout scan scan.yaml
 ```
+
+Note that if you had a scout.yaml [project file](#projects) defining the
+`transcripts` and `model` for your project, you could exclude them from
+your scan job as they will be automatically merged from the project.
 
 ## Scan Results
 
@@ -459,11 +492,15 @@ you can use to tune parallelism:
 Above we provided a high-level tour of Scout features. See the following
 articles to learn more about using Scout:
 
+- [Projects](projects.qmd): Managing scanning configuration using
+  project files.
+
 - [Transcripts](transcripts.qmd): Reading and filtering transcripts for
   scanning.
 
-- [LLM Scanner](llm_scanner.qmd): High-level LLM scanner for model
-  evaluation of transcripts.
+- [LLM Scanner](llm_scanner.qmd) and [Grep Scanner](grep_scanner.qmd):
+  Higher-level scanners for model and pattern-based scanning of
+  transcripts.
 
 - [Workflow](workflow.qmd): Workflow for the stages of a transcript
   analysis project.

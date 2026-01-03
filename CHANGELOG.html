@@ -111,6 +111,10 @@ ul.task-list li input[type="checkbox"] {
  <span class="dropdown-text">Workflow</span></a>
   </li>  
         <li>
+    <a class="dropdown-item" href="./projects.html">
+ <span class="dropdown-text">Projects</span></a>
+  </li>  
+        <li>
     <a class="dropdown-item" href="./transcripts.html">
  <span class="dropdown-text">Transcripts</span></a>
   </li>  
@@ -121,6 +125,10 @@ ul.task-list li input[type="checkbox"] {
         <li>
     <a class="dropdown-item" href="./llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./grep_scanner.html">
+ <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./results.html">
@@ -186,7 +194,7 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#unreleased" id="toc-unreleased" class="nav-link active" data-scroll-target="#unreleased">Unreleased</a></li>
+  <li><a href="#january-2026" id="toc-january-2026" class="nav-link active" data-scroll-target="#january-2026">0.4.5 (03 January 2026)</a></li>
   <li><a href="#december-2025" id="toc-december-2025" class="nav-link" data-scroll-target="#december-2025">0.4.4 (24 December 2025)</a></li>
   <li><a href="#december-2025-1" id="toc-december-2025-1" class="nav-link" data-scroll-target="#december-2025-1">0.4.3 (22 December 2025)</a></li>
   <li><a href="#december-2025-2" id="toc-december-2025-2" class="nav-link" data-scroll-target="#december-2025-2">0.4.2 (14 December 2025)</a></li>
@@ -201,10 +209,18 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<section id="unreleased" class="level2">
-<h2 class="anchored" data-anchor-id="unreleased">Unreleased</h2>
+<section id="january-2026" class="level2">
+<h2 class="anchored" data-anchor-id="january-2026">0.4.5 (03 January 2026)</h2>
 <ul>
+<li><a href="https://meridianlabs-ai.github.io/inspect_scout/projects.html">Projects</a> for centrally managing scanning configuration.</li>
+<li><a href="https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html">Grep Scanner</a> for pattern-based scanning of transcripts.</li>
 <li>Scanning: Add <code>--dry-run</code> option for previewing scanner counts.</li>
+<li>Scanners: Fixup type annotations in <span class="citation" data-cites="scanner">@scanner</span> decorator.</li>
+<li>Display: Add text progress and metrics support to <code>display="log"</code> mode.</li>
+<li>Transcript DB: Don’t remove orphaned data files.</li>
+<li>Transcript DB: Handle duplicate transcript ids while indexing.</li>
+<li>Transcript DB: Remove redundant TranscriptSource class (covered by AsyncIterable already).</li>
+<li>Bugfix: Store relative paths in transcript database index.</li>
 </ul>
 </section>
 <section id="december-2025" class="level2">

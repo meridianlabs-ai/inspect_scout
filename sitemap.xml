@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/scanner.html</loc>
-    <lastmod>2025-11-20T12:33:25.411Z</lastmod>
+    <lastmod>2026-01-01T13:18:11.747Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/index.html</loc>
@@ -14,7 +14,7 @@
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/transcript.html</loc>
-    <lastmod>2025-12-17T22:14:41.444Z</lastmod>
+    <lastmod>2026-01-03T12:41:51.160Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/scout_view.html</loc>
@@ -33,16 +33,20 @@
     <lastmod>2025-12-17T22:14:41.445Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>
-    <lastmod>2025-12-11T19:41:53.153Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/validation.html</loc>
+    <lastmod>2025-12-12T13:42:56.586Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
-    <lastmod>2025-12-17T22:14:41.443Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_schema.html</loc>
+    <lastmod>2025-12-22T17:04:39.010Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/projects.html</loc>
+    <lastmod>2026-01-03T13:36:21.336Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/CHANGELOG.html</loc>
-    <lastmod>2025-12-27T12:23:57.558Z</lastmod>
+    <lastmod>2026-01-03T13:47:49.103Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html</loc>
@@ -53,12 +57,16 @@
     <lastmod>2025-12-16T15:36:45.961Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_schema.html</loc>
-    <lastmod>2025-12-22T17:04:39.010Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
+    <lastmod>2026-01-03T13:36:21.335Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/validation.html</loc>
-    <lastmod>2025-12-12T13:42:56.586Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>
+    <lastmod>2025-12-11T19:41:53.153Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html</loc>
+    <lastmod>2026-01-01T13:18:11.746Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/db_importing.html</loc>
@@ -86,6 +94,6 @@
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/scanning.html</loc>
-    <lastmod>2025-12-10T21:33:54.940Z</lastmod>
+    <lastmod>2026-01-03T13:36:21.337Z</lastmod>
   </url>
 </urlset>

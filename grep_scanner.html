@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Publishing Transcripts – Inspect Scout</title>
+<title>Grep Scanner – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,7 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./db_importing.html" rel="prev">
+<link href="./results.html" rel="next">
+<link href="./llm_scanner.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -225,7 +226,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li><li class="breadcrumb-item"><a href="./db_publishing.html">Publishing</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./workflow.html">Using Scout</a></li><li class="breadcrumb-item"><a href="./grep_scanner.html">Grep Scanner</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -305,7 +306,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
+  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Grep Scanner</span></a>
   </div>
 </li>
@@ -352,7 +353,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./db_publishing.html" class="sidebar-item-text sidebar-link active">
+  <a href="./db_publishing.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Publishing</span></a>
   </div>
 </li>
@@ -369,12 +370,37 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
-  <li><a href="#hugging-face" id="toc-hugging-face" class="nav-link" data-scroll-target="#hugging-face">Hugging Face</a></li>
-  <li><a href="#s3" id="toc-s3" class="nav-link" data-scroll-target="#s3">S3</a></li>
-  <li><a href="#encryption" id="toc-encryption" class="nav-link" data-scroll-target="#encryption">Encryption</a>
+  <li><a href="#basic-usage" id="toc-basic-usage" class="nav-link" data-scroll-target="#basic-usage">Basic Usage</a></li>
+  <li><a href="#pattern-types" id="toc-pattern-types" class="nav-link" data-scroll-target="#pattern-types">Pattern Types</a>
   <ul class="collapse">
-  <li><a href="#reading-encrypted-databases" id="toc-reading-encrypted-databases" class="nav-link" data-scroll-target="#reading-encrypted-databases">Reading Encrypted Databases</a></li>
-  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
+  <li><a href="#single-pattern" id="toc-single-pattern" class="nav-link" data-scroll-target="#single-pattern">Single Pattern</a></li>
+  <li><a href="#multiple-patterns" id="toc-multiple-patterns" class="nav-link" data-scroll-target="#multiple-patterns">Multiple Patterns</a></li>
+  <li><a href="#labeled-patterns" id="toc-labeled-patterns" class="nav-link" data-scroll-target="#labeled-patterns">Labeled Patterns</a></li>
+  </ul></li>
+  <li><a href="#options" id="toc-options" class="nav-link" data-scroll-target="#options">Options</a>
+  <ul class="collapse">
+  <li><a href="#case-sensitivity" id="toc-case-sensitivity" class="nav-link" data-scroll-target="#case-sensitivity">Case Sensitivity</a></li>
+  <li><a href="#regex-mode" id="toc-regex-mode" class="nav-link" data-scroll-target="#regex-mode">Regex Mode</a></li>
+  <li><a href="#word-boundary" id="toc-word-boundary" class="nav-link" data-scroll-target="#word-boundary">Word Boundary</a></li>
+  </ul></li>
+  <li><a href="#scanner-results" id="toc-scanner-results" class="nav-link" data-scroll-target="#scanner-results">Scanner Results</a>
+  <ul class="collapse">
+  <li><a href="#result-structure" id="toc-result-structure" class="nav-link" data-scroll-target="#result-structure">Result Structure</a></li>
+  <li><a href="#context-snippets" id="toc-context-snippets" class="nav-link" data-scroll-target="#context-snippets">Context Snippets</a></li>
+  </ul></li>
+  <li><a href="#searching-events" id="toc-searching-events" class="nav-link" data-scroll-target="#searching-events">Searching Events</a>
+  <ul class="collapse">
+  <li><a href="#events-only" id="toc-events-only" class="nav-link" data-scroll-target="#events-only">Events Only</a></li>
+  <li><a href="#both-messages-and-events" id="toc-both-messages-and-events" class="nav-link" data-scroll-target="#both-messages-and-events">Both Messages and Events</a></li>
+  <li><a href="#supported-event-types" id="toc-supported-event-types" class="nav-link" data-scroll-target="#supported-event-types">Supported Event Types</a></li>
+  </ul></li>
+  <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples">Examples</a>
+  <ul class="collapse">
+  <li><a href="#finding-profanity" id="toc-finding-profanity" class="nav-link" data-scroll-target="#finding-profanity">Finding Profanity</a></li>
+  <li><a href="#detecting-urls" id="toc-detecting-urls" class="nav-link" data-scroll-target="#detecting-urls">Detecting URLs</a></li>
+  <li><a href="#multi-category-analysis" id="toc-multi-category-analysis" class="nav-link" data-scroll-target="#multi-category-analysis">Multi-Category Analysis</a></li>
+  <li><a href="#searching-tool-events" id="toc-searching-tool-events" class="nav-link" data-scroll-target="#searching-tool-events">Searching Tool Events</a></li>
+  <li><a href="#messages-and-events" id="toc-messages-and-events" class="nav-link" data-scroll-target="#messages-and-events">Messages and Events</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -382,9 +408,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li><li class="breadcrumb-item"><a href="./db_publishing.html">Publishing</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./workflow.html">Using Scout</a></li><li class="breadcrumb-item"><a href="./grep_scanner.html">Grep Scanner</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Publishing Transcripts</h1>
+<h1 class="title">Grep Scanner</h1>
 </div>
 
 
@@ -403,64 +429,248 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigations available for this are:</p>
-<ol type="1">
-<li><p>Making access to the transcripts authenticated (e.g.&nbsp;S3 or Hugging Face); and</p></li>
-<li><p>Encrypting the transcript database files so that if they are republished in an unauthenticated context that crawlers won’t be able to read them.</p></li>
-</ol>
-<p>We’ll cover both of these scenarios in detail below.</p>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#grep_scanner">grep_scanner()</a></span> provides pattern-based scanning of transcripts using grep-style matching. Unlike <a href="./llm_scanner.html">LLM Scanner</a> which uses a language model for analysis, <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#grep_scanner">grep_scanner()</a></span> performs fast, deterministic text pattern matching.</p>
+<p>The grep scanner does simple string matching by default (literal patterns) and has an optional regex mode for complex patterns You can also search for multiple patterns with OR composition or alternatively labeled patterns for categorized results.</p>
 </section>
-<section id="hugging-face" class="level2">
-<h2 class="anchored" data-anchor-id="hugging-face">Hugging Face</h2>
-<p>Publishing transcript databases as a <a href="https://huggingface.co/datasets">Hugging Face Dataset</a> is useful when you want to share with a broader audience. Benefits of using Hugging Face include:</p>
-<ol type="1">
-<li><p>You can make access private to only your account or organization.</p></li>
-<li><p>You can create a <a href="https://huggingface.co/docs/hub/datasets-gated">Gated Dataset</a> that requires users to provide contact information and optionally abide by a usage agreement and share other information to obtain access.</p></li>
-</ol>
-<p>See the Hugging Face documentation on <a href="https://huggingface.co/docs/hub/datasets-adding">uploading datasets</a> for details on how to create datasets. For transcript databases, you can just upload the parquet file(s) into the root of the dataset repository.</p>
-<p>To access a dataset on Hugging Face:</p>
-<ol type="1">
-<li><p>Install the <code>huggingface_hub</code> Python package:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install huggingface_hub</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
-<li><p>Configure credentials either by setting the <code>HF_TOKEN</code> environment variable or via login:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">hf</span> auth login</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
-<li><p>Refer to your dataset in a scout scan using the <code>hf://</code> protocol. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> hf://datasets/account-name/dataset-name</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
-</ol>
-<p>See <a href="#encryption">Encryption</a> below for details on adding encryption to database files as an additional measure of protection from crawlers.</p>
+<section id="basic-usage" class="level2">
+<h2 class="anchored" data-anchor-id="basic-usage">Basic Usage</h2>
+<p>Here is a simple example that finds occurrences of “error” in assistant messages:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Scanner, Transcript, grep_scanner, scanner</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span>[<span class="st">"assistant"</span>])</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> find_errors() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner(<span class="st">"error"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The scanner returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> with:</p>
+<ul>
+<li><code>value</code>: Count of matches found (integer)</li>
+<li><code>explanation</code>: Context snippets showing each match</li>
+<li><code>references</code>: Message references for match locations</li>
+</ul>
 </section>
-<section id="s3" class="level2">
-<h2 class="anchored" data-anchor-id="s3">S3</h2>
-<p>Publishing transcripst databases to AWS <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html">S3</a> enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-management.html">documentation</a> for further details).</p>
-<p>After you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the <code>s3://</code> protocol. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> s3://my-transcript-databases/database-name</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="#encryption">Encryption</a> below for details on adding encryption to database files as an additional measure of protection from crawlers.</p>
+<section id="pattern-types" class="level2">
+<h2 class="anchored" data-anchor-id="pattern-types">Pattern Types</h2>
+<section id="single-pattern" class="level3">
+<h3 class="anchored" data-anchor-id="single-pattern">Single Pattern</h3>
+<p>The simplest form takes a single string pattern:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>grep_scanner(<span class="st">"error"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="encryption" class="level2">
-<h2 class="anchored" data-anchor-id="encryption">Encryption</h2>
-<p>You can optionally use encryption to provide further protection for transcript databases. To encrypt a database, use the <code>scout db encrypt</code> command, passing it a valid AES encryption key (16, 24, or 32 bytes). For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db encrypt /path/to/my/database <span class="dt">\</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>   <span class="at">--output-dir</span> /path/to/my/database-enc <span class="dt">\</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">--key</span> 0123456789abcdef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If you don’t want to include the key in a script, you can also pass it via stdin (<code>--key -</code>) or pass it via the <code>SCOUT_DB_ENCRYPTION_KEY</code> environment variable.</p>
-<section id="reading-encrypted-databases" class="level3">
-<h3 class="anchored" data-anchor-id="reading-encrypted-databases">Reading Encrypted Databases</h3>
-<p>When using an encrypted database during a scan, you should set the <code>SCOUT_DB_ENCRYPTION_KEY</code> environment variable to the appropriate key. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">SCOUT_DB_ENCRYPTION_KEY</span><span class="op">=</span>0123456789abcdef</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> /path/to/my/database-enc</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You can also decrypt the database using the <code>scout db decrypt</code> command:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db decrypt /path/to/my/database-enc <span class="dt">\</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">--output-dir</span> /path/to/my/database <span class="dt">\</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--key</span> 0123456789abcdef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="multiple-patterns" class="level3">
+<h3 class="anchored" data-anchor-id="multiple-patterns">Multiple Patterns</h3>
+<p>Pass a list to match any of multiple patterns (OR logic):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>grep_scanner([<span class="st">"error"</span>, <span class="st">"failed"</span>, <span class="st">"exception"</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>All matches across all patterns are aggregated into a single count.</p>
 </section>
-<section id="limitations" class="level3">
-<h3 class="anchored" data-anchor-id="limitations">Limitations</h3>
-<p>Scout uses DuckDB <a href="https://duckdb.org/docs/stable/data/parquet/encryption">Parquet Encryption</a> to implement encryption. While this will provide additional protection for data, there are some drawbacks:</p>
-<ol type="1">
-<li><p>It is not currently compatible with the encryption of, e.g., PyArrow, so encrypted Parquet files will currently only be readable with DuckDB.</p></li>
-<li><p>Compression ratios for encrypted Parquet are much lower than for unencrypted (e.g.&nbsp;database files might be 5-8 times larger).</p></li>
-<li><p>Read performance may be a bit slower due to decryption (but it’s unlikely this will matter as most time in scanning is spent on inference not reading).</p></li>
-</ol>
+<section id="labeled-patterns" class="level3">
+<h3 class="anchored" data-anchor-id="labeled-patterns">Labeled Patterns</h3>
+<p>Pass a dict to get separate results for each category:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> categorized_issues() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner({</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"errors"</span>: [<span class="st">"error"</span>, <span class="st">"failed"</span>, <span class="st">"exception"</span>],</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"warnings"</span>: [<span class="st">"warning"</span>, <span class="st">"caution"</span>],</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"security"</span>: [<span class="st">"password"</span>, <span class="st">"secret"</span>, <span class="st">"token"</span>],</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    })</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This returns a <code>list[Result]</code>, one per label:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Returns:</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># - Result(label="errors", value=3, ...)</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co"># - Result(label="warnings", value=1, ...)</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># - Result(label="security", value=0, ...)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="options" class="level2">
+<h2 class="anchored" data-anchor-id="options">Options</h2>
+<section id="case-sensitivity" class="level3">
+<h3 class="anchored" data-anchor-id="case-sensitivity">Case Sensitivity</h3>
+<p>By default, matching is case-insensitive (like <code>grep -i</code>):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>grep_scanner(<span class="st">"error"</span>)  <span class="co"># Matches "error", "ERROR", "Error"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For case-sensitive matching:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>grep_scanner(<span class="st">"error"</span>, ignore_case<span class="op">=</span><span class="va">False</span>)  <span class="co"># Only matches "error"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="regex-mode" class="level3">
+<h3 class="anchored" data-anchor-id="regex-mode">Regex Mode</h3>
+<p>By default, patterns are treated as literal strings:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>grep_scanner(<span class="st">"file.*txt"</span>)  <span class="co"># Matches literal "file.*txt"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Enable regex mode for regular expression patterns:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>grep_scanner(<span class="vs">r"https</span><span class="op">?</span><span class="vs">://</span><span class="dv">\S</span><span class="op">+</span><span class="vs">"</span>, regex<span class="op">=</span><span class="va">True</span>)  <span class="co"># Matches URLs</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>grep_scanner(<span class="vs">r"</span><span class="dv">\d</span><span class="op">{3}</span><span class="vs">-</span><span class="dv">\d</span><span class="op">{4}</span><span class="vs">"</span>, regex<span class="op">=</span><span class="va">True</span>)   <span class="co"># Matches phone patterns</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="word-boundary" class="level3">
+<h3 class="anchored" data-anchor-id="word-boundary">Word Boundary</h3>
+<p>Match whole words only:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>grep_scanner(<span class="st">"error"</span>, word_boundary<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Matches "error" but not "errorCode" or "myerror"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This adds <code>\b</code> word boundary anchors around the pattern.</p>
+</section>
+</section>
+<section id="scanner-results" class="level2">
+<h2 class="anchored" data-anchor-id="scanner-results">Scanner Results</h2>
+<section id="result-structure" class="level3">
+<h3 class="anchored" data-anchor-id="result-structure">Result Structure</h3>
+<p>For single/list patterns:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>value</code></td>
+<td><code>int</code></td>
+<td>Count of matches found</td>
+</tr>
+<tr class="even">
+<td><code>explanation</code></td>
+<td><code>str \| None</code></td>
+<td>Context snippets for each match</td>
+</tr>
+<tr class="odd">
+<td><code>references</code></td>
+<td><code>list[Reference]</code></td>
+<td>Message/event citations</td>
+</tr>
+</tbody>
+</table>
+<p>For labeled patterns (dict), each label produces its own <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> with the same structure, plus:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>label</code></td>
+<td><code>str</code></td>
+<td>The category label</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="context-snippets" class="level3">
+<h3 class="anchored" data-anchor-id="context-snippets">Context Snippets</h3>
+<p>The <code>explanation</code> field shows context around each match:</p>
+<pre><code>[M1]: ...request returned an **error** code 500...
+[M2]: ...operation **error**: connection timeout...
+[E1]: TOOL (search_files): Result: Found **error** in file.py...</code></pre>
+<ul>
+<li>Up to 50 characters before/after each match</li>
+<li>Match text highlighted with <code>**bold**</code></li>
+<li>Ellipsis (<code>...</code>) when context is truncated</li>
+<li>Reference prefix (<code>[M1]</code>, <code>[M2]</code> for messages, <code>[E1]</code>, <code>[E2]</code> for events)</li>
+</ul>
+</section>
+</section>
+<section id="searching-events" class="level2">
+<h2 class="anchored" data-anchor-id="searching-events">Searching Events</h2>
+<p>To search events (tool calls, errors, etc.), use the <code>events</code> parameter in the <code>@scanner</code> decorator:</p>
+<section id="events-only" class="level3">
+<h3 class="anchored" data-anchor-id="events-only">Events Only</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(events<span class="op">=</span>[<span class="st">"tool"</span>, <span class="st">"error"</span>])</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> find_tool_errors() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner(<span class="st">"timeout"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="both-messages-and-events" class="level3">
+<h3 class="anchored" data-anchor-id="both-messages-and-events">Both Messages and Events</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, events<span class="op">=</span>[<span class="st">"tool"</span>, <span class="st">"error"</span>])</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> find_all_errors() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner(<span class="st">"error"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The scanner automatically searches whatever is populated in the transcript:</p>
+<ul>
+<li>Messages are searched if <code>transcript.messages</code> is populated</li>
+<li>Events are searched if <code>transcript.events</code> is populated</li>
+</ul>
+<p>References use <code>[M1]</code>, <code>[M2]</code> for messages and <code>[E1]</code>, <code>[E2]</code> for events.</p>
+</section>
+<section id="supported-event-types" class="level3">
+<h3 class="anchored" data-anchor-id="supported-event-types">Supported Event Types</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Event Type</th>
+<th>What’s Searched</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>model</code></td>
+<td>Model output completion text</td>
+</tr>
+<tr class="even">
+<td><code>tool</code></td>
+<td>Function name, arguments, and result</td>
+</tr>
+<tr class="odd">
+<td><code>error</code></td>
+<td>Error message</td>
+</tr>
+<tr class="even">
+<td><code>info</code></td>
+<td>Data field (JSON stringified if object)</td>
+</tr>
+<tr class="odd">
+<td><code>logger</code></td>
+<td>Log message text</td>
+</tr>
+<tr class="even">
+<td><code>approval</code></td>
+<td>Message, tool call, and decision</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="examples" class="level2">
+<h2 class="anchored" data-anchor-id="examples">Examples</h2>
+<section id="finding-profanity" class="level3">
+<h3 class="anchored" data-anchor-id="finding-profanity">Finding Profanity</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span>[<span class="st">"assistant"</span>])</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> profanity_check() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner(</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        [<span class="st">"damn"</span>, <span class="st">"hell"</span>, <span class="st">"crap"</span>],</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>        word_boundary<span class="op">=</span><span class="va">True</span>,  <span class="co"># Avoid partial matches</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="detecting-urls" class="level3">
+<h3 class="anchored" data-anchor-id="detecting-urls">Detecting URLs</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> url_detection() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner(</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>        <span class="vs">r"https</span><span class="op">?</span><span class="vs">://</span><span class="pp">[^</span><span class="dv">\s</span><span class="pp">&lt;&gt;</span><span class="ch">\"</span><span class="pp">']</span><span class="op">+</span><span class="vs">"</span>,</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>        regex<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="multi-category-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="multi-category-analysis">Multi-Category Analysis</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span>[<span class="st">"assistant"</span>])</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> content_analysis() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner({</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"code_snippets"</span>: [<span class="vs">r"```"</span>, <span class="st">"def "</span>, <span class="st">"class "</span>, <span class="st">"function"</span>],</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"questions"</span>: [<span class="vs">r"</span><span class="ch">\?</span><span class="dv">$</span><span class="vs">"</span>],</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"commands"</span>: [<span class="st">"please"</span>, <span class="st">"could you"</span>, <span class="st">"can you"</span>],</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    }, regex<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="searching-tool-events" class="level3">
+<h3 class="anchored" data-anchor-id="searching-tool-events">Searching Tool Events</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(events<span class="op">=</span>[<span class="st">"tool"</span>])</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> tool_failures() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner(</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>        [<span class="st">"timeout"</span>, <span class="st">"connection refused"</span>, <span class="st">"permission denied"</span>],</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>        ignore_case<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="messages-and-events" class="level3">
+<h3 class="anchored" data-anchor-id="messages-and-events">Messages and Events</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, events<span class="op">=</span>[<span class="st">"tool"</span>, <span class="st">"error"</span>])</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> comprehensive_error_check() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner({</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"errors"</span>: [<span class="st">"error"</span>, <span class="st">"exception"</span>, <span class="st">"failed"</span>],</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"warnings"</span>: [<span class="st">"warning"</span>, <span class="st">"deprecated"</span>],</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    })</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -910,11 +1120,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./db_importing.html" class="pagination-link" aria-label="Importing">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Importing</span>
+      <a href="./llm_scanner.html" class="pagination-link" aria-label="LLM Scanner">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">LLM Scanner</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
+      <a href="./results.html" class="pagination-link" aria-label="Results">
+        <span class="nav-page-text">Results</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
   </div>
 </nav>
 </div> <!-- /content -->

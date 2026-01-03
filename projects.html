@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Reference – Inspect Scout</title>
+<title>Projects – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,28 +20,64 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
-<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="../site_libs/quarto-nav/headroom.min.js"></script>
-<script src="../site_libs/clipboard/clipboard.min.js"></script>
-<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="../site_libs/quarto-search/fuse.min.js"></script>
-<script src="../site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="../">
-<link href="../reference/scanning.html" rel="next">
-<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
-<script src="../site_libs/quarto-html/popper.min.js"></script>
-<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="../site_libs/quarto-html/anchor.min.js"></script>
-<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-58f3f7d8222792c3c3a2edf9e2d9a6e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./transcripts.html" rel="next">
+<link href="./workflow.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-58f3f7d8222792c3c3a2edf9e2d9a6e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -86,9 +122,9 @@ ul.task-list li input[type="checkbox"] {
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <a href="./index.html" class="navbar-brand navbar-brand-logo">
     </a>
-    <a class="navbar-brand" href="../index.html">
+    <a class="navbar-brand" href="./index.html">
     <span class="navbar-title">Inspect Scout</span>
     </a>
   </div>
@@ -99,7 +135,7 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../index.html" aria-current="page"> 
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
   <li class="nav-item dropdown ">
@@ -108,35 +144,35 @@ ul.task-list li input[type="checkbox"] {
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
         <li>
-    <a class="dropdown-item" href="../workflow.html">
+    <a class="dropdown-item" href="./workflow.html">
  <span class="dropdown-text">Workflow</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../projects.html">
+    <a class="dropdown-item" href="./projects.html">
  <span class="dropdown-text">Projects</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../transcripts.html">
+    <a class="dropdown-item" href="./transcripts.html">
  <span class="dropdown-text">Transcripts</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../scanners.html">
+    <a class="dropdown-item" href="./scanners.html">
  <span class="dropdown-text">Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../llm_scanner.html">
+    <a class="dropdown-item" href="./llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../grep_scanner.html">
+    <a class="dropdown-item" href="./grep_scanner.html">
  <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../results.html">
+    <a class="dropdown-item" href="./results.html">
  <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../validation.html">
+    <a class="dropdown-item" href="./validation.html">
  <span class="dropdown-text">Validation</span></a>
   </li>  
     </ul>
@@ -147,31 +183,31 @@ ul.task-list li input[type="checkbox"] {
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-transcripts">    
         <li>
-    <a class="dropdown-item" href="../db_overview.html">
+    <a class="dropdown-item" href="./db_overview.html">
  <span class="dropdown-text">Transcripts Database</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../db_schema.html">
+    <a class="dropdown-item" href="./db_schema.html">
  <span class="dropdown-text">Database Schema</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../db_importing.html">
+    <a class="dropdown-item" href="./db_importing.html">
  <span class="dropdown-text">Importing Transcripts</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../db_publishing.html">
+    <a class="dropdown-item" href="./db_publishing.html">
  <span class="dropdown-text">Publishing Transcripts</span></a>
   </li>  
     </ul>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
+    <a class="nav-link" href="./reference/index.html"> 
 <span class="menu-text">Reference</span></a>
   </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../CHANGELOG.html"> 
+    <a class="nav-link" href="./CHANGELOG.html"> 
 <span class="menu-text">Changelog</span></a>
   </li>  
   <li class="nav-item compact">
@@ -190,521 +226,135 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Reference</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./workflow.html">Using Scout</a></li><li class="breadcrumb-item"><a href="./projects.html">Projects</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
   </nav>
 </header>
 <!-- content -->
-<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
     <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
-      <a href="../index.html" class="sidebar-logo-link">
+      <a href="./index.html" class="sidebar-logo-link">
       </a>
       </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/index.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Reference</span></a>
-  </div>
-</li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Python API</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Getting Started</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanning</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan</span></a>
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_resume" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_complete" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#project" class="sidebar-item-text sidebar-link">
- <span class="menu-text">project</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ProjectConfig</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanjob</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJob</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJobConfig</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerspec" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerSpec</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerwork" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerWork</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#worklist" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Worklist</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Status</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanoptions" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanOptions</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanrevision" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanRevision</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scantranscripts" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanTranscripts</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#transcriptfield" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptField</span></a>
+  <a href="./index.html#scout-basics" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scout Basics</span></a>
   </div>
 </li>
       </ul>
   </li>
-          <li class="sidebar-item sidebar-item-section">
+        <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/results.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">results</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <a href="./workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Using Scout</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_list" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_list</span></a>
+  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Workflow</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_status</span></a>
+  <a href="./projects.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Projects</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Status</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#summary" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Summary</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_results_df" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_df</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scanresultsdf" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanResultsDF</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scan_results_arrow" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_arrow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#scanresultsarrow" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanResultsArrow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validation_set" class="sidebar-item-text sidebar-link">
- <span class="menu-text">validation_set</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validationset" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ValidationSet</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validationcase" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ValidationCase</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/results.html#validationpredicate" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ValidationPredicate</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/transcript.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcript</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_from" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_from</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcript" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcript</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
+  <a href="./transcripts.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Transcripts</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsreader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsReader</span></a>
+  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanners</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_db" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_db</span></a>
+  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LLM Scanner</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsdb" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsDB</span></a>
+  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Grep Scanner</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#column" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Column</span></a>
+  <a href="./results.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Results</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#condition" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Condition</span></a>
+  <a href="./validation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Validation</span></a>
   </div>
 </li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#logcolumns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LogColumns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">log_columns</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanner</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#scanner" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#scannerinput" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerInput</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#result" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Result</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#reference" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Reference</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#error" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Error</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#loader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Loader</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#llm_scanner" class="sidebar-item-text sidebar-link">
- <span class="menu-text">llm_scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#grep_scanner" class="sidebar-item-text sidebar-link">
- <span class="menu-text">grep_scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#answermultilabel" class="sidebar-item-text sidebar-link">
- <span class="menu-text">AnswerMultiLabel</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#answerstructured" class="sidebar-item-text sidebar-link">
- <span class="menu-text">AnswerStructured</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messages_as_str" class="sidebar-item-text sidebar-link">
- <span class="menu-text">messages_as_str</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messageformatoptions" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessageFormatOptions</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messagespreprocessor" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessagesPreprocessor</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#messagetype" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessageType</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#eventtype" class="sidebar-item-text sidebar-link">
- <span class="menu-text">EventType</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#refusalerror" class="sidebar-item-text sidebar-link">
- <span class="menu-text">RefusalError</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#scanner" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#loader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">loader</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#as_scorer" class="sidebar-item-text sidebar-link">
- <span class="menu-text">as_scorer</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/async.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">async</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_resume_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_complete_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_list_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_list_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_status_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_status_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_results_df_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_df_async</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/async.html#scan_results_arrow_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_arrow_async</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scout CLI</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a href="./db_overview.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcripts Database</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout scan</span></a>
+  <a href="./db_overview.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Overview</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout view</span></a>
+  <a href="./db_schema.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Schema</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_trace.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout trace</span></a>
+  <a href="./db_importing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Importing</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_db.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout db</span></a>
+  <a href="./db_publishing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Publishing</span></a>
   </div>
 </li>
       </ul>
@@ -715,26 +365,29 @@ ul.task-list li input[type="checkbox"] {
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
+        <nav id="TOC" role="doc-toc" class="toc-active">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#python-api" id="toc-python-api" class="nav-link active" data-scroll-target="#python-api">Python API</a></li>
-  <li><a href="#scount-cli" id="toc-scount-cli" class="nav-link" data-scroll-target="#scount-cli">Scount CLI</a></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#project-config" id="toc-project-config" class="nav-link" data-scroll-target="#project-config">Project Config</a></li>
+  <li><a href="#environment-files" id="toc-environment-files" class="nav-link" data-scroll-target="#environment-files">Environment (.env)</a></li>
+  <li><a href="#scan-jobs" id="toc-scan-jobs" class="nav-link" data-scroll-target="#scan-jobs">Scan Jobs</a></li>
+  <li><a href="#project-discovery" id="toc-project-discovery" class="nav-link" data-scroll-target="#project-discovery">Project Discovery</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content column-body" id="quarto-document-content">
+<main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./workflow.html">Using Scout</a></li><li class="breadcrumb-item"><a href="./projects.html">Projects</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Reference</h1>
+<h1 class="title">Projects</h1>
 </div>
 
 
 
-<div class="quarto-title-meta column-body">
+<div class="quarto-title-meta">
 
     
   
@@ -746,67 +399,221 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="python-api" class="level4">
-<h4 class="anchored" data-anchor-id="python-api">Python API</h4>
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>In some cases you’ll prefer to define your transcript source, scanning model, and other configuration once for a project rather than each time you run <code>scout scan</code>. You can do this with a <code>scout.yaml</code> project file.</p>
+<p>For example, if we have this project file in our working directory:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scout.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" data-filename="scout.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">transcripts</span><span class="kw">:</span><span class="at"> s3://weave-rollouts/cybench</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/gpt-5</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Then we can run a scan with simply:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can also define the location of scanning results and other configuration in project files. For example:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scout.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" data-filename="scout.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">transcripts</span><span class="kw">:</span><span class="at"> s3://weave-rollouts/cybench</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">results</span><span class="kw">:</span><span class="at"> ./cybench-scans</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">max_processes</span><span class="kw">:</span><span class="at"> </span><span class="dv">4</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/gpt-5</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="fu">generate_config</span><span class="kw">:</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="at">   </span><span class="fu">temperature</span><span class="kw">:</span><span class="at"> </span><span class="fl">0.0</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="at">   </span><span class="fu">reasoning_effort</span><span class="kw">:</span><span class="at"> minimal</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="at">   </span><span class="fu">max_connections</span><span class="kw">:</span><span class="at"> </span><span class="dv">50</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="fu">tags</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">ctf</span><span class="kw">,</span><span class="at"> cybench</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Note that <code>scout.yaml</code> project files are intended to be checked in to version control so do not contain secrets. See the section below on using <a href="#environment-files">environment files</a> for details on handling secrets.</p>
+</section>
+<section id="project-config" class="level2">
+<h2 class="anchored" data-anchor-id="project-config">Project Config</h2>
+<p>Project files support all of the same options available to <a href="#scan-jobs">scan jobs</a>. The table below describes the available configuration fields:</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 75%">
+<col style="width: 20%">
+<col style="width: 18%">
+<col style="width: 62%">
 </colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
 <tbody>
 <tr class="odd">
-<td><a href="../reference/scanning.html">Scanning</a></td>
-<td>Scan transcripts and manage scan jobs.</td>
+<td><code>name</code></td>
+<td>str</td>
+<td>Project name (defaults to directory name).</td>
 </tr>
 <tr class="even">
-<td><a href="../reference/results.html">Results</a></td>
-<td>Status and results of scan jobs.</td>
+<td><code>transcripts</code></td>
+<td>str | list</td>
+<td>Transcript source: local path, S3 URL, or list of sources.</td>
 </tr>
 <tr class="odd">
-<td><a href="../reference/transcript.html">Transcripts</a></td>
-<td>Read and filter transcripts.</td>
+<td><code>results</code></td>
+<td>str</td>
+<td>Location for scan results (defaults to <code>./scans</code>).</td>
 </tr>
 <tr class="even">
-<td><a href="../reference/scanner.html">Scanners</a></td>
-<td>Implement scanners and loaders.</td>
+<td><code>model</code></td>
+<td>str</td>
+<td>Model for scanning (e.g., <code>openai/gpt-5</code>).</td>
 </tr>
 <tr class="odd">
-<td><a href="../reference/async.html">Async</a></td>
-<td>Async functions for scanning.</td>
+<td><code>model_base_url</code></td>
+<td>str</td>
+<td>Base URL for model API.</td>
+</tr>
+<tr class="even">
+<td><code>model_args</code></td>
+<td>dict | str</td>
+<td>Model creation args as a dictionary or path to JSON/YAML file.</td>
+</tr>
+<tr class="odd">
+<td><code>generate_config</code></td>
+<td>dict</td>
+<td>Generation config (e.g., <code>temperature</code>)</td>
+</tr>
+<tr class="even">
+<td><code>model_roles</code></td>
+<td>dict</td>
+<td>Named model roles for use with <code>get_model()</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>max_transcripts</code></td>
+<td>int</td>
+<td>Maximum concurrent transcripts to process (defaults to 25).</td>
+</tr>
+<tr class="even">
+<td><code>max_processes</code></td>
+<td>int</td>
+<td>Maximum concurrent processes for multiprocessing (defaults to 4).</td>
+</tr>
+<tr class="odd">
+<td><code>limit</code></td>
+<td>int</td>
+<td>Limit the number of transcripts processed.</td>
+</tr>
+<tr class="even">
+<td><code>shuffle</code></td>
+<td>bool | int</td>
+<td>Shuffle transcript order. Pass an <code>int</code> to set a random seed.</td>
+</tr>
+<tr class="odd">
+<td><code>tags</code></td>
+<td>list</td>
+<td>Tags to associate with scans (e.g., <code>[ctf, cybench]</code>).</td>
+</tr>
+<tr class="even">
+<td><code>metadata</code></td>
+<td>dict</td>
+<td>Arbitrary metadata to associate with scans.</td>
+</tr>
+<tr class="odd">
+<td><code>log_level</code></td>
+<td>str</td>
+<td>Console log level (defaults to <code>warning</code>).</td>
+</tr>
+<tr class="even">
+<td><code>scanners</code></td>
+<td>list | dict</td>
+<td>Scanner specifications to include in all scans.</td>
+</tr>
+<tr class="odd">
+<td><code>worklist</code></td>
+<td>list</td>
+<td>Transcript IDs to process for each scanner.</td>
+</tr>
+<tr class="even">
+<td><code>validation</code></td>
+<td>dict</td>
+<td>Validation sets to apply for specific scanners.</td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="scount-cli" class="level4">
-<h4 class="anchored" data-anchor-id="scount-cli">Scount CLI</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 75%">
-</colgroup>
-<tbody>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html">scout scan</a></td>
-<td>Scan transcripts.</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/scout_scan.html#scout-scan-resume">scout scan resume</a></td>
-<td>Resume a scan which is incomplete due to interruption or errors.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html#scout-scan-complete">scout scan complete</a></td>
-<td>Complete a scan which is incomplete due to errors (errors are not retried).</td>
-</tr>
-<tr class="even">
-<td><a href="../reference/scout_scan.html#scout-scan-resume">scout scan list</a></td>
-<td>List the scans within a scan results directory.</td>
-</tr>
-<tr class="odd">
-<td><a href="../reference/scout_scan.html#scout-scan-status">scout scan status</a></td>
-<td>Print the status of a scan.</td>
-</tr>
-</tbody>
-</table>
+<section id="environment-files" class="level2">
+<h2 class="anchored" data-anchor-id="environment-files">Environment (.env)</h2>
+<p>While <code>scout.yaml</code> project files are intended to be checked into version control, you’ll often have secrets and credentials that should not be committed. Use a <code>.env</code> file for these values.</p>
+<p>Common secrets to store in <code>.env</code>:</p>
+<ul>
+<li>API keys: <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, etc.</li>
+<li>Access tokens: <code>HF_TOKEN</code> for Hugging Face datasets and models.</li>
+<li>Cloud credentials: AWS credentials for S3 access</li>
+</ul>
+<p>When you run <code>scout scan</code> or other Scout commands, the <code>.env</code> file in your working directory (or any parent directory) is automatically loaded. For example:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>.env</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-filename=".env"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="va">OPENAI_API_KEY</span><span class="op">=</span>sk-...</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="va">ANTHROPIC_API_KEY</span><span class="op">=</span>sk-ant-...</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="va">AWS_ACCESS_KEY_ID</span><span class="op">=</span>AKIA...</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="va">AWS_SECRET_ACCESS_KEY</span><span class="op">=</span>...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Be sure to add <code>.env</code> to your <code>.gitignore</code> file to prevent accidentally committing secrets.</p>
+<p>See the Inspect AI documentation on <a href="https://inspect.aisi.org.uk/options.html#env-files">environment files</a> for additional details on <code>.env</code> file handling</p>
+</section>
+<section id="scan-jobs" class="level2">
+<h2 class="anchored" data-anchor-id="scan-jobs">Scan Jobs</h2>
+<p>Projects share all configuration fields with <a href="./reference/scanning.html#scanjob">scan jobs</a>. When you run a scan, the project configuration is automatically merged with the scan job (whether defined in code via <code>@scanjob</code> or in a YAML/JSON config file).</p>
+<p>The merge follows these rules:</p>
+<ul>
+<li><p>For simple fields like <code>transcripts</code>, <code>results</code>, <code>model</code>, <code>max_transcripts</code>, etc., the project value is used only when the scan job doesn’t specify a value.</p></li>
+<li><p>The model configuration (<code>model</code>, <code>model_base_url</code>, <code>model_args</code>, <code>generate_config</code>) is treated as an atomic unit. If the scan job specifies a model, all model-related configuration comes from the scan job. Otherwise, all model configuration comes from the project.</p></li>
+<li><p>For collection fields like <code>tags</code>, <code>metadata</code>, <code>scanners</code>, <code>worklist</code>, and <code>validation</code>, values from both the project and scan job are combined. If there are key conflicts, the scan job value takes precedence.</p></li>
+</ul>
+<p>For example, given this project:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scout.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename="scout.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">transcripts</span><span class="kw">:</span><span class="at"> s3://weave-rollouts/cybench</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/gpt-5</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">tags</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">production</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>And this scan job:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scan.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="scan.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">scanners</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">file</span><span class="kw">:</span><span class="at"> scanner.py</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="fu">tags</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">safety-audit</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The effective configuration will use <code>transcripts</code> and <code>model</code> from the project, <code>scanners</code> from the scan job, and the merged tags <code>[production, safety-audit]</code>.</p>
+</section>
+<section id="project-discovery" class="level2">
+<h2 class="anchored" data-anchor-id="project-discovery">Project Discovery</h2>
+<p>When you run <code>scout scan</code> or other Scout commands, the system automatically searches for a <code>scout.yaml</code> project file using the following algorithm:</p>
+<ol type="1">
+<li>Start in the current working directory</li>
+<li>Look for a <code>scout.yaml</code> file</li>
+<li>If not found, move to the parent directory and repeat</li>
+<li>Stop searching when either:
+<ul>
+<li>A <code>scout.yaml</code> file is found</li>
+<li>The git repository root is reached (if in a git repo)</li>
+<li>The filesystem root is reached</li>
+</ul></li>
+</ol>
+<p>If no project file is found, Scout uses the following defaults:</p>
+<ul>
+<li><code>name</code>: Project directory name</li>
+<li><code>transcripts</code>: <code>./transcripts</code> (if that directory exists) or <code>./logs</code> (if that directory exists)</li>
+<li><code>results</code>: <code>./scans</code></li>
+</ul>
+<p>This discovery mechanism allows you to place a <code>scout.yaml</code> file at the root of your project and have it automatically apply to all scans run from any subdirectory.</p>
 
 
 </section>
@@ -1253,12 +1060,15 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
-<nav class="page-navigation column-body">
+<nav class="page-navigation">
   <div class="nav-page nav-page-previous">
+      <a href="./workflow.html" class="pagination-link" aria-label="Using Scout">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Using Scout</span>
+      </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/scanning.html" class="pagination-link" aria-label="Python API">
-        <span class="nav-page-text">Python API</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./transcripts.html" class="pagination-link" aria-label="Transcripts">
+        <span class="nav-page-text">Transcripts</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

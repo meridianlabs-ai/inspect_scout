@@ -1,0 +1,25 @@
+
+
+Scout projects:
+
+1) We already have a concept of Scout Jobs, which can be speicified using YAML or JSON configuration.
+
+2) We'd like to additonally have the concept of a scout.yaml project file. This project file would be represented by class ProjectConfig(ScanJobConfig) and eventually have additional fields in it not covered by scan jobs.
+
+3) When running scout global top level functions or scout CLI commands we would detect the scout project (by hunting up from the either (a) the location of a scanjob file passed on the CLI; or failing that the current working dir). A scout project would be defined by the presence of scout.yaml in the starting or any parent directory (all the way up to either the root of the filesystem or  the root directory of the current git repository). This could be done in top_level_async_init (and passed the 'scanners' argument where it is available to determine the directory to hunt from).
+
+4) We would then read the project and track the current project config in a global variable.
+
+5) For functions like view() the project can be be used to provide defaults for arguments like the 'results_dir' and the 'log_level'
+
+6) For scan_async, the project can be used as a base set of values that the resolved scanjob is merged into.  generally values that are not 'None' in the scanjob should win out over anything in the project file. This may be complicated by the fact that ScanJob or ScanJobConfig might default some values -- we should check this, and if this is the case we need to move those defaulting behaviors to after the merge of scanjob into project (if any) occurs. 
+
+There are some fields that should have special merging behavior where they should be combined rather than overwritten when merging. These include:
+
+1. worklist (union of lists)
+2. validation (union of dicts)
+3. scanners (union of dicts)
+4. generate_config (call .merge on the GenerateConfig)
+5. tags (union of lists)
+6. meadata (union of dicts)
+

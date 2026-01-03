@@ -17,8 +17,8 @@ from .._view.view import view
 @click.option(
     "--results",
     type=str,
-    default="./scans",
-    help="Location to read scan results from.",
+    default=None,
+    help="Location to read scan results from. Defaults to project results or './scans'.",
     envvar="SCOUT_SCAN_RESULTS",
 )
 @click.option(
@@ -35,7 +35,7 @@ from .._view.view import view
 )
 @common_options
 def view_command(
-    results: str,
+    results: str | None,
     host: str,
     port: int,
     **common: Unpack[CommonOptions],

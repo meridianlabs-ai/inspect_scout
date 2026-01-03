@@ -4,7 +4,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Counter, Literal, Sequence, TypeVar, cast, overload
 
-from inspect_ai._util.config import read_config_object
+from inspect_ai._util.config import read_config_object, resolve_args
 from inspect_ai._util.decorator import parse_decorators
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import file
@@ -197,6 +197,10 @@ class ScanJob:
 
         # base config
         kwargs = config.model_dump(exclude_none=True)
+
+        # realize model_args
+        if isinstance(config.model_args, str):
+            kwargs["model_args"] = resolve_args(config.model_args)
 
         # realize scanners
         if isinstance(config.scanners, list):

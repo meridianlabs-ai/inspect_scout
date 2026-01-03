@@ -1,0 +1,27 @@
+"""Scout project configuration system.
+
+Provides project-level defaults via scout.yaml files that are merged with
+individual scan job configurations.
+"""
+
+from ._project import (
+    create_default_project,
+    find_git_root,
+    find_project_file,
+    init_project,
+    load_project_config,
+    project,
+)
+from .merge import merge_project_into_scanjob
+from .types import ProjectConfig
+
+__all__ = [
+    "ProjectConfig",
+    "init_project",
+    "project",
+    "merge_project_into_scanjob",
+    "find_git_root",
+    "find_project_file",
+    "load_project_config",
+    "create_default_project",
+]

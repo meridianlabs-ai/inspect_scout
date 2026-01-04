@@ -21,6 +21,7 @@ def view_server(
     host: str,
     port: int,
     authorization: str | None = None,
+    workbench: bool = False,
     fs_options: dict[str, Any] | None = None,
 ) -> None:
     # get filesystem and resolve scan_dir to full path
@@ -57,7 +58,8 @@ def view_server(
     app.mount("/", StaticFiles(directory=dist.as_posix(), html=True), name="static")
 
     # run app
-    display().print(f"Scout View: {results_dir}")
+    title = "Scout" if workbench else "Scout View"
+    display().print(f"{title}: {results_dir}")
 
     async def run_server() -> None:
         config = uvicorn.Config(app, host=host, port=port, log_config=None)
@@ -67,9 +69,9 @@ def view_server(
             while not server.started:
                 await anyio.sleep(0.05)
             # Print this for compatibility with the Inspect VSCode plugin:
+            url = view_url(host, port, workbench)
             display().print(
-                f"======== Running on http://{host}:{port} ========\n"
-                "(Press CTRL+C to quit)"
+                f"======== Running on {url} ========\n(Press CTRL+C to quit)"
             )
 
         async with anyio.create_task_group() as tg:
@@ -77,6 +79,12 @@ def view_server(
             await server.serve()
 
     anyio.run(run_server)
+
+
+def view_url(host: str, port: int, workbench: bool = False) -> str:
+    """Build the view server URL."""
+    workbench_param = "?workbench=1" if workbench else ""
+    return f"http://{host}:{port}{workbench_param}"
 
 
 class AuthorizationMiddleware(BaseHTTPMiddleware):

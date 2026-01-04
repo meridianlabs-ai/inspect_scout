@@ -81,7 +81,11 @@ export const apiVscode = (
     },
     getScans: async (): Promise<ScanJobsResponse> => {
       const data = await fetchScansData();
-      return { items: data.scans, total_count: data.scans.length, next_cursor: null };
+      return {
+        items: data.scans,
+        total_count: data.scans.length,
+        next_cursor: null,
+      };
     },
     getScannerDataframe: async (
       scanLocation: string,

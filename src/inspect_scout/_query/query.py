@@ -63,7 +63,9 @@ class Query:
         register_shuffle: Callable[[Any], None] | None = None
 
         if self.shuffle:
-            assert shuffle_column is not None, "shuffle_column required when shuffle is set"
+            assert shuffle_column is not None, (
+                "shuffle_column required when shuffle is set"
+            )
             seed = 0 if self.shuffle is True else self.shuffle
             order_by_clauses.append(f"shuffle_hash({shuffle_column})")
             register_shuffle = _make_shuffle_registrar(dialect, seed)
@@ -76,7 +78,9 @@ class Query:
 
         # LIMIT clause
         if self.limit is not None:
-            placeholder = "$" + str(len(params) + 1) if dialect == SQLDialect.POSTGRES else "?"
+            placeholder = (
+                "$" + str(len(params) + 1) if dialect == SQLDialect.POSTGRES else "?"
+            )
             parts.append(f" LIMIT {placeholder}")
             params.append(self.limit)
 

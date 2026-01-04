@@ -18,9 +18,7 @@ async def test_lazy_dict_survives_parquet_select(
 ) -> None:
     """Test that LazyJSONDict survives through parquet select()."""
     # Query transcripts
-    results = [
-        info async for info in parquet_db_with_nested_metadata.select(Query())
-    ]
+    results = [info async for info in parquet_db_with_nested_metadata.select(Query())]
     assert len(results) > 0
 
     # Verify metadata is still a LazyJSONDict
@@ -46,9 +44,7 @@ async def test_lazy_dict_survives_parquet_read_no_content(
 ) -> None:
     """Test that LazyJSONDict survives through parquet read() with no content."""
     # Get transcript info
-    infos = [
-        info async for info in parquet_db_with_nested_metadata.select(Query())
-    ]
+    infos = [info async for info in parquet_db_with_nested_metadata.select(Query())]
     info = infos[0]
 
     # Read with no content
@@ -74,9 +70,7 @@ async def test_lazy_dict_survives_parquet_read_with_content(
 ) -> None:
     """Test that LazyJSONDict survives through parquet read() with content."""
     # Get transcript info
-    infos = [
-        info async for info in parquet_db_with_nested_metadata.select(Query())
-    ]
+    infos = [info async for info in parquet_db_with_nested_metadata.select(Query())]
     info = infos[0]
 
     # Read with full content
@@ -102,9 +96,7 @@ async def test_lazy_dict_survives_filter_transcript(
 ) -> None:
     """Test that LazyJSONDict survives through filter_transcript()."""
     # Get full transcript
-    infos = [
-        info async for info in parquet_db_with_nested_metadata.select(Query())
-    ]
+    infos = [info async for info in parquet_db_with_nested_metadata.select(Query())]
     transcript = await parquet_db_with_nested_metadata.read(
         infos[0], TranscriptContent(messages="all", events="all")
     )
@@ -135,9 +127,7 @@ async def test_lazy_dict_survives_eval_log_query(
 ) -> None:
     """Test that LazyJSONDict survives through eval log query()."""
     # Query transcripts
-    results = [
-        info async for info in eval_log_db_with_json_metadata.select(Query())
-    ]
+    results = [info async for info in eval_log_db_with_json_metadata.select(Query())]
     assert len(results) > 0
 
     # Verify metadata is a LazyJSONDict
@@ -163,9 +153,7 @@ async def test_lazy_dict_only_parses_accessed_fields(
 ) -> None:
     """Test that only accessed fields are parsed, not all JSON fields."""
     # Get transcript info
-    infos = [
-        info async for info in parquet_db_with_nested_metadata.select(Query())
-    ]
+    infos = [info async for info in parquet_db_with_nested_metadata.select(Query())]
     info = infos[0]
 
     # Access one field

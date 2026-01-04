@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -97,114 +97,50 @@ def app_with_results_dir(tmp_path: Path) -> TestClient:
 
 
 class TestViewServerAppScansEndpoint:
-    """Tests for the /scans endpoint."""
+    """Tests for the /scanjobs endpoint."""
 
     @pytest.mark.asyncio
     async def test_scans_endpoint_success(
         self, app_with_results_dir: TestClient
     ) -> None:
         """Test successful retrieval of scans list."""
-        mock_scans = [
-            Status(
+        mock_view = AsyncMock()
+        mock_view.count = AsyncMock(return_value=1)
+
+        async def mock_select(query: Any) -> Any:
+            yield Status(
                 complete=True,
                 spec=ScanSpec(scan_name="test_scan", scanners={}, transcripts=None),
                 location="/test/scan1",
                 summary=Summary(scanners={}),
                 errors=[],
             )
-        ]
+
+        mock_view.select = mock_select
 
         with patch(
-            "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
+            "inspect_scout._view._api_v2.scan_jobs_view",
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
         ):
-            response = app_with_results_dir.get("/scans")
+            response = app_with_results_dir.post("/scanjobs", json={})
 
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) == 1
-
-    @pytest.mark.asyncio
-    async def test_scans_endpoint_with_query_param(
-        self, app_with_results_dir: TestClient
-    ) -> None:
-        """Test scans endpoint with results_dir query parameter."""
-        mock_scans: list[Status] = []
-
-        with patch(
-            "inspect_scout._view._api_v2.scan_list_async", return_value=mock_scans
-        ):
-            response = app_with_results_dir.get("/scans?results_dir=/custom/path")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-        assert len(data) == 0
+        assert "items" in data
+        assert len(data["items"]) == 1
 
     @pytest.mark.asyncio
     async def test_scans_endpoint_no_results_dir(self) -> None:
         """Test scans endpoint without results_dir."""
         client = TestClient(v2_api_app(results_dir=None))
 
-        response = client.get("/scans")
+        response = client.post("/scanjobs", json={})
 
         assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
 
-    @pytest.mark.asyncio
-    async def test_scans_endpoint_returns_etag(
-        self, app_with_results_dir: TestClient
-    ) -> None:
-        """Test that /scans returns ETag header."""
-        with (
-            patch("inspect_scout._view._api_v2.scan_list_async", return_value=[]),
-            patch(
-                "inspect_scout._view._api_v2._compute_scans_etag",
-                return_value="abc123",
-            ),
-        ):
-            response = app_with_results_dir.get("/scans")
-
-        assert response.status_code == 200
-        assert response.headers.get("etag") == '"abc123"'
-
-    @pytest.mark.asyncio
-    async def test_scans_endpoint_304_on_matching_etag(
-        self, app_with_results_dir: TestClient
-    ) -> None:
-        """Test 304 returned when If-None-Match matches ETag."""
-        with patch(
-            "inspect_scout._view._api_v2._compute_scans_etag",
-            return_value="abc123",
-        ):
-            response = app_with_results_dir.get(
-                "/scans", headers={"If-None-Match": '"abc123"'}
-            )
-
-        assert response.status_code == 304
-        assert response.headers.get("etag") == '"abc123"'
-
-    @pytest.mark.asyncio
-    async def test_scans_endpoint_200_on_mismatched_etag(
-        self, app_with_results_dir: TestClient
-    ) -> None:
-        """Test full response when If-None-Match doesn't match."""
-        with (
-            patch("inspect_scout._view._api_v2.scan_list_async", return_value=[]),
-            patch(
-                "inspect_scout._view._api_v2._compute_scans_etag",
-                return_value="abc123",
-            ),
-        ):
-            response = app_with_results_dir.get(
-                "/scans", headers={"If-None-Match": '"old-etag"'}
-            )
-
-        assert response.status_code == 200
-        assert response.headers.get("etag") == '"abc123"'
-
 
 class TestViewServerAppScanDfEndpoint:
-    """Tests for the /scans/{scan}/{scanner} endpoint."""
+    """Tests for the /scanjobs/{scan}/{scanner} endpoint."""
 
     @pytest.mark.asyncio
     async def test_scanner_df_endpoint_success(
@@ -230,7 +166,7 @@ class TestViewServerAppScanDfEndpoint:
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
-                f"/scans/{base64url('test_scan')}/scanner1"
+                f"/scanjobs/{base64url('test_scan')}/scanner1"
             )
 
         assert response.status_code == 200
@@ -252,14 +188,14 @@ class TestViewServerAppScanDfEndpoint:
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
-                f"/scans/{base64url('test_scan')}/nonexistent"
+                f"/scanjobs/{base64url('test_scan')}/nonexistent"
             )
 
         assert response.status_code == HTTP_404_NOT_FOUND
 
 
 class TestViewServerAppScanEndpoint:
-    """Tests for the /scans/{scan} endpoint."""
+    """Tests for the /scanjobs/{scan} endpoint."""
 
     @pytest.mark.asyncio
     async def test_scan_endpoint_success(
@@ -279,7 +215,7 @@ class TestViewServerAppScanEndpoint:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")
+            response = app_with_results_dir.get(f"/scanjobs/{base64url('test_scan')}")
 
         assert response.status_code == 200
         data = response.json()
@@ -302,9 +238,22 @@ class TestAuthorizationMiddleware:
 
         client = TestClient(main_app)
 
-        with patch("inspect_scout._view._api_v2.scan_list_async", return_value=[]):
-            response = client.get(
-                "/api/v2/scans?results_dir=/test",
+        mock_view = AsyncMock()
+        mock_view.count = AsyncMock(return_value=0)
+
+        async def mock_select(query: Any) -> Any:
+            return
+            yield  # make it a generator
+
+        mock_view.select = mock_select
+
+        with patch(
+            "inspect_scout._view._api_v2.scan_jobs_view",
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
+        ):
+            response = client.post(
+                "/api/v2/scanjobs",
+                json={},
                 headers={"Authorization": test_auth},
             )
 
@@ -322,8 +271,9 @@ class TestAuthorizationMiddleware:
 
         client = TestClient(main_app)
 
-        response = client.get(
-            "/api/v2/scans?results_dir=/test",
+        response = client.post(
+            "/api/v2/scanjobs",
+            json={},
             headers={"Authorization": "Bearer wrong-token"},
         )
 
@@ -341,7 +291,7 @@ class TestAuthorizationMiddleware:
 
         client = TestClient(main_app)
 
-        response = client.get("/api/v2/scans?results_dir=/test")
+        response = client.post("/api/v2/scanjobs", json={})
 
         assert response.status_code == 401
 
@@ -360,7 +310,7 @@ class TestAccessPolicy:
         )
 
         with patch("inspect_scout._view._api_v2.scan_results_df_async") as mock_scan:
-            response = client.get(f"/scans/{base64url('test_scan')}")
+            response = client.get(f"/scanjobs/{base64url('test_scan')}")
 
         assert response.status_code == HTTP_403_FORBIDDEN
         mock_scan.assert_not_called()
@@ -375,11 +325,11 @@ class TestAccessPolicy:
             v2_api_app(access_policy=mock_access_policy, results_dir="/test")
         )
 
-        with patch("inspect_scout._view._api_v2.scan_list_async") as mock_list:
-            response = client.get("/scans?results_dir=/test")
+        with patch("inspect_scout._view._api_v2.scan_jobs_view") as mock_view:
+            response = client.post("/scanjobs", json={})
 
         assert response.status_code == HTTP_403_FORBIDDEN
-        mock_list.assert_not_called()
+        mock_view.assert_not_called()
 
 
 class TestViewServerAppEdgeCases:
@@ -405,7 +355,7 @@ class TestViewServerAppEdgeCases:
         ):
             # Use relative path (base64url encoded)
             response = app_with_results_dir.get(
-                f"/scans/{base64url('relative/path/scan')}"
+                f"/scanjobs/{base64url('relative/path/scan')}"
             )
 
         assert response.status_code == 200
@@ -434,7 +384,7 @@ class TestViewServerAppEdgeCases:
             "inspect_scout._view._api_v2.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")
+            response = app_with_results_dir.get(f"/scanjobs/{base64url('test_scan')}")
 
         assert response.status_code == 200
         data = response.json()

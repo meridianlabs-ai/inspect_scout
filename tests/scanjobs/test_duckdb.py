@@ -185,8 +185,7 @@ async def test_select_with_filter_and_limit(duckdb_view: DuckDBScanJobsView) -> 
     """Test filtering and limiting together."""
     condition = c.complete == True  # noqa: E712
     results = [
-        status
-        async for status in duckdb_view.select(Query(where=[condition], limit=3))
+        status async for status in duckdb_view.select(Query(where=[condition], limit=3))
     ]
     assert len(results) == 3
 

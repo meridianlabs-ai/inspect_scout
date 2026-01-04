@@ -73,7 +73,11 @@ export const apiScoutServerV1 = (
 
     getScans: async (): Promise<ScanJobsResponse> => {
       const result = await readScans();
-      return { items: result.scans, total_count: result.scans.length, next_cursor: null };
+      return {
+        items: result.scans,
+        total_count: result.scans.length,
+        next_cursor: null,
+      };
     },
     getScannerDataframe: async (
       scanLocation: string,

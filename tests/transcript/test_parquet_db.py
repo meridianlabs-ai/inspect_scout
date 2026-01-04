@@ -351,7 +351,10 @@ async def test_select_with_order_by_chaining(
         info
         async for info in populated_db.select(
             Query(
-                order_by=[OrderBy(c.task_set.name, "ASC"), OrderBy(c.index.name, "DESC")]
+                order_by=[
+                    OrderBy(c.task_set.name, "ASC"),
+                    OrderBy(c.index.name, "DESC"),
+                ]
             )
         )
     ]
@@ -391,7 +394,9 @@ async def test_order_by_with_where_and_limit(
     results = [
         info
         async for info in populated_db.select(
-            Query(where=where_clause, limit=limit, order_by=[OrderBy(c.index.name, "ASC")])
+            Query(
+                where=where_clause, limit=limit, order_by=[OrderBy(c.index.name, "ASC")]
+            )
         )
     ]
 

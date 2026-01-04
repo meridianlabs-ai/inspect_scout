@@ -687,8 +687,7 @@ async def test_select_with_order_by_single_column(
 ) -> None:
     """Test ordering by single column with various directions."""
     results = [
-        item
-        async for item in db.select(Query(order_by=[OrderBy(column, direction)]))
+        item async for item in db.select(Query(order_by=[OrderBy(column, direction)]))
     ]
     values = [extractor(r) for r in results if extractor(r) is not None]
     assert values == sorted(values, reverse=reverse)
@@ -793,7 +792,8 @@ async def test_order_by_empty_results(db: EvalLogTranscriptsView) -> None:
         item
         async for item in db.select(
             Query(
-                where=[c.model == "nonexistent"], order_by=[OrderBy(c.score.name, "ASC")]
+                where=[c.model == "nonexistent"],
+                order_by=[OrderBy(c.score.name, "ASC")],
             )
         )
     ]
@@ -953,7 +953,9 @@ async def test_empty_in_clause_in_db(db: Any) -> None:
             Query(
                 where=[
                     c.score > 0.5,
-                    c.status.not_in([]),  # This is always true, shouldn't affect results
+                    c.status.not_in(
+                        []
+                    ),  # This is always true, shouldn't affect results
                 ]
             )
         )
@@ -1004,9 +1006,7 @@ async def test_transcript_ids_with_filter(db: EvalLogTranscriptsView) -> None:
     assert 0 < len(ids) < 20
     for tid in ids.keys():
         # Verify filtered IDs match select results
-        results = [
-            item async for item in db.select(Query(where=[c.model == "gpt-4"]))
-        ]
+        results = [item async for item in db.select(Query(where=[c.model == "gpt-4"]))]
         result_ids = {r.transcript_id for r in results}
         assert tid in result_ids
 

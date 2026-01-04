@@ -492,9 +492,7 @@ async def test_transcripts_complex_filtering(db: EvalLogTranscriptsView) -> None
         ]
 
         # Verify results match conditions
-        results = [
-            item async for item in db.select(Query(where=conditions, limit=10))
-        ]
+        results = [item async for item in db.select(Query(where=conditions, limit=10))]
         assert len(results) > 0
         for result in results:
             # Check the OR condition

@@ -14,7 +14,7 @@ from starlette.status import (
 )
 from upath import UPath
 
-from .._query import Column
+from .._query import Column, Query
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
@@ -202,13 +202,15 @@ def v2_api_app(
             ctx = build_pagination_context(body, "transcript_id")
 
             async with transcripts_view(transcripts_dir) as view:
-                count = await view.count(ctx.filter_conditions or None)
+                count = await view.count(Query(where=ctx.filter_conditions or []))
                 results = [
                     t
                     async for t in view.select(
-                        where=ctx.conditions or None,
-                        limit=ctx.limit,
-                        order_by=ctx.db_order_columns or None,
+                        Query(
+                            where=ctx.conditions or [],
+                            limit=ctx.limit,
+                            order_by=ctx.db_order_columns or [],
+                        )
                     )
                 ]
 
@@ -251,7 +253,7 @@ def v2_api_app(
 
         async with transcripts_view(transcripts_dir) as view:
             condition = Column("transcript_id") == id
-            infos = [info async for info in view.select(where=[condition])]
+            infos = [info async for info in view.select(Query(where=[condition]))]
             if not infos:
                 raise HTTPException(
                     status_code=HTTP_404_NOT_FOUND, detail="Transcript not found"
@@ -278,13 +280,15 @@ def v2_api_app(
         ctx = build_pagination_context(body, "scan_id")
 
         async with await scan_jobs_view(validated_results_dir) as view:
-            count = await view.count(ctx.filter_conditions or None)
+            count = await view.count(Query(where=ctx.filter_conditions or []))
             results = [
                 status
                 async for status in view.select(
-                    where=ctx.conditions or None,
-                    limit=ctx.limit,
-                    order_by=ctx.db_order_columns or None,
+                    Query(
+                        where=ctx.conditions or [],
+                        limit=ctx.limit,
+                        order_by=ctx.db_order_columns or [],
+                    )
                 )
             ]
 

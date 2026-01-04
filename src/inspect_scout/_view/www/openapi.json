@@ -3883,6 +3883,82 @@
         "title": "SandboxEvent",
         "type": "object"
       },
+      "ScanJobsRequest": {
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderBy"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OrderBy"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order By"
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ScanJobsRequest",
+        "type": "object"
+      },
+      "ScanJobsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Status"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "ScanJobsResponse",
+        "type": "object"
+      },
       "ScanOptions": {
         "description": "Options used for scan.",
         "properties": {
@@ -6701,43 +6777,33 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/scans": {
-      "get": {
-        "description": "Returns all scans in the results directory. Supports ETag caching.",
-        "operationId": "scans_scans_get",
-        "parameters": [
-          {
-            "description": "Results directory containing scans. Required if not configured server-side.",
-            "in": "query",
-            "name": "results_dir",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Results directory containing scans. Required if not configured server-side.",
-              "examples": [
-                "/path/to/results"
-              ],
-              "title": "Results Dir"
+    "/scanjobs": {
+      "post": {
+        "description": "Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
+        "operationId": "scans_scanjobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ScanJobsRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/Status"
-                  },
-                  "title": "Response Scans Scans Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/ScanJobsResponse"
                 }
               }
             },
@@ -6747,10 +6813,10 @@
         "summary": "List scans"
       }
     },
-    "/scans-dir": {
+    "/scanjobs-dir": {
       "get": {
         "description": "Returns the default directory path where scans are stored.",
-        "operationId": "scans_dir_scans_dir_get",
+        "operationId": "scans_dir_scanjobs_dir_get",
         "responses": {
           "200": {
             "content": {
@@ -6766,10 +6832,10 @@
         "summary": "Get default scans directory"
       }
     },
-    "/scans/{scan}": {
+    "/scanjobs/{scan}": {
       "get": {
         "description": "Returns detailed status and metadata for a single scan.",
-        "operationId": "scan_scans__scan__get",
+        "operationId": "scan_scanjobs__scan__get",
         "parameters": [
           {
             "description": "Scan path (base64url-encoded)",
@@ -6798,10 +6864,10 @@
         "summary": "Get scan status"
       }
     },
-    "/scans/{scan}/{scanner}": {
+    "/scanjobs/{scan}/{scanner}": {
       "get": {
         "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.",
-        "operationId": "scan_df_scans__scan___scanner__get",
+        "operationId": "scan_df_scanjobs__scan___scanner__get",
         "parameters": [
           {
             "description": "Scan path (base64url-encoded)",
@@ -6839,10 +6905,10 @@
         "summary": "Get scanner dataframe containing results for all transcripts"
       }
     },
-    "/scans/{scan}/{scanner}/{uuid}/input": {
+    "/scanjobs/{scan}/{scanner}/{uuid}/input": {
       "get": {
         "description": "Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.",
-        "operationId": "scanner_input_scans__scan___scanner___uuid__input_get",
+        "operationId": "scanner_input_scanjobs__scan___scanner___uuid__input_get",
         "parameters": [
           {
             "description": "Scan path (base64url-encoded)",

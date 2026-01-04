@@ -1,13 +1,15 @@
 import abc
 from copy import deepcopy
-from dataclasses import dataclass, field
 from types import TracebackType
 from typing import AsyncIterator, Literal
 
+from inspect_scout._query import Query
+from inspect_scout._query.order_by import OrderBy
 from inspect_scout._validation.types import ValidationCase, ValidationSet
 
+from .._query.condition import Condition
 from .._scanspec import ScanTranscripts
-from .columns import Column, Condition
+from .columns import Column
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
 
@@ -51,23 +53,6 @@ class TranscriptsReader(abc.ABC):
     async def snapshot(self) -> ScanTranscripts: ...
 
 
-@dataclass
-class TranscriptsQuery:
-    """Selection crtiteria for transcripts."""
-
-    where: list[Condition] = field(default_factory=list)
-    """Where clauses for query."""
-
-    limit: int | None = None
-    """Limit on total results form query."""
-
-    shuffle: bool | int = False
-    """Shuffle results randomly (use with limit to take random draws)."""
-
-    order_by: list[tuple[str, Literal["ASC", "DESC"]]] = field(default_factory=list)
-    """Column names and directions for ordering (ASC/DESC)."""
-
-
 class Transcripts(abc.ABC):
     """Collection of transcripts for scanning.
 
@@ -85,7 +70,7 @@ class Transcripts(abc.ABC):
     """
 
     def __init__(self) -> None:
-        self._query = TranscriptsQuery()
+        self._query = Query()
 
     def where(self, condition: Condition) -> "Transcripts":
         """Filter the transcript collection by a `Condition`.
@@ -205,7 +190,7 @@ class Transcripts(abc.ABC):
             Transcripts for scanning.
         """
         transcripts = deepcopy(self)
-        transcripts._query.order_by.append((column.name, direction))
+        transcripts._query.order_by.append(OrderBy(column.name, direction))
         return transcripts
 
     @abc.abstractmethod

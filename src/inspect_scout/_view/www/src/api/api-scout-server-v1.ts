@@ -1,6 +1,6 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import { Status } from "../types";
-import { TranscriptsResponse } from "../types/api-types.ts";
+import { ScanJobsResponse, TranscriptsResponse } from "../types/api-types.ts";
 import { asyncJsonParse } from "../utils/json-worker.ts";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -71,9 +71,13 @@ export const apiScoutServerV1 = (
       return asyncJsonParse<Status>(result.raw);
     },
 
-    getScans: async (): Promise<Status[]> => {
+    getScans: async (): Promise<ScanJobsResponse> => {
       const result = await readScans();
-      return result.scans;
+      return {
+        items: result.scans,
+        total_count: result.scans.length,
+        next_cursor: null,
+      };
     },
     getScannerDataframe: async (
       scanLocation: string,

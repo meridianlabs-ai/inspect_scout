@@ -3,7 +3,7 @@ import JSON5 from "json5";
 import { Input, InputType } from "../app/types";
 import { Condition } from "../query/types";
 import { Status } from "../types";
-import { TranscriptsResponse } from "../types/api-types";
+import { ScanJobsResponse, TranscriptsResponse } from "../types/api-types";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
@@ -79,9 +79,13 @@ export const apiVscode = (
         );
       }
     },
-    getScans: async (_scansDir?: string): Promise<Status[]> => {
+    getScans: async (): Promise<ScanJobsResponse> => {
       const data = await fetchScansData();
-      return data.scans;
+      return {
+        items: data.scans,
+        total_count: data.scans.length,
+        next_cursor: null,
+      };
     },
     getScannerDataframe: async (
       scanLocation: string,

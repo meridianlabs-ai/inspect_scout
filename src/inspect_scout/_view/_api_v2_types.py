@@ -1,18 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias
 
+from inspect_scout._query.order_by import OrderBy
+
+from .._query.condition import Condition
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
-from .._transcript.columns import Condition
 from .._transcript.types import TranscriptInfo
-
-
-@dataclass
-class OrderBy:
-    column: str
-    direction: Literal["ASC", "DESC"]
 
 
 @dataclass
@@ -72,11 +68,36 @@ class IPCSerializableResults(RecorderStatus):
         self.scanners = scanners
 
 
-RestScanStatus: TypeAlias = RecorderStatus
+ScanJobStatus: TypeAlias = RecorderStatus
 
 
 @dataclass
-class TranscriptsRequest:
+class PaginatedRequest:
+    """Base request with filter, order_by, and pagination."""
+
     filter: Condition | None = None
     order_by: OrderBy | list[OrderBy] | None = None
     pagination: Pagination | None = None
+
+
+@dataclass
+class TranscriptsRequest(PaginatedRequest):
+    """Request body for POST /transcripts endpoint."""
+
+    pass
+
+
+@dataclass
+class ScanJobsRequest(PaginatedRequest):
+    """Request body for POST /scans endpoint."""
+
+    pass
+
+
+@dataclass
+class ScanJobsResponse:
+    """Response body for POST /scans endpoint."""
+
+    items: list[RecorderStatus]
+    total_count: int
+    next_cursor: dict[str, Any] | None = None

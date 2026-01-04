@@ -13,3 +13,4 @@ export type TranscriptsResponse = components["schemas"]["TranscriptsResponse"];
 export type Transcript = components["schemas"]["Transcript"];
 export type Pagination = components["schemas"]["Pagination"];
 export type TranscriptInfo = components["schemas"]["TranscriptInfo"];
+export type ScanJobsResponse = components["schemas"]["ScanJobsResponse"];

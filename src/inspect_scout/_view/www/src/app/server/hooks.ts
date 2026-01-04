@@ -13,7 +13,11 @@ import { useMemo } from "react";
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
 import { Status } from "../../types";
-import { Transcript, TranscriptsResponse } from "../../types/api-types";
+import {
+  ScanJobsResponse,
+  Transcript,
+  TranscriptsResponse,
+} from "../../types/api-types";
 import { decodeArrowBytes } from "../../utils/arrow";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
@@ -28,7 +32,7 @@ export const useServerScansDir = (): AsyncData<string> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans-dir"],
+    queryKey: ["scanjobs-dir"],
     queryFn: async () => await api.getScansDir(),
     staleTime: Infinity,
   });
@@ -38,18 +42,16 @@ export const useServerScansDir = (): AsyncData<string> => {
 export const useServerScans = (): AsyncData<Status[]> => {
   const api = useApi();
   const queryClient = useQueryClient();
-  const { data: scansDir } = useServerScansDir();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans", scansDir],
+    queryKey: ["scanjobs"],
     queryFn: async () => {
-      const scans = await api.getScans(scansDir);
-      for (const scan of scans) {
-        queryClient.setQueryData(["scan", scan.location], scan);
+      const response = await api.getScans();
+      for (const scan of response.items) {
+        queryClient.setQueryData(["scanjob", scan.location], scan);
       }
-      return scans;
+      return response.items;
     },
-    enabled: scansDir !== undefined,
     staleTime: 10000,
     refetchInterval: 10000,
   });
@@ -62,7 +64,7 @@ export const useServerScan = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scan", location],
+    queryKey: ["scanjob", location],
     queryFn: () => api.getScan(location!), // The ! is safe because of enabled below
     enabled: !!location,
     staleTime: 10000,
@@ -80,7 +82,7 @@ export const useServerScanDataframe = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanDataframe", location, scanner],
+    queryKey: ["scanjobDataframe", location, scanner],
     queryFn: async () =>
       expandResultsetRows(
         decodeArrowBytes(await api.getScannerDataframe(location!, scanner!))
@@ -98,7 +100,7 @@ export const useServerScanDataframeInput = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanDataframeInput", location, scanner, uuid],
+    queryKey: ["scanjobDataframeInput", location, scanner, uuid],
     queryFn: () => api.getScannerDataframeInput(location!, scanner!, uuid!),
     enabled: !!location && !!scanner && !!uuid,
     staleTime: Infinity,
@@ -218,6 +220,44 @@ export const useServerTranscriptsInfinite = (
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     enabled: !!location,
+    placeholderData: keepPreviousData,
+  });
+};
+
+export const useServerScansInfinite = (
+  pageSize: number = 50,
+  filter?: Condition,
+  sorting?: SortingState
+): UseInfiniteQueryResult<
+  InfiniteData<ScanJobsResponse, CursorType | undefined>,
+  Error
+> => {
+  const api = useApi();
+
+  const orderBy = useMemo(
+    () => (sorting ? sortingStateToOrderBy(sorting) : undefined),
+    [sorting]
+  );
+
+  return useInfiniteQuery<
+    ScanJobsResponse,
+    Error,
+    InfiniteData<ScanJobsResponse, CursorType | undefined>,
+    QueryKey,
+    CursorType | undefined
+  >({
+    queryKey: ["scanjobs-infinite", filter, orderBy, pageSize],
+    queryFn: async ({ pageParam }) => {
+      const pagination = pageParam
+        ? { limit: pageSize, cursor: pageParam, direction: "forward" as const }
+        : { limit: pageSize, cursor: null, direction: "forward" as const };
+
+      return await api.getScans(filter, orderBy, pagination);
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    staleTime: 10000,
+    refetchInterval: 10000,
     placeholderData: keepPreviousData,
   });
 };

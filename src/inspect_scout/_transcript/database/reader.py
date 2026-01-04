@@ -5,8 +5,9 @@ from typing import AsyncIterator
 
 from typing_extensions import override
 
+from inspect_scout._query import Query
+from inspect_scout._query.condition import Condition
 from inspect_scout._scanspec import ScanTranscripts
-from inspect_scout._transcript.columns import Condition
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
 from ..transcripts import TranscriptsReader
@@ -52,7 +53,8 @@ class TranscriptsViewReader(TranscriptsReader):
         Returns:
             Async iterator of TranscriptInfo (metadata only).
         """
-        return self._view.select()
+        # Empty query - filtering was done at database creation time
+        return self._view.select(Query())
 
     @override
     async def read(
@@ -80,5 +82,6 @@ class TranscriptsViewReader(TranscriptsReader):
             type=TRANSCRIPT_SOURCE_DATABASE,
             location=self._location,
             conditions=self._where,
-            transcript_ids=await self._view.transcript_ids(),
+            # Empty query - filtering was done at database creation time
+            transcript_ids=await self._view.transcript_ids(Query()),
         )

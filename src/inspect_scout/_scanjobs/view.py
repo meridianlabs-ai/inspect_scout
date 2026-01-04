@@ -3,8 +3,7 @@
 import abc
 from typing import AsyncIterator
 
-from .._query.condition import Condition
-from .._query.order_by import OrderBy
+from .._query import Query
 from .._recorder.recorder import Status
 
 
@@ -22,18 +21,11 @@ class ScanJobsView(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def select(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        order_by: list[OrderBy] | None = None,
-    ) -> AsyncIterator[Status]:
-        """Select scan jobs matching criteria.
+    def select(self, query: Query | None = None) -> AsyncIterator[Status]:
+        """Select scan jobs matching query.
 
         Args:
-            where: Filter conditions.
-            limit: Maximum number of results.
-            order_by: Sort order as list of (column, direction) tuples.
+            query: Query with where/limit/order_by criteria.
 
         Yields:
             Status objects matching the criteria.
@@ -41,11 +33,11 @@ class ScanJobsView(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def count(self, where: list[Condition] | None = None) -> int:
-        """Count scan jobs matching criteria.
+    async def count(self, query: Query | None = None) -> int:
+        """Count scan jobs matching query.
 
         Args:
-            where: Filter conditions.
+            query: Query with where criteria (limit/order_by ignored).
 
         Returns:
             Number of matching scan jobs.

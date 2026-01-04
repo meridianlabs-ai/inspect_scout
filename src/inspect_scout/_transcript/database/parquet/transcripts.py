@@ -1,6 +1,5 @@
 """DuckDB/Parquet-backed transcript database implementation."""
 
-import hashlib
 import json
 import os
 import tempfile
@@ -23,18 +22,17 @@ from typing_extensions import override
 from upath import UPath
 
 from inspect_scout._display._display import display
-from inspect_scout._query.order_by import OrderBy
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
-from ...._query.condition import Condition
+from ...._query import Query
+from ...._query.sql import SQLDialect
 from ...json.load_filtered import load_filtered_transcript
 from ...transcripts import (
     Transcripts,
-    TranscriptsQuery,
     TranscriptsReader,
 )
 from ...types import Transcript, TranscriptContent, TranscriptInfo
@@ -81,7 +79,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         location: str,
         target_file_size_mb: float = 100,
         row_group_size_mb: float = 32,
-        query: TranscriptsQuery | None = None,
+        query: Query | None = None,
         snapshot: ScanTranscripts | None = None,
     ) -> None:
         """Initialize Parquet transcript database.
@@ -116,7 +114,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._fs: AsyncFilesystem | None = None
         self._index_storage: IndexStorage | None = None
-        self._current_shuffle_seed: int | None = None
         self._transcript_ids: set[str] = set()
         self._file_columns_cache: dict[str, set[str]] = {}
         self._parquet_pattern: str | None = None
@@ -181,7 +178,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
-            self._current_shuffle_seed = None
 
         if self._fs is not None:
             await self._fs.close()
@@ -238,53 +234,37 @@ class ParquetTranscriptsDB(TranscriptsDB):
             logger.warning(f"Index compaction failed (data is consistent): {e}")
 
     @override
-    async def select(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        shuffle: bool | int = False,
-        order_by: list[OrderBy] | None = None,
-    ) -> AsyncIterator[TranscriptInfo]:
-        """Query transcripts matching conditions.
+    async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
+        """Query transcripts matching query.
 
         Args:
-            where: List of conditions to filter by.
-            limit: Optional limit on results.
-            shuffle: If True or int seed, shuffle results deterministically.
-            order_by: List of (column_name, direction) tuples for ordering.
-                If None and self._query has order_by, uses query's order_by.
+            query: Query with where/limit/shuffle/order_by criteria.
 
         Yields:
             TranscriptInfo instances (metadata only, no content).
         """
         assert self._conn is not None
+        query = query or Query()
 
-        # Use query's order_by if not provided explicitly
-        if order_by is None and self._query and self._query.order_by:
-            order_by = self._query.order_by
+        # Merge order_by from init query if not in runtime query
+        effective_query = query
+        if not query.order_by and self._query and self._query.order_by:
+            effective_query = Query(
+                where=query.where,
+                limit=query.limit,
+                shuffle=query.shuffle,
+                order_by=self._query.order_by,
+            )
 
-        # Build WHERE clause
-        where_clause, where_params = self._build_where_clause(where)
+        # Build SQL suffix using Query
+        suffix, params, register_shuffle = effective_query.to_sql_suffix(
+            SQLDialect.DUCKDB, shuffle_column="transcript_id"
+        )
+        if register_shuffle:
+            register_shuffle(self._conn)
+
         # Note: transcripts table already excludes messages/events, so just SELECT *
-        sql = f"SELECT * FROM transcripts{where_clause}"
-
-        # Build ORDER BY clause
-        order_by_clauses = []
-        if shuffle:
-            seed = 0 if shuffle is True else shuffle
-            self._register_shuffle_function(seed)
-            order_by_clauses.append("shuffle_hash(transcript_id)")
-        if order_by:
-            for ob in order_by:
-                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
-        if order_by_clauses:
-            sql += " ORDER BY " + ", ".join(order_by_clauses)
-
-        # Add LIMIT
-        params = where_params.copy()
-        if limit is not None:
-            sql += " LIMIT ?"
-            params.append(limit)
+        sql = f"SELECT * FROM transcripts{suffix}"
 
         # Execute query and yield results (stream rows in batches to avoid full materialization)
         cursor = self._conn.execute(sql, params)
@@ -365,66 +345,54 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 yield info
 
     @override
-    async def count(self, where: list[Condition] | None = None) -> int:
+    async def count(self, query: Query | None = None) -> int:
         assert self._conn is not None
-        where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT COUNT(*) FROM transcripts{where_clause}"
-        result = self._conn.execute(sql, where_params).fetchone()
+        query = query or Query()
+        # For count, only WHERE matters (ignore limit/shuffle/order_by)
+        count_query = Query(where=query.where)
+        suffix, params, _ = count_query.to_sql_suffix(SQLDialect.DUCKDB)
+        sql = f"SELECT COUNT(*) FROM transcripts{suffix}"
+        result = self._conn.execute(sql, params).fetchone()
         assert result is not None
         return int(result[0])
 
     @override
-    async def transcript_ids(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        shuffle: bool | int = False,
-        order_by: list[OrderBy] | None = None,
-    ) -> dict[str, str | None]:
-        """Get transcript IDs matching conditions.
+    async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]:
+        """Get transcript IDs matching query.
 
         Optimized implementation that queries directly from the index table
         when no WHERE conditions are specified, avoiding Parquet file access.
 
         Args:
-            where: Condition(s) to filter by.
-            limit: Maximum number to return.
-            shuffle: Randomly shuffle results (pass `int` for reproducible seed).
-            order_by: List of (column_name, direction) tuples for ordering.
+            query: Query with where/limit/shuffle/order_by criteria.
 
         Returns:
             Dict of transcript IDs and parquet filenames
         """
         assert self._conn is not None
+        query = query or Query()
 
-        if not where:
+        if not query.where:
             # No conditions - query index table directly (faster, in-memory)
-            sql = "SELECT transcript_id, filename FROM transcript_index"
+            # Build a query for the index table (only shuffle/limit/order_by matter)
+            index_query = Query(
+                limit=query.limit,
+                shuffle=query.shuffle,
+                order_by=query.order_by,
+            )
+            suffix, params, register_shuffle = index_query.to_sql_suffix(
+                SQLDialect.DUCKDB, shuffle_column="transcript_id"
+            )
+            if register_shuffle:
+                register_shuffle(self._conn)
 
-            # Build ORDER BY clause
-            order_by_clauses = []
-            if shuffle:
-                seed = 0 if shuffle is True else shuffle
-                self._register_shuffle_function(seed)
-                order_by_clauses.append("shuffle_hash(transcript_id)")
-            if order_by:
-                for ob in order_by:
-                    order_by_clauses.append(f'"{ob.column}" {ob.direction}')
-            if order_by_clauses:
-                sql += " ORDER BY " + ", ".join(order_by_clauses)
-
-            # Add LIMIT
-            params: list[Any] = []
-            if limit is not None:
-                sql += " LIMIT ?"
-                params.append(limit)
-
+            sql = f"SELECT transcript_id, filename FROM transcript_index{suffix}"
             result = self._conn.execute(sql, params).fetchall()
             return {row[0]: row[1] for row in result}
         else:
             # Has conditions - need to query VIEW for metadata filtering
             transcript_ids: dict[str, str | None] = {}
-            async for info in self.select(where, limit, shuffle, order_by):
+            async for info in self.select(query):
                 parquet_info = cast(ParquetTranscriptInfo, info)
                 transcript_ids[parquet_info.transcript_id] = parquet_info.filename
 
@@ -678,51 +646,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Write remainder
             if accumulated_batches:
                 await self._write_arrow_batch(accumulated_batches)
-
-    def _register_shuffle_function(self, seed: int) -> None:
-        """Register DuckDB UDF for deterministic shuffling.
-
-        Args:
-            seed: Random seed for shuffling.
-        """
-        assert self._conn is not None
-
-        if self._current_shuffle_seed == seed:
-            return
-
-        def shuffle_hash(sample_id: str) -> str:
-            """Compute deterministic hash for shuffling."""
-            content = f"{sample_id}:{seed}"
-            return hashlib.sha256(content.encode()).hexdigest()
-
-        # Remove existing function if it exists
-        try:
-            self._conn.remove_function("shuffle_hash")
-        except Exception:
-            pass  # Function doesn't exist yet
-
-        self._conn.create_function("shuffle_hash", shuffle_hash)
-        self._current_shuffle_seed = seed
-
-    def _build_where_clause(
-        self, where: list[Condition] | None
-    ) -> tuple[str, list[Any]]:
-        """Build WHERE clause from conditions.
-
-        Args:
-            where: List of conditions to combine with AND.
-
-        Returns:
-            Tuple of (where_clause, parameters).
-        """
-        if not where:
-            return "", []
-
-        from functools import reduce
-
-        condition = where[0] if len(where) == 1 else reduce(lambda a, b: a & b, where)
-        where_sql, where_params = condition.to_sql("duckdb")
-        return f" WHERE {where_sql}", where_params
 
     def _transcript_to_row(self, transcript: Transcript) -> dict[str, Any]:
         """Convert Transcript to Parquet row dict with flattened metadata.
@@ -1348,30 +1271,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._conn is not None
         assert self._query is not None
 
-        # Build filter SQL
-        filter_sql = "SELECT * FROM transcript_index"
-        params: list[Any] = []
+        # Build SQL suffix using Query
+        suffix, params, register_shuffle = self._query.to_sql_suffix(
+            SQLDialect.DUCKDB, shuffle_column="transcript_id"
+        )
+        if register_shuffle:
+            register_shuffle(self._conn)
 
-        if self._query.where:
-            where_clause, where_params = self._build_where_clause(self._query.where)
-            filter_sql += where_clause
-            params.extend(where_params)
-
-        # Build ORDER BY clause
-        order_by_clauses = []
-        if self._query.shuffle:
-            seed = 0 if self._query.shuffle is True else self._query.shuffle
-            self._register_shuffle_function(seed)
-            order_by_clauses.append("shuffle_hash(transcript_id)")
-        if self._query.order_by:
-            for ob in self._query.order_by:
-                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
-        if order_by_clauses:
-            filter_sql += " ORDER BY " + ", ".join(order_by_clauses)
-
-        if self._query.limit:
-            filter_sql += " LIMIT ?"
-            params.append(self._query.limit)
+        filter_sql = f"SELECT * FROM transcript_index{suffix}"
 
         # Create filtered version in temp table first, then swap
         self._conn.execute("DROP TABLE IF EXISTS transcript_index_filtered")
@@ -1476,38 +1383,22 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._conn is not None
 
         enc_config = self._read_parquet_encryption_config()
-        index_sql = f"""
-            CREATE TABLE transcript_index AS
+        base_sql = f"""
             SELECT transcript_id, filename
             FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
         """
-        params: list[Any] = []
 
         # Apply pre-filter query if provided
+        params: list[Any] = []
         if self._query:
-            # Apply WHERE conditions
-            if self._query.where:
-                where_clause, where_params = self._build_where_clause(self._query.where)
-                index_sql += where_clause
-                params.extend(where_params)
+            suffix, params, register_shuffle = self._query.to_sql_suffix(
+                SQLDialect.DUCKDB, shuffle_column="transcript_id"
+            )
+            if register_shuffle:
+                register_shuffle(self._conn)
+            base_sql += suffix
 
-            # Build ORDER BY clause
-            order_by_clauses = []
-            if self._query.shuffle:
-                seed = 0 if self._query.shuffle is True else self._query.shuffle
-                self._register_shuffle_function(seed)
-                order_by_clauses.append("shuffle_hash(transcript_id)")
-            if self._query.order_by:
-                for ob in self._query.order_by:
-                    order_by_clauses.append(f'"{ob.column}" {ob.direction}')
-            if order_by_clauses:
-                index_sql += " ORDER BY " + ", ".join(order_by_clauses)
-
-            # Apply LIMIT
-            if self._query.limit:
-                index_sql += " LIMIT ?"
-                params.append(self._query.limit)
-
+        index_sql = f"CREATE TABLE transcript_index AS {base_sql}"
         self._conn.execute(index_sql, params)
 
     def _infer_exclude_clause(self, file_path: str) -> str:

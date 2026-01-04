@@ -5,10 +5,9 @@ from typing import AsyncIterable, AsyncIterator, Iterable, Type
 import pyarrow as pa
 from typing_extensions import Self
 
-from inspect_scout._query.order_by import OrderBy
 from inspect_scout._transcript.transcripts import Transcripts
 
-from ..._query.condition import Condition
+from ..._query import Query
 from ..types import (
     Transcript,
     TranscriptContent,
@@ -45,24 +44,14 @@ class TranscriptsView(abc.ABC):
         return None
 
     @abc.abstractmethod
-    async def transcript_ids(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        shuffle: bool | int = False,
-        order_by: list[OrderBy] | None = None,
-    ) -> dict[str, str | None]:
-        """Get transcript IDs matching conditions.
+    async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]:
+        """Get transcript IDs matching query.
 
         Optimized method that returns only transcript IDs without loading
-        full metadata. Default implementation uses select(), but subclasses
-        can override for better performance.
+        full metadata.
 
         Args:
-            where: Condition(s) to filter by.
-            limit: Maximum number to return.
-            shuffle: Randomly shuffle results (pass `int` for reproducible seed).
-            order_by: List of (column_name, direction) tuples for ordering.
+            query: Query with where/limit/shuffle/order_by criteria.
 
         Returns:
             Dict of transcript IDs => location | None
@@ -70,29 +59,20 @@ class TranscriptsView(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def select(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        shuffle: bool | int = False,
-        order_by: list[OrderBy] | None = None,
-    ) -> AsyncIterator[TranscriptInfo]:
-        """Select transcripts matching a condition.
+    def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
+        """Select transcripts matching query.
 
         Args:
-            where: Condition(s) to select for.
-            limit: Maximum number to select.
-            shuffle: Randomly shuffle transcripts selected (pass `int` for reproducible seed).
-            order_by: List of (column_name, direction) tuples for ordering.
+            query: Query with where/limit/shuffle/order_by criteria.
         """
         ...
 
     @abc.abstractmethod
-    async def count(self, where: list[Condition] | None = None) -> int:
-        """Count transcripts matching conditions.
+    async def count(self, query: Query | None = None) -> int:
+        """Count transcripts matching query.
 
         Args:
-            where: Condition(s) to filter by.
+            query: Query with where criteria (limit/shuffle/order_by ignored).
 
         Returns:
             Number of matching transcripts.

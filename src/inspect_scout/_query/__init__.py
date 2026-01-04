@@ -3,6 +3,7 @@
 from .column import Column
 from .condition import Condition, LogicalOperator, Operator, ScalarValue
 from .order_by import OrderBy
+from .query import Query
 from .sql import SQLDialect
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "Operator",
     "OrderBy",
     "ScalarValue",
+    "Query",
     "SQLDialect",
 ]

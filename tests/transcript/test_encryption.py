@@ -5,6 +5,7 @@ from pathlib import Path
 
 import duckdb
 import pytest
+from inspect_scout._query import Query
 from inspect_scout._transcript.database.parquet.encryption import (
     ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
@@ -679,7 +680,7 @@ class TestParquetDBEncryptedAccess:
         await db.connect()
 
         try:
-            ids = await db.transcript_ids()
+            ids = await db.transcript_ids(Query())
             assert len(ids) == 2
         finally:
             await db.disconnect()
@@ -693,7 +694,7 @@ class TestParquetDBEncryptedAccess:
 
         try:
             # Collect results from async iterator
-            results = [t async for t in db.select()]
+            results = [t async for t in db.select(Query())]
             assert len(results) == 2
             transcript_ids = {t.transcript_id for t in results}
             assert "test-001" in transcript_ids

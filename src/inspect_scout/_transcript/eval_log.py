@@ -1,9 +1,7 @@
-import hashlib
 import io
 import json
 import sqlite3
 from datetime import datetime
-from functools import reduce
 from logging import getLogger
 from os import PathLike
 from types import TracebackType
@@ -48,18 +46,18 @@ from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
-from inspect_scout._query.order_by import OrderBy
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
-from .._query.condition import Condition
+from .._query import Query
+from .._query.sql import SQLDialect
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache
-from .transcripts import TranscriptsQuery, TranscriptsReader
+from .transcripts import TranscriptsReader
 from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
 from .util import LazyJSONDict
 
@@ -108,7 +106,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
     def __init__(
         self,
         logs: Logs | pd.DataFrame,
-        query: TranscriptsQuery,
+        query: Query,
         files_cache: LocalFilesCache | None = None,
     ) -> None:
         self._db = EvalLogTranscriptsView(logs, files_cache)
@@ -131,12 +129,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
 
     @override
     def index(self) -> AsyncIterator[TranscriptInfo]:
-        return self._db.select(
-            self._query.where,
-            self._query.limit,
-            self._query.shuffle,
-            self._query.order_by,
-        )
+        return self._db.select(self._query)
 
     @override
     async def read(
@@ -205,29 +198,6 @@ class EvalLogTranscriptsView(TranscriptsView):
         # AsyncFilesystem (starts out none)
         self._fs: AsyncFilesystem | None = None
 
-        # Track current shuffle seed for UDF registration
-        self._current_shuffle_seed: int | None = None
-
-    def _register_shuffle_function(self, seed: int) -> None:
-        """Register SQLite UDF for deterministic shuffling with given seed.
-
-        Args:
-            seed: Random seed for deterministic shuffling.
-        """
-        assert self._conn is not None
-
-        # Only re-register if seed changed
-        if self._current_shuffle_seed == seed:
-            return
-
-        def shuffle_hash(sample_id: str) -> str:
-            """Compute deterministic hash for shuffling."""
-            content = f"{sample_id}:{seed}"
-            return hashlib.sha256(content.encode()).hexdigest()
-
-        self._conn.create_function("shuffle_hash", 1, shuffle_hash)
-        self._current_shuffle_seed = seed
-
     async def connect(self) -> None:
         # Skip if already connected
         if self._conn is not None:
@@ -238,40 +208,19 @@ class EvalLogTranscriptsView(TranscriptsView):
         )
 
     @override
-    async def select(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        shuffle: bool | int = False,
-        order_by: list[OrderBy] | None = None,
-    ) -> AsyncIterator[TranscriptInfo]:
+    async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
+        query = query or Query()
 
-        # build sql with where clause
-        where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT * FROM {TRANSCRIPTS}{where_clause}"
+        # Build SQL suffix using Query
+        suffix, params, register_shuffle = query.to_sql_suffix(
+            SQLDialect.SQLITE, shuffle_column="sample_id"
+        )
+        if register_shuffle:
+            register_shuffle(self._conn)
 
-        # Build ORDER BY clause
-        order_by_clauses = []
-        if shuffle:
-            # If shuffle is True, use a default seed of 0; otherwise use the provided seed
-            seed = 0 if shuffle is True else shuffle
-            self._register_shuffle_function(seed)
-            order_by_clauses.append("shuffle_hash(sample_id)")
-        if order_by:
-            for ob in order_by:
-                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
-        if order_by_clauses:
-            sql += " ORDER BY " + ", ".join(order_by_clauses)
-
-        # add LIMIT to SQL if specified
-        sql_params = where_params.copy()
-        if limit is not None:
-            sql += " LIMIT ?"
-            sql_params.append(limit)
-
-        # execute the query
-        cursor = self._conn.execute(sql, sql_params)
+        sql = f"SELECT * FROM {TRANSCRIPTS}{suffix}"
+        cursor = self._conn.execute(sql, params)
 
         # get column names
         column_names = [desc[0] for desc in cursor.description]
@@ -356,44 +305,30 @@ class EvalLogTranscriptsView(TranscriptsView):
             yield info
 
     @override
-    async def count(self, where: list[Condition] | None = None) -> int:
+    async def count(self, query: Query | None = None) -> int:
         assert self._conn is not None
-        where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT COUNT(*) FROM {TRANSCRIPTS}{where_clause}"
-        result = self._conn.execute(sql, where_params).fetchone()
+        query = query or Query()
+        # For count, only WHERE matters (ignore limit/shuffle/order_by)
+        count_query = Query(where=query.where)
+        suffix, params, _ = count_query.to_sql_suffix(SQLDialect.SQLITE)
+        sql = f"SELECT COUNT(*) FROM {TRANSCRIPTS}{suffix}"
+        result = self._conn.execute(sql, params).fetchone()
         assert result is not None
         return int(result[0])
 
     @override
-    async def transcript_ids(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        shuffle: bool | int = False,
-        order_by: list[OrderBy] | None = None,
-    ) -> dict[str, str | None]:
+    async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]:
         assert self._conn is not None
+        query = query or Query()
 
-        where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT * FROM {TRANSCRIPTS}{where_clause}"
+        suffix, params, register_shuffle = query.to_sql_suffix(
+            SQLDialect.SQLITE, shuffle_column="sample_id"
+        )
+        if register_shuffle:
+            register_shuffle(self._conn)
 
-        order_by_clauses = []
-        if shuffle:
-            seed = 0 if shuffle is True else shuffle
-            self._register_shuffle_function(seed)
-            order_by_clauses.append("shuffle_hash(sample_id)")
-        if order_by:
-            for ob in order_by:
-                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
-        if order_by_clauses:
-            sql += " ORDER BY " + ", ".join(order_by_clauses)
-
-        sql_params = where_params.copy()
-        if limit is not None:
-            sql += " LIMIT ?"
-            sql_params.append(limit)
-
-        cursor = self._conn.execute(sql, sql_params)
+        sql = f"SELECT * FROM {TRANSCRIPTS}{suffix}"
+        cursor = self._conn.execute(sql, params)
         column_names = [desc[0] for desc in cursor.description]
 
         result: dict[str, str | None] = {}
@@ -443,30 +378,10 @@ class EvalLogTranscriptsView(TranscriptsView):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
-            self._current_shuffle_seed = None
 
         if self._fs is not None:
             await self._fs.close()
             self._fs = None
-
-    def _build_where_clause(
-        self, where: list[Condition] | None
-    ) -> tuple[str, list[Any]]:
-        """Build WHERE clause and parameters from conditions.
-
-        Args:
-            where: List of conditions to combine with AND.
-
-        Returns:
-            Tuple of (where_clause, parameters). where_clause is empty string if no conditions.
-        """
-        if where and len(where) > 0:
-            condition: Condition = (
-                where[0] if len(where) == 1 else reduce(lambda a, b: a & b, where)
-            )
-            where_sql, where_params = condition.to_sql()
-            return f" WHERE {where_sql}", where_params
-        return "", []
 
 
 def transcripts_from_logs(logs: Logs) -> Transcripts:

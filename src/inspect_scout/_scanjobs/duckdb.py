@@ -1,14 +1,13 @@
 """DuckDB implementation of ScanJobsView."""
 
-from functools import reduce
 from typing import AsyncIterator
 
 import duckdb
 import pandas as pd
 from typing_extensions import override
 
-from .._query.condition import Condition
-from .._query.order_by import OrderBy
+from .._query import Query
+from .._query.sql import SQLDialect
 from .._recorder.recorder import Status
 from .view import ScanJobsView
 
@@ -60,30 +59,17 @@ class DuckDBScanJobsView(ScanJobsView):
             self._conn = None
 
     @override
-    async def select(
-        self,
-        where: list[Condition] | None = None,
-        limit: int | None = None,
-        order_by: list[OrderBy] | None = None,
-    ) -> AsyncIterator[Status]:
-        """Select scan jobs matching criteria."""
+    async def select(self, query: Query | None = None) -> AsyncIterator[Status]:
+        """Select scan jobs matching query."""
         assert self._conn is not None, "Not connected"
+        query = query or Query()
 
-        # Build SQL query
-        where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT scan_id FROM {SCAN_JOBS_TABLE}{where_clause}"
-
-        # Add ORDER BY
-        if order_by:
-            order_parts = [f'"{ob.column}" {ob.direction}' for ob in order_by]
-            sql += " ORDER BY " + ", ".join(order_parts)
-
-        # Add LIMIT
-        if limit is not None:
-            sql += f" LIMIT {limit}"
+        # Build SQL suffix using Query (no shuffle for scan jobs)
+        suffix, params, _ = query.to_sql_suffix(SQLDialect.DUCKDB)
+        sql = f"SELECT scan_id FROM {SCAN_JOBS_TABLE}{suffix}"
 
         # Execute query
-        result = self._conn.execute(sql, where_params).fetchall()
+        result = self._conn.execute(sql, params).fetchall()
 
         # Yield Status objects
         for (scan_id,) in result:
@@ -92,14 +78,17 @@ class DuckDBScanJobsView(ScanJobsView):
                 yield status
 
     @override
-    async def count(self, where: list[Condition] | None = None) -> int:
-        """Count scan jobs matching criteria."""
+    async def count(self, query: Query | None = None) -> int:
+        """Count scan jobs matching query."""
         assert self._conn is not None, "Not connected"
+        query = query or Query()
 
-        where_clause, where_params = self._build_where_clause(where)
-        sql = f"SELECT COUNT(*) FROM {SCAN_JOBS_TABLE}{where_clause}"
+        # For count, only WHERE matters (ignore limit/order_by)
+        count_query = Query(where=query.where)
+        suffix, params, _ = count_query.to_sql_suffix(SQLDialect.DUCKDB)
+        sql = f"SELECT COUNT(*) FROM {SCAN_JOBS_TABLE}{suffix}"
 
-        result = self._conn.execute(sql, where_params).fetchone()
+        result = self._conn.execute(sql, params).fetchone()
         assert result is not None
         return int(result[0])
 
@@ -126,22 +115,3 @@ class DuckDBScanJobsView(ScanJobsView):
             )
 
         return pd.DataFrame(rows)
-
-    def _build_where_clause(
-        self, where: list[Condition] | None
-    ) -> tuple[str, list[object]]:
-        """Build WHERE clause and parameters from conditions.
-
-        Args:
-            where: List of conditions to combine with AND.
-
-        Returns:
-            Tuple of (where_clause, parameters). where_clause is empty string if no conditions.
-        """
-        if where and len(where) > 0:
-            condition: Condition = (
-                where[0] if len(where) == 1 else reduce(lambda a, b: a & b, where)
-            )
-            where_sql, where_params = condition.to_sql("duckdb")
-            return f" WHERE {where_sql}", where_params
-        return "", []

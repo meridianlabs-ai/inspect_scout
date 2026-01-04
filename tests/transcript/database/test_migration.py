@@ -10,6 +10,7 @@ import pytest
 import pytest_asyncio
 from inspect_scout import log_columns as c
 from inspect_scout import transcripts_from
+from inspect_scout._query import Query
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.database.parquet.migration import (
     EVAL_LOG_COLUMN_MAP,
@@ -843,7 +844,7 @@ class TestModelOptionsEndToEnd:
             await db.insert(transcripts)
 
             # Query back and verify model_options is preserved
-            results = [info async for info in db.select([], None, False)]
+            results = [info async for info in db.select(Query())]
             assert len(results) == 2
 
             # Find specific transcript and verify model_options
@@ -904,7 +905,7 @@ class TestModelOptionsEndToEnd:
         try:
             await db.insert(transcripts)
 
-            results = [info async for info in db.select([], None, False)]
+            results = [info async for info in db.select(Query())]
             assert len(results) == 2
 
             # Verify null/empty handling

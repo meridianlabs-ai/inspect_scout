@@ -10,6 +10,7 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageUser
 from inspect_scout import columns as c
 from inspect_scout import transcripts_db, transcripts_from
+from inspect_scout._query import Query
 from inspect_scout._query.order_by import OrderBy
 from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
@@ -220,21 +221,21 @@ async def test_insert_async_iterator(
     await parquet_db.insert(async_transcript_generator(15))
 
     # Verify data was inserted
-    transcript_ids = await parquet_db.transcript_ids([], None)
+    transcript_ids = await parquet_db.transcript_ids(Query())
     assert len(transcript_ids) == 15
 
 
 @pytest.mark.asyncio
 async def test_count_all(populated_db: ParquetTranscriptsDB) -> None:
     """Test counting all transcripts."""
-    transcript_ids = await populated_db.transcript_ids([], None)
+    transcript_ids = await populated_db.transcript_ids(Query())
     assert len(transcript_ids) == 20
 
 
 @pytest.mark.asyncio
 async def test_count_with_limit(populated_db: ParquetTranscriptsDB) -> None:
     """Test counting with limit parameter."""
-    transcript_ids = await populated_db.transcript_ids([], limit=5)
+    transcript_ids = await populated_db.transcript_ids(Query(limit=5))
     assert len(transcript_ids) == 5
 
 
@@ -242,7 +243,7 @@ async def test_count_with_limit(populated_db: ParquetTranscriptsDB) -> None:
 @pytest.mark.asyncio
 async def test_select_all(populated_db: ParquetTranscriptsDB) -> None:
     """Test selecting all transcripts."""
-    results = [info async for info in populated_db.select([], None, False)]
+    results = [info async for info in populated_db.select(Query())]
     assert len(results) == 20
 
     # Verify TranscriptInfo structure
@@ -258,7 +259,7 @@ async def test_select_with_where(populated_db: ParquetTranscriptsDB) -> None:
     """Test filtering by metadata conditions."""
     # Filter by model (now a direct column, not nested in metadata JSON)
     condition = c.model == "gpt-4"
-    results = [info async for info in populated_db.select([condition], None, False)]
+    results = [info async for info in populated_db.select(Query(where=[condition]))]
 
     # Should have ~7 results (20 total / 3 models)
     assert 6 <= len(results) <= 7
@@ -271,21 +272,21 @@ async def test_select_with_where(populated_db: ParquetTranscriptsDB) -> None:
 @pytest.mark.asyncio
 async def test_select_with_limit(populated_db: ParquetTranscriptsDB) -> None:
     """Test limiting results."""
-    results = [info async for info in populated_db.select([], limit=5, shuffle=False)]
+    results = [info async for info in populated_db.select(Query(limit=5))]
     assert len(results) == 5
 
 
 @pytest.mark.asyncio
 async def test_count_method_all(populated_db: ParquetTranscriptsDB) -> None:
     """Test count() method with no filter."""
-    count = await populated_db.count()
+    count = await populated_db.count(Query())
     assert count == 20
 
 
 @pytest.mark.asyncio
 async def test_count_method_with_where(populated_db: ParquetTranscriptsDB) -> None:
     """Test count() method with filter condition."""
-    count = await populated_db.count([c.model == "gpt-4"])
+    count = await populated_db.count(Query(where=[c.model == "gpt-4"]))
     assert 6 <= count <= 7
 
 
@@ -294,10 +295,10 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
     """Test shuffle with deterministic seed."""
     # Get results with same seed twice
     results1 = [
-        info.transcript_id async for info in populated_db.select([], None, shuffle=42)
+        info.transcript_id async for info in populated_db.select(Query(shuffle=42))
     ]
     results2 = [
-        info.transcript_id async for info in populated_db.select([], None, shuffle=42)
+        info.transcript_id async for info in populated_db.select(Query(shuffle=42))
     ]
 
     # Should be same order
@@ -305,7 +306,7 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
 
     # Get results with different seed
     results3 = [
-        info.transcript_id async for info in populated_db.select([], None, shuffle=123)
+        info.transcript_id async for info in populated_db.select(Query(shuffle=123))
     ]
 
     # Should be different order (very likely)
@@ -333,7 +334,7 @@ async def test_select_with_order_by_single_column(
     results = [
         info
         async for info in populated_db.select(
-            [], None, False, order_by=[OrderBy(column, direction)]
+            Query(order_by=[OrderBy(column, direction)])
         )
     ]
     values = [extractor(info) for info in results if extractor(info) is not None]
@@ -349,10 +350,9 @@ async def test_select_with_order_by_chaining(
     results = [
         info
         async for info in populated_db.select(
-            [],
-            None,
-            False,
-            order_by=[OrderBy(c.task_set.name, "ASC"), OrderBy(c.index.name, "DESC")],
+            Query(
+                order_by=[OrderBy(c.task_set.name, "ASC"), OrderBy(c.index.name, "DESC")]
+            )
         )
     ]
 
@@ -391,7 +391,7 @@ async def test_order_by_with_where_and_limit(
     results = [
         info
         async for info in populated_db.select(
-            where_clause, limit, False, order_by=[OrderBy(c.index.name, "ASC")]
+            Query(where=where_clause, limit=limit, order_by=[OrderBy(c.index.name, "ASC")])
         )
     ]
 
@@ -416,7 +416,7 @@ async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None
     results1 = [
         info.transcript_id
         async for info in populated_db.select(
-            [], limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")]
+            Query(limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")])
         )
     ]
 
@@ -424,7 +424,7 @@ async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None
     results2 = [
         info.transcript_id
         async for info in populated_db.select(
-            [], limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")]
+            Query(limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")])
         )
     ]
     assert results1 == results2
@@ -433,7 +433,7 @@ async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None
     results3 = [
         info.transcript_id
         async for info in populated_db.select(
-            [], limit=10, shuffle=False, order_by=[OrderBy(c.index.name, "ASC")]
+            Query(limit=10, order_by=[OrderBy(c.index.name, "ASC")])
         )
     ]
     assert results1 != results3  # Shuffled vs ordered should differ
@@ -445,10 +445,10 @@ async def test_order_by_empty_results(populated_db: ParquetTranscriptsDB) -> Non
     results = [
         info
         async for info in populated_db.select(
-            [c.task_set == "nonexistent"],
-            None,
-            False,
-            order_by=[OrderBy(c.index.name, "ASC")],
+            Query(
+                where=[c.task_set == "nonexistent"],
+                order_by=[OrderBy(c.index.name, "ASC")],
+            )
         )
     ]
     assert len(results) == 0
@@ -458,18 +458,18 @@ async def test_order_by_empty_results(populated_db: ParquetTranscriptsDB) -> Non
 async def test_metadata_dsl_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test various Condition operators."""
     # Greater than
-    results = [info async for info in populated_db.select([c.index > 15], None, False)]
+    results = [info async for info in populated_db.select(Query(where=[c.index > 15]))]
     assert len(results) == 4  # indices 16, 17, 18, 19
 
     # Less than or equal
-    results = [info async for info in populated_db.select([c.index <= 5], None, False)]
+    results = [info async for info in populated_db.select(Query(where=[c.index <= 5]))]
     assert len(results) == 6  # indices 0-5
 
     # IN operator
     results = [
         info
         async for info in populated_db.select(
-            [c.task_set.in_(["math", "coding"])], None, False
+            Query(where=[c.task_set.in_(["math", "coding"])])
         )
     ]
     assert len(results) >= 10  # At least 2/3 of results
@@ -480,7 +480,7 @@ async def test_json_path_queries(populated_db: ParquetTranscriptsDB) -> None:
     """Test querying metadata fields."""
     # Query by temperature value
     results = [
-        info async for info in populated_db.select([c.temperature > 0.7], None, False)
+        info async for info in populated_db.select(Query(where=[c.temperature > 0.7]))
     ]
     assert len(results) > 0
 
@@ -495,7 +495,7 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     """Test combining conditions with & and |."""
     # AND condition
     condition = (c.model == "gpt-4") & (c.index < 10)
-    results = [info async for info in populated_db.select([condition], None, False)]
+    results = [info async for info in populated_db.select(Query(where=[condition]))]
 
     for info in results:
         assert info.model == "gpt-4"
@@ -504,7 +504,7 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
 
     # OR condition
     condition = (c.index == 0) | (c.index == 19)
-    results = [info async for info in populated_db.select([condition], None, False)]
+    results = [info async for info in populated_db.select(Query(where=[condition]))]
     assert len(results) == 2
 
 
@@ -513,7 +513,7 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
 async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
     """Test loading full transcript content."""
     # Get a transcript info
-    infos = [info async for info in populated_db.select([], limit=1, shuffle=False)]
+    infos = [info async for info in populated_db.select(Query(limit=1))]
     assert len(infos) == 1
 
     # Read full content
@@ -530,7 +530,7 @@ async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
 @pytest.mark.asyncio
 async def test_read_filtered_messages(populated_db: ParquetTranscriptsDB) -> None:
     """Test filtering messages by type."""
-    infos = [info async for info in populated_db.select([], limit=1, shuffle=False)]
+    infos = [info async for info in populated_db.select(Query(limit=1))]
 
     # Read only user messages
     content = TranscriptContent(messages=["user"], events=None)
@@ -546,7 +546,7 @@ async def test_read_filtered_messages(populated_db: ParquetTranscriptsDB) -> Non
 @pytest.mark.asyncio
 async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
     """Test loading metadata only (no content)."""
-    infos = [info async for info in populated_db.select([], limit=1, shuffle=False)]
+    infos = [info async for info in populated_db.select(Query(limit=1))]
 
     # Read with no messages or events
     content = TranscriptContent(messages=None, events=None)
@@ -563,7 +563,7 @@ async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
 # Schema & File Management Tests
 @pytest.mark.asyncio
 async def test_empty_database(parquet_db: ParquetTranscriptsDB) -> None:
-    results = [info async for info in parquet_db.select([], None, False)]
+    results = [info async for info in parquet_db.select(Query())]
     assert len(results) == 0
 
 
@@ -593,7 +593,7 @@ async def test_arbitrary_metadata(parquet_db: ParquetTranscriptsDB) -> None:
     # Query with nested metadata (use JSON path for nested dicts)
     results = [
         info
-        async for info in parquet_db.select([c["nested.deep.value"] == 42], None, False)
+        async for info in parquet_db.select(Query(where=[c["nested.deep.value"] == 42]))
     ]
     assert len(results) == 1
     assert results[0].transcript_id == "complex-1"
@@ -616,7 +616,7 @@ async def test_null_handling(parquet_db: ParquetTranscriptsDB) -> None:
 
     await parquet_db.insert(transcripts)
 
-    transcript_ids = await parquet_db.transcript_ids([], None)
+    transcript_ids = await parquet_db.transcript_ids(Query())
     assert len(transcript_ids) == 2
 
 
@@ -692,7 +692,7 @@ async def test_insert_empty_list(parquet_db: ParquetTranscriptsDB) -> None:
     """Test inserting empty iterable."""
     await parquet_db.insert([])
 
-    transcript_ids = await parquet_db.transcript_ids([], None)
+    transcript_ids = await parquet_db.transcript_ids(Query())
     assert len(transcript_ids) == 0
 
 
@@ -703,7 +703,7 @@ async def test_query_no_matches(populated_db: ParquetTranscriptsDB) -> None:
     results = [
         info
         async for info in populated_db.select(
-            [c.model == "non-existent-model"], None, False
+            Query(where=[c.model == "non-existent-model"])
         )
     ]
     assert len(results) == 0
@@ -760,7 +760,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
 
     # Query by direct field
     results = [
-        info async for info in parquet_db.select([c.model == "gpt-4"], None, False)
+        info async for info in parquet_db.select(Query(where=[c.model == "gpt-4"]))
     ]
     assert len(results) == 1
 
@@ -768,7 +768,7 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
     results = [
         info
         async for info in parquet_db.select(
-            [c["config.temperature"] > 0.6], None, False
+            Query(where=[c["config.temperature"] > 0.6])
         )
     ]
     assert len(results) == 1
@@ -830,12 +830,12 @@ async def test_schema_evolution(
     await parquet_db.insert(batch2)
 
     # Query should work across both schemas (files may be compacted)
-    all_results = [info async for info in parquet_db.select([], None, False)]
+    all_results = [info async for info in parquet_db.select(Query())]
     assert len(all_results) == 10
 
     # First batch has NULL temperature
     batch1_results = [
-        info async for info in parquet_db.select([c.category == "science"], None, False)
+        info async for info in parquet_db.select(Query(where=[c.category == "science"]))
     ]
     assert len(batch1_results) == 5
     for info in batch1_results:
@@ -844,7 +844,7 @@ async def test_schema_evolution(
 
     # Second batch has NULL difficulty
     batch2_results = [
-        info async for info in parquet_db.select([c.category == "math"], None, False)
+        info async for info in parquet_db.select(Query(where=[c.category == "math"]))
     ]
     assert len(batch2_results) == 5
     for info in batch2_results:
@@ -934,7 +934,7 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
         )
 
         # Verify data integrity - all transcripts should be queryable
-        transcript_ids = await parquet_db.transcript_ids([], None)
+        transcript_ids = await parquet_db.transcript_ids(Query())
         assert len(transcript_ids) == 100, (
             f"Expected 100 transcripts, got {len(transcript_ids)}"
         )
@@ -995,27 +995,27 @@ async def test_indexed_database_isolation(test_location: Path) -> None:
     # Open from root - should only see root's 3 transcripts (uses root's index)
     db_root = ParquetTranscriptsDB(str(test_location))
     await db_root.connect()
-    root_ids = await db_root.transcript_ids([], None)
+    root_ids = await db_root.transcript_ids(Query())
     assert len(root_ids) == 3
-    root_results = [info async for info in db_root.select([], None, False)]
+    root_results = [info async for info in db_root.select(Query())]
     assert all(info.metadata.get("location") == "root" for info in root_results)
     await db_root.disconnect()
 
     # Open from subdir1 - should only see subdir1's 3 transcripts
     db_sub1 = ParquetTranscriptsDB(str(subdir1))
     await db_sub1.connect()
-    sub1_ids = await db_sub1.transcript_ids([], None)
+    sub1_ids = await db_sub1.transcript_ids(Query())
     assert len(sub1_ids) == 3
-    sub1_results = [info async for info in db_sub1.select([], None, False)]
+    sub1_results = [info async for info in db_sub1.select(Query())]
     assert all(info.metadata.get("location") == "subdir1" for info in sub1_results)
     await db_sub1.disconnect()
 
     # Open from subdir2 - should only see subdir2's 3 transcripts
     db_sub2 = ParquetTranscriptsDB(str(subdir2))
     await db_sub2.connect()
-    sub2_ids = await db_sub2.transcript_ids([], None)
+    sub2_ids = await db_sub2.transcript_ids(Query())
     assert len(sub2_ids) == 3
-    sub2_results = [info async for info in db_sub2.select([], None, False)]
+    sub2_results = [info async for info in db_sub2.select(Query())]
     assert all(info.metadata.get("location") == "subdir2" for info in sub2_results)
     await db_sub2.disconnect()
 
@@ -1039,7 +1039,7 @@ async def test_file_uri_discovery(test_location: Path) -> None:
 
     try:
         # Should discover and read all transcripts
-        transcript_ids = await db_uri.transcript_ids([], None)
+        transcript_ids = await db_uri.transcript_ids(Query())
         assert len(transcript_ids) == 3
     finally:
         await db_uri.disconnect()
@@ -1100,11 +1100,11 @@ async def test_insert_record_batch_reader_all_columns(test_location: Path) -> No
         await db.insert(reader)
 
         # Verify count
-        transcript_ids = await db.transcript_ids([], None)
+        transcript_ids = await db.transcript_ids(Query())
         assert len(transcript_ids) == 3
 
         # Verify data is queryable
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 3
 
         # Verify fields are populated
@@ -1135,7 +1135,7 @@ async def test_insert_record_batch_reader_minimal_schema(test_location: Path) ->
         await db.insert(reader)
 
         # Verify select() returns None for optional fields
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 2
 
         info = results[0]
@@ -1214,7 +1214,7 @@ async def test_insert_record_batch_reader_batch_size_splitting(
         assert len(parquet_files) > 1
 
         # Verify all data is queryable
-        assert len(await db.transcript_ids([], None)) == 100
+        assert len(await db.transcript_ids(Query())) == 100
     finally:
         await db.disconnect()
 
@@ -1297,7 +1297,7 @@ async def test_select_missing_optional_columns(test_location: Path) -> None:
         await db.insert(reader)
 
         # Verify select() returns TranscriptInfo with None for optional fields
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 2
 
         for info in results:
@@ -1331,7 +1331,7 @@ async def test_read_missing_messages_column(test_location: Path) -> None:
         await db.insert(reader)
 
         # Get transcript info
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 2
 
         # Read with messages requested - should return empty
@@ -1363,7 +1363,7 @@ async def test_read_missing_events_column(test_location: Path) -> None:
         await db.insert(reader)
 
         # Get transcript info
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 2
 
         # Read with events requested - should return empty
@@ -1390,7 +1390,7 @@ async def test_read_missing_both_content_columns(test_location: Path) -> None:
         await db.insert(reader)
 
         # Get transcript info
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 2
 
         # Read with both messages and events requested - should return empty
@@ -1429,7 +1429,7 @@ async def test_file_columns_cache_populated(test_location: Path) -> None:
         assert len(db._file_columns_cache) == 0
 
         # Get transcript info
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 2
 
         # Read a transcript (triggers cache population on BinderException)
@@ -1471,7 +1471,7 @@ async def test_file_columns_cache_reused(test_location: Path) -> None:
 
     try:
         # Get transcript info
-        results = [info async for info in db.select([], None, False)]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 3
 
         # Read first transcript (populates cache)
@@ -1529,7 +1529,7 @@ async def test_exclude_clause_fallback_mixed_schemas(test_location: Path) -> Non
 
     try:
         # Should be able to query all transcripts
-        results = [info async for info in db.select()]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 4
 
         # Verify we got transcripts from both files
@@ -1657,7 +1657,7 @@ async def test_snapshot_based_index_creation(test_location: Path) -> None:
         await db.insert(transcripts)
 
         # Get transcript_ids with filenames
-        transcript_ids = await db.transcript_ids()
+        transcript_ids = await db.transcript_ids(Query())
         assert len(transcript_ids) == 3
 
         # All should have filenames
@@ -1730,7 +1730,7 @@ async def test_exclude_clause_first_file_has_content(test_location: Path) -> Non
 
     try:
         # Both transcripts should be queryable
-        results = [info async for info in db.select()]
+        results = [info async for info in db.select(Query())]
         assert len(results) == 2
 
         # Messages should NOT appear in metadata (excluded from VIEW)

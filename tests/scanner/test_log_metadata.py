@@ -10,6 +10,7 @@ from inspect_ai.analysis import samples_df
 from inspect_scout import LogColumns
 from inspect_scout import columns as c
 from inspect_scout import log_columns as lc
+from inspect_scout._query import Query
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView, TranscriptColumns
 
 
@@ -409,19 +410,23 @@ def test_mixing_log_and_base_metadata() -> None:
 async def test_query_with_typed_properties(db: EvalLogTranscriptsView) -> None:
     """Test database queries using typed properties."""
     # Filter by model
-    results = [r async for r in db.select(where=[lc.model == "openai/gpt-4o-mini"])]
+    results = [
+        r async for r in db.select(Query(where=[lc.model == "openai/gpt-4o-mini"]))
+    ]
     assert len(results) > 0
     for result in results:
         assert result.model == "openai/gpt-4o-mini"
 
     # Filter by epoch
-    results = [r async for r in db.select(where=[lc.working_time > 1.5])]
+    results = [r async for r in db.select(Query(where=[lc.working_time > 1.5]))]
     assert len(results) > 0
     for result in results:
         assert cast(int, result.metadata["working_time"]) > 1.5
 
     # Filter by total tokens range
-    results = [r async for r in db.select(where=[lc.total_tokens.between(50, 69)])]
+    results = [
+        r async for r in db.select(Query(where=[lc.total_tokens.between(50, 69)]))
+    ]
     assert len(results) > 0
     for result in results:
         assert 50 <= cast(int, result.total_tokens) <= 69
@@ -437,7 +442,7 @@ async def test_complex_query_with_typed_properties(db: EvalLogTranscriptsView) -
         lc.target == " Yes",
     ]
 
-    results = [item async for item in db.select(where=conditions)]
+    results = [item async for item in db.select(Query(where=conditions))]
     assert len(results) > 0
     for result in results:
         assert result.model in [
@@ -465,7 +470,7 @@ async def test_transcripts_with_log_metadata(db: EvalLogTranscriptsView) -> None
         ]
 
         # Collect and verify results
-        results = [item async for item in db.select(conditions)]
+        results = [item async for item in db.select(Query(where=conditions))]
         assert len(results) > 0
         for result in results:
             assert result.model == "openai/gpt-4o-mini"
@@ -487,7 +492,9 @@ async def test_transcripts_complex_filtering(db: EvalLogTranscriptsView) -> None
         ]
 
         # Verify results match conditions
-        results = [item async for item in db.select(conditions, limit=10)]
+        results = [
+            item async for item in db.select(Query(where=conditions, limit=10))
+        ]
         assert len(results) > 0
         for result in results:
             # Check the OR condition
@@ -510,7 +517,10 @@ async def test_transcripts_with_shuffle_and_limit(db: EvalLogTranscriptsView) ->
         conditions = [lc.model == "openai/gpt-4o-mini"]
 
         # Query with shuffle and limit
-        results = [item async for item in db.select(conditions, limit=5, shuffle=42)]
+        results = [
+            item
+            async for item in db.select(Query(where=conditions, limit=5, shuffle=42))
+        ]
         assert len(results) > 0
 
         for result in results:
@@ -527,7 +537,7 @@ async def test_query_json_metadata_fields(db: EvalLogTranscriptsView) -> None:
     try:
         # Query by nested eval_metadata field
         conditions = [lc["sample_metadata.label_confidence"] >= 0.9]
-        results = [item async for item in db.select(conditions)]
+        results = [item async for item in db.select(Query(where=conditions))]
         assert len(results) == 4
 
         # Complex query combining regular and JSON fields
@@ -535,7 +545,7 @@ async def test_query_json_metadata_fields(db: EvalLogTranscriptsView) -> None:
             (lc.model == "openai/gpt-4o-mini")
             & (lc["sample_metadata.label_confidence"] >= 0.9)
         ]
-        results = [item async for item in db.select(conditions)]
+        results = [item async for item in db.select(Query(where=conditions))]
         assert len(results) > 0
 
         for result in results:
@@ -617,7 +627,7 @@ async def test_empty_dataframe_with_log_metadata() -> None:
     await db.connect()
 
     # Query with typed properties on empty DB
-    results = [item async for item in db.select(where=[lc.model == "gpt-4"])]
+    results = [item async for item in db.select(Query(where=[lc.model == "gpt-4"]))]
     assert len(results) == 0
 
     await db.disconnect()

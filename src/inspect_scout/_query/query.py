@@ -71,7 +71,9 @@ class Query:
             assert shuffle_column is not None, (
                 "shuffle_column required when shuffle is set"
             )
-            assert not self.order_by, "order_by is not meaningful when shuffle is enabled"
+            assert not self.order_by, (
+                "order_by is not meaningful when shuffle is enabled"
+            )
             seed = 0 if self.shuffle is True else self.shuffle
             order_by_clauses.append(f"shuffle_hash({shuffle_column})")
             register_shuffle = _make_shuffle_registrar(dialect, seed)

@@ -314,6 +314,24 @@ async def test_select_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
 
 
 @pytest.mark.asyncio
+async def test_shuffle_before_limit(populated_db: ParquetTranscriptsDB) -> None:
+    """Verify limit applies to shuffled results (shuffle happens before limit)."""
+    # Get all results with shuffle
+    all_shuffled = [
+        info.transcript_id async for info in populated_db.select(Query(shuffle=42))
+    ]
+
+    # Get limited results with same shuffle seed
+    limited = [
+        info.transcript_id
+        async for info in populated_db.select(Query(shuffle=42, limit=5))
+    ]
+
+    # Limited should be prefix of full shuffled (proving limit applied AFTER shuffle)
+    assert limited == all_shuffled[:5]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "column,direction,extractor,reverse",
     [
@@ -415,22 +433,18 @@ async def test_order_by_with_where_and_limit(
 
 
 @pytest.mark.asyncio
-async def test_order_by_with_shuffle(populated_db: ParquetTranscriptsDB) -> None:
-    """Test that shuffle takes precedence over order_by."""
-    # Get results with shuffle and order_by (shuffle should win)
+async def test_shuffle_deterministic(populated_db: ParquetTranscriptsDB) -> None:
+    """Test that shuffle with same seed produces deterministic order."""
+    # Get results with shuffle
     results1 = [
         info.transcript_id
-        async for info in populated_db.select(
-            Query(limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")])
-        )
+        async for info in populated_db.select(Query(limit=10, shuffle=42))
     ]
 
     # Get results with same shuffle seed - should be same order
     results2 = [
         info.transcript_id
-        async for info in populated_db.select(
-            Query(limit=10, shuffle=42, order_by=[OrderBy(c.index.name, "ASC")])
-        )
+        async for info in populated_db.select(Query(limit=10, shuffle=42))
     ]
     assert results1 == results2
 

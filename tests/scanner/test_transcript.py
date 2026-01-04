@@ -753,23 +753,17 @@ async def test_order_by_with_where_and_limit(
 
 
 @pytest.mark.asyncio
-async def test_order_by_with_shuffle(db: EvalLogTranscriptsView) -> None:
-    """Test that shuffle takes precedence over order_by."""
-    # Get results with shuffle and order_by (shuffle should win)
+async def test_shuffle_deterministic(db: EvalLogTranscriptsView) -> None:
+    """Test that shuffle with same seed produces deterministic order."""
+    # Get results with shuffle
     results1 = [
-        item
-        async for item in db.select(
-            Query(shuffle=42, order_by=[OrderBy(c.score.name, "ASC")], limit=10)
-        )
+        item async for item in db.select(Query(shuffle=42, limit=10))
     ]
     ids1 = [r.transcript_id for r in results1]
 
     # Get results with same shuffle seed - should be same order
     results2 = [
-        item
-        async for item in db.select(
-            Query(shuffle=42, order_by=[OrderBy(c.score.name, "ASC")], limit=10)
-        )
+        item async for item in db.select(Query(shuffle=42, limit=10))
     ]
     ids2 = [r.transcript_id for r in results2]
     assert ids1 == ids2

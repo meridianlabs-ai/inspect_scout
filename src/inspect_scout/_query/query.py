@@ -21,7 +21,12 @@ class Query:
     """Limit on total results form query."""
 
     shuffle: bool | int = False
-    """Shuffle results randomly (use with limit to take random draws). Shuffling occurs after ordering."""
+    """Shuffle results randomly (use with limit to take random draws).
+
+    Shuffle is implemented as ORDER BY shuffle_hash(col), ensuring it happens
+    before limit—critical for random sampling (otherwise limit would select
+    the same N rows, then shuffle them). Cannot be combined with order_by.
+    """
 
     order_by: list[OrderBy] = field(default_factory=list)
     """Column names and directions for ordering (ASC/DESC)."""
@@ -66,12 +71,13 @@ class Query:
             assert shuffle_column is not None, (
                 "shuffle_column required when shuffle is set"
             )
+            assert not self.order_by, "order_by is not meaningful when shuffle is enabled"
             seed = 0 if self.shuffle is True else self.shuffle
             order_by_clauses.append(f"shuffle_hash({shuffle_column})")
             register_shuffle = _make_shuffle_registrar(dialect, seed)
-
-        for ob in self.order_by:
-            order_by_clauses.append(f'"{ob.column}" {ob.direction}')
+        else:
+            for ob in self.order_by:
+                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
 
         if order_by_clauses:
             parts.append(" ORDER BY " + ", ".join(order_by_clauses))

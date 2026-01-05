@@ -74,6 +74,14 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
   };
 }
 
+// Generate a stable key for a transcript item
+function transcriptItemKey(index: number, item?: TranscriptInfo): string {
+  if (!item) {
+    return String(index);
+  }
+  return `${item.source_uri}/${item.transcript_id}`;
+}
+
 interface TranscriptGridProps {
   transcripts: TranscriptInfo[];
   transcriptsDir: string;
@@ -633,6 +641,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     estimateSize: () => 29,
     // Number of items to render outside visible area
     overscan: 10,
+    // Item keys
+    getItemKey: (index) => transcriptItemKey(index, rows[index]?.original),
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -790,10 +800,11 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
 
               const isSelected = row.getIsSelected();
               const isFocused = focusedRowId === row.id;
+              const rowKey = transcriptItemKey(virtualRow.index, row.original);
 
               return (
                 <tr
-                  key={row.id}
+                  key={rowKey}
                   className={clsx(
                     styles.row,
                     isSelected && styles.rowSelected,

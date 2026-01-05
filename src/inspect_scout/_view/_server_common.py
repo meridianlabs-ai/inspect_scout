@@ -1,4 +1,5 @@
 import base64
+import os
 from typing import Any
 
 from fastapi.responses import JSONResponse
@@ -82,7 +83,12 @@ class InspectPydanticJSONResponse(JSONResponse):
 async def default_transcripts_dir() -> str:
     """Return resolved path to transcripts dir, scrounging scan results for a plausible default."""
     return (
-        UPath(await _scrounged_transcripts_dir() or "file://./transcripts")
+        UPath(
+            # TODO: This env var isn't official. It's temporary to make dev/debugging easier
+            os.getenv("SCOUT_TRANSCRIPTS")
+            or await _scrounged_transcripts_dir()
+            or "file://./transcripts"
+        )
         .resolve()
         .as_posix()
     )

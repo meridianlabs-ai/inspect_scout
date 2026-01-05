@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import sqlite3
@@ -69,6 +70,9 @@ EVAL_LOG_SOURCE_TYPE = "eval_log"
 Logs: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
 )
+
+# Cache for named in-memory sqlite databases (sentinel connections keep dbs alive)
+_sqlite_cache: dict[str, sqlite3.Connection] = {}
 
 
 class EvalLogTranscripts(Transcripts):
@@ -188,8 +192,10 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         # resolve logs or df to transcript_df (sample per row)
         if not isinstance(logs, pd.DataFrame):
+            self._cache_key: str | None = _compute_cache_key_from_logs(logs)
             self._transcripts_df = _index_logs(logs)
         else:
+            self._cache_key = None
             self._transcripts_df = logs
 
         # sqlite connection (starts out none)
@@ -202,10 +208,30 @@ class EvalLogTranscriptsView(TranscriptsView):
         # Skip if already connected
         if self._conn is not None:
             return
-        self._conn = sqlite3.connect(":memory:")
-        self._transcripts_df.to_sql(
-            TRANSCRIPTS, self._conn, index=False, if_exists="replace"
-        )
+
+        if self._cache_key and self._cache_key in _sqlite_cache:
+            # Connect to existing named in-memory db (already populated)
+            self._conn = sqlite3.connect(
+                f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
+            )
+        else:
+            # Create new db and populate it
+            if self._cache_key:
+                # Named in-memory db with shared cache
+                self._conn = sqlite3.connect(
+                    f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
+                )
+                # Keep sentinel connection to prevent db from being destroyed
+                _sqlite_cache[self._cache_key] = sqlite3.connect(
+                    f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
+                )
+            else:
+                # No cache key (DataFrame input) - use anonymous memory db
+                self._conn = sqlite3.connect(":memory:")
+
+            self._transcripts_df.to_sql(
+                TRANSCRIPTS, self._conn, index=False, if_exists="replace"
+            )
 
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
@@ -397,6 +423,17 @@ def transcripts_from_logs(logs: Logs) -> Transcripts:
 
 
 def _index_logs(logs: Logs) -> pd.DataFrame:
+    """Index eval logs into a DataFrame with two-level caching.
+
+    Caching: Per-file DataFrames are cached via samples_df_with_caching (L1 cache).
+    SQLite database caching is handled at the connection level in EvalLogTranscriptsView.
+
+    Args:
+        logs: Paths to eval log files or directories
+
+    Returns:
+        DataFrame with one row per sample from all logs
+    """
     from inspect_scout._display._display import display
 
     with display().text_progress("Indexing", True) as progress:
@@ -428,6 +465,33 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
                 return df
 
         return samples_df_with_caching(read_samples, logs)
+
+
+def _compute_cache_key_from_logs(logs: Logs) -> str:
+    """Compute cache key from logs path (not etags, for speed).
+
+    Args:
+        logs: Log paths to compute key from
+
+    Returns:
+        SHA256 hash of normalized logs path as cache key
+    """
+    from pathlib import Path
+
+    # Normalize logs to a canonical string representation
+    if isinstance(logs, (str, PathLike)):
+        key_data = str(Path(logs).resolve())
+    elif isinstance(logs, EvalLogInfo):
+        key_data = logs.name
+    else:
+        # Sequence of logs
+        paths = sorted(
+            str(Path(log).resolve()) if isinstance(log, (str, PathLike)) else log.name
+            for log in logs
+        )
+        key_data = json.dumps(paths)
+
+    return hashlib.sha256(key_data.encode()).hexdigest()
 
 
 def sample_score(sample: EvalSampleSummary) -> Value | None:

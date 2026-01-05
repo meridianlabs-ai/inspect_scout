@@ -35,6 +35,7 @@ export interface GridDescriptor {
 
 interface ScanResultsListProps {
   id: string;
+  /** Arquero table containing scan result rows from Arrow dataframe. */
   columnTable?: ColumnTable;
   selectedScan: Status;
 }

@@ -1,0 +1,41 @@
+import { FC } from "react";
+
+import { ApplicationIcons } from "../../app/appearance/icons";
+import { InputEvent } from "../../types/api-types";
+import { formatDateTime } from "../../utils/format";
+import { ANSIDisplay } from "../AnsiDisplay";
+
+import { EventPanel } from "./event/EventPanel";
+import { EventNode } from "./types";
+
+interface InputEventViewProps {
+  eventNode: EventNode<InputEvent>;
+  className?: string | string[];
+}
+
+/**
+ * Renders the ErrorEventView component.
+ */
+export const InputEventView: FC<InputEventViewProps> = ({
+  eventNode,
+  className,
+}) => {
+  const event = eventNode.event;
+  return (
+    <EventPanel
+      eventNodeId={eventNode.id}
+      depth={eventNode.depth}
+      title="Input"
+      className={className}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
+      icon={ApplicationIcons.input}
+    >
+      <ANSIDisplay
+        output={event.input_ansi}
+        style={{ fontSize: "clamp(0.4rem, 1.15vw, 0.9rem)" }}
+      />
+    </EventPanel>
+  );
+};

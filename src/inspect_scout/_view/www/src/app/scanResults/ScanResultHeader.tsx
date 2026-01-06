@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
-import { EventType } from "../../transcript/types";
+import { EventType } from "../../components/transcript/types";
 import { Event, ChatMessage, Status, Transcript } from "../../types/api-types";
 import { TaskName } from "../components/TaskName";
 import {

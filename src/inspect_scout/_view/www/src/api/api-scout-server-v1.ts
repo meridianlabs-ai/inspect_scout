@@ -1,14 +1,14 @@
-import { ScanResultInputData, Input, InputType } from "../app/types.ts";
+import { ScanResultInputData, Input, InputType } from "../app/types";
 import {
   ScanJobsResponse,
   Status,
   TranscriptsResponse,
-} from "../types/api-types.ts";
-import { asyncJsonParse } from "../utils/json-worker.ts";
+} from "../types/api-types";
+import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi } from "./api";
-import { AsyncCache } from "./api-cache.ts";
-import { serverRequestApi } from "./request.ts";
+import { AsyncCache } from "./api-cache";
+import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
 

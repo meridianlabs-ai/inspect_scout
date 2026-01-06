@@ -9,7 +9,6 @@ import { Status } from "../types/api-types";
 import { AsyncData, data, loading } from "../utils/asyncData";
 import { join } from "../utils/uri";
 
-import { parseScanResultData, parseScanResultSummaries } from "./arrowHelpers";
 import {
   useServerScansDir,
   useServerScan,
@@ -21,6 +20,10 @@ import {
   ScanResultInputData,
   ScanResultSummary,
 } from "./types";
+import {
+  parseScanResultData,
+  parseScanResultSummaries,
+} from "./utils/arrowHelpers";
 
 export const useScanRoute = (): {
   scansDir?: string;

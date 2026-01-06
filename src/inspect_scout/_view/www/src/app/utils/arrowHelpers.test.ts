@@ -1,8 +1,9 @@
 import { from } from "arquero";
 import { describe, expect, it } from "vitest";
 
+import { ScanResultData, ScanResultSummary } from "../types";
+
 import { parseScanResultData, parseScanResultSummaries } from "./arrowHelpers";
-import { ScanResultData, ScanResultSummary } from "./types";
 
 // Typical row data as it would come from arquero .objects()
 const typicalSummaryRow = {

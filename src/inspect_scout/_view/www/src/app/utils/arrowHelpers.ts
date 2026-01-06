@@ -1,14 +1,13 @@
 import { ColumnTable } from "arquero";
 
-import { Event, JsonValue, ModelUsage } from "../types/api-types";
-import { isJson } from "../utils/json";
-import { asyncJsonParse } from "../utils/json-worker";
-
+import { Event, JsonValue, ModelUsage } from "../../types/api-types";
+import { isJson } from "../../utils/json";
+import { asyncJsonParse } from "../../utils/json-worker";
 import {
   ScanResultData,
   ScanResultReference,
   ScanResultSummary,
-} from "./types";
+} from "../types";
 
 export const parseScanResultData = async (
   filtered: ColumnTable

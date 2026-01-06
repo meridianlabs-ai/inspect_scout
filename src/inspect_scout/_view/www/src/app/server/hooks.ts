@@ -63,7 +63,8 @@ export const useServerScansDir = (): string | undefined =>
   useConfig().scans_dir ?? undefined;
 
 /** Returns transcripts dir for use in components after data loaded globally. */
-export const useServerTranscriptsDir = (): string => useConfig().transcripts_dir;
+export const useServerTranscriptsDir = (): string =>
+  useConfig().transcripts_dir;
 
 // Lists the available scans from the server and stores in state
 export const useServerScans = (): AsyncData<Status[]> => {

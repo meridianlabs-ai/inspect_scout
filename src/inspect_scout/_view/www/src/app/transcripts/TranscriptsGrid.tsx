@@ -84,7 +84,7 @@ function transcriptItemKey(index: number, item?: TranscriptInfo): string {
 
 interface TranscriptGridProps {
   transcripts: TranscriptInfo[];
-  transcriptsDir: string;
+  transcriptsDir?: string | null;
   className?: string | string[];
   /** Called when scroll position nears end; receives distance from bottom in px. */
   onScrollNearEnd: (distanceFromBottom: number) => void;
@@ -490,7 +490,9 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         }
       } else {
         // Normal click: Navigate to transcript
-        void navigate(transcriptRoute(transcriptsDir, rowId));
+        if (transcriptsDir) {
+          void navigate(transcriptRoute(transcriptsDir, rowId));
+        }
       }
     },
     [rows, rowSelection, setTableState, navigate, transcriptsDir]

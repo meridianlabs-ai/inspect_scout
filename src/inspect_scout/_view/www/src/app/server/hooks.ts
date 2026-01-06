@@ -63,7 +63,7 @@ export const useServerScansDir = (): string | undefined =>
   useConfig().scans_dir ?? undefined;
 
 /** Returns transcripts dir for use in components after data loaded globally. */
-export const useServerTranscriptsDir = (): string =>
+export const useServerTranscriptsDir = (): string | undefined | null =>
   useConfig().transcripts_dir;
 
 // Lists the available scans from the server and stores in state
@@ -157,7 +157,7 @@ export const useServerTranscripts = (
 };
 
 export const useServerTranscript = (
-  location: string | undefined,
+  location: string | undefined | null,
   id: string | undefined
 ): AsyncData<Transcript> => {
   const api = useApi();
@@ -173,7 +173,7 @@ export const useServerTranscript = (
 type CursorType = { [key: string]: unknown };
 
 export const useServerTranscriptsInfinite = (
-  location?: string,
+  location?: string | null,
   pageSize: number = 50,
   filter?: Condition,
   sorting?: SortingState

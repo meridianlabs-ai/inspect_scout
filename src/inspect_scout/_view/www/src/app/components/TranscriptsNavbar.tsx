@@ -10,7 +10,7 @@ import { Navbar } from "./Navbar";
 import { NavButton } from "./NavButtons";
 
 interface TranscriptsNavbarProps {
-  transcriptsDir?: string;
+  transcriptsDir?: string | null;
   setTranscriptsDir: (path: string) => void;
   bordered?: boolean;
   children?: React.ReactNode;

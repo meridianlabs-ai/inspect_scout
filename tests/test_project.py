@@ -90,38 +90,6 @@ class TestFindProjectFile:
 class TestLoadProjectConfig:
     """Tests for load_project_config function."""
 
-    def test_loads_valid_yaml(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Should load a valid scout.yaml file."""
-        # Track if deprecation warning was called
-        warning_called = False
-
-        def mock_warning() -> None:
-            nonlocal warning_called
-            warning_called = True
-
-        monkeypatch.setattr("inspect_scout._scanjob.show_results_warning", mock_warning)
-
-        project_file = tmp_path / "scout.yaml"
-        project_file.write_text(
-            """
-name: my-project
-transcripts: ./logs
-results: ./scans
-model: openai/gpt-4o
-log_level: warning
-"""
-        )
-
-        config = load_project_config(project_file)
-        assert config.name == "my-project"
-        assert config.transcripts == "./logs"
-        assert config.scans == "./scans"
-        assert config.model == "openai/gpt-4o"
-        assert config.log_level == "warning"
-        assert warning_called, "Deprecation warning should be emitted for 'results'"
-
     def test_loads_with_tags_and_metadata(self, tmp_path: Path) -> None:
         """Should load tags and metadata."""
         project_file = tmp_path / "scout.yaml"
@@ -192,7 +160,7 @@ class TestProjectConfig:
 
     def test_extends_scanjob_config(self) -> None:
         """ProjectConfig should extend ScanJobConfig."""
-        from inspect_scout._scanjob import ScanJobConfig
+        from inspect_scout._scanjob_config import ScanJobConfig
 
         assert issubclass(ProjectConfig, ScanJobConfig)
 

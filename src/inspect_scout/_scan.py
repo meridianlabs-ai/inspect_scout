@@ -33,11 +33,8 @@ from rich.table import Column, Table
 from typing_extensions import Unpack
 
 from inspect_scout._concurrency._mp_common import set_log_level
-from inspect_scout._project import (
-    init_project,
-    merge_project_into_scanjob,
-    project,
-)
+from inspect_scout._project import init_project, project
+from inspect_scout._scanjob import merge_project_into_scanjob
 from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
@@ -68,10 +65,8 @@ from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import (
     ScanDeprecatedArgs,
     ScanJob,
-    ScanJobConfig,
-    raise_results_error,
-    show_results_warning,
 )
+from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
 from ._scanner.scanner import Scanner, config_for_scanner
@@ -85,6 +80,7 @@ from ._transcript.types import (
 )
 from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+from ._util.deprecation import raise_results_error, show_results_warning
 from ._util.log import init_log
 
 logger = getLogger(__name__)

@@ -14,7 +14,7 @@ from ._project import (
     load_project_config,
     project,
 )
-from .merge import merge_configs, merge_project_into_scanjob
+from .merge import merge_configs
 from .types import ProjectConfig
 
 __all__ = [
@@ -22,7 +22,6 @@ __all__ = [
     "init_project",
     "project",
     "merge_configs",
-    "merge_project_into_scanjob",
     "find_git_root",
     "find_project_file",
     "find_local_project_file",

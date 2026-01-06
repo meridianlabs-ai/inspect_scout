@@ -1,5 +1,7 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
 
+from ._scanjob_config import ScanJobConfig
+
 from ._grep_scanner import grep_scanner
 from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
 from ._project import ProjectConfig, project
@@ -15,7 +17,7 @@ from ._scan import (
     scan_complete,
     scan_resume,
 )
-from ._scanjob import ScanJob, ScanJobConfig, scanjob
+from ._scanjob import ScanJob, scanjob
 from ._scanlist import scan_list
 from ._scanner.extract import (
     MessageFormatOptions,

@@ -59,7 +59,7 @@ def main() -> None:
 
     try:
         from inspect_scout._project.types import ProjectConfig
-        from inspect_scout._scanjob import ScanJobConfig
+        from inspect_scout._scanjob_config import ScanJobConfig
     except ImportError as e:
         print(f"Error: Failed to import inspect_scout: {e}", file=sys.stderr)
         print("Ensure dependencies are installed.", file=sys.stderr)

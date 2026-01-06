@@ -13,6 +13,7 @@ import { useMemo } from "react";
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
 import {
+  AppConfig,
   Status,
   ScanJobsResponse,
   Transcript,
@@ -27,16 +28,43 @@ import { expandResultsetRows } from "../utils/arrow";
 const sortingStateToOrderBy = (sorting: SortingState): OrderByModel[] =>
   sorting.map((s) => ({ column: s.id, direction: s.desc ? "DESC" : "ASC" }));
 
-// Returns the server's configured scans directory
-export const useServerScansDir = (): AsyncData<string> => {
+/**
+ * Loads app config asynchronously at app initialization.
+ *
+ * Use this hook only at the top of the app before rendering to load config
+ * data globally. After this completes, all other components should use
+ * useConfig to access the loaded value synchronously.
+ */
+export const useConfigAsync = (): AsyncData<AppConfig> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanjobs-dir"],
-    queryFn: async () => await api.getScansDir(),
+    queryKey: ["config"],
+    queryFn: () => api.getConfig(),
     staleTime: Infinity,
   });
 };
+
+/**
+ * Returns app config for use in components after data loaded globally.
+ *
+ * Use this hook in regular components throughout the app. Assumes the async
+ * data has already been loaded at app initialization via useConfigAsync.
+ * Throws if data not yet available.
+ */
+export const useConfig = (): AppConfig => {
+  const { data } = useConfigAsync();
+  if (!data) throw new Error("Config not loaded");
+  return data;
+};
+
+/** Returns the server's configured scans directory. */
+export const useServerScansDir = (): string | undefined =>
+  useConfig().scans_dir ?? undefined;
+
+/** Returns transcripts dir for use in components after data loaded globally. */
+export const useServerTranscriptsDir = (): string =>
+  useConfig().transcripts_dir;
 
 // Lists the available scans from the server and stores in state
 export const useServerScans = (): AsyncData<Status[]> => {
@@ -104,41 +132,6 @@ export const useServerScanDataframeInput = (
     queryFn: () => api.getScannerDataframeInput(location!, scanner!, uuid!),
     enabled: !!location && !!scanner && !!uuid,
     staleTime: Infinity,
-  });
-};
-
-/**
- * Returns transcripts dir for use in components after data loaded globally.
- *
- * Use this hook in regular components throughout the app. Assumes the async
- * data has already been loaded at app initialization via useServerTranscriptsDirAsync.
- * Throws if data not yet available.
- *
- * @throws Error if transcripts dir not loaded
- */
-export const useServerTranscriptsDir = (): string => {
-  const { data } = useServerTranscriptsDirAsync();
-  if (!data) throw new Error(`Must find transcripts dir`);
-  return data;
-};
-
-/**
- * Loads transcripts dir asynchronously at app initialization.
- *
- * Use this hook only at the top of the app before rendering to load the
- * transcripts dir data globally. After this completes, all other components
- * should use useServerTranscriptsDir to access the loaded value synchronously.
- *
- * @returns AsyncData with loading states for initial data fetch
- */
-export const useServerTranscriptsDirAsync = (): AsyncData<string> => {
-  const api = useApi();
-
-  return useAsyncDataFromQuery({
-    queryKey: ["transcripts-dir"],
-    queryFn: async () => await api.getTranscriptsDir(),
-    staleTime: 10000,
-    placeholderData: keepPreviousData,
   });
 };
 

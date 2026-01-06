@@ -32,7 +32,7 @@ export const useScanRoute = (): {
 } => {
   const params = useParams<{ scansDir?: string; "*": string }>();
   const setUserScansDir = useStore((state) => state.setUserScansDir);
-  const { data: resultsDir } = useServerScansDir();
+  const resultsDir = useServerScansDir();
 
   const route = useMemo(() => parseScanParams(params), [params]);
   const resolvedScansDir = route.scansDir || resultsDir;

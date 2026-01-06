@@ -1,6 +1,6 @@
 import { FC } from "react";
 
-import { SourceCodePanel } from "../../components/SourceCodePanel";
+import { SourceCodePanel } from "../../SourceCodePanel";
 
 import { ToolCallViewProps } from "./ToolCallView";
 

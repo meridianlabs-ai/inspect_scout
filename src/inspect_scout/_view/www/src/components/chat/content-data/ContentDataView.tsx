@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
-import { RecordTree } from "../../components/content/RecordTree";
-import { ContentData } from "../../types/api-types";
+import { ContentData } from "../../../types/api-types";
+import { RecordTree } from "../../content/RecordTree";
 
 import styles from "./ContentDataView.module.css";
 import { WebSearch } from "./WebSearch";

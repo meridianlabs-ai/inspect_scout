@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
-import { ChatView } from "../chat/ChatView";
+import { ChatView } from "../components/chat/ChatView";
 import { MetaDataGrid } from "../components/content/MetaDataGrid";
 import { ChatMessage, SampleInitEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";

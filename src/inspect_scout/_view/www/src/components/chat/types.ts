@@ -4,7 +4,7 @@ import {
   ContentText,
   DocumentCitation,
   UrlCitation,
-} from "../types/api-types";
+} from "../../types/api-types";
 
 export type ChatViewToolCallStyle = "compact" | "complete" | "omit";
 

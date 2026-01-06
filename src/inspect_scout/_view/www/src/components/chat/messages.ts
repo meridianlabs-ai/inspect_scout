@@ -1,4 +1,4 @@
-import { ApplicationIcons } from "../app/appearance/icons";
+import { ApplicationIcons } from "../../app/appearance/icons";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,
@@ -14,7 +14,7 @@ import {
   ContentVideo,
   Event,
   ChatMessage,
-} from "../types/api-types";
+} from "../../types/api-types";
 
 export interface ResolvedMessage {
   message:

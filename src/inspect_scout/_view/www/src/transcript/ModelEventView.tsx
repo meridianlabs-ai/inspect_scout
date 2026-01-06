@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC, Fragment, useMemo, useRef } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
-import { ChatView } from "../chat/ChatView";
+import { ChatView } from "../components/chat/ChatView";
 import { MetaDataGrid } from "../components/content/MetaDataGrid";
 import { usePrismHighlight } from "../components/prism";
 import { PulsingDots } from "../components/PulsingDots";

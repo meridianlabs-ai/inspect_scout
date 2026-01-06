@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC, Fragment, JSX, ReactNode } from "react";
 
-import { ChatView } from "../../chat/ChatView";
+import { ChatView } from "../../components/chat/ChatView";
 import {
   HumanBaselineView,
   SessionLog,

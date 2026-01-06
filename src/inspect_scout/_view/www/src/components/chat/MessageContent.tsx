@@ -1,8 +1,6 @@
 import clsx from "clsx";
 import { FC, Fragment, ReactNode } from "react";
 
-import { RenderedText } from "../components/content/RenderedText";
-import ExpandablePanel from "../components/ExpandablePanel";
 import {
   ContentAudio,
   ContentData,
@@ -14,8 +12,10 @@ import {
   ContentVideo,
   Format1,
   Format2,
-} from "../types/api-types";
-import { isJson } from "../utils/json";
+} from "../../types/api-types";
+import { isJson } from "../../utils/json";
+import { RenderedText } from "../content/RenderedText";
+import ExpandablePanel from "../ExpandablePanel";
 
 import { ContentDataView } from "./content-data/ContentDataView";
 import { ContentDocumentView } from "./documents/ContentDocumentView";

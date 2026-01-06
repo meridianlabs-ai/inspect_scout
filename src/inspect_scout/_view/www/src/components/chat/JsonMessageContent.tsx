@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { RecordTree } from "../components/content/RecordTree";
+import { RecordTree } from "../content/RecordTree";
 
 import styles from "./JsonMessageContent.module.css";
 

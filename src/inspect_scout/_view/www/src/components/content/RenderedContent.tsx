@@ -3,14 +3,14 @@ import JSON5 from "json5";
 import { FC, Fragment, isValidElement, JSX, ReactNode } from "react";
 
 import { ApplicationIcons } from "../../app/appearance/icons";
-import { ChatMessageRenderer } from "../../chat/ChatMessageRenderer";
-import { isMessageContent, MessageContent } from "../../chat/MessageContent";
-import { defaultContext } from "../../chat/MessageContents";
 import { ANSIDisplay } from "../../components/AnsiDisplay";
 import JSONPanel from "../../components/JsonPanel";
 import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
 import { formatNumber } from "../../utils/format";
 import { isJson } from "../../utils/json";
+import { ChatMessageRenderer } from "../chat/ChatMessageRenderer";
+import { isMessageContent, MessageContent } from "../chat/MessageContent";
+import { defaultContext } from "../chat/MessageContents";
 
 import { MetaDataGrid } from "./MetaDataGrid";
 import styles from "./RenderedContent.module.css";

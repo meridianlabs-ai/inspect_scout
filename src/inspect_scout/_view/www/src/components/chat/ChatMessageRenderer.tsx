@@ -1,14 +1,14 @@
 import { FC } from "react";
 
-import { Buckets, ContentRenderer } from "../components/content/types";
-import { NavPills } from "../components/NavPills";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
   ChatMessage,
-} from "../types/api-types";
+} from "../../types/api-types";
+import { Buckets, ContentRenderer } from "../content/types";
+import { NavPills } from "../NavPills";
 
 import { ChatView } from "./ChatView";
 

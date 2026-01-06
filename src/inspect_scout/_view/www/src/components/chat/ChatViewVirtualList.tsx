@@ -11,8 +11,8 @@ import {
 } from "react";
 import { ContextProp, ItemProps, VirtuosoHandle } from "react-virtuoso";
 
-import { LiveVirtualList } from "../components/LiveVirtualList";
-import { ChatMessage } from "../types/api-types";
+import { ChatMessage } from "../../types/api-types";
+import { LiveVirtualList } from "../LiveVirtualList";
 
 import { ChatMessageRow } from "./ChatMessageRow";
 import styles from "./ChatViewVirtualList.module.css";

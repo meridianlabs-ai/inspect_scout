@@ -5,7 +5,7 @@ import {
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
-} from "../types/api-types";
+} from "../../types/api-types";
 
 import { MessageContent } from "./MessageContent";
 import { Citation } from "./types";

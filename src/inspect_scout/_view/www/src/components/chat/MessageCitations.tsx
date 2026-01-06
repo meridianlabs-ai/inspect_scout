@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { FC, Fragment, PropsWithChildren, ReactElement } from "react";
 
-import { UrlCitation as UrlCitationType } from "../types/api-types";
-import { decodeHtmlEntities } from "../utils/html";
+import { UrlCitation as UrlCitationType } from "../../types/api-types";
+import { decodeHtmlEntities } from "../../utils/html";
 
 import styles from "./MessageCitations.module.css";
 import { Citation } from "./types";

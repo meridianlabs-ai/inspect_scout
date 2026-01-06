@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from "react";
 
-import { ChatView } from "../../chat/ChatView";
+import { ChatView } from "../../components/chat/ChatView";
 import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
 import { scanResultRoute } from "../../router/url";
 import { TranscriptView } from "../../transcript/TranscriptView";

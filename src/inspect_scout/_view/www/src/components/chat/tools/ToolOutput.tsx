@@ -1,10 +1,10 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
-import { ANSIDisplay } from "../../components/AnsiDisplay";
-import { ContentImage, ContentText } from "../../types/api-types";
-import { isAnsiOutput } from "../../utils/ansi";
-import { isJson } from "../../utils/json";
+import { ContentImage, ContentText } from "../../../types/api-types";
+import { isAnsiOutput } from "../../../utils/ansi";
+import { isJson } from "../../../utils/json";
+import { ANSIDisplay } from "../../AnsiDisplay";
 import { JsonMessageContent } from "../JsonMessageContent";
 
 import styles from "./ToolOutput.module.css";

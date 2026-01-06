@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { ChatViewVirtualList } from "../../../chat/ChatViewVirtualList";
+import { ChatViewVirtualList } from "../../../components/chat/ChatViewVirtualList";
 import { useStore } from "../../../state/store";
 import { TranscriptView } from "../../../transcript/TranscriptView";
 import { ColumnHeader } from "../../components/ColumnHeader";

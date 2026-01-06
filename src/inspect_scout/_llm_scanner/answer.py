@@ -209,8 +209,10 @@ class _LabelsAnswer(Answer):
         if not self.labels:
             raise ValueError("Must have labels")
 
-        if value_to_float is not None:
-            raise NotImplementedError("Label answers do not support value_to_float")
+        if self.multi_classification and value_to_float is not None:
+            raise NotImplementedError(
+                "Multi-classification labels do not support value_to_float"
+            )
 
         # For multi-classification, allow comma-separated values on the line
         pattern = (
@@ -258,7 +260,9 @@ class _LabelsAnswer(Answer):
                 if answer_letter in valid_characters:
                     index = valid_characters.index(answer_letter)
                     return Result(
-                        value=answer_letter,
+                        value=value_to_float(answer_letter)
+                        if value_to_float
+                        else answer_letter,
                         answer=self.labels[index],
                         explanation=explanation,
                         references=references,

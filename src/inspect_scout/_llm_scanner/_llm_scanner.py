@@ -4,6 +4,7 @@ from inspect_ai.model import (
     Model,
     get_model,
 )
+from inspect_ai.scorer import ValueToFloat
 from jinja2 import Environment
 
 from inspect_scout._llm_scanner.structured import structured_generate, structured_schema
@@ -65,6 +66,7 @@ def llm_scanner(
     | list[str]
     | AnswerMultiLabel
     | AnswerStructured,
+    value_to_float: ValueToFloat | None = None,
     template: str | None = None,
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
@@ -83,6 +85,7 @@ def llm_scanner(
             Can be a static string (e.g., "Did the assistant refuse the request?") or a function that takes a Transcript and returns an string for dynamic questions based on transcript content. Can be omitted if you provide a custom template.
         answer: Specification of the answer format.
             Pass "boolean", "numeric", or "string" for a simple answer; pass `list[str]` for a set of labels; or pass `MultiLabels` for multi-classification.
+        value_to_float: Optional function to convert the answer value to a float.
         template: Overall template for scanner prompt.
             The scanner template should include the following variables:
                 - {{ question }} (question for the model to answer)
@@ -160,7 +163,9 @@ def llm_scanner(
             )
 
         # resolve answer
-        return resolved_answer.result_for_answer(model_output, extract_references)
+        return resolved_answer.result_for_answer(
+            model_output, extract_references, value_to_float
+        )
 
     # set name for collection by @scanner if specified
     if name is not None:

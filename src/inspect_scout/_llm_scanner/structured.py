@@ -22,6 +22,7 @@ from inspect_ai.model import (
     execute_tools,
     get_model,
 )
+from inspect_ai.scorer import ValueToFloat
 from inspect_ai.tool import ToolDef, ToolFunction, ToolParams
 from inspect_ai.util import JSONSchema
 from pydantic import BaseModel, Field, create_model
@@ -186,6 +187,7 @@ def structured_result(
     answer: AnswerStructured,
     output: ModelOutput,
     extract_references: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None = None,
 ) -> Result:
     """Convert structured model output to Result(s).
 
@@ -193,6 +195,7 @@ def structured_result(
         answer: The AnswerStructured configuration.
         output: The ModelOutput containing the validated JSON.
         extract_references: Function to extract references from text.
+        value_to_float: Optional function to convert result values to float
 
     Returns:
         A Result object
@@ -281,6 +284,10 @@ def structured_result(
         # otherwise use the whole object
         else:
             value = obj.model_dump(exclude=exclude_from_metadata)
+
+        # call value_to_float if provided
+        if value_to_float is not None:
+            value = value_to_float(value)
 
         # Collect metadata from remaining fields
         all_fields = obj.model_dump()

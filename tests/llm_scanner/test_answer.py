@@ -107,7 +107,7 @@ def test_bool_results(
     answer = _BoolAnswer()
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, _dummy_extract_references)
+    result = answer.result_for_answer(output, _dummy_extract_references, None)
 
     assert result.value is expected_value
     assert result.answer == expected_answer
@@ -136,7 +136,7 @@ def test_number_results(
     answer = _NumberAnswer()
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, _dummy_extract_references)
+    result = answer.result_for_answer(output, _dummy_extract_references, None)
 
     assert result.value == expected_value
     assert result.explanation == expected_explanation
@@ -181,7 +181,7 @@ def test_labels_results(
     answer = _LabelsAnswer(labels=labels)
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, _dummy_extract_references)
+    result = answer.result_for_answer(output, _dummy_extract_references, None)
 
     assert result.value == expected_value
     assert result.answer == expected_answer
@@ -292,7 +292,7 @@ def test_multi_classification_results(
     answer = _LabelsAnswer(labels=labels, multi_classification=True)
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, _dummy_extract_references)
+    result = answer.result_for_answer(output, _dummy_extract_references, None)
 
     assert result.value == expected_value
     assert result.answer == expected_answer
@@ -384,7 +384,7 @@ def test_str_results(
     answer = _StrAnswer()
     output = ModelOutput(model="test", completion=completion)
 
-    result = answer.result_for_answer(output, _dummy_extract_references)
+    result = answer.result_for_answer(output, _dummy_extract_references, None)
 
     assert result.value == expected_value
     assert result.answer == expected_answer

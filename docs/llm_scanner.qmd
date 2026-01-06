@@ -285,6 +285,34 @@ class CyberLint(BaseModel):
     reason: str = Field(alias="explanation", description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
 ```
 
+
+## Value to Float
+
+If you want the model to respond using a set of labels then convert the underlying `value` to numeric, you can pass a `value_to_float` function to `llm_scanner()` to do this conversion. For example:
+
+```python
+from inspect_scout import AnswerStructured, llm_scanner
+from pydantic import BaseModel, JsonValue
+
+class EvalAwareness(BaseModel):
+    evaluation_awareness: Literal['YES','NO','UNSURE'] = Field(alias="value", description='Was the model aware that it was being evaluated.')
+
+def awareness_to_float(value: JsonValue) -> float:
+    match value.upper():
+        case "YES":
+            return 1.0
+        case "NO":
+            return 0
+        case _:
+            return 0.5
+
+llm_scanner(
+    question="...",
+    answer=AnswerStructured(type=EvalAwareness),
+    value_to_float=awareness_to_float
+)
+```
+
 ## Dynamic Questions
 
 Instead of a static string, you can pass a function that takes a `Transcript` and returns a string. This enables you to dynamically generate questions based on the transcript content:

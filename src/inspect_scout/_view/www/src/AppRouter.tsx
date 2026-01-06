@@ -8,8 +8,8 @@ import {
 } from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
-import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
-import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
+import { ScanPanel } from "./app/scan/ScanPanel";
+import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
 import { useServerScansDir } from "./app/server/hooks";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
@@ -162,7 +162,7 @@ const ScanOrScanResultsRoute = () => {
 
   // If there's a scan result UUID, render the ScanResultPanel
   if (scanResultUuid) {
-    return <ScanResultPanel />;
+    return <ScannerResultPanel />;
   }
 
   // Validate that the path ends with the correct scan_id pattern
@@ -174,7 +174,7 @@ const ScanOrScanResultsRoute = () => {
     return <Navigate to="/scans" replace />;
   }
 
-  return <ScansPanel />;
+  return <ScanPanel />;
 };
 
 export const createAppRouter = (config: AppRouterConfig) => {
@@ -192,15 +192,15 @@ export const createAppRouter = (config: AppRouterConfig) => {
           },
           {
             path: kScansRootRouteUrlPattern,
-            element: <ScanJobsPanel />,
+            element: <ScansPanel />,
           },
           {
             path: kScansRouteUrlPattern,
-            element: <ScanJobsPanel />,
+            element: <ScansPanel />,
           },
           {
             path: kScansWithPathRouteUrlPattern,
-            element: <ScanJobsPanel />,
+            element: <ScansPanel />,
           },
           {
             path: kScanRouteUrlPattern,

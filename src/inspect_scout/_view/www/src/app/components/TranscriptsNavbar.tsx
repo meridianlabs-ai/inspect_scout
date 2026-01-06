@@ -1,16 +1,16 @@
 import { FC, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
+import { ApplicationIcons } from "../../components/icons";
 import { transcriptsRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import { ApplicationIcons } from "../appearance/icons";
 
 import { EditablePath } from "./EditablePath";
 import { Navbar } from "./Navbar";
 import { NavButton } from "./NavButtons";
 
 interface TranscriptsNavbarProps {
-  transcriptsDir?: string;
+  transcriptsDir?: string | null;
   setTranscriptsDir: (path: string) => void;
   bordered?: boolean;
   children?: React.ReactNode;

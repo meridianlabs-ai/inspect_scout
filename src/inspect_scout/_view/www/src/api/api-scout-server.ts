@@ -1,4 +1,4 @@
-import { ScanResultInputData, Input, InputType } from "../app/types.ts";
+import { ScanResultInputData, Input, InputType } from "../app/types";
 import type { Condition, OrderByModel } from "../query";
 import {
   AppConfig,
@@ -7,12 +7,12 @@ import {
   Status,
   Transcript,
   TranscriptsResponse,
-} from "../types/api-types.ts";
+} from "../types/api-types";
 import { encodeBase64Url } from "../utils/base64url";
-import { asyncJsonParse } from "../utils/json-worker.ts";
+import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi } from "./api";
-import { serverRequestApi } from "./request.ts";
+import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
 

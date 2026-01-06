@@ -1,5 +1,6 @@
-.root {
-  height: 100vh;
+.container {
   display: grid;
-  grid-template-rows: max-content max-content max-content max-content 1fr;
+  grid-template-rows: max-content max-content 1fr max-content;
+  height: 100%;
+  row-gap: 0;
 }

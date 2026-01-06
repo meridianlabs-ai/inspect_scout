@@ -2,7 +2,7 @@
 export { App } from "./App";
 
 // Client APIs
-export { apiScoutServer } from "./api/api-scout-server.ts";
+export { apiScoutServer } from "./api/api-scout-server";
 
 // Client API - Types
 export type { ScanApi } from "./api/api.ts";

@@ -1,9 +1,9 @@
 import clsx from "clsx";
 import { FC, MouseEvent, ReactNode, useCallback, useEffect } from "react";
 
-import { ApplicationIcons } from "../app/appearance/icons";
 import { useProperty } from "../state/hooks";
 
+import { ApplicationIcons } from "./icons";
 import styles from "./LightboxCarousel.module.css";
 
 interface Slide {

@@ -5,7 +5,7 @@ import { isUri, prettyDirUri } from "../../utils/uri";
 import { EditableText } from "./EditableText";
 
 interface EditablePathProps {
-  path?: string;
+  path?: string | null;
   onPathChanged: (path: string) => void;
 
   mru?: string[];

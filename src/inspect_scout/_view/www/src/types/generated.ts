@@ -151,9 +151,9 @@ export interface components {
         /** AppConfig */
         AppConfig: {
             /** Scans Dir */
-            scans_dir?: string | null;
+            scans_dir: string;
             /** Transcripts Dir */
-            transcripts_dir: string;
+            transcripts_dir?: string | null;
         };
         /**
          * ApprovalEvent

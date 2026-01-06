@@ -1,63 +1,53 @@
-import clsx from "clsx";
-import React, { useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { clsx } from "clsx";
+import { FC, useEffect } from "react";
 
+import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { LoadingBar } from "../../components/LoadingBar";
-import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
+import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { useSelectedScan } from "../hooks";
 import { useServerScansDir, useServerScans } from "../server/hooks";
 
+import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
-import { ScansPanelBody } from "./ScansPanelBody";
-import { ScansPanelTitle } from "./ScansPanelTitle";
 
-export const ScansPanel: React.FC = () => {
-  // Load server data
-  const { loading: scansLoading } = useServerScans();
+export const ScansPanel: FC = () => {
+  // Load scans data
+  const { loading, error, data: scans } = useServerScans();
   const resultsDir = useServerScansDir();
-  const { loading: scanLoading, data: selectedScan } = useSelectedScan();
-
+  const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
   const userScansDir = useStore((state) => state.userScansDir);
-  const setUserScansDir = useStore((state) => state.setUserScansDir);
+  const setScanDir = useStore((state) => state.setUserScansDir);
 
-  const loading = scansLoading || scanLoading;
-
-  // Clear scan state from the store on mount
-  const clearScanState = useStore((state) => state.clearScanState);
+  // Clear scan state from store on mount
+  const clearScansState = useStore((state) => state.clearScansState);
   useEffect(() => {
-    clearScanState();
+    clearScansState();
   }, []);
 
-  // Sync URL query param with store state
-  const [searchParams] = useSearchParams();
-  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
-  useEffect(() => {
-    const scannerParam = getScannerParam(searchParams);
-    if (scannerParam) {
-      setSelectedScanner(scannerParam);
-    }
-  }, [searchParams, setSelectedScanner]);
   return (
-    <div className={clsx(styles.root)}>
+    <div className={clsx(styles.container)}>
       <ScansNavbar
         scansDir={userScansDir || resultsDir}
-        setScansDir={setUserScansDir}
+        setScansDir={setScanDir}
+        bordered={false}
       />
       <LoadingBar loading={!!loading} />
-      {selectedScan && (
-        <>
-          <ScansPanelTitle
-            resultsDir={resultsDir}
-            selectedScan={selectedScan}
+      <ExtendedFindProvider>
+        {error && (
+          <ErrorPanel
+            title="Error Loading Scans"
+            error={{ message: error.message }}
           />
-          <ExtendedFindProvider>
-            <ScansPanelBody selectedScan={selectedScan} />
-          </ExtendedFindProvider>
-        </>
-      )}
+        )}
+        {scans && <ScansGrid scans={scans} resultsDir={resultsDir} />}
+        <Footer
+          id={"scan-job-footer"}
+          itemCount={visibleScanJobCount || 0}
+          paginated={false}
+        />
+      </ExtendedFindProvider>
     </div>
   );
 };

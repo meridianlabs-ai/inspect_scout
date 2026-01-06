@@ -1,4 +1,4 @@
-import { EventType } from "../transcript/types";
+import { EventType } from "../components/transcript/types";
 import {
   ModelUsage,
   JsonValue,

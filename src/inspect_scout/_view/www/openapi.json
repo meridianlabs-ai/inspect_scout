@@ -4,6 +4,10 @@
       "AppConfig": {
         "properties": {
           "scans_dir": {
+            "title": "Scans Dir",
+            "type": "string"
+          },
+          "transcripts_dir": {
             "anyOf": [
               {
                 "type": "string"
@@ -12,15 +16,11 @@
                 "type": "null"
               }
             ],
-            "title": "Scans Dir"
-          },
-          "transcripts_dir": {
-            "title": "Transcripts Dir",
-            "type": "string"
+            "title": "Transcripts Dir"
           }
         },
         "required": [
-          "transcripts_dir"
+          "scans_dir"
         ],
         "title": "AppConfig",
         "type": "object"

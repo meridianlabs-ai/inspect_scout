@@ -1,0 +1,34 @@
+---
+title: "Untitled"
+format: html
+---
+
+/initialize
+    - get all the dirs, settings, etc.
+    - if transcripts is None, defaults is scans if there are scans
+
+implicit project
+    - transcripts: ./transcripts || ./logs || None
+    - results: ./scans
+
+consider inverting ProjectConfig and ScanJobConfig and editing the fields a bit.
+
+add 'filter' to the ScanJobConfig
+
+scout view
+    - workbench by default (navigation=false)
+
+
+
+- Transcripts
+- Run Scan
+- Scans
+- Validation
+
+rename 'results' to 'scans'
+
+other:
+   scout.local.yaml
+
+
+

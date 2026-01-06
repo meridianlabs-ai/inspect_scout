@@ -1,5 +1,4 @@
 import base64
-import os
 from typing import Any
 
 from fastapi.responses import JSONResponse
@@ -7,7 +6,6 @@ from inspect_ai._util.json import to_json_safe
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaMode, JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 from typing_extensions import override
-from upath import UPath
 
 
 class CustomJsonSchemaGenerator(GenerateJsonSchema):
@@ -78,22 +76,3 @@ class InspectPydanticJSONResponse(JSONResponse):
     @override
     def render(self, content: Any) -> bytes:
         return to_json_safe(content)
-
-
-async def default_transcripts_dir() -> str:
-    """Return resolved path to transcripts dir, scrounging scan results for a plausible default."""
-    return (
-        UPath(
-            # TODO: This env var isn't official. It's temporary to make dev/debugging easier
-            os.getenv("SCOUT_TRANSCRIPTS")
-            or await _scrounged_transcripts_dir()
-            or "file://./transcripts"
-        )
-        .resolve()
-        .as_posix()
-    )
-
-
-async def _scrounged_transcripts_dir() -> str | None:
-    # TODO: Scrounge any scan results to find a plausible transcript dir
-    return None

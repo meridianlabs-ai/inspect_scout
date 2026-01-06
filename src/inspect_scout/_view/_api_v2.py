@@ -17,6 +17,8 @@ from starlette.status import (
 )
 from upath import UPath
 
+from inspect_scout._project._project import project
+
 from .._query import Column, Query
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjobs.factory import scan_jobs_view
@@ -43,7 +45,6 @@ from ._api_v2_types import (
 from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
-    default_transcripts_dir,
 )
 
 # TODO: temporary simulation tracking currently running scans (by location path)
@@ -180,8 +181,8 @@ def v2_api_app(
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
         return AppConfig(
-            transcripts_dir=await default_transcripts_dir(),
-            scans_dir=results_dir,
+            transcripts_dir=project().transcripts,
+            scans_dir=project().scans,
         )
 
     @app.post(

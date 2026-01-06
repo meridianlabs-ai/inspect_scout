@@ -107,5 +107,5 @@ class ScanJobsResponse:
 class AppConfig:
     """Application configuration returned by GET /config."""
 
-    transcripts_dir: str
-    scans_dir: str | None
+    transcripts_dir: str | None
+    scans_dir: str

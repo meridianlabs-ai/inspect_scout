@@ -14,7 +14,7 @@ class ScanJobConfig(BaseModel):
     name: str = Field(default="job")
     """Name of scan job (defaults to "job")."""
 
-    transcripts: str | list[str] | None = Field(default=None)
+    transcripts: str | None = Field(default=None)
     """Trasnscripts to scan."""
 
     scanners: list[ScannerSpec] | dict[str, ScannerSpec] | None = Field(default=None)

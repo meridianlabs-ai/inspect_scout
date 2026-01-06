@@ -9,8 +9,8 @@ import {
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanPanel } from "./app/scan/ScanPanel";
-import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
+import { ScansPanel } from "./app/scans/ScansPanel";
 import { useServerScansDir } from "./app/server/hooks";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
@@ -192,15 +192,15 @@ export const createAppRouter = (config: AppRouterConfig) => {
           },
           {
             path: kScansRootRouteUrlPattern,
-            element: <ScanJobsPanel />,
+            element: <ScansPanel />,
           },
           {
             path: kScansRouteUrlPattern,
-            element: <ScanJobsPanel />,
+            element: <ScansPanel />,
           },
           {
             path: kScansWithPathRouteUrlPattern,
-            element: <ScanJobsPanel />,
+            element: <ScansPanel />,
           },
           {
             path: kScanRouteUrlPattern,

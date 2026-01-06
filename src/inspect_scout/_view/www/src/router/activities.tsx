@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { ScanJobsPanel } from "../app/scanJobs/ScanJobsPanel";
+import { ScansPanel } from "../app/scans/ScansPanel";
 import { TranscriptsPanel } from "../app/transcripts/TranscriptsPanel";
 import { ApplicationIcons } from "../components/icons";
 
@@ -30,7 +30,7 @@ export const activities: ActivityConfig[] = [
     route: "/scans",
     routePatterns: ["/scans", "/scan"],
     description: "View results",
-    element: <ScanJobsPanel />,
+    element: <ScansPanel />,
   },
 ];
 

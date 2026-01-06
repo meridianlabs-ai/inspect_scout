@@ -21,7 +21,7 @@ import type { Status } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
 import { debounce } from "../../utils/sync";
 
-import styles from "./ScanJobsGrid.module.css";
+import styles from "./ScansGrid.module.css";
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -41,7 +41,7 @@ interface ScanJobSummary {
   errors?: boolean;
 }
 
-export const ScanJobGrid: FC<{
+export const ScansGrid: FC<{
   scans: Status[];
   resultsDir: string | undefined;
 }> = ({ scans, resultsDir }) => {

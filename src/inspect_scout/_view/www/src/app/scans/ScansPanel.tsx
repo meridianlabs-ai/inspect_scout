@@ -9,10 +9,10 @@ import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useServerScansDir, useServerScans } from "../server/hooks";
 
-import { ScanJobGrid } from "./ScanJobGrid";
-import styles from "./ScanJobsPanel.module.css";
+import { ScansGrid } from "./ScansGrid";
+import styles from "./ScansPanel.module.css";
 
-export const ScanJobsPanel: FC = () => {
+export const ScansPanel: FC = () => {
   // Load scans data
   const { loading, error, data: scans } = useServerScans();
   const resultsDir = useServerScansDir();
@@ -41,7 +41,7 @@ export const ScanJobsPanel: FC = () => {
             error={{ message: error.message }}
           />
         )}
-        {scans && <ScanJobGrid scans={scans} resultsDir={resultsDir} />}
+        {scans && <ScansGrid scans={scans} resultsDir={resultsDir} />}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

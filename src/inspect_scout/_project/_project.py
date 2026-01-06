@@ -8,10 +8,14 @@ from inspect_ai._util.file import file
 from inspect_ai._util.path import pretty_path
 from jsonschema import Draft7Validator
 
+from .merge import merge_configs
 from .types import ProjectConfig
 
 # Global project state
 _current_project: ProjectConfig | None = None
+
+# Local project override filename
+LOCAL_PROJECT_FILENAME = "scout.local.yaml"
 
 
 def project() -> ProjectConfig:
@@ -80,14 +84,58 @@ def find_project_file(start_dir: Path) -> Path | None:
         current = current.parent
 
 
+def find_local_project_file(project_file: Path) -> Path | None:
+    """Find scout.local.yaml in the same directory as scout.yaml.
+
+    Args:
+        project_file: Path to the main scout.yaml file.
+
+    Returns:
+        Path to scout.local.yaml if it exists, None otherwise.
+    """
+    local_file = project_file.parent / LOCAL_PROJECT_FILENAME
+    return local_file if local_file.exists() else None
+
+
 def load_project_config(path: Path) -> ProjectConfig:
     """Load and validate project configuration from a scout.yaml file.
+
+    If scout.local.yaml exists in the same directory, it is merged on top
+    of the base configuration.
 
     Uses Draft7Validator for schema validation, following the same pattern
     as scanjob_from_config_file.
 
     Args:
         path: Path to the scout.yaml file.
+
+    Returns:
+        Validated ProjectConfig instance.
+
+    Raises:
+        PrerequisiteError: If the configuration is invalid.
+    """
+    # Load base config
+    config = _load_single_config(path)
+
+    # Check for local override
+    local_path = find_local_project_file(path)
+    if local_path:
+        local_config = _load_single_config(local_path)
+        config = merge_configs(config, local_config)
+
+    # Default name to directory name if not specified
+    if config.name == "job":  # default from ScanJobConfig
+        config = config.model_copy(update={"name": path.parent.name})
+
+    return config
+
+
+def _load_single_config(path: Path) -> ProjectConfig:
+    """Load and validate a single config file.
+
+    Args:
+        path: Path to the config file.
 
     Returns:
         Validated ProjectConfig instance.
@@ -105,19 +153,13 @@ def load_project_config(path: Path) -> ProjectConfig:
     if errors:
         message = "\n".join(
             [
-                f"Found validation errors parsing project config from {pretty_path(path.as_posix())}:"
+                f"Found validation errors parsing config from {pretty_path(path.as_posix())}:"
             ]
             + [f"- {error.message}" for error in errors]
         )
         raise PrerequisiteError(message)
 
-    config = ProjectConfig.model_validate(project_config)
-
-    # Default name to directory name if not specified
-    if config.name == "job":  # default from ScanJobConfig
-        config = config.model_copy(update={"name": path.parent.name})
-
-    return config
+    return ProjectConfig.model_validate(project_config)
 
 
 def create_default_project() -> ProjectConfig:

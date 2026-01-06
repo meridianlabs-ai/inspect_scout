@@ -65,6 +65,19 @@ Project files support all of the same options available to [scan jobs](#scan-job
 
 : {tbl-colwidths="[20,18,62]"}
 
+### Local Config
+
+In some cases you might want to provide local overrides to a shared project configuration file. You can do this by adding a `scout.local.yaml` file alongside your `scout.yaml` file. For example, here we override the main project file with a different model, max connections, and log level:
+
+```{.yaml filename="scout.local.yaml"}
+model: openai/gpt-5-mini
+generate_config:
+   max_connections: 100
+log_level: info
+```
+
+Be sure to add `scout.local.yaml` to your `.gitignore` so it isn't checked in to version control.
+
 ## Environment (.env) {#environment-files}
 
 While `scout.yaml` project files are intended to be checked into version control, you'll often have secrets and credentials that should not be committed. Use a `.env` file for these values.

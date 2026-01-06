@@ -212,6 +212,9 @@ src/inspect_scout/_version.py
 /logs/
 /scans/
 
+# Scout local configuration (developer-only, not checked in)
+scout.local.yaml
+
 # MacOS
 .DS_Store
 

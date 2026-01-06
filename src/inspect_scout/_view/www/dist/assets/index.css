@@ -3008,20 +3008,6 @@ a._citationLink_1ggvf_9:hover {
 ._hidden_e1pcq_40 {
   opacity: 0 !important;
 }
-._container_10hwa_1 {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  grid-template-rows: 1fr max-content;
-  height: 100%;
-}
-
-._footer_10hwa_8 {
-  grid-column: 1 / -1;
-}
-
-._breadcrumbs_10hwa_12 {
-  min-width: 600px !important;
-}
 ._progressContainer_1cjjr_1 {
   width: 100%;
   display: flex;
@@ -5019,6 +5005,20 @@ span.ap-marker-container:hover span.ap-marker {
 
 ._scrollContainer_94id2_15 {
   overflow-y: auto;
+}
+._container_10hwa_1 {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: 1fr max-content;
+  height: 100%;
+}
+
+._footer_10hwa_8 {
+  grid-column: 1 / -1;
+}
+
+._breadcrumbs_10hwa_12 {
+  min-width: 600px !important;
 }
 ._container_1ov9x_1 {
   border-right: solid 1px var(--bs-border-color);

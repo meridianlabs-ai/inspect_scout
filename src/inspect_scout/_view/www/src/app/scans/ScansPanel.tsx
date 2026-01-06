@@ -17,7 +17,7 @@ import { ScansPanelTitle } from "./ScansPanelTitle";
 export const ScansPanel: React.FC = () => {
   // Load server data
   const { loading: scansLoading } = useServerScans();
-  const { data: resultsDir } = useServerScansDir();
+  const resultsDir = useServerScansDir();
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
   const userScansDir = useStore((state) => state.userScansDir);

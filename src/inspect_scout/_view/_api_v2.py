@@ -4,7 +4,7 @@ from typing import Any, Iterable, TypeVar, Union, get_args, get_origin
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
 from fastapi import FastAPI, HTTPException, Path, Request, Response
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from inspect_ai._util.file import FileSystem
 from inspect_ai._util.json import JsonChange
 from inspect_ai._view.fastapi_server import AccessPolicy
@@ -33,6 +33,7 @@ from ._api_v2_helpers import (
     build_transcripts_cursor,
 )
 from ._api_v2_types import (
+    AppConfig,
     ScanJobsRequest,
     ScanJobsResponse,
     ScanJobStatus,
@@ -170,24 +171,18 @@ def v2_api_app(
         return scan
 
     @app.get(
-        "/transcripts-dir",
-        response_class=PlainTextResponse,
-        summary="Get default transcripts directory",
-        description="Returns the default directory path where transcripts are stored.",
+        "/config",
+        response_model=AppConfig,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get application configuration",
+        description="Returns app config including transcripts and scans directories.",
     )
-    async def transcripts_dir(request: Request) -> str:
-        """Return default transcripts directory path."""
-        return await default_transcripts_dir()
-
-    @app.get(
-        "/scanjobs-dir",
-        response_class=PlainTextResponse,
-        summary="Get default scans directory",
-        description="Returns the default directory path where scans are stored.",
-    )
-    async def scans_dir(request: Request) -> str:
-        """Return default scans directory path."""
-        return _ensure_not_none(results_dir, "results_dir is not configured")
+    async def config(request: Request) -> AppConfig:
+        """Return application configuration."""
+        return AppConfig(
+            transcripts_dir=await default_transcripts_dir(),
+            scans_dir=results_dir,
+        )
 
     @app.post(
         "/transcripts/{dir}",

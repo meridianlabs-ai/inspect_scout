@@ -15,7 +15,7 @@ import styles from "./ScanJobsPanel.module.css";
 export const ScanJobsPanel: FC = () => {
   // Load scans data
   const { loading, error, data: scans } = useServerScans();
-  const { data: resultsDir } = useServerScansDir();
+  const resultsDir = useServerScansDir();
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
   const userScansDir = useStore((state) => state.userScansDir);
   const setScanDir = useStore((state) => state.setUserScansDir);

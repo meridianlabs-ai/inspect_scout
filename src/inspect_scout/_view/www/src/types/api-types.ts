@@ -14,7 +14,7 @@ export type Transcript = components["schemas"]["Transcript"];
 export type Pagination = components["schemas"]["Pagination"];
 export type TranscriptInfo = components["schemas"]["TranscriptInfo"];
 export type ScanJobsResponse = components["schemas"]["ScanJobsResponse"];
-
+export type AppConfig = components["schemas"]["AppConfig"];
 export type ApprovalEvent = components["schemas"]["ApprovalEvent"];
 export type ErrorEvent = components["schemas"]["ErrorEvent"];
 export type InfoEvent = components["schemas"]["InfoEvent"];

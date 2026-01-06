@@ -43,7 +43,7 @@ export const ScanResultPanel: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Required server data
-  const { data: resultsDir } = useServerScansDir();
+  const resultsDir = useServerScansDir();
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
   const userScansDir = useStore((state) => state.userScansDir);
   const setUserScansDir = useStore((state) => state.setUserScansDir);

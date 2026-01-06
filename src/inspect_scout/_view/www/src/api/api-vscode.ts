@@ -50,9 +50,9 @@ export const apiVscode = (
 
   return {
     capability: "scans",
-    // eslint-disable-next-line @typescript-eslint/require-await
-    getTranscriptsDir: async (): Promise<string> => {
-      throw new Error("Not Yet Implemented");
+    getConfig: async () => {
+      const data = await fetchScansData();
+      return { transcripts_dir: "", scans_dir: data.results_dir };
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     getTranscripts: async (
@@ -64,10 +64,6 @@ export const apiVscode = (
     // eslint-disable-next-line @typescript-eslint/require-await
     getTranscript: async (): Promise<never> => {
       throw new Error("Not Yet Implemented");
-    },
-    getScansDir: async (): Promise<string> => {
-      const data = await fetchScansData();
-      return data.results_dir;
     },
     getScan: async (scanLocation: string): Promise<Status> => {
       const response = (await rpcClient(kMethodGetScan, [

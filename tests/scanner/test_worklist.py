@@ -295,7 +295,7 @@ async def test_worklist_basic_filtering() -> None:
             scanners=[counter_a_scanner(), counter_b_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify results
@@ -321,7 +321,7 @@ async def test_worklist_no_overlap() -> None:
             scanners=[scanner_a_factory(), scanner_b_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify results - no overlap
@@ -347,7 +347,7 @@ async def test_worklist_empty_transcript_list() -> None:
             scanners=[scanner_a_factory(), scanner_b_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify scanner_a has results
@@ -380,7 +380,7 @@ async def test_worklist_single_scanner_subset() -> None:
             scanners=[subset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify exactly 5 results
@@ -415,7 +415,7 @@ async def test_worklist_nonexistent_transcript_ids() -> None:
             scanners=[resilient_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify only valid IDs were processed (non-existent IDs silently skipped)
@@ -434,7 +434,7 @@ async def test_worklist_default_behavior_without_worklist() -> None:
             scanners=[default_a_factory(), default_b_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             # Note: No worklist parameter - should process all transcripts
-            results=tmpdir,
+            scans=tmpdir,
             limit=10,  # Limit to 10 to match our transcript_ids
         )
 
@@ -465,7 +465,7 @@ async def test_worklist_spec_persistence() -> None:
             scanners=[spec_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=original_worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Load scan status and check spec
@@ -517,7 +517,7 @@ async def test_worklist_partial_overlap_many_scanners() -> None:
             ],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify each scanner processed exactly its assigned transcripts
@@ -557,7 +557,7 @@ async def test_worklist_results_database_filtering() -> None:
             scanners=[db_scanner_a_factory(), db_scanner_b_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Use scan_results_db to verify
@@ -618,7 +618,7 @@ async def test_worklist_with_named_scanners_dict() -> None:
             scanners=scanners_dict,
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify results using custom names
@@ -675,7 +675,7 @@ async def test_worklist_with_scanner_work_explicit_ids() -> None:
             scanners=[query_scanner_a_factory(), query_scanner_b_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Verify results
@@ -701,7 +701,7 @@ async def test_worklist_with_transcripts_query() -> None:
             scanners=[query_scanner_a_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Get expected transcript IDs from the popularity task
@@ -743,7 +743,7 @@ async def test_worklist_with_multiple_transcripts_queries() -> None:
             scanners=[query_scanner_a_factory(), query_scanner_b_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Get expected transcript IDs for each task
@@ -787,7 +787,7 @@ async def test_worklist_mixed_scanner_work_and_worklist_types() -> None:
             scanners=[query_scanner_a_factory(), query_scanner_b_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             worklist=worklist,
-            results=tmpdir,
+            scans=tmpdir,
         )
 
         # Get expected transcript IDs for the security task

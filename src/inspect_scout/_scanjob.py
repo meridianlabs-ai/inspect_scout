@@ -1,13 +1,27 @@
 import inspect
 import re
 from functools import wraps
+from logging import getLogger
 from pathlib import Path
-from typing import Any, Callable, Counter, Literal, Sequence, TypeVar, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Counter,
+    Literal,
+    NoReturn,
+    Sequence,
+    Type,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from inspect_ai._util.config import read_config_object, resolve_args
 from inspect_ai._util.decorator import parse_decorators
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import file
+from inspect_ai._util.logger import warn_once
 from inspect_ai._util.module import load_module
 from inspect_ai._util.package import get_installed_package_name
 from inspect_ai._util.path import add_to_syspath, pretty_path
@@ -25,7 +39,8 @@ from inspect_ai._util.registry import (
 from inspect_ai.model import GenerateConfig, Model, ModelConfig, get_model
 from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Unpack
 
 from inspect_scout._scanspec import ScannerSpec, Worklist
 from inspect_scout._transcript.factory import transcripts_from
@@ -36,6 +51,8 @@ from inspect_scout._validation.validation import validation_set
 from ._concurrency import _mp_common
 from ._scanner.scanner import Scanner, scanner_create
 from ._transcript.transcripts import Transcripts
+
+logger = getLogger(__name__)
 
 
 class ScanJobConfig(BaseModel):
@@ -56,8 +73,8 @@ class ScanJobConfig(BaseModel):
     validation: dict[str, str | ValidationSet] | None = Field(default=None)
     """Validation cases to apply for scanners."""
 
-    results: str | None = Field(default=None)
-    """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
+    scans: str | None = Field(default=None)
+    """Location to write scan results (filesystem or S3 bucket). Defaults to "./scans"."""
 
     model: str | None = Field(default=None)
     """Model to use for scanning by default (individual scanners can always call `get_model()` to us arbitrary models).
@@ -109,7 +126,32 @@ class ScanJobConfig(BaseModel):
     ) = Field(default=None)
     """Level for logging to the console: "debug", "http", "sandbox", "info", "warning", "error", "critical", or "notset" (defaults to "warning")."""
 
+    results: str | None = Field(default=None)
+    """Deprecated. Please use 'scans' instead."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_results_to_scans(cls: Type["ScanJobConfig"], values: Any) -> Any:
+        if not isinstance(values, dict):
+            return values
+        if "results" in values:
+            # There cannot be a scans property too
+            if "scans" in values:
+                raise_results_error()
+
+            # show warning
+            show_results_warning()
+
+            # copy to scans
+            values["scans"] = values["results"]
+
+        return values
+
     model_config = ConfigDict(extra="forbid", protected_namespaces=())
+
+
+class ScanDeprecatedArgs(TypedDict, total=False):
+    results: str | None
 
 
 class ScanJob:
@@ -123,7 +165,7 @@ class ScanJob:
         | dict[str, Scanner[Any]],
         worklist: Sequence[Worklist] | None = None,
         validation: dict[str, ValidationSet] | None = None,
-        results: str | None = None,
+        scans: str | None = None,
         model: str | Model | None = None,
         model_base_url: str | None = None,
         model_args: dict[str, Any] | None = None,
@@ -137,13 +179,23 @@ class ScanJob:
         metadata: dict[str, Any] | None = None,
         log_level: str | None = None,
         name: str | None = None,
+        **deprecated: Unpack[ScanDeprecatedArgs],
     ):
+        # map deprecated
+        results_deprecated = deprecated.get("results", None)
+        if results_deprecated is not None:
+            if scans is not None:
+                raise_results_error()
+
+            show_results_warning()
+            scans = results_deprecated
+
         # save transcripts and name
         self._transcripts = transcripts
         self._worklist = worklist
         self._validation = validation
         self._name = name
-        self._results = results
+        self._scans = scans
         self._model = (
             get_model(
                 model,
@@ -255,9 +307,9 @@ class ScanJob:
         return self._scanners
 
     @property
-    def results(self) -> str | None:
-        """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
-        return self._results
+    def scans(self) -> str | None:
+        """Location to write scan results (filesystem or S3 bucket). Defaults to "./scans"."""
+        return self._scans
 
     @property
     def model(self) -> Model | None:
@@ -551,3 +603,13 @@ def _validation_from_config(
         k: v if isinstance(v, ValidationSet) else validation_set(v)
         for k, v in validation.items()
     }
+
+
+def show_results_warning() -> None:
+    warn_once(logger, "Scan job 'results' is deprecated, please use 'scans' instead")
+
+
+def raise_results_error() -> NoReturn:
+    raise TypeError(
+        "Unexpected value 'results' present when 'scans' has already been specified."
+    )

@@ -139,7 +139,7 @@ def create_default_project() -> ProjectConfig:
 
     return ProjectConfig(
         name=Path.cwd().name,
-        results="./scans",
+        scans="./scans",
         transcripts=transcripts,
     )
 

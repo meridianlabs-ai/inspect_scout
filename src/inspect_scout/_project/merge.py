@@ -57,8 +57,8 @@ def _apply_simple_fallbacks(proj: ProjectConfig, scanjob: ScanJob) -> None:
         scanjob._transcripts = transcripts_from(proj.transcripts)
 
     # Results
-    if scanjob._results is None and proj.results is not None:
-        scanjob._results = proj.results
+    if scanjob._scans is None and proj.scans is not None:
+        scanjob._scans = proj.scans
 
     # Note: Model fields are handled by _merge_model() which treats the model
     # configuration as an atomic unit (model + base_url + args + generate_config)

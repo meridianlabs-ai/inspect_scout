@@ -1,4 +1,5 @@
 import os
+from logging import getLogger
 from typing import Any, Literal, TypeVar, cast
 
 import click
@@ -14,6 +15,7 @@ from inspect_ai._util.config import resolve_args
 from inspect_ai._util.constants import DEFAULT_CACHE_DAYS
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
+from inspect_ai._util.logger import warn_once
 from inspect_ai.log._file import list_eval_logs
 from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig, Model
 from typing_extensions import Unpack
@@ -28,6 +30,8 @@ from .._scanner.scanner import scanners_from_file
 from .._transcript.factory import transcripts_from
 from .._util.constants import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TRANSCRIPTS
 from .common import CommonOptions, common_options, process_common_options
+
+logger = getLogger(__name__)
 
 
 class ScanGroup(click.Group):
@@ -139,10 +143,17 @@ class ScanGroup(click.Group):
     help="One or more transcript sources (e.g. -T ./logs)",
 )
 @click.option(
+    "--scans",
+    type=str,
+    default=None,
+    help="Location to write scan results to.",
+    envvar="SCOUT_SCAN_SCANS",
+)
+@click.option(
     "--results",
     type=str,
-    default="./scans",
-    help="Location to write scan results to.",
+    default=None,
+    hidden=True,
     envvar="SCOUT_SCAN_RESULTS",
 )
 @click.option(
@@ -334,6 +345,7 @@ def scan_command(
     ctx: click.Context,
     s: tuple[str, ...],
     transcripts: tuple[str, ...],
+    scans: str | None,
     results: str | None,
     worklist: str | None,
     validation: tuple[str, ...] | None,
@@ -375,6 +387,19 @@ def scan_command(
     # Process common options
     process_common_options(common)
 
+    # Handle deprecated --results option
+    if results is not None:
+        warn_once(
+            logger, "CLI option '--results' is deprecated, please use '--scans' instead"
+        )
+        if scans is not None:
+            raise click.UsageError("Cannot specify both --scans and --results")
+        scans = results
+
+    # Apply default for scans
+    if scans is None:
+        scans = "./scans"
+
     # Get the file argument from extra args
     if not ctx.args or len(ctx.args) == 0:
         raise click.UsageError("Missing argument 'FILE'.")
@@ -414,7 +439,7 @@ def scan_command(
         )
 
     # resolve some options
-    scan_results = resolve_scan_option(ctx, "results", results, scanjob.results)
+    scans = resolve_scan_option(ctx, "scans", scans, scanjob.scans)
     scan_worklist = cast(
         str | None,
         resolve_scan_option(ctx, "worklist", worklist, scanjob.worklist),
@@ -572,7 +597,7 @@ def scan_command(
     scan(
         scanners=scanjob,
         transcripts=tx,
-        results=scan_results,
+        scans=scans,
         worklist=scan_worklist,
         validation=scan_validation,
         model=scan_model,

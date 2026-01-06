@@ -76,7 +76,7 @@ def test_lazy_loading_scanners() -> None:
         status = scan(
             scanners=[lazy_test_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=2,
             max_processes=1,
             model="mockllm/model",

@@ -28,7 +28,7 @@ def test_scan_dry_run_does_not_execute_scanners_or_create_results_dir(
     status = inspect_scout.scan(
         scanners=[dry_run_never_called_factory()],
         transcripts=inspect_scout.transcripts_from(LOGS_DIR),
-        results=str(results_dir),
+        scans=str(results_dir),
         limit=limit,
         dry_run=True,
         display="plain",

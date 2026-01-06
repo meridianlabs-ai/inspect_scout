@@ -86,8 +86,19 @@ class TestFindProjectFile:
 class TestLoadProjectConfig:
     """Tests for load_project_config function."""
 
-    def test_loads_valid_yaml(self, tmp_path: Path) -> None:
+    def test_loads_valid_yaml(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Should load a valid scout.yaml file."""
+        # Track if deprecation warning was called
+        warning_called = False
+
+        def mock_warning() -> None:
+            nonlocal warning_called
+            warning_called = True
+
+        monkeypatch.setattr("inspect_scout._scanjob.show_results_warning", mock_warning)
+
         project_file = tmp_path / "scout.yaml"
         project_file.write_text(
             """
@@ -102,9 +113,10 @@ log_level: warning
         config = load_project_config(project_file)
         assert config.name == "my-project"
         assert config.transcripts == "./logs"
-        assert config.results == "./scans"
+        assert config.scans == "./scans"
         assert config.model == "openai/gpt-4o"
         assert config.log_level == "warning"
+        assert warning_called, "Deprecation warning should be emitted for 'results'"
 
     def test_loads_with_tags_and_metadata(self, tmp_path: Path) -> None:
         """Should load tags and metadata."""
@@ -138,7 +150,7 @@ class TestCreateDefaultProject:
 
         config = create_default_project()
         assert config.transcripts == "./transcripts"
-        assert config.results == "./scans"
+        assert config.scans == "./scans"
 
     def test_uses_logs_dir_if_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -185,7 +197,7 @@ class TestProjectConfig:
         config = ProjectConfig(
             name="test",
             transcripts="./logs",
-            results="./scans",
+            scans="./scans",
             model="openai/gpt-4o",
             max_transcripts=25,
             tags=["tag1"],
@@ -193,7 +205,7 @@ class TestProjectConfig:
         )
         assert config.name == "test"
         assert config.transcripts == "./logs"
-        assert config.results == "./scans"
+        assert config.scans == "./scans"
         assert config.model == "openai/gpt-4o"
         assert config.max_transcripts == 25
         assert config.tags == ["tag1"]

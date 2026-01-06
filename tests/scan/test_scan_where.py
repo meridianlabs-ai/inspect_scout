@@ -34,7 +34,7 @@ async def test_scan_with_simple_where_clause() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 
@@ -66,7 +66,7 @@ async def test_scan_with_compound_where_clause() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 
@@ -106,7 +106,7 @@ async def test_scan_with_in_where_clause() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 
@@ -138,7 +138,7 @@ async def test_scan_with_and_where_clause() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 
@@ -195,7 +195,7 @@ async def test_scan_with_multiple_where_calls() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 
@@ -219,7 +219,7 @@ async def test_scan_without_where_clause() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 
@@ -243,7 +243,7 @@ async def test_where_clause_with_comparison_operators() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 
@@ -277,7 +277,7 @@ async def test_where_clause_preserves_sql_generation() -> None:
         status = scan(
             scanners=[where_test_scanner_factory()],
             transcripts=transcripts,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
         )
 

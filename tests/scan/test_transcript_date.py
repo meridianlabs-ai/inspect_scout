@@ -76,7 +76,7 @@ async def test_transcript_date_in_results(tmp_path: Path) -> None:
     status = scan(
         scanners=[simple_scanner_factory()],
         transcripts=transcripts,
-        results=str(results_location),
+        scans=str(results_location),
         max_processes=1,
         model="mockllm/model",
         model_args={"custom_outputs": mock_responses},

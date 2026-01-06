@@ -9,7 +9,7 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import "./app/App.css";
-import { useServerTranscriptsDirAsync } from "./app/server/hooks";
+import { useConfigAsync } from "./app/server/hooks";
 import { createAppRouter } from "./AppRouter";
 
 export interface AppProps {
@@ -18,7 +18,7 @@ export interface AppProps {
 
 export const App: FC<AppProps> = ({ mode = "scans" }) => {
   const router = useMemo(() => createAppRouter({ mode }), [mode]);
-  const { data: transcriptsDir } = useServerTranscriptsDirAsync();
+  const { data: config } = useConfigAsync();
 
-  return transcriptsDir ? <RouterProvider router={router} /> : null;
+  return config ? <RouterProvider router={router} /> : null;
 };

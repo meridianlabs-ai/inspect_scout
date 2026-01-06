@@ -1,9 +1,10 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import type { Condition, OrderByModel } from "../query";
-import { Status } from "../types/api-types.ts";
 import {
+  AppConfig,
   Pagination,
   ScanJobsResponse,
+  Status,
   Transcript,
   TranscriptsResponse,
 } from "../types/api-types.ts";
@@ -26,8 +27,9 @@ export const apiScoutServer = (
 
   return {
     capability: "workbench",
-    getTranscriptsDir: async (): Promise<string> => {
-      return (await requestApi.fetchString("GET", `/transcripts-dir`)).raw;
+    getConfig: async (): Promise<AppConfig> => {
+      const result = await requestApi.fetchString("GET", `/config`);
+      return asyncJsonParse<AppConfig>(result.raw);
     },
     getTranscripts: async (
       transcriptsDir: string,
@@ -60,9 +62,6 @@ export const apiScoutServer = (
         `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
       );
       return asyncJsonParse<Transcript>(result.raw);
-    },
-    getScansDir: async (): Promise<string> => {
-      return (await requestApi.fetchString("GET", `/scanjobs-dir`)).raw;
     },
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(

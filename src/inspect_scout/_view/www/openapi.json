@@ -1,6 +1,30 @@
 {
   "components": {
     "schemas": {
+      "AppConfig": {
+        "properties": {
+          "scans_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scans Dir"
+          },
+          "transcripts_dir": {
+            "title": "Transcripts Dir",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcripts_dir"
+        ],
+        "title": "AppConfig",
+        "type": "object"
+      },
       "ApprovalEvent": {
         "description": "Tool approval.",
         "properties": {
@@ -7045,6 +7069,25 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/config": {
+      "get": {
+        "description": "Returns app config including transcripts and scans directories.",
+        "operationId": "config_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get application configuration"
+      }
+    },
     "/scanjobs": {
       "post": {
         "description": "Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
@@ -7079,25 +7122,6 @@
           }
         },
         "summary": "List scans"
-      }
-    },
-    "/scanjobs-dir": {
-      "get": {
-        "description": "Returns the default directory path where scans are stored.",
-        "operationId": "scans_dir_scanjobs_dir_get",
-        "responses": {
-          "200": {
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get default scans directory"
       }
     },
     "/scanjobs/{scan}": {
@@ -7223,25 +7247,6 @@
           }
         },
         "summary": "Get scanner input for a specific transcript"
-      }
-    },
-    "/transcripts-dir": {
-      "get": {
-        "description": "Returns the default directory path where transcripts are stored.",
-        "operationId": "transcripts_dir_transcripts_dir_get",
-        "responses": {
-          "200": {
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get default transcripts directory"
       }
     },
     "/transcripts/{dir}": {

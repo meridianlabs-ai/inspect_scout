@@ -101,3 +101,11 @@ class ScanJobsResponse:
     items: list[RecorderStatus]
     total_count: int
     next_cursor: dict[str, Any] | None = None
+
+
+@dataclass
+class AppConfig:
+    """Application configuration returned by GET /config."""
+
+    transcripts_dir: str
+    scans_dir: str | None

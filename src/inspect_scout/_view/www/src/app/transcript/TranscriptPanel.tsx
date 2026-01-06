@@ -6,7 +6,7 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { useServerTranscript, useServerTranscriptsDir } from "../server/hooks";
+import { useServerTranscriptsDir, useServerTranscript } from "../server/hooks";
 import { useTranscriptDirParams } from "../utils/router";
 
 import { TranscriptBody } from "./TranscriptBody";

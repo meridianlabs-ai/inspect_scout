@@ -2,6 +2,7 @@ import io
 from typing import Any, Iterable, TypeVar, Union, get_args, get_origin
 
 import pyarrow.ipc as pa_ipc
+from duckdb import InvalidInputException
 from fastapi import FastAPI, HTTPException, Path, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from inspect_ai._util.file import FileSystem
@@ -279,18 +280,22 @@ def v2_api_app(
 
         ctx = build_pagination_context(body, "scan_id")
 
-        async with await scan_jobs_view(validated_results_dir) as view:
-            count = await view.count(Query(where=ctx.filter_conditions or []))
-            results = [
-                status
-                async for status in view.select(
-                    Query(
-                        where=ctx.conditions or [],
-                        limit=ctx.limit,
-                        order_by=ctx.db_order_columns or [],
+        try:
+            async with await scan_jobs_view(validated_results_dir) as view:
+                count = await view.count(Query(where=ctx.filter_conditions or []))
+                results = [
+                    status
+                    async for status in view.select(
+                        Query(
+                            where=ctx.conditions or [],
+                            limit=ctx.limit,
+                            order_by=ctx.db_order_columns or [],
+                        )
                     )
-                )
-            ]
+                ]
+        except InvalidInputException:
+            # This will be raised when there are not scans in validated_results_dir
+            return ScanJobsResponse(items=[], total_count=0)
 
         if ctx.needs_reverse:
             results = list(reversed(results))

@@ -2,7 +2,6 @@ from logging import getLogger
 
 import click
 from inspect_ai._util.logger import warn_once
-from inspect_ai._util.path import chdir
 from typing_extensions import Unpack
 
 from inspect_scout._cli.common import (
@@ -19,12 +18,20 @@ logger = getLogger(__name__)
 
 
 @click.command("view")
-@click.argument("directory", required=False, default=None)
+@click.argument("project_dir", required=False, default=None)
 @click.option(
     "--workbench",
     is_flag=True,
     default=False,
     help="Launch workbench mode.",
+)
+@click.option(
+    "-T",
+    "--transcripts",
+    type=str,
+    default=None,
+    help="Location of transcripts to view.",
+    envvar="SCOUT_SCAN_TRANSCRIPTS",
 )
 @click.option(
     "--scans",
@@ -43,8 +50,9 @@ logger = getLogger(__name__)
 @view_options
 @common_options
 def view_command(
-    directory: str | None,
+    project_dir: str | None,
     workbench: bool,
+    transcripts: str | None,
     scans: str | None,
     results: str | None,
     host: str,
@@ -64,33 +72,30 @@ def view_command(
             raise click.UsageError("Cannot specify both --scans and --results")
         scans = results
 
-    # --scans forces non-workbench mode
-    if scans is not None:
-        workbench = False
-
     # Validate: directory argument requires workbench mode
-    if directory is not None and not workbench:
-        raise click.UsageError("Directory argument requires --workbench flag")
+    if project_dir is not None and not workbench:
+        raise click.UsageError("project_dir argument requires --workbench flag")
 
     if workbench:
         # Workbench mode: change to project dir, browser defaults ON
-        project_dir = directory or "."
         effective_browser = browser if browser is not None else True
-        with chdir(project_dir):
-            view(
-                scans=None,
-                host=host,
-                port=port,
-                browser=effective_browser,
-                authorization=resolve_view_authorization(),
-                workbench=True,
-                log_level=common["log_level"],
-            )
+        view(
+            project_dir=project_dir,
+            transcripts=transcripts,
+            scans=scans,
+            host=host,
+            port=port,
+            browser=effective_browser,
+            authorization=resolve_view_authorization(),
+            workbench=True,
+            log_level=common["log_level"],
+        )
     else:
-        # Non-workbench mode: browser defaults OFF
         effective_browser = browser if browser is not None else False
         view(
-            scans,
+            project_dir=project_dir,
+            transcripts=transcripts,
+            scans=scans,
             host=host,
             port=port,
             browser=effective_browser,

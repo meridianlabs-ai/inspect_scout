@@ -32,7 +32,9 @@ def project() -> ProjectConfig:
     return _current_project
 
 
-def init_project() -> ProjectConfig:
+def init_project(
+    *, transcripts: str | None = None, scans: str | None = None
+) -> ProjectConfig:
     """Initialize the global project configuration.
 
     Searches for scout.yaml starting from cwd, walking up the directory tree.
@@ -52,6 +54,12 @@ def init_project() -> ProjectConfig:
         _current_project = load_project_config(project_file)
     else:
         _current_project = create_default_project()
+
+    # override transcripts ans scans if requested
+    if transcripts is not None:
+        _current_project.transcripts = transcripts
+    if scans is not None:
+        _current_project.scans = scans
 
     return _current_project
 

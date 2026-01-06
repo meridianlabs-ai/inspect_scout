@@ -2,7 +2,7 @@ from inspect_ai._util.deprecation import relocated_module_attribute
 
 from ._grep_scanner import grep_scanner
 from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
-from ._project import ProjectConfig, project
+from ._project import ProjectConfig
 from ._query.condition import Condition
 from ._recorder.recorder import (
     ScanResultsArrow,
@@ -84,7 +84,6 @@ __all__ = [
     "scanjob",
     "ScanJob",
     "ScanJobConfig",
-    "project",
     "ProjectConfig",
     "scan_list",
     "scan_status",

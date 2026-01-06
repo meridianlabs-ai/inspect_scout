@@ -9,16 +9,12 @@ reference: inspect_scout
 ### scan_resume
 ### scan_complete
 
-## Projects
-
-### project
-### ProjectConfig
-
 ## Jobs
 
 ### scanjob
 ### ScanJob
 ### ScanJobConfig
+### ProjectConfig
 ### ScannerSpec
 ### ScannerWork
 ### Worklist

@@ -2,6 +2,7 @@ import logging
 import webbrowser
 from typing import Any
 
+from inspect_ai._util.path import chdir
 from inspect_ai._view.view import view_acquire_port
 
 from inspect_scout._project import init_project, project
@@ -16,6 +17,8 @@ DEFAULT_SERVER_HOST = "127.0.0.1"
 
 
 def view(
+    project_dir: str | None = None,
+    transcripts: str | None = None,
     scans: str | None = None,
     host: str = DEFAULT_SERVER_HOST,
     port: int = DEFAULT_VIEW_PORT,
@@ -25,30 +28,27 @@ def view(
     workbench: bool = False,
     fs_options: dict[str, Any] | None = None,
 ) -> None:
-    # Initialize project from cwd (always reinitialize to support multiple projects)
-    init_project()
+    with chdir(project_dir or "."):
+        # initialize project
+        init_project(transcripts=transcripts, scans=scans)
+        proj = project()
 
-    proj = project()
+        # top level init
+        top_level_async_init(log_level or proj.log_level)
 
-    # Use project defaults for results_dir and log_level
-    effective_results_dir = scans or proj.scans or "./scans"
-    effective_log_level = log_level or proj.log_level
+        # acquire the port
+        view_acquire_port(scout_data_dir("view"), port)
 
-    top_level_async_init(effective_log_level)
+        # open browser if requested
+        if browser:
+            webbrowser.open(view_url(host, port, workbench))
 
-    # acquire the port
-    view_acquire_port(scout_data_dir("view"), port)
-
-    # open browser if requested
-    if browser:
-        webbrowser.open(view_url(host, port, workbench))
-
-    # start the server
-    view_server(
-        scans=effective_results_dir,
-        host=host,
-        port=port,
-        authorization=authorization,
-        workbench=workbench,
-        fs_options=fs_options,
-    )
+        # start the server
+        view_server(
+            scans=proj.scans or "./scans",
+            host=host,
+            port=port,
+            authorization=authorization,
+            workbench=workbench,
+            fs_options=fs_options,
+        )

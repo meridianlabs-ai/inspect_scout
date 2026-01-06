@@ -15,6 +15,7 @@ implicit project
 add 'filter' to the ScanJobConfig
 
 scout view
+    --transcripts override
     - workbench by default (navigation=false)
 
 

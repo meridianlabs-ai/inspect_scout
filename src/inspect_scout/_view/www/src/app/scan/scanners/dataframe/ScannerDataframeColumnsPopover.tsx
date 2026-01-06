@@ -1,13 +1,13 @@
 import clsx from "clsx";
 import { FC, useCallback } from "react";
 
-import { PopOver } from "../../../components/PopOver";
-import { useStore } from "../../../state/store";
+import { PopOver } from "../../../../components/PopOver";
+import { useStore } from "../../../../state/store";
 
-import styles from "./ScanDataframeColumnsPopover.module.css";
-import { defaultColumns } from "./types";
+import { defaultColumns } from "./../types";
+import styles from "./ScannerDataframeColumnsPopover.module.css";
 
-export interface ScanDataframeColumnsPopoverProps {
+export interface ScannerDataframeColumnsPopoverProps {
   positionEl: HTMLElement | null;
 }
 
@@ -174,8 +174,8 @@ const useDataframeColumns = () => {
   };
 };
 
-export const ScanDataframeColumnsPopover: FC<
-  ScanDataframeColumnsPopoverProps
+export const ScannerDataframeColumnsPopover: FC<
+  ScannerDataframeColumnsPopoverProps
 > = ({ positionEl }) => {
   const showFilter = useStore((state) => state.dataframeShowFilterColumns);
   const setShowFilter = useStore(

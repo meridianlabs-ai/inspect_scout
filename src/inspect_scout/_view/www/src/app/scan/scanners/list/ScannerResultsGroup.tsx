@@ -1,13 +1,15 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import styles from "./ScanResultsGroup.module.css";
+import styles from "./ScannerResultsGroup.module.css";
 
-interface ScanResultsGroupProps {
+interface ScannerResultsGroupProps {
   group: string;
 }
 
-export const ScanResultGroup: FC<ScanResultsGroupProps> = ({ group }) => {
+export const ScannerResultsGroup: FC<ScannerResultsGroupProps> = ({
+  group,
+}) => {
   return (
     <div className={clsx(styles.row)}>
       <div

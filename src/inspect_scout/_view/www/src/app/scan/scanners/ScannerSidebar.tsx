@@ -12,9 +12,9 @@ import { Status } from "../../../types/api-types";
 import { formatPercent, formatPrettyDecimal } from "../../../utils/format";
 import { useSelectedScanner } from "../../hooks";
 
-import styles from "./ScanResultsOutline.module.css";
+import styles from "./ScannerSidebar.module.css";
 
-export const ScanResultsOutline: FC<{ selectedScan: Status }> = ({
+export const ScannerSidebar: FC<{ selectedScan: Status }> = ({
   selectedScan,
 }) => {
   const entries = toEntries(selectedScan);

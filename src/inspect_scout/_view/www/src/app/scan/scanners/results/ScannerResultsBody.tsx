@@ -4,25 +4,25 @@ import clsx from "clsx";
 import { FC, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { DataframeView } from "../../../components/DataframeView";
-import { ErrorPanel } from "../../../components/ErrorPanel";
-import { NoContentsPanel } from "../../../components/NoContentsPanel";
-import { scanResultRoute } from "../../../router/url";
-import { useStore } from "../../../state/store";
-import { Status } from "../../../types/api-types";
-import { useScanRoute } from "../../hooks";
-import { kSegmentDataframe, kSegmentList } from "../ScansPanelBody";
+import { DataframeView } from "../../../../components/DataframeView";
+import { ErrorPanel } from "../../../../components/ErrorPanel";
+import { NoContentsPanel } from "../../../../components/NoContentsPanel";
+import { scanResultRoute } from "../../../../router/url";
+import { useStore } from "../../../../state/store";
+import { Status } from "../../../../types/api-types";
+import { useScanRoute } from "../../../hooks";
+import { kSegmentDataframe, kSegmentList } from "../../ScanPanelBody";
+import { ScannerResultsList } from "../list/ScannerResultsList";
+import { defaultColumns } from "../types";
 
-import { ScanResultsList } from "./list/ScanResultsList";
-import styles from "./ScanResultsBody.module.css";
-import { defaultColumns } from "./types";
+import styles from "./ScannerResultsBody.module.css";
 
 const columnOrder = ["transcript_id", "value", "explanation", "metadata"];
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-export const ScanResultsBody: FC<{
+export const ScannerResultsBody: FC<{
   selectedScan: Status;
   scannerId: string;
   selectedScanner: {
@@ -63,7 +63,7 @@ export const ScanResultsBody: FC<{
       {hasScanner && (
         <div style={{ height: "100%", width: "100%" }}>
           {selectedResultsView === kSegmentList && (
-            <ScanResultsList
+            <ScannerResultsList
               columnTable={columnTable}
               id={`scan-list-${scannerId}`}
               selectedScan={selectedScan}

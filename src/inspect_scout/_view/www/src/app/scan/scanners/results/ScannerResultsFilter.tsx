@@ -1,14 +1,14 @@
 import clsx from "clsx";
 import { ChangeEvent, FC, useCallback } from "react";
 
-import { useStore } from "../../../state/store";
+import { useStore } from "../../../../state/store";
 
-import styles from "./ScanResultsFilter.module.css";
+import styles from "./ScannerResultsFilter.module.css";
 
 export const kFilterPositiveResults = "positive_results";
 export const kFilterAllResults = "all_results";
 
-export const ScanResultsFilter: FC = () => {
+export const ScannerResultsFilter: FC = () => {
   const setSelectedFilter = useStore((state) => state.setSelectedFilter);
   const selectedFilter = useStore((state) => state.selectedFilter);
 

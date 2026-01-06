@@ -21,24 +21,24 @@ import {
 import {
   kFilterAllResults,
   kFilterPositiveResults,
-} from "../ScanResultsFilter";
+} from "../results/ScannerResultsFilter";
 
-import { ScanResultsHeader } from "./ScanHeader";
-import { ScanResultGroup } from "./ScanResultsGroup";
-import styles from "./ScanResultsList.module.css";
-import { ScanResultsRow } from "./ScanResultsRow";
+import { ScannerResultsGroup } from "./ScannerResultsGroup";
+import { ScannerResultsHeader } from "./ScannerResultsHeader";
+import styles from "./ScannerResultsList.module.css";
+import { ScannerResultsRow } from "./ScannerResultsRow";
 
 export interface GridDescriptor {
   gridStyle: Record<string, string>;
   columns: string[];
 }
 
-interface ScanResultsListProps {
+interface ScannerResultsListProps {
   id: string;
   columnTable?: ColumnTable;
   selectedScan: Status;
 }
-export const ScanResultsList: FC<ScanResultsListProps> = ({
+export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   id,
   columnTable,
   selectedScan,
@@ -362,11 +362,11 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
   const renderRow = useCallback(
     (index: number, entry: ScanResultSummary | ResultGroup) => {
       if (isResultGroup(entry)) {
-        return <ScanResultGroup group={entry.label} />;
+        return <ScannerResultsGroup group={entry.label} />;
       }
 
       return (
-        <ScanResultsRow
+        <ScannerResultsRow
           index={index}
           summary={entry}
           gridDescriptor={gridDescriptor}
@@ -392,7 +392,7 @@ export const ScanResultsList: FC<ScanResultsListProps> = ({
 
   return (
     <div className={clsx(styles.container)}>
-      <ScanResultsHeader gridDescriptor={gridDescriptor} />
+      <ScannerResultsHeader gridDescriptor={gridDescriptor} />
       <LoadingBar loading={isLoading} />
       {noContentMessage && <NoContentsPanel text={noContentMessage} />}
       {!busy && filteredSummaries.length > 0 && (

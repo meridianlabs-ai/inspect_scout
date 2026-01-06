@@ -8,9 +8,9 @@ import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
 import { prettyDirUri } from "../../utils/uri";
 
-import styles from "./ScansPanelTitle.module.css";
+import styles from "./ScanPanelTitle.module.css";
 
-export const ScansPanelTitle: FC<{
+export const ScanPanelTitle: FC<{
   resultsDir: string | undefined;
   selectedScan: Status;
 }> = ({ resultsDir, selectedScan }) => {

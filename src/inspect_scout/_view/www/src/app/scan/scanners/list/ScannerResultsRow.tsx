@@ -14,16 +14,16 @@ import { useScanRoute } from "../../../hooks";
 import { ScanResultSummary } from "../../../types";
 import { useMarkdownRefs } from "../../../utils/refs";
 
-import { GridDescriptor } from "./ScanResultsList";
-import styles from "./ScanResultsRow.module.css";
+import { GridDescriptor } from "./ScannerResultsList";
+import styles from "./ScannerResultsRow.module.css";
 
-interface ScanResultsRowProps {
+interface ScannerResultsRowProps {
   index: number;
   summary: ScanResultSummary;
   gridDescriptor: GridDescriptor;
 }
 
-const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
+const ScannerResultsRowComponent: FC<ScannerResultsRowProps> = ({
   summary,
   gridDescriptor,
 }) => {
@@ -161,4 +161,4 @@ const ScanResultsRowComponent: FC<ScanResultsRowProps> = ({
 };
 
 // memoize the component to avoid unnecessary re-renders (esp of things which may involve markdown rendering)
-export const ScanResultsRow = memo(ScanResultsRowComponent);
+export const ScannerResultsRow = memo(ScannerResultsRowComponent);

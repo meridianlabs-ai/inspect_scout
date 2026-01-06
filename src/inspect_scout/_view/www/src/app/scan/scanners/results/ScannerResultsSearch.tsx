@@ -1,10 +1,10 @@
 import { ChangeEvent, FC, useCallback } from "react";
 
-import { ApplicationIcons } from "../../../components/icons";
-import { TextInput } from "../../../components/TextInput";
-import { useStore } from "../../../state/store";
+import { ApplicationIcons } from "../../../../components/icons";
+import { TextInput } from "../../../../components/TextInput";
+import { useStore } from "../../../../state/store";
 
-export const ScanResultsSearch: FC = () => {
+export const ScannerResultsSearch: FC = () => {
   const scansSearchText = useStore((state) => state.scansSearchText);
   const setScansSearchText = useStore((state) => state.setScansSearchText);
 

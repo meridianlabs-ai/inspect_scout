@@ -6,11 +6,11 @@ import { Status } from "../../../types/api-types";
 import { Footer } from "../../components/Footer";
 import { useSelectedScanDataframe, useSelectedScanner } from "../../hooks";
 
-import { ScanResultsBody } from "./ScanResultsBody";
-import { ScanResultsOutline } from "./ScanResultsOutline";
-import styles from "./ScanResultsPanel.module.css";
+import styles from "./ScannerPanel.module.css";
+import { ScannerResultsBody } from "./results/ScannerResultsBody";
+import { ScannerSidebar } from "./ScannerSidebar";
 
-export const ScanResultsPanel: FC<{ selectedScan: Status }> = ({
+export const ScannerPanel: FC<{ selectedScan: Status }> = ({
   selectedScan,
 }) => {
   const visibleItemsCount = useStore(
@@ -31,8 +31,8 @@ export const ScanResultsPanel: FC<{ selectedScan: Status }> = ({
 
   return (
     <div className={clsx(styles.container)}>
-      <ScanResultsOutline selectedScan={selectedScan} />
-      <ScanResultsBody
+      <ScannerSidebar selectedScan={selectedScan} />
+      <ScannerResultsBody
         // TODO: This is slightly bogus. It really needs to be a scannerid since
         // nothing prevents two scanners from having the same name.
         scannerId={selectedScanner.data ?? "unknown"}

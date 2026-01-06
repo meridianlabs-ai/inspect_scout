@@ -4,13 +4,13 @@ import { FC, useCallback, MouseEvent } from "react";
 import { ApplicationIcons } from "../../../../components/icons";
 import { useStore } from "../../../../state/store";
 
-import styles from "./ScanHeader.module.css";
-import { GridDescriptor } from "./ScanResultsList";
+import styles from "./ScannerResultsHeader.module.css";
+import { GridDescriptor } from "./ScannerResultsList";
 
-interface ScanResultsHeaderProps {
+interface ScannerResultsHeaderProps {
   gridDescriptor: GridDescriptor;
 }
-export const ScanResultsHeader: FC<ScanResultsHeaderProps> = ({
+export const ScannerResultsHeader: FC<ScannerResultsHeaderProps> = ({
   gridDescriptor,
 }) => {
   // Column information

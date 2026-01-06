@@ -13,15 +13,15 @@ import { ResultGroup } from "../types";
 import { resultIdentifierStr, resultLog } from "../utils/results";
 
 import { ScanInfo } from "./info/ScanInfo";
-import { ScanDataframeClearFiltersButton } from "./results/ScanDataframeClearFiltersButton";
-import { ScanDataframeColumnsPopover } from "./results/ScanDataframeColumnsPopover";
-import { ScanDataframeFilterColumnsButton } from "./results/ScanDataframeFilterColumnsButton";
-import { ScanDataframeWrapTextButton } from "./results/ScanDataframeWrapTextButton";
-import { ScanResultsFilter } from "./results/ScanResultsFilter";
-import { ScanResultsGroup } from "./results/ScanResultsGroup";
-import { ScanResultsPanel } from "./results/ScanResultsPanel";
-import { ScanResultsSearch } from "./results/ScanResultsSearch";
-import styles from "./ScansPanelBody.module.css";
+import { ScannerDataframeClearFiltersButton } from "./scanners/dataframe/ScannerDataframeClearFiltersButton";
+import { ScannerDataframeColumnsPopover } from "./scanners/dataframe/ScannerDataframeColumnsPopover";
+import { ScannerDataframeFilterColumnsButton } from "./scanners/dataframe/ScannerDataframeFilterColumnsButton";
+import { ScannerDataframeWrapTextButton } from "./scanners/dataframe/ScannerDataframeWrapTextButton";
+import { ScannerResultsFilter } from "./scanners/results/ScannerResultsFilter";
+import { ScannerResultsGroup } from "./scanners/results/ScannerResultsGroup";
+import { ScannerResultsSearch } from "./scanners/results/ScannerResultsSearch";
+import { ScannerPanel } from "./scanners/ScannerPanel";
+import styles from "./ScanPanelBody.module.css";
 
 const kTabIdScans = "scan-detail-tabs-results";
 const kTabIdInfo = "scan-detail-tabs-info";
@@ -30,7 +30,7 @@ const kTabIdJson = "scan-detail-tabs-json";
 export const kSegmentList = "list";
 export const kSegmentDataframe = "dataframe";
 
-export const ScansPanelBody: React.FC<{ selectedScan: Status }> = ({
+export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
   selectedScan,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -141,22 +141,22 @@ export const ScansPanelBody: React.FC<{ selectedScan: Status }> = ({
   const tools: ReactNode[] = [];
   if (selectedTab === kTabIdScans || selectedTab === undefined) {
     if (selectedResultsView === kSegmentList) {
-      tools.push(<ScanResultsSearch key={"scan-results-search"} />);
+      tools.push(<ScannerResultsSearch key={"scan-results-search"} />);
     }
 
     if (selectedResultsView === kSegmentList) {
-      tools.push(<ScanResultsFilter key={"scan-results-filtering"} />);
+      tools.push(<ScannerResultsFilter key={"scan-results-filtering"} />);
     }
 
     if (selectedResultsView === kSegmentDataframe) {
       tools.push(
-        <ScanDataframeWrapTextButton key="scan-dataframe-wrap-text" />
+        <ScannerDataframeWrapTextButton key="scan-dataframe-wrap-text" />
       );
     }
 
     if (selectedResultsView === kSegmentDataframe) {
       tools.push(
-        <ScanDataframeFilterColumnsButton
+        <ScannerDataframeFilterColumnsButton
           key="scan-dataframe-filter-columns"
           ref={buttonRefCallback}
         />
@@ -164,12 +164,12 @@ export const ScansPanelBody: React.FC<{ selectedScan: Status }> = ({
     }
 
     if (selectedResultsView === kSegmentDataframe && gridFilter) {
-      tools.push(<ScanDataframeClearFiltersButton />);
+      tools.push(<ScannerDataframeClearFiltersButton />);
     }
 
     if (selectedResultsView === kSegmentList && groupOptions.length > 0) {
       tools.push(
-        <ScanResultsGroup
+        <ScannerResultsGroup
           key={"scan-results-grouping"}
           options={groupOptions}
         />
@@ -217,7 +217,7 @@ export const ScansPanelBody: React.FC<{ selectedScan: Status }> = ({
             handleTabChange(kTabIdScans);
           }}
         >
-          <ScanResultsPanel selectedScan={selectedScan} />
+          <ScannerPanel selectedScan={selectedScan} />
         </TabPanel>
 
         <TabPanel
@@ -247,7 +247,7 @@ export const ScansPanelBody: React.FC<{ selectedScan: Status }> = ({
         </TabPanel>
       </TabSet>
       {selectedResultsView === kSegmentDataframe && buttonElement && (
-        <ScanDataframeColumnsPopover positionEl={buttonElement} />
+        <ScannerDataframeColumnsPopover positionEl={buttonElement} />
       )}
     </>
   );

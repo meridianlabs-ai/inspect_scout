@@ -1,16 +1,16 @@
 import clsx from "clsx";
 import { ChangeEvent, FC, useCallback } from "react";
 
-import { useStore } from "../../../state/store";
-import { ResultGroup } from "../../types";
+import { useStore } from "../../../../state/store";
+import { ResultGroup } from "../../../types";
 
-import styles from "./ScanResultsGroup.module.css";
+import styles from "./ScannerResultsGroup.module.css";
 
-interface ScanResultsGroupProps {
+interface ScannerResultsGroupProps {
   options: Array<ResultGroup>;
 }
 
-export const ScanResultsGroup: FC<ScanResultsGroupProps> = ({
+export const ScannerResultsGroup: FC<ScannerResultsGroupProps> = ({
   options = ["source", "label", "id", "epoch", "model"],
 }) => {
   const setGroupResultsBy = useStore((state) => state.setGroupResultsBy);

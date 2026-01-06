@@ -8,9 +8,9 @@ import {
 } from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
+import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScanJobsPanel } from "./app/scanJobs/ScanJobsPanel";
 import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
-import { ScansPanel } from "./app/scans/ScansPanel";
 import { useServerScansDir } from "./app/server/hooks";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
@@ -174,7 +174,7 @@ const ScanOrScanResultsRoute = () => {
     return <Navigate to="/scans" replace />;
   }
 
-  return <ScansPanel />;
+  return <ScanPanel />;
 };
 
 export const createAppRouter = (config: AppRouterConfig) => {

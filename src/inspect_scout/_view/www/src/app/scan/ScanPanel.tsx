@@ -10,11 +10,11 @@ import { ScansNavbar } from "../components/ScansNavbar";
 import { useSelectedScan } from "../hooks";
 import { useServerScansDir, useServerScans } from "../server/hooks";
 
-import styles from "./ScansPanel.module.css";
-import { ScansPanelBody } from "./ScansPanelBody";
-import { ScansPanelTitle } from "./ScansPanelTitle";
+import styles from "./ScanPanel.module.css";
+import { ScanPanelBody } from "./ScanPanelBody";
+import { ScanPanelTitle } from "./ScanPanelTitle";
 
-export const ScansPanel: React.FC = () => {
+export const ScanPanel: React.FC = () => {
   // Load server data
   const { loading: scansLoading } = useServerScans();
   const resultsDir = useServerScansDir();
@@ -49,12 +49,9 @@ export const ScansPanel: React.FC = () => {
       <LoadingBar loading={!!loading} />
       {selectedScan && (
         <>
-          <ScansPanelTitle
-            resultsDir={resultsDir}
-            selectedScan={selectedScan}
-          />
+          <ScanPanelTitle resultsDir={resultsDir} selectedScan={selectedScan} />
           <ExtendedFindProvider>
-            <ScansPanelBody selectedScan={selectedScan} />
+            <ScanPanelBody selectedScan={selectedScan} />
           </ExtendedFindProvider>
         </>
       )}

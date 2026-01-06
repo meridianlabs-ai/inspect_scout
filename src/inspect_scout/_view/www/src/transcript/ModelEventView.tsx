@@ -5,6 +5,7 @@ import { ApplicationIcons } from "../app/appearance/icons";
 import { ChatView } from "../chat/ChatView";
 import { usePrismHighlight } from "../components/prism";
 import { PulsingDots } from "../components/PulsingDots";
+import { ModelUsagePanel } from "../components/usage/ModelUsagePanel";
 import { MetaDataGrid } from "../content/MetaDataGrid";
 import {
   ChatMessage,
@@ -13,7 +14,6 @@ import {
   ToolChoice,
   ToolInfo,
 } from "../types/api-types";
-import { ModelUsagePanel } from "../usage/ModelUsagePanel";
 
 import { EventPanel } from "./event/EventPanel";
 import { EventSection } from "./event/EventSection";

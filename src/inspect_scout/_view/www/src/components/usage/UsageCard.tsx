@@ -1,7 +1,7 @@
 import { FC } from "react";
 
-import { Card, CardBody, CardHeader } from "../components/Card";
-import { ModelUsage } from "../types/api-types";
+import { ModelUsage } from "../../types/api-types";
+import { Card, CardBody, CardHeader } from "../Card";
 
 import { ModelTokenTable } from "./ModelTokenTable";
 import styles from "./UsageCard.module.css";

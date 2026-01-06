@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
-import { ModelUsage } from "../types/api-types";
+import { ModelUsage } from "../../types/api-types";
 
 import { ModelUsagePanel } from "./ModelUsagePanel";
 import styles from "./TokenTable.module.css";

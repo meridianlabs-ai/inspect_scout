@@ -1,0 +1,41 @@
+.tabContainer {
+  display: grid;
+  grid-template-rows: max-content minmax(0, 1fr);
+  height: 100%;
+}
+
+:global(.nav).tabs {
+  border-bottom: solid 1px var(--bs-border-color);
+  padding-bottom: 0.5rem;
+  padding-top: 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+:global(.nav).tabs :global(.nav-link) {
+  padding: 0.3rem 0.5rem;
+  font-size: var(--inspect-font-size-smallest) !important;
+}
+
+.tabSet {
+  height: 100%;
+}
+
+.chatTab > * > * {
+  padding: 0.5rem;
+}
+
+.metadata {
+  padding: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+.scrollable {
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.eventsList {
+  padding-bottom: 1rem;
+}

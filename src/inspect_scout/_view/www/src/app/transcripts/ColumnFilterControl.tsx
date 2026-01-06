@@ -13,11 +13,22 @@ import { PopOver } from "../../components/PopOver";
 import { ConditionBuilder } from "../../query";
 import type { OperatorModel, ScalarValue } from "../../query";
 import type { SimpleCondition } from "../../query/types";
+import {
+  formatDateForInput,
+  formatDateTimeForInput,
+  parseDateFromInput,
+} from "../../utils/date";
 import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ColumnFilterControl.module.css";
 
-export type FilterType = "string" | "number" | "boolean" | "unknown";
+export type FilterType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "unknown";
 
 const OPERATORS_BY_TYPE: Record<FilterType, OperatorModel[]> = {
   string: [
@@ -32,6 +43,8 @@ const OPERATORS_BY_TYPE: Record<FilterType, OperatorModel[]> = {
   ],
   number: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
   boolean: ["=", "!=", "IS NULL", "IS NOT NULL"],
+  date: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
+  datetime: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
   unknown: [
     "=",
     "!=",
@@ -50,13 +63,21 @@ const OPERATORS_WITHOUT_VALUE = new Set<OperatorModel>([
 ]);
 
 const formatFilterValue = (
-  value: SimpleCondition["right"] | undefined
+  value: SimpleCondition["right"] | undefined,
+  filterType?: FilterType
 ): string => {
   if (value === null || value === undefined) {
     return "";
   }
   if (Array.isArray(value)) {
     return value.join(", ");
+  }
+  // For date/datetime types, ensure ISO format for native inputs
+  if (filterType === "date" && typeof value !== "boolean") {
+    return formatDateForInput(value);
+  }
+  if (filterType === "datetime" && typeof value !== "boolean") {
+    return formatDateTimeForInput(value);
   }
   return String(value);
 };
@@ -74,6 +95,9 @@ const parseFilterValue = (
       if (rawValue === "true") return true;
       if (rawValue === "false") return false;
       return undefined;
+    case "date":
+    case "datetime":
+      return parseDateFromInput(rawValue);
     case "unknown":
     case "string":
     default:
@@ -103,7 +127,7 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
 
   // value
   const [rawValue, setRawValue] = useState<string>(
-    formatFilterValue(condition?.right)
+    formatFilterValue(condition?.right, filterType)
   );
   const isValueDisabled = OPERATORS_WITHOUT_VALUE.has(operator);
   const valueSelectRef = useRef<HTMLSelectElement | null>(null);
@@ -119,9 +143,9 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setOperator(condition?.operator ?? defaultOperator);
-      setRawValue(formatFilterValue(condition?.right));
+      setRawValue(formatFilterValue(condition?.right, filterType));
     }
-  }, [condition, defaultOperator, isOpen]);
+  }, [condition, defaultOperator, filterType, isOpen]);
 
   useEffect(() => {
     if (!isOpen || isValueDisabled) {
@@ -192,9 +216,9 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
   const cancelAndClose = useCallback(() => {
     cancelRef.current = true;
     setOperator(condition?.operator ?? defaultOperator);
-    setRawValue(formatFilterValue(condition?.right));
+    setRawValue(formatFilterValue(condition?.right, filterType));
     handlePopoverOpenChange(false);
-  }, [condition, defaultOperator, handlePopoverOpenChange]);
+  }, [condition, defaultOperator, filterType, handlePopoverOpenChange]);
 
   const commitAndClose = useCallback(() => {
     const nextCondition = buildCondition(operator, rawValue);
@@ -301,7 +325,15 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
               <input
                 id={`${columnId}-val`}
                 className={styles.filterInput}
-                type={filterType === "number" ? "number" : "text"}
+                type={
+                  filterType === "number"
+                    ? "number"
+                    : filterType === "date"
+                      ? "date"
+                      : filterType === "datetime"
+                        ? "datetime-local"
+                        : "text"
+                }
                 value={rawValue}
                 onChange={handleValueChange}
                 placeholder="Filter"

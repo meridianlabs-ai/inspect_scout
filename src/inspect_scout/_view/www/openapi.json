@@ -37,6 +37,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Explanation"
           },
           "message": {
@@ -53,6 +54,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "modified": {
@@ -63,7 +65,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "pending": {
             "anyOf": [
@@ -74,6 +77,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -85,9 +89,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -100,6 +106,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "view": {
@@ -110,7 +117,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "working_start": {
             "title": "Working Start",
@@ -141,6 +149,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Max Batches"
           },
           "max_consecutive_check_failures": {
@@ -152,6 +161,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Max Consecutive Check Failures"
           },
           "max_size": {
@@ -163,6 +173,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Max Size"
           },
           "send_delay": {
@@ -174,6 +185,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Send Delay"
           },
           "size": {
@@ -185,6 +197,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Size"
           },
           "tick": {
@@ -196,6 +209,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Tick"
           }
         },
@@ -248,7 +262,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "message": {
             "$ref": "#/components/schemas/ChatMessageAssistant"
@@ -1730,6 +1745,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -1741,6 +1757,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -1752,9 +1769,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -1767,6 +1786,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -1807,6 +1827,64 @@
         "title": "EvalError",
         "type": "object"
       },
+      "Event": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SampleInitEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SampleLimitEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SandboxEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StateEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StoreEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ModelEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ToolEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ApprovalEvent"
+          },
+          {
+            "$ref": "#/components/schemas/InputEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ScoreEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ScoreEditEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorEvent"
+          },
+          {
+            "$ref": "#/components/schemas/LoggerEvent"
+          },
+          {
+            "$ref": "#/components/schemas/InfoEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SpanBeginEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SpanEndEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StepEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SubtaskEvent"
+          }
+        ]
+      },
       "GenerateConfig": {
         "description": "Model generation options.",
         "properties": {
@@ -1819,6 +1897,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Attempt Timeout"
           },
           "batch": {
@@ -1836,6 +1915,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Batch"
           },
           "best_of": {
@@ -1847,6 +1927,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Best Of"
           },
           "cache": {
@@ -1861,6 +1942,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cache"
           },
           "cache_prompt": {
@@ -1876,6 +1958,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cache Prompt"
           },
           "effort": {
@@ -1892,6 +1975,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Effort"
           },
           "extra_body": {
@@ -1904,6 +1988,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Extra Body"
           },
           "frequency_penalty": {
@@ -1915,6 +2000,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Frequency Penalty"
           },
           "internal_tools": {
@@ -1926,6 +2012,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Internal Tools"
           },
           "logit_bias": {
@@ -1940,6 +2027,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Logit Bias"
           },
           "logprobs": {
@@ -1951,6 +2039,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Logprobs"
           },
           "max_connections": {
@@ -1962,6 +2051,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Max Connections"
           },
           "max_retries": {
@@ -1973,6 +2063,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Max Retries"
           },
           "max_tokens": {
@@ -1984,6 +2075,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Max Tokens"
           },
           "max_tool_output": {
@@ -1995,6 +2087,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Max Tool Output"
           },
           "num_choices": {
@@ -2006,6 +2099,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Num Choices"
           },
           "parallel_tool_calls": {
@@ -2017,6 +2111,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Parallel Tool Calls"
           },
           "presence_penalty": {
@@ -2028,6 +2123,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Presence Penalty"
           },
           "reasoning_effort": {
@@ -2047,6 +2143,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Reasoning Effort"
           },
           "reasoning_history": {
@@ -2064,6 +2161,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Reasoning History"
           },
           "reasoning_summary": {
@@ -2081,6 +2179,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Reasoning Summary"
           },
           "reasoning_tokens": {
@@ -2092,6 +2191,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Reasoning Tokens"
           },
           "response_schema": {
@@ -2102,7 +2202,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "seed": {
             "anyOf": [
@@ -2113,6 +2214,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Seed"
           },
           "stop_seqs": {
@@ -2127,6 +2229,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Stop Seqs"
           },
           "system_message": {
@@ -2138,6 +2241,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "System Message"
           },
           "temperature": {
@@ -2149,6 +2253,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Temperature"
           },
           "timeout": {
@@ -2160,6 +2265,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Timeout"
           },
           "top_k": {
@@ -2171,6 +2277,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Top K"
           },
           "top_logprobs": {
@@ -2182,6 +2289,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Top Logprobs"
           },
           "top_p": {
@@ -2193,6 +2301,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Top P"
           },
           "verbosity": {
@@ -2209,6 +2318,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Verbosity"
           }
         },
@@ -2250,6 +2360,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -2261,6 +2372,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "source": {
@@ -2272,6 +2384,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Source"
           },
           "span_id": {
@@ -2283,9 +2396,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -2298,6 +2413,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -2341,6 +2457,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -2352,6 +2469,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -2363,9 +2481,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -2378,6 +2498,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -2410,6 +2531,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Additionalproperties"
           },
           "anyOf": {
@@ -2424,9 +2546,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Anyof"
           },
           "default": {
+            "default": null,
             "title": "Default"
           },
           "description": {
@@ -2438,6 +2562,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Description"
           },
           "enum": {
@@ -2450,6 +2575,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Enum"
           },
           "format": {
@@ -2461,6 +2587,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Format"
           },
           "items": {
@@ -2471,7 +2598,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "properties": {
             "anyOf": [
@@ -2485,6 +2613,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Properties"
           },
           "required": {
@@ -2499,6 +2628,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Required"
           },
           "type": {
@@ -2534,6 +2664,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Type"
           }
         },
@@ -2555,6 +2686,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "From"
           },
           "op": {
@@ -2574,10 +2706,12 @@
             "type": "string"
           },
           "replaced": {
-            "$ref": "#/components/schemas/JsonValue"
+            "$ref": "#/components/schemas/JsonValue",
+            "default": null
           },
           "value": {
-            "$ref": "#/components/schemas/JsonValue"
+            "$ref": "#/components/schemas/JsonValue",
+            "default": null
           }
         },
         "required": [
@@ -2638,6 +2772,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -2649,6 +2784,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -2660,9 +2796,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -2675,6 +2813,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -2740,6 +2879,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Name"
           }
         },
@@ -2779,6 +2919,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Bytes"
           },
           "logprob": {
@@ -2801,6 +2942,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Top Logprobs"
           }
         },
@@ -2854,6 +2996,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Time"
           }
         },
@@ -2915,6 +3058,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cache"
           },
           "call": {
@@ -2925,17 +3069,20 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "completed": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Completed"
           },
           "config": {
@@ -2950,6 +3097,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Error"
           },
           "event": {
@@ -2988,6 +3136,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "model": {
@@ -3006,6 +3155,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "retries": {
@@ -3017,6 +3167,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Retries"
           },
           "role": {
@@ -3028,6 +3179,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Role"
           },
           "span_id": {
@@ -3039,9 +3191,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -3077,6 +3231,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -3092,6 +3247,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Working Time"
           }
         },
@@ -3134,6 +3290,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Error"
           },
           "metadata": {
@@ -3146,6 +3303,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "model": {
@@ -3161,6 +3319,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Time"
           },
           "usage": {
@@ -3171,7 +3330,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           }
         },
         "required": [
@@ -3199,6 +3359,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Input Tokens Cache Read"
           },
           "input_tokens_cache_write": {
@@ -3210,6 +3371,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Input Tokens Cache Write"
           },
           "output_tokens": {
@@ -3226,6 +3388,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Reasoning Tokens"
           },
           "total_tokens": {
@@ -3342,6 +3505,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Reason"
           },
           "timestamp": {
@@ -3370,6 +3534,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Description"
           },
           "json_schema": {
@@ -3388,6 +3553,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Strict"
           }
         },
@@ -3413,6 +3579,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Choices"
           },
           "files": {
@@ -3427,6 +3594,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Files"
           },
           "id": {
@@ -3441,6 +3609,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Id"
           },
           "input": {
@@ -3480,6 +3649,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "sandbox": {
@@ -3490,7 +3660,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "setup": {
             "anyOf": [
@@ -3501,6 +3672,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Setup"
           },
           "target": {
@@ -3544,6 +3716,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -3555,6 +3728,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "sample": {
@@ -3569,12 +3743,14 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "state": {
             "$ref": "#/components/schemas/JsonValue"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -3587,6 +3763,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -3622,6 +3799,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Limit"
           },
           "message": {
@@ -3638,6 +3816,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -3649,6 +3828,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -3660,9 +3840,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -3687,6 +3869,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -3708,6 +3891,7 @@
         "description": "Specification of a SandboxEnvironment.",
         "properties": {
           "config": {
+            "default": null,
             "title": "Config"
           },
           "type": {
@@ -3743,17 +3927,20 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cmd"
           },
           "completed": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Completed"
           },
           "event": {
@@ -3771,6 +3958,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "File"
           },
           "input": {
@@ -3782,6 +3970,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Input"
           },
           "metadata": {
@@ -3794,6 +3983,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "options": {
@@ -3808,6 +3998,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Options"
           },
           "output": {
@@ -3819,6 +4010,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Output"
           },
           "pending": {
@@ -3830,6 +4022,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "result": {
@@ -3841,6 +4034,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Result"
           },
           "span_id": {
@@ -3852,9 +4046,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -3867,6 +4063,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -4431,6 +4628,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Answer"
           },
           "explanation": {
@@ -4442,6 +4640,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Explanation"
           },
           "history": {
@@ -4461,6 +4660,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "value": {
@@ -4586,7 +4786,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "value": {
             "anyOf": [
@@ -4681,6 +4882,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -4692,6 +4894,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "score_name": {
@@ -4707,9 +4910,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -4722,6 +4927,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -4763,6 +4969,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -4774,6 +4981,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "score": {
@@ -4788,6 +4996,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "target": {
@@ -4805,9 +5014,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Target"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -4820,6 +5031,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -4860,6 +5072,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "name": {
@@ -4875,6 +5088,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Parent Id"
           },
           "pending": {
@@ -4886,6 +5100,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -4897,9 +5112,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -4912,6 +5129,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Type"
           },
           "uuid": {
@@ -4923,6 +5141,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -4963,6 +5182,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -4974,6 +5194,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -4985,9 +5206,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5000,6 +5223,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -5042,6 +5266,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -5053,6 +5278,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -5064,9 +5290,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5079,6 +5307,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -5156,6 +5385,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "name": {
@@ -5171,6 +5401,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -5182,9 +5413,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5197,6 +5430,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Type"
           },
           "uuid": {
@@ -5208,6 +5442,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -5251,6 +5486,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -5262,6 +5498,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -5273,9 +5510,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5288,6 +5527,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -5310,12 +5550,14 @@
           "completed": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Completed"
           },
           "event": {
@@ -5344,6 +5586,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "name": {
@@ -5359,9 +5602,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "result": {
+            "default": null,
             "title": "Result"
           },
           "span_id": {
@@ -5373,9 +5618,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5388,6 +5635,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Type"
           },
           "uuid": {
@@ -5399,6 +5647,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -5414,6 +5663,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Working Time"
           }
         },
@@ -5585,7 +5835,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "context": {
             "anyOf": [
@@ -5595,7 +5846,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           }
         },
         "title": "ToolCallView",
@@ -5613,6 +5865,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Agent"
           },
           "arguments": {
@@ -5625,12 +5878,14 @@
           "completed": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Completed"
           },
           "error": {
@@ -5641,7 +5896,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "event": {
             "const": "tool",
@@ -5663,6 +5919,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Failed"
           },
           "function": {
@@ -5682,6 +5939,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Message Id"
           },
           "metadata": {
@@ -5694,6 +5952,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -5705,6 +5964,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Pending"
           },
           "result": {
@@ -5764,9 +6024,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
+            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5789,6 +6051,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Truncated"
           },
           "type": {
@@ -5806,6 +6069,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Uuid"
           },
           "view": {
@@ -5816,7 +6080,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "working_start": {
             "title": "Working Start",
@@ -5831,6 +6096,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Working Time"
           }
         },
@@ -5882,6 +6148,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Options"
           },
           "parameters": {
@@ -5949,6 +6216,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Bytes"
           },
           "logprob": {

@@ -2,9 +2,9 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 interface TaskNameProps {
-  taskSet?: string;
-  taskId?: string | number;
-  taskRepeat?: number;
+  taskSet?: string | null;
+  taskId?: string | number | null;
+  taskRepeat?: number | null;
 }
 
 export const TaskName: FC<TaskNameProps> = ({

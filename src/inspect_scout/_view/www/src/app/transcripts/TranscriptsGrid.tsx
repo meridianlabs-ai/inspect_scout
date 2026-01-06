@@ -27,7 +27,7 @@ import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
-import { Score } from "../../types/log";
+import { Score } from "../../types/api-types";
 import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
@@ -289,6 +289,22 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
           const colorCls = value ? styles.green : styles.red;
 
           return <i className={clsx(icon, colorCls)} />;
+        },
+      }),
+      createColumn({
+        accessorKey: "date",
+        header: "date",
+        size: 180,
+        meta: {
+          filterable: true,
+          filterType: "date",
+        },
+        cell: (value) => {
+          if (!value) {
+            return "-";
+          }
+          const date = new Date(value);
+          return date.toLocaleString();
         },
       }),
       createColumn({

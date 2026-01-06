@@ -12,9 +12,9 @@ import {
   ContentText,
   ContentToolUse,
   ContentVideo,
-  Events,
-  Messages,
-} from "../types/log";
+  Event,
+  ChatMessage,
+} from "../types/api-types";
 
 export interface ResolvedMessage {
   message:
@@ -25,7 +25,7 @@ export interface ResolvedMessage {
   toolMessages: ChatMessageTool[];
 }
 
-export const resolveMessages = (messages: Messages) => {
+export const resolveMessages = (messages: ChatMessage[]) => {
   // Filter tool messages into a sidelist that the chat stream
   // can use to lookup the tool responses
 
@@ -154,7 +154,7 @@ const normalizeContent = (
   }
 };
 
-export const messagesFromEvents = (runningEvents: Events): Messages => {
+export const messagesFromEvents = (runningEvents: Event[]): ChatMessage[] => {
   const messages: Map<
     string,
     ChatMessageSystem | ChatMessageUser | ChatMessageAssistant | ChatMessageTool

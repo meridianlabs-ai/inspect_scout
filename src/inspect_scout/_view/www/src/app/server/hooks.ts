@@ -12,8 +12,8 @@ import { useMemo } from "react";
 
 import type { Condition, OrderByModel } from "../../query";
 import { useApi } from "../../state/store";
-import { Status } from "../../types";
 import {
+  Status,
   ScanJobsResponse,
   Transcript,
   TranscriptsResponse,

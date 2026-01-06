@@ -187,24 +187,44 @@ export interface components {
              * @constant
              */
             event: "approval";
-            /** Explanation */
-            explanation?: string | null;
+            /**
+             * Explanation
+             * @default null
+             */
+            explanation: string | null;
             /** Message */
             message: string;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            modified?: components["schemas"]["ToolCall"] | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /** @default null */
+            modified: components["schemas"]["ToolCall"] | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
-            view?: components["schemas"]["ToolCallView"] | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
+            /** @default null */
+            view: components["schemas"]["ToolCallView"] | null;
             /** Working Start */
             working_start: number;
         };
@@ -213,18 +233,36 @@ export interface components {
          * @description Batch processing configuration.
          */
         BatchConfig: {
-            /** Max Batches */
-            max_batches?: number | null;
-            /** Max Consecutive Check Failures */
-            max_consecutive_check_failures?: number | null;
-            /** Max Size */
-            max_size?: number | null;
-            /** Send Delay */
-            send_delay?: number | null;
-            /** Size */
-            size?: number | null;
-            /** Tick */
-            tick?: number | null;
+            /**
+             * Max Batches
+             * @default null
+             */
+            max_batches: number | null;
+            /**
+             * Max Consecutive Check Failures
+             * @default null
+             */
+            max_consecutive_check_failures: number | null;
+            /**
+             * Max Size
+             * @default null
+             */
+            max_size: number | null;
+            /**
+             * Send Delay
+             * @default null
+             */
+            send_delay: number | null;
+            /**
+             * Size
+             * @default null
+             */
+            size: number | null;
+            /**
+             * Tick
+             * @default null
+             */
+            tick: number | null;
         };
         /**
          * CachePolicy
@@ -251,7 +289,8 @@ export interface components {
          * @description Choice generated for completion.
          */
         ChatCompletionChoice: {
-            logprobs?: components["schemas"]["Logprobs"] | null;
+            /** @default null */
+            logprobs: components["schemas"]["Logprobs"] | null;
             message: components["schemas"]["ChatMessageAssistant"];
             /**
              * Stop Reason
@@ -751,18 +790,33 @@ export interface components {
              * @constant
              */
             event: "error";
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -778,78 +832,173 @@ export interface components {
             /** Traceback Ansi */
             traceback_ansi: string;
         };
+        Event: components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"];
         /**
          * GenerateConfig
          * @description Model generation options.
          */
         GenerateConfig: {
-            /** Attempt Timeout */
-            attempt_timeout?: number | null;
-            /** Batch */
-            batch?: boolean | number | components["schemas"]["BatchConfig"] | null;
-            /** Best Of */
-            best_of?: number | null;
-            /** Cache */
-            cache?: boolean | components["schemas"]["CachePolicy"] | null;
-            /** Cache Prompt */
-            cache_prompt?: "auto" | boolean | null;
-            /** Effort */
-            effort?: ("low" | "medium" | "high") | null;
-            /** Extra Body */
-            extra_body?: {
+            /**
+             * Attempt Timeout
+             * @default null
+             */
+            attempt_timeout: number | null;
+            /**
+             * Batch
+             * @default null
+             */
+            batch: boolean | number | components["schemas"]["BatchConfig"] | null;
+            /**
+             * Best Of
+             * @default null
+             */
+            best_of: number | null;
+            /**
+             * Cache
+             * @default null
+             */
+            cache: boolean | components["schemas"]["CachePolicy"] | null;
+            /**
+             * Cache Prompt
+             * @default null
+             */
+            cache_prompt: "auto" | boolean | null;
+            /**
+             * Effort
+             * @default null
+             */
+            effort: ("low" | "medium" | "high") | null;
+            /**
+             * Extra Body
+             * @default null
+             */
+            extra_body: {
                 [key: string]: unknown;
             } | null;
-            /** Frequency Penalty */
-            frequency_penalty?: number | null;
-            /** Internal Tools */
-            internal_tools?: boolean | null;
-            /** Logit Bias */
-            logit_bias?: {
+            /**
+             * Frequency Penalty
+             * @default null
+             */
+            frequency_penalty: number | null;
+            /**
+             * Internal Tools
+             * @default null
+             */
+            internal_tools: boolean | null;
+            /**
+             * Logit Bias
+             * @default null
+             */
+            logit_bias: {
                 [key: string]: number;
             } | null;
-            /** Logprobs */
-            logprobs?: boolean | null;
-            /** Max Connections */
-            max_connections?: number | null;
-            /** Max Retries */
-            max_retries?: number | null;
-            /** Max Tokens */
-            max_tokens?: number | null;
-            /** Max Tool Output */
-            max_tool_output?: number | null;
-            /** Num Choices */
-            num_choices?: number | null;
-            /** Parallel Tool Calls */
-            parallel_tool_calls?: boolean | null;
-            /** Presence Penalty */
-            presence_penalty?: number | null;
-            /** Reasoning Effort */
-            reasoning_effort?: ("none" | "minimal" | "low" | "medium" | "high" | "xhigh") | null;
-            /** Reasoning History */
-            reasoning_history?: ("none" | "all" | "last" | "auto") | null;
-            /** Reasoning Summary */
-            reasoning_summary?: ("none" | "concise" | "detailed" | "auto") | null;
-            /** Reasoning Tokens */
-            reasoning_tokens?: number | null;
-            response_schema?: components["schemas"]["ResponseSchema"] | null;
-            /** Seed */
-            seed?: number | null;
-            /** Stop Seqs */
-            stop_seqs?: string[] | null;
-            /** System Message */
-            system_message?: string | null;
-            /** Temperature */
-            temperature?: number | null;
-            /** Timeout */
-            timeout?: number | null;
-            /** Top K */
-            top_k?: number | null;
-            /** Top Logprobs */
-            top_logprobs?: number | null;
-            /** Top P */
-            top_p?: number | null;
-            /** Verbosity */
-            verbosity?: ("low" | "medium" | "high") | null;
+            /**
+             * Logprobs
+             * @default null
+             */
+            logprobs: boolean | null;
+            /**
+             * Max Connections
+             * @default null
+             */
+            max_connections: number | null;
+            /**
+             * Max Retries
+             * @default null
+             */
+            max_retries: number | null;
+            /**
+             * Max Tokens
+             * @default null
+             */
+            max_tokens: number | null;
+            /**
+             * Max Tool Output
+             * @default null
+             */
+            max_tool_output: number | null;
+            /**
+             * Num Choices
+             * @default null
+             */
+            num_choices: number | null;
+            /**
+             * Parallel Tool Calls
+             * @default null
+             */
+            parallel_tool_calls: boolean | null;
+            /**
+             * Presence Penalty
+             * @default null
+             */
+            presence_penalty: number | null;
+            /**
+             * Reasoning Effort
+             * @default null
+             */
+            reasoning_effort: ("none" | "minimal" | "low" | "medium" | "high" | "xhigh") | null;
+            /**
+             * Reasoning History
+             * @default null
+             */
+            reasoning_history: ("none" | "all" | "last" | "auto") | null;
+            /**
+             * Reasoning Summary
+             * @default null
+             */
+            reasoning_summary: ("none" | "concise" | "detailed" | "auto") | null;
+            /**
+             * Reasoning Tokens
+             * @default null
+             */
+            reasoning_tokens: number | null;
+            /** @default null */
+            response_schema: components["schemas"]["ResponseSchema"] | null;
+            /**
+             * Seed
+             * @default null
+             */
+            seed: number | null;
+            /**
+             * Stop Seqs
+             * @default null
+             */
+            stop_seqs: string[] | null;
+            /**
+             * System Message
+             * @default null
+             */
+            system_message: string | null;
+            /**
+             * Temperature
+             * @default null
+             */
+            temperature: number | null;
+            /**
+             * Timeout
+             * @default null
+             */
+            timeout: number | null;
+            /**
+             * Top K
+             * @default null
+             */
+            top_k: number | null;
+            /**
+             * Top Logprobs
+             * @default null
+             */
+            top_logprobs: number | null;
+            /**
+             * Top P
+             * @default null
+             */
+            top_p: number | null;
+            /**
+             * Verbosity
+             * @default null
+             */
+            verbosity: ("low" | "medium" | "high") | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -868,20 +1017,38 @@ export interface components {
              * @constant
              */
             event: "info";
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Source */
-            source?: string | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Source
+             * @default null
+             */
+            source: string | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -900,18 +1067,33 @@ export interface components {
             input: string;
             /** Input Ansi */
             input_ansi: string;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -920,35 +1102,66 @@ export interface components {
          * @description JSON Schema for type.
          */
         JSONSchema: {
-            /** Additionalproperties */
-            additionalProperties?: components["schemas"]["JSONSchema"] | boolean | null;
-            /** Anyof */
-            anyOf?: components["schemas"]["JSONSchema"][] | null;
-            /** Default */
+            /**
+             * Additionalproperties
+             * @default null
+             */
+            additionalProperties: components["schemas"]["JSONSchema"] | boolean | null;
+            /**
+             * Anyof
+             * @default null
+             */
+            anyOf: components["schemas"]["JSONSchema"][] | null;
+            /**
+             * Default
+             * @default null
+             */
             default: unknown;
-            /** Description */
-            description?: string | null;
-            /** Enum */
-            enum?: unknown[] | null;
-            /** Format */
-            format?: string | null;
-            items?: components["schemas"]["JSONSchema"] | null;
-            /** Properties */
-            properties?: {
+            /**
+             * Description
+             * @default null
+             */
+            description: string | null;
+            /**
+             * Enum
+             * @default null
+             */
+            enum: unknown[] | null;
+            /**
+             * Format
+             * @default null
+             */
+            format: string | null;
+            /** @default null */
+            items: components["schemas"]["JSONSchema"] | null;
+            /**
+             * Properties
+             * @default null
+             */
+            properties: {
                 [key: string]: components["schemas"]["JSONSchema"];
             } | null;
-            /** Required */
-            required?: string[] | null;
-            /** Type */
-            type?: ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null") | ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null")[] | null;
+            /**
+             * Required
+             * @default null
+             */
+            required: string[] | null;
+            /**
+             * Type
+             * @default null
+             */
+            type: ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null") | ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null")[] | null;
         };
         /**
          * JsonChange
          * @description Describes a change to data using JSON Patch format.
          */
         JsonChange: {
-            /** From */
-            from?: string | null;
+            /**
+             * From
+             * @default null
+             */
+            from: string | null;
             /**
              * Op
              * @enum {string}
@@ -956,7 +1169,9 @@ export interface components {
             op: "remove" | "add" | "replace" | "move" | "test" | "copy";
             /** Path */
             path: string;
+            /** @default null */
             replaced: components["schemas"]["JsonValue"];
+            /** @default null */
             value: components["schemas"]["JsonValue"];
         };
         JsonValue: JsonValue;
@@ -972,18 +1187,33 @@ export interface components {
              */
             event: "logger";
             message: components["schemas"]["LoggingMessage"];
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1016,8 +1246,11 @@ export interface components {
              * @default unknown
              */
             module: string;
-            /** Name */
-            name?: string | null;
+            /**
+             * Name
+             * @default null
+             */
+            name: string | null;
         };
         /**
          * LogicalOperator
@@ -1030,14 +1263,20 @@ export interface components {
          * @description Log probability for a token.
          */
         Logprob: {
-            /** Bytes */
-            bytes?: number[] | null;
+            /**
+             * Bytes
+             * @default null
+             */
+            bytes: number[] | null;
             /** Logprob */
             logprob: number;
             /** Token */
             token: string;
-            /** Top Logprobs */
-            top_logprobs?: components["schemas"]["TopLogprob"][] | null;
+            /**
+             * Top Logprobs
+             * @default null
+             */
+            top_logprobs: components["schemas"]["TopLogprob"][] | null;
         };
         /**
          * Logprobs
@@ -1060,8 +1299,11 @@ export interface components {
             response: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            /** Time */
-            time?: number | null;
+            /**
+             * Time
+             * @default null
+             */
+            time: number | null;
         };
         /**
          * ModelConfig
@@ -1083,14 +1325,24 @@ export interface components {
          * @description Call to a language model.
          */
         ModelEvent: {
-            /** Cache */
-            cache?: ("read" | "write") | null;
-            call?: components["schemas"]["ModelCall"] | null;
-            /** Completed */
-            completed?: string | null;
+            /**
+             * Cache
+             * @default null
+             */
+            cache: ("read" | "write") | null;
+            /** @default null */
+            call: components["schemas"]["ModelCall"] | null;
+            /**
+             * Completed
+             * @default null
+             */
+            completed: string | null;
             config: components["schemas"]["GenerateConfig"];
-            /** Error */
-            error?: string | null;
+            /**
+             * Error
+             * @default null
+             */
+            error: string | null;
             /**
              * Event
              * @default model
@@ -1099,33 +1351,57 @@ export interface components {
             event: "model";
             /** Input */
             input: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /** Model */
             model: string;
             output: components["schemas"]["ModelOutput"];
-            /** Pending */
-            pending?: boolean | null;
-            /** Retries */
-            retries?: number | null;
-            /** Role */
-            role?: string | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Retries
+             * @default null
+             */
+            retries: number | null;
+            /**
+             * Role
+             * @default null
+             */
+            role: string | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
             /** Tool Choice */
             tool_choice: ("auto" | "any" | "none") | components["schemas"]["ToolFunction"];
             /** Tools */
             tools: components["schemas"]["ToolInfo"][];
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
-            /** Working Time */
-            working_time?: number | null;
+            /**
+             * Working Time
+             * @default null
+             */
+            working_time: number | null;
         };
         /**
          * ModelOutput
@@ -1142,17 +1418,27 @@ export interface components {
              * @default
              */
             completion: string;
-            /** Error */
-            error?: string | null;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Error
+             * @default null
+             */
+            error: string | null;
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /** Model */
             model: string;
-            /** Time */
-            time?: number | null;
-            usage?: components["schemas"]["ModelUsage"] | null;
+            /**
+             * Time
+             * @default null
+             */
+            time: number | null;
+            /** @default null */
+            usage: components["schemas"]["ModelUsage"] | null;
         };
         /**
          * ModelUsage
@@ -1164,17 +1450,26 @@ export interface components {
              * @default 0
              */
             input_tokens: number;
-            /** Input Tokens Cache Read */
-            input_tokens_cache_read?: number | null;
-            /** Input Tokens Cache Write */
-            input_tokens_cache_write?: number | null;
+            /**
+             * Input Tokens Cache Read
+             * @default null
+             */
+            input_tokens_cache_read: number | null;
+            /**
+             * Input Tokens Cache Write
+             * @default null
+             */
+            input_tokens_cache_write: number | null;
             /**
              * Output Tokens
              * @default 0
              */
             output_tokens: number;
-            /** Reasoning Tokens */
-            reasoning_tokens?: number | null;
+            /**
+             * Reasoning Tokens
+             * @default null
+             */
+            reasoning_tokens: number | null;
             /**
              * Total Tokens
              * @default 0
@@ -1222,8 +1517,11 @@ export interface components {
             metadata: {
                 [key: string]: unknown;
             };
-            /** Reason */
-            reason?: string | null;
+            /**
+             * Reason
+             * @default null
+             */
+            reason: string | null;
             /**
              * Timestamp
              * Format: date-time
@@ -1235,36 +1533,58 @@ export interface components {
          * @description Schema for model response when using Structured Output.
          */
         ResponseSchema: {
-            /** Description */
-            description?: string | null;
+            /**
+             * Description
+             * @default null
+             */
+            description: string | null;
             json_schema: components["schemas"]["JSONSchema"];
             /** Name */
             name: string;
-            /** Strict */
-            strict?: boolean | null;
+            /**
+             * Strict
+             * @default null
+             */
+            strict: boolean | null;
         };
         /**
          * Sample
          * @description Sample for an evaluation task.
          */
         Sample: {
-            /** Choices */
-            choices?: string[] | null;
-            /** Files */
-            files?: {
+            /**
+             * Choices
+             * @default null
+             */
+            choices: string[] | null;
+            /**
+             * Files
+             * @default null
+             */
+            files: {
                 [key: string]: string;
             } | null;
-            /** Id */
-            id?: number | string | null;
+            /**
+             * Id
+             * @default null
+             */
+            id: number | string | null;
             /** Input */
             input: string | (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            sandbox?: components["schemas"]["SandboxEnvironmentSpec"] | null;
-            /** Setup */
-            setup?: string | null;
+            /** @default null */
+            sandbox: components["schemas"]["SandboxEnvironmentSpec"] | null;
+            /**
+             * Setup
+             * @default null
+             */
+            setup: string | null;
             /** Target */
             target: string | string[];
         };
@@ -1279,20 +1599,35 @@ export interface components {
              * @constant
              */
             event: "sample_init";
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
             sample: components["schemas"]["Sample"];
-            /** Span Id */
-            span_id?: string | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
             state: components["schemas"]["JsonValue"];
-            /** Timestamp */
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1307,27 +1642,45 @@ export interface components {
              * @constant
              */
             event: "sample_limit";
-            /** Limit */
-            limit?: number | null;
+            /**
+             * Limit
+             * @default null
+             */
+            limit: number | null;
             /** Message */
             message: string;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
             /**
              * Type
              * @enum {string}
              */
             type: "message" | "time" | "working" | "token" | "operator" | "custom";
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1336,7 +1689,10 @@ export interface components {
          * @description Specification of a SandboxEnvironment.
          */
         SandboxEnvironmentSpec: {
-            /** Config */
+            /**
+             * Config
+             * @default null
+             */
             config: unknown;
             /** Type */
             type: string;
@@ -1351,40 +1707,76 @@ export interface components {
              * @enum {string}
              */
             action: "exec" | "read_file" | "write_file";
-            /** Cmd */
-            cmd?: string | null;
-            /** Completed */
-            completed?: string | null;
+            /**
+             * Cmd
+             * @default null
+             */
+            cmd: string | null;
+            /**
+             * Completed
+             * @default null
+             */
+            completed: string | null;
             /**
              * Event
              * @default sandbox
              * @constant
              */
             event: "sandbox";
-            /** File */
-            file?: string | null;
-            /** Input */
-            input?: string | null;
-            /** Metadata */
-            metadata?: {
+            /**
+             * File
+             * @default null
+             */
+            file: string | null;
+            /**
+             * Input
+             * @default null
+             */
+            input: string | null;
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Options */
-            options?: {
+            /**
+             * Options
+             * @default null
+             */
+            options: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
-            /** Output */
-            output?: string | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Result */
-            result?: number | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Output
+             * @default null
+             */
+            output: string | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Result
+             * @default null
+             */
+            result: number | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1583,14 +1975,23 @@ export interface components {
          * @description Score generated by a scorer.
          */
         Score: {
-            /** Answer */
-            answer?: string | null;
-            /** Explanation */
-            explanation?: string | null;
+            /**
+             * Answer
+             * @default null
+             */
+            answer: string | null;
+            /**
+             * Explanation
+             * @default null
+             */
+            explanation: string | null;
             /** History */
             history: components["schemas"]["ScoreEdit"][];
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /** Value */
@@ -1620,7 +2021,8 @@ export interface components {
             metadata: {
                 [key: string]: unknown;
             } | "UNCHANGED";
-            provenance?: components["schemas"]["ProvenanceData"] | null;
+            /** @default null */
+            provenance: components["schemas"]["ProvenanceData"] | null;
             /**
              * Value
              * @default UNCHANGED
@@ -1641,20 +2043,35 @@ export interface components {
              * @constant
              */
             event: "score_edit";
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
             /** Score Name */
             score_name: string;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1677,21 +2094,39 @@ export interface components {
              * @default false
              */
             intermediate: boolean;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
             score: components["schemas"]["Score"];
-            /** Span Id */
-            span_id?: string | null;
-            /** Target */
-            target?: string | string[] | null;
-            /** Timestamp */
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Target
+             * @default null
+             */
+            target: string | string[] | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1708,24 +2143,45 @@ export interface components {
             event: "span_begin";
             /** Id */
             id: string;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /** Name */
             name: string;
-            /** Parent Id */
-            parent_id?: string | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Parent Id
+             * @default null
+             */
+            parent_id: string | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Type */
-            type?: string | null;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Type
+             * @default null
+             */
+            type: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1742,18 +2198,33 @@ export interface components {
             event: "span_end";
             /** Id */
             id: string;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1770,18 +2241,33 @@ export interface components {
              * @constant
              */
             event: "state";
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1812,22 +2298,40 @@ export interface components {
              * @constant
              */
             event: "step";
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /** Name */
             name: string;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Type */
-            type?: string | null;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Type
+             * @default null
+             */
+            type: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1844,18 +2348,33 @@ export interface components {
              * @constant
              */
             event: "store";
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
         };
@@ -1864,8 +2383,11 @@ export interface components {
          * @description Subtask spawned.
          */
         SubtaskEvent: {
-            /** Completed */
-            completed?: string | null;
+            /**
+             * Completed
+             * @default null
+             */
+            completed: string | null;
             /**
              * Event
              * @default subtask
@@ -1878,28 +2400,52 @@ export interface components {
             input: {
                 [key: string]: unknown;
             };
-            /** Metadata */
-            metadata?: {
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
             /** Name */
             name: string;
-            /** Pending */
-            pending?: boolean | null;
-            /** Result */
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Result
+             * @default null
+             */
             result: unknown;
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Type */
-            type?: string | null;
-            /** Uuid */
-            uuid?: string | null;
+            /**
+             * Type
+             * @default null
+             */
+            type: string | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
             /** Working Start */
             working_start: number;
-            /** Working Time */
-            working_time?: number | null;
+            /**
+             * Working Time
+             * @default null
+             */
+            working_time: number | null;
         };
         /**
          * Summary
@@ -1976,23 +2522,32 @@ export interface components {
          *     then the view will default to a syntax highlighted Python function call.
          */
         ToolCallView: {
-            call?: components["schemas"]["ToolCallContent"] | null;
-            context?: components["schemas"]["ToolCallContent"] | null;
+            /** @default null */
+            call: components["schemas"]["ToolCallContent"] | null;
+            /** @default null */
+            context: components["schemas"]["ToolCallContent"] | null;
         };
         /**
          * ToolEvent
          * @description Call to a tool.
          */
         ToolEvent: {
-            /** Agent */
-            agent?: string | null;
+            /**
+             * Agent
+             * @default null
+             */
+            agent: string | null;
             /** Arguments */
             arguments: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            /** Completed */
-            completed?: string | null;
-            error?: components["schemas"]["ToolCallError"] | null;
+            /**
+             * Completed
+             * @default null
+             */
+            completed: string | null;
+            /** @default null */
+            error: components["schemas"]["ToolCallError"] | null;
             /**
              * Event
              * @default tool
@@ -2001,28 +2556,49 @@ export interface components {
             event: "tool";
             /** Events */
             events: unknown[];
-            /** Failed */
-            failed?: boolean | null;
+            /**
+             * Failed
+             * @default null
+             */
+            failed: boolean | null;
             /** Function */
             function: string;
             /** Id */
             id: string;
-            /** Message Id */
-            message_id?: string | null;
-            /** Metadata */
-            metadata?: {
+            /**
+             * Message Id
+             * @default null
+             */
+            message_id: string | null;
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
                 [key: string]: unknown;
             } | null;
-            /** Pending */
-            pending?: boolean | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
             /** Result */
             result: string | number | boolean | components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | (components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"])[];
-            /** Span Id */
-            span_id?: string | null;
-            /** Timestamp */
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
-            /** Truncated */
-            truncated?: [
+            /**
+             * Truncated
+             * @default null
+             */
+            truncated: [
                 number,
                 number
             ] | null;
@@ -2032,13 +2608,20 @@ export interface components {
              * @constant
              */
             type: "function";
-            /** Uuid */
-            uuid?: string | null;
-            view?: components["schemas"]["ToolCallContent"] | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
+            /** @default null */
+            view: components["schemas"]["ToolCallContent"] | null;
             /** Working Start */
             working_start: number;
-            /** Working Time */
-            working_time?: number | null;
+            /**
+             * Working Time
+             * @default null
+             */
+            working_time: number | null;
         };
         /** ToolFunction */
         ToolFunction: {
@@ -2077,8 +2660,11 @@ export interface components {
             description: string;
             /** Name */
             name: string;
-            /** Options */
-            options?: {
+            /**
+             * Options
+             * @default null
+             */
+            options: {
                 [key: string]: unknown;
             } | null;
             parameters: components["schemas"]["ToolParams"];
@@ -2111,8 +2697,11 @@ export interface components {
          * @description List of the most likely tokens and their log probability, at this token position.
          */
         TopLogprob: {
-            /** Bytes */
-            bytes?: number[] | null;
+            /**
+             * Bytes
+             * @default null
+             */
+            bytes: number[] | null;
             /** Logprob */
             logprob: number;
             /** Token */

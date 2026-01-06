@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { useStore } from "../../../state/store";
-import { Status } from "../../../types";
+import { Status } from "../../../types/api-types";
 import { Footer } from "../../components/Footer";
 import { useSelectedScanDataframe, useSelectedScanner } from "../../hooks";
 

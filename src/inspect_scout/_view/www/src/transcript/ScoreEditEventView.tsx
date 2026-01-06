@@ -4,7 +4,7 @@ import { FC, Fragment } from "react";
 import { ApplicationIcons } from "../app/appearance/icons";
 import { RecordTree } from "../content/RecordTree";
 import { RenderedText } from "../content/RenderedText";
-import { ScoreEditEvent } from "../types/log";
+import { ScoreEditEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 
 import { EventPanel } from "./event/EventPanel";
@@ -28,7 +28,7 @@ export const ScoreEditEventView: FC<ScoreEditEventViewProps> = ({
   const event = eventNode.event;
 
   const subtitle = event.edit.provenance
-    ? `[${formatDateTime(new Date(event.edit.provenance.timestamp))}] ${event.edit.provenance.author}: ${event.edit.provenance.reason || ""}`
+    ? `[${event.edit.provenance.timestamp ? formatDateTime(new Date(event.edit.provenance.timestamp)) : undefined}] ${event.edit.provenance.author}: ${event.edit.provenance.reason || ""}`
     : undefined;
 
   return (
@@ -109,8 +109,9 @@ export const ScoreEditEventView: FC<ScoreEditEventViewProps> = ({
             <div className={clsx(styles.wrappingContent)}>
               <RenderedText
                 markdown={
-                  formatDateTime(new Date(event.edit.provenance.timestamp)) ||
-                  ""
+                  event.edit.provenance.timestamp
+                    ? formatDateTime(new Date(event.edit.provenance.timestamp))
+                    : ""
                 }
               />
             </div>

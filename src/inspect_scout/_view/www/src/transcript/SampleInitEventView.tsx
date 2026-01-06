@@ -5,7 +5,7 @@ import { FC, ReactNode } from "react";
 import { ApplicationIcons } from "../app/appearance/icons";
 import { ChatView } from "../chat/ChatView";
 import { MetaDataGrid } from "../content/MetaDataGrid";
-import { Messages, SampleInitEvent } from "../types/log";
+import { ChatMessage, SampleInitEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 import { toArray } from "../utils/type";
 
@@ -62,11 +62,13 @@ export const SampleInitEventView: FC<SampleInitEventViewProps> = ({
       className={className}
       title="Sample"
       icon={ApplicationIcons.sample}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
     >
       <div data-name="Sample" className={styles.sample}>
         <ChatView
-          messages={stateObj["messages"] as Messages}
+          messages={stateObj["messages"] as ChatMessage[]}
           allowLinking={false}
         />
         <div>

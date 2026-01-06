@@ -1,21 +1,27 @@
 import { EventType } from "../transcript/types";
-import { ModelUsage, Transcript } from "../types";
 import {
+  ModelUsage,
   JsonValue,
   ChatMessageSystem,
   ChatMessageUser,
   ChatMessageAssistant,
   ChatMessageTool,
-  Events,
-  Messages,
-} from "../types/log";
+  Event,
+  ChatMessage,
+  Transcript,
+} from "../types/api-types";
 
 export interface ScanResultInputData {
   input: Input;
   inputType: InputType;
 }
 
-export type Input = Transcript | Messages | Events | MessageType | EventType;
+export type Input =
+  | Transcript
+  | ChatMessage[]
+  | Event[]
+  | MessageType
+  | EventType;
 
 export type InputType =
   | "transcript"
@@ -67,7 +73,7 @@ export interface ScanResultData extends ScanResultSummary {
   scanError?: string;
   scanErrorTraceback?: string;
   scanErrorRefusal?: boolean;
-  scanEvents: Events;
+  scanEvents: Event[];
   scanId: string;
   scanMetadata: Record<string, JsonValue>;
   scanModelUsage: Record<string, ModelUsage>;
@@ -186,7 +192,10 @@ export function isMessageInput(
 
 export function isMessagesInput(
   input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "messages"; input: Messages } {
+): input is ScanResultInputData & {
+  inputType: "messages";
+  input: ChatMessage[];
+} {
   return input.inputType === "messages";
 }
 
@@ -198,6 +207,6 @@ export function isEventInput(
 
 export function isEventsInput(
   input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "events"; input: Events } {
+): input is ScanResultInputData & { inputType: "events"; input: Event[] } {
   return input.inputType === "events";
 }

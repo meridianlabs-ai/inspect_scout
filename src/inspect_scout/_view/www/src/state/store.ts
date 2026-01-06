@@ -79,6 +79,9 @@ interface StoreState {
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
   transcriptOutlineId?: string;
 
+  // Transcript Detail properties (clear when switching transcripts)
+  selectedTranscriptTab?: string;
+
   // User selected / visible transcript path
   userTranscriptsDir?: string;
   userScansDir?: string;
@@ -114,6 +117,7 @@ interface StoreState {
   // Clearing state
   clearScanState: () => void;
   clearScansState: () => void;
+  clearTranscriptState: () => void;
 
   setPropertyValue: <T>(id: string, propertyName: string, value: T) => void;
   getPropertyValue: <T>(
@@ -147,6 +151,8 @@ interface StoreState {
 
   setTranscriptOutlineId: (id: string) => void;
   clearTranscriptOutlineId: () => void;
+
+  setSelectedTranscriptTab: (tab: string) => void;
 
   setTranscriptCollapsedEvent: (
     scope: string,
@@ -230,7 +236,7 @@ export const createStore = (api: ScanApi) =>
           transcriptsTableState: {
             columnSizing: {},
             columnOrder: [],
-            sorting: [],
+            sorting: [{ id: "date", desc: true }],
             rowSelection: {},
             focusedRowId: null,
             columnFilters: {},
@@ -327,6 +333,11 @@ export const createStore = (api: ScanApi) =>
               state.selectedScanner = undefined;
               state.selectedScanResult = undefined;
               state.sortResults = undefined;
+            });
+          },
+          clearTranscriptState: () => {
+            set((state) => {
+              state.selectedTranscriptTab = undefined;
             });
           },
           setPropertyValue<T>(id: string, propertyName: string, value: T) {
@@ -470,6 +481,11 @@ export const createStore = (api: ScanApi) =>
           clearTranscriptOutlineId: () => {
             set((state) => {
               state.transcriptOutlineId = undefined;
+            });
+          },
+          setSelectedTranscriptTab: (tab: string) => {
+            set((state) => {
+              state.selectedTranscriptTab = tab;
             });
           },
           setTranscriptCollapsedEvent: (

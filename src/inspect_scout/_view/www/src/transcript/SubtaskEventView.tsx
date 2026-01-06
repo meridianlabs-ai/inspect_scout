@@ -3,7 +3,7 @@ import { FC, ReactNode } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
 import { MetaDataGrid } from "../content/MetaDataGrid";
-import { Input2, Input5, Result3, SubtaskEvent } from "../types/log";
+import { SubtaskEvent } from "../types/api-types";
 
 import { EventPanel } from "./event/EventPanel";
 import { formatTiming, formatTitle } from "./event/utils";
@@ -57,7 +57,11 @@ export const SubtaskEventView: FC<SubtaskEventViewProps> = ({
         undefined,
         event.working_time
       )}
-      subTitle={formatTiming(event.timestamp, event.working_start)}
+      subTitle={
+        event.timestamp
+          ? formatTiming(event.timestamp, event.working_start)
+          : undefined
+      }
       childIds={children.map((child) => child.id)}
       collapseControl="bottom"
     >
@@ -67,8 +71,8 @@ export const SubtaskEventView: FC<SubtaskEventViewProps> = ({
 };
 
 interface SubtaskSummaryProps {
-  input: Input2 | Input5;
-  result: Result3;
+  input: Record<string, unknown>;
+  result: unknown;
 }
 /**
  * Renders the StateEventView component.
@@ -84,9 +88,7 @@ const SubtaskSummary: FC<SubtaskSummaryProps> = ({ input, result }) => {
       <div className={clsx("text-size-title-secondary", styles.subtaskLabel)}>
         <i className={ApplicationIcons.arrows.right} />
       </div>
-      <div>
-        <Rendered values={output} />
-      </div>
+      <div>{output ? <Rendered values={output} /> : "-"}</div>
     </div>
   );
 };

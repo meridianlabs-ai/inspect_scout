@@ -1,7 +1,6 @@
 import { ColumnTable } from "arquero";
 
-import { ModelUsage } from "../types";
-import { Events, JsonValue } from "../types/log";
+import { Event, JsonValue, ModelUsage } from "../types/api-types";
 import { isJson } from "../utils/json";
 import { asyncJsonParse } from "../utils/json-worker";
 
@@ -62,7 +61,7 @@ export const parseScanResultData = async (
       : Promise.resolve(undefined),
     transcript_score_raw !== null && transcript_score_raw !== undefined
       ? isJson(transcript_score_raw)
-        ? parseJson(transcript_score_raw)
+        ? parseJson<JsonValue>(transcript_score_raw)
         : transcript_score_raw
       : Promise.resolve(undefined),
   ]);
@@ -151,7 +150,7 @@ export const parseScanResultData = async (
     scanError,
     scanErrorTraceback,
     scanErrorRefusal,
-    scanEvents: scanEvents as Events,
+    scanEvents: scanEvents as Event[],
     scanId,
     scanMetadata: scanMetadata as Record<string, JsonValue>,
     scanModelUsage: scanModelUsage as Record<string, ModelUsage>,
@@ -211,7 +210,7 @@ export const parseScanResultSummaries = async (
       ] = await Promise.all([
         parseJson(r.validation_result as string),
         parseJson(r.validation_target as string),
-        parseJson<Record<string, unknown>>(r.transcript_metadata as string),
+        parseJson<Record<string, JsonValue>>(r.transcript_metadata as string),
         parseJson(r.event_references as string),
         parseJson(r.message_references as string),
         parseSimpleValue(r.value, valueType),

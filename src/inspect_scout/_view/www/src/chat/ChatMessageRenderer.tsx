@@ -7,8 +7,8 @@ import {
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
-  Messages,
-} from "../types/log";
+  ChatMessage,
+} from "../types/api-types.ts";
 
 import { ChatView } from "./ChatView";
 
@@ -57,7 +57,7 @@ export const ChatSummary: FC<{
   )[];
 }> = ({ id, messages }) => {
   // Show the last 'turn'
-  const summaryMessages: Messages = [];
+  const summaryMessages: ChatMessage[] = [];
   for (const message of messages.slice().reverse()) {
     summaryMessages.unshift(message);
     if (message.role === "user") {

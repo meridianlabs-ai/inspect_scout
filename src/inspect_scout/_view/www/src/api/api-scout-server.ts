@@ -1,6 +1,6 @@
 import { ScanResultInputData, Input, InputType } from "../app/types.ts";
 import type { Condition, OrderByModel } from "../query";
-import { Status } from "../types";
+import { Status } from "../types/api-types.ts";
 import {
   Pagination,
   ScanJobsResponse,

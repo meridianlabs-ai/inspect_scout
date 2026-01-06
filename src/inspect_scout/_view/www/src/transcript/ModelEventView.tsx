@@ -7,12 +7,12 @@ import { usePrismHighlight } from "../components/prism";
 import { PulsingDots } from "../components/PulsingDots";
 import { MetaDataGrid } from "../content/MetaDataGrid";
 import {
-  Messages,
+  ChatMessage,
   ModelCall,
   ModelEvent,
   ToolChoice,
-  Tools1,
-} from "../types/log";
+  ToolInfo,
+} from "../types/api-types";
 import { ModelUsagePanel } from "../usage/ModelUsagePanel";
 
 import { EventPanel } from "./event/EventPanel";
@@ -55,7 +55,7 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
   // For any user messages which immediately preceded this model call, including a
   // panel and display those user messages (exclude tool_call messages as they
   // are already shown in the tool call above)
-  const userMessages: Messages = [];
+  const userMessages: ChatMessage[] = [];
   for (const msg of event.input.slice().reverse()) {
     if (
       (msg.role === "user" && !msg.tool_call_id) ||
@@ -81,7 +81,11 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
       depth={eventNode.depth}
       className={className}
       title={formatTitle(panelTitle, totalUsage, callTime)}
-      subTitle={formatTiming(event.timestamp, event.working_start)}
+      subTitle={
+        event.timestamp
+          ? formatTiming(event.timestamp, event.working_start)
+          : undefined
+      }
       icon={ApplicationIcons.model}
     >
       <div data-name="Summary" className={styles.container}>
@@ -214,7 +218,7 @@ export const APICodeCell: FC<APICodeCellProps> = ({ id, sourceCode }) => {
 };
 
 interface ToolConfigProps {
-  tools: Tools1;
+  tools: ToolInfo[];
   toolChoice: ToolChoice;
 }
 

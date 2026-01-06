@@ -76,7 +76,7 @@ const InputRenderer: FC<InputRendererProps> = ({
   }
 
   if (isTranscriptInput(inputData)) {
-    if (inputData.input.messages.length > 0) {
+    if (inputData.input.messages && inputData.input.messages.length > 0) {
       const labels = resultData?.messageReferences.reduce(
         (acc, ref) => {
           if (ref.cite) {
@@ -89,7 +89,7 @@ const InputRenderer: FC<InputRendererProps> = ({
 
       return (
         <ChatViewVirtualList
-          messages={inputData.input.messages}
+          messages={inputData.input.messages || []}
           allowLinking={false}
           id={"scan-input-virtual-list"}
           toolCallStyle={"complete"}
@@ -102,7 +102,7 @@ const InputRenderer: FC<InputRendererProps> = ({
           labels={labels}
         />
       );
-    } else if (inputData.input.events.length > 0) {
+    } else if (inputData.input.events && inputData.input.events.length > 0) {
       return (
         <TranscriptView
           id={"scan-input-transcript"}

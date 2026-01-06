@@ -8,6 +8,9 @@
 
 .content {
   flex: 1;
+  overflow: hidden;
+}
+
+.content.scrolling {
   overflow: auto;
-  height: 100vh;
 }

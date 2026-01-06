@@ -2,7 +2,7 @@ import { FC } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
 import { ANSIDisplay } from "../components/AnsiDisplay";
-import { InputEvent } from "../types/log";
+import { InputEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 
 import { EventPanel } from "./event/EventPanel";
@@ -27,7 +27,9 @@ export const InputEventView: FC<InputEventViewProps> = ({
       depth={eventNode.depth}
       title="Input"
       className={className}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
       icon={ApplicationIcons.input}
     >
       <ANSIDisplay

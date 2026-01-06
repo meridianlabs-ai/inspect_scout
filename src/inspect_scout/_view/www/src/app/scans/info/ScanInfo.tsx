@@ -4,7 +4,7 @@ import { FC } from "react";
 import { Card, CardBody, CardHeader } from "../../../components/Card";
 import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { RecordTree } from "../../../content/RecordTree";
-import { Status } from "../../../types";
+import { Status } from "../../../types/api-types";
 
 import styles from "./ScanInfo.module.css";
 

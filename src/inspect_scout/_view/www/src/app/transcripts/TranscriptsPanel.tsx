@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useMemo } from "react";
+import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
@@ -39,6 +39,12 @@ export const TranscriptsPanel: FC = () => {
   );
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
 
+  // Clear detail state
+  const clearTranscriptState = useStore((state) => state.clearTranscriptState);
+  useEffect(() => {
+    clearTranscriptState();
+  }, [clearTranscriptState]);
+
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
       resolvedTranscriptDir,
@@ -62,6 +68,7 @@ export const TranscriptsPanel: FC = () => {
     [fetchNextPage]
   );
 
+  // TODO: is data?.pages[0]?.["total_count"] expected to be present (type system seems not to think so)
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
@@ -89,7 +96,7 @@ export const TranscriptsPanel: FC = () => {
       )}
       <Footer
         id={"transcripts-footer"}
-        itemCount={data?.pages[0]?.total_count}
+        itemCount={data?.pages[0]?.["total_count"] || 0}
         paginated={false}
       />
     </div>

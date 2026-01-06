@@ -100,12 +100,18 @@ export const TranscriptVirtualListComponent: FC<
       const context = hasToolEvents
         ? contextWithToolEvents
         : contextWithoutToolEvents;
+      const isLast = index === eventNodes.length - 1;
 
       return (
         <div
           id={item.id}
           key={item.id}
-          className={clsx(styles.node, paddingClass, attachedClass)}
+          className={clsx(
+            styles.node,
+            paddingClass,
+            isLast ? styles.last : undefined,
+            attachedClass
+          )}
           style={{
             paddingLeft: `${item.depth <= 1 ? item.depth * 0.7 : (0.7 + item.depth - 1) * 1}em`,
             paddingRight: `${item.depth === 0 ? undefined : ".7em"} `,

@@ -5,7 +5,7 @@ import { ApplicationIcons } from "../app/appearance/icons";
 import ExpandablePanel from "../components/ExpandablePanel";
 import { MetaDataGrid } from "../content/MetaDataGrid";
 import { RenderedContent } from "../content/RenderedContent";
-import { SandboxEvent } from "../types/log";
+import { SandboxEvent } from "../types/api-types";
 
 import { EventPanel } from "./event/EventPanel";
 import { EventSection } from "./event/EventSection";
@@ -33,7 +33,11 @@ export const SandboxEventView: FC<SandboxEventViewProps> = ({
       className={className}
       title={`Sandbox: ${event.action}`}
       icon={ApplicationIcons.sandbox}
-      subTitle={formatTiming(event.timestamp, event.working_start)}
+      subTitle={
+        event.timestamp
+          ? formatTiming(event.timestamp, event.working_start)
+          : undefined
+      }
     >
       {event.action === "exec" ? (
         <ExecView id={`${eventNode.id}-exec`} event={event} />

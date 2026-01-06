@@ -3,7 +3,6 @@ import { FC, Fragment, ReactNode } from "react";
 
 import ExpandablePanel from "../components/ExpandablePanel";
 import { RenderedText } from "../content/RenderedText";
-import { ContentTool } from "../types";
 import {
   ContentAudio,
   ContentData,
@@ -15,7 +14,7 @@ import {
   ContentVideo,
   Format1,
   Format2,
-} from "../types/log";
+} from "../types/api-types";
 import { isJson } from "../utils/json";
 
 import { ContentDataView } from "./content-data/ContentDataView";
@@ -26,7 +25,7 @@ import styles from "./MessageContent.module.css";
 import { MessagesContext } from "./MessageContents";
 import { ServerToolCall } from "./server-tools/ServerToolCall";
 import { ToolOutput } from "./tools/ToolOutput";
-import { Citation } from "./types";
+import { Citation, ContentTool } from "./types";
 
 type ContentObject =
   | ContentText

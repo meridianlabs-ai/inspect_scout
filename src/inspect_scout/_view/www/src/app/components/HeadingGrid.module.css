@@ -1,0 +1,39 @@
+.headingGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.headingCell {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0; /* Allow flex items to shrink below their content size */
+}
+
+/* Horizontal layouts (left/right) */
+.headingCell.horizontal {
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+/* Vertical layouts (above/below) */
+.headingCell.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0rem;
+}
+
+.label {
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0; /* Prevent labels from shrinking */
+}
+
+.value {
+  min-width: 0; /* Allow values to shrink */
+  word-break: break-word; /* Allow long words to break */
+}
+
+/* For vertical layouts, allow value to take full width */
+.vertical .value {
+  width: 100%;
+}

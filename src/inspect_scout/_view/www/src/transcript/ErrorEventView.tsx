@@ -2,7 +2,7 @@ import { FC } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
 import { ANSIDisplay } from "../components/AnsiDisplay";
-import { ErrorEvent } from "../types/log";
+import { ErrorEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 
 import { EventPanel } from "./event/EventPanel";
@@ -27,7 +27,9 @@ export const ErrorEventView: FC<ErrorEventViewProps> = ({
       depth={eventNode.depth}
       title="Error"
       className={className}
-      subTitle={formatDateTime(new Date(event.timestamp))}
+      subTitle={
+        event.timestamp ? formatDateTime(new Date(event.timestamp)) : undefined
+      }
       icon={ApplicationIcons.error}
     >
       <ANSIDisplay

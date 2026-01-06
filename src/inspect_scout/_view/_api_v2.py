@@ -18,6 +18,7 @@ from starlette.status import (
 from upath import UPath
 
 from inspect_scout._project._project import project
+from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
 from .._query import Column, Query
 from .._recorder.recorder import Status as RecorderStatus
@@ -182,7 +183,7 @@ def v2_api_app(
         """Return application configuration."""
         return AppConfig(
             transcripts_dir=project().transcripts,
-            scans_dir=project().scans,
+            scans_dir=project().scans or DEFAULT_SCANS_DIR,
         )
 
     @app.post(

@@ -138,6 +138,17 @@ class TestViewServerAppScansEndpoint:
 
         assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
 
+    def test_scans_endpoint_empty_directory(self, tmp_path: Path) -> None:
+        """Test scans endpoint with empty directory returns empty list."""
+        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+
+        response = client.post("/scanjobs", json={})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["items"] == []
+        assert data["total_count"] == 0
+
 
 class TestViewServerAppScanDfEndpoint:
     """Tests for the /scanjobs/{scan}/{scanner} endpoint."""

@@ -36,9 +36,7 @@ def test_sqlite_cache_named_memory_db() -> None:
     cache_key = "test_cache_key_sqlite"
 
     # Create first connection and add data
-    conn1 = sqlite3.connect(
-        f"file:{cache_key}?mode=memory&cache=shared", uri=True
-    )
+    conn1 = sqlite3.connect(f"file:{cache_key}?mode=memory&cache=shared", uri=True)
     conn1.execute("CREATE TABLE test (id INTEGER)")
     conn1.execute("INSERT INTO test VALUES (42)")
     conn1.commit()
@@ -47,9 +45,7 @@ def test_sqlite_cache_named_memory_db() -> None:
     _sqlite_cache[cache_key] = conn1
 
     # Second connection should see the data
-    conn2 = sqlite3.connect(
-        f"file:{cache_key}?mode=memory&cache=shared", uri=True
-    )
+    conn2 = sqlite3.connect(f"file:{cache_key}?mode=memory&cache=shared", uri=True)
     result = conn2.execute("SELECT * FROM test").fetchall()
     assert result == [(42,)]
 
@@ -64,9 +60,7 @@ def test_sqlite_cache_persists_with_sentinel() -> None:
     cache_key = "test_sentinel_persistence"
 
     # Create and populate db
-    conn1 = sqlite3.connect(
-        f"file:{cache_key}?mode=memory&cache=shared", uri=True
-    )
+    conn1 = sqlite3.connect(f"file:{cache_key}?mode=memory&cache=shared", uri=True)
     conn1.execute("CREATE TABLE test (val TEXT)")
     conn1.execute("INSERT INTO test VALUES ('hello')")
     conn1.commit()
@@ -75,16 +69,12 @@ def test_sqlite_cache_persists_with_sentinel() -> None:
     _sqlite_cache[cache_key] = conn1
 
     # Open, use, and close another connection
-    conn2 = sqlite3.connect(
-        f"file:{cache_key}?mode=memory&cache=shared", uri=True
-    )
+    conn2 = sqlite3.connect(f"file:{cache_key}?mode=memory&cache=shared", uri=True)
     conn2.execute("SELECT * FROM test").fetchall()
     conn2.close()
 
     # Data should still be accessible via new connection
-    conn3 = sqlite3.connect(
-        f"file:{cache_key}?mode=memory&cache=shared", uri=True
-    )
+    conn3 = sqlite3.connect(f"file:{cache_key}?mode=memory&cache=shared", uri=True)
     result = conn3.execute("SELECT * FROM test").fetchall()
     assert result == [("hello",)]
 

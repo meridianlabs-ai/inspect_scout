@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { FC, useCallback, MouseEvent } from "react";
 
+import { ApplicationIcons } from "../../../../components/icons";
 import { useStore } from "../../../../state/store";
-import { ApplicationIcons } from "../../../appearance/icons";
 
 import styles from "./ScanHeader.module.css";
 import { GridDescriptor } from "./ScanResultsList";

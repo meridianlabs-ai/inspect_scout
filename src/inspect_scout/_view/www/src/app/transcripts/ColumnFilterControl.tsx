@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
 import { ConditionBuilder } from "../../query";
 import type { OperatorModel, ScalarValue } from "../../query";
@@ -18,7 +19,6 @@ import {
   formatDateTimeForInput,
   parseDateFromInput,
 } from "../../utils/date";
-import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ColumnFilterControl.module.css";
 

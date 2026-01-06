@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import { FC, Fragment, useMemo, useRef } from "react";
 
-import { ApplicationIcons } from "../../app/appearance/icons";
 import {
   ChatMessage,
   ModelCall,
@@ -11,6 +10,7 @@ import {
 } from "../../types/api-types";
 import { ChatView } from "../chat/ChatView";
 import { MetaDataGrid } from "../content/MetaDataGrid";
+import { ApplicationIcons } from "../icons";
 import { usePrismHighlight } from "../prism";
 import { PulsingDots } from "../PulsingDots";
 import { ModelUsagePanel } from "../usage/ModelUsagePanel";

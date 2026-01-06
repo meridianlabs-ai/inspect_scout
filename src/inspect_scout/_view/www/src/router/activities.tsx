@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
-import { ApplicationIcons } from "../app/appearance/icons";
 import { ScanJobsPanel } from "../app/scanJobs/ScanJobsPanel";
 import { TranscriptsPanel } from "../app/transcripts/TranscriptsPanel";
+import { ApplicationIcons } from "../components/icons";
 
 export interface ActivityConfig {
   id: string;

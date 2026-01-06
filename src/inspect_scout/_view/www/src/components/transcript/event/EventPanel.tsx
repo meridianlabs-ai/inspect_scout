@@ -8,9 +8,9 @@ import {
   useState,
 } from "react";
 
-import { ApplicationIcons } from "../../../app/appearance/icons";
 import { useProperty } from "../../../state/hooks";
 import { CopyButton } from "../../CopyButton";
+import { ApplicationIcons } from "../../icons";
 import { useCollapseTranscriptEvent } from "../hooks";
 import { kTranscriptCollapseScope } from "../types";
 

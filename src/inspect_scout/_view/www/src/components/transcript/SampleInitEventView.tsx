@@ -2,12 +2,12 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
-import { ApplicationIcons } from "../../app/appearance/icons";
 import { ChatMessage, SampleInitEvent } from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
 import { toArray } from "../../utils/type";
 import { ChatView } from "../chat/ChatView";
 import { MetaDataGrid } from "../content/MetaDataGrid";
+import { ApplicationIcons } from "../icons";
 
 import { EventPanel } from "./event/EventPanel";
 import { EventSection } from "./event/EventSection";

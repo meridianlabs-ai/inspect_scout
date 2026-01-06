@@ -2,7 +2,6 @@ import clsx from "clsx";
 import JSON5 from "json5";
 import { FC, Fragment, isValidElement, JSX, ReactNode } from "react";
 
-import { ApplicationIcons } from "../../app/appearance/icons";
 import { ANSIDisplay } from "../../components/AnsiDisplay";
 import JSONPanel from "../../components/JsonPanel";
 import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
@@ -11,6 +10,7 @@ import { isJson } from "../../utils/json";
 import { ChatMessageRenderer } from "../chat/ChatMessageRenderer";
 import { isMessageContent, MessageContent } from "../chat/MessageContent";
 import { defaultContext } from "../chat/MessageContents";
+import { ApplicationIcons } from "../icons";
 
 import { MetaDataGrid } from "./MetaDataGrid";
 import styles from "./RenderedContent.module.css";

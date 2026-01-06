@@ -1,11 +1,11 @@
 import clsx from "clsx";
 import { FC, useMemo } from "react";
 
-import { ApplicationIcons } from "../../app/appearance/icons";
 import { ApprovalEvent, ModelEvent, ToolEvent } from "../../types/api-types";
 import { ChatView } from "../chat/ChatView";
 import { resolveToolInput } from "../chat/tools/tool";
 import { ToolCallView } from "../chat/tools/ToolCallView";
+import { ApplicationIcons } from "../icons";
 import { PulsingDots } from "../PulsingDots";
 
 import { ApprovalEventView } from "./ApprovalEventView";

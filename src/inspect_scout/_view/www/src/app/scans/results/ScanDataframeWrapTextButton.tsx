@@ -1,7 +1,7 @@
 import { FC, useCallback } from "react";
 
+import { ApplicationIcons } from "../../../components/icons";
 import { useStore } from "../../../state/store";
-import { ApplicationIcons } from "../../appearance/icons";
 import { ToolButton } from "../../components/ToolButton";
 
 export const ScanDataframeWrapTextButton: FC = () => {

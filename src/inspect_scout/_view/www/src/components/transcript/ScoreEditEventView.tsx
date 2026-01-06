@@ -1,11 +1,11 @@
 import clsx from "clsx";
 import { FC, Fragment } from "react";
 
-import { ApplicationIcons } from "../../app/appearance/icons";
 import { ScoreEditEvent } from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
 import { RecordTree } from "../content/RecordTree";
 import { RenderedText } from "../content/RenderedText";
+import { ApplicationIcons } from "../icons";
 
 import { EventPanel } from "./event/EventPanel";
 import styles from "./ScoreEditEventView.module.css";

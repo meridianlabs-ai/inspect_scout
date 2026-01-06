@@ -3,13 +3,13 @@ import { FC, Fragment, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
+import { ApplicationIcons } from "../../../components/icons";
 import { LabeledValue } from "../../../components/LabeledValue";
 import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types/api-types";
 import { formatPercent, formatPrettyDecimal } from "../../../utils/format";
-import { ApplicationIcons } from "../../appearance/icons";
 import { useSelectedScanner } from "../../hooks";
 
 import styles from "./ScanResultsOutline.module.css";

@@ -1,10 +1,10 @@
 import { FC, ReactNode, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { ApplicationIcons } from "../../components/icons";
 import { scanRoute, scansRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import { dirname } from "../../utils/path";
-import { ApplicationIcons } from "../appearance/icons";
 import { useScanRoute } from "../hooks";
 
 import { EditablePath } from "./EditablePath";

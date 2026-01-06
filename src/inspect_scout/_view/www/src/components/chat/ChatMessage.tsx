@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import { FC, memo, useCallback, useState } from "react";
 
-import { ApplicationIcons } from "../../app/appearance/icons";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,
@@ -11,6 +10,7 @@ import {
 import { RecordTree } from "../content/RecordTree";
 import { CopyButton } from "../CopyButton";
 import ExpandablePanel from "../ExpandablePanel";
+import { ApplicationIcons } from "../icons";
 import { LabeledValue } from "../LabeledValue";
 
 import styles from "./ChatMessage.module.css";

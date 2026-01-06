@@ -3,13 +3,13 @@ import { FC, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
+import { ApplicationIcons } from "../../components/icons";
 import JSONPanel from "../../components/JsonPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { EventNode, EventType } from "../../components/transcript/types";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
-import { ApplicationIcons } from "../appearance/icons";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
 import {

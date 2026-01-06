@@ -2,10 +2,10 @@ import clsx from "clsx";
 import { FC, ReactNode, useRef } from "react";
 import { Link } from "react-router-dom";
 
-import { ApplicationIcons } from "../../../app/appearance/icons";
 import { formatDateTime, formatTime } from "../../../utils/format";
 import { parsePackageName } from "../../../utils/python";
 import { MetaDataGrid } from "../../content/MetaDataGrid";
+import { ApplicationIcons } from "../../icons";
 import { PulsingDots } from "../../PulsingDots";
 import { useCollapseTranscriptEvent } from "../hooks";
 import { kSandboxSignalName } from "../transform/fixups";

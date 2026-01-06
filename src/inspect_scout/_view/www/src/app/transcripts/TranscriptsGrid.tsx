@@ -23,6 +23,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { ApplicationIcons } from "../../components/icons";
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore } from "../../state/store";
@@ -31,7 +32,6 @@ import { Score } from "../../types/api-types";
 import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
-import { ApplicationIcons } from "../appearance/icons";
 
 import { ColumnFilterControl, FilterType } from "./ColumnFilterControl";
 import styles from "./TranscriptsGrid.module.css";

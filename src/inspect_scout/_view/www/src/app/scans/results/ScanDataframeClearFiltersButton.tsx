@@ -1,8 +1,8 @@
 import { FC, useCallback } from "react";
 
 import { GRID_STATE_NAME } from "../../../components/DataframeView";
+import { ApplicationIcons } from "../../../components/icons";
 import { useStore } from "../../../state/store";
-import { ApplicationIcons } from "../../appearance/icons";
 import { ToolButton } from "../../components/ToolButton";
 
 export const ScanDataframeClearFiltersButton: FC = () => {

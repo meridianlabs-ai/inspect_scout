@@ -1,8 +1,7 @@
 import clsx from "clsx";
 import { ChangeEvent, FocusEvent, forwardRef } from "react";
 
-import { ApplicationIcons } from "../app/appearance/icons";
-
+import { ApplicationIcons } from "./icons";
 import styles from "./TextInput.module.css";
 
 export interface TextInputProps {

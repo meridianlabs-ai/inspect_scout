@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { ApplicationIcons } from "../appearance/icons";
+import { ApplicationIcons } from "../../components/icons";
 
 import styles from "./Pager.module.css";
 

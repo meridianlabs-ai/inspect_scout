@@ -1,9 +1,9 @@
 import { FC } from "react";
 
-import { ApplicationIcons } from "../../app/appearance/icons";
 import { InputEvent } from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
 import { ANSIDisplay } from "../AnsiDisplay";
+import { ApplicationIcons } from "../icons";
 
 import { EventPanel } from "./event/EventPanel";
 import { EventNode } from "./types";

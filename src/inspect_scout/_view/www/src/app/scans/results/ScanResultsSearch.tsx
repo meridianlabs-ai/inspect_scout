@@ -1,8 +1,8 @@
 import { ChangeEvent, FC, useCallback } from "react";
 
+import { ApplicationIcons } from "../../../components/icons";
 import { TextInput } from "../../../components/TextInput";
 import { useStore } from "../../../state/store";
-import { ApplicationIcons } from "../../appearance/icons";
 
 export const ScanResultsSearch: FC = () => {
   const scansSearchText = useStore((state) => state.scansSearchText);

@@ -2,9 +2,9 @@ import clsx from "clsx";
 import { FC, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { ApplicationIcons } from "../../components/icons";
 import { scanResultRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import { ApplicationIcons } from "../appearance/icons";
 import { useScanRoute } from "../hooks";
 import { IdentifierInfo, resultIdentifier } from "../utils/results";
 

@@ -14,12 +14,12 @@ import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { ApplicationIcons } from "../../components/icons";
 import { getRelativePathFromParams, scanRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import type { Status } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
 import { debounce } from "../../utils/sync";
-import { ApplicationIcons } from "../appearance/icons";
 
 import styles from "./ScanJobsGrid.module.css";
 

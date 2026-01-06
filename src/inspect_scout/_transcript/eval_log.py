@@ -407,7 +407,7 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
                 # to make the return type be a DataFrame when strict=True. Since we're
                 # calling the helper method, we'll just have to cast it.
                 progress.update(path)
-                return cast(
+                df = cast(
                     pd.DataFrame,
                     _read_samples_df_serial(
                         [path],
@@ -417,6 +417,15 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
                         progress=False,
                     ),
                 )
+
+                # The transcript_id uses the computed sample_id
+                # value, which will properly handle old eval log
+                # that are missing uuids for samples (so we use the value
+                # from the synthesized sample_id column rather than the `id`
+                # prop from the sample itself.
+                if not df.empty:
+                    df["transcript_id"] = df["sample_id"]
+                return df
 
         return samples_df_with_caching(read_samples, logs)
 
@@ -477,11 +486,6 @@ def _source_uri(log: EvalLog) -> str | None:
     return location
 
 
-def _transcript_id(sample: EvalSampleSummary) -> str | None:
-    """Return sample uuid as transcript_id."""
-    return sample.uuid
-
-
 def _agent(log: EvalLog) -> str | None:
     if log.eval.solver is not None:
         return log.eval.solver
@@ -522,7 +526,6 @@ TranscriptColumns: list[Column] = (
         EvalColumn("generate_config", path="eval.model_generate_config", default={}),
         EvalColumn("model_roles", path="eval.model_roles", default={}),
         # Sample columns
-        SampleColumn("transcript_id", path=_transcript_id, required=True),
         SampleColumn("task_id", path="id", required=True, type=str),
         SampleColumn("id", path="id", required=True, type=str),
         SampleColumn("task_repeat", path="epoch", required=True),

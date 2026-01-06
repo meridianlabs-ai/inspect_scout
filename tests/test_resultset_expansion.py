@@ -72,7 +72,7 @@ def test_resultset_expansion_basic() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -112,7 +112,7 @@ def test_resultset_expansion_with_type_casting() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -142,7 +142,7 @@ def test_resultset_expansion_preserves_other_columns() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -165,7 +165,7 @@ def test_mixed_scanners_expansion() -> None:
         status = scan(
             scanners=[resultset_scanner_factory(), simple_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -188,7 +188,7 @@ def test_rows_parameter_transcripts_mode() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -216,7 +216,7 @@ def test_empty_resultset_expansion() -> None:
         status = scan(
             scanners=[empty_resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -234,7 +234,7 @@ def test_resultset_with_optional_fields() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -259,7 +259,7 @@ def test_multiple_transcripts_with_resultsets() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=2,  # Scan 2 transcripts
             max_processes=1,
         )
@@ -288,7 +288,7 @@ def test_duckdb_resultset_expansion_basic() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -325,7 +325,7 @@ def test_duckdb_resultset_type_casting() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -358,7 +358,7 @@ def test_duckdb_rows_transcripts_mode() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -385,7 +385,7 @@ def test_duckdb_mixed_scanners() -> None:
         status = scan(
             scanners=[resultset_scanner_factory(), simple_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -412,7 +412,7 @@ def test_duckdb_preserves_columns() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -441,7 +441,7 @@ def test_duckdb_multiple_transcripts() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=2,  # Scan 2 transcripts
             max_processes=1,
         )
@@ -472,7 +472,7 @@ def test_duckdb_empty_resultset() -> None:
         status = scan(
             scanners=[empty_resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -492,7 +492,7 @@ def test_duckdb_query_expanded_results() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -532,7 +532,7 @@ def test_resultset_expansion_nulls_scan_execution_fields() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -555,7 +555,7 @@ def test_duckdb_resultset_expansion_nulls_scan_execution_fields() -> None:
         status = scan(
             scanners=[resultset_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -621,7 +621,7 @@ def test_resultset_expansion_with_references() -> None:
         status = scan(
             scanners=[resultset_with_references_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )
@@ -675,7 +675,7 @@ def test_duckdb_resultset_expansion_with_references() -> None:
         status = scan(
             scanners=[resultset_with_references_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
         )

@@ -15,7 +15,8 @@ from ._scan import (
     scan_complete,
     scan_resume,
 )
-from ._scanjob import ScanJob, ScanJobConfig, scanjob
+from ._scanjob import ScanJob, scanjob
+from ._scanjob_config import ScanJobConfig
 from ._scanlist import scan_list
 from ._scanner.extract import (
     MessageFormatOptions,

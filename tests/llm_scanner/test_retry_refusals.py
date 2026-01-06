@@ -48,7 +48,7 @@ def test_retry_success_after_refusals_regular_answer() -> None:
         status = scan(
             scanners=[retry_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -110,7 +110,7 @@ def test_retry_exceed_limit() -> None:
         status = scan(
             scanners=[exceed_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -171,7 +171,7 @@ def test_no_retries_needed() -> None:
         status = scan(
             scanners=[no_retry_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -213,7 +213,7 @@ def test_retry_limit_zero_no_retries() -> None:
         status = scan(
             scanners=[no_retries_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -273,7 +273,7 @@ def test_retry_limit_one() -> None:
         status = scan(
             scanners=[one_retry_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -314,7 +314,7 @@ def test_retry_limit_one_exceeded() -> None:
         status = scan(
             scanners=[one_retry_exceeded_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -370,7 +370,7 @@ def test_retry_limit_false_means_no_retries() -> None:
         status = scan(
             scanners=[false_retries_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -449,7 +449,7 @@ def test_multiple_transcripts_mixed_results() -> None:
         status = scan(
             scanners=[mixed_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=2,
             max_processes=1,
             model="mockllm/model",
@@ -517,7 +517,7 @@ def test_retry_with_string_answer_type() -> None:
         status = scan(
             scanners=[string_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -563,7 +563,7 @@ def test_retry_with_numeric_answer_type() -> None:
         status = scan(
             scanners=[numeric_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -612,7 +612,7 @@ def test_refusal_flag_is_true_for_refusal_errors() -> None:
         status = scan(
             scanners=[refusal_scanner(), regular_error_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",
@@ -669,7 +669,7 @@ def test_scan_refusal_column_populated() -> None:
         status = scan(
             scanners=[refusal_scanner(), regular_error_scanner()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=1,
             model="mockllm/model",

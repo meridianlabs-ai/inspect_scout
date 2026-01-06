@@ -30,13 +30,11 @@ from inspect_ai.util._anyio import inner_exception
 from pydantic import TypeAdapter
 from rich import box
 from rich.table import Column, Table
+from typing_extensions import Unpack
 
 from inspect_scout._concurrency._mp_common import set_log_level
-from inspect_scout._project import (
-    init_project,
-    merge_project_into_scanjob,
-    project,
-)
+from inspect_scout._project import init_project, project
+from inspect_scout._scanjob import merge_project_into_scanjob
 from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
@@ -64,7 +62,11 @@ from ._recorder.factory import (
 )
 from ._recorder.recorder import ScanRecorder, Status
 from ._scancontext import ScanContext, create_scan, resume_scan
-from ._scanjob import ScanJob, ScanJobConfig
+from ._scanjob import (
+    ScanDeprecatedArgs,
+    ScanJob,
+)
+from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
 from ._scanner.scanner import Scanner, config_for_scanner
@@ -78,6 +80,7 @@ from ._transcript.types import (
 )
 from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
+from ._util.deprecation import raise_results_error, show_results_warning
 from ._util.log import init_log
 
 logger = getLogger(__name__)
@@ -91,7 +94,7 @@ def scan(
         | ScanJobConfig
     ),
     transcripts: Transcripts | None = None,
-    results: str | None = None,
+    scans: str | None = None,
     worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
     validation: ValidationSet | dict[str, ValidationSet] | None = None,
     model: str | Model | None = None,
@@ -109,6 +112,7 @@ def scan(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
 
@@ -121,7 +125,7 @@ def scan(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
-        results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        scans: Location to write scan results (filesystem or S3 bucket). Defaults to "./scans".
         worklist: Transcripts too process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file with same.
         validation: Validation cases to evaluate for scanners.
         model: Model to use for scanning by default (individual scanners can always
@@ -141,6 +145,7 @@ def scan(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        deprecated: Deprecated arguments.
 
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -151,7 +156,7 @@ def scan(
         scan_async(
             scanners=scanners,
             transcripts=transcripts,
-            results=results,
+            scans=scans,
             worklist=worklist,
             validation=validation,
             model=model,
@@ -168,6 +173,7 @@ def scan(
             log_level=log_level,
             fail_on_error=fail_on_error,
             dry_run=dry_run,
+            **deprecated,
         )
     )
 
@@ -180,7 +186,7 @@ async def scan_async(
         | ScanJobConfig
     ),
     transcripts: Transcripts | None = None,
-    results: str | None = None,
+    scans: str | None = None,
     worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
     validation: ValidationSet | dict[str, ValidationSet] | None = None,
     model: str | Model | None = None,
@@ -197,6 +203,7 @@ async def scan_async(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
 
@@ -209,7 +216,7 @@ async def scan_async(
     Args:
         scanners: Scanners to execute (list, dict with explicit names, or ScanJob). If a `ScanJob` or `ScanJobConfig` is specified, then its options are used as the default options for the scan.
         transcripts: Transcripts to scan.
-        results: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
+        scans: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
         worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
         validation: Validation cases to apply for scanners.
         model: Model to use for scanning by default (individual scanners can always
@@ -228,11 +235,21 @@ async def scan_async(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        deprecated: Deprecated arguments.
 
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
     top_level_async_init(log_level)
+
+    # map deprecated
+    results_deprecated = deprecated.get("results", None)
+    if results_deprecated is not None:
+        if scans is not None:
+            raise_results_error()
+
+        show_results_warning()
+        scans = results_deprecated
 
     # Get project config for merging/defaults
     proj = project()
@@ -257,8 +274,12 @@ async def scan_async(
         raise ValueError("No 'transcripts' specified for scan.")
 
     # resolve results (function param takes precedence, then merged value, then env)
-    scanjob._results = (
-        results or scanjob._results or str(os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
+    scanjob._scans = (
+        scans
+        or scanjob._scans
+        or str(
+            os.getenv("SCOUT_SCAN_SCANS", os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
+        )
     )
 
     # resolve validation
@@ -308,8 +329,8 @@ async def scan_async(
     if dry_run:
         return await _scan_dry_run(scan)
 
-    recorder = scan_recorder_for_location(scanjob._results)
-    await recorder.init(scan.spec, scanjob._results)
+    recorder = scan_recorder_for_location(scanjob._scans)
+    await recorder.init(scan.spec, scanjob._scans)
 
     return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from inspect_scout import ScanJobConfig, scan
+from inspect_scout import scan
+from inspect_scout._scanjob_config import ScanJobConfig
 from inspect_scout._scanspec import ScannerSpec
 
 if __name__ == "__main__":

@@ -200,10 +200,10 @@ scout view
 
 ![](images/scout-view.png){.border}
 
-By default this will view the scan results in the `./scans` directory of the current working directory (of the location pointed to the by the `SCOUT_SCAN_RESULTS` environment variable). Specify an alternate results location with:
+By default this will view the scan results in the `./scans` directory of the current working directory (or the location pointed to by the `SCOUT_SCAN_SCANS` environment variable). Specify an alternate results location with:
 
 ``` bash
-scout view --results s3://my-scan-results
+scout view --scans s3://my-scan-results
 ```
 
 The Inspect AI VS Code Extension also includes integrated support for Scout view (e.g. viewing results by clicking links in the terminal, Scout activity bar, etc.).
@@ -256,7 +256,7 @@ Note that if you had a scout.yaml [project file](#projects) defining the `transc
 
 ## Scan Results
 
-By default, the results of scans are written into the `./scans` directory. You can override this using the `--results` option---both local file paths remove filesystems (e.g. `s3://`) are supported.
+By default, the results of scans are written into the `./scans` directory. You can override this using the `--scans` option---both local file paths and remote filesystems (e.g. `s3://`) are supported.
 
 Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results as a dict of Pandas data frames using the `scan_results_df()` function:
 

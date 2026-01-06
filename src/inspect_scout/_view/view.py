@@ -16,7 +16,7 @@ DEFAULT_SERVER_HOST = "127.0.0.1"
 
 
 def view(
-    results_dir: str | None = None,
+    scans: str | None = None,
     host: str = DEFAULT_SERVER_HOST,
     port: int = DEFAULT_VIEW_PORT,
     browser: bool = False,
@@ -31,7 +31,7 @@ def view(
     proj = project()
 
     # Use project defaults for results_dir and log_level
-    effective_results_dir = results_dir or proj.results or "./scans"
+    effective_results_dir = scans or proj.scans or "./scans"
     effective_log_level = log_level or proj.log_level
 
     top_level_async_init(effective_log_level)
@@ -45,7 +45,7 @@ def view(
 
     # start the server
     view_server(
-        results_dir=effective_results_dir,
+        scans=effective_results_dir,
         host=host,
         port=port,
         authorization=authorization,

@@ -2,7 +2,7 @@
 
 from pydantic import ConfigDict
 
-from inspect_scout._scanjob import ScanJobConfig
+from inspect_scout._scanjob_config import ScanJobConfig
 
 
 class ProjectConfig(ScanJobConfig):

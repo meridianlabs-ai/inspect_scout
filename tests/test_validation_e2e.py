@@ -176,7 +176,7 @@ async def test_validation_basic_single_target_e2e() -> None:
             scanners=[bool_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
             max_processes=1,  # hash() is not stable across processes
         )
@@ -249,7 +249,7 @@ async def test_validation_multi_target_dict_e2e() -> None:
             scanners=[dict_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
             max_processes=1,  # hash() is not stable across processes
         )
@@ -321,7 +321,7 @@ async def test_validation_multiple_scanners_e2e() -> None:
             ],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation_dict,
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
         )
 
@@ -363,7 +363,7 @@ async def test_validation_different_predicates_e2e() -> None:
             scanners=[int_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
         )
 
@@ -402,7 +402,7 @@ async def test_validation_partial_coverage_e2e() -> None:
             scanners=[bool_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=5,  # Scan 5 transcripts, but only 3 have validation
         )
 
@@ -476,7 +476,7 @@ async def test_validation_with_custom_predicate_e2e() -> None:
             scanners=[int_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
         )
 
@@ -512,7 +512,7 @@ async def test_validation_failing_cases_e2e() -> None:
             scanners=[bool_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
             max_processes=1,  # hash() is not stable across processes
         )
@@ -548,7 +548,7 @@ async def test_validation_database_columns_e2e() -> None:
             scanners=[bool_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
         )
 
@@ -628,7 +628,7 @@ async def test_validation_message_based_scanner_e2e() -> None:
         scan_result = scan(
             scanners=[message_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,  # Only scan 1 transcript
         )
 
@@ -665,7 +665,7 @@ async def test_validation_message_based_scanner_e2e() -> None:
             scanners=[message_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,  # Scan same transcript
         )
 
@@ -706,7 +706,7 @@ async def test_validation_event_based_scanner_e2e() -> None:
         scan_result = scan(
             scanners=[event_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,  # Only scan 1 transcript
         )
 
@@ -741,7 +741,7 @@ async def test_validation_event_based_scanner_e2e() -> None:
             scanners=[event_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,  # Scan same transcript
         )
 
@@ -822,7 +822,7 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
         scan_result = scan(
             scanners=[pair_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,  # Only scan 1 transcript
         )
 
@@ -859,7 +859,7 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
             scanners=[pair_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
             validation=validation,
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,  # Scan same transcript
         )
 

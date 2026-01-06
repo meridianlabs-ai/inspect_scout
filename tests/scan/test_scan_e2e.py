@@ -67,7 +67,7 @@ def test_scan_basic_e2e(max_processes: int) -> None:
         status = scan(
             scanners=[simple_scanner_factory(), llm_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=2,
             max_processes=max_processes,
             model="mockllm/model",
@@ -115,7 +115,7 @@ def test_scan_with_dynamic_question(max_processes: int) -> None:
         status = scan(
             scanners=[llm_dynamic_question_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=1,
             max_processes=max_processes,
             model="mockllm/model",

@@ -1,4 +1,7 @@
+from logging import getLogger
+
 import click
+from inspect_ai._util.logger import warn_once
 from inspect_ai._util.path import chdir
 from typing_extensions import Unpack
 
@@ -12,6 +15,8 @@ from inspect_scout._cli.common import (
 
 from .._view.view import view
 
+logger = getLogger(__name__)
+
 
 @click.command("view")
 @click.argument("directory", required=False, default=None)
@@ -22,10 +27,17 @@ from .._view.view import view
     help="Launch workbench mode.",
 )
 @click.option(
+    "--scans",
+    type=str,
+    default=None,
+    help="Location of scan results to view.",
+    envvar="SCOUT_SCAN_SCANS",
+)
+@click.option(
     "--results",
     type=str,
     default=None,
-    hidden=True,  # Deprecated
+    hidden=True,
     envvar="SCOUT_SCAN_RESULTS",
 )
 @view_options
@@ -33,6 +45,7 @@ from .._view.view import view
 def view_command(
     directory: str | None,
     workbench: bool,
+    scans: str | None,
     results: str | None,
     host: str,
     port: int,
@@ -42,8 +55,17 @@ def view_command(
     """View scan results."""
     process_common_options(common)
 
-    # --results forces non-workbench mode (deprecated option)
+    # Handle deprecated --results option
     if results is not None:
+        warn_once(
+            logger, "CLI option '--results' is deprecated, please use '--scans' instead"
+        )
+        if scans is not None:
+            raise click.UsageError("Cannot specify both --scans and --results")
+        scans = results
+
+    # --scans forces non-workbench mode
+    if scans is not None:
         workbench = False
 
     # Validate: directory argument requires workbench mode
@@ -56,7 +78,7 @@ def view_command(
         effective_browser = browser if browser is not None else True
         with chdir(project_dir):
             view(
-                results_dir=None,
+                scans=None,
                 host=host,
                 port=port,
                 browser=effective_browser,
@@ -68,7 +90,7 @@ def view_command(
         # Non-workbench mode: browser defaults OFF
         effective_browser = browser if browser is not None else False
         view(
-            results,
+            scans,
             host=host,
             port=port,
             browser=effective_browser,

@@ -2,7 +2,16 @@ import inspect
 import re
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Counter, Literal, Sequence, TypeVar, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Counter,
+    Sequence,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from inspect_ai._util.config import read_config_object, resolve_args
 from inspect_ai._util.decorator import parse_decorators
@@ -22,14 +31,17 @@ from inspect_ai._util.registry import (
     registry_tag,
     registry_unqualified_name,
 )
-from inspect_ai.model import GenerateConfig, Model, ModelConfig, get_model
+from inspect_ai.model import GenerateConfig, Model, get_model
 from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
-from pydantic import BaseModel, ConfigDict, Field
+from typing_extensions import Unpack
 
-from inspect_scout._scanspec import ScannerSpec, Worklist
+from inspect_scout._project import ProjectConfig
+from inspect_scout._scanjob_config import ScanJobConfig
+from inspect_scout._scanspec import Worklist
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._util.decorator import split_spec
+from inspect_scout._util.deprecation import raise_results_error, show_results_warning
 from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validation import validation_set
 
@@ -38,78 +50,8 @@ from ._scanner.scanner import Scanner, scanner_create
 from ._transcript.transcripts import Transcripts
 
 
-class ScanJobConfig(BaseModel):
-    """Scan job configuration."""
-
-    name: str = Field(default="job")
-    """Name of scan job (defaults to "job")."""
-
-    transcripts: str | list[str] | None = Field(default=None)
-    """Trasnscripts to scan."""
-
-    scanners: list[ScannerSpec] | dict[str, ScannerSpec] | None = Field(default=None)
-    """Scanners to apply to transcripts."""
-
-    worklist: list[Worklist] | None = Field(default=None)
-    """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
-
-    validation: dict[str, str | ValidationSet] | None = Field(default=None)
-    """Validation cases to apply for scanners."""
-
-    results: str | None = Field(default=None)
-    """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
-
-    model: str | None = Field(default=None)
-    """Model to use for scanning by default (individual scanners can always call `get_model()` to us arbitrary models).
-
-    If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
-    """
-
-    model_base_url: str | None = Field(default=None)
-    """Base URL for communicating with the model API.
-
-    If not specified use the value of the SCOUT_SCAN_MODEL_BASE_URL environment variable.
-    """
-
-    model_args: dict[str, Any] | str | None = Field(default=None)
-    """Model creation args (as a dictionary or as a path to a JSON or YAML config file).
-
-    If not specified use the value of the SCOUT_SCAN_MODEL_ARGS environment variable.
-    """
-
-    generate_config: GenerateConfig | None = Field(default=None)
-    """`GenerationConfig` for calls to the model."""
-
-    model_roles: dict[str, ModelConfig | str] | None = Field(default=None)
-    """Named roles for use in `get_model()`."""
-
-    max_transcripts: int | None = Field(default=None)
-    """The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25."""
-
-    max_processes: int | None = Field(default=None)
-    """The maximum number of concurrent processes (for multiproccesing). Defaults to 4."""
-
-    limit: int | None = Field(default=None)
-    """Limit the number of transcripts processed."""
-
-    shuffle: bool | int | None = Field(default=None)
-    """Shuffle the order of transcripts (pass an `int` to set a seed for shuffling)."""
-
-    tags: list[str] | None = Field(default=None)
-    """One or more tags for this scan."""
-
-    metadata: dict[str, Any] | None = Field(default=None)
-    """Metadata for this scan."""
-
-    log_level: (
-        Literal[
-            "debug", "http", "sandbox", "info", "warning", "error", "critical", "notset"
-        ]
-        | None
-    ) = Field(default=None)
-    """Level for logging to the console: "debug", "http", "sandbox", "info", "warning", "error", "critical", or "notset" (defaults to "warning")."""
-
-    model_config = ConfigDict(extra="forbid", protected_namespaces=())
+class ScanDeprecatedArgs(TypedDict, total=False):
+    results: str | None
 
 
 class ScanJob:
@@ -123,7 +65,7 @@ class ScanJob:
         | dict[str, Scanner[Any]],
         worklist: Sequence[Worklist] | None = None,
         validation: dict[str, ValidationSet] | None = None,
-        results: str | None = None,
+        scans: str | None = None,
         model: str | Model | None = None,
         model_base_url: str | None = None,
         model_args: dict[str, Any] | None = None,
@@ -137,13 +79,23 @@ class ScanJob:
         metadata: dict[str, Any] | None = None,
         log_level: str | None = None,
         name: str | None = None,
+        **deprecated: Unpack[ScanDeprecatedArgs],
     ):
+        # map deprecated
+        results_deprecated = deprecated.get("results", None)
+        if results_deprecated is not None:
+            if scans is not None:
+                raise_results_error()
+
+            show_results_warning()
+            scans = results_deprecated
+
         # save transcripts and name
         self._transcripts = transcripts
         self._worklist = worklist
         self._validation = validation
         self._name = name
-        self._results = results
+        self._scans = scans
         self._model = (
             get_model(
                 model,
@@ -255,9 +207,9 @@ class ScanJob:
         return self._scanners
 
     @property
-    def results(self) -> str | None:
-        """Location to write results (filesystem or S3 bucket). Defaults to "./scans"."""
-        return self._results
+    def scans(self) -> str | None:
+        """Location to write scan results (filesystem or S3 bucket). Defaults to "./scans"."""
+        return self._scans
 
     @property
     def model(self) -> Model | None:
@@ -551,3 +503,171 @@ def _validation_from_config(
         k: v if isinstance(v, ValidationSet) else validation_set(v)
         for k, v in validation.items()
     }
+
+
+# ---------------------------------------------------------------------------
+# Project-to-ScanJob merging
+# ---------------------------------------------------------------------------
+
+
+def merge_project_into_scanjob(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    """Merge project defaults into a ScanJob (mutates scanjob in place).
+
+    - Simple fields: project value used as fallback when scanjob value is None
+    - Union fields: worklist, validation, scanners, tags, metadata combined
+    - generate_config: Uses GenerateConfig.merge()
+
+    Args:
+        proj: The project configuration providing defaults.
+        scanjob: The ScanJob to merge into (modified in place).
+    """
+    _apply_simple_fallbacks(proj, scanjob)
+    _merge_worklist(proj, scanjob)
+    _merge_scanners(proj, scanjob)
+    _merge_validation(proj, scanjob)
+    _merge_model(proj, scanjob)
+    _merge_tags(proj, scanjob)
+    _merge_metadata(proj, scanjob)
+
+
+def _merge_model(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    if scanjob._model is None and proj.model is not None:
+        scanjob._model_base_url = proj.model_base_url
+        scanjob._model_args = (
+            resolve_args(proj.model_args)
+            if isinstance(proj.model_args, str)
+            else proj.model_args
+        )
+        scanjob._generate_config = proj.generate_config
+
+        scanjob._model = get_model(
+            proj.model,
+            config=scanjob._generate_config or GenerateConfig(),
+            base_url=scanjob._model_base_url,
+            **(scanjob._model_args or {}),
+        )
+
+
+def _apply_simple_fallbacks(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    """Apply project values as fallbacks for simple fields."""
+    # Transcripts - convert string to Transcripts object
+    if scanjob._transcripts is None and proj.transcripts is not None:
+        scanjob._transcripts = transcripts_from(proj.transcripts)
+
+    # Results
+    if scanjob._scans is None and proj.scans is not None:
+        scanjob._scans = proj.scans
+
+    # Note: Model fields are handled by _merge_model() which treats the model
+    # configuration as an atomic unit (model + base_url + args + generate_config)
+
+    # Numeric/bool fields
+    if scanjob._max_transcripts is None and proj.max_transcripts is not None:
+        scanjob._max_transcripts = proj.max_transcripts
+
+    if scanjob._max_processes is None and proj.max_processes is not None:
+        scanjob._max_processes = proj.max_processes
+
+    if scanjob._limit is None and proj.limit is not None:
+        scanjob._limit = proj.limit
+
+    if scanjob._shuffle is None and proj.shuffle is not None:
+        scanjob._shuffle = proj.shuffle
+
+    if scanjob._log_level is None and proj.log_level is not None:
+        scanjob._log_level = proj.log_level
+
+
+def _merge_worklist(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    """Merge worklists - union of both lists."""
+    if proj.worklist is None:
+        return
+
+    if scanjob._worklist is None:
+        scanjob._worklist = list(proj.worklist)
+    else:
+        # Union: project worklist items come first, then scanjob items
+        scanjob._worklist = list(proj.worklist) + list(scanjob._worklist)
+
+
+def _merge_scanners(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    """Merge scanners - union of dicts, scanjob wins on key conflicts."""
+    if proj.scanners is None:
+        return
+
+    # Import here to avoid circular imports
+    from inspect_scout._scancontext import (
+        scanners_from_spec_dict,
+        scanners_from_spec_list,
+    )
+
+    # Resolve project ScannerSpecs to Scanner objects
+    proj_scanners_dict: dict[str, Any] = {}
+    if isinstance(proj.scanners, list):
+        # Convert list to dict using scanner names from specs
+        scanner_list = scanners_from_spec_list(proj.scanners)
+        for spec, scanner in zip(proj.scanners, scanner_list, strict=True):
+            proj_scanners_dict[spec.name] = scanner
+    else:
+        proj_scanners_dict = scanners_from_spec_dict(proj.scanners)
+
+    # Merge: project scanners first, then scanjob scanners (scanjob wins on conflicts)
+    scanjob._scanners = {**proj_scanners_dict, **scanjob._scanners}
+
+
+def _merge_validation(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    """Merge validation - union of dicts, scanjob wins on key conflicts."""
+    if proj.validation is None:
+        return
+
+    # Resolve project validation config (may be str paths or ValidationSet objects)
+    resolved_proj_validation = _resolve_proj_validation_config(proj.validation)
+
+    if scanjob._validation is None:
+        scanjob._validation = resolved_proj_validation
+    else:
+        # Union: project first, scanjob wins on conflicts
+        scanjob._validation = {**resolved_proj_validation, **scanjob._validation}
+
+
+def _resolve_proj_validation_config(
+    validation: dict[str, str | ValidationSet],
+) -> dict[str, ValidationSet]:
+    """Resolve validation config (str paths to ValidationSet objects)."""
+    result: dict[str, ValidationSet] = {}
+    for key, value in validation.items():
+        if isinstance(value, str):
+            result[key] = validation_set(value)
+        else:
+            result[key] = value
+    return result
+
+
+def _merge_tags(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    """Merge tags - union with deduplication, preserving order."""
+    if proj.tags is None:
+        return
+
+    if scanjob._tags is None:
+        scanjob._tags = list(proj.tags)
+    else:
+        # Union and deduplicate while preserving order
+        seen: set[str] = set()
+        merged_tags: list[str] = []
+        for tag in list(proj.tags) + list(scanjob._tags):
+            if tag not in seen:
+                seen.add(tag)
+                merged_tags.append(tag)
+        scanjob._tags = merged_tags
+
+
+def _merge_metadata(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    """Merge metadata - union of dicts, scanjob wins on key conflicts."""
+    if proj.metadata is None:
+        return
+
+    if scanjob._metadata is None:
+        scanjob._metadata = dict(proj.metadata)
+    else:
+        # Union: project first, scanjob wins on conflicts
+        scanjob._metadata = {**proj.metadata, **scanjob._metadata}

@@ -365,7 +365,7 @@ def test_scan_with_numeric_scanner_metrics() -> None:
         status = scan(
             scanners=[numeric_metrics_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,
             display="none",
         )
@@ -397,7 +397,7 @@ def test_scan_with_multiple_scanners_mixed_metrics() -> None:
                 no_metrics_comparison_scanner_factory(),
             ],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=2,
             display="none",
         )
@@ -434,7 +434,7 @@ def test_scan_metrics_values_are_correct() -> None:
         status = scan(
             scanners=[predictable_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=3,
             display="none",
         )
@@ -464,7 +464,7 @@ def test_scan_metrics_with_multiple_metrics() -> None:
         status = scan(
             scanners=[multi_metrics_scanner_factory()],
             transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,
+            scans=tmpdir,
             limit=5,
             display="none",
         )

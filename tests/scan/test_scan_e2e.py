@@ -134,32 +134,3 @@ def test_scan_with_dynamic_question(max_processes: int) -> None:
         assert len(scanner_df) == 1
         assert "value" in scanner_df.columns
         assert scanner_df["value"].tolist() == [True]
-
-
-def test_scan_deprecated_results_parameter(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test that using deprecated 'results' parameter emits a warning."""
-    # Track if deprecation warning was called
-    warning_called = False
-
-    def mock_warning() -> None:
-        nonlocal warning_called
-        warning_called = True
-
-    # Patch where it's imported and used (in _scan module)
-    import inspect_scout._scan
-
-    monkeypatch.setattr(inspect_scout._scan, "show_results_warning", mock_warning)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        status = scan(
-            scanners=[simple_scanner_factory()],
-            transcripts=transcripts_from(LOGS_DIR),
-            results=tmpdir,  # Using deprecated parameter
-            limit=1,
-            max_processes=1,
-        )
-
-        assert status.complete
-        assert warning_called, "Deprecation warning should be emitted for 'results'"

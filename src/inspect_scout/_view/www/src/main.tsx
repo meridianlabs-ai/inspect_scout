@@ -44,8 +44,8 @@ const queryClient = new QueryClient();
 
 // Read showActivityBar from query parameters
 const urlParams = new URLSearchParams(window.location.search);
-const workbenchMode =
-  urlParams.get("workbench") !== null && api.capability === "workbench";
+const scansMode =
+  urlParams.get("mode") === "scans" || api.capability === "scans";
 
 // Render the app
 root.render(
@@ -53,7 +53,7 @@ root.render(
     <ApiProvider value={api}>
       <StoreProvider value={store}>
         <ExtendedFindProvider>
-          <App mode={workbenchMode ? "workbench" : "scans"} />
+          <App mode={scansMode ? "scans" : "workbench"} />
         </ExtendedFindProvider>
       </StoreProvider>
     </ApiProvider>

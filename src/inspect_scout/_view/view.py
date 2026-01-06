@@ -1,6 +1,6 @@
 import logging
 import webbrowser
-from typing import Any
+from typing import Any, Literal
 
 from inspect_ai._util.path import chdir
 from inspect_ai._view.view import view_acquire_port
@@ -21,12 +21,12 @@ def view(
     project_dir: str | None = None,
     transcripts: str | None = None,
     scans: str | None = None,
+    mode: Literal["default", "scans"] = "default",
     host: str = DEFAULT_SERVER_HOST,
     port: int = DEFAULT_VIEW_PORT,
     browser: bool = False,
     authorization: str | None = None,
     log_level: str | None = None,
-    workbench: bool = False,
     fs_options: dict[str, Any] | None = None,
 ) -> None:
     with chdir(project_dir or "."):
@@ -38,14 +38,14 @@ def view(
 
         # open browser if requested
         if browser:
-            webbrowser.open(view_url(host, port, workbench))
+            webbrowser.open(view_url(host, port, mode))
 
         # start the server
         view_server(
             scans=project().scans or DEFAULT_SCANS_DIR,
             host=host,
             port=port,
+            mode=mode,
             authorization=authorization,
-            workbench=workbench,
             fs_options=fs_options,
         )

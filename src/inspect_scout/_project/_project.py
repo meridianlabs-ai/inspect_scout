@@ -8,6 +8,8 @@ from inspect_ai._util.file import file
 from inspect_ai._util.path import pretty_path
 from jsonschema import Draft7Validator
 
+from inspect_scout._util.constants import DEFAULT_SCANS_DIR, DEFAULT_TRANSCRIPTS_DIR
+
 from .merge import merge_configs
 from .types import ProjectConfig
 
@@ -60,6 +62,14 @@ def init_project(
         _current_project.transcripts = transcripts
     if scans is not None:
         _current_project.scans = scans
+
+    # provide default transcripts if we need to
+    if _current_project.transcripts is None:
+        _current_project.transcripts = default_transcripts_dir()
+
+    # provide defaults scans if we need to
+    if _current_project.scans is None:
+        _current_project.scans = DEFAULT_SCANS_DIR
 
     return _current_project
 
@@ -171,27 +181,20 @@ def _load_single_config(path: Path) -> ProjectConfig:
 
 
 def create_default_project() -> ProjectConfig:
-    """Create default project configuration.
-
-    Checks for standard transcript locations in order:
-    1. ./transcripts
-    2. ./logs
-
-    Returns:
-        Default ProjectConfig with results="./scans" and detected transcripts.
-    """
-    if Path("./transcripts").is_dir():
-        transcripts: str | None = "./transcripts"
-    elif Path("./logs").is_dir():
-        transcripts = "./logs"
-    else:
-        transcripts = None
-
     return ProjectConfig(
         name=Path.cwd().name,
-        scans="./scans",
-        transcripts=transcripts,
+        transcripts=default_transcripts_dir(),
+        scans=DEFAULT_SCANS_DIR,
     )
+
+
+def default_transcripts_dir() -> str | None:
+    if Path(DEFAULT_TRANSCRIPTS_DIR).is_dir():
+        return DEFAULT_TRANSCRIPTS_DIR
+    elif Path("./logs").is_dir():
+        return "./logs"
+    else:
+        return None
 
 
 def find_git_root(path: Path) -> Path | None:

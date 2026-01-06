@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from click.core import ParameterSource
 from inspect_scout._cli.scan import resolve_scan_option, resolve_scan_option_multi
+from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
 
 @pytest.fixture
@@ -71,7 +72,7 @@ class TestResolveScanOption:
         result = resolve_scan_option(
             mock_ctx,
             "results",
-            option_value="./scans",  # default value
+            option_value=DEFAULT_SCANS_DIR,  # default value
             scan_job_value="./custom-results",
         )
 
@@ -97,11 +98,11 @@ class TestResolveScanOption:
         result = resolve_scan_option(
             mock_ctx,
             "results",
-            option_value="./scans",
+            option_value=DEFAULT_SCANS_DIR,
             scan_job_value=None,
         )
 
-        assert result == "./scans"
+        assert result == DEFAULT_SCANS_DIR
 
     def test_none_when_both_none(self, mock_ctx: MagicMock) -> None:
         """Should return None when both option and scanjob values are None."""
@@ -349,7 +350,9 @@ class TestOptionResolutionScenarios:
         # Default value, scanjob overrides
         set_source(mock_ctx, "results", ParameterSource.DEFAULT)
         assert (
-            resolve_scan_option(mock_ctx, "results", "./scans", "./custom-output")
+            resolve_scan_option(
+                mock_ctx, "results", DEFAULT_SCANS_DIR, "./custom-output"
+            )
             == "./custom-output"
         )
 

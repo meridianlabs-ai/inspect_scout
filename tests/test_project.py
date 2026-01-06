@@ -14,6 +14,7 @@ from inspect_scout._project import (
     merge_configs,
 )
 from inspect_scout._scanspec import ScannerSpec, Worklist
+from inspect_scout._util.constants import DEFAULT_SCANS_DIR, DEFAULT_TRANSCRIPTS_DIR
 
 
 class TestFindGitRoot:
@@ -121,8 +122,8 @@ class TestCreateDefaultProject:
         (tmp_path / "transcripts").mkdir()
 
         config = create_default_project()
-        assert config.transcripts == "./transcripts"
-        assert config.scans == "./scans"
+        assert config.transcripts == DEFAULT_TRANSCRIPTS_DIR
+        assert config.scans == DEFAULT_SCANS_DIR
 
     def test_uses_logs_dir_if_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -143,7 +144,7 @@ class TestCreateDefaultProject:
         (tmp_path / "logs").mkdir()
 
         config = create_default_project()
-        assert config.transcripts == "./transcripts"
+        assert config.transcripts == DEFAULT_TRANSCRIPTS_DIR
 
     def test_none_transcripts_when_neither_exists(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -169,7 +170,7 @@ class TestProjectConfig:
         config = ProjectConfig(
             name="test",
             transcripts="./logs",
-            scans="./scans",
+            scans=DEFAULT_SCANS_DIR,
             model="openai/gpt-4o",
             max_transcripts=25,
             tags=["tag1"],
@@ -177,7 +178,7 @@ class TestProjectConfig:
         )
         assert config.name == "test"
         assert config.transcripts == "./logs"
-        assert config.scans == "./scans"
+        assert config.scans == DEFAULT_SCANS_DIR
         assert config.model == "openai/gpt-4o"
         assert config.max_transcripts == 25
         assert config.tags == ["tag1"]

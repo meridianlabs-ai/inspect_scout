@@ -28,7 +28,11 @@ from .._scan import scan
 from .._scanjob import ScanJob, scanjob_from_cli_spec, scanjob_from_file
 from .._scanner.scanner import scanners_from_file
 from .._transcript.factory import transcripts_from
-from .._util.constants import DEFAULT_BATCH_SIZE, DEFAULT_MAX_TRANSCRIPTS
+from .._util.constants import (
+    DEFAULT_BATCH_SIZE,
+    DEFAULT_MAX_TRANSCRIPTS,
+    DEFAULT_SCANS_DIR,
+)
 from .common import CommonOptions, common_options, process_common_options
 
 logger = getLogger(__name__)
@@ -398,7 +402,7 @@ def scan_command(
 
     # Apply default for scans
     if scans is None:
-        scans = "./scans"
+        scans = DEFAULT_SCANS_DIR
 
     # Get the file argument from extra args
     if not ctx.args or len(ctx.args) == 0:

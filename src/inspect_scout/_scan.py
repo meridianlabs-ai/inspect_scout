@@ -240,8 +240,7 @@ async def scan_async(
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
-    init_project(scans=scans)
-    top_level_async_init(log_level)
+    top_level_async_init(log_level, scans=scans)
 
     # map deprecated
     results_deprecated = deprecated.get("results", None)
@@ -376,7 +375,6 @@ async def scan_resume_async(
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
-    init_project()
     top_level_async_init(log_level)
 
     # resume job
@@ -446,7 +444,6 @@ async def scan_complete_async(
     Returns:
        ScanStatus: Status of scan (spec, summary, errors, etc.)
     """
-    init_project()
     top_level_async_init(log_level)
 
     # check if the scan is already complete
@@ -812,9 +809,18 @@ def top_level_sync_init(display: DisplayType | None) -> None:
     init_display_type(display)
 
 
-def top_level_async_init(log_level: str | None, *, main_process: bool = True) -> None:
+def top_level_async_init(
+    log_level: str | None,
+    *,
+    main_process: bool = True,
+    transcripts: str | None = None,
+    scans: str | None = None,
+) -> None:
     init_platform(hooks=False)
     init_environment()
+
+    # initialize project
+    init_project(transcripts=transcripts, scans=scans)
 
     # Use project log_level as fallback
     effective_log_level = log_level or project().log_level

@@ -8,5 +8,8 @@ DEFAULT_MAX_TRANSCRIPTS = 25
 DEFAULT_BATCH_SIZE = 100
 DEFAULT_SERVER_HOST = "127.0.0.1"
 
+DEFAULT_TRANSCRIPTS_DIR = "./transcripts"
+DEFAULT_SCANS_DIR = "./scans"
+
 TRANSCRIPT_SOURCE_EVAL_LOG: Literal["eval_log", "database"] = "eval_log"
 TRANSCRIPT_SOURCE_DATABASE: Literal["eval_log", "database"] = "database"

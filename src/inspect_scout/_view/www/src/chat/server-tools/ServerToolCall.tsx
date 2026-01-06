@@ -2,9 +2,9 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { ApplicationIcons } from "../../app/appearance/icons";
+import { RecordTree } from "../../components/content/RecordTree";
+import { RenderedContent } from "../../components/content/RenderedContent";
 import ExpandablePanel from "../../components/ExpandablePanel";
-import { RecordTree } from "../../content/RecordTree";
-import { RenderedContent } from "../../content/RenderedContent";
 import { ContentToolUse } from "../../types/api-types";
 import { asJsonObjArray, isJson } from "../../utils/json";
 

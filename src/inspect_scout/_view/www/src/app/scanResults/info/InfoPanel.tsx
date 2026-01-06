@@ -2,10 +2,10 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { Card, CardBody, CardHeader } from "../../../components/Card";
+import { MetaDataGrid } from "../../../components/content/MetaDataGrid";
+import { RecordTree } from "../../../components/content/RecordTree";
 import { LabeledValue } from "../../../components/LabeledValue";
 import { ModelTokenTable } from "../../../components/usage/ModelTokenTable";
-import { MetaDataGrid } from "../../../content/MetaDataGrid";
-import { RecordTree } from "../../../content/RecordTree";
 import { formatNumber } from "../../../utils/format";
 import { ScanResultData } from "../../types";
 

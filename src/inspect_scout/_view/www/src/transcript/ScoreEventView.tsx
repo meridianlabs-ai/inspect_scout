@@ -2,9 +2,9 @@ import clsx from "clsx";
 import { FC, Fragment } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
-import { MetaDataGrid } from "../content/MetaDataGrid";
-import { RecordTree } from "../content/RecordTree";
-import { RenderedText } from "../content/RenderedText";
+import { MetaDataGrid } from "../components/content/MetaDataGrid";
+import { RecordTree } from "../components/content/RecordTree";
+import { RenderedText } from "../components/content/RenderedText";
 import { ScoreEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 import { isRecord } from "../utils/type";

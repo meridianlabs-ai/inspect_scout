@@ -3,8 +3,8 @@ import { FC, ReactNode, useRef } from "react";
 import { Link } from "react-router-dom";
 
 import { ApplicationIcons } from "../../app/appearance/icons";
+import { MetaDataGrid } from "../../components/content/MetaDataGrid";
 import { PulsingDots } from "../../components/PulsingDots";
-import { MetaDataGrid } from "../../content/MetaDataGrid";
 import { formatDateTime, formatTime } from "../../utils/format";
 import { parsePackageName } from "../../utils/python";
 import { useCollapseTranscriptEvent } from "../hooks";

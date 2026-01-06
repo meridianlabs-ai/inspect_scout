@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { FC, Ref, useRef } from "react";
 
+import { RenderedText } from "../../components/content/RenderedText";
 import { usePrismHighlight } from "../../components/prism";
-import { RenderedText } from "../../content/RenderedText";
 import { ToolCallContent } from "../../types/api-types";
 
 import { kToolTodoContentType } from "./tool";

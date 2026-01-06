@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
-import { MetaDataGrid } from "../content/MetaDataGrid";
+import { MetaDataGrid } from "../components/content/MetaDataGrid";
 import { LoggerEvent } from "../types/api-types";
 import { parsedJson as maybeParseJson } from "../utils/json";
 

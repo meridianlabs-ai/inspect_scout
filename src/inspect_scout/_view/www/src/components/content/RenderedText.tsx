@@ -3,8 +3,8 @@ import { CSSProperties, ForwardedRef, forwardRef } from "react";
 import {
   MarkdownDivWithReferences,
   MarkdownReference,
-} from "../components/MarkdownDivWithReferences";
-import { Preformatted } from "../components/Preformatted";
+} from "../../components/MarkdownDivWithReferences";
+import { Preformatted } from "../../components/Preformatted";
 
 interface RenderedTextProps {
   markdown: string;

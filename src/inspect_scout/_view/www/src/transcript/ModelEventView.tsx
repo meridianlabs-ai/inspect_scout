@@ -3,10 +3,10 @@ import { FC, Fragment, useMemo, useRef } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
 import { ChatView } from "../chat/ChatView";
+import { MetaDataGrid } from "../components/content/MetaDataGrid";
 import { usePrismHighlight } from "../components/prism";
 import { PulsingDots } from "../components/PulsingDots";
 import { ModelUsagePanel } from "../components/usage/ModelUsagePanel";
-import { MetaDataGrid } from "../content/MetaDataGrid";
 import {
   ChatMessage,
   ModelCall,

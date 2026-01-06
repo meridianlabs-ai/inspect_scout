@@ -2,8 +2,8 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { Card, CardBody, CardHeader } from "../../../components/Card";
-import { MetaDataGrid } from "../../../content/MetaDataGrid";
-import { RecordTree } from "../../../content/RecordTree";
+import { MetaDataGrid } from "../../../components/content/MetaDataGrid";
+import { RecordTree } from "../../../components/content/RecordTree";
 import { Status } from "../../../types/api-types";
 
 import styles from "./ScanInfo.module.css";

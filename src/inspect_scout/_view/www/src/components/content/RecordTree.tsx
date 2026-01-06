@@ -10,10 +10,10 @@ import {
 } from "react";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
-import { ApplicationIcons } from "../app/appearance/icons";
-import ExpandablePanel from "../components/ExpandablePanel";
-import { useCollapsibleIds } from "../state/hooks";
-import { useVirtuosoState } from "../state/scrolling";
+import { ApplicationIcons } from "../../app/appearance/icons";
+import { useCollapsibleIds } from "../../state/hooks";
+import { useVirtuosoState } from "../../state/scrolling";
+import ExpandablePanel from "../ExpandablePanel";
 
 import { resolveStoreKeys } from "./record_processors/store";
 import { RecordProcessor } from "./record_processors/types";

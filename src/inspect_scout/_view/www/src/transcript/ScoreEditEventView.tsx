@@ -2,8 +2,8 @@ import clsx from "clsx";
 import { FC, Fragment } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
-import { RecordTree } from "../content/RecordTree";
-import { RenderedText } from "../content/RenderedText";
+import { RecordTree } from "../components/content/RecordTree";
+import { RenderedText } from "../components/content/RenderedText";
 import { ScoreEditEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 

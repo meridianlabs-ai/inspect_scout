@@ -3,8 +3,8 @@ import { FC } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../chat/ChatViewVirtualList";
+import { MetaDataGrid } from "../../components/content/MetaDataGrid";
 import { TabPanel, TabSet } from "../../components/TabSet";
-import { MetaDataGrid } from "../../content/MetaDataGrid";
 import { useStore } from "../../state/store";
 import { TranscriptView } from "../../transcript/TranscriptView";
 import { Transcript } from "../../types/api-types";

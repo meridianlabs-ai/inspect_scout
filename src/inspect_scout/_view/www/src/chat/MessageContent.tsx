@@ -1,8 +1,8 @@
 import clsx from "clsx";
 import { FC, Fragment, ReactNode } from "react";
 
+import { RenderedText } from "../components/content/RenderedText";
 import ExpandablePanel from "../components/ExpandablePanel";
-import { RenderedText } from "../content/RenderedText";
 import {
   ContentAudio,
   ContentData,

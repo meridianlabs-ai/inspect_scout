@@ -2,9 +2,9 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { Card, CardBody } from "../../../components/Card";
+import { RecordTree } from "../../../components/content/RecordTree";
 import { LabeledValue } from "../../../components/LabeledValue";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
-import { RecordTree } from "../../../content/RecordTree";
 import { ScanResultData } from "../../types";
 
 import styles from "./Metadata.module.css";

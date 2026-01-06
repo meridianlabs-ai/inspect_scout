@@ -2,9 +2,9 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
+import { MetaDataGrid } from "../components/content/MetaDataGrid";
+import { RenderedContent } from "../components/content/RenderedContent";
 import ExpandablePanel from "../components/ExpandablePanel";
-import { MetaDataGrid } from "../content/MetaDataGrid";
-import { RenderedContent } from "../content/RenderedContent";
 import { SandboxEvent } from "../types/api-types";
 
 import { EventPanel } from "./event/EventPanel";

@@ -2,8 +2,8 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
+import { RenderedText } from "../components/content/RenderedText";
 import { JSONPanel } from "../components/JsonPanel";
-import { RenderedText } from "../content/RenderedText";
 import { InfoEvent } from "../types/api-types";
 import { formatDateTime } from "../utils/format";
 

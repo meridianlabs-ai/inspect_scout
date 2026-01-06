@@ -2,10 +2,10 @@ import clsx from "clsx";
 import { FC, memo, useCallback, useState } from "react";
 
 import { ApplicationIcons } from "../app/appearance/icons";
+import { RecordTree } from "../components/content/RecordTree";
 import { CopyButton } from "../components/CopyButton";
 import ExpandablePanel from "../components/ExpandablePanel";
 import { LabeledValue } from "../components/LabeledValue";
-import { RecordTree } from "../content/RecordTree";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,

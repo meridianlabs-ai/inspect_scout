@@ -1,9 +1,9 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { MetaDataGrid } from "../../../components/content/MetaDataGrid";
 import { MarkdownReference } from "../../../components/MarkdownDivWithReferences";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
-import { MetaDataGrid } from "../../../content/MetaDataGrid";
 import { Explanation } from "../../components/Explanation";
 import { ValidationResult } from "../../components/ValidationResult";
 import { Value } from "../../components/Value";

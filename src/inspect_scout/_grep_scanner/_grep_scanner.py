@@ -46,8 +46,7 @@ def grep_scanner(
 
     Returns:
         Scanner that returns:
-        - Single Result (for str/list input): value=count of matches,
-          explanation=context snippets, references=[M1]/[E1] citations
+        - Single Result (for str/list input): value=count of matches, explanation=context snippets, references=[M1]/[E1] citations
         - list[Result] (for dict input): one Result per label with its count
 
     Raises:

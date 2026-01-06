@@ -1,7 +1,9 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
+import { ANSIDisplay } from "../../components/AnsiDisplay";
 import { ContentImage, ContentText } from "../../types/api-types";
+import { isAnsiOutput } from "../../utils/ansi";
 import { isJson } from "../../utils/json";
 import { JsonMessageContent } from "../JsonMessageContent";
 
@@ -57,6 +59,11 @@ const ToolTextOutput: FC<ToolTextOutputProps> = ({ text }) => {
   if (isJson(text)) {
     const obj = JSON.parse(text);
     return <JsonMessageContent id={`1-json`} json={obj} />;
+  }
+
+  // It could have ANSI codes
+  if (isAnsiOutput(text)) {
+    return <ANSIDisplay className={styles.ansiOutput} output={text} />;
   }
 
   return (

@@ -5376,9 +5376,50 @@ button._segment_19z32_10 {
   display: grid;
   grid-template-rows: max-content minmax(0, 1fr);
 }
-._titleContainer_tjn1j_1 {
+._headingGrid_1n1sm_1 {
+  display: grid;
+  gap: 1rem;
+}
+
+._headingCell_1n1sm_6 {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0; /* Allow flex items to shrink below their content size */
+}
+
+/* Horizontal layouts (left/right) */
+._headingCell_1n1sm_6._horizontal_1n1sm_13 {
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+/* Vertical layouts (above/below) */
+._headingCell_1n1sm_6._vertical_1n1sm_19 {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0rem;
+}
+
+._label_1n1sm_25 {
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0; /* Prevent labels from shrinking */
+}
+
+._value_1n1sm_31 {
+  min-width: 0; /* Allow values to shrink */
+  word-break: break-word; /* Allow long words to break */
+}
+
+/* For vertical layouts, allow value to take full width */
+._vertical_1n1sm_19 ._value_1n1sm_31 {
+  width: 100%;
+}
+._titleContainer_6mwxv_1 {
   margin-left: 0.5rem;
   margin-right: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
 }
 /*!
  * Bootstrap  v5.3.8 (https://getbootstrap.com/)

@@ -8,9 +8,9 @@ import { useStore } from "../../state/store";
 import { useScanRoute } from "../hooks";
 import { IdentifierInfo, resultIdentifier } from "../utils/results";
 
-import styles from "./ScanResultNav.module.css";
+import styles from "./ScannerResultNav.module.css";
 
-export const ScanResultNav: FC = () => {
+export const ScannerResultNav: FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { scansDir, scanPath, scanResultUuid } = useScanRoute();

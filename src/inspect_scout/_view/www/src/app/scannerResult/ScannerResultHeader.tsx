@@ -14,9 +14,9 @@ import {
   MessageType,
 } from "../types";
 
-import styles from "./ScanResultHeader.module.css";
+import styles from "./ScannerResultHeader.module.css";
 
-interface ScanResultHeaderProps {
+interface ScannerResultHeaderProps {
   scan?: Status;
   inputData?: ScanResultInputData;
 }
@@ -27,7 +27,7 @@ interface Column {
   className?: string | string[];
 }
 
-export const ScanResultHeader: FC<ScanResultHeaderProps> = ({
+export const ScannerResultHeader: FC<ScannerResultHeaderProps> = ({
   scan,
   inputData,
 }) => {

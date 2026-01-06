@@ -9,7 +9,7 @@ import {
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanPanel } from "./app/scan/ScanPanel";
-import { ScanResultPanel } from "./app/scanResults/ScanResultPanel";
+import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
 import { useServerScansDir } from "./app/server/hooks";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
@@ -162,7 +162,7 @@ const ScanOrScanResultsRoute = () => {
 
   // If there's a scan result UUID, render the ScanResultPanel
   if (scanResultUuid) {
-    return <ScanResultPanel />;
+    return <ScannerResultPanel />;
   }
 
   // Validate that the path ends with the correct scan_id pattern

@@ -6,8 +6,8 @@ import { Status } from "../../../types/api-types";
 import { Footer } from "../../components/Footer";
 import { useSelectedScanDataframe, useSelectedScanner } from "../../hooks";
 
-import styles from "./ScannerPanel.module.css";
 import { ScannerResultsBody } from "./results/ScannerResultsBody";
+import styles from "./ScannerPanel.module.css";
 import { ScannerSidebar } from "./ScannerSidebar";
 
 export const ScannerPanel: FC<{ selectedScan: Status }> = ({

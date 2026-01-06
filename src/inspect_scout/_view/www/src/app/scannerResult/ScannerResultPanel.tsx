@@ -24,9 +24,9 @@ import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
 import { MetadataPanel } from "./metadata/MetadataPanel";
 import { ResultPanel } from "./result/ResultPanel";
-import { ScanResultHeader } from "./ScanResultHeader";
-import { ScanResultNav } from "./ScanResultNav";
-import styles from "./ScanResultPanel.module.css";
+import { ScannerResultHeader } from "./ScannerResultHeader";
+import { ScannerResultNav } from "./ScannerResultNav";
+import styles from "./ScannerResultPanel.module.css";
 import { TranscriptPanel } from "./transcript/TranscriptPanel";
 
 const kTabIdResult = "Result";
@@ -37,7 +37,7 @@ const kTabIdJson = "JSON";
 const kTabIdTranscript = "transcript";
 const kTabIdMetadata = "Metadata";
 
-export const ScanResultPanel: FC = () => {
+export const ScannerResultPanel: FC = () => {
   // Url data
   const { scanResultUuid } = useScanRoute();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -143,10 +143,10 @@ export const ScanResultPanel: FC = () => {
         scansDir={userScansDir || resultsDir}
         setScansDir={setUserScansDir}
       >
-        {visibleScannerResults.length > 0 && <ScanResultNav />}
+        {visibleScannerResults.length > 0 && <ScannerResultNav />}
       </ScansNavbar>
       <LoadingBar loading={!!loading || resultLoading} />
-      <ScanResultHeader inputData={inputData.data} scan={selectedScan} />
+      <ScannerResultHeader inputData={inputData.data} scan={selectedScan} />
 
       {selectedResult && (
         <ExtendedFindProvider>

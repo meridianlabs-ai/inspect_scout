@@ -1,3 +1,7 @@
+## Unreleased
+
+- LLM Scanner: Add `value_to_float` option to for converting model reported values to numeric.
+
 ## 0.4.5 (03 January 2026)
 
 - [Projects](https://meridianlabs-ai.github.io/inspect_scout/projects.html) for centrally managing scanning configuration.

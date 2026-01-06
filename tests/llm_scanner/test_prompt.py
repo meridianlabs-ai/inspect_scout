@@ -4,6 +4,7 @@ from typing import Any, Callable
 
 import pytest
 from inspect_ai.model import ChatMessage, ChatMessageUser, ModelOutput
+from inspect_ai.scorer import ValueToFloat
 from inspect_scout._llm_scanner._llm_scanner import render_scanner_prompt
 from inspect_scout._llm_scanner.answer import Answer, _BoolAnswer
 from inspect_scout._llm_scanner.prompt import DEFAULT_SCANNER_TEMPLATE
@@ -28,7 +29,10 @@ class _TestAnswer(Answer):
         return self._format
 
     def result_for_answer(
-        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+        self,
+        output: ModelOutput,
+        extract_references: Callable[[str], list[Reference]],
+        value_to_float: ValueToFloat | None = None,
     ) -> Result:
         """Stub implementation for testing."""
         return Result(value=None)

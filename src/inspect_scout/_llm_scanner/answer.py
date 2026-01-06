@@ -9,6 +9,7 @@ from inspect_ai._util.text import (
 from inspect_ai.model import (
     ModelOutput,
 )
+from inspect_ai.scorer import ValueToFloat
 from inspect_ai.scorer._common import normalize_number
 from jinja2 import Template
 from pydantic import JsonValue
@@ -56,7 +57,10 @@ class Answer(Protocol):
         ...
 
     def result_for_answer(
-        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+        self,
+        output: ModelOutput,
+        extract_references: Callable[[str], list[Reference]],
+        value_to_float: ValueToFloat | None = None,
     ) -> Result:
         """Extract and return the result from model output."""
         ...
@@ -97,7 +101,10 @@ class _BoolAnswer(Answer):
         return BOOL_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+        self,
+        output: ModelOutput,
+        extract_references: Callable[[str], list[Reference]],
+        value_to_float: ValueToFloat | None = None,
     ) -> Result:
         completion = _strip_markdown_formatting(output.completion)
         match = re.search(ANSWER_PATTERN_WORD, completion, re.IGNORECASE)
@@ -112,14 +119,16 @@ class _BoolAnswer(Answer):
             match answer:
                 case "yes":
                     return Result(
-                        value=True,
+                        value=True if value_to_float is None else value_to_float(True),
                         answer="Yes",
                         explanation=explanation,
                         references=references,
                     )
                 case "no":
                     return Result(
-                        value=False,
+                        value=False
+                        if value_to_float is None
+                        else value_to_float(False),
                         answer="No",
                         explanation=explanation,
                         references=references,
@@ -140,7 +149,10 @@ class _NumberAnswer(Answer):
         return NUMBER_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+        self,
+        output: ModelOutput,
+        extract_references: Callable[[str], list[Reference]],
+        value_to_float: ValueToFloat | None = None,
     ) -> Result:
         completion = _strip_markdown_formatting(output.completion)
         match = re.search(ANSWER_PATTERN_LINE, completion)
@@ -151,11 +163,11 @@ class _NumberAnswer(Answer):
             if answer is not None:
                 explanation = completion[: match.start()].strip()
                 references = extract_references(explanation)
+                value = answer if value_to_float is None else value_to_float(answer)
 
                 return Result(
-                    value=answer,
-                    # TODO: I'm not sure when it makes sense to provide answer
-                    # answer="Yes",
+                    value=value,
+                    answer=str(answer),
                     explanation=explanation,
                     references=references,
                 )
@@ -189,10 +201,18 @@ class _LabelsAnswer(Answer):
         )
 
     def result_for_answer(
-        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+        self,
+        output: ModelOutput,
+        extract_references: Callable[[str], list[Reference]],
+        value_to_float: ValueToFloat | None = None,
     ) -> Result:
         if not self.labels:
             raise ValueError("Must have labels")
+
+        if self.multi_classification and value_to_float is not None:
+            raise NotImplementedError(
+                "Multi-classification labels do not support value_to_float"
+            )
 
         # For multi-classification, allow comma-separated values on the line
         pattern = (
@@ -240,7 +260,9 @@ class _LabelsAnswer(Answer):
                 if answer_letter in valid_characters:
                     index = valid_characters.index(answer_letter)
                     return Result(
-                        value=answer_letter,
+                        value=value_to_float(answer_letter)
+                        if value_to_float
+                        else answer_letter,
                         answer=self.labels[index],
                         explanation=explanation,
                         references=references,
@@ -261,7 +283,10 @@ class _StrAnswer(Answer):
         return STR_ANSWER_FORMAT
 
     def result_for_answer(
-        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+        self,
+        output: ModelOutput,
+        extract_references: Callable[[str], list[Reference]],
+        value_to_float: ValueToFloat | None = None,
     ) -> Result:
         match = re.search(ANSWER_PATTERN_LINE, output.completion, re.IGNORECASE)
 
@@ -275,7 +300,7 @@ class _StrAnswer(Answer):
             references = extract_references(explanation)
 
             return Result(
-                value=answer_text,
+                value=value_to_float(answer_text) if value_to_float else answer_text,
                 answer=answer_text,
                 explanation=explanation,
                 references=references,
@@ -333,6 +358,11 @@ class _StructuredAnswer(Answer):
         )
 
     def result_for_answer(
-        self, output: ModelOutput, extract_references: Callable[[str], list[Reference]]
+        self,
+        output: ModelOutput,
+        extract_references: Callable[[str], list[Reference]],
+        value_to_float: ValueToFloat | None = None,
     ) -> Result:
-        return structured_result(self.answer, output, extract_references)
+        return structured_result(
+            self.answer, output, extract_references, value_to_float
+        )

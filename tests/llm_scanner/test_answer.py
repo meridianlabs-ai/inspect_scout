@@ -2,6 +2,7 @@
 
 import pytest
 from inspect_ai.model import ModelOutput
+from inspect_ai.scorer import Value
 from inspect_scout._llm_scanner.answer import (
     Answer,
     _BoolAnswer,
@@ -389,3 +390,101 @@ def test_str_results(
     assert result.value == expected_value
     assert result.answer == expected_answer
     assert result.explanation == expected_explanation
+
+
+# Tests for value_to_float parameter
+
+
+def test_bool_value_to_float() -> None:
+    """Bool answer applies value_to_float to True/False."""
+
+    def bool_to_score(value: Value) -> float:
+        return 1.0 if value else 0.0
+
+    answer = _BoolAnswer()
+    output_yes = ModelOutput(model="test", completion="Reasoning.\n\nANSWER: yes")
+    output_no = ModelOutput(model="test", completion="Reasoning.\n\nANSWER: no")
+
+    result_yes = answer.result_for_answer(
+        output_yes, _dummy_extract_references, bool_to_score
+    )
+    result_no = answer.result_for_answer(
+        output_no, _dummy_extract_references, bool_to_score
+    )
+
+    assert result_yes.value == 1.0
+    assert result_yes.answer == "Yes"
+    assert result_no.value == 0.0
+    assert result_no.answer == "No"
+
+
+def test_number_value_to_float() -> None:
+    """Numeric answer applies value_to_float to the number."""
+
+    def scale_to_percentage(value: Value) -> float:
+        return float(value) / 10.0 * 100  # type: ignore[arg-type]
+
+    answer = _NumberAnswer()
+    output = ModelOutput(model="test", completion="Score.\n\nANSWER: 7")
+
+    result = answer.result_for_answer(
+        output, _dummy_extract_references, scale_to_percentage
+    )
+
+    assert result.value == 70.0
+    assert result.answer == "7.0"
+
+
+def test_labels_single_value_to_float() -> None:
+    """Single-classification labels apply value_to_float to the letter."""
+
+    def letter_to_score(value: Value) -> float:
+        return {"A": 0.0, "B": 0.5, "C": 1.0}.get(str(value), 0.0)
+
+    answer = _LabelsAnswer(labels=["Low", "Medium", "High"])
+    output = ModelOutput(model="test", completion="Analysis.\n\nANSWER: C")
+
+    result = answer.result_for_answer(
+        output, _dummy_extract_references, letter_to_score
+    )
+
+    assert result.value == 1.0
+    assert result.answer == "High"
+
+
+def test_labels_multi_value_to_float_raises() -> None:
+    """Multi-classification labels raise NotImplementedError for value_to_float."""
+
+    def dummy_converter(_value: Value) -> float:
+        return 0.0
+
+    answer = _LabelsAnswer(labels=["A", "B", "C"], multi_classification=True)
+    output = ModelOutput(model="test", completion="Analysis.\n\nANSWER: A,B")
+
+    with pytest.raises(NotImplementedError):
+        answer.result_for_answer(output, _dummy_extract_references, dummy_converter)
+
+
+def test_str_value_to_float() -> None:
+    """String answer applies value_to_float to the answer text."""
+
+    def sentiment_to_score(value: Value) -> float:
+        value_lower = str(value).lower()
+        if "positive" in value_lower:
+            return 1.0
+        elif "negative" in value_lower:
+            return 0.0
+        else:
+            return 0.5
+
+    answer = _StrAnswer()
+    output = ModelOutput(
+        model="test", completion="Analysis.\n\nANSWER: Mostly positive sentiment"
+    )
+
+    result = answer.result_for_answer(
+        output, _dummy_extract_references, sentiment_to_score
+    )
+
+    assert result.value == 1.0
+    assert result.answer == "Mostly positive sentiment"

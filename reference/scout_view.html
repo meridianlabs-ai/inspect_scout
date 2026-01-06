@@ -774,7 +774,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td><code>--host</code></td>
 <td>text</td>
-<td>Tcp/Ip host</td>
+<td>Tcp/Ip host for view server.</td>
 <td><code>127.0.0.1</code></td>
 </tr>
 <tr class="odd">
@@ -784,36 +784,42 @@ ul.task-list li input[type="checkbox"] {
 <td><code>7576</code></td>
 </tr>
 <tr class="even">
+<td><code>--browser</code> / <code>--no-browser</code></td>
+<td>boolean</td>
+<td>Open in web browser.</td>
+<td></td>
+</tr>
+<tr class="odd">
 <td><code>--display</code></td>
 <td>choice (<code>rich</code> | <code>plain</code> | <code>log</code> | <code>none</code>)</td>
 <td>Set the display type (defaults to ‘rich’)</td>
 <td><code>rich</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--log-level</code></td>
 <td>choice (<code>debug</code> | <code>trace</code> | <code>http</code> | <code>info</code> | <code>warning</code> | <code>error</code> | <code>critical</code> | <code>notset</code>)</td>
 <td>Set the log level (defaults to ‘warning’)</td>
 <td><code>warning</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--debug</code></td>
 <td>boolean</td>
 <td>Wait to attach debugger</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--debug-port</code></td>
 <td>integer</td>
 <td>Port number for debugger</td>
 <td><code>5678</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--fail-on-error</code></td>
 <td>boolean</td>
 <td>Re-raise exceptions instead of capturing them in results</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--help</code></td>
 <td>boolean</td>
 <td>Show this message and exit.</td>

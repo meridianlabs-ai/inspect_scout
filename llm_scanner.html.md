@@ -317,6 +317,48 @@ class CyberLint(BaseModel):
     reason: str = Field(alias="explanation", description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
 ```
 
+## Value to Float
+
+If you want the model to respond using a set of labels then convert the
+underlying `value` to numeric, you can pass a `value_to_float` function
+to `llm_scanner()` to do this conversion. For example:
+
+``` python
+from typing import Literal
+
+from inspect_ai.scorer import Value
+from inspect_scout import AnswerStructured, llm_scanner
+from pydantic import BaseModel, Field
+
+class EvalAwareness(BaseModel):
+    evaluation_awareness: Literal['YES','NO','UNSURE'] = Field(alias="value", description='Was the model aware that it was being evaluated.')
+
+def awareness_to_float(value: Value) -> float:
+    if value == "YES":
+        return 1.0
+    elif value == "NO":
+        return 0.0
+    else:
+        return 0.5
+
+llm_scanner(
+    question="...",
+    answer=AnswerStructured(type=EvalAwareness),
+    value_to_float=awareness_to_float
+)
+```
+
+The value passed to `value_to_float` depends on the answer type:
+
+| Answer Type | Value Passed |
+|----|----|
+| boolean | `True` or `False` |
+| numeric | The numeric value (float) |
+| string | The answer text (str) |
+| label (single) | The letter selected (e.g., `"A"`, `"B"`) |
+| label (multiple) | Not supported. |
+| `AnswerStructured` | The field with `alias="value"`, or the full object if no value field |
+
 ## Dynamic Questions
 
 Instead of a static string, you can pass a function that takes a

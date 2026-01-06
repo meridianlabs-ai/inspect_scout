@@ -381,6 +381,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#result-values" id="toc-result-values" class="nav-link" data-scroll-target="#result-values">Result Values</a></li>
   <li><a href="#field-names" id="toc-field-names" class="nav-link" data-scroll-target="#field-names">Field Names</a></li>
   </ul></li>
+  <li><a href="#value-to-float" id="toc-value-to-float" class="nav-link" data-scroll-target="#value-to-float">Value to Float</a></li>
   <li><a href="#dynamic-questions" id="toc-dynamic-questions" class="nav-link" data-scroll-target="#dynamic-questions">Dynamic Questions</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -801,25 +802,90 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    reason: <span class="bu">str</span> <span class="op">=</span> Field(alias<span class="op">=</span><span class="st">"explanation"</span>, description<span class="op">=</span><span class="st">"Explain the reasons for the reported issue, citing specific message numbers where the issue was observed."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
+<section id="value-to-float" class="level2">
+<h2 class="anchored" data-anchor-id="value-to-float">Value to Float</h2>
+<p>If you want the model to respond using a set of labels then convert the underlying <code>value</code> to numeric, you can pass a <code>value_to_float</code> function to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> to do this conversion. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> Literal</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.scorer <span class="im">import</span> Value</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> AnswerStructured, llm_scanner</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pydantic <span class="im">import</span> BaseModel, Field</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> EvalAwareness(BaseModel):</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    evaluation_awareness: Literal[<span class="st">'YES'</span>,<span class="st">'NO'</span>,<span class="st">'UNSURE'</span>] <span class="op">=</span> Field(alias<span class="op">=</span><span class="st">"value"</span>, description<span class="op">=</span><span class="st">'Was the model aware that it was being evaluated.'</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> awareness_to_float(value: Value) <span class="op">-&gt;</span> <span class="bu">float</span>:</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> value <span class="op">==</span> <span class="st">"YES"</span>:</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="fl">1.0</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> value <span class="op">==</span> <span class="st">"NO"</span>:</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="fl">0.0</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="fl">0.5</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>llm_scanner(</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    question<span class="op">=</span><span class="st">"..."</span>,</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span>EvalAwareness),</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    value_to_float<span class="op">=</span>awareness_to_float</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The value passed to <code>value_to_float</code> depends on the answer type:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Answer Type</th>
+<th>Value Passed</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>boolean</td>
+<td><code>True</code> or <code>False</code></td>
+</tr>
+<tr class="even">
+<td>numeric</td>
+<td>The numeric value (float)</td>
+</tr>
+<tr class="odd">
+<td>string</td>
+<td>The answer text (str)</td>
+</tr>
+<tr class="even">
+<td>label (single)</td>
+<td>The letter selected (e.g., <code>"A"</code>, <code>"B"</code>)</td>
+</tr>
+<tr class="odd">
+<td>label (multiple)</td>
+<td>Not supported.</td>
+</tr>
+<tr class="even">
+<td><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#answerstructured">AnswerStructured</a></span></td>
+<td>The field with <code>alias="value"</code>, or the full object if no value field</td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="dynamic-questions" class="level2">
 <h2 class="anchored" data-anchor-id="dynamic-questions">Dynamic Questions</h2>
 <p>Instead of a static string, you can pass a function that takes a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> and returns a string. This enables you to dynamically generate questions based on the transcript content:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> question_from_transcript(transcript: Transcript) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># access sample metadata</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    topic <span class="op">=</span> transcript.metadata[<span class="st">"sample_metadata]"</span>.get(<span class="st">"topic"</span>, <span class="st">"unknown"</span>)</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># access message count</span></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    num_messages <span class="op">=</span> <span class="bu">len</span>(transcript.messages)</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Generate a dynamic question</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="ss">f"In this </span><span class="sc">{</span>num_messages<span class="sc">}</span><span class="ss">-message conversation about </span><span class="sc">{</span>topic<span class="sc">}</span><span class="ss">, did the assistant provide accurate information?"</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> contextual_accuracy() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span>question_from_transcript,</span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span>,</span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> question_from_transcript(transcript: Transcript) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># access sample metadata</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    topic <span class="op">=</span> transcript.metadata[<span class="st">"sample_metadata]"</span>.get(<span class="st">"topic"</span>, <span class="st">"unknown"</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># access message count</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    num_messages <span class="op">=</span> <span class="bu">len</span>(transcript.messages)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Generate a dynamic question</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="ss">f"In this </span><span class="sc">{</span>num_messages<span class="sc">}</span><span class="ss">-message conversation about </span><span class="sc">{</span>topic<span class="sc">}</span><span class="ss">, did the assistant provide accurate information?"</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> contextual_accuracy() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span>question_from_transcript,</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span>,</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Dynamic questions are useful when:</p>
 <ul>
 <li>The question depends on transcript metadata.</li>

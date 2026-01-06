@@ -10,7 +10,7 @@ Read transcripts for scanning.
 Transcripts may be stored in a `TranscriptDB` or may be Inspect eval
 logs.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/factory.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/factory.py#L19)
 
 ``` python
 def transcripts_from(location: str | Logs) -> Transcripts
@@ -24,7 +24,7 @@ to Inspect eval logs.
 
 Transcript info and transcript content (messages and events).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/types.py#L105)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/types.py#L105)
 
 ``` python
 class Transcript(TranscriptInfo)
@@ -111,7 +111,7 @@ transcripts = transcripts_from("./logs")
 transcripts = transcripts.where(c.task_set == "cybench")
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L71)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L56)
 
 ``` python
 class Transcripts(abc.ABC)
@@ -122,7 +122,7 @@ class Transcripts(abc.ABC)
 where  
 Filter the transcript collection by a `Condition`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L90)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L75)
 
 ``` python
 def where(self, condition: Condition) -> "Transcripts"
@@ -134,7 +134,7 @@ Filter condition.
 for_validation  
 Filter transcripts to only those with IDs matching validation cases.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L103)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L88)
 
 ``` python
 def for_validation(
@@ -148,7 +148,7 @@ Validation object containing cases with target IDs.
 limit  
 Limit the number of transcripts processed.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L166)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L151)
 
 ``` python
 def limit(self, n: int) -> "Transcripts"
@@ -160,7 +160,7 @@ Limit on transcripts.
 shuffle  
 Shuffle the order of transcripts.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L179)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L164)
 
 ``` python
 def shuffle(self, seed: int | None = None) -> "Transcripts"
@@ -175,7 +175,7 @@ Order transcripts by column.
 Can be chained multiple times for tie-breaking. If shuffle() is also
 used, shuffle takes precedence.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L192)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L177)
 
 ``` python
 def order_by(
@@ -192,7 +192,7 @@ Sort direction (“ASC” or “DESC”).
 reader  
 Read the selected transcripts.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L211)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L196)
 
 ``` python
 @abc.abstractmethod
@@ -207,7 +207,7 @@ filename mappings)
 from_snapshot  
 Restore transcripts from a snapshot.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L222)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L207)
 
 ``` python
 @staticmethod
@@ -221,7 +221,7 @@ def from_snapshot(snapshot: ScanTranscripts) -> "Transcripts"
 
 Read transcripts based on a `TranscriptsQuery`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L14)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L16)
 
 ``` python
 class TranscriptsReader(abc.ABC)
@@ -232,7 +232,7 @@ class TranscriptsReader(abc.ABC)
 index  
 Index of `TranscriptInfo` for the collection.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L30)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L32)
 
 ``` python
 @abc.abstractmethod
@@ -242,7 +242,7 @@ def index(self) -> AsyncIterator[TranscriptInfo]
 read  
 Read transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/transcripts.py#L35)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/transcripts.py#L37)
 
 ``` python
 @abc.abstractmethod
@@ -263,7 +263,7 @@ Content to read (e.g. specific message types, etc.)
 
 Read/write interface to transcripts database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/factory.py#L36)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/factory.py#L36)
 
 ``` python
 def transcripts_db(location: str) -> TranscriptsDB
@@ -276,7 +276,7 @@ Database location (e.g. directory or S3 bucket).
 
 Database of transcripts with write capability.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/database.py#L100)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L93)
 
 ``` python
 class TranscriptsDB(TranscriptsView)
@@ -287,7 +287,7 @@ class TranscriptsDB(TranscriptsView)
 connect  
 Connect to transcripts database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/database.py#L21)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L21)
 
 ``` python
 @abc.abstractmethod
@@ -297,7 +297,7 @@ async def connect(self) -> None
 disconnect  
 Disconnect from transcripts database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/database.py#L26)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L26)
 
 ``` python
 @abc.abstractmethod
@@ -305,70 +305,51 @@ async def disconnect(self) -> None
 ```
 
 transcript_ids  
-Get transcript IDs matching conditions.
+Get transcript IDs matching query.
 
 Optimized method that returns only transcript IDs without loading full
-metadata. Default implementation uses select(), but subclasses can
-override for better performance.
+metadata.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/database.py#L46)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L46)
 
 ``` python
 @abc.abstractmethod
-async def transcript_ids(
-    self,
-    where: list[Condition] | None = None,
-    limit: int | None = None,
-    shuffle: bool | int = False,
-    order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
-) -> dict[str, str | None]
+async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]
 ```
 
-`where` list\[[Condition](transcript.qmd#condition)\] \| None  
-Condition(s) to filter by.
-
-`limit` int \| None  
-Maximum number to return.
-
-`shuffle` bool \| int  
-Randomly shuffle results (pass `int` for reproducible seed).
-
-`order_by` list\[tuple\[str, Literal\['ASC', 'DESC'\]\]\] \| None  
-List of (column_name, direction) tuples for ordering.
+`query` Query \| None  
+Query with where/limit/shuffle/order_by criteria.
 
 select  
-Select transcripts matching a condition.
+Select transcripts matching query.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/database.py#L71)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L61)
 
 ``` python
 @abc.abstractmethod
-def select(
-    self,
-    where: list[Condition] | None = None,
-    limit: int | None = None,
-    shuffle: bool | int = False,
-    order_by: list[tuple[str, Literal["ASC", "DESC"]]] | None = None,
-) -> AsyncIterator[TranscriptInfo]
+def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]
 ```
 
-`where` list\[[Condition](transcript.qmd#condition)\] \| None  
-Condition(s) to select for.
+`query` Query \| None  
+Query with where/limit/shuffle/order_by criteria.
 
-`limit` int \| None  
-Maximum number to select.
+count  
+Count transcripts matching query.
 
-`shuffle` bool \| int  
-Randomly shuffle transcripts selected (pass `int` for reproducible
-seed).
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L70)
 
-`order_by` list\[tuple\[str, Literal\['ASC', 'DESC'\]\]\] \| None  
-List of (column_name, direction) tuples for ordering.
+``` python
+@abc.abstractmethod
+async def count(self, query: Query | None = None) -> int
+```
+
+`query` Query \| None  
+Query with where criteria (limit/shuffle/order_by ignored).
 
 read  
 Read transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/database.py#L89)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L82)
 
 ``` python
 @abc.abstractmethod
@@ -384,7 +365,7 @@ Content to read (messages, events, etc.)
 insert  
 Insert transcripts into database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/database/database.py#L103)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/database/database.py#L96)
 
 ``` python
 @abc.abstractmethod
@@ -410,7 +391,7 @@ Supports various predicate functions including `like()`, `not_like()`,
 `between()`, etc. Additionally supports standard python equality and
 comparison operators (e.g. `==`, ’\>\`, etc.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L546)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L31)
 
 ``` python
 class Column
@@ -421,7 +402,7 @@ class Column
 in\_  
 Check if value is in a list.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L588)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L73)
 
 ``` python
 def in_(self, values: list[Any]) -> Condition
@@ -432,7 +413,7 @@ def in_(self, values: list[Any]) -> Condition
 not_in  
 Check if value is not in a list.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L592)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L77)
 
 ``` python
 def not_in(self, values: list[Any]) -> Condition
@@ -443,7 +424,7 @@ def not_in(self, values: list[Any]) -> Condition
 like  
 SQL LIKE pattern matching (case-sensitive).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L596)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L81)
 
 ``` python
 def like(self, pattern: str) -> Condition
@@ -454,7 +435,7 @@ def like(self, pattern: str) -> Condition
 not_like  
 SQL NOT LIKE pattern matching (case-sensitive).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L600)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L85)
 
 ``` python
 def not_like(self, pattern: str) -> Condition
@@ -468,7 +449,7 @@ PostgreSQL ILIKE pattern matching (case-insensitive).
 Note: For SQLite and DuckDB, this will use LIKE with LOWER() for
 case-insensitivity.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L604)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L89)
 
 ``` python
 def ilike(self, pattern: str) -> Condition
@@ -482,7 +463,7 @@ PostgreSQL NOT ILIKE pattern matching (case-insensitive).
 Note: For SQLite and DuckDB, this will use NOT LIKE with LOWER() for
 case-insensitivity.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L611)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L96)
 
 ``` python
 def not_ilike(self, pattern: str) -> Condition
@@ -493,7 +474,7 @@ def not_ilike(self, pattern: str) -> Condition
 is_null  
 Check if value is NULL.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L618)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L103)
 
 ``` python
 def is_null(self) -> Condition
@@ -502,7 +483,7 @@ def is_null(self) -> Condition
 is_not_null  
 Check if value is not NULL.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L622)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L107)
 
 ``` python
 def is_not_null(self) -> Condition
@@ -511,7 +492,7 @@ def is_not_null(self) -> Condition
 between  
 Check if value is between two values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L626)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L111)
 
 ``` python
 def between(self, low: Any, high: Any) -> Condition
@@ -526,7 +507,7 @@ Upper bound (inclusive). If None, raises ValueError.
 not_between  
 Check if value is not between two values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L640)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/column.py#L125)
 
 ``` python
 def not_between(self, low: Any, high: Any) -> Condition
@@ -542,7 +523,7 @@ Upper bound (inclusive). If None, raises ValueError.
 
 WHERE clause condition that can be combined with others.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L70)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/condition.py#L44)
 
 ``` python
 class Condition(BaseModel)
@@ -570,7 +551,7 @@ SQL parameters extracted from the condition for parameterized queries.
 to_sql  
 Generate SQL WHERE clause and parameters.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L137)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_query/condition.py#L111)
 
 ``` python
 def to_sql(
@@ -598,7 +579,7 @@ c["column_name"]
 c["nested.json.path"]
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L657)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/columns.py#L43)
 
 ``` python
 class Columns
@@ -672,7 +653,7 @@ filter = c.model == "gpt-4"
 filter = (c.task_set == "math") & (c.epochs > 1)
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/columns.py#L769)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/columns.py#L155)
 
 ``` python
 columns = Columns()
@@ -686,7 +667,7 @@ Provides typed properties for standard Inspect log columns while
 preserving the ability to access custom fields through the base Metadata
 class methods.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/log.py#L16)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/log.py#L16)
 
 ``` python
 class LogColumns(Columns)
@@ -810,7 +791,7 @@ filter = (c.task_set == "math") & (c.epochs > 1)
 filter = c["custom_field"] > 100
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/ef599245fdebbdd31efe07d7cf5333f9a4155cbb/src/inspect_scout/_transcript/log.py#L146)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/32a351f837d12f16db6922a8a0e2f30e67cd51b1/src/inspect_scout/_transcript/log.py#L146)
 
 ``` python
 log_columns = LogColumns()

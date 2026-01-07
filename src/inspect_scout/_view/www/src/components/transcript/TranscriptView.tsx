@@ -5,10 +5,10 @@ import { VirtuosoHandle } from "react-virtuoso";
 import { useStore } from "../../state/store";
 import { Event } from "../../types/api-types";
 
+import { useEventNodes } from "./hooks/useEventNodes";
 import styles from "./TranscriptView.module.css";
 import { TranscriptVirtualList } from "./TranscriptVirtualList";
 import { flatTree } from "./transform/flatten";
-import { useEventNodes } from "./transform/hooks";
 import { EventNode, EventType, kTranscriptCollapseScope } from "./types";
 
 interface TranscriptViewProps {

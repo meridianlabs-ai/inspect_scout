@@ -11,7 +11,8 @@ import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Status } from "../../../../types/api-types";
 import { basename } from "../../../../utils/path";
-import { useScanResultSummaries, useScanRoute } from "../../../hooks";
+import { useScanResultSummaries } from "../../../hooks/useScanResultSummaries";
+import { useScanRoute } from "../../../hooks/useScanRoute";
 import { ScanResultSummary, SortColumn } from "../../../types";
 import {
   resultIdentifier,

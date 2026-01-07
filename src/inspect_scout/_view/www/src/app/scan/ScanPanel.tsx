@@ -7,7 +7,7 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { useSelectedScan } from "../hooks";
+import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useServerScansDir, useServerScans } from "../server/hooks";
 
 import styles from "./ScanPanel.module.css";

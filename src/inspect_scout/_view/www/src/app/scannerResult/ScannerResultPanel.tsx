@@ -12,12 +12,10 @@ import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
-import {
-  useScanRoute,
-  useSelectedScan,
-  useSelectedScanResultData,
-  useSelectedScanResultInputData,
-} from "../hooks";
+import { useScanRoute } from "../hooks/useScanRoute";
+import { useSelectedScan } from "../hooks/useSelectedScan";
+import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
+import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
 import { useServerScansDir } from "../server/hooks";
 
 import { ErrorPanel } from "./error/ErrorPanel";

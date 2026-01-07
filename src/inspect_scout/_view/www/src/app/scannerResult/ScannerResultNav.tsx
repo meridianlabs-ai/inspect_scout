@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApplicationIcons } from "../../components/icons";
 import { scanResultRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import { useScanRoute } from "../hooks";
+import { useScanRoute } from "../hooks/useScanRoute";
 import { IdentifierInfo, resultIdentifier } from "../utils/results";
 
 import styles from "./ScannerResultNav.module.css";

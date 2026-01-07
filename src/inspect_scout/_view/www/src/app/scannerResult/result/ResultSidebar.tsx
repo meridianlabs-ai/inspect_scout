@@ -7,7 +7,7 @@ import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { Explanation } from "../../components/Explanation";
 import { ValidationResult } from "../../components/ValidationResult";
 import { Value } from "../../components/Value";
-import { useSelectedScanResultInputData } from "../../hooks";
+import { useSelectedScanResultInputData } from "../../hooks/useSelectedScanResultInputData";
 import { ScanResultData } from "../../types";
 import { useMarkdownRefs } from "../../utils/refs";
 

@@ -2,6 +2,8 @@
 
 - LLM Scanner: Add `value_to_float` option to for converting model reported values to numeric.
 - Projects: Support local project config in `scout.local.yaml`.
+- Transcripts: Enable use of SQL for specifying filters.
+- Transcripts: Add `filter` field to scan job and project config.
 - Rename `--results` option to `--scans`. 
 
 ## 0.4.5 (03 January 2026)

@@ -162,7 +162,12 @@ class ScanJob:
 
         # realize transcripts
         if config.transcripts is not None:
-            kwargs["transcripts"] = transcripts_from(config.transcripts)
+            transcripts = transcripts_from(config.transcripts)
+        for filter in (
+            config.filter if isinstance(config.filter, list) else [config.filter]
+        ):
+            transcripts = transcripts.where(filter)
+        kwargs["transcripts"] = transcripts
 
         # realize validation
         if config.validation is not None:
@@ -522,6 +527,7 @@ def merge_project_into_scanjob(proj: "ProjectConfig", scanjob: ScanJob) -> None:
         scanjob: The ScanJob to merge into (modified in place).
     """
     _apply_simple_fallbacks(proj, scanjob)
+    _merge_transcripts(proj, scanjob)
     _merge_worklist(proj, scanjob)
     _merge_scanners(proj, scanjob)
     _merge_validation(proj, scanjob)
@@ -550,10 +556,6 @@ def _merge_model(proj: "ProjectConfig", scanjob: ScanJob) -> None:
 
 def _apply_simple_fallbacks(proj: "ProjectConfig", scanjob: ScanJob) -> None:
     """Apply project values as fallbacks for simple fields."""
-    # Transcripts - convert string to Transcripts object
-    if scanjob._transcripts is None and proj.transcripts is not None:
-        scanjob._transcripts = transcripts_from(proj.transcripts)
-
     # Results
     if scanjob._scans is None and proj.scans is not None:
         scanjob._scans = proj.scans
@@ -576,6 +578,14 @@ def _apply_simple_fallbacks(proj: "ProjectConfig", scanjob: ScanJob) -> None:
 
     if scanjob._log_level is None and proj.log_level is not None:
         scanjob._log_level = proj.log_level
+
+
+def _merge_transcripts(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    # Transcripts - convert string to Transcripts object and apply filter
+    if scanjob._transcripts is None and proj.transcripts is not None:
+        scanjob._transcripts = transcripts_from(proj.transcripts)
+        for filter in proj.filter if isinstance(proj.filter, list) else [proj.filter]:
+            scanjob._transcripts = scanjob._transcripts.where(filter)
 
 
 def _merge_worklist(proj: "ProjectConfig", scanjob: ScanJob) -> None:

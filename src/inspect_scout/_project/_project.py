@@ -1,14 +1,19 @@
 """Project detection, loading, and global state management."""
 
+import os
 from pathlib import Path
 
 from inspect_ai._util.config import read_config_object
 from inspect_ai._util.error import PrerequisiteError
-from inspect_ai._util.file import file
+from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.path import pretty_path
 from jsonschema import Draft7Validator
 
-from inspect_scout._util.constants import DEFAULT_SCANS_DIR, DEFAULT_TRANSCRIPTS_DIR
+from inspect_scout._util.constants import (
+    DEFAULT_SCANS_DIR,
+    DEFAULT_TRANSCRIPTS_DIR,
+    DFEAULT_LOGS_DIR,
+)
 
 from .merge import merge_configs
 from .types import ProjectConfig
@@ -191,10 +196,15 @@ def create_default_project() -> ProjectConfig:
 def default_transcripts_dir() -> str | None:
     if Path(DEFAULT_TRANSCRIPTS_DIR).is_dir():
         return DEFAULT_TRANSCRIPTS_DIR
-    elif Path("./logs").is_dir():
-        return "./logs"
     else:
-        return None
+        # inspect logs
+        inspect_logs = os.environ.get("INSPECT_LOG_DIR", DFEAULT_LOGS_DIR)
+        fs = filesystem(inspect_logs)
+        if fs.exists(inspect_logs):
+            return inspect_logs
+
+    # none found
+    return None
 
 
 def find_git_root(path: Path) -> Path | None:

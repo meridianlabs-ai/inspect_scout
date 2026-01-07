@@ -65,6 +65,13 @@ def condition_as_sql(condition: Condition) -> str:
     return _build_sql(condition)
 
 
+def conditions_as_filter(conditions: list[Condition] | None) -> list[str] | None:
+    if conditions is not None:
+        return [condition_as_sql(c) for c in conditions]
+    else:
+        return None
+
+
 def _build_sql(condition: Condition) -> str:
     """Recursively build SQL string from condition."""
     if condition.is_compound:
@@ -172,15 +179,12 @@ def _format_column(column_name: str) -> str:
     segments = _parse_json_path_segments(column_name)
     result_parts: list[str] = []
 
-    for i, (segment, is_array_index) in enumerate(segments):
+    for segment, is_array_index in segments:
         if is_array_index:
             # Array index - use bracket notation
             result_parts.append(f"[{segment}]")
         else:
             # Object key - use dot notation (with quoting if needed)
-            if i > 0 and not (result_parts and result_parts[-1].endswith("]")):
-                # Add dot separator (unless previous was array index)
-                pass  # dot will be added when joining
             if _needs_quoting(segment):
                 result_parts.append(f'"{_escape_identifier(segment)}"')
             else:
@@ -227,14 +231,20 @@ def _parse_json_path_segments(path: str) -> list[tuple[str, bool]]:
                 i += 1
 
         elif ch == '"':
-            # Quoted identifier
+            # Quoted identifier - handle doubled quotes ("") as escape
             j = i + 1
             key_chars: list[str] = []
-            while j < n and path[j] != '"':
-                if path[j] == "\\" and j + 1 < n:
+            while j < n:
+                if path[j] == '"':
+                    # Check for doubled quote (escaped)
+                    if j + 1 < n and path[j + 1] == '"':
+                        key_chars.append('"')  # Add single quote to result
+                        j += 2  # Skip both quotes
+                    else:
+                        break  # End of quoted identifier
+                else:
+                    key_chars.append(path[j])
                     j += 1
-                key_chars.append(path[j])
-                j += 1
             segments.append(("".join(key_chars), False))
             i = j + 1
             # Skip trailing dot if present
@@ -481,9 +491,7 @@ def _preprocess_json_paths(sql: str) -> str:
                 # Function call - don't convert
                 result.append(sql[i:end_pos])
                 i = end_pos
-            elif "." in ident_chain or any(
-                "." in p for p in _parse_identifier_chain(ident_chain)
-            ):
+            elif "." in ident_chain or "[" in ident_chain:
                 # JSON path - convert to json_extract_string
                 parts = _parse_identifier_chain(ident_chain)
                 if len(parts) > 1:
@@ -528,11 +536,15 @@ def _match_identifier_chain(sql: str, start: int) -> tuple[str, int] | None:
     while i < n:
         # Match one identifier (quoted or unquoted)
         if sql[i] == '"':
-            # Quoted identifier
+            # Quoted identifier - handle doubled quotes ("") as escape
             j = i + 1
-            while j < n and sql[j] != '"':
-                if sql[j] == "\\" and j + 1 < n:
-                    j += 2
+            while j < n:
+                if sql[j] == '"':
+                    # Check for doubled quote (escaped)
+                    if j + 1 < n and sql[j + 1] == '"':
+                        j += 2  # Skip both quotes
+                    else:
+                        break  # End of quoted identifier
                 else:
                     j += 1
             if j < n:

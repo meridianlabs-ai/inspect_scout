@@ -205,6 +205,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         self._fs: AsyncFilesystem | None = None
 
     async def connect(self) -> None:
+        # Skip if already connected
         if self._conn is not None:
             return
 
@@ -229,6 +230,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                     f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
                 )
             else:
+                # No cache key (DataFrame input) - use anonymous memory db
                 self._conn = sqlite3.connect(":memory:")
 
             df.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")

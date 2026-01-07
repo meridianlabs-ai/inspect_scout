@@ -107,7 +107,10 @@ def samples_df_with_caching(
         for (path, etag), df in zip(cache_misses, miss_dfs, strict=True):
             _put_cached_df(kvstore, path, etag, df)
 
-    return pd.concat(cache_hits + miss_dfs, ignore_index=True)
+    all_dfs = [df for df in cache_hits + miss_dfs if not df.empty]
+    if not all_dfs:
+        return pd.DataFrame()
+    return pd.concat(all_dfs, ignore_index=True)
 
 
 def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:

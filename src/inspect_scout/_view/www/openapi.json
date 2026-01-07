@@ -794,7 +794,7 @@
         "title": "ChatMessageUser",
         "type": "object"
       },
-      "Condition-Input": {
+      "Condition": {
         "description": "WHERE clause condition that can be combined with others.",
         "properties": {
           "is_compound": {
@@ -808,7 +808,7 @@
                 "type": "string"
               },
               {
-                "$ref": "#/components/schemas/Condition-Input"
+                "$ref": "#/components/schemas/Condition"
               },
               {
                 "type": "null"
@@ -833,172 +833,7 @@
           "right": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Condition-Input"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    {
-                      "format": "date",
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "maxItems": 2,
-                "minItems": 2,
-                "prefixItems": [
-                  {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "format": "date-time",
-                        "type": "string"
-                      },
-                      {
-                        "format": "date",
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "format": "date-time",
-                        "type": "string"
-                      },
-                      {
-                        "format": "date",
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                ],
-                "type": "array"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Right"
-          }
-        },
-        "required": [
-          "is_compound"
-        ],
-        "title": "Condition",
-        "type": "object"
-      },
-      "Condition-Output": {
-        "description": "WHERE clause condition that can be combined with others.",
-        "properties": {
-          "is_compound": {
-            "default": false,
-            "title": "Is Compound",
-            "type": "boolean"
-          },
-          "left": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "$ref": "#/components/schemas/Condition-Output"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Left"
-          },
-          "operator": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Operator"
-              },
-              {
-                "$ref": "#/components/schemas/LogicalOperator"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Operator"
-          },
-          "right": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Condition-Output"
+                "$ref": "#/components/schemas/Condition"
               },
               {
                 "items": {
@@ -4354,20 +4189,6 @@
       "ScanTranscripts": {
         "description": "Transcripts targeted by a scan.",
         "properties": {
-          "conditions": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/Condition-Output"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Conditions"
-          },
           "count": {
             "default": 0,
             "title": "Count",
@@ -4397,6 +4218,20 @@
               }
             ],
             "title": "Fields"
+          },
+          "filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter"
           },
           "location": {
             "anyOf": [
@@ -4569,7 +4404,7 @@
           "filter": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Condition-Input"
+                "$ref": "#/components/schemas/Condition"
               },
               {
                 "type": "null"
@@ -6788,7 +6623,7 @@
           "filter": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Condition-Input"
+                "$ref": "#/components/schemas/Condition"
               },
               {
                 "type": "null"

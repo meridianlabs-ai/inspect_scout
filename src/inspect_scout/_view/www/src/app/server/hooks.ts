@@ -59,8 +59,7 @@ export const useConfig = (): AppConfig => {
 };
 
 /** Returns the server's configured scans directory. */
-export const useServerScansDir = (): string | undefined =>
-  useConfig().scans_dir ?? undefined;
+export const useServerScansDir = (): string => useConfig().scans_dir;
 
 /** Returns transcripts dir for use in components after data loaded globally. */
 export const useServerTranscriptsDir = (): string | undefined | null =>

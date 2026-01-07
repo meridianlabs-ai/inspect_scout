@@ -29,10 +29,12 @@ import {
   scansRoute,
 } from "./router/url";
 import { useStore } from "./state/store";
+import { AppConfig } from "./types/api-types";
 import { getEmbeddedScanState } from "./utils/embeddedState";
 
 export interface AppRouterConfig {
   mode: "scans" | "workbench";
+  config: AppConfig;
 }
 
 // Creates a layout component that handles embedded state and tracks route changes
@@ -178,8 +180,8 @@ const ScanOrScanResultsRoute = () => {
   return <ScanPanel />;
 };
 
-export const createAppRouter = (config: AppRouterConfig) => {
-  const AppLayout = createAppLayout(config);
+export const createAppRouter = (appRouterConfig: AppRouterConfig) => {
+  const AppLayout = createAppLayout(appRouterConfig);
 
   return createHashRouter(
     [
@@ -189,7 +191,16 @@ export const createAppRouter = (config: AppRouterConfig) => {
         children: [
           {
             index: true,
-            element: <Navigate to="/scans" replace />,
+            element: (
+              <Navigate
+                to={
+                  appRouterConfig.config.transcripts_dir
+                    ? "/transcripts"
+                    : "/scans"
+                }
+                replace
+              />
+            ),
           },
           {
             path: kScansRootRouteUrlPattern,

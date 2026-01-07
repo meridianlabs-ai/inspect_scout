@@ -553,7 +553,7 @@ const optimalColumnLayout = (
   }
 
   const hasValidations = scannerSummaries.some(
-    (s) => s.validationResult !== undefined
+    (s) => s.validationResult !== undefined && s.validationResult !== null
   );
   if (hasValidations) {
     columns.push("validations");

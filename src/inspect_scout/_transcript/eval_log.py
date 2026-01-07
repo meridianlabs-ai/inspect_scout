@@ -143,18 +143,11 @@ class EvalLogTranscriptsReader(TranscriptsReader):
 
     @override
     async def snapshot(self) -> ScanTranscripts:
-        # get the subset of the transcripts df that matches our current query
-        df = self._db._transcripts_df
-        sample_ids = [item.transcript_id async for item in self.index()]
-        df = df[df["sample_id"].isin(sample_ids)]
-
-        transcript_ids = df["sample_id"].to_list()
-        logs = df["log"].to_list()
-
+        transcript_ids = await self._db.transcript_ids(self._query)
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_EVAL_LOG,
             conditions=self._query.where if self._query.where else None,
-            transcript_ids=dict(zip(transcript_ids, logs, strict=True)),
+            transcript_ids=transcript_ids,
         )
 
 
@@ -179,6 +172,14 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
 
 
 class EvalLogTranscriptsView(TranscriptsView):
+    """Read-only view of eval log transcripts backed by SQLite.
+
+    All queries operate on an in-memory SQLite database. The input (Logs or
+    DataFrame) is converted to SQLite on first connect(). This conversion is
+    cached using named in-memory databases with shared cache, so subsequent
+    connections to the same logs reuse the existing database.
+    """
+
     def __init__(
         self,
         logs: Logs | pd.DataFrame,
@@ -188,15 +189,14 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         # pandas required
         verify_df_prerequisites()
-        import pandas as pd
 
-        # resolve logs or df to transcript_df (sample per row)
-        if not isinstance(logs, pd.DataFrame):
-            self._cache_key: str | None = _compute_cache_key_from_logs(logs)
-            self._transcripts_df = _index_logs(logs)
+        # store input for deferred processing in connect()
+        if isinstance(logs, pd.DataFrame):
+            self._cache_key: str | None = None
+            self._logs_input: Logs | pd.DataFrame = logs
         else:
-            self._cache_key = None
-            self._transcripts_df = logs
+            self._cache_key = _compute_cache_key_from_logs(logs)
+            self._logs_input = logs
 
         # sqlite connection (starts out none)
         self._conn: sqlite3.Connection | None = None
@@ -205,19 +205,22 @@ class EvalLogTranscriptsView(TranscriptsView):
         self._fs: AsyncFilesystem | None = None
 
     async def connect(self) -> None:
-        # Skip if already connected
         if self._conn is not None:
             return
 
         if self._cache_key and self._cache_key in _sqlite_cache:
-            # Connect to existing named in-memory db (already populated)
+            # L2 cache hit - connect to existing named in-memory db
             self._conn = sqlite3.connect(
                 f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
             )
         else:
-            # Create new db and populate it
+            # Cache miss - build DataFrame and populate SQLite
+            if isinstance(self._logs_input, pd.DataFrame):
+                df = self._logs_input
+            else:
+                df = _index_logs(self._logs_input)
+
             if self._cache_key:
-                # Named in-memory db with shared cache
                 self._conn = sqlite3.connect(
                     f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
                 )
@@ -226,12 +229,9 @@ class EvalLogTranscriptsView(TranscriptsView):
                     f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
                 )
             else:
-                # No cache key (DataFrame input) - use anonymous memory db
                 self._conn = sqlite3.connect(":memory:")
 
-            self._transcripts_df.to_sql(
-                TRANSCRIPTS, self._conn, index=False, if_exists="replace"
-            )
+            df.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")
 
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
@@ -368,9 +368,14 @@ class EvalLogTranscriptsView(TranscriptsView):
 
     @override
     async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
-        id_, epoch = self._transcripts_df[
-            self._transcripts_df["sample_id"] == t.transcript_id
-        ].iloc[0][["id", "epoch"]]
+        assert self._conn is not None
+        cursor = self._conn.execute(
+            f"SELECT id, epoch FROM {TRANSCRIPTS} WHERE sample_id = ?",
+            (t.transcript_id,),
+        )
+        row = cursor.fetchone()
+        assert row is not None
+        id_, epoch = row
         sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
 
         if not self._fs:

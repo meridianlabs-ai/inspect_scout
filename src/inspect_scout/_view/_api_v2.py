@@ -317,9 +317,7 @@ def v2_api_app(
             edge = results[-1] if body.pagination.direction == "forward" else results[0]
             next_cursor = build_scans_cursor(edge, ctx.order_columns)
 
-        return ScansResponse(
-            items=results, total_count=count, next_cursor=next_cursor
-        )
+        return ScansResponse(items=results, total_count=count, next_cursor=next_cursor)
 
     @app.get(
         "/scans/{scan}",

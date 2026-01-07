@@ -1,5 +1,6 @@
 import io
 import json
+import warnings
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from os import PathLike
@@ -110,7 +111,9 @@ def samples_df_with_caching(
     all_dfs = [df for df in cache_hits + miss_dfs if not df.empty]
     if not all_dfs:
         return pd.DataFrame()
-    return pd.concat(all_dfs, ignore_index=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        return pd.concat(all_dfs, ignore_index=True)
 
 
 def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:

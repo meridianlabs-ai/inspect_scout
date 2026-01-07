@@ -5,7 +5,7 @@ import type { Condition, OrderByModel } from "../query";
 import {
   AppConfig,
   Pagination,
-  ScanJobsResponse,
+  ScansResponse,
   Status,
   Transcript,
   TranscriptsResponse,
@@ -26,7 +26,7 @@ export interface ScanApi {
     filter?: Condition,
     orderBy?: OrderByModel | OrderByModel[],
     pagination?: Pagination
-  ): Promise<ScanJobsResponse>;
+  ): Promise<ScansResponse>;
   getScan(scanLocation: string): Promise<Status>;
   getScannerDataframe(
     scanLocation: string,

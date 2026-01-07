@@ -4104,82 +4104,6 @@
         "title": "SandboxEvent",
         "type": "object"
       },
-      "ScanJobsRequest": {
-        "properties": {
-          "filter": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Condition-Input"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "order_by": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/OrderBy"
-              },
-              {
-                "items": {
-                  "$ref": "#/components/schemas/OrderBy"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Order By"
-          },
-          "pagination": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Pagination"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "title": "ScanJobsRequest",
-        "type": "object"
-      },
-      "ScanJobsResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/Status"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          },
-          "total_count": {
-            "title": "Total Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total_count"
-        ],
-        "title": "ScanJobsResponse",
-        "type": "object"
-      },
       "ScanOptions": {
         "description": "Options used for scan.",
         "properties": {
@@ -4638,6 +4562,82 @@
           "model_usage"
         ],
         "title": "ScannerSummary",
+        "type": "object"
+      },
+      "ScansRequest": {
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderBy"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OrderBy"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order By"
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pagination"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ScansRequest",
+        "type": "object"
+      },
+      "ScansResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Status"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "ScansResponse",
         "type": "object"
       },
       "Score": {
@@ -7088,17 +7088,17 @@
         "summary": "Get application configuration"
       }
     },
-    "/scanjobs": {
+    "/scans": {
       "post": {
         "description": "Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
-        "operationId": "scans_scanjobs_post",
+        "operationId": "scans_scans_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "anyOf": [
                   {
-                    "$ref": "#/components/schemas/ScanJobsRequest"
+                    "$ref": "#/components/schemas/ScansRequest"
                   },
                   {
                     "type": "null"
@@ -7114,7 +7114,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanJobsResponse"
+                  "$ref": "#/components/schemas/ScansResponse"
                 }
               }
             },
@@ -7124,10 +7124,10 @@
         "summary": "List scans"
       }
     },
-    "/scanjobs/{scan}": {
+    "/scans/{scan}": {
       "get": {
         "description": "Returns detailed status and metadata for a single scan.",
-        "operationId": "scan_scanjobs__scan__get",
+        "operationId": "scan_scans__scan__get",
         "parameters": [
           {
             "description": "Scan path (base64url-encoded)",
@@ -7156,10 +7156,10 @@
         "summary": "Get scan status"
       }
     },
-    "/scanjobs/{scan}/{scanner}": {
+    "/scans/{scan}/{scanner}": {
       "get": {
         "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.",
-        "operationId": "scan_df_scanjobs__scan___scanner__get",
+        "operationId": "scan_df_scans__scan___scanner__get",
         "parameters": [
           {
             "description": "Scan path (base64url-encoded)",
@@ -7197,10 +7197,10 @@
         "summary": "Get scanner dataframe containing results for all transcripts"
       }
     },
-    "/scanjobs/{scan}/{scanner}/{uuid}/input": {
+    "/scans/{scan}/{scanner}/{uuid}/input": {
       "get": {
         "description": "Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.",
-        "operationId": "scanner_input_scanjobs__scan___scanner___uuid__input_get",
+        "operationId": "scanner_input_scans__scan___scanner___uuid__input_get",
         "parameters": [
           {
             "description": "Scan path (base64url-encoded)",

@@ -1,4 +1,4 @@
-"""Tests for /scanjobs endpoint pagination support."""
+"""Tests for /scans endpoint pagination support."""
 
 from datetime import datetime
 from typing import AsyncIterator
@@ -39,7 +39,7 @@ def _create_test_status(
     return Status(
         complete=complete,
         spec=spec,
-        location=f"/path/to/scanjobs/scan_id={scan_id}",
+        location=f"/path/to/scans/scan_id={scan_id}",
         summary=Summary(scanners=scanners),
         errors=[],
     )
@@ -77,10 +77,10 @@ async def mock_scan_jobs_view() -> AsyncIterator[DuckDBScanJobsView]:
 
 
 class TestScansEndpointPagination:
-    """Tests for /scanjobs endpoint with pagination support."""
+    """Tests for /scans endpoint with pagination support."""
 
     def test_scans_post_returns_response_structure(self, tmp_path: str) -> None:
-        """Verify POST /scanjobs returns items, total_count, next_cursor."""
+        """Verify POST /scans returns items, total_count, next_cursor."""
         client = TestClient(v2_api_app(results_dir="/tmp"))
 
         async def empty_select(query: object = None) -> AsyncIterator[Status]:
@@ -98,7 +98,7 @@ class TestScansEndpointPagination:
             mock_view.__aexit__ = AsyncMock(return_value=None)
             mock_factory.return_value = mock_view
 
-            response = client.post("/scanjobs", json={})
+            response = client.post("/scans", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -120,7 +120,7 @@ class TestScansEndpointPagination:
             "inspect_scout._view._api_v2.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
-            response = client.post("/scanjobs", json={})
+            response = client.post("/scans", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -140,7 +140,7 @@ class TestScansEndpointPagination:
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scanjobs",
+                "/scans",
                 json={"filter": {"left": "complete", "operator": "=", "right": True}},
             )
 
@@ -162,7 +162,7 @@ class TestScansEndpointPagination:
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scanjobs",
+                "/scans",
                 json={"order_by": {"column": "timestamp", "direction": "DESC"}},
             )
 
@@ -186,7 +186,7 @@ class TestScansEndpointPagination:
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scanjobs",
+                "/scans",
                 json={
                     "pagination": {"limit": 3, "cursor": None, "direction": "forward"}
                 },
@@ -211,7 +211,7 @@ class TestScansEndpointPagination:
         ):
             # First page
             response1 = client.post(
-                "/scanjobs",
+                "/scans",
                 json={
                     "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
                     "order_by": {"column": "scan_id", "direction": "ASC"},
@@ -226,7 +226,7 @@ class TestScansEndpointPagination:
 
             # Second page using cursor
             response2 = client.post(
-                "/scanjobs",
+                "/scans",
                 json={
                     "pagination": {
                         "limit": 3,
@@ -258,7 +258,7 @@ class TestScansEndpointPagination:
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scanjobs",
+                "/scans",
                 json={
                     "filter": {"left": "complete", "operator": "=", "right": True},
                     "pagination": {"limit": 2, "cursor": None, "direction": "forward"},

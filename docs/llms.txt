@@ -5,6 +5,7 @@
 ## Using Scout
 
 - [Welcome](https://meridianlabs-ai.github.io/inspect_scout/index.html.md): Installation and tutorial on basic usage.
+- [Examples](https://meridianlabs-ai.github.io/inspect_scout/examples.html.md): Example implementations for various types of scanners.
 - [Workflow](https://meridianlabs-ai.github.io/inspect_scout/workflow.html.md): End to end workflow for transcript analysis projects.
 - [Projects](https://meridianlabs-ai.github.io/inspect_scout/projects.html.md): Using projects to manage scanning configuration.
 - [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/transcripts.html.md): Reading and filtering transcripts for scanning.

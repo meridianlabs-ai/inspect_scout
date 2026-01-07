@@ -291,15 +291,18 @@ def _extract_column(node: dict[str, Any]) -> str:
     Handles:
     - Simple column references
     - json_extract_string function calls (converts back to dot notation)
+    - STRUCT_EXTRACT operators (DuckDB's representation of field access)
+    - ARRAY_EXTRACT operators (DuckDB's representation of array indexing)
     """
     node_class = node.get("class", "")
     node_type = node.get("type", "")
 
     if node_class == "COLUMN_REF":
-        # Simple column reference
+        # Simple column reference - may have multiple parts (e.g., config.items)
         column_names = node.get("column_names", [])
         if column_names:
-            return str(column_names[-1])  # Last part is the column name
+            # Join all parts with dots for multi-part column references
+            return ".".join(str(name) for name in column_names)
         raise ValueError("COLUMN_REF missing column_names")
 
     if node_class == "FUNCTION":
@@ -324,6 +327,29 @@ def _extract_column(node: dict[str, Any]) -> str:
                 "",
                 func_name,
             )
+
+    # Handle STRUCT_EXTRACT (DuckDB's representation of .field access)
+    if node_class == "OPERATOR" and node_type == "STRUCT_EXTRACT":
+        children = node.get("children", [])
+        if len(children) >= 2:
+            base = _extract_column(children[0])
+            field = _extract_value(children[1])
+            if isinstance(field, str):
+                return f"{base}.{field}"
+        raise ValueError("Invalid STRUCT_EXTRACT structure")
+
+    # Handle ARRAY_EXTRACT (DuckDB's representation of [index] access)
+    if node_class == "OPERATOR" and node_type == "ARRAY_EXTRACT":
+        children = node.get("children", [])
+        if len(children) >= 2:
+            base = _extract_column(children[0])
+            index = _extract_value(children[1])
+            if isinstance(index, int):
+                return f"{base}[{index}]"
+            elif isinstance(index, str):
+                # String index is object key access (e.g., config['items'])
+                return f"{base}.{index}"
+        raise ValueError("Invalid ARRAY_EXTRACT structure")
 
     # Handle cast expressions - extract the inner value
     if node_class == "CAST":

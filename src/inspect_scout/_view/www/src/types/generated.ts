@@ -442,38 +442,18 @@ export interface components {
          * Condition
          * @description WHERE clause condition that can be combined with others.
          */
-        "Condition-Input": {
+        Condition: {
             /**
              * Is Compound
              * @default false
              */
             is_compound: boolean;
             /** Left */
-            left?: string | components["schemas"]["Condition-Input"] | null;
+            left?: string | components["schemas"]["Condition"] | null;
             /** Operator */
             operator?: components["schemas"]["Operator"] | components["schemas"]["LogicalOperator"] | null;
             /** Right */
-            right?: components["schemas"]["Condition-Input"] | (string | number | boolean | null)[] | [
-                string | number | boolean | null,
-                string | number | boolean | null
-            ] | string | number | boolean | null;
-        };
-        /**
-         * Condition
-         * @description WHERE clause condition that can be combined with others.
-         */
-        "Condition-Output": {
-            /**
-             * Is Compound
-             * @default false
-             */
-            is_compound: boolean;
-            /** Left */
-            left?: string | components["schemas"]["Condition-Output"] | null;
-            /** Operator */
-            operator?: components["schemas"]["Operator"] | components["schemas"]["LogicalOperator"] | null;
-            /** Right */
-            right?: components["schemas"]["Condition-Output"] | (string | number | boolean | null)[] | [
+            right?: components["schemas"]["Condition"] | (string | number | boolean | null)[] | [
                 string | number | boolean | null,
                 string | number | boolean | null
             ] | string | number | boolean | null;
@@ -1855,8 +1835,6 @@ export interface components {
          * @description Transcripts targeted by a scan.
          */
         ScanTranscripts: {
-            /** Conditions */
-            conditions?: components["schemas"]["Condition-Output"][] | null;
             /**
              * Count
              * @default 0
@@ -1866,6 +1844,8 @@ export interface components {
             data?: string | null;
             /** Fields */
             fields?: components["schemas"]["TranscriptField"][] | null;
+            /** Filter */
+            filter?: string[] | null;
             /** Location */
             location?: string | null;
             /** Transcript Ids */
@@ -1941,7 +1921,7 @@ export interface components {
         };
         /** ScansRequest */
         ScansRequest: {
-            filter?: components["schemas"]["Condition-Input"] | null;
+            filter?: components["schemas"]["Condition"] | null;
             /** Order By */
             order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
             pagination?: components["schemas"]["Pagination"] | null;
@@ -2810,7 +2790,7 @@ export interface components {
         };
         /** TranscriptsRequest */
         TranscriptsRequest: {
-            filter?: components["schemas"]["Condition-Input"] | null;
+            filter?: components["schemas"]["Condition"] | null;
             /** Order By */
             order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
             pagination?: components["schemas"]["Pagination"] | null;

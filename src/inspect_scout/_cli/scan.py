@@ -1,4 +1,3 @@
-import os
 from logging import getLogger
 from typing import Any, Literal, TypeVar, cast
 
@@ -14,18 +13,22 @@ from inspect_ai._cli.util import (
 from inspect_ai._util.config import resolve_args
 from inspect_ai._util.constants import DEFAULT_CACHE_DAYS
 from inspect_ai._util.error import PrerequisiteError
-from inspect_ai._util.file import filesystem
 from inspect_ai._util.logger import warn_once
-from inspect_ai.log._file import list_eval_logs
 from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig, Model
 from typing_extensions import Unpack
 
+from inspect_scout._project._project import init_project, project
 from inspect_scout._validation import validation_set
 from inspect_scout._validation.predicates import PREDICATES, ValidationPredicate
 from inspect_scout._validation.types import ValidationSet
 
 from .._scan import scan
-from .._scanjob import ScanJob, scanjob_from_cli_spec, scanjob_from_file
+from .._scanjob import (
+    ScanJob,
+    merge_project_into_scanjob,
+    scanjob_from_cli_spec,
+    scanjob_from_file,
+)
 from .._scanner.scanner import scanners_from_file
 from .._transcript.factory import transcripts_from
 from .._util.constants import (
@@ -145,6 +148,14 @@ class ScanGroup(click.Group):
     type=str,
     envvar="SCOUT_SCAN_TRANSCRIPTS",
     help="One or more transcript sources (e.g. -T ./logs)",
+)
+@click.option(
+    "-F",
+    "--filter",
+    multiple=True,
+    type=str,
+    envvar="SCOUT_SCAN_FILTER",
+    help="One or more transcript filters (e.g. -F \"task_set = 'cybench'\")",
 )
 @click.option(
     "--scans",
@@ -349,6 +360,7 @@ def scan_command(
     ctx: click.Context,
     s: tuple[str, ...],
     transcripts: tuple[str, ...],
+    filter: tuple[str, ...],
     scans: str | None,
     results: str | None,
     worklist: str | None,
@@ -427,20 +439,18 @@ def scan_command(
             else:
                 scanjob = ScanJob(transcripts=None, scanners=scanners)
 
-    # resolve transcripts (could be from ScanJob)
-    tx = transcripts_from(transcripts) if len(transcripts) > 0 else None
-    tx = resolve_scan_option(ctx, "transcripts", tx, scanjob.transcripts)
-    if tx is None:
-        # see if we can auto-discover transcripts from inspect logs
-        inspect_log_dir = os.environ.get("INSPECT_LOG_DIR", "./logs")
-        fs = filesystem(inspect_log_dir)
-        if fs.exists(inspect_log_dir) and len(list_eval_logs(inspect_log_dir)) > 0:
-            tx = transcripts_from(inspect_log_dir)
+    # need to resolve project against scanjob here so it can override env vars
+    init_project()
+    merge_project_into_scanjob(project(), scanjob)
 
-    if tx is None:
-        raise PrerequisiteError(
-            "No transcripts specified for scanning (pass as --transcripts or include in @scanjob)"
-        )
+    # resolve transcripts from cli/env (apply filter)
+    tx = transcripts_from(transcripts) if len(transcripts) > 0 else None
+    if tx is not None:
+        for f in filter:
+            tx = tx.where(f)
+
+    # tx might have been from env so enable it to be overridden by project/scanjob
+    tx = resolve_scan_option(ctx, "transcripts", tx, scanjob.transcripts)
 
     # resolve some options
     scans = resolve_scan_option(ctx, "scans", scans, scanjob.scans)

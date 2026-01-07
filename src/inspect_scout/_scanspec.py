@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Type
 
 from inspect_ai.model._model_config import ModelConfig
 from pydantic import (
@@ -7,11 +7,12 @@ from pydantic import (
     ConfigDict,
     Field,
     field_serializer,
+    model_validator,
 )
 from shortuuid import uuid
 from typing_extensions import Literal, NotRequired, Required, TypedDict
 
-from inspect_scout._query.condition import Condition
+from inspect_scout._query.condition_sql import condition_as_sql
 from inspect_scout._validation.types import ValidationSet
 
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
@@ -93,8 +94,11 @@ class ScanTranscripts(BaseModel):
     location: str | None = Field(default=None)
     """Location of transcript collection (e.g. database location)."""
 
-    conditions: list[Condition] | None = Field(default=None)
-    """Selection criteria for transcripts."""
+    filter: list[str] | None = Field(default=None)
+    """Filter (SQL WHERE clauses) applied to transcripts for scan.
+
+    Note that `transcript_ids` already reflects the filter so it need not be re-applied.
+    """
 
     transcript_ids: dict[str, str | None] = Field(default_factory=dict)
     """IDs of transcripts mapped to optional location hints.
@@ -115,6 +119,17 @@ class ScanTranscripts(BaseModel):
 
     data: str | None = Field(default=None)
     """Transcript data as a csv (deprecated)"""
+
+    # migrate 'conditions' to 'filter'
+    @model_validator(mode="before")
+    @classmethod
+    def convert_results_to_scans(cls: Type["ScanTranscripts"], values: Any) -> Any:
+        if not isinstance(values, dict):
+            return values
+        if values.get("conditions", None) is not None:
+            values["filter"] = [condition_as_sql(c) for c in values["conditions"]]
+
+        return values
 
 
 class Worklist(BaseModel):

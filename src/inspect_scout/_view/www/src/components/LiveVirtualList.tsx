@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Components, Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
-import { usePrevious, useProperty } from "../state/hooks";
+import { useProperty } from "../state/hooks/useProperty";
 import { useRafThrottle, useVirtuosoState } from "../state/scrolling";
 
 import { ExtendedFindFn, useExtendedFind } from "./ExtendedFindContext";
@@ -329,3 +329,6 @@ export const LiveVirtualList = <T,>({
     />
   );
 };
+function usePrevious(live: boolean | undefined) {
+  throw new Error("Function not implemented.");
+}

@@ -53,12 +53,10 @@ export const parseScanResultData = async (
     parseJson(filtered.get("scan_tags", 0) as string),
     parseJson(filtered.get("scanner_params", 0) as string),
     parseJson(filtered.get("transcript_metadata", 0) as string),
-    typeof filtered.get("validation_result", 0) === "string"
-      ? parseJson(filtered.get("validation_result", 0))
-      : Promise.resolve(filtered.get("validation_result", 0)),
-    typeof filtered.get("validation_target", 0) === "string"
-      ? parseJsonValue(filtered.get("validation_target", 0))
-      : Promise.resolve(filtered.get("validation_target", 0)),
+    tryParseJson<boolean | Record<string, boolean>>(
+      filtered.get("validation_result", 0)
+    ),
+    tryParseJson<JsonValue>(filtered.get("validation_target", 0)),
     parseSimpleValue(filtered.get("value", 0), valueType),
     transcript_agent_args_raw
       ? parseJson(transcript_agent_args_raw)
@@ -211,12 +209,8 @@ export const parseScanResultSummaries = async (
         messageReferences,
         value,
       ] = await Promise.all([
-        typeof r.validation_result === "string"
-          ? parseJson(r.validation_result)
-          : Promise.resolve(r.validation_result),
-        typeof r.validation_target === "string"
-          ? parseJson(r.validation_target)
-          : Promise.resolve(r.validation_target),
+        tryParseJson<boolean | Record<string, boolean>>(r.validation_result),
+        tryParseJson<JsonValue>(r.validation_target),
         parseJson<Record<string, JsonValue>>(r.transcript_metadata as string),
         parseJson(r.event_references as string),
         parseJson(r.message_references as string),
@@ -229,8 +223,8 @@ export const parseScanResultSummaries = async (
         explanation: r.explanation as string,
         eventReferences: eventReferences as ScanResultReference[],
         messageReferences: messageReferences as ScanResultReference[],
-        validationResult: validationResult as boolean | Record<string, boolean>,
-        validationTarget: validationTarget as boolean | Record<string, boolean>,
+        validationResult: validationResult,
+        validationTarget: validationTarget,
         value: value ?? null,
         valueType,
         transcriptTaskSet: r.transcript_task_set as string | undefined,
@@ -285,6 +279,14 @@ function resolveTranscriptPropertiesFromMetadata<
 
 const parseJson = async <T>(text: string | null): Promise<T | undefined> =>
   text !== null ? asyncJsonParse<T>(text) : undefined;
+
+const tryParseJson = async <T>(text: unknown): Promise<T> => {
+  try {
+    return await asyncJsonParse<T>(text as string);
+  } catch {
+    return text as T;
+  }
+};
 
 type ValueType = "string" | "number" | "boolean" | "null" | "array" | "object";
 

@@ -41,6 +41,7 @@ const createAppLayout = (config: AppRouterConfig) => {
     const navigate = useNavigate();
     const selectedScanner = useStore((state) => state.selectedScanner);
     const setSingleFileMode = useStore((state) => state.setSingleFileMode);
+    const singleFileMode = useStore((state) => state.singleFileMode);
     const hasInitializedEmbeddedData = useStore(
       (state) => state.hasInitializedEmbeddedData
     );
@@ -143,7 +144,7 @@ const createAppLayout = (config: AppRouterConfig) => {
     const content = <Outlet />;
     return (
       <AppErrorBoundary>
-        {config.mode === "workbench" ? (
+        {config.mode === "workbench" && !singleFileMode ? (
           <ActivityBarLayout>{content}</ActivityBarLayout>
         ) : (
           content

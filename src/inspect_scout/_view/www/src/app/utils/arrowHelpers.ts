@@ -25,6 +25,7 @@ export const parseScanResultData = async (
     0
   );
 
+  // Note that validation_result and validation_target will always a JSON deserializable string as of Jan 7 2026, but prior to this it could be stored as a boolean directly. This conditionality deals with that.
   const [
     eventReferences,
     inputIds,
@@ -52,16 +53,16 @@ export const parseScanResultData = async (
     parseJson(filtered.get("scan_tags", 0) as string),
     parseJson(filtered.get("scanner_params", 0) as string),
     parseJson(filtered.get("transcript_metadata", 0) as string),
-    parseJson(filtered.get("validation_result", 0) as string),
-    parseJson(filtered.get("validation_target", 0) as string),
+    tryParseJson<boolean | Record<string, boolean>>(
+      filtered.get("validation_result", 0)
+    ),
+    tryParseJson<JsonValue>(filtered.get("validation_target", 0)),
     parseSimpleValue(filtered.get("value", 0), valueType),
     transcript_agent_args_raw
       ? parseJson(transcript_agent_args_raw)
       : Promise.resolve(undefined),
     transcript_score_raw !== null && transcript_score_raw !== undefined
-      ? isJson(transcript_score_raw)
-        ? parseJson<JsonValue>(transcript_score_raw)
-        : transcript_score_raw
+      ? parseJsonValue(transcript_score_raw)
       : Promise.resolve(undefined),
   ]);
 
@@ -176,8 +177,8 @@ export const parseScanResultData = async (
     transcriptTotalTokens,
     transcriptError,
     transcriptLimit,
-    validationResult: validationResult as boolean | Record<string, boolean>,
-    validationTarget: validationTarget as boolean | Record<string, boolean>,
+    validationResult,
+    validationTarget,
     value: value ?? null,
     valueType,
   };
@@ -199,6 +200,7 @@ export const parseScanResultSummaries = async (
 
       const valueType = r.value_type as ValueType;
 
+      // Note that validation_result and validation_target will always a JSON deserializable string as of Jan 7 2026, but prior to this it could be stored as a boolean directly. This conditionality deals with that.
       const [
         validationResult,
         validationTarget,
@@ -207,8 +209,8 @@ export const parseScanResultSummaries = async (
         messageReferences,
         value,
       ] = await Promise.all([
-        parseJson(r.validation_result as string),
-        parseJson(r.validation_target as string),
+        tryParseJson<boolean | Record<string, boolean>>(r.validation_result),
+        tryParseJson<JsonValue>(r.validation_target),
         parseJson<Record<string, JsonValue>>(r.transcript_metadata as string),
         parseJson(r.event_references as string),
         parseJson(r.message_references as string),
@@ -221,8 +223,8 @@ export const parseScanResultSummaries = async (
         explanation: r.explanation as string,
         eventReferences: eventReferences as ScanResultReference[],
         messageReferences: messageReferences as ScanResultReference[],
-        validationResult: validationResult as boolean | Record<string, boolean>,
-        validationTarget: validationTarget as boolean | Record<string, boolean>,
+        validationResult: validationResult,
+        validationTarget: validationTarget,
         value: value ?? null,
         valueType,
         transcriptTaskSet: r.transcript_task_set as string | undefined,
@@ -278,6 +280,14 @@ function resolveTranscriptPropertiesFromMetadata<
 const parseJson = async <T>(text: string | null): Promise<T | undefined> =>
   text !== null ? asyncJsonParse<T>(text) : undefined;
 
+const tryParseJson = async <T>(text: unknown): Promise<T> => {
+  try {
+    return await asyncJsonParse<T>(text as string);
+  } catch {
+    return text as T;
+  }
+};
+
 type ValueType = "string" | "number" | "boolean" | "null" | "array" | "object";
 
 const parseSimpleValue = (
@@ -289,6 +299,18 @@ const parseSimpleValue = (
   valueType === "object" || valueType === "array"
     ? parseJson<object | unknown[]>(val as string)
     : Promise.resolve(val as string | number | boolean | null);
+
+const parseJsonValue = (val?: unknown): Promise<JsonValue | undefined> => {
+  if (!val) {
+    return Promise.resolve(undefined);
+  }
+
+  if (typeof val === "string" && isJson(val)) {
+    return parseJson<JsonValue>(val).then((parsed) => parsed as JsonValue);
+  } else {
+    return Promise.resolve(val as JsonValue);
+  }
+};
 
 function getOptionalColumn<T>(
   table: ColumnTable,

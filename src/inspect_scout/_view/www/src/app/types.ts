@@ -46,7 +46,7 @@ export interface ScanResultSummary {
 
   // Validation
   validationResult: boolean | Record<string, boolean>;
-  validationTarget: boolean | Record<string, boolean>;
+  validationTarget: JsonValue;
 
   // Value
   value: string | boolean | number | null | unknown[] | object;

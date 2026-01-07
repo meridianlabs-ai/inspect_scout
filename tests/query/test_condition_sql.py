@@ -174,10 +174,8 @@ class TestConditionAsSql:
         """Test quoted key containing a dot."""
         from inspect_scout._query import Condition, Operator
 
-        c = Condition(
-            left='config."key.with.dot"', operator=Operator.EQ, right="value"
-        )
-        assert condition_as_sql(c) == 'config."key.with.dot" = \'value\''
+        c = Condition(left='config."key.with.dot"', operator=Operator.EQ, right="value")
+        assert condition_as_sql(c) == "config.\"key.with.dot\" = 'value'"
 
 
 class TestConditionFromSql:

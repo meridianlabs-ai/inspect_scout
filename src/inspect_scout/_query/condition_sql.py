@@ -178,9 +178,7 @@ def _format_column(column_name: str) -> str:
             result_parts.append(f"[{segment}]")
         else:
             # Object key - use dot notation (with quoting if needed)
-            if i > 0 and not (
-                result_parts and result_parts[-1].endswith("]")
-            ):
+            if i > 0 and not (result_parts and result_parts[-1].endswith("]")):
                 # Add dot separator (unless previous was array index)
                 pass  # dot will be added when joining
             if _needs_quoting(segment):
@@ -250,7 +248,7 @@ def _parse_json_path_segments(path: str) -> list[tuple[str, bool]]:
         else:
             # Unquoted identifier
             j = i
-            while j < n and path[j] not in ".[]\"":
+            while j < n and path[j] not in '.[]"':
                 j += 1
             if j > i:
                 segments.append((path[i:j], False))

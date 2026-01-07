@@ -63,9 +63,7 @@ def _convert_expression(node: dict[str, Any]) -> Condition:
     if node_class == "BETWEEN":
         return _convert_between(node)
 
-    raise ValueError(
-        f"Unsupported expression class: {node_class}, type: {node_type}"
-    )
+    raise ValueError(f"Unsupported expression class: {node_class}, type: {node_type}")
 
 
 def _convert_comparison(node: dict[str, Any]) -> Condition:
@@ -246,9 +244,7 @@ def _convert_function(node: dict[str, Any]) -> Condition:
     operator = like_map.get(func_name)
     if operator is not None:
         if len(children) < 2:
-            raise ValueError(
-                f"LIKE function requires 2 children, got {len(children)}"
-            )
+            raise ValueError(f"LIKE function requires 2 children, got {len(children)}")
         column = _extract_column(children[0])
         pattern = _extract_value(children[1])
         return Condition(left=column, operator=operator, right=pattern)

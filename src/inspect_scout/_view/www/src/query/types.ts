@@ -8,10 +8,7 @@ export type OperatorModel = components["schemas"]["Operator"];
 export type LogicalOperatorModel = components["schemas"]["LogicalOperator"];
 
 /** JSON representation of a Condition (matches Python Pydantic schema). */
-export type ConditionModel =
-  // FastAPI does this Input/Output thing for recursive types.
-  | components["schemas"]["Condition-Input"]
-  | components["schemas"]["Condition-Output"];
+export type ConditionModel = components["schemas"]["Condition"];
 
 /** Scalar values that can be used in conditions (matching Python). */
 export type ScalarValue = string | number | boolean | null;

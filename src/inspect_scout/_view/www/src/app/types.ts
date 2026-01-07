@@ -115,7 +115,7 @@ export interface SortColumn {
 }
 
 export type ErrorScope =
-  | "scanjobs"
+  | "scans"
   | "scanner"
   | "dataframe"
   | "dataframe_input"

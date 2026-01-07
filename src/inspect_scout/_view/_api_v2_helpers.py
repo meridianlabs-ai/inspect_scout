@@ -178,7 +178,7 @@ def build_pagination_context(
     )
 
 
-def build_scanjobs_cursor(
+def build_scans_cursor(
     status: Status,
     order_columns: list[OrderBy],
 ) -> dict[str, Any]:

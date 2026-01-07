@@ -15,7 +15,7 @@ import { useApi } from "../../state/store";
 import {
   AppConfig,
   Status,
-  ScanJobsResponse,
+  ScansResponse,
   Transcript,
   TranscriptsResponse,
 } from "../../types/api-types";
@@ -72,11 +72,11 @@ export const useServerScans = (): AsyncData<Status[]> => {
   const queryClient = useQueryClient();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanjobs"],
+    queryKey: ["scans"],
     queryFn: async () => {
       const response = await api.getScans();
       for (const scan of response.items) {
-        queryClient.setQueryData(["scanjob", scan.location], scan);
+        queryClient.setQueryData(["scan", scan.location], scan);
       }
       return response.items;
     },
@@ -92,7 +92,7 @@ export const useServerScan = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanjob", location],
+    queryKey: ["scan", location],
     queryFn: () => api.getScan(location!), // The ! is safe because of enabled below
     enabled: !!location,
     staleTime: 10000,
@@ -110,7 +110,7 @@ export const useServerScanDataframe = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanjobDataframe", location, scanner],
+    queryKey: ["scanDataframe", location, scanner],
     queryFn: async () =>
       expandResultsetRows(
         decodeArrowBytes(await api.getScannerDataframe(location!, scanner!))
@@ -128,7 +128,7 @@ export const useServerScanDataframeInput = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanjobDataframeInput", location, scanner, uuid],
+    queryKey: ["scanDataframeInput", location, scanner, uuid],
     queryFn: () => api.getScannerDataframeInput(location!, scanner!, uuid!),
     enabled: !!location && !!scanner && !!uuid,
     staleTime: Infinity,
@@ -222,7 +222,7 @@ export const useServerScansInfinite = (
   filter?: Condition,
   sorting?: SortingState
 ): UseInfiniteQueryResult<
-  InfiniteData<ScanJobsResponse, CursorType | undefined>,
+  InfiniteData<ScansResponse, CursorType | undefined>,
   Error
 > => {
   const api = useApi();
@@ -233,13 +233,13 @@ export const useServerScansInfinite = (
   );
 
   return useInfiniteQuery<
-    ScanJobsResponse,
+    ScansResponse,
     Error,
-    InfiniteData<ScanJobsResponse, CursorType | undefined>,
+    InfiniteData<ScansResponse, CursorType | undefined>,
     QueryKey,
     CursorType | undefined
   >({
-    queryKey: ["scanjobs-infinite", filter, orderBy, pageSize],
+    queryKey: ["scans-infinite", filter, orderBy, pageSize],
     queryFn: async ({ pageParam }) => {
       const pagination = pageParam
         ? { limit: pageSize, cursor: pageParam, direction: "forward" as const }

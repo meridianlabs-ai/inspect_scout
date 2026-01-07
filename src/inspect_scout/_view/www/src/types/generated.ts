@@ -24,7 +24,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scanjobs": {
+    "/scans": {
         parameters: {
             query?: never;
             header?: never;
@@ -37,14 +37,14 @@ export interface paths {
          * List scans
          * @description Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
          */
-        post: operations["scans_scanjobs_post"];
+        post: operations["scans_scans_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/scanjobs/{scan}": {
+    "/scans/{scan}": {
         parameters: {
             query?: never;
             header?: never;
@@ -55,7 +55,7 @@ export interface paths {
          * Get scan status
          * @description Returns detailed status and metadata for a single scan.
          */
-        get: operations["scan_scanjobs__scan__get"];
+        get: operations["scan_scans__scan__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -64,7 +64,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scanjobs/{scan}/{scanner}": {
+    "/scans/{scan}/{scanner}": {
         parameters: {
             query?: never;
             header?: never;
@@ -75,7 +75,7 @@ export interface paths {
          * Get scanner dataframe containing results for all transcripts
          * @description Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.
          */
-        get: operations["scan_df_scanjobs__scan___scanner__get"];
+        get: operations["scan_df_scans__scan___scanner__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -84,7 +84,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scanjobs/{scan}/{scanner}/{uuid}/input": {
+    "/scans/{scan}/{scanner}/{uuid}/input": {
         parameters: {
             query?: never;
             header?: never;
@@ -95,7 +95,7 @@ export interface paths {
          * Get scanner input for a specific transcript
          * @description Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.
          */
-        get: operations["scanner_input_scanjobs__scan___scanner___uuid__input_get"];
+        get: operations["scanner_input_scans__scan___scanner___uuid__input_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1767,24 +1767,6 @@ export interface components {
             /** Working Start */
             working_start: number;
         };
-        /** ScanJobsRequest */
-        ScanJobsRequest: {
-            filter?: components["schemas"]["Condition-Input"] | null;
-            /** Order By */
-            order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
-            pagination?: components["schemas"]["Pagination"] | null;
-        };
-        /** ScanJobsResponse */
-        ScanJobsResponse: {
-            /** Items */
-            items: components["schemas"]["Status"][];
-            /** Next Cursor */
-            next_cursor?: {
-                [key: string]: unknown;
-            } | null;
-            /** Total Count */
-            total_count: number;
-        };
         /**
          * ScanOptions
          * @description Options used for scan.
@@ -1956,6 +1938,24 @@ export interface components {
             validations: (boolean | {
                 [key: string]: boolean;
             })[];
+        };
+        /** ScansRequest */
+        ScansRequest: {
+            filter?: components["schemas"]["Condition-Input"] | null;
+            /** Order By */
+            order_by?: components["schemas"]["OrderBy"] | components["schemas"]["OrderBy"][] | null;
+            pagination?: components["schemas"]["Pagination"] | null;
+        };
+        /** ScansResponse */
+        ScansResponse: {
+            /** Items */
+            items: components["schemas"]["Status"][];
+            /** Next Cursor */
+            next_cursor?: {
+                [key: string]: unknown;
+            } | null;
+            /** Total Count */
+            total_count: number;
         };
         /**
          * Score
@@ -2936,7 +2936,7 @@ export interface operations {
             };
         };
     };
-    scans_scanjobs_post: {
+    scans_scans_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2945,7 +2945,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["ScanJobsRequest"] | null;
+                "application/json": components["schemas"]["ScansRequest"] | null;
             };
         };
         responses: {
@@ -2955,12 +2955,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanJobsResponse"];
+                    "application/json": components["schemas"]["ScansResponse"];
                 };
             };
         };
     };
-    scan_scanjobs__scan__get: {
+    scan_scans__scan__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2983,7 +2983,7 @@ export interface operations {
             };
         };
     };
-    scan_df_scanjobs__scan___scanner__get: {
+    scan_df_scans__scan___scanner__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3008,7 +3008,7 @@ export interface operations {
             };
         };
     };
-    scanner_input_scanjobs__scan___scanner___uuid__input_get: {
+    scanner_input_scans__scan___scanner___uuid__input_get: {
         parameters: {
             query?: never;
             header?: never;

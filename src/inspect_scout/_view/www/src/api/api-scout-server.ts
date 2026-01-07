@@ -3,7 +3,7 @@ import type { Condition, OrderByModel } from "../query";
 import {
   AppConfig,
   Pagination,
-  ScanJobsResponse,
+  ScansResponse,
   Status,
   Transcript,
   TranscriptsResponse,
@@ -66,7 +66,7 @@ export const apiScoutServer = (
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",
-        `/scanjobs/${encodeBase64Url(scanLocation)}`
+        `/scans/${encodeBase64Url(scanLocation)}`
       );
 
       return asyncJsonParse<Status>(result.raw);
@@ -76,10 +76,10 @@ export const apiScoutServer = (
       filter?: Condition,
       orderBy?: OrderByModel | OrderByModel[],
       pagination?: Pagination
-    ): Promise<ScanJobsResponse> => {
+    ): Promise<ScansResponse> => {
       const result = await requestApi.fetchString(
         "POST",
-        `/scanjobs`,
+        `/scans`,
         {},
         JSON.stringify({
           filter: filter ?? null,
@@ -87,7 +87,7 @@ export const apiScoutServer = (
           pagination: pagination ?? null,
         })
       );
-      return asyncJsonParse<ScanJobsResponse>(result.raw);
+      return asyncJsonParse<ScansResponse>(result.raw);
     },
     getScannerDataframe: async (
       scanLocation: string,
@@ -95,7 +95,7 @@ export const apiScoutServer = (
     ): Promise<ArrayBuffer> => {
       return await requestApi.fetchBytes(
         "GET",
-        `/scanjobs/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
+        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
       );
     },
     getScannerDataframeInput: async (
@@ -106,7 +106,7 @@ export const apiScoutServer = (
       // Fetch the data
       const response = await requestApi.fetchType<Input>(
         "GET",
-        `/scanjobs/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
+        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
       const input = response.parsed;
 

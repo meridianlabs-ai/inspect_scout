@@ -68,7 +68,7 @@ class IPCSerializableResults(RecorderStatus):
         self.scanners = scanners
 
 
-ScanJobStatus: TypeAlias = RecorderStatus
+ScanStatus: TypeAlias = RecorderStatus
 
 
 @dataclass
@@ -88,14 +88,14 @@ class TranscriptsRequest(PaginatedRequest):
 
 
 @dataclass
-class ScanJobsRequest(PaginatedRequest):
+class ScansRequest(PaginatedRequest):
     """Request body for POST /scans endpoint."""
 
     pass
 
 
 @dataclass
-class ScanJobsResponse:
+class ScansResponse:
     """Response body for POST /scans endpoint."""
 
     items: list[RecorderStatus]

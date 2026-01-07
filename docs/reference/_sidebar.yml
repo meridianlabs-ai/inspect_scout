@@ -17,16 +17,14 @@ website:
           href: reference/scanning.qmd#scan_resume
         - text: scan_complete
           href: reference/scanning.qmd#scan_complete
-        - text: project
-          href: reference/scanning.qmd#project
-        - text: ProjectConfig
-          href: reference/scanning.qmd#projectconfig
         - text: scanjob
           href: reference/scanning.qmd#scanjob
         - text: ScanJob
           href: reference/scanning.qmd#scanjob
         - text: ScanJobConfig
           href: reference/scanning.qmd#scanjobconfig
+        - text: ProjectConfig
+          href: reference/scanning.qmd#projectconfig
         - text: ScannerSpec
           href: reference/scanning.qmd#scannerspec
         - text: ScannerWork

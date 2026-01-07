@@ -3,12 +3,12 @@ from copy import deepcopy
 from types import TracebackType
 from typing import AsyncIterator, Literal
 
-from inspect_scout._query import Query
-from inspect_scout._query.order_by import OrderBy
-from inspect_scout._validation.types import ValidationCase, ValidationSet
-
+from .._query import Query
 from .._query.condition import Condition
+from .._query.condition_sql import condition_from_sql
+from .._query.order_by import OrderBy
 from .._scanspec import ScanTranscripts
+from .._validation.types import ValidationCase, ValidationSet
 from .columns import Column
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
@@ -72,8 +72,8 @@ class Transcripts(abc.ABC):
     def __init__(self) -> None:
         self._query = Query()
 
-    def where(self, condition: Condition) -> "Transcripts":
-        """Filter the transcript collection by a `Condition`.
+    def where(self, condition: str | Condition) -> "Transcripts":
+        """Filter the transcript collection by a SQL WHERE clause or `Condition`.
 
         Args:
            condition: Filter condition.
@@ -82,6 +82,9 @@ class Transcripts(abc.ABC):
            Transcripts: Transcripts for scanning.
         """
         transcripts = deepcopy(self)
+        condition = (
+            condition_from_sql(condition) if isinstance(condition, str) else condition
+        )
         transcripts._query.where.append(condition)
         return transcripts
 

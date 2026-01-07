@@ -32,14 +32,14 @@ from .._transcript.types import Transcript, TranscriptContent
 from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
     build_pagination_context,
-    build_scanjobs_cursor,
+    build_scans_cursor,
     build_transcripts_cursor,
 )
 from ._api_v2_types import (
     AppConfig,
-    ScanJobsRequest,
-    ScanJobsResponse,
-    ScanJobStatus,
+    ScansRequest,
+    ScansResponse,
+    ScanStatus,
     TranscriptsRequest,
     TranscriptsResponse,
 )
@@ -169,7 +169,7 @@ def v2_api_app(
 
     async def _to_rest_scan(
         request: Request, scan: RecorderStatus, running_scans: set[str]
-    ) -> ScanJobStatus:
+    ) -> ScanStatus:
         return scan
 
     @app.get(
@@ -181,15 +181,12 @@ def v2_api_app(
     )
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
-        # resolve transcripts uri
         transcripts = project().transcripts
         transcripts = (
             UPath(transcripts).resolve().as_uri() if transcripts is not None else None
         )
         # resolve scans uri
         scans = UPath(project().scans or DEFAULT_SCANS_DIR).resolve().as_uri()
-
-        # return config
         return AppConfig(
             transcripts_dir=transcripts,
             scans_dir=scans,
@@ -274,7 +271,7 @@ def v2_api_app(
             return await view.read(infos[0], content)
 
     @app.post(
-        "/scanjobs",
+        "/scans",
         summary="List scans",
         description="Returns scans from the results directory. "
         "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
@@ -282,8 +279,8 @@ def v2_api_app(
     )
     async def scans(
         request: Request,
-        body: ScanJobsRequest | None = None,
-    ) -> ScanJobsResponse:
+        body: ScansRequest | None = None,
+    ) -> ScansResponse:
         """Filter scan jobs from the results directory."""
         validated_results_dir = _ensure_not_none(results_dir, "results_dir is required")
         await _validate_list(request, validated_results_dir)
@@ -305,7 +302,7 @@ def v2_api_app(
                 ]
         except InvalidInputException:
             # This will be raised when there are not scans in validated_results_dir
-            return ScanJobsResponse(items=[], total_count=0)
+            return ScansResponse(items=[], total_count=0)
 
         if ctx.needs_reverse:
             results = list(reversed(results))
@@ -318,15 +315,13 @@ def v2_api_app(
             and results
         ):
             edge = results[-1] if body.pagination.direction == "forward" else results[0]
-            next_cursor = build_scanjobs_cursor(edge, ctx.order_columns)
+            next_cursor = build_scans_cursor(edge, ctx.order_columns)
 
-        return ScanJobsResponse(
-            items=results, total_count=count, next_cursor=next_cursor
-        )
+        return ScansResponse(items=results, total_count=count, next_cursor=next_cursor)
 
     @app.get(
-        "/scanjobs/{scan}",
-        response_model=ScanJobStatus,
+        "/scans/{scan}",
+        response_model=ScanStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Get scan status",
         description="Returns detailed status and metadata for a single scan.",
@@ -334,7 +329,7 @@ def v2_api_app(
     async def scan(
         request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
-    ) -> ScanJobStatus:
+    ) -> ScanStatus:
         """Get detailed status for a single scan."""
         scan_path = UPath(decode_base64url(scan))
         if not scan_path.is_absolute():
@@ -362,7 +357,7 @@ def v2_api_app(
         return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
 
     @app.get(
-        "/scanjobs/{scan}/{scanner}",
+        "/scans/{scan}/{scanner}",
         summary="Get scanner dataframe containing results for all transcripts",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
         "Excludes input column for efficiency; use the input endpoint for input text.",
@@ -431,7 +426,7 @@ def v2_api_app(
         )
 
     @app.get(
-        "/scanjobs/{scan}/{scanner}/{uuid}/input",
+        "/scans/{scan}/{scanner}/{uuid}/input",
         summary="Get scanner input for a specific transcript",
         description="Returns the original input text for a specific scanner result. "
         "The input type is returned in the X-Input-Type response header.",

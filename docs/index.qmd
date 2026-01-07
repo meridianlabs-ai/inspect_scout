@@ -137,6 +137,15 @@ Use the `scout scan` command to run one or more scanners on a set of transcripts
 scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
+It's also possible to filter the transcripts to a subset using `-F` (or `--filter`):
+
+``` bash
+scout scan scanner.py \
+   -T ./logs \
+   -F "task_set='cybench'" \
+   --model openai/gpt-5
+```
+
 The `-T` argument indicates which transcripts to scan (in this case a local Inspect log directory). You can also scan from a [transcripts database](transcripts.qmd#transcripts-database) that is either local or on S3. For example, here we scan some W&B Weave transcripts stored on S3:
 
 ``` bash
@@ -144,6 +153,7 @@ scout scan scanner.py \
    -T s3://weave-rollouts/cybench \
    --model openai/gpt-5
 ```
+
 
 Note that when we using a model that requires an API  key you'll need to provide it in the enviroment (e.g. `OPENAI_API_KEY`). As with Inspect AI, you can use a [.env file](https://inspect.aisi.org.uk/options.html#env-files) for providing API keys.
 
@@ -242,6 +252,7 @@ scanners:
     file: scanner.py
 
 transcripts: logs
+filter: task_set='cybench'
 
 model: openai/gpt-5
 ```
@@ -252,7 +263,7 @@ Which can be executed with:
 scout scan scan.yaml
 ```
 
-Note that if you had a scout.yaml [project file](#projects) defining the `transcripts` and `model` for your project, you could exclude them from your scan job as they will be automatically merged from the project.
+Note that if you had a scout.yaml [project file](#projects) defining the `transcripts`, `filter`, and `model` for your project, you could exclude them from your scan job as they will be automatically merged from the project.
 
 ## Scan Results
 

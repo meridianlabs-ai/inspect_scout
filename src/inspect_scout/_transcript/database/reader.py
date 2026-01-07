@@ -7,6 +7,7 @@ from typing_extensions import override
 
 from inspect_scout._query import Query
 from inspect_scout._query.condition import Condition
+from inspect_scout._query.condition_sql import conditions_as_filter
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
@@ -81,7 +82,7 @@ class TranscriptsViewReader(TranscriptsReader):
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_DATABASE,
             location=self._location,
-            conditions=self._where,
+            filter=conditions_as_filter(self._where),
             # Empty query - filtering was done at database creation time
             transcript_ids=await self._view.transcript_ids(Query()),
         )

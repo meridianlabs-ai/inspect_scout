@@ -2,11 +2,7 @@ import JSON5 from "json5";
 
 import { Input, InputType } from "../app/types";
 import { Condition } from "../query/types";
-import {
-  Status,
-  ScanJobsResponse,
-  TranscriptsResponse,
-} from "../types/api-types";
+import { Status, ScansResponse, TranscriptsResponse } from "../types/api-types";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
@@ -78,7 +74,7 @@ export const apiVscode = (
         );
       }
     },
-    getScans: async (): Promise<ScanJobsResponse> => {
+    getScans: async (): Promise<ScansResponse> => {
       const data = await fetchScansData();
       return {
         items: data.scans,

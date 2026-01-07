@@ -17,6 +17,9 @@ class ScanJobConfig(BaseModel):
     transcripts: str | None = Field(default=None)
     """Trasnscripts to scan."""
 
+    filter: str | list[str] = Field(default_factory=list)
+    """SQL WHERE clause(s) for filtering transcripts."""
+
     scanners: list[ScannerSpec] | dict[str, ScannerSpec] | None = Field(default=None)
     """Scanners to apply to transcripts."""
 

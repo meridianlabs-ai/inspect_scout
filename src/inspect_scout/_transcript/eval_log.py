@@ -47,6 +47,7 @@ from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
+from inspect_scout._query.condition_sql import conditions_as_filter
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
@@ -146,7 +147,7 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         transcript_ids = await self._db.transcript_ids(self._query)
         return ScanTranscripts(
             type=TRANSCRIPT_SOURCE_EVAL_LOG,
-            conditions=self._query.where if self._query.where else None,
+            filter=conditions_as_filter(self._query.where),
             transcript_ids=transcript_ids,
         )
 

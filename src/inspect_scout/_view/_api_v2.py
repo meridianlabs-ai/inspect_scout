@@ -181,9 +181,15 @@ def v2_api_app(
     )
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
+        transcripts = project().transcripts
+        transcripts = (
+            UPath(transcripts).resolve().as_uri() if transcripts is not None else None
+        )
+        # resolve scans uri
+        scans = UPath(project().scans or DEFAULT_SCANS_DIR).resolve().as_uri()
         return AppConfig(
-            transcripts_dir=project().transcripts,
-            scans_dir=project().scans or DEFAULT_SCANS_DIR,
+            transcripts_dir=transcripts,
+            scans_dir=scans,
         )
 
     @app.post(

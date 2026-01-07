@@ -289,7 +289,10 @@ class FileRecorder(ScanRecorder):
 
         # enumerate the scanners
         scanners = [
-            file.stem for file in sorted(UPath(scan_location, use_listings_cache=False).glob("*.parquet"))
+            file.stem
+            for file in sorted(
+                UPath(scan_location, use_listings_cache=False).glob("*.parquet")
+            )
         ]
 
         return _ScanResultsArrowFiles(

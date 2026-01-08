@@ -1,7 +1,7 @@
 import { ColumnTable } from "arquero";
 
 import { AsyncData } from "../../utils/asyncData";
-import { useServerScanDataframe } from "../server/hooks";
+import { useServerScanDataframe } from "../server/useServerScanDataframe";
 
 import { useScanRoute } from "./useScanRoute";
 import { useSelectedScanner } from "./useSelectedScanner";

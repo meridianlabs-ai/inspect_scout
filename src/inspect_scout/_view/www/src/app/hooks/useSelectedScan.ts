@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useStore } from "../../state/store";
 import { Status } from "../../types/api-types";
 import { AsyncData } from "../../utils/asyncData";
-import { useServerScan } from "../server/hooks";
+import { useServerScan } from "../server/useServerScan";
 
 import { useScanRoute } from "./useScanRoute";
 

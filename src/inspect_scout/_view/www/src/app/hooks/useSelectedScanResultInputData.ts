@@ -1,5 +1,5 @@
 import { AsyncData } from "../../utils/asyncData";
-import { useServerScanDataframeInput } from "../server/hooks";
+import { useServerScanDataframeInput } from "../server/useServerScanDataframeInput";
 import { ScanResultInputData } from "../types";
 
 import { useScanRoute } from "./useScanRoute";

@@ -6,7 +6,8 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { useServerTranscriptsDir, useServerTranscript } from "../server/hooks";
+import { useConfig } from "../server/useConfig";
+import { useServerTranscript } from "../server/useServerTranscript";
 import { useTranscriptDirParams } from "../utils/router";
 
 import { TranscriptBody } from "./TranscriptBody";
@@ -19,7 +20,8 @@ export const TranscriptPanel: FC = () => {
   const routeTranscriptsDir = useTranscriptDirParams();
 
   // Server transcripts directory
-  const transcriptsDir = useServerTranscriptsDir();
+  const config = useConfig();
+  const transcriptsDir = config.transcripts_dir;
   const {
     loading,
     data: transcript,

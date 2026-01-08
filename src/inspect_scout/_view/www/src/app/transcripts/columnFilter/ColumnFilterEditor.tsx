@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { ChangeEvent, FC, KeyboardEvent, useCallback } from "react";
 
 import type { OperatorModel } from "../../../query";
@@ -68,6 +69,11 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
 
   return (
     <div className={styles.filterContent} onKeyDown={handleKeyDown}>
+      <div
+        className={clsx(styles.filterRow, styles.columnId, "text-size-small")}
+      >
+        {columnId}
+      </div>
       <div className={styles.filterRow}>
         <select
           id={`${columnId}-op`}
@@ -117,6 +123,19 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             ref={valueInputRef}
           />
         )}
+      </div>
+      <div className={styles.filterRow}>
+        <button
+          className={clsx(
+            "btn",
+            "btn-outline-primary",
+            styles.filterButton,
+            "text-size-small"
+          )}
+          onClick={onCommit}
+        >
+          Apply
+        </button>
       </div>
     </div>
   );

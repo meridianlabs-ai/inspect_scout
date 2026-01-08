@@ -147,6 +147,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="nav-link active" href="./index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./examples.html"> 
+<span class="menu-text">Examples</span></a>
+  </li>  
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Using</span>
@@ -270,6 +274,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="./index.html#scout-basics" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Scout Basics</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./examples.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Examples</span></a>
   </div>
 </li>
       </ul>
@@ -442,7 +452,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="installation" class="level3">
 <h3 class="anchored" data-anchor-id="installation">Installation</h3>
 <p>Install the <code>inspect_scout</code> package from GitHub with:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install git+https://github.com/meridianlabs-ai/inspect_scout</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install inspect-scout</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>You should also be sure to install the <a href="https://inspect.aisi.org.uk/vscode.html">Inspect AI VS Code Extension</a> which includes features for viewing and debugging Scout scans.</p>
 </section>
 </section>
@@ -746,8 +756,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The Scout scanning pipeline is optimized for parallel reading and scanning as well as minimal memory consumption. There are a few options you can use to tune parallelism:</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 30%">
-<col style="width: 70%">
+<col style="width: 35%">
+<col style="width: 65%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -775,6 +785,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="learning-more">Learning More</h2>
 <p>Above we provided a high-level tour of Scout features. See the following articles to learn more about using Scout:</p>
 <ul>
+<li><p><a href="./examples.html">Examples</a>: Example implementations of various types of scanners.</p></li>
 <li><p><a href="./projects.html">Projects</a>: Managing scanning configuration using project files.</p></li>
 <li><p><a href="./transcripts.html">Transcripts</a>: Reading and filtering transcripts for scanning.</p></li>
 <li><p><a href="./llm_scanner.html">LLM Scanner</a> and <a href="./grep_scanner.html">Grep Scanner</a>: Higher-level scanners for model and pattern-based scanning of transcripts.</p></li>

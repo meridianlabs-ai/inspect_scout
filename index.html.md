@@ -20,7 +20,7 @@ from any source) or by directly reading Inspect AI eval logs.
 Install the `inspect_scout` package from GitHub with:
 
 ``` bash
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
+pip install inspect-scout
 ```
 
 You should also be sure to install the [Inspect AI VS Code
@@ -503,6 +503,9 @@ you can use to tune parallelism:
 
 Above we provided a high-level tour of Scout features. See the following
 articles to learn more about using Scout:
+
+- [Examples](examples.qmd): Example implementations of various types of
+  scanners.
 
 - [Projects](projects.qmd): Managing scanning configuration using
   project files.

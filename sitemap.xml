@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/scanner.html</loc>
-    <lastmod>2026-01-08T19:06:06.801Z</lastmod>
+    <lastmod>2026-01-08T19:41:57.470Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/reference/index.html</loc>
@@ -46,11 +46,15 @@
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/CHANGELOG.html</loc>
-    <lastmod>2026-01-08T19:07:24.646Z</lastmod>
+    <lastmod>2026-01-08T19:41:57.465Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html</loc>
     <lastmod>2026-01-07T19:38:05.664Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/examples.html</loc>
+    <lastmod>2026-01-08T19:41:57.468Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/results.html</loc>
@@ -58,7 +62,7 @@
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
-    <lastmod>2026-01-08T19:06:06.801Z</lastmod>
+    <lastmod>2026-01-08T19:41:57.469Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>

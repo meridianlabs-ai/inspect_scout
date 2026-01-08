@@ -200,7 +200,7 @@ If you add this scanner to the same source file as the `ctf_environment()` scann
 
 See the [Scanners](scanners.qmd) article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.
 
-## Scout View
+## Viewing Scans
 
 Scout includes a viewer application for looking at scan results in depth. Run the viewer with:
 
@@ -216,7 +216,14 @@ By default this will view the scan results in the `./scans` directory of the cur
 scout view --scans s3://my-scan-results
 ```
 
-The Inspect AI VS Code Extension also includes integrated support for Scout view (e.g. viewing results by clicking links in the terminal, Scout activity bar, etc.).
+You can also list recent scans with the `scout scan list` command:
+
+```bash
+scout scan list
+```
+
+Scans will be listed from most to least recent. If you are running within VS Code you can click the scans in the list to view them in a VS Code editor. The VS Code Scout activity bar also includes a scans pane that lists recent scans.
+
 
 ## Scan Jobs
 

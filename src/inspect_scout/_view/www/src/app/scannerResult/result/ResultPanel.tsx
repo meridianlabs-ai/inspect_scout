@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { useSelectedScanResultInputData } from "../../hooks";
+import { useSelectedScanResultInputData } from "../../hooks/useSelectedScanResultInputData";
 import { ScanResultData } from "../../types";
 
 import { ResultBody } from "./ResultBody";

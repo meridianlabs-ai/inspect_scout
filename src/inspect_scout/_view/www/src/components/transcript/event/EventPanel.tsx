@@ -8,10 +8,10 @@ import {
   useState,
 } from "react";
 
-import { useProperty } from "../../../state/hooks";
+import { useProperty } from "../../../state/hooks/useProperty";
 import { CopyButton } from "../../CopyButton";
 import { ApplicationIcons } from "../../icons";
-import { useCollapseTranscriptEvent } from "../hooks";
+import { useCollapseTranscriptEvent } from "../hooks/useCollapseTranscriptEvent";
 import { kTranscriptCollapseScope } from "../types";
 
 import { EventNavs } from "./EventNavs";

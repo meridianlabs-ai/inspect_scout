@@ -7,7 +7,7 @@ import { parsePackageName } from "../../../utils/python";
 import { MetaDataGrid } from "../../content/MetaDataGrid";
 import { ApplicationIcons } from "../../icons";
 import { PulsingDots } from "../../PulsingDots";
-import { useCollapseTranscriptEvent } from "../hooks";
+import { useCollapseTranscriptEvent } from "../hooks/useCollapseTranscriptEvent";
 import { kSandboxSignalName } from "../transform/fixups";
 import { EventNode } from "../types";
 

@@ -9,7 +9,8 @@ import {
 } from "react";
 import { Components, Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
-import { usePrevious, useProperty } from "../state/hooks";
+import { usePreviousValue } from "../hooks/usePreviousValue";
+import { useProperty } from "../state/hooks/useProperty";
 import { useRafThrottle, useVirtuosoState } from "../state/scrolling";
 
 import { ExtendedFindFn, useExtendedFind } from "./ExtendedFindContext";
@@ -99,7 +100,7 @@ export const LiveVirtualList = <T,>({
 
   // Track whether we were previously running so we can
   // decide whether to pop up to the top
-  const prevLive = usePrevious(live);
+  const prevLive = usePreviousValue(live);
   useEffect(() => {
     // When we finish running, if we are following output
     // then scroll up to the top

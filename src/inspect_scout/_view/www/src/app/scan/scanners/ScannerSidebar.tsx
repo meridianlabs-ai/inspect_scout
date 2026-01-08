@@ -10,7 +10,7 @@ import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types/api-types";
 import { formatPercent, formatPrettyDecimal } from "../../../utils/format";
-import { useSelectedScanner } from "../../hooks";
+import { useSelectedScanner } from "../../hooks/useSelectedScanner";
 
 import styles from "./ScannerSidebar.module.css";
 

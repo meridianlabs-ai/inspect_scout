@@ -4,7 +4,8 @@ import { FC } from "react";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types/api-types";
 import { Footer } from "../../components/Footer";
-import { useSelectedScanDataframe, useSelectedScanner } from "../../hooks";
+import { useSelectedScanDataframe } from "../../hooks/useSelectedScanDataframe";
+import { useSelectedScanner } from "../../hooks/useSelectedScanner";
 
 import { ScannerResultsBody } from "./results/ScannerResultsBody";
 import styles from "./ScannerPanel.module.css";

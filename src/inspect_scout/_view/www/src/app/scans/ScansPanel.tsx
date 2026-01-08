@@ -7,7 +7,8 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { useServerScansDir, useServerScans } from "../server/hooks";
+import { useConfig } from "../server/useConfig";
+import { useServerScans } from "../server/useServerScans";
 
 import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
@@ -15,7 +16,8 @@ import styles from "./ScansPanel.module.css";
 export const ScansPanel: FC = () => {
   // Load scans data
   const { loading, error, data: scans } = useServerScans();
-  const resultsDir = useServerScansDir();
+  const config = useConfig();
+  const scanDir = config.scans_dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
   const userScansDir = useStore((state) => state.userScansDir);
   const setScanDir = useStore((state) => state.setUserScansDir);
@@ -29,7 +31,7 @@ export const ScansPanel: FC = () => {
   return (
     <div className={clsx(styles.container)}>
       <ScansNavbar
-        scansDir={userScansDir || resultsDir}
+        scansDir={userScansDir || scanDir}
         setScansDir={setScanDir}
         bordered={false}
       />
@@ -41,7 +43,7 @@ export const ScansPanel: FC = () => {
             error={{ message: error.message }}
           />
         )}
-        {scans && <ScansGrid scans={scans} resultsDir={resultsDir} />}
+        {scans && <ScansGrid scans={scans} resultsDir={scanDir} />}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

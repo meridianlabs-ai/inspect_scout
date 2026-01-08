@@ -1764,3 +1764,154 @@ async def test_exclude_clause_first_file_has_content(test_location: Path) -> Non
             assert len(transcript.messages) == 1
     finally:
         await db.disconnect()
+
+
+# Large Database Tests (batch size boundary)
+@pytest.mark.asyncio
+async def test_select_returns_all_rows_beyond_batch_size(test_location: Path) -> None:
+    """Verify select() returns all rows when count exceeds fetchmany batch size (1000).
+
+    This test ensures that the internal batch_size=1000 used in fetchmany()
+    doesn't limit the total number of results returned.
+    """
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Create 1500 transcripts (exceeds batch_size=1000)
+        transcripts = [
+            create_sample_transcript(
+                id=f"batch-{i:05d}",
+                source_id=f"src-{i // 100}",
+                metadata={"index": i},
+            )
+            for i in range(1500)
+        ]
+        await db.insert(transcripts)
+
+        # Count returned rows via select()
+        count = 0
+        async for _ in db.select(Query()):
+            count += 1
+
+        assert count == 1500, f"Expected 1500 transcripts from select(), got {count}"
+
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_transcript_ids_returns_all_beyond_batch_size(
+    test_location: Path,
+) -> None:
+    """Verify transcript_ids() returns all IDs when count exceeds 1000."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        # Create 1500 transcripts (exceeds batch_size=1000)
+        transcripts = [
+            create_sample_transcript(
+                id=f"ids-{i:05d}",
+                source_id=f"src-{i // 100}",
+                metadata={"index": i},
+            )
+            for i in range(1500)
+        ]
+        await db.insert(transcripts)
+
+        # Get all transcript IDs
+        transcript_ids = await db.transcript_ids(Query())
+
+        assert len(transcript_ids) == 1500, (
+            f"Expected 1500 transcript IDs, got {len(transcript_ids)}"
+        )
+
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_reader_index_returns_all_beyond_batch_size(test_location: Path) -> None:
+    """Verify reader.index() returns all transcripts when count exceeds 1000.
+
+    This tests the full read path through ParquetTranscripts -> TranscriptsViewReader.
+    """
+    # Insert via direct DB access
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        transcripts = [
+            create_sample_transcript(
+                id=f"reader-{i:05d}",
+                source_id=f"src-{i // 100}",
+                metadata={"index": i},
+            )
+            for i in range(1500)
+        ]
+        await db.insert(transcripts)
+    finally:
+        await db.disconnect()
+
+    # Now read via the Transcripts API
+    transcripts_obj = transcripts_from(str(test_location))
+    async with transcripts_obj.reader() as reader:
+        count = 0
+        async for _ in reader.index():
+            count += 1
+
+    assert count == 1500, f"Expected 1500 transcripts from reader.index(), got {count}"
+
+
+@pytest.mark.asyncio
+async def test_snapshot_restoration_with_large_transcript_count(
+    test_location: Path,
+) -> None:
+    """Verify snapshot restoration works correctly with >1000 transcripts.
+
+    This tests the transcripts_from_db_snapshot() path which creates a WHERE
+    clause with all transcript IDs.
+    """
+    from inspect_scout._scanspec import ScanTranscripts
+    from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
+    from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
+
+    # Insert transcripts via direct DB access
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+
+    try:
+        transcripts = [
+            create_sample_transcript(
+                id=f"snap-{i:05d}",
+                source_id=f"src-{i // 100}",
+                metadata={"index": i},
+            )
+            for i in range(1500)
+        ]
+        await db.insert(transcripts)
+
+        # Get transcript IDs for snapshot
+        transcript_ids = await db.transcript_ids(Query())
+        assert len(transcript_ids) == 1500
+    finally:
+        await db.disconnect()
+
+    # Create a snapshot with all transcript IDs
+    snapshot = ScanTranscripts(
+        type=TRANSCRIPT_SOURCE_DATABASE,
+        location=str(test_location),
+        transcript_ids=transcript_ids,
+    )
+
+    # Restore transcripts from snapshot
+    restored = transcripts_from_db_snapshot(snapshot)
+
+    # Verify all 1500 transcripts are accessible through the restored collection
+    async with restored.reader() as reader:
+        count = 0
+        async for _ in reader.index():
+            count += 1
+
+    assert count == 1500, f"Expected 1500 from snapshot restoration, got {count}"

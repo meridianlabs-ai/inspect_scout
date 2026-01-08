@@ -54,7 +54,8 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {
             references={refs}
             options={{ previewRefsOnHover: false }}
           />
-          {resultData.validationResult !== undefined ? (
+          {resultData.validationResult !== undefined &&
+          resultData.validationResult !== null ? (
             <div className={clsx(styles.validation)}>
               <div
                 className={clsx(

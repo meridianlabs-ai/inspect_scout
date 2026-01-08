@@ -3890,6 +3890,15 @@ so disabling selection can break that functionality */
   height: 100%;
   row-gap: 0;
 }
+._container_1db2y_1 {
+  border: solid red 1px;
+  height: 30px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  justify-content: start;
+  gap: 8px;
+}
 ._headerActions_6q7gm_1 {
   display: flex;
   align-items: center;
@@ -4130,13 +4139,13 @@ so disabling selection can break that functionality */
   margin-right: auto;
   margin-top: 3rem;
 }
-._container_omb0x_1 {
+._container_w24zj_1 {
   height: 100%;
   display: grid;
-  grid-template-rows: max-content max-content 1fr max-content;
+  grid-template-rows: max-content max-content max-content 1fr max-content;
 }
 
-._panel_omb0x_7 {
+._panel_w24zj_7 {
   display: grid;
   grid-template-columns: max-content 1fr;
 }

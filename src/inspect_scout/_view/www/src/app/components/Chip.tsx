@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { forwardRef } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
 
@@ -11,25 +11,19 @@ interface ChipProps {
   value: string;
   title?: string;
   onClick?: () => void;
-  onClose?: () => void;
+  onClose?: (event?: React.MouseEvent | React.KeyboardEvent) => void;
   className?: string | string[];
 }
 
-export const Chip: FC<ChipProps> = ({
-  icon,
-  label,
-  value,
-  title,
-  onClick,
-  onClose,
-  className,
-}) => {
-  return (
-    <div
-      className={clsx(styles.chip, className)}
-      onClick={onClick}
-      title={title}
-    >
+export const Chip = forwardRef<HTMLDivElement, ChipProps>(
+  ({ icon, label, value, title, onClick, onClose, className }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={clsx(styles.chip, className)}
+        onClick={onClick}
+        title={title}
+      >
       {icon ? (
         <i
           className={clsx(
@@ -58,9 +52,15 @@ export const Chip: FC<ChipProps> = ({
             styles.closeIcon,
             styles.clickable
           )}
-          onClick={onClose}
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose(event);
+          }}
         />
       ) : undefined}
     </div>
   );
-};
+  }
+);
+
+Chip.displayName = "Chip";

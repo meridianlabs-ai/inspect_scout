@@ -29,6 +29,14 @@ There are a few things worth highlighting about this implementation:
 
 3. An `explanation` field is also automatically added by `llm_scanner()`, and the model uses this field to describe its rationale for the classification.
 
+## Eval Awareness
+
+The `eval_awareness()` scanner is useful for determining whether models suspect that they are in an evaluation, which in turn might affect their behavior in ways that undermine the eval.
+
+```{.python filename="eval_awareness.py"}
+{{< include ../examples/docs/eval_awareness.py >}}
+```
+
 ## Command Error
 
 The `command_not_found()` scanner is useful for observing tools that the model attempts to use but are not available in the environment (and which you therefore might consider enhancing the environment with).

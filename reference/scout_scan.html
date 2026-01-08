@@ -251,18 +251,6 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#project" class="sidebar-item-text sidebar-link">
- <span class="menu-text">project</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ProjectConfig</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
  <span class="menu-text">scanjob</span></a>
   </div>
@@ -277,6 +265,12 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ScanJobConfig</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ProjectConfig</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -787,210 +781,216 @@ ul.task-list li input[type="checkbox"] {
 <td></td>
 </tr>
 <tr class="odd">
-<td><code>--results</code></td>
+<td><code>-F</code>, <code>--filter</code></td>
 <td>text</td>
-<td>Location to write scan results to.</td>
-<td><code>./scans</code></td>
+<td>One or more transcript filters (e.g.&nbsp;-F “task_set = ‘cybench’”)</td>
+<td></td>
 </tr>
 <tr class="even">
+<td><code>--scans</code></td>
+<td>text</td>
+<td>Location to write scan results to.</td>
+<td></td>
+</tr>
+<tr class="odd">
 <td><code>--worklist</code></td>
 <td>path</td>
 <td>Transcript ids to process for each scanner (JSON or YAML file).</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>-V</code>, <code>--validation</code></td>
 <td>text</td>
 <td>One or more validation sets to apply for scanners (e.g.&nbsp;-V myscanner:deception.csv)</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--model</code></td>
 <td>text</td>
 <td>Model used by default for llm scanners.</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--model-base-url</code></td>
 <td>text</td>
 <td>Base URL for for model API</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>-M</code></td>
 <td>text</td>
 <td>One or more native model arguments (e.g.&nbsp;-M arg=value)</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--model-config</code></td>
 <td>text</td>
 <td>YAML or JSON config file with model arguments.</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--model-role</code></td>
 <td>text</td>
 <td>Named model role with model name or YAML/JSON config, e.g.&nbsp;–model-role critic=openai/gpt-4o or –model-role grader=“{model: mockllm/model, temperature: 0.5}”</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--max-transcripts</code></td>
 <td>integer</td>
 <td>Maximum number of transcripts to scan concurrently (defaults to 25)</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--max-processes</code></td>
 <td>integer</td>
 <td>Number of worker processes. Defaults to 4.</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--limit</code></td>
 <td>integer</td>
 <td>Limit number of transcripts to scan.</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--shuffle</code></td>
 <td>text</td>
 <td>Shuffle order of transcripts (pass a seed to make the order deterministic)</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--tags</code></td>
 <td>text</td>
 <td>Tags to associate with this scan job (comma separated)</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--metadata</code></td>
 <td>text</td>
 <td>Metadata to associate with this scan job (more than one –metadata argument can be specified).</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--cache</code></td>
 <td>text</td>
 <td>Policy for caching of model generations. Specify –cache to cache with 7 day expiration (7D). Specify an explicit duration (e.g.&nbsp;(e.g.&nbsp;1h, 3d, 6M) to set the expiration explicitly (durations can be expressed as s, m, h, D, W, M, or Y). Alternatively, pass the file path to a YAML or JSON config file with a full <code>CachePolicy</code> configuration.</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--batch</code></td>
 <td>text</td>
 <td>Batch requests together to reduce API calls when using a model that supports batching (by default, no batching). Specify –batch to batch with default configuration, specify a batch size e.g.&nbsp;<code>--batch=1000</code> to configure batches of 1000 requests, or pass the file path to a YAML or JSON config file with batch configuration.</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--max-connections</code></td>
 <td>integer</td>
 <td>Maximum number of concurrent connections to Model API (defaults to max_transcripts)</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--max-retries</code></td>
 <td>integer</td>
 <td>Maximum number of times to retry model API requests (defaults to unlimited)</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--timeout</code></td>
 <td>integer</td>
 <td>Model API request timeout in seconds (defaults to no timeout)</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--max-tokens</code></td>
 <td>integer</td>
 <td>The maximum number of tokens that can be generated in the completion (default is model specific)</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--temperature</code></td>
 <td>float</td>
 <td>What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--top-p</code></td>
 <td>float</td>
 <td>An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass.</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--top-k</code></td>
 <td>integer</td>
 <td>Randomly sample the next word from the top_k most likely next words. Anthropic, Google, HuggingFace, and vLLM only.</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--reasoning-effort</code></td>
 <td>choice (<code>minimal</code> | <code>low</code> | <code>medium</code> | <code>high</code>)</td>
 <td>Constrains effort on reasoning for reasoning models (defaults to <code>medium</code>). Open AI o-series and gpt-5 models only.</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--reasoning-tokens</code></td>
 <td>integer</td>
 <td>Maximum number of tokens to use for reasoning. Anthropic Claude models only.</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--reasoning-summary</code></td>
 <td>choice (<code>concise</code> | <code>detailed</code> | <code>auto</code>)</td>
 <td>Provide summary of reasoning steps (defaults to no summary). Use ‘auto’ to access the most detailed summarizer available for the current model. OpenAI reasoning models only.</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--reasoning-history</code></td>
 <td>choice (<code>none</code> | <code>all</code> | <code>last</code> | <code>auto</code>)</td>
 <td>Include reasoning in chat message history sent to generate (defaults to “auto”, which uses the recommended default for each provider)</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--response-schema</code></td>
 <td>text</td>
 <td>JSON schema for desired response format (output should still be validated). OpenAI, Google, and Mistral only.</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--dry-run</code></td>
 <td>boolean</td>
 <td>Print resolved scanners and transcript counts without scanning.</td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--display</code></td>
 <td>choice (<code>rich</code> | <code>plain</code> | <code>log</code> | <code>none</code>)</td>
 <td>Set the display type (defaults to ‘rich’)</td>
 <td><code>rich</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--log-level</code></td>
 <td>choice (<code>debug</code> | <code>trace</code> | <code>http</code> | <code>info</code> | <code>warning</code> | <code>error</code> | <code>critical</code> | <code>notset</code>)</td>
 <td>Set the log level (defaults to ‘warning’)</td>
 <td><code>warning</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--debug</code></td>
 <td>boolean</td>
 <td>Wait to attach debugger</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--debug-port</code></td>
 <td>integer</td>
 <td>Port number for debugger</td>
 <td><code>5678</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--fail-on-error</code></td>
 <td>boolean</td>
 <td>Re-raise exceptions instead of capturing them in results</td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--help</code></td>
 <td>boolean</td>
 <td>Show this message and exit.</td>

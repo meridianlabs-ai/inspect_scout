@@ -172,6 +172,16 @@ transcripts. The `Scanner` will be called once for `Transcript`:
 scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
+It’s also possible to filter the transcripts to a subset using `-F` (or
+`--filter`):
+
+``` bash
+scout scan scanner.py \
+   -T ./logs \
+   -F "task_set='cybench'" \
+   --model openai/gpt-5
+```
+
 The `-T` argument indicates which transcripts to scan (in this case a
 local Inspect log directory). You can also scan from a [transcripts
 database](transcripts.qmd#transcripts-database) that is either local or
@@ -257,12 +267,12 @@ scout view
 ![](images/scout-view.png)
 
 By default this will view the scan results in the `./scans` directory of
-the current working directory (of the location pointed to the by the
-`SCOUT_SCAN_RESULTS` environment variable). Specify an alternate results
+the current working directory (or the location pointed to by the
+`SCOUT_SCAN_SCANS` environment variable). Specify an alternate results
 location with:
 
 ``` bash
-scout view --results s3://my-scan-results
+scout view --scans s3://my-scan-results
 ```
 
 The Inspect AI VS Code Extension also includes integrated support for
@@ -313,6 +323,7 @@ scanners:
     file: scanner.py
 
 transcripts: logs
+filter: task_set='cybench'
 
 model: openai/gpt-5
 ```
@@ -324,14 +335,15 @@ scout scan scan.yaml
 ```
 
 Note that if you had a scout.yaml [project file](#projects) defining the
-`transcripts` and `model` for your project, you could exclude them from
-your scan job as they will be automatically merged from the project.
+`transcripts`, `filter`, and `model` for your project, you could exclude
+them from your scan job as they will be automatically merged from the
+project.
 
 ## Scan Results
 
 By default, the results of scans are written into the `./scans`
-directory. You can override this using the `--results` option—both local
-file paths remove filesystems (e.g. `s3://`) are supported.
+directory. You can override this using the `--scans` option—both local
+file paths and remote filesystems (e.g. `s3://`) are supported.
 
 Each scan is stored in its own directory and has both metadata about the
 scan (configuration, errors, summary of results) as well as parquet

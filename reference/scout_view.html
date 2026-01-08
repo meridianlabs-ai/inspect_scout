@@ -251,18 +251,6 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#project" class="sidebar-item-text sidebar-link">
- <span class="menu-text">project</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ProjectConfig</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
  <span class="menu-text">scanjob</span></a>
   </div>
@@ -277,6 +265,12 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ScanJobConfig</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ProjectConfig</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -745,7 +739,7 @@ ul.task-list li input[type="checkbox"] {
 <p>View scan results.</p>
 <section id="usage" class="level4">
 <h4 class="anchored" data-anchor-id="usage">Usage</h4>
-<pre class="text"><code>scout view [OPTIONS]</code></pre>
+<pre class="text"><code>scout view [OPTIONS] [PROJECT_DIR]</code></pre>
 </section>
 <section id="options" class="level4">
 <h4 class="anchored" data-anchor-id="options">Options</h4>
@@ -766,9 +760,21 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>--results</code></td>
+<td><code>--workbench</code></td>
+<td>boolean</td>
+<td>Launch workbench mode.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>-T</code>, <code>--transcripts</code></td>
 <td>text</td>
-<td>Location to read scan results from. Defaults to project results or ‘./scans’.</td>
+<td>Location of transcripts to view.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>--scans</code></td>
+<td>text</td>
+<td>Location of scan results to view.</td>
 <td></td>
 </tr>
 <tr class="even">

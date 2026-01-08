@@ -3,16 +3,19 @@
 
 ## Overview
 
-In some cases you’ll prefer to define your transcript source, scanning
-model, and other configuration once for a project rather than each time
-you run `scout scan`. You can do this with a `scout.yaml` project file.
+In some cases you’ll prefer to define your transcript source and
+filters, scanning model, and other configuration once for a project
+rather than each time you run `scout scan`. You can do this with a
+`scout.yaml` project file.
 
 For example, if we have this project file in our working directory:
 
 **scout.yaml**
 
 ``` yaml
-transcripts: s3://weave-rollouts/cybench
+transcripts: s3://weave-rollouts/
+filter: 
+  - task_set='cybench'
 model: openai/gpt-5
 ```
 
@@ -22,14 +25,19 @@ Then we can run a scan with simply:
 scout scan scanner.py 
 ```
 
+Note that the `filter` field contains one or more SQL WHERE clauses that
+address fields in the [transcript database](db_schema.qmd).
+
 You can also define the location of scanning results and other
 configuration in project files. For example:
 
 **scout.yaml**
 
 ``` yaml
-transcripts: s3://weave-rollouts/cybench
-results: ./cybench-scans
+transcripts: s3://weave-rollouts/
+filter: 
+  - task_set='cybench'
+scans: ./cybench-scans
 
 max_processes: 4
 
@@ -56,8 +64,9 @@ fields:
 | Field | Type | Description |
 |----|----|----|
 | `name` | str | Project name (defaults to directory name). |
-| `transcripts` | str \| list | Transcript source: local path, S3 URL, or list of sources. |
-| `results` | str | Location for scan results (defaults to `./scans`). |
+| `transcripts` | str | Transcript source: local path, S3 URL, or list of sources. |
+| `filter` | str \| list | SQL WHERE clauses that filter based on fields in the transcript database. |
+| `scans` | str | Location for scan results (defaults to `./scans`). |
 | `model` | str | Model for scanning (e.g., `openai/gpt-5`). |
 | `model_base_url` | str | Base URL for model API. |
 | `model_args` | dict \| str | Model creation args as a dictionary or path to JSON/YAML file. |
@@ -73,6 +82,26 @@ fields:
 | `scanners` | list \| dict | Scanner specifications to include in all scans. |
 | `worklist` | list | Transcript IDs to process for each scanner. |
 | `validation` | dict | Validation sets to apply for specific scanners. |
+
+### Local Config
+
+In some cases you might want to provide local overrides to a shared
+project configuration file. You can do this by adding a
+`scout.local.yaml` file alongside your `scout.yaml` file. For example,
+here we override the main project file with a different model, max
+connections, and log level:
+
+**scout.local.yaml**
+
+``` yaml
+model: openai/gpt-5-mini
+generate_config:
+   max_connections: 100
+log_level: info
+```
+
+Be sure to add `scout.local.yaml` to your `.gitignore` so it isn’t
+checked in to version control.
 
 ## Environment (.env)
 
@@ -115,12 +144,15 @@ in code via `@scanjob` or in a YAML/JSON config file).
 
 The merge follows these rules:
 
-- For simple fields like `transcripts`, `results`, `model`,
-  `max_transcripts`, etc., the project value is used only when the scan
-  job doesn’t specify a value.
+- For simple fields like `scans`, `model`, `max_transcripts`, etc., the
+  project value is used only when the scan job doesn’t specify a value.
+
+- The input transcripts (`transcripts`, `filter`) are treated as an
+  atomic unit. A scan job can fully override project transcripts but not
+  e.g. add clauses to the `filter`.
 
 - The model configuration (`model`, `model_base_url`, `model_args`,
-  `generate_config`) is treated as an atomic unit. If the scan job
+  `generate_config`) are also treated as an atomic unit. If the scan job
   specifies a model, all model-related configuration comes from the scan
   job. Otherwise, all model configuration comes from the project.
 
@@ -172,7 +204,7 @@ If no project file is found, Scout uses the following defaults:
 - `name`: Project directory name
 - `transcripts`: `./transcripts` (if that directory exists) or `./logs`
   (if that directory exists)
-- `results`: `./scans`
+- `scans`: `./scans`
 
 This discovery mechanism allows you to place a `scout.yaml` file at the
 root of your project and have it automatically apply to all scans run

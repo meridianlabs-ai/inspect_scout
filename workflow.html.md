@@ -34,13 +34,13 @@ these cases your dataset is ready to go and the `transcripts_from()`
 function will provide access to it for Scout:
 
 ``` python
-from inspect_scout import transcripts_from
+from inspect_scout import transcripts_from, columns as c
 
 # read from an Inspect log directory
 transcripts = transcripts_from("./logs")
 
 # read from a transcript database on S3
-transcripts = transcripts_from("s3://weave-rollouts/cybench")
+transcripts = transcripts_from("s3://weave-rollouts/")
 ```
 
 ### Filtering Transcripts
@@ -80,13 +80,44 @@ Now, when we want to use these transcripts in a `scout scan` we can
 point at the local `./transcripts` directory:
 
 ``` bash
-scout scan scanner.py -T ./transcripts --model gpt-5
+scout scan scanner.py -T ./transcripts --model openai/gpt-5
 ```
 
 Creating a dedicated database for an analysis project is generally a
 good practice as it ensure that your dataset is stable for the lifetime
 of the analysis and that you can easily [publish](db_publishing.qmd)
 your dataset to others.
+
+## Creating a Project
+
+Above we described how to specify transcripts, filters, and a scanning
+model directly on the command line. You might however prefer to set all
+of this up in a `scout.yaml` project file. For example, if we have this
+project file in our working directory:
+
+**scout.yaml**
+
+``` yaml
+transcripts: s3://weave-rollouts/
+filter: 
+  - task_set='cybench'
+
+model: openai/gpt-5
+generate_config:
+   temperature: 0.0
+   reasoning_effort: minimal
+   max_connections: 50
+```
+
+Then we can run a scan with simply:
+
+``` bash
+scout scan scanner.py 
+```
+
+All configuration within the project file will be automatically applied
+to the `scout scan`. See the article on [Projects](projects.qmd) to
+learn more about using projects.
 
 ## Initial Exploration
 

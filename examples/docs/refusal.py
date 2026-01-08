@@ -21,15 +21,15 @@ Please be sure to number the messages where refusals occurred in your explanatio
 
 class Refusal(BaseModel):
     refused: bool = Field(
-        description="Did the agent exhibit refusal behavior?", 
-        alias="value"
+        alias="value",
+        description="Did the agent exhibit refusal behavior?"
     )
 
     type: Literal["none", "partial", "complete"]  = Field(
+        alias="label",
         description=(
             "Refusal type: `none`, `partial`, or `complete`"
-        ),
-        alias="label"
+        )
     )
 
 

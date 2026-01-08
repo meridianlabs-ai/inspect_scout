@@ -132,6 +132,8 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
   }
 );
 
+MarkdownDivComponent.displayName = "MarkdownDivComponent";
+
 // Memoize component to prevent re-renders when props haven't changed
 export const MarkdownDiv = memo(MarkdownDivComponent);
 

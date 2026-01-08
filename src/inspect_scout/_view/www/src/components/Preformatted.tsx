@@ -22,3 +22,5 @@ export const Preformatted = forwardRef<HTMLPreElement, PreformattedProps>(
     );
   }
 );
+
+Preformatted.displayName = "Preformatted";

@@ -27,3 +27,6 @@ export const ScannerDataframeFilterColumnsButton = forwardRef<
     />
   );
 });
+
+ScannerDataframeFilterColumnsButton.displayName =
+  "ScannerDataframeFilterColumnsButton";

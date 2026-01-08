@@ -266,15 +266,16 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Note: transcripts table already excludes messages/events, so just SELECT *
         sql = f"SELECT * FROM transcripts{suffix}"
 
-        # Execute query and yield results (stream rows in batches to avoid full materialization)
+        # Execute query and fetch all results immediately.
+        # IMPORTANT: We must fetchall() before yielding because DuckDB cursors are
+        # invalidated when other queries are executed on the same connection. Since
+        # callers may execute read() queries between yields, we need to materialize
+        # results upfront. This is safe because we're only fetching metadata (not
+        # messages/events content), which has a small memory footprint per row.
         cursor = self._conn.execute(sql, params)
         column_names = [desc[0] for desc in cursor.description]
-        batch_size = 1000
-        while True:
-            rows = cursor.fetchmany(batch_size)
-            if not rows:
-                break
-            for row in rows:
+        rows = cursor.fetchall()
+        for row in rows:
                 row_dict = dict(zip(column_names, row, strict=True))
 
                 # Extract reserved fields (optional fields use .get() for missing columns)

@@ -5,6 +5,8 @@
 - Transcripts: Enable use of SQL for specifying filters.
 - Transcripts: Add `filter` field to scan job and project config.
 - Rename `--results` option to `--scans`. 
+- Bugfix: Avoid `UnboundLocalError` by importing Inspect AI batch reporting functions directly.
+- Bugfix: Fix issue with reading large numbers of rows from transcript database.
 
 ## 0.4.5 (03 January 2026)
 

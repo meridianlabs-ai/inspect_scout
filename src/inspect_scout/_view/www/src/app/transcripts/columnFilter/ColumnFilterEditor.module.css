@@ -1,0 +1,28 @@
+.filterContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterSelect,
+.filterInput {
+  flex: 1;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+.filterInput:disabled,
+.filterSelect:disabled {
+  background: var(--bs-light);
+  color: var(--bs-secondary);
+}

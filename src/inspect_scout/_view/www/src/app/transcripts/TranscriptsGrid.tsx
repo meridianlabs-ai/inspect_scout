@@ -33,7 +33,7 @@ import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
 
-import { ColumnFilterControl } from "./ColumnFilterControl";
+import { ColumnFilterControl } from "./columnFilter";
 import styles from "./TranscriptsGrid.module.css";
 
 type TranscriptColumn = ColumnDef<TranscriptInfo> & {

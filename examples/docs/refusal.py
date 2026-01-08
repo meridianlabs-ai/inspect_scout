@@ -23,7 +23,7 @@ class Refusal(BaseModel):
 
     type: Literal["none", "partial", "complete"]  = Field(
         description=(
-            "The type of refusal: `none`, `partial`, or `complete`"
+            "Refusal type: `none`, `partial`, or `complete`"
         ),
         alias="label"
     )

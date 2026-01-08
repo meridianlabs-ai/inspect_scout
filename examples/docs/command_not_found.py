@@ -1,24 +1,22 @@
 import re
 
+from pydantic import BaseModel, Field
 from shortuuid import uuid
 
 from inspect_scout import (
     Reference, Result, Scanner, Transcript, scanner, tool_callers
 )
 
+class CommandNotFound(BaseModel):
+    message_id: str = Field(description="Message that made the tool call.")
+    command: str = Field(description="The command that was not found.")
+    tool: str | None = Field(description="Tool that produced the output.")
+
 @scanner(messages="all")
 def command_not_found() -> Scanner[Transcript]:
-    """Detects "command not found" errors in tool outputs.
-
-    Returns a list of results, one for each "command not found" error found.
-    Each result contains structured observations with:
-        message_id: The ID of the assistant message that made the tool call.
-        command: The command that was not found.
-        tool: The name of the tool that produced the output. 
-    """
 
     async def scan(transcript: Transcript) -> list[Result]:
-        """Find all 'command not found' errors in the transcript."""
+
         results: list[Result] = []
 
         # Build a mapping from tool_call_id to assistant message
@@ -52,11 +50,11 @@ def command_not_found() -> Scanner[Transcript]:
                 # append the result
                 results.append(
                     Result(
-                        value=dict(
+                        value=CommandNotFound(
                             message_id=f"M{assistant_idx}",
                             command=command,
                             tool=tool_name,
-                        ),
+                        ).model_dump(),
                         explanation=(
                             f"[M{assistant_idx}] Found 'command not found' "
                             f"for command {command}' in {tool_name} output"
@@ -73,12 +71,3 @@ def command_not_found() -> Scanner[Transcript]:
         return results
 
     return scan
-
-
-
-
-
-
-
-
-

@@ -1,8 +1,10 @@
 import re
 
-from inspect_ai.model import ChatMessageTool
-from inspect_scout import Result, Scanner, Transcript, scanner, tool_callers
-from pydantic import BaseModel, Field
+from shortuuid import uuid
+
+from inspect_scout import (
+    Reference, Result, Scanner, Transcript, scanner, tool_callers
+)
 
 @scanner(messages="all")
 def command_not_found() -> Scanner[Transcript]:
@@ -26,7 +28,7 @@ def command_not_found() -> Scanner[Transcript]:
         pattern = r"(\w+): line \d+: (\w+): command not found"
 
         # Iterate through all tool messages with tool call ids
-        for message in (m for m in transcript.messages if isinstance(m, ChatMessageTool)):
+        for message in (m for m in transcript.messages if m.role == "tool"):
          
             # skip messages with no tool_call_id
             if message.tool_call_id is None:
@@ -47,6 +49,7 @@ def command_not_found() -> Scanner[Transcript]:
                 if assistant_msg is None:
                     continue
                 
+                # append the result
                 results.append(
                     Result(
                         value=dict(
@@ -55,10 +58,14 @@ def command_not_found() -> Scanner[Transcript]:
                             tool=tool_name,
                         ),
                         explanation=(
-                            f"[M{assistant_idx}] Found 'command not found' for command '{command}' in "
-                            f"{tool_name} output"
+                            f"[M{assistant_idx}] Found 'command not found' "
+                            f"for command {command}' in {tool_name} output"
                         ),
-                        references=[create_assistant_reference(assistant_msg, assistant_idx)],
+                        references=[Reference(
+                            type="message",
+                            cite=f"M{assistant_idx}",
+                            id=assistant_msg.id or uuid()
+                        )],
                     )
                 )
                

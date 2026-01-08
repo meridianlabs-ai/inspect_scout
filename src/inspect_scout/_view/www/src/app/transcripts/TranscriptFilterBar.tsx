@@ -31,26 +31,45 @@ export const TranscriptFilterBar: FC = () => {
   );
 
   // Editing filter
+  const filterEntries = Object.values(filters);
 
   return (
-    <ChipGroup className={styles.filterBar}>
-      {Object.values(filters).map((filter) => {
-        if (!filter || !filter.condition) {
-          return null;
-        }
-        return (
-          <Chip
-            key={filter.columnId}
-            label={filter.columnId}
-            value={`${filter.condition.operator} ${String(filter.condition.right)}`}
-            title={`Edit ${filter.columnId} filter`}
-            className={clsx(styles.filterChip, "text-size-smallestest")}
-            onClose={() => {
-              removeFilter(filter.columnId);
-            }}
-          />
-        );
-      })}
-    </ChipGroup>
+    <div className={styles.container}>
+      <div
+        className={clsx(
+          "text-style-label",
+          "text-style-secondary",
+          "text-size-smallest",
+          styles.filterLabel
+        )}
+      >
+        Filter:
+      </div>
+      <ChipGroup className={styles.filterBar}>
+        {filterEntries.length > 0 ? (
+          filterEntries.map((filter) => {
+            if (!filter || !filter.condition) {
+              return null;
+            }
+            return (
+              <Chip
+                key={filter.columnId}
+                label={filter.columnId}
+                value={`${filter.condition.operator} ${String(filter.condition.right)}`}
+                title={`Edit ${filter.columnId} filter`}
+                className={clsx(styles.filterChip, "text-size-smallestest")}
+                onClose={() => {
+                  removeFilter(filter.columnId);
+                }}
+              />
+            );
+          })
+        ) : (
+          <div className={clsx("text-size-smallest", styles.filterNone)}>
+            None
+          </div>
+        )}
+      </ChipGroup>
+    </div>
   );
 };

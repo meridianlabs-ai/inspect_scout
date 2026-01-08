@@ -3927,11 +3927,27 @@ so disabling selection can break that functionality */
   flex-direction: row;
   flex-wrap: wrap;
 }
-._filterBar_1qhmz_1 {
+._container_1assk_1 {
+  display: flex;
+  flex-direction: row;
+  background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
+  padding: 0rem 0.5rem;
+  align-items: center;
 }
 
-._filterChip_1qhmz_5 {
+._filterBar_1assk_10 {
+}
+
+._filterLabel_1assk_13 {
+  margin-right: 0.3rem;
+}
+
+._filterChip_1assk_17 {
+}
+
+._filterNone_1assk_20 {
+  font-family: var(--bs-font-monospace);
 }
 ._filterButton_fuk0s_1 {
   display: inline-flex;

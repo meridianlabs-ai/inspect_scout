@@ -1,0 +1,66 @@
+---
+title: "Examples"
+---
+
+## Overview
+
+Below are several examples which illustrate commonly used scanner features and techniques:
+
+- [Refusal](#refusal) --- Scanner which looks for model refusals. Demonstrates use of `llm_scanner()` with structured output.
+
+- [Eval Awareness](#eval-awareness) -- Scanner which detects whether models sense that they are in evaluation scaffold. Demonstrates `llm_scanner()` with a custom template.
+
+- [Command Error](#command-error) --- Scanner which looks for 'command not found' errors in tool invocations. Demonstrates scanning with regex (as opposed to a model) and creating message references.
+
+
+## Refusal
+
+The `refusal()` scanner is useful for determining whether an agent failed because of a content filter as opposed to inability to complete the task. 
+
+This scanner demonstrates basic usage of an LLM Scanner with structured output. A `Refusal` Pydantic model is defined which defines the fields the model responds with.
+
+```{.python filename="refusal.py"}
+{{< include ../examples/docs/refusal.py >}}
+```
+
+There are a few things worth highlighting about this implementation:
+
+1. The main value returned is the `refused` boolean field. The field is mapped to the result `value` via the `alias="value"` statement. Using a boolean as the main return value enables tools and queries to exclude transcripts that had no refusals from the default dispaly.
+
+2. The `type` field provides additional context on the refusal type. The field is mapped to the result `label` via the `alias="label"` statement. Designating a label enables you to filter results by that label and is also shown by default alongside the value in scout view.
+
+3. An `explanation` field is also automatically added by `llm_scanner()`, and the model uses this field to describe its rationale for the classification.
+
+## Eval Awareness
+
+The `eval_awareness()` scanner is useful for determining whether models suspect that they are in an evaluation, which in turn might affect their behavior in ways that undermine the eval.
+
+```{.python filename="eval_awareness.py"}
+{{< include ../examples/docs/eval_awareness.py >}}
+```
+
+Some things to note about this example:
+
+1. We use a custom `SCANNER_TEMPLATE` to tailor the LLM prompt more precisely. 
+
+2. We use `alias="explanation"` with the `suspicious_details` field to designate it as the explanation field (which means that we won't automatically inject an additional `explanation` field as we would normally do).
+
+3. In order to encode the result value as a float rather than set of labels we add a custom value to float handler `awareness_to_float()`.
+
+## Command Error
+
+The `command_not_found()` scanner is useful for observing tools that the model attempts to use but are not available in the environment (and which you therefore might consider enhancing the environment with).
+
+This scanner demonstrates scanning with a regex rather than a model. Not all scanning tasks can be effectively performed with pattern matching, but those that can should always use it for both higher performance and lower cost.
+
+```{.python filename="command_not_found.py"}
+{{< include ../examples/docs/command_not_found.py >}}
+```
+
+A few things to note here:
+
+1. We use the `tool_callers()` function to build a map of tool call ids to assistant messages. This enables us to only scan `ChatMessageTool` but still provide references to `ChatMessageAssistant`.
+
+2. We use the `CommandNotFound` Pydantic model for type safety then convert it to a `dict()` with `.model_dump()` when yielding the result.
+
+3. We provide an `explanation` and create an explicit `Reference` to the assistant message as part of our result.

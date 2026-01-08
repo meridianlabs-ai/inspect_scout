@@ -4,6 +4,7 @@
 - Projects: Support local project config in `scout.local.yaml`.
 - Transcripts: Enable use of SQL for specifying filters.
 - Transcripts: Add `filter` field to scan job and project config.
+- Scanning: Add `tool_callers()` helper function for mapping tool_call_id to assistant message.
 - Rename `--results` option to `--scans`. 
 - Bugfix: Avoid `UnboundLocalError` by importing Inspect AI batch reporting functions directly.
 - Bugfix: Fix issue with reading large numbers of rows from transcript database.

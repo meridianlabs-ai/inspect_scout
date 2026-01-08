@@ -22,6 +22,7 @@ from ._scanner.extract import (
     MessageFormatOptions,
     MessagesPreprocessor,
     messages_as_str,
+    tool_callers,
 )
 from ._scanner.loader import Loader, loader
 from ._scanner.result import Error, Reference, Result
@@ -122,6 +123,7 @@ __all__ = [
     "messages_as_str",
     "MessageFormatOptions",
     "MessagesPreprocessor",
+    "tool_callers",
     "RefusalError",
     "llm_scanner",
     "AnswerMultiLabel",

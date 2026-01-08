@@ -28,6 +28,7 @@ def llm_scanner(
     | list[str]
     | AnswerMultiLabel
     | AnswerStructured,
+    value_to_float: ValueToFloat | None = None,
     template: str | None = None,
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
@@ -47,6 +48,7 @@ def llm_scanner(
     | list[str]
     | AnswerMultiLabel
     | AnswerStructured,
+    value_to_float: ValueToFloat | None = None,
     template: str,
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]

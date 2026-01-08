@@ -276,3 +276,29 @@ def _extract_references(text: str, id_map: dict[str, str]) -> list[Reference]:
                 seen_ids.add(actual_id)
 
     return references
+
+
+def tool_callers(
+    transcript: Transcript,
+) -> dict[str, tuple[ChatMessageAssistant, int]]:
+    """
+    Build a mapping from tool_call_id to the assistant message that made the call.
+
+    This is useful for scanners that need to reference the assistant message
+    that initiated a tool call, rather than the tool message itself.
+
+    Args:
+        transcript: The transcript containing all messages.
+
+    Returns:
+        A dictionary mapping tool_call_id to a tuple of (assistant_message, message_index).
+        The message_index is 1-indexed to match the [M1], [M2], etc. citation format.
+    """
+    tool_call_to_assistant: dict[str, tuple[ChatMessageAssistant, int]] = {}
+
+    for i, message in enumerate(transcript.messages, start=1):
+        if isinstance(message, ChatMessageAssistant) and message.tool_calls:
+            for tool_call in message.tool_calls:
+                tool_call_to_assistant[tool_call.id] = (message, i)
+
+    return tool_call_to_assistant

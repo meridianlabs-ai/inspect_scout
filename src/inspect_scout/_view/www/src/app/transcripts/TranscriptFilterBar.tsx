@@ -8,12 +8,14 @@ import { ChipGroup } from "../components/ChipGroup";
 import styles from "./TranscriptFilterBar.module.css";
 
 export const TranscriptFilterBar: FC = () => {
+  // Transcript Filter State
   const filters = useStore(
     (state) => state.transcriptsTableState.columnFilters
   );
   const setTranscriptsTableState = useStore(
     (state) => state.setTranscriptsTableState
   );
+
   const removeFilter = useCallback(
     (column: string) => {
       setTranscriptsTableState((prevState) => {
@@ -28,6 +30,8 @@ export const TranscriptFilterBar: FC = () => {
     [setTranscriptsTableState]
   );
 
+  // Editing filter
+
   return (
     <ChipGroup className={styles.filterBar}>
       {Object.values(filters).map((c, index) => {
@@ -36,7 +40,8 @@ export const TranscriptFilterBar: FC = () => {
             <Chip
               label={c.left}
               value={`${c.operator} ${String(c.right)}`}
-              className={clsx(styles.filterChip, "text-size-smallest")}
+              title={`Edit ${c.left} filter`}
+              className={clsx(styles.filterChip, "text-size-smallestest")}
               onClose={() => {
                 const key = Object.keys(filters)[index];
                 if (!key) {

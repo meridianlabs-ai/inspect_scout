@@ -276,74 +276,74 @@ class ParquetTranscriptsDB(TranscriptsDB):
         column_names = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
         for row in rows:
-                row_dict = dict(zip(column_names, row, strict=True))
+            row_dict = dict(zip(column_names, row, strict=True))
 
-                # Extract reserved fields (optional fields use .get() for missing columns)
-                transcript_id = row_dict["transcript_id"]
-                transcript_source_type = row_dict.get("source_type")
-                transcript_source_id = row_dict.get("source_id")
-                transcript_source_uri = row_dict.get("source_uri")
-                transcript_filename = row_dict["filename"]
-                transcript_date = row_dict.get("date")
-                transcript_task_set = row_dict.get("task_set")
-                transcript_task_id = row_dict.get("task_id")
-                transcript_task_repeat = row_dict.get("task_repeat")
-                transcript_agent = row_dict.get("agent")
-                transcript_agent_args = row_dict.get("agent_args")
-                transcript_model = row_dict.get("model")
-                transcript_model_options = row_dict.get("model_options")
-                transcript_score = row_dict.get("score")
-                transcript_success = row_dict.get("success")
-                transcript_total_time = row_dict.get("total_time")
-                transcript_total_tokens = row_dict.get("total_tokens")
-                transcript_error = row_dict.get("error")
-                transcript_limit = row_dict.get("limit")
+            # Extract reserved fields (optional fields use .get() for missing columns)
+            transcript_id = row_dict["transcript_id"]
+            transcript_source_type = row_dict.get("source_type")
+            transcript_source_id = row_dict.get("source_id")
+            transcript_source_uri = row_dict.get("source_uri")
+            transcript_filename = row_dict["filename"]
+            transcript_date = row_dict.get("date")
+            transcript_task_set = row_dict.get("task_set")
+            transcript_task_id = row_dict.get("task_id")
+            transcript_task_repeat = row_dict.get("task_repeat")
+            transcript_agent = row_dict.get("agent")
+            transcript_agent_args = row_dict.get("agent_args")
+            transcript_model = row_dict.get("model")
+            transcript_model_options = row_dict.get("model_options")
+            transcript_score = row_dict.get("score")
+            transcript_success = row_dict.get("success")
+            transcript_total_time = row_dict.get("total_time")
+            transcript_total_tokens = row_dict.get("total_tokens")
+            transcript_error = row_dict.get("error")
+            transcript_limit = row_dict.get("limit")
 
-                # resolve json
-                if transcript_agent_args is not None:
-                    transcript_agent_args = json.loads(transcript_agent_args)
-                if transcript_model_options is not None:
-                    transcript_model_options = json.loads(transcript_model_options)
-                if isinstance(transcript_score, str) and (
-                    transcript_score.startswith("{") or transcript_score.startswith("[")
-                ):
-                    transcript_score = json.loads(transcript_score)
+            # resolve json
+            if transcript_agent_args is not None:
+                transcript_agent_args = json.loads(transcript_agent_args)
+            if transcript_model_options is not None:
+                transcript_model_options = json.loads(transcript_model_options)
+            if isinstance(transcript_score, str) and (
+                transcript_score.startswith("{") or transcript_score.startswith("[")
+            ):
+                transcript_score = json.loads(transcript_score)
 
-                # Reconstruct metadata from all non-reserved columns
-                # Use LazyJSONDict to defer JSON parsing until values are accessed
-                metadata_dict = {
-                    col: value
-                    for col, value in row_dict.items()
-                    if col not in RESERVED_COLUMNS and value is not None
-                }
-                lazy_metadata = LazyJSONDict(metadata_dict)
+            # Reconstruct metadata from all non-reserved columns
+            # Use LazyJSONDict to defer JSON parsing until values are accessed
+            metadata_dict = {
+                col: value
+                for col, value in row_dict.items()
+                if col not in RESERVED_COLUMNS and value is not None
+            }
+            lazy_metadata = LazyJSONDict(metadata_dict)
 
-                # Use normal constructor for type validation/coercion, then inject
-                # LazyJSONDict for metadata for lazy parsing behavior
-                info = ParquetTranscriptInfo(
-                    transcript_id=transcript_id,
-                    source_type=transcript_source_type,
-                    source_id=transcript_source_id,
-                    source_uri=transcript_source_uri,
-                    date=transcript_date,
-                    task_set=transcript_task_set,
-                    task_id=transcript_task_id,
-                    task_repeat=transcript_task_repeat,
-                    agent=transcript_agent,
-                    agent_args=transcript_agent_args,
-                    model=transcript_model,
-                    model_options=transcript_model_options,
-                    score=transcript_score,
-                    success=transcript_success,
-                    total_time=transcript_total_time,
-                    total_tokens=transcript_total_tokens,
-                    error=transcript_error,
-                    limit=transcript_limit,
-                    metadata={},
-                    filename=transcript_filename,
-                )
-                object.__setattr__(info, "metadata", lazy_metadata)
-                yield info
+            # Use normal constructor for type validation/coercion, then inject
+            # LazyJSONDict for metadata for lazy parsing behavior
+            info = ParquetTranscriptInfo(
+                transcript_id=transcript_id,
+                source_type=transcript_source_type,
+                source_id=transcript_source_id,
+                source_uri=transcript_source_uri,
+                date=transcript_date,
+                task_set=transcript_task_set,
+                task_id=transcript_task_id,
+                task_repeat=transcript_task_repeat,
+                agent=transcript_agent,
+                agent_args=transcript_agent_args,
+                model=transcript_model,
+                model_options=transcript_model_options,
+                score=transcript_score,
+                success=transcript_success,
+                total_time=transcript_total_time,
+                total_tokens=transcript_total_tokens,
+                error=transcript_error,
+                limit=transcript_limit,
+                metadata={},
+                filename=transcript_filename,
+            )
+            object.__setattr__(info, "metadata", lazy_metadata)
+            yield info
 
     @override
     async def count(self, query: Query | None = None) -> int:

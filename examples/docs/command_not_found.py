@@ -4,7 +4,12 @@ from pydantic import BaseModel, Field
 from shortuuid import uuid
 
 from inspect_scout import (
-    Reference, Result, Scanner, Transcript, scanner, tool_callers
+    Reference, 
+    Result, 
+    Scanner, 
+    Transcript, 
+    scanner, 
+    tool_callers
 )
 
 class CommandNotFound(BaseModel):

@@ -1,6 +1,10 @@
 from typing_extensions import Literal
 from inspect_scout import (
-    AnswerStructured, Scanner, Transcript, llm_scanner, scanner
+    AnswerStructured, 
+    Scanner, 
+    Transcript, 
+    llm_scanner, 
+    scanner
 )
 from pydantic import BaseModel, Field
 

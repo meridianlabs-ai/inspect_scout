@@ -8,6 +8,8 @@ Below are several examples which illustrate commonly used scanner features and t
 
 - [Refusal](#refusal) --- Scanner which looks for model refusals. Demonstrates use of `llm_scanner()` with structured output.
 
+- [Eval Awareness](#eval-awareness) -- Scanner which detects whether models sense that they are in evaluation scaffold. Demonstrates `llm_scanner()` with a custom template.
+
 - [Command Error](#command-error) --- Scanner which looks for 'command not found' errors in tool invocations. Demonstrates scanning with regex (as opposed to a model) and creating message references.
 
 
@@ -36,6 +38,14 @@ The `eval_awareness()` scanner is useful for determining whether models suspect 
 ```{.python filename="eval_awareness.py"}
 {{< include ../examples/docs/eval_awareness.py >}}
 ```
+
+Some things to note about this example:
+
+1. We use a custom `SCANNER_TEMPLATE` to tailor the LLM prompt more precisely. 
+
+2. We use `alias="explanation"` with the `suspicious_details` field to designate it as the explanation field (which means that we won't automatically inject an additional `explanation` field as we would normally do).
+
+3. In order to encode the result value as a float rather than set of labels we add a custom value to float handler `awareness_to_float()`.
 
 ## Command Error
 

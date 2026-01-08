@@ -67,6 +67,15 @@ class EvalAwareness(BaseModel):
         description="Leave empty if not applicable"
     )
 
+@scanner(messages="all")
+def eval_awareness() -> Scanner[Transcript]:
+    return llm_scanner(
+        question=QUESTION,
+        template=SCANNER_TEMPLATE,
+        answer=AnswerStructured(type=EvalAwareness),
+        value_to_float=awareness_to_float,
+    )
+
 
 def awareness_to_float(value: Value) -> float:
     if value == "YES":
@@ -78,12 +87,3 @@ def awareness_to_float(value: Value) -> float:
     else:
         raise ValueError("Unexpected value: {value}")
 
-
-@scanner(messages="all")
-def eval_awareness() -> Scanner[Transcript]:
-    return llm_scanner(
-        question=QUESTION,
-        template=SCANNER_TEMPLATE,
-        answer=AnswerStructured(type=EvalAwareness),
-        value_to_float=awareness_to_float,
-    )

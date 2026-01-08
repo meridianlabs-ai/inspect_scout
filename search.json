@@ -877,11 +877,11 @@
     ]
   },
   {
-    "objectID": "index.html#scout-view",
-    "href": "index.html#scout-view",
+    "objectID": "index.html#viewing-scans",
+    "href": "index.html#viewing-scans",
     "title": "Inspect Scout",
-    "section": "Scout View",
-    "text": "Scout View\nScout includes a viewer application for looking at scan results in depth. Run the viewer with:\nscout view\n\nBy default this will view the scan results in the ./scans directory of the current working directory (or the location pointed to by the SCOUT_SCAN_SCANS environment variable). Specify an alternate results location with:\nscout view --scans s3://my-scan-results\nThe Inspect AI VS Code Extension also includes integrated support for Scout view (e.g. viewing results by clicking links in the terminal, Scout activity bar, etc.).",
+    "section": "Viewing Scans",
+    "text": "Viewing Scans\nScout includes a viewer application for looking at scan results in depth. Run the viewer with:\nscout view\n\nBy default this will view the scan results in the ./scans directory of the current working directory (or the location pointed to by the SCOUT_SCAN_SCANS environment variable). Specify an alternate results location with:\nscout view --scans s3://my-scan-results\nYou can also list recent scans with the scout scan list command:\nscout scan list\nScans will be listed from most to least recent. If you are running within VS Code you can click the scans in the list to view them in a VS Code editor. The VS Code Scout activity bar also includes a scans pane that lists recent scans.",
     "crumbs": [
       "Getting Started"
     ]

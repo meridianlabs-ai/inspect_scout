@@ -7,10 +7,9 @@ import {
   SubtaskEvent,
   ToolEvent,
 } from "../../../types/api-types";
+import { fixupEventStream, kSandboxSignalName } from "../transform/fixups";
+import { treeifyEvents } from "../transform/treeify";
 import { EventNode, EventType, kCollapsibleEventTypes } from "../types";
-
-import { fixupEventStream, kSandboxSignalName } from "./fixups";
-import { treeifyEvents } from "./treeify";
 
 export const useEventNodes = (events: Event[], running: boolean) => {
   // Normalize Events in a flattened filtered list

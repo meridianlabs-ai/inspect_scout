@@ -92,6 +92,7 @@ interface TranscriptGridProps {
   hasMore: boolean;
   /** Distance from bottom (in px) at which to trigger callback. */
   fetchThreshold: number;
+  loading?: boolean;
 }
 
 export const TranscriptsGrid: FC<TranscriptGridProps> = ({
@@ -101,6 +102,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   onScrollNearEnd,
   hasMore,
   fetchThreshold,
+  loading,
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
@@ -855,7 +857,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             })
           ) : (
             <tr className={clsx(styles.noMatching, "text-size-smaller")}>
-              <td>No matching transcripts</td>
+              <td>{loading ? "Loading..." : "No matching transcripts"}</td>
             </tr>
           )}
         </tbody>

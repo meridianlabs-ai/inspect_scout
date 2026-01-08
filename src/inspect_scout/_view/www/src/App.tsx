@@ -9,7 +9,7 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import "./app/App.css";
-import { useConfigAsync } from "./app/server/hooks";
+import { useConfigAsync } from "./app/server/useConfig";
 import { createAppRouter } from "./AppRouter";
 
 export interface AppProps {

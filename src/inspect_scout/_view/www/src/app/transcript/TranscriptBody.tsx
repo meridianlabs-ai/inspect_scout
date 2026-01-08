@@ -1,13 +1,16 @@
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
 import { MetaDataGrid } from "../../components/content/MetaDataGrid";
+import { ApplicationIcons } from "../../components/icons";
 import { TabPanel, TabSet } from "../../components/TabSet";
+import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import { TranscriptView } from "../../components/transcript/TranscriptView";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
+import { messagesToStr } from "../utils/messages";
 
 import styles from "./TranscriptBody.module.css";
 
@@ -37,6 +40,8 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
     setSelectedTranscriptTab(tabId);
     setSearchParams({ tab: tabId });
   };
+
+  const tabTools = [<CopyToolbarButton transcript={transcript} />];
 
   const tabPanels = [
     <TabPanel
@@ -114,10 +119,48 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
         tabPanelsClassName={clsx(styles.tabSet)}
         tabControlsClassName={clsx(styles.tabControl)}
         className={clsx(styles.tabs)}
-        tools={[]}
+        tools={tabTools}
       >
         {tabPanels}
       </TabSet>
     </div>
+  );
+};
+
+const CopyToolbarButton: FC<{ transcript: Transcript }> = ({ transcript }) => {
+  const [icon, setIcon] = useState<string>(ApplicationIcons.copy);
+
+  if (!transcript) {
+    return undefined;
+  }
+
+  return (
+    <ToolDropdownButton
+      key="sample-copy"
+      label="Copy"
+      icon={icon}
+      items={{
+        UUID: () => {
+          if (transcript.transcript_id) {
+            void navigator.clipboard.writeText(transcript.transcript_id);
+            setIcon(ApplicationIcons.confirm);
+            setTimeout(() => {
+              setIcon(ApplicationIcons.copy);
+            }, 1250);
+          }
+        },
+        Transcript: () => {
+          if (transcript.messages) {
+            void navigator.clipboard.writeText(
+              messagesToStr(transcript.messages)
+            );
+            setIcon(ApplicationIcons.confirm);
+            setTimeout(() => {
+              setIcon(ApplicationIcons.copy);
+            }, 1250);
+          }
+        },
+      }}
+    />
   );
 };

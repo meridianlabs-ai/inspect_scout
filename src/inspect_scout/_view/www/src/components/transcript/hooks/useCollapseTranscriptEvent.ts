@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useStore } from "../../state/store";
+import { useStore } from "../../../state/store";
 
 export const useCollapseTranscriptEvent = (
   scope: string,

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-import { useCollapsedState } from "../state/hooks";
+import { useCollapsedState } from "../state/hooks/useCollapsedState";
 import { useResizeObserver } from "../utils/dom";
 
 import styles from "./ExpandablePanel.module.css";

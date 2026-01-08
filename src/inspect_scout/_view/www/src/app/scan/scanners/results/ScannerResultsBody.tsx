@@ -10,7 +10,7 @@ import { NoContentsPanel } from "../../../../components/NoContentsPanel";
 import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Status } from "../../../../types/api-types";
-import { useScanRoute } from "../../../hooks";
+import { useScanRoute } from "../../../hooks/useScanRoute";
 import { kSegmentDataframe, kSegmentList } from "../../ScanPanelBody";
 import { ScannerResultsList } from "../list/ScannerResultsList";
 import { defaultColumns } from "../types";

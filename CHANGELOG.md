@@ -4,6 +4,7 @@
 - Projects: Support local project config in `scout.local.yaml`.
 - Transcripts: Enable use of SQL for specifying filters.
 - Transcripts: Add `filter` field to scan job and project config.
+- Scanning: Add `tool_callers()` helper function for mapping tool_call_id to assistant message.
 - Rename `--results` option to `--scans`. 
 
 ## 0.4.5 (03 January 2026)

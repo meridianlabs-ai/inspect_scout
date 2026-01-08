@@ -232,42 +232,6 @@ def cyberlint():
     )
 ```
 
-### Multiple Results
-
-In some cases it may be more natural for scanners to return multiple
-results. To do this, just specify `list[T]` as the `type`. For example:
-
-``` python
-from pydantic import BaseModel, Field
-from textwrap import dedent
-from typing import Literal
-from inspect_scout import (
-    AnswerStructured, Scanner, llm_scanner, scanner
-)
-
-class CyberLint(BaseModel):
-    label: Literal["misconfiguration", "tool_error"] = Field(description="Issue observed.")
-
-    cause: str = Field(description="What was the cause of the observed issue?.")
-
-@scanner
-def cyberlint():
-    return llm_scanner(
-        question=dedent("""Please report whether you found any of the following in the conversation (you may report multiple issues):
-
-        - **misconfiguration**: Was the environment misconfigured in a way that prevented the assistant from succeeding?
-
-        - **tool_errors**: Were there tool calling errors encountered?
-        
-        Please also provide an assessment of the cause and an explanation for each result.
-        """),
-        answer=AnswerStructured(type=list[CyberLint])
-    )
-```
-
-Note that we add a `label` field for distinguishing different
-observation types.
-
 ### Result Values
 
 Scanners produce results which ultimately carry a specific `value`.
@@ -301,14 +265,23 @@ There are two types of `value` supported by the LLM scanner:
         causes: str = Field(description="What were the most common causes of tool errors.") 
     ```
 
-### Field Names
+### Labels and Explanations
 
-We’ve noted the special `label` field. There is also an `explanation`
-fields automatically added for the model to provide an explanation with
-references. If these field names don’t make sense in your domain you can
-use other names and alias them back to `label` and `explanation`. For
-example, here we alias the `category` and `reason` fields to `label` and
-`explanation` fields (respectively):
+We’ve noted the special `alias="value"` field annotation that promotes
+one of your `BaseModel` fields to be the main `value` for the returned
+result. In addition, there are two other special field annotations:
+
+- `alias="label"` — Promotes the field to be the result `label`, which
+  is useful because it the label gets its own column in the results
+  database (for filtering) and is also displayed prominently in Scout
+  View.
+
+- `alias="explanation"` — Promotes the field to be the result
+  `explanation`, which also gets more prominent treatment in the Scout
+  View UI.
+
+For example, here we alias the `category` and `reason` fields to `label`
+and `explanation` fields (respectively):
 
 ``` python
 class CyberLint(BaseModel):
@@ -316,6 +289,42 @@ class CyberLint(BaseModel):
    
     reason: str = Field(alias="explanation", description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
 ```
+
+If appropriate it’s always beneficial to add these aliases for improved
+filtering and review of scanner results. Note that if you don’t label a
+field with `alias="explanation"` then an explanation field is
+automatically added to prompt the model for an explicit explanation.
+
+### Multiple Results
+
+In some cases it may be more natural for scanners to return multiple
+results. To do this, just specify `list[T]` as the `type`. For example:
+
+``` python
+from pydantic import BaseModel, Field
+from textwrap import dedent
+from typing import Literal
+from inspect_scout import (
+    AnswerStructured, Scanner, llm_scanner, scanner
+)
+
+QUESITON="..."
+
+class CyberLint(BaseModel):
+    category: Literal["misconfiguration", "tool_error"] = Field(alias="label", description="Category of behavior observed.")
+   
+    reason: str = Field(alias="explanation", description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
+
+@scanner
+def cyberlint():
+    return llm_scanner(
+        question=QUESTION,
+        answer=AnswerStructured(type=list[CyberLint])
+    )
+```
+
+Note that we add a `label` field alias for distinguishing different
+observation types.
 
 ## Value to Float
 

@@ -3890,14 +3890,30 @@ so disabling selection can break that functionality */
   height: 100%;
   row-gap: 0;
 }
-._container_1db2y_1 {
-  border: solid red 1px;
-  height: 30px;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: max-content;
-  justify-content: start;
-  gap: 8px;
+._chip_1n3yp_1 {
+  display: inline-flex;
+  flex-direction: row;
+  margin: 0.2rem;
+  padding: 0.1rem 0.5rem;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  font-family: var(--bs-font-monospace);
+}
+
+._label_1n3yp_11 {
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+._chipGroup_1x7cb_1 {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+._filterBar_1qhmz_1 {
+  border-bottom: solid var(--bs-border-color) 1px;
+}
+
+._filterChip_1qhmz_5 {
 }
 ._headerActions_6q7gm_1 {
   display: flex;

@@ -1,9 +1,6 @@
-.container {
-  border: solid red 1px;
-  height: 30px;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: max-content;
-  justify-content: start;
-  gap: 8px;
+.filterBar {
+  border-bottom: solid var(--bs-border-color) 1px;
+}
+
+.filterChip {
 }

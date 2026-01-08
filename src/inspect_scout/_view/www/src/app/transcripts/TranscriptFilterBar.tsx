@@ -34,23 +34,21 @@ export const TranscriptFilterBar: FC = () => {
 
   return (
     <ChipGroup className={styles.filterBar}>
-      {Object.values(filters).map((c, index) => {
+      {Object.values(filters).map((filter) => {
+        if (!filter || !filter.condition) {
+          return null;
+        }
         return (
-          c && (
-            <Chip
-              label={c.left}
-              value={`${c.operator} ${String(c.right)}`}
-              title={`Edit ${c.left} filter`}
-              className={clsx(styles.filterChip, "text-size-smallestest")}
-              onClose={() => {
-                const key = Object.keys(filters)[index];
-                if (!key) {
-                  return;
-                }
-                removeFilter(key);
-              }}
-            />
-          )
+          <Chip
+            key={filter.columnId}
+            label={filter.columnId}
+            value={`${filter.condition.operator} ${String(filter.condition.right)}`}
+            title={`Edit ${filter.columnId} filter`}
+            className={clsx(styles.filterChip, "text-size-smallestest")}
+            onClose={() => {
+              removeFilter(filter.columnId);
+            }}
+          />
         );
       })}
     </ChipGroup>

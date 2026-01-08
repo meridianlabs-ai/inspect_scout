@@ -3933,14 +3933,7 @@ so disabling selection can break that functionality */
 
 ._filterChip_1qhmz_5 {
 }
-._headerActions_6q7gm_1 {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 6px;
-}
-
-._filterButton_6q7gm_8 {
+._filterButton_fuk0s_1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3951,34 +3944,33 @@ so disabling selection can break that functionality */
   cursor: pointer;
 }
 
-._filterButtonActive_6q7gm_19 {
+._filterButtonActive_fuk0s_12 {
   color: var(--bs-primary);
 }
-
-._filterPopover_6q7gm_23 {
-  min-width: 180px;
+._headerActions_uh0qk_1 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
 }
 
-._filterContent_6q7gm_27 {
+._filterPopover_uh0qk_8 {
+  min-width: 180px;
+}
+._filterContent_1u4e4_1 {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-._filterRow_6q7gm_33 {
+._filterRow_1u4e4_7 {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-._filterLabel_6q7gm_39 {
-  min-width: 58px;
-  font-size: 11px;
-  color: var(--bs-secondary);
-}
-
-._filterSelect_6q7gm_45,
-._filterInput_6q7gm_46 {
+._filterSelect_1u4e4_13,
+._filterInput_1u4e4_14 {
   flex: 1;
   font-size: 12px;
   padding: 4px 6px;
@@ -3988,8 +3980,8 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._filterInput_6q7gm_46:disabled,
-._filterSelect_6q7gm_45:disabled {
+._filterInput_1u4e4_14:disabled,
+._filterSelect_1u4e4_13:disabled {
   background: var(--bs-light);
   color: var(--bs-secondary);
 }

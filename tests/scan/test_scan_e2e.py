@@ -3,13 +3,27 @@ from pathlib import Path
 
 import pytest
 from inspect_ai.model import ModelOutput
-from inspect_scout import Result, Scanner, llm_scanner, scan, scanner
+from inspect_ai.model._chat_message import ChatMessageUser
+from inspect_scout import Result, Scanner, llm_scanner, scan, scanner, transcripts_db
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
 # Test data location
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+
+
+def create_minimal_transcript(transcript_id: str, index: int) -> Transcript:
+    """Create a minimal transcript for testing."""
+    return Transcript(
+        transcript_id=transcript_id,
+        source_type="test",
+        source_id=f"source-{index // 100}",
+        source_uri=f"test://uri/{index}",
+        metadata={"index": index},
+        messages=[ChatMessageUser(content=f"Test message {index}")],
+        events=[],
+    )
 
 
 @scanner(name="simple_scanner", messages="all")
@@ -134,3 +148,67 @@ def test_scan_with_dynamic_question(max_processes: int) -> None:
         assert len(scanner_df) == 1
         assert "value" in scanner_df.columns
         assert scanner_df["value"].tolist() == [True]
+
+
+@scanner(name="count_scanner", messages="all")
+def count_scanner_factory() -> Scanner[Transcript]:
+    """Simple scanner that just counts transcripts for testing large batches."""
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        return Result(
+            value=transcript.metadata.get("index", 0),
+            explanation=f"Scanned {transcript.transcript_id}",
+        )
+
+    return scan_transcript
+
+
+def test_scan_processes_all_transcripts_beyond_1000(tmp_path: Path) -> None:
+    """Test that scans process ALL transcripts when count exceeds 1000.
+
+    This is an end-to-end test that verifies no artificial limit of 1000
+    is applied during scanning. It creates 1500 transcripts in a database,
+    runs a scan without any limit, and verifies all 1500 are processed.
+    """
+    db_path = tmp_path / "transcript_db"
+    scans_path = tmp_path / "scans"
+    db_path.mkdir()
+    scans_path.mkdir()
+
+    # Create 1500 transcripts in the database (exceeds the batch_size=1000)
+    transcript_count = 1500
+
+    # Insert transcripts
+    import asyncio
+
+    async def insert_transcripts() -> None:
+        transcripts = [
+            create_minimal_transcript(f"test-{i:05d}", i)
+            for i in range(transcript_count)
+        ]
+        async with transcripts_db(str(db_path)) as db:
+            await db.insert(transcripts)
+
+    asyncio.run(insert_transcripts())
+
+    # Run scan WITHOUT any limit - should process all transcripts
+    status = scan(
+        scanners=[count_scanner_factory()],
+        transcripts=transcripts_from(str(db_path)),
+        scans=str(scans_path),
+        max_processes=1,  # Single process for deterministic testing
+        display="none",
+    )
+
+    # Verify scan completed
+    assert status.complete, f"Scan did not complete: {status}"
+    assert status.location is not None
+
+    # Verify ALL transcripts were scanned
+    results = scan_results_df(status.location, scanner="count_scanner")
+    scanner_df = results.scanners["count_scanner"]
+
+    assert len(scanner_df) == transcript_count, (
+        f"Expected {transcript_count} scan results, got {len(scanner_df)}. "
+        "This indicates a limit is being applied during scanning."
+    )

@@ -1,4 +1,4 @@
-## 0.4.5 (08 January 2026)
+## 0.4.6 (08 January 2026)
 
 - LLM Scanner: Add `value_to_float` option to for converting model reported values to numeric.
 - Projects: Support local project config in `scout.local.yaml`.

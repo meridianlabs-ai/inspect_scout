@@ -26,14 +26,14 @@ import { useNavigate } from "react-router-dom";
 import { ApplicationIcons } from "../../components/icons";
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
-import { useStore } from "../../state/store";
+import { useStore, FilterType } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { Score } from "../../types/api-types";
 import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
 
-import { ColumnFilterControl, FilterType } from "./ColumnFilterControl";
+import { ColumnFilterControl } from "./ColumnFilterControl";
 import styles from "./TranscriptsGrid.module.css";
 
 type TranscriptColumn = ColumnDef<TranscriptInfo> & {
@@ -126,14 +126,30 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   );
   const setTableState = useStore((state) => state.setTranscriptsTableState);
   const handleColumnFilterChange = useCallback(
-    (columnId: string, condition: SimpleCondition | null) => {
-      setTableState((prev) => ({
-        ...prev,
-        columnFilters: {
-          ...(prev.columnFilters ?? {}),
-          [columnId]: condition,
-        },
-      }));
+    (columnId: string, filterType: FilterType, condition: SimpleCondition | null) => {
+      setTableState((prev) => {
+        if (condition === null) {
+          // Remove the filter entirely
+          const newFilters = { ...prev.columnFilters };
+          delete newFilters[columnId];
+          return {
+            ...prev,
+            columnFilters: newFilters,
+          };
+        }
+        // Add or update the filter
+        return {
+          ...prev,
+          columnFilters: {
+            ...prev.columnFilters,
+            [columnId]: {
+              columnId,
+              filterType,
+              condition,
+            },
+          },
+        };
+      });
     },
     [setTableState]
   );
@@ -791,9 +807,9 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                       <ColumnFilterControl
                         columnId={header.column.id}
                         filterType={filterType}
-                        condition={columnFilters[header.column.id] ?? null}
+                        condition={columnFilters[header.column.id]?.condition ?? null}
                         onChange={(condition) =>
-                          handleColumnFilterChange(header.column.id, condition)
+                          handleColumnFilterChange(header.column.id, filterType, condition)
                         }
                       />
                     ) : null}

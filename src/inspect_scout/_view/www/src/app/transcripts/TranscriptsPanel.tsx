@@ -28,9 +28,9 @@ export const TranscriptsPanel: FC = () => {
   // Filtering
   const columnFilters =
     useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
-  const filterConditions = Object.values(columnFilters).filter(
-    (filter): filter is SimpleCondition => Boolean(filter)
-  );
+  const filterConditions = Object.values(columnFilters)
+    .map((filter) => filter.condition)
+    .filter((condition): condition is SimpleCondition => Boolean(condition));
 
   // Sorting
   const condition = filterConditions.reduce<Condition | undefined>(

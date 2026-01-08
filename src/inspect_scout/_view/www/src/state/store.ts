@@ -21,6 +21,22 @@ import type { SimpleCondition } from "../query/types";
 import { TranscriptInfo } from "../types/api-types";
 import { debounce } from "../utils/sync";
 
+// Filter types for columns
+export type FilterType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "unknown";
+
+// Column filter with metadata
+export interface ColumnFilter {
+  columnId: string;
+  filterType: FilterType;
+  condition: SimpleCondition | null;
+}
+
 // Transcripts table UI state
 interface TranscriptsTableState {
   columnSizing: ColumnSizingState;
@@ -28,7 +44,7 @@ interface TranscriptsTableState {
   sorting: SortingState;
   rowSelection: RowSelectionState;
   focusedRowId: string | null;
-  columnFilters: Record<string, SimpleCondition | null>;
+  columnFilters: Record<string, ColumnFilter>;
 }
 
 interface StoreState {

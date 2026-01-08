@@ -26,3 +26,14 @@
   background: var(--bs-light);
   color: var(--bs-secondary);
 }
+
+.columnId {
+  margin-left: 0.5rem;
+  font-weight: 600;
+  font-family: var(--bs-monospace);
+}
+
+:global(.btn).filterButton {
+  width: 100%;
+  padding: 0.2rem;
+}

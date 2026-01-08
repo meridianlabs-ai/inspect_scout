@@ -68,7 +68,6 @@ export const TranscriptsPanel: FC = () => {
     [fetchNextPage]
   );
 
-  // TODO: is data?.pages[0]?.["total_count"] expected to be present (type system seems not to think so)
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
@@ -100,7 +99,7 @@ export const TranscriptsPanel: FC = () => {
       )}
       <Footer
         id={"transcripts-footer"}
-        itemCount={data?.pages[0]?.["total_count"] || 0}
+        itemCount={data?.pages[0]?.total_count || 0}
         paginated={false}
       />
     </div>

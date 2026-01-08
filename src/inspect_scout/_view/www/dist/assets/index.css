@@ -3890,19 +3890,37 @@ so disabling selection can break that functionality */
   height: 100%;
   row-gap: 0;
 }
-._chip_1n3yp_1 {
+._chip_t892q_1 {
   display: inline-flex;
   flex-direction: row;
   margin: 0.2rem;
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem 0.4rem;
   border: solid 1px var(--bs-border-color);
   border-radius: var(--bs-border-radius);
   font-family: var(--bs-font-monospace);
+  align-items: center;
 }
 
-._label_1n3yp_11 {
+._label_t892q_12 {
   font-weight: 600;
   margin-right: 0.5em;
+}
+
+._value_t892q_17 {
+}
+
+._icon_t892q_20 {
+  margin-right: 0.2rem;
+  font-size: 0.8em;
+}
+
+._closeIcon_t892q_25 {
+  margin-left: 0.3rem;
+  font-size: 0.8em;
+}
+
+._clickable_t892q_30 {
+  cursor: pointer;
 }
 ._chipGroup_1x7cb_1 {
   display: flex;

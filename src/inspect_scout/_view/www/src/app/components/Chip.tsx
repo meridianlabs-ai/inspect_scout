@@ -30,11 +30,36 @@ export const Chip: FC<ChipProps> = ({
       onClick={onClick}
       title={title}
     >
-      {icon ? <i className={icon} /> : undefined}
-      {label ? <span className={styles.label}>{label}</span> : undefined}
-      {value}
+      {icon ? (
+        <i
+          className={clsx(
+            icon,
+            styles.icon,
+            onClick ? styles.clickable : undefined
+          )}
+        />
+      ) : undefined}
+      {label ? (
+        <span
+          className={clsx(styles.label, onClick ? styles.clickable : undefined)}
+        >
+          {label}
+        </span>
+      ) : undefined}
+      <span
+        className={clsx(styles.valueonClick ? styles.clickable : undefined)}
+      >
+        {value}
+      </span>
       {onClose ? (
-        <i className={ApplicationIcons.close} onClick={onClose} />
+        <i
+          className={clsx(
+            ApplicationIcons.xLarge,
+            styles.closeIcon,
+            styles.clickable
+          )}
+          onClick={onClose}
+        />
       ) : undefined}
     </div>
   );

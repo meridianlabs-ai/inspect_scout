@@ -11,6 +11,7 @@ import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
+import { TranscriptFilterBar } from "./TranscriptFilterBar";
 import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
@@ -85,14 +86,17 @@ export const TranscriptsPanel: FC = () => {
         />
       )}
       {!error && (
-        <TranscriptsGrid
-          transcripts={transcripts}
-          transcriptsDir={resolvedTranscriptDir}
-          loading={isFetching && transcripts.length === 0}
-          onScrollNearEnd={handleScrollNearEnd}
-          hasMore={hasNextPage}
-          fetchThreshold={infiniteScrollConfig.threshold}
-        />
+        <>
+          <TranscriptFilterBar />
+          <TranscriptsGrid
+            transcripts={transcripts}
+            transcriptsDir={resolvedTranscriptDir}
+            loading={isFetching && transcripts.length === 0}
+            onScrollNearEnd={handleScrollNearEnd}
+            hasMore={hasNextPage}
+            fetchThreshold={infiniteScrollConfig.threshold}
+          />
+        </>
       )}
       <Footer
         id={"transcripts-footer"}

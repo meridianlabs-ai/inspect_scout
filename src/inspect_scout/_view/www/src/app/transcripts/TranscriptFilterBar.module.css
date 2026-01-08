@@ -1,6 +1,22 @@
-.filterBar {
+.container {
+  display: flex;
+  flex-direction: row;
+  background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
+  padding: 0rem 0.5rem;
+  align-items: center;
+}
+
+.filterBar {
+}
+
+.filterLabel {
+  margin-right: 0.3rem;
 }
 
 .filterChip {
+}
+
+.filterNone {
+  font-family: var(--bs-font-monospace);
 }

@@ -1,5 +1,6 @@
 ## Unreleased
 
+- CLI: Add `scout --version` to print current scout version.
 - Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.
 
 ## 0.4.6 (08 January 2026)

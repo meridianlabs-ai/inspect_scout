@@ -1,3 +1,7 @@
+## Unreleased
+
+- Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.
+
 ## 0.4.6 (08 January 2026)
 
 - LLM Scanner: Add `value_to_float` option to for converting model reported values to numeric.

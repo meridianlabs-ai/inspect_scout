@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +8,8 @@ import yaml
 
 from .predicates import ValidationPredicate
 from .types import ValidationCase, ValidationSet
+
+logger = logging.getLogger(__name__)
 
 
 def validation_set(
@@ -30,7 +33,15 @@ def validation_set(
 
     # Validate required columns
     if "id" not in df.columns:
-        raise ValueError("Validation data must contain an 'id' column")
+        actual_columns = list(df.columns)
+        raise ValueError(
+            f"Validation data must contain an 'id' column.\n"
+            f"Found columns: {actual_columns}\n\n"
+            f"CSV files should have a header row with 'id' as the first column:\n"
+            f"  id,target\n"
+            f"  id,target_foo,target_bar\n"
+            f"  id,label_foo,label_bar"
+        )
 
     # Parse id column to handle arrays
     df["id"] = df["id"].apply(_parse_id)
@@ -49,8 +60,14 @@ def validation_set(
         # Single target column
         validate_cases = _create_cases_with_single_target(df)
     else:
+        other_columns = [c for c in df.columns if c != "id"]
         raise ValueError(
-            "Validation data must contain either a 'target' column, 'target_*' columns, or 'label_*' columns"
+            f"Validation data must contain target columns.\n"
+            f"Found non-id columns: {other_columns}\n\n"
+            f"Expected one of:\n"
+            f"  - 'target' column for single-value validation\n"
+            f"  - 'target_*' columns (e.g., target_foo, target_bar) for dict validation\n"
+            f"  - 'label_*' columns (e.g., label_deception) for resultset validation"
         )
 
     return ValidationSet(cases=validate_cases, predicate=predicate)
@@ -65,7 +82,7 @@ def _load_file(file: str | Path) -> pd.DataFrame:
         # Use automatic type detection (pandas default)
         df = pd.read_csv(path)
 
-        # Auto-detect headerless 2-column CSV
+        # Auto-detect headerless 2-column CSV (for backwards compatibility)
         # If we have exactly 2 columns and no "id" column, check if first row looks like data
         if len(df.columns) == 2 and "id" not in df.columns:
             # Check if the column names look like header names or data
@@ -73,12 +90,19 @@ def _load_file(file: str | Path) -> pd.DataFrame:
             # If columns are like ['name', 'target'] or other meaningful names, keep headers
             # If they look like data values, treat as headerless
             if not any(
-                name.lower() in ["id", "target", "name", "value", "key"]
-                or name.startswith("target_")
-                or name.startswith("label_")
+                str(name).lower() in ["id", "target", "name", "value", "key"]
+                or str(name).startswith("target_")
+                or str(name).startswith("label_")
                 for name in col_names
             ):
                 df = pd.read_csv(path, header=None, names=["id", "target"])
+                first_row = df.iloc[0].tolist() if len(df) > 0 else []
+                logger.warning(
+                    f"CSV '{path.name}' has no recognized headers. "
+                    f"Assuming columns are 'id,target'. "
+                    f"First row: {first_row}. "
+                    f"Add a header row to suppress this warning."
+                )
 
         # Convert string booleans and fix integer types
         df = _convert_csv_types(df)

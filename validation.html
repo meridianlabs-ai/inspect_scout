@@ -394,7 +394,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#comparison-predicates" id="toc-comparison-predicates" class="nav-link" data-scroll-target="#comparison-predicates">Comparison Predicates</a></li>
   <li><a href="#value-dictionary" id="toc-value-dictionary" class="nav-link" data-scroll-target="#value-dictionary">Value Dictionary</a></li>
   </ul></li>
-  <li><a href="#validation-files" id="toc-validation-files" class="nav-link" data-scroll-target="#validation-files">File Formats</a></li>
+  <li><a href="#validation-files" id="toc-validation-files" class="nav-link" data-scroll-target="#validation-files">File Formats</a>
+  <ul class="collapse">
+  <li><a href="#csv" id="toc-csv" class="nav-link" data-scroll-target="#csv">CSV</a></li>
+  <li><a href="#yaml" id="toc-yaml" class="nav-link" data-scroll-target="#yaml">YAML</a></li>
+  </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -459,9 +463,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-with-filename-file">
 <pre><strong>ctf-validation.csv</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" data-filename="ctf-validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, true</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, false</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB, true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" data-filename="ctf-validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>id,target</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo,true</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG,false</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB,true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="scanning" class="level4">
@@ -526,23 +531,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-with-filename-file">
 <pre><strong>backtracking.csv</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename="backtracking.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo, 2</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG, 0</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB, 3</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename="backtracking.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>id,target</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>Fg3KBpgFr6RSsEWmHBUqeo,2</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>VFkCH7gXWpJYUYonvfHxrG,0</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>SiEXpECj7U9nNAvM3H7JqB,3</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>validation.csv</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="validation.csv"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>id,target</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG",true</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <section id="result-set-validation" class="level3">
 <h3 class="anchored" data-anchor-id="result-set-validation">Result Set Validation</h3>
 <p>When a scanner returns a list of multiple results (see <a href="./scanners.html#multiple-results">Multiple Results</a>), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.</p>
 <section id="format" class="level4">
 <h4 class="anchored" data-anchor-id="format">Format</h4>
-<p>For CSV files, use <code>label_*</code> columns instead of <code>target_*</code> columns:</p>
+<p>For CSV files, use <code>label_*</code> columns:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>security-validation.csv</strong></pre>
@@ -591,7 +598,45 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="validation-files" class="level2">
 <h2 class="anchored" data-anchor-id="validation-files">File Formats</h2>
-<p>You can specify a <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationset">ValidationSet</a></span> either in code, as a CSV, or as a YAML or JSON file. We’ve demonstrated CSV above, here is what as equivalent YAML file would look like for a single target:</p>
+<p>You can specify a <span class="element-type-name ref-interlink"><a href="./reference/results.html#validationset">ValidationSet</a></span> either in code, as a CSV, or as a YAML or JSON file.</p>
+<section id="csv" class="level3">
+<h3 class="anchored" data-anchor-id="csv">CSV</h3>
+<p>Here are the various ways you can structure a validation CSV for different scenarios:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 41%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Format</th>
+<th>Header Row</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Single target</td>
+<td><code>id,target</code></td>
+<td><code>id,target</code><br><code>abc123,true</code></td>
+</tr>
+<tr class="even">
+<td>Dict targets</td>
+<td><code>id,target_*,...</code></td>
+<td><code>id,target_foo,target_bar</code><br><code>abc123,true,42</code></td>
+</tr>
+<tr class="odd">
+<td>Label validation</td>
+<td><code>id,label_*,...</code></td>
+<td><code>id,label_deception,label_jailbreak</code><br><code>abc123,true,false</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="yaml" class="level3">
+<h3 class="anchored" data-anchor-id="yaml">YAML</h3>
+<p>Here is what a YAML file would look like for a single target:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>validation.yaml</strong></pre>
@@ -602,7 +647,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
 <span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">target</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<p>And for multiple targets:</p>
+<p>Here is a YAML file for multiple targets:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>validation.yaml</strong></pre>
@@ -617,8 +662,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
 <span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">backtracks</span><span class="kw">:</span><span class="at"> </span><span class="dv">0</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<p>Here is a YAML file for label-based validation (resultsets):</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>validation.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13" data-filename="validation.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> Fg3KBpgFr6RSsEWmHBUqeo</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">labels</span><span class="kw">:</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">jailbreak</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">misconfig</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> VFkCH7gXWpJYUYonvfHxrG</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">labels</span><span class="kw">:</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">deception</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">jailbreak</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="at">     </span><span class="fu">misconfig</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->

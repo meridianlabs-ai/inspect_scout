@@ -325,9 +325,10 @@ that form:
 **ctf-validation.csv**
 
 ``` default
-Fg3KBpgFr6RSsEWmHBUqeo, true
-VFkCH7gXWpJYUYonvfHxrG, false
-SiEXpECj7U9nNAvM3H7JqB, true
+id,target
+Fg3KBpgFr6RSsEWmHBUqeo,true
+VFkCH7gXWpJYUYonvfHxrG,false
+SiEXpECj7U9nNAvM3H7JqB,true
 ```
 
 #### Scanning

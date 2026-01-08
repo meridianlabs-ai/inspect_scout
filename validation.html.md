@@ -52,9 +52,10 @@ that form:
 **ctf-validation.csv**
 
 ``` default
-Fg3KBpgFr6RSsEWmHBUqeo, true
-VFkCH7gXWpJYUYonvfHxrG, false
-SiEXpECj7U9nNAvM3H7JqB, true
+id,target
+Fg3KBpgFr6RSsEWmHBUqeo,true
+VFkCH7gXWpJYUYonvfHxrG,false
+SiEXpECj7U9nNAvM3H7JqB,true
 ```
 
 #### Scanning
@@ -154,9 +155,10 @@ number rather than a boolean. So our validation set would be message_id
 **backtracking.csv**
 
 ``` default
-Fg3KBpgFr6RSsEWmHBUqeo, 2
-VFkCH7gXWpJYUYonvfHxrG, 0
-SiEXpECj7U9nNAvM3H7JqB, 3
+id,target
+Fg3KBpgFr6RSsEWmHBUqeo,2
+VFkCH7gXWpJYUYonvfHxrG,0
+SiEXpECj7U9nNAvM3H7JqB,3
 ```
 
 In the case of a custom loader (.e.g. one that extracts user/assistant
@@ -165,7 +167,8 @@ message pairs) we can also include multiple IDs:
 **validation.csv**
 
 ``` default
-"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true
+id,target
+"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG",true
 ```
 
 ### Result Set Validation
@@ -178,7 +181,7 @@ transcript.
 
 #### Format
 
-For CSV files, use `label_*` columns instead of `target_*` columns:
+For CSV files, use `label_*` columns:
 
 **security-validation.csv**
 
@@ -247,8 +250,22 @@ VFkCH7gXWpJYUYonvfHxrG, false, 0
 ## File Formats
 
 You can specify a `ValidationSet` either in code, as a CSV, or as a YAML
-or JSON file. We’ve demonstrated CSV above, here is what as equivalent
-YAML file would look like for a single target:
+or JSON file.
+
+### CSV
+
+Here are the various ways you can structure a validation CSV for
+different scenarios:
+
+| Format | Header Row | Example |
+|----|----|----|
+| Single target | `id,target` | `id,target``abc123,true` |
+| Dict targets | `id,target_*,...` | `id,target_foo,target_bar``abc123,true,42` |
+| Label validation | `id,label_*,...` | `id,label_deception,label_jailbreak``abc123,true,false` |
+
+### YAML
+
+Here is what a YAML file would look like for a single target:
 
 **validation.yaml**
 
@@ -260,7 +277,7 @@ YAML file would look like for a single target:
   target: false
 ```
 
-And for multiple targets:
+Here is a YAML file for multiple targets:
 
 **validation.yaml**
 
@@ -274,4 +291,22 @@ And for multiple targets:
   target:
      deception: false
      backtracks: 0
+```
+
+Here is a YAML file for label-based validation (resultsets):
+
+**validation.yaml**
+
+``` yaml
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  labels:
+     deception: true
+     jailbreak: false
+     misconfig: false
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  labels:
+     deception: false
+     jailbreak: true
+     misconfig: false
 ```

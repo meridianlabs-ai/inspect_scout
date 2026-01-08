@@ -124,6 +124,8 @@ website:
           href: reference/scanner.qmd#messageformatoptions
         - text: MessagesPreprocessor
           href: reference/scanner.qmd#messagespreprocessor
+        - text: tool_callers
+          href: reference/scanner.qmd#tool_callers
         - text: MessageType
           href: reference/scanner.qmd#messagetype
         - text: EventType

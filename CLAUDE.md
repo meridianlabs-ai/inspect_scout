@@ -9,18 +9,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Python
 
 ### Commands
-- Test: `pytest` / `pytest tests/path/to/test.py::func -v`
-- Lint: `ruff check --fix`
-- Format: `ruff format`
+- Run all tests: `pytest`
+- Run a single test: `pytest tests/path/to/test_file.py::test_function_name -v`
+- Format code: `ruff format`
+- Lint code: `ruff check --fix`
 - Type check: `mypy src examples tests`
 - All checks: `make check`
 
 ### Style
-- Google style convention, ruff formatting
-- isort import order (enforced by ruff)
-- Strict typing required - all functions annotated, including tests
-- snake_case for vars/funcs/methods; PascalCase for classes
-- Google-style docstrings for public APIs
+- **Formatting**: Follow Google style convention. Use ruff for formatting
+- **Imports**: Use isort order (enforced by ruff)
+- **Types**: Strict typing is required. All functions must have type annotations, including functions in tests.
+- **Naming**: Use snake_case for variables, functions, methods; PascalCase for classes
+- **Docstrings**: Google-style docstrings required for public APIs
+- **Error Handling**: Use appropriate exception types; include context in error messages
+- **Testing**: Write tests with pytest; maintain high coverage
 
 ## TypeScript (run from `src/inspect_scout/_view/www/`)
 
@@ -58,7 +61,5 @@ Manual type generation: `pnpm types:generate`
 CI validates both files stay in sync.
 
 ## General Guidelines
-- Use appropriate exception types; include context in error messages
-- Respect existing code patterns when modifying files
-- Run linting before committing changes
-- Maintain high test coverage
+
+Respect existing code patterns when modifying files. Run linting before committing changes.

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from inspect_scout._active_scans_store import ActiveScanInfo, ActiveScansStore
 from inspect_scout._concurrency.common import ScanMetrics
+from inspect_scout._recorder.summary import Summary
 from inspect_scout._view._api_v2 import v2_api_app
 
 
@@ -51,6 +52,7 @@ class TestActiveScansEndpoint:
         )
         scan_info = ActiveScanInfo(
             scan_id="scan-abc-123",
+            summary=Summary(),
             metrics=metrics,
             last_updated=1704067200.0,
         )
@@ -76,16 +78,19 @@ class TestActiveScansEndpoint:
 
         scan1 = ActiveScanInfo(
             scan_id="scan-1",
+            summary=Summary(),
             metrics=ScanMetrics(completed_scans=50),
             last_updated=1000.0,
         )
         scan2 = ActiveScanInfo(
             scan_id="scan-2",
+            summary=Summary(),
             metrics=ScanMetrics(completed_scans=75),
             last_updated=2000.0,
         )
         scan3 = ActiveScanInfo(
             scan_id="scan-3",
+            summary=Summary(),
             metrics=ScanMetrics(completed_scans=25),
             last_updated=3000.0,
         )
@@ -127,6 +132,7 @@ class TestActiveScansEndpoint:
         )
         scan_info = ActiveScanInfo(
             scan_id="full-metrics-scan",
+            summary=Summary(),
             metrics=metrics,
             last_updated=1704067200.0,
         )

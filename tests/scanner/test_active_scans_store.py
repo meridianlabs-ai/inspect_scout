@@ -16,6 +16,7 @@ from inspect_scout._active_scans_store import (
     active_scans_store,
 )
 from inspect_scout._concurrency.common import ScanMetrics
+from inspect_scout._recorder.summary import Summary
 
 
 @contextmanager
@@ -147,7 +148,9 @@ def test_read_all_returns_empty_when_no_entries() -> None:
 def test_active_scan_info_dataclass() -> None:
     """ActiveScanInfo holds expected fields."""
     metrics = ScanMetrics(memory_usage=1024)
-    info = ActiveScanInfo(scan_id="test", metrics=metrics, last_updated=123.456)
+    info = ActiveScanInfo(
+        scan_id="test", summary=Summary(), metrics=metrics, last_updated=123.456
+    )
 
     assert info.scan_id == "test"
     assert info.metrics.memory_usage == 1024

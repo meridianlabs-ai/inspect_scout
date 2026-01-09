@@ -46,7 +46,7 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
-from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
+from ._concurrency.common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
 from ._display._display import (
@@ -61,6 +61,7 @@ from ._recorder.factory import (
     scan_recorder_type_for_location,
 )
 from ._recorder.recorder import ScanRecorder, Status
+from ._scan_metrics_store import scan_metrics_store
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import (
     ScanDeprecatedArgs,
@@ -764,14 +765,26 @@ async def _scan_async_inner(
                     await recorder.record(transcript, scanner, results, metrics)
                     scan_display.results(transcript, scanner, results, metrics)
 
-                await strategy(
-                    parse_jobs=_parse_jobs(scan, recorder, tr),
-                    parse_function=_parse_function,
-                    scan_function=_scan_function,
-                    record_results=record_results,
-                    update_metrics=scan_display.metrics,
-                    completed=_strategy_completed,
-                )
+                with scan_metrics_store(scan.spec.scan_id) as (
+                    put_metrics,
+                    delete_metrics,
+                ):
+
+                    def update_metrics(metrics: ScanMetrics) -> None:
+                        put_metrics(metrics)
+                        scan_display.metrics(metrics)
+
+                    try:
+                        await strategy(
+                            parse_jobs=_parse_jobs(scan, recorder, tr),
+                            parse_function=_parse_function,
+                            scan_function=_scan_function,
+                            record_results=record_results,
+                            update_metrics=update_metrics,
+                            completed=_strategy_completed,
+                        )
+                    finally:
+                        delete_metrics()
 
                 # we've been throttle metrics calculation, now report it all
                 for scanner in metrics_accum:

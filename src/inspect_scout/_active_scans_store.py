@@ -110,7 +110,7 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                     data = json.loads(value)
                     info = ActiveScanInfo(
                         scan_id=data["scan_id"],
-                        summary=Summary(),
+                        summary=Summary(complete=False),
                         metrics=ScanMetrics(**data["metrics"]),
                         last_updated=data["last_updated"],
                     )

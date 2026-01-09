@@ -21,9 +21,9 @@ from upath import UPath
 from inspect_scout._project._project import project
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
+from .._active_scans_store import active_scans_store
 from .._query import Column, Query
 from .._recorder.recorder import Status as RecorderStatus
-from .._scan_metrics_store import active_scans_store
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
     scan_results_arrow_async,

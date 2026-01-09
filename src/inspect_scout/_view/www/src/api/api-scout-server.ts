@@ -127,10 +127,10 @@ export const apiScoutServer = (
       // Return the DataFrameInput
       return { input, inputType: inputType as InputType };
     },
-    getActiveScans: async (): Promise<ActiveScansResponse> => {
-      const result = await requestApi.fetchString("GET", `/scans/active`);
-      return asyncJsonParse<ActiveScansResponse>(result.raw);
-    },
+    getActiveScans: async (): Promise<ActiveScansResponse> =>
+      asyncJsonParse<ActiveScansResponse>(
+        (await requestApi.fetchString("GET", `/scans/active`)).raw
+      ),
     storage: NoPersistence,
   };
 };

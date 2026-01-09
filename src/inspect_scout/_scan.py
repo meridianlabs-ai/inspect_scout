@@ -46,6 +46,7 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
+from ._active_scans_store import active_scans_store
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -61,7 +62,6 @@ from ._recorder.factory import (
     scan_recorder_type_for_location,
 )
 from ._recorder.recorder import ScanRecorder, Status
-from ._scan_metrics_store import active_scans_store
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import (
     ScanDeprecatedArgs,

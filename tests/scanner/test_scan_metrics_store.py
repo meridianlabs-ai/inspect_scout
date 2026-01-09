@@ -9,13 +9,13 @@ from typing import Iterator
 from unittest.mock import patch
 
 from inspect_ai._util.kvstore import inspect_kvstore
-from inspect_scout._concurrency.common import ScanMetrics
-from inspect_scout._scan_metrics_store import (
+from inspect_scout._active_scans_store import (
     _STORE_VERSION,
     _VERSION_KEY,
     ActiveScanInfo,
     active_scans_store,
 )
+from inspect_scout._concurrency.common import ScanMetrics
 
 
 @contextmanager

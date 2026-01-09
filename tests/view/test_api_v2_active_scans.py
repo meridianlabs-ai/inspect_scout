@@ -5,8 +5,8 @@ from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
+from inspect_scout._active_scans_store import ActiveScanInfo, ActiveScansStore
 from inspect_scout._concurrency.common import ScanMetrics
-from inspect_scout._scan_metrics_store import ActiveScanInfo, ActiveScansStore
 from inspect_scout._view._api_v2 import v2_api_app
 
 

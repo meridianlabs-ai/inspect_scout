@@ -3,10 +3,10 @@ from typing import Any, Literal, TypeAlias
 
 from inspect_scout._query.order_by import OrderBy
 
+from .._active_scans_store import ActiveScanInfo
 from .._query.condition import Condition
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
-from .._scan_metrics_store import ActiveScanInfo
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo

@@ -13,6 +13,7 @@ from inspect_ai.model import ChatMessage
 from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
+    HTTP_413_REQUEST_ENTITY_TOO_LARGE,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from upath import UPath
@@ -28,7 +29,7 @@ from .._scanresults import (
     scan_results_df_async,
 )
 from .._transcript.database.factory import transcripts_view
-from .._transcript.types import Transcript, TranscriptContent
+from .._transcript.types import Transcript, TranscriptContent, TranscriptTooLargeError
 from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
     build_pagination_context,
@@ -52,6 +53,8 @@ from ._server_common import (
 _running_scans: set[str] = set()
 
 API_VERSION = "2.0.0-alpha"
+
+MAX_TRANSCRIPT_BYTES = 350 * 1024 * 1024  # 350MB
 
 
 def v2_api_app(
@@ -268,7 +271,15 @@ def v2_api_app(
                 )
 
             content = TranscriptContent(messages="all", events="all")
-            return await view.read(infos[0], content)
+            try:
+                return await view.read(
+                    infos[0], content, max_bytes=MAX_TRANSCRIPT_BYTES
+                )
+            except TranscriptTooLargeError as e:
+                raise HTTPException(
+                    status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"Transcript too large: {e.size} bytes exceeds {e.max_size} limit",
+                ) from None
 
     @app.post(
         "/scans",

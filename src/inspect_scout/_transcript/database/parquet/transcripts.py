@@ -35,7 +35,12 @@ from ...transcripts import (
     Transcripts,
     TranscriptsReader,
 )
-from ...types import Transcript, TranscriptContent, TranscriptInfo
+from ...types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+    TranscriptTooLargeError,
+)
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
 from .encryption import (
@@ -399,13 +404,32 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return transcript_ids
 
+    def _get_content_size(self, full_path: str, transcript_id: str) -> int:
+        """Get decompressed size of messages+events columns for a transcript."""
+        assert self._conn is not None
+        enc_config = self._read_parquet_encryption_config()
+        result = self._conn.execute(
+            f"""
+            SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+            FROM read_parquet(?{enc_config}) WHERE transcript_id = ?
+            """,
+            [full_path, transcript_id],
+        ).fetchone()
+        return result[0] if result else 0
+
     @override
-    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
+    async def read(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
+    ) -> Transcript:
         """Load full transcript content using DuckDB.
 
         Args:
             t: TranscriptInfo identifying the transcript.
             content: Filter for which messages/events to load.
+            max_bytes: Max content size in bytes. Raises TranscriptTooLargeError if exceeded.
 
         Returns:
             Full Transcript with filtered content.
@@ -468,6 +492,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # The index stores relative filenames, so we need to construct the full path
             relative_filename = filename_result[0]
             full_path = self._full_parquet_path(relative_filename)
+
+            # Check size limit before loading content
+            if max_bytes is not None:
+                content_size = self._get_content_size(full_path, t.transcript_id)
+                if content_size > max_bytes:
+                    raise TranscriptTooLargeError(
+                        t.transcript_id, content_size, max_bytes
+                    )
 
             # Try optimistic read first (fast path for files with all columns)
             enc_config = self._read_parquet_encryption_config()

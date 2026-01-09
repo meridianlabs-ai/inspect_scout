@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { ApiError } from "../../api/request";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
@@ -50,7 +51,20 @@ export const TranscriptPanel: FC = () => {
           <TranscriptBody transcript={transcript} />
         </div>
       )}
-      {error && <ErrorPanel title="Error Loading Transcript" error={error} />}
+      {error && (
+        <ErrorPanel
+          title={
+            error instanceof ApiError && error.status === 413
+              ? "Transcript Too Large"
+              : "Error Loading Transcript"
+          }
+          error={
+            error instanceof ApiError && error.status === 413
+              ? { message: "This transcript exceeds the maximum size limit." }
+              : error
+          }
+        />
+      )}
     </div>
   );
 };

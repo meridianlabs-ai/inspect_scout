@@ -101,7 +101,10 @@ export interface UseColumnFilterReturn {
   isValueDisabled: boolean;
   valueSelectRef: React.RefObject<HTMLSelectElement | null>;
   valueInputRef: React.RefObject<HTMLInputElement | null>;
-  buildCondition: (operator: OperatorModel, value: string) => SimpleCondition | null | undefined;
+  buildCondition: (
+    operator: OperatorModel,
+    value: string
+  ) => SimpleCondition | null | undefined;
 }
 
 export function useColumnFilter({

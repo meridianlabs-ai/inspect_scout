@@ -10,5 +10,6 @@ export const useCode = (
   return useAsyncDataFromQuery({
     queryKey: ["code", condition],
     queryFn: () => api.postCode(condition),
+    staleTime: Infinity,
   });
 };

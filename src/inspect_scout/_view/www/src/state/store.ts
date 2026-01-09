@@ -45,6 +45,7 @@ interface TranscriptsTableState {
   rowSelection: RowSelectionState;
   focusedRowId: string | null;
   columnFilters: Record<string, ColumnFilter>;
+  visibleColumns?: Array<keyof TranscriptInfo>;
 }
 
 interface StoreState {

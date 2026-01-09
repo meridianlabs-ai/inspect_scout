@@ -1,5 +1,4 @@
 import {
-  ColumnDef,
   ColumnSizingState,
   flexRender,
   getCoreRowModel,
@@ -28,53 +27,14 @@ import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore, FilterType } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
-import { printArray } from "../../utils/array";
-import { formatNumber, formatPrettyDecimal } from "../../utils/format";
-import { printObject } from "../../utils/object";
 
 import { ColumnFilterControl } from "./columnFilter";
+import {
+  TranscriptColumn,
+  getTranscriptColumns,
+  getCellTitleValue,
+} from "./columns";
 import styles from "./TranscriptsGrid.module.css";
-
-type TranscriptColumn = ColumnDef<TranscriptInfo> & {
-  meta?: {
-    align?: "left" | "center" | "right";
-    filterable?: boolean;
-    filterType?: FilterType;
-  };
-  titleValue?: (value: any) => string;
-};
-
-// Helper to create strongly-typed columns
-function createColumn<K extends keyof TranscriptInfo>(config: {
-  accessorKey: K;
-  header: string;
-  size?: number;
-  meta?: {
-    align?: "left" | "center" | "right";
-    filterable?: boolean;
-    filterType?: FilterType;
-  };
-  cell?: (value: TranscriptInfo[K]) => React.ReactNode;
-  titleValue?: (value: TranscriptInfo[K]) => string;
-}): TranscriptColumn {
-  return {
-    accessorKey: config.accessorKey as string,
-    header: config.header,
-    size: config.size,
-    meta: config.meta,
-    titleValue: config.titleValue,
-    cell: (info) => {
-      const value = info.getValue() as TranscriptInfo[K];
-      if (config.cell) {
-        return config.cell(value);
-      }
-      if (value === undefined || value === null) {
-        return "-";
-      }
-      return String(value);
-    },
-  };
-}
 
 // Generate a stable key for a transcript item
 function transcriptItemKey(index: number, item?: TranscriptInfo): string {
@@ -82,25 +42,6 @@ function transcriptItemKey(index: number, item?: TranscriptInfo): string {
     return String(index);
   }
   return `${item.source_uri}/${item.transcript_id}`;
-}
-
-// Extract title value for tooltip
-function getCellTitleValue(cell: any, columnDef: TranscriptColumn): string {
-  const value = cell.getValue();
-
-  // Use custom titleValue function if provided
-  if (columnDef.titleValue) {
-    return columnDef.titleValue(value);
-  }
-
-  // Default fallback
-  if (value === undefined || value === null) {
-    return "";
-  }
-  if (typeof value === "object") {
-    return JSON.stringify(value, null, 2);
-  }
-  return String(value);
 }
 
 interface TranscriptGridProps {
@@ -145,6 +86,18 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const focusedRowId = useStore(
     (state) => state.transcriptsTableState.focusedRowId
   );
+  const visibleColumns =
+    useStore((state) => state.transcriptsTableState.visibleColumns) ?? [
+      "success",
+      "date",
+      "task_set",
+      "task_id",
+      "task_repeat",
+      "model",
+      "score",
+      "total_time",
+      "total_tokens",
+    ];
   const setTableState = useStore((state) => state.setTranscriptsTableState);
   const handleColumnFilterChange = useCallback(
     (
@@ -308,317 +261,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     setDropPosition(null);
   }, []);
 
-  // Define table columns
+  // Define table columns based on visible columns from store
   const columns = useMemo<TranscriptColumn[]>(
-    () => [
-      createColumn({
-        accessorKey: "success",
-        header: "Success",
-        size: 68,
-        meta: {
-          align: "center",
-          filterable: true,
-          filterType: "boolean",
-        },
-        cell: (value) => {
-          // value is now strongly typed as boolean | undefined
-          if (value === undefined) {
-            return "-";
-          }
-
-          const icon = value
-            ? ApplicationIcons.success
-            : ApplicationIcons.error;
-          const colorCls = value ? styles.green : styles.red;
-
-          return <i className={clsx(icon, colorCls)} />;
-        },
-      }),
-      createColumn({
-        accessorKey: "date",
-        header: "date",
-        size: 180,
-        meta: {
-          filterable: true,
-          filterType: "date",
-        },
-        cell: (value) => {
-          if (!value) {
-            return "-";
-          }
-          const date = new Date(value);
-          return date.toLocaleString();
-        },
-      }),
-      createColumn({
-        accessorKey: "transcript_id",
-        header: "Transcript ID",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          return value || "-";
-        },
-      }),
-      createColumn({
-        accessorKey: "task_set",
-        header: "Task Set",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-      }),
-      createColumn({
-        accessorKey: "task_id",
-        header: "Task ID",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-      }),
-      createColumn({
-        accessorKey: "task_repeat",
-        header: "Repeat",
-        size: 80,
-        meta: {
-          filterable: true,
-          filterType: "number",
-        },
-      }),
-      createColumn({
-        accessorKey: "model",
-        header: "Model",
-        size: 200,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-      }),
-      createColumn({
-        accessorKey: "model_options",
-        header: "Model Options",
-        size: 200,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          if (!value) {
-            return "-";
-          }
-          try {
-            return printObject(value, 1000);
-          } catch {
-            return String(value);
-          }
-        },
-        titleValue: (value) => {
-          if (!value) {
-            return "";
-          }
-          if (typeof value === "object") {
-            return JSON.stringify(value, null, 2);
-          }
-          return String(value);
-        },
-      }),
-      createColumn({
-        accessorKey: "agent",
-        header: "Agent",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (agent) => {
-          return agent || "-";
-        },
-      }),
-      createColumn({
-        accessorKey: "agent_args",
-        header: "Agent Args",
-        size: 200,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          if (!value) {
-            return "-";
-          }
-          try {
-            return printObject(value, 1000);
-          } catch {
-            return String(value);
-          }
-        },
-        titleValue: (value) => {
-          if (!value) {
-            return "";
-          }
-          if (typeof value === "object") {
-            return JSON.stringify(value, null, 2);
-          }
-          return String(value);
-        },
-      }),
-      createColumn({
-        accessorKey: "score",
-        header: "Score",
-        size: 100,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          if (!value) {
-            return "-";
-          }
-
-          if (Array.isArray(value)) {
-            return printArray(value, 1000);
-          } else if (typeof value === "object") {
-            return printObject(value, 1000);
-          } else if (typeof value === "number") {
-            return formatPrettyDecimal(value);
-          } else {
-            return String(value);
-          }
-        },
-        titleValue: (value) => {
-          if (!value) {
-            return "";
-          }
-          if (Array.isArray(value) || typeof value === "object") {
-            return JSON.stringify(value, null, 2);
-          }
-          return String(value);
-        },
-      }),
-      createColumn({
-        accessorKey: "metadata",
-        header: "Metadata",
-        size: 200,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          if (!value) {
-            return "-";
-          }
-          try {
-            return printObject(value, 1000);
-          } catch {
-            return String(value);
-          }
-        },
-        titleValue: (value) => {
-          if (!value) {
-            return "";
-          }
-          if (typeof value === "object") {
-            return JSON.stringify(value, null, 2);
-          }
-          return String(value);
-        },
-      }),
-      createColumn({
-        accessorKey: "source_id",
-        header: "Source ID",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          return value || "-";
-        },
-      }),
-      createColumn({
-        accessorKey: "source_type",
-        header: "Source Type",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          return value || "-";
-        },
-      }),
-      createColumn({
-        accessorKey: "source_uri",
-        header: "Source URI",
-        size: 300,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          return value || "-";
-        },
-      }),
-      createColumn({
-        accessorKey: "total_tokens",
-        header: "Total Tokens",
-        size: 120,
-        meta: {
-          filterable: true,
-          filterType: "number",
-        },
-        cell: (value) => {
-          if (value == null) {
-            return "-";
-          }
-          return formatNumber(value);
-        },
-      }),
-      createColumn({
-        accessorKey: "total_time",
-        header: "Total Time",
-        size: 120,
-        meta: {
-          filterable: true,
-          filterType: "number",
-        },
-        cell: (value) => {
-          if (value == null) {
-            return "-";
-          }
-          return formatPrettyDecimal(value);
-        },
-      }),
-      createColumn({
-        accessorKey: "limit",
-        header: "Limit",
-        size: 100,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          return value || "-";
-        },
-      }),
-      createColumn({
-        accessorKey: "error",
-        header: "Error",
-        size: 200,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          return value || "-";
-        },
-      }),
-    ],
-    []
+    () => getTranscriptColumns(visibleColumns),
+    [visibleColumns]
   );
 
   // Create table instance

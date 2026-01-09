@@ -22,7 +22,8 @@ from inspect_scout._project._project import project
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
 from .._active_scans_store import active_scans_store
-from .._query import Column, Query
+from .._query import Column, Condition, Query
+from .._query.sql import SQLDialect
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
@@ -344,6 +345,20 @@ def v2_api_app(
         """Get info on all active scans from the KV store."""
         with active_scans_store() as store:
             return ActiveScansResponse(items=store.read_all())
+
+    @app.post(
+        "/code",
+        summary="Code endpoint",
+        description="Accepts a Condition.",
+    )
+    async def code(
+        body: Condition,
+    ) -> dict[str, str]:
+        """Process condition."""
+        return {
+            "python": "PYTHON",
+            **{d.value: body.to_sql(d)[0] for d in SQLDialect},
+        }
 
     @app.get(
         "/scans/{scan}",

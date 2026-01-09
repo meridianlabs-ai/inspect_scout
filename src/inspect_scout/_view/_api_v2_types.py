@@ -1,11 +1,10 @@
-from dataclasses import dataclass, make_dataclass
+from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias
 
 from inspect_scout._query.order_by import OrderBy
 
 from .._active_scans_store import ActiveScanInfo
 from .._query.condition import Condition
-from .._query.sql import SQLDialect
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
@@ -120,8 +119,3 @@ class ActiveScansResponse:
     items: dict[str, ActiveScanInfo]
 
 
-CodeResponse = make_dataclass(
-    "CodeResponse",
-    [("python", str), *((d.value, str) for d in SQLDialect)],
-)
-CodeResponse.__doc__ = "Response body for POST /code endpoint."

@@ -283,6 +283,7 @@ def v2_api_app(
 
     @app.post(
         "/scans",
+        response_class=InspectPydanticJSONResponse,
         summary="List scans",
         description="Returns scans from the results directory. "
         "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "

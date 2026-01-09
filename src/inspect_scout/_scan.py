@@ -756,19 +756,22 @@ async def _scan_async_inner(
                     else:
                         return None
 
-                async def record_results(
-                    transcript: TranscriptInfo,
-                    scanner: str,
-                    results: Sequence[ResultReport],
-                ) -> None:
-                    metrics = accumulate_metrics(scanner, results)
-                    await recorder.record(transcript, scanner, results, metrics)
-                    scan_display.results(transcript, scanner, results, metrics)
-
                 with active_scans_store() as active_store:
 
+                    async def record_results(
+                        transcript: TranscriptInfo,
+                        scanner: str,
+                        results: Sequence[ResultReport],
+                    ) -> None:
+                        metrics = accumulate_metrics(scanner, results)
+                        await recorder.record(transcript, scanner, results, metrics)
+                        scan_display.results(transcript, scanner, results, metrics)
+                        active_store.put_scanner_results(
+                            scan.spec.scan_id, scanner, results
+                        )
+
                     def update_metrics(metrics: ScanMetrics) -> None:
-                        active_store.put(scan.spec.scan_id, metrics)
+                        active_store.put_metrics(scan.spec.scan_id, metrics)
                         scan_display.metrics(metrics)
 
                     try:

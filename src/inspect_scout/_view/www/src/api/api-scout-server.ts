@@ -3,7 +3,6 @@ import type { Condition, OrderByModel } from "../query";
 import {
   ActiveScansResponse,
   AppConfig,
-  CodeResponse,
   Pagination,
   ScansResponse,
   Status,
@@ -132,8 +131,8 @@ export const apiScoutServer = (
       asyncJsonParse<ActiveScansResponse>(
         (await requestApi.fetchString("GET", `/scans/active`)).raw
       ),
-    postCode: async (condition: Condition): Promise<CodeResponse> =>
-      asyncJsonParse<CodeResponse>(
+    postCode: async (condition: Condition): Promise<Record<string, string>> =>
+      asyncJsonParse<Record<string, string>>(
         (
           await requestApi.fetchString(
             "POST",

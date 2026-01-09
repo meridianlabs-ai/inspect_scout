@@ -494,17 +494,6 @@ export interface components {
              */
             tool_call_id: string[] | null;
         };
-        /** CodeResponse */
-        CodeResponse: {
-            /** Duckdb */
-            duckdb: string;
-            /** Postgres */
-            postgres: string;
-            /** Python */
-            python: string;
-            /** Sqlite */
-            sqlite: string;
-        };
         /**
          * Condition
          * @description WHERE clause condition that can be combined with others.
@@ -3037,7 +3026,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CodeResponse"];
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

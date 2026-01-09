@@ -117,5 +117,3 @@ class ActiveScansResponse:
     """Response body for GET /scans/active endpoint."""
 
     items: dict[str, ActiveScanInfo]
-
-

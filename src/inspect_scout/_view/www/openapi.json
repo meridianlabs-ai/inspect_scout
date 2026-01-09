@@ -836,34 +836,6 @@
         "title": "ChatMessageUser",
         "type": "object"
       },
-      "CodeResponse": {
-        "properties": {
-          "duckdb": {
-            "title": "Duckdb",
-            "type": "string"
-          },
-          "postgres": {
-            "title": "Postgres",
-            "type": "string"
-          },
-          "python": {
-            "title": "Python",
-            "type": "string"
-          },
-          "sqlite": {
-            "title": "Sqlite",
-            "type": "string"
-          }
-        },
-        "required": [
-          "python",
-          "sqlite",
-          "duckdb",
-          "postgres"
-        ],
-        "title": "CodeResponse",
-        "type": "object"
-      },
       "Condition": {
         "description": "WHERE clause condition that can be combined with others.",
         "properties": {
@@ -7081,7 +7053,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CodeResponse"
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Code Code Post",
+                  "type": "object"
                 }
               }
             },

@@ -60,7 +60,6 @@ export type ContentReasoning = components["schemas"]["ContentReasoning"];
 export type ContentText = components["schemas"]["ContentText"];
 export type ContentToolUse = components["schemas"]["ContentToolUse"];
 export type ContentVideo = components["schemas"]["ContentVideo"];
-export type CodeResponse = components["schemas"]["CodeResponse"];
 
 export type Score = components["schemas"]["Score"];
 

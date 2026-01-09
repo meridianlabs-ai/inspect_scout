@@ -1,7 +1,6 @@
 import { ScanResultInputData, Input, InputType } from "../app/types";
 import {
   ActiveScansResponse,
-  CodeResponse,
   ScansResponse,
   Status,
   TranscriptsResponse,
@@ -127,7 +126,7 @@ export const apiScoutServerV1 = (
       throw new Error("Not Yet Implemented");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
-    postCode: async (): Promise<CodeResponse> => {
+    postCode: async (): Promise<Record<string, string>> => {
       throw new Error("Not Yet Implemented");
     },
     storage: NoPersistence,

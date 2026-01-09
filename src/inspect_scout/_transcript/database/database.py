@@ -80,12 +80,15 @@ class TranscriptsView(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
+    async def read(
+        self, t: TranscriptInfo, content: TranscriptContent, max_bytes: int | None = None
+    ) -> Transcript:
         """Read transcript content.
 
         Args:
             t: Transcript to read.
             content: Content to read (messages, events, etc.)
+            max_bytes: Max content size in bytes. Raises TranscriptTooLargeError if exceeded.
         """
         ...
 

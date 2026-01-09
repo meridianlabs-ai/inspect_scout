@@ -12,6 +12,16 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
 
+
+class TranscriptTooLargeError(Exception):
+    """Raised when transcript content exceeds size limit."""
+
+    def __init__(self, transcript_id: str, size: int, max_size: int):
+        self.transcript_id = transcript_id
+        self.size = size
+        self.max_size = max_size
+        super().__init__(f"Transcript {transcript_id}: {size} bytes exceeds {max_size}")
+
 EventType = Literal[
     "model",
     "tool",

@@ -3,8 +3,8 @@ from typing import Any, Literal, TypeAlias
 
 from inspect_scout._query.order_by import OrderBy
 
-from .._active_scans_store import ActiveScanInfo
 from .._query.condition import Condition
+from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
@@ -73,6 +73,25 @@ ScanStatus: TypeAlias = RecorderStatus
 
 
 @dataclass
+class ScanStatusWithActiveInfo(RecorderStatus):
+    """Scan status with optional active scan info for in-progress scans."""
+
+    active_scan_info: ActiveScanInfo | None = None
+
+    def __init__(
+        self,
+        complete: bool,
+        spec: ScanSpec,
+        location: str,
+        summary: Summary,
+        errors: list[Error],
+        active_scan_info: ActiveScanInfo | None = None,
+    ) -> None:
+        super().__init__(complete, spec, location, summary, errors)
+        self.active_scan_info = active_scan_info
+
+
+@dataclass
 class PaginatedRequest:
     """Base request with filter, order_by, and pagination."""
 
@@ -99,7 +118,7 @@ class ScansRequest(PaginatedRequest):
 class ScansResponse:
     """Response body for POST /scans endpoint."""
 
-    items: list[RecorderStatus]
+    items: list[ScanStatusWithActiveInfo]
     total_count: int
     next_cursor: dict[str, Any] | None = None
 
@@ -112,10 +131,3 @@ class AppConfig:
     project_dir: str
     transcripts_dir: str | None
     scans_dir: str
-
-
-@dataclass
-class ActiveScansResponse:
-    """Response body for GET /scans/active endpoint."""
-
-    items: dict[str, ActiveScanInfo]

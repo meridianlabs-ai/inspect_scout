@@ -2,12 +2,7 @@ import JSON5 from "json5";
 
 import { Input, InputType } from "../app/types";
 import { Condition } from "../query/types";
-import {
-  ActiveScansResponse,
-  ScansResponse,
-  Status,
-  TranscriptsResponse,
-} from "../types/api-types";
+import { ScansResponse, Status, TranscriptsResponse } from "../types/api-types";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
@@ -144,10 +139,6 @@ export const apiVscode = (
       } else {
         throw new Error("Invalid response for getScans");
       }
-    },
-    // eslint-disable-next-line @typescript-eslint/require-await
-    getActiveScans: async (): Promise<ActiveScansResponse> => {
-      throw new Error("Not Yet Implemented");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     postCode: async (): Promise<Record<string, string>> => {

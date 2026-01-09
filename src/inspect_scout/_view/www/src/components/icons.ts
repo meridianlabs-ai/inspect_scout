@@ -117,6 +117,7 @@ export const ApplicationIcons = {
   pendingTask: "bi bi-clock-fill",
   pendingTaskSubtle: "bi bi-clock",
   play: "bi bi-play-fill",
+  "play-circle": "bi bi-play-circle-fill",
   previous: "bi bi-chevron-left",
   refresh: "bi bi-arrow-clockwise",
   refuse: "bi bi-ban",

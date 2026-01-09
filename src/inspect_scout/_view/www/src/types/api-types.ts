@@ -2,15 +2,17 @@
 import type { components } from "./generated";
 
 export type ActiveScanInfo = components["schemas"]["ActiveScanInfo"];
-export type ActiveScansResponse = components["schemas"]["ActiveScansResponse"];
 export type Status = components["schemas"]["Status"];
+export type ScanStatusWithActiveInfo =
+  components["schemas"]["ScanStatusWithActiveInfo"];
 export type ScanSpec = components["schemas"]["ScanSpec"];
+export type ScanJobConfig = components["schemas"]["ScanJobConfig"];
 export type Summary = components["schemas"]["Summary"];
 export type Error = components["schemas"]["Error"];
 export type ScannerSpec = components["schemas"]["ScannerSpec"];
 export type ScannerSummary = components["schemas"]["ScannerSummary"];
 export type ModelUsage = components["schemas"]["ModelUsage"];
-export type ModelConfig = components["schemas"]["ModelConfig"];
+export type ModelConfig = components["schemas"]["ModelConfig-Output"];
 export type TranscriptsResponse = components["schemas"]["TranscriptsResponse"];
 export type Transcript = components["schemas"]["Transcript"];
 export type Pagination = components["schemas"]["Pagination"];

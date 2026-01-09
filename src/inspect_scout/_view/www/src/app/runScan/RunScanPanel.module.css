@@ -1,0 +1,232 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.defineScannerSection {
+  padding: 1rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.formRow {
+  display: flex;
+  gap: 2rem;
+}
+
+.formColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--bs-secondary);
+}
+
+.select {
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+}
+
+.textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+  resize: vertical;
+}
+
+.checkboxGroup {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  cursor: default;
+}
+
+.runScanButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.runScanButton:hover:not(:disabled) {
+  background-color: var(--bs-tertiary-bg);
+}
+
+.runScanButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.runScanButton i {
+  color: var(--bs-success);
+  font-size: 1.75rem;
+  line-height: 0;
+}
+
+.scansList {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1rem;
+  gap: 1rem;
+  overflow: auto;
+}
+
+.card {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  background-color: var(--bs-body-bg);
+}
+
+.header {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.scanId {
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.configLine {
+  color: var(--bs-secondary);
+  font-size: 0.75rem;
+  font-family: monospace;
+  margin-top: 0.25rem;
+}
+
+.progressSection {
+  margin-bottom: 0.75rem;
+}
+
+.progressBar {
+  height: 4px;
+  background-color: var(--bs-secondary-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--bs-success);
+  transition: width 0.3s ease;
+}
+
+.progressStats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.25rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--bs-secondary);
+}
+
+.content {
+  display: flex;
+  gap: 2rem;
+}
+
+.mainSection {
+  flex: 1;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 0.25rem 0.75rem;
+  text-align: left;
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--bs-secondary);
+}
+
+.numeric {
+  text-align: right;
+}
+
+.sidebar {
+  min-width: 150px;
+  border-left: 1px solid var(--bs-border-color);
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sidebarSection {
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.sidebarTitle {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stat span:first-child {
+  color: var(--bs-secondary);
+}
+
+.error {
+  color: var(--bs-danger);
+  font-weight: 600;
+}
+
+.mutationStatus {
+  font-size: 0.7rem;
+  color: var(--bs-secondary);
+}

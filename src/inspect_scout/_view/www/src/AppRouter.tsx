@@ -9,6 +9,7 @@ import {
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ProjectPanel } from "./app/project/ProjectPanel";
+import { RunScanPanel } from "./app/runScan/RunScanPanel";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
@@ -234,6 +235,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             path: kTranscriptDetailRoute,
             element: <TranscriptPanel />,
+          },
+          {
+            path: "/run",
+            element: <RunScanPanel />,
           },
         ],
       },

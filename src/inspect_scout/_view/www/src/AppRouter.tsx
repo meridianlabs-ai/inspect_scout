@@ -7,6 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import { ActivePanel } from "./app/active/ActivePanel";
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
@@ -214,6 +215,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             path: kTranscriptDetailRoute,
             element: <TranscriptPanel />,
+          },
+          {
+            path: "/active",
+            element: <ActivePanel />,
           },
         ],
       },

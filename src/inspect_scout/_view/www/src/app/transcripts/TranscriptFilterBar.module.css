@@ -4,7 +4,8 @@
   background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
   padding: 0rem 0.5rem;
-  align-items: center;
+  align-items: baseline;
+  width: 100%;
 }
 
 .filterBar {
@@ -19,4 +20,19 @@
 
 .filterNone {
   font-family: var(--bs-font-monospace);
+}
+
+.actionButtons {
+  margin-left: auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-direction: row;
+  font-size: var(--inspect-font-size-smallestest);
+}
+
+.actionButton {
+  padding: 0.1rem 0.4rem;
+  margin: 0.1rem 0rem;
+  font-size: var(--inspect-font-size-smallestest);
 }

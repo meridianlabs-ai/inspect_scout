@@ -1,6 +1,9 @@
 import { clsx } from "clsx";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useState } from "react";
 
+import { ApplicationIcons } from "../../components/icons";
+import { ToolDropdownButton } from "../../components/ToolDropdownButton";
+import { Condition } from "../../query";
 import { useStore } from "../../state/store";
 import { Chip } from "../components/Chip";
 import { ChipGroup } from "../components/ChipGroup";
@@ -70,6 +73,46 @@ export const TranscriptFilterBar: FC = () => {
           </div>
         )}
       </ChipGroup>
+      <div className={clsx(styles.actionButtons)}>
+        <CopyQueryButton
+          filters={Object.values(filters)
+            .map((f) => {
+              return f.condition;
+            })
+            .filter((c) => c !== null)}
+        />
+      </div>
     </div>
+  );
+};
+
+const CopyQueryButton: FC<{ filters: Condition[] }> = ({ filters }) => {
+  const [icon, setIcon] = useState<string>(ApplicationIcons.copy);
+
+  // TODO: Actually copy the text
+  return (
+    <ToolDropdownButton
+      key="query-copy"
+      label="Copy"
+      icon={icon}
+      className={styles.actionButton}
+      disabled={filters.length === 0}
+      items={{
+        SQL: () => {
+          // void navigator.clipboard.writeText();
+          setIcon(ApplicationIcons.confirm);
+          setTimeout(() => {
+            setIcon(ApplicationIcons.copy);
+          }, 1250);
+        },
+        Python: () => {
+          //void navigator.clipboard.writeText();
+          setIcon(ApplicationIcons.confirm);
+          setTimeout(() => {
+            setIcon(ApplicationIcons.copy);
+          }, 1250);
+        },
+      }}
+    />
   );
 };

@@ -1,10 +1,15 @@
 .dropdownContainer {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 
 :global(.btn-tools).toolButton {
   border: solid 1px var(--bs-border-color);
+}
+
+.toolButton {
+  white-space: nowrap;
 }
 
 .toolButton i {

@@ -13,7 +13,7 @@ from inspect_ai.model import ChatMessage
 from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
-    HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+    HTTP_413_CONTENT_TOO_LARGE,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from upath import UPath
@@ -21,6 +21,7 @@ from upath import UPath
 from inspect_scout._project._project import project
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
+from .._active_scans_store import active_scans_store
 from .._query import Column, Query
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjobs.factory import scan_jobs_view
@@ -37,6 +38,7 @@ from ._api_v2_helpers import (
     build_transcripts_cursor,
 )
 from ._api_v2_types import (
+    ActiveScansResponse,
     AppConfig,
     ScansRequest,
     ScansResponse,
@@ -277,7 +279,7 @@ def v2_api_app(
                 )
             except TranscriptTooLargeError as e:
                 raise HTTPException(
-                    status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    status_code=HTTP_413_CONTENT_TOO_LARGE,
                     detail=f"Transcript too large: {e.size} bytes exceeds {e.max_size} limit",
                 ) from None
 
@@ -330,6 +332,18 @@ def v2_api_app(
             next_cursor = build_scans_cursor(edge, ctx.order_columns)
 
         return ScansResponse(items=results, total_count=count, next_cursor=next_cursor)
+
+    @app.get(
+        "/scans/active",
+        response_model=ActiveScansResponse,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get active scans",
+        description="Returns info on all currently running scans.",
+    )
+    async def active_scans() -> ActiveScansResponse:
+        """Get info on all active scans from the KV store."""
+        with active_scans_store() as store:
+            return ActiveScansResponse(items=store.read_all())
 
     @app.get(
         "/scans/{scan}",

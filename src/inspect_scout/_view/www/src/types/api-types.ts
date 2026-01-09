@@ -1,6 +1,8 @@
 // Re-export API types from generated OpenAPI schema
 import type { components } from "./generated";
 
+export type ActiveScanInfo = components["schemas"]["ActiveScanInfo"];
+export type ActiveScansResponse = components["schemas"]["ActiveScansResponse"];
 export type Status = components["schemas"]["Status"];
 export type ScanSpec = components["schemas"]["ScanSpec"];
 export type Summary = components["schemas"]["Summary"];

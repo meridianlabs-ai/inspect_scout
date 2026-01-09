@@ -3,6 +3,7 @@ import { StateStorage } from "zustand/middleware";
 import { ScanResultInputData } from "../app/types";
 import type { Condition, OrderByModel } from "../query";
 import {
+  ActiveScansResponse,
   AppConfig,
   Pagination,
   ScansResponse,
@@ -37,6 +38,7 @@ export interface ScanApi {
     scanner: string,
     uuid: string
   ): Promise<ScanResultInputData>;
+  getActiveScans(): Promise<ActiveScansResponse>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

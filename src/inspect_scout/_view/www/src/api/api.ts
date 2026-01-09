@@ -5,6 +5,7 @@ import type { Condition, OrderByModel } from "../query";
 import {
   ActiveScansResponse,
   AppConfig,
+  CodeResponse,
   Pagination,
   ScansResponse,
   Status,
@@ -39,6 +40,7 @@ export interface ScanApi {
     uuid: string
   ): Promise<ScanResultInputData>;
   getActiveScans(): Promise<ActiveScansResponse>;
+  postCode(condition: Condition): Promise<CodeResponse>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

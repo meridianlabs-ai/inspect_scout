@@ -4,6 +4,7 @@ import { Input, InputType } from "../app/types";
 import { Condition } from "../query/types";
 import {
   ActiveScansResponse,
+  CodeResponse,
   ScansResponse,
   Status,
   TranscriptsResponse,
@@ -142,6 +143,10 @@ export const apiVscode = (
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     getActiveScans: async (): Promise<ActiveScansResponse> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    postCode: async (): Promise<CodeResponse> => {
       throw new Error("Not Yet Implemented");
     },
     storage: createVSCodeStore(vscodeApi),

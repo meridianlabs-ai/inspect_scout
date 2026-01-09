@@ -836,6 +836,34 @@
         "title": "ChatMessageUser",
         "type": "object"
       },
+      "CodeResponse": {
+        "properties": {
+          "duckdb": {
+            "title": "Duckdb",
+            "type": "string"
+          },
+          "postgres": {
+            "title": "Postgres",
+            "type": "string"
+          },
+          "python": {
+            "title": "Python",
+            "type": "string"
+          },
+          "sqlite": {
+            "title": "Sqlite",
+            "type": "string"
+          }
+        },
+        "required": [
+          "python",
+          "sqlite",
+          "duckdb",
+          "postgres"
+        ],
+        "title": "CodeResponse",
+        "type": "object"
+      },
       "Condition": {
         "description": "WHERE clause condition that can be combined with others.",
         "properties": {
@@ -7034,6 +7062,35 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/code": {
+      "post": {
+        "description": "Process condition.",
+        "operationId": "code_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Condition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Code endpoint"
+      }
+    },
     "/config": {
       "get": {
         "description": "Returns app config including transcripts and scans directories.",

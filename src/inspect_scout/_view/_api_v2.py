@@ -1,5 +1,12 @@
 import io
-from typing import Any, Iterable, TypeVar, Union, get_args, get_origin
+from typing import (
+    Any,
+    Iterable,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
@@ -41,6 +48,7 @@ from ._api_v2_helpers import (
 from ._api_v2_types import (
     ActiveScansResponse,
     AppConfig,
+    CodeResponse,
     ScansRequest,
     ScansResponse,
     ScanStatus,
@@ -51,7 +59,6 @@ from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
 )
-
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
 
@@ -349,16 +356,15 @@ def v2_api_app(
     @app.post(
         "/code",
         summary="Code endpoint",
-        description="Accepts a Condition.",
     )
     async def code(
         body: Condition,
-    ) -> dict[str, str]:
+    ) -> CodeResponse:
         """Process condition."""
-        return {
-            "python": "PYTHON",
+        return CodeResponse(
+            python="PYTHON",
             **{d.value: body.to_sql(d)[0] for d in SQLDialect},
-        }
+        )
 
     @app.get(
         "/scans/{scan}",

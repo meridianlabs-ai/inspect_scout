@@ -13,11 +13,15 @@
           "scan_id": {
             "title": "Scan Id",
             "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ScannerSummary"
           }
         },
         "required": [
           "scan_id",
           "metrics",
+          "summary",
           "last_updated"
         ],
         "title": "ActiveScanInfo",

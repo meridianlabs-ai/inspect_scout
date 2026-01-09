@@ -22,7 +22,7 @@ from inspect_scout._concurrency.common import ScanMetrics
 def _temp_store_name() -> Iterator[str]:
     """Override store name for isolated testing."""
     name = f"__testing_active_scans_{secrets.token_hex(4)}__"
-    with patch("inspect_scout._scan_metrics_store._STORE_NAME", name):
+    with patch("inspect_scout._active_scans_store._STORE_NAME", name):
         try:
             yield name
         finally:

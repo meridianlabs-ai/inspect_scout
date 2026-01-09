@@ -14,6 +14,8 @@ from typing import Protocol
 
 from inspect_ai._util.kvstore import inspect_kvstore
 
+from inspect_scout._recorder.summary import ScannerSummary
+
 from ._concurrency.common import ScanMetrics
 
 _STORE_NAME = "scout_active_scans"
@@ -27,6 +29,7 @@ class ActiveScanInfo:
 
     scan_id: str
     metrics: ScanMetrics
+    summary: ScannerSummary
     last_updated: float
 
 
@@ -107,6 +110,7 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                     data = json.loads(value)
                     info = ActiveScanInfo(
                         scan_id=data["scan_id"],
+                        summary=ScannerSummary(),
                         metrics=ScanMetrics(**data["metrics"]),
                         last_updated=data["last_updated"],
                     )

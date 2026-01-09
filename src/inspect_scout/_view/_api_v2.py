@@ -23,6 +23,7 @@ from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
 from .._query import Column, Query
 from .._recorder.recorder import Status as RecorderStatus
+from .._scan_metrics_store import active_scans_store
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
     scan_results_arrow_async,
@@ -37,6 +38,7 @@ from ._api_v2_helpers import (
     build_transcripts_cursor,
 )
 from ._api_v2_types import (
+    ActiveScansResponse,
     AppConfig,
     ScansRequest,
     ScansResponse,
@@ -330,6 +332,18 @@ def v2_api_app(
             next_cursor = build_scans_cursor(edge, ctx.order_columns)
 
         return ScansResponse(items=results, total_count=count, next_cursor=next_cursor)
+
+    @app.get(
+        "/scans/active",
+        response_model=ActiveScansResponse,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get active scans",
+        description="Returns info on all currently running scans.",
+    )
+    async def active_scans() -> ActiveScansResponse:
+        """Get info on all active scans from the KV store."""
+        with active_scans_store() as store:
+            return ActiveScansResponse(items=store.read_all())
 
     @app.get(
         "/scans/{scan}",

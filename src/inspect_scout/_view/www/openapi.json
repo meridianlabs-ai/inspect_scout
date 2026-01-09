@@ -1,6 +1,44 @@
 {
   "components": {
     "schemas": {
+      "ActiveScanInfo": {
+        "properties": {
+          "last_updated": {
+            "title": "Last Updated",
+            "type": "number"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/ScanMetrics"
+          },
+          "scan_id": {
+            "title": "Scan Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scan_id",
+          "metrics",
+          "last_updated"
+        ],
+        "title": "ActiveScanInfo",
+        "type": "object"
+      },
+      "ActiveScansResponse": {
+        "properties": {
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ActiveScanInfo"
+            },
+            "title": "Items",
+            "type": "object"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ActiveScansResponse",
+        "type": "object"
+      },
       "AppConfig": {
         "properties": {
           "scans_dir": {
@@ -3939,6 +3977,85 @@
         "title": "SandboxEvent",
         "type": "object"
       },
+      "ScanMetrics": {
+        "properties": {
+          "batch_failures": {
+            "default": 0,
+            "title": "Batch Failures",
+            "type": "integer"
+          },
+          "batch_oldest_created": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Oldest Created"
+          },
+          "batch_pending": {
+            "default": 0,
+            "title": "Batch Pending",
+            "type": "integer"
+          },
+          "buffered_scanner_jobs": {
+            "default": 0,
+            "title": "Buffered Scanner Jobs",
+            "type": "integer"
+          },
+          "completed_scans": {
+            "default": 0,
+            "title": "Completed Scans",
+            "type": "integer"
+          },
+          "memory_usage": {
+            "default": 0,
+            "title": "Memory Usage",
+            "type": "integer"
+          },
+          "process_count": {
+            "default": 0,
+            "title": "Process Count",
+            "type": "integer"
+          },
+          "task_count": {
+            "default": 0,
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "tasks_idle": {
+            "default": 0,
+            "title": "Tasks Idle",
+            "type": "integer"
+          },
+          "tasks_parsing": {
+            "default": 0,
+            "title": "Tasks Parsing",
+            "type": "integer"
+          },
+          "tasks_scanning": {
+            "default": 0,
+            "title": "Tasks Scanning",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "process_count",
+          "task_count",
+          "tasks_idle",
+          "tasks_parsing",
+          "tasks_scanning",
+          "buffered_scanner_jobs",
+          "completed_scans",
+          "memory_usage",
+          "batch_pending",
+          "batch_failures"
+        ],
+        "title": "ScanMetrics",
+        "type": "object"
+      },
       "ScanOptions": {
         "description": "Options used for scan.",
         "properties": {
@@ -6026,19 +6143,9 @@
         "description": "Description of tool parameters object in JSON Schema format.",
         "properties": {
           "additionalProperties": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "default": false,
-            "title": "Additionalproperties"
+            "title": "Additionalproperties",
+            "type": "boolean"
           },
           "properties": {
             "additionalProperties": {
@@ -6064,7 +6171,8 @@
         "required": [
           "type",
           "properties",
-          "required"
+          "required",
+          "additionalProperties"
         ],
         "title": "ToolParams",
         "type": "object"
@@ -6966,6 +7074,25 @@
           }
         },
         "summary": "List scans"
+      }
+    },
+    "/scans/active": {
+      "get": {
+        "description": "Returns info on all currently running scans.",
+        "operationId": "active_scans_scans_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveScansResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get active scans"
       }
     },
     "/scans/{scan}": {

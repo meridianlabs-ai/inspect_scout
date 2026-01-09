@@ -7,9 +7,10 @@ Each scan writes metrics keyed by its main process PID.
 import json
 import os
 import time
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
+from typing import Protocol
 
 from inspect_ai._util.kvstore import inspect_kvstore
 
@@ -18,6 +19,31 @@ from ._concurrency.common import ScanMetrics
 _STORE_NAME = "scout_active_scans"
 _STORE_VERSION = 1
 _VERSION_KEY = "__version__"
+
+
+@dataclass
+class ActiveScanInfo:
+    """Info for an active scan stored in the KV store."""
+
+    scan_id: str
+    metrics: ScanMetrics
+    last_updated: float
+
+
+class ActiveScansStore(Protocol):
+    """Interface for scan metrics store operations."""
+
+    def put(self, scan_id: str, metrics: ScanMetrics) -> None:
+        """Store metrics for the current process's scan."""
+        ...
+
+    def delete_current(self) -> None:
+        """Delete the current process's entry."""
+        ...
+
+    def read_all(self) -> dict[str, ActiveScanInfo]:
+        """Read all active scan info, keyed by scan_id."""
+        ...
 
 
 def _pid_exists(pid: int) -> bool:
@@ -30,19 +56,14 @@ def _pid_exists(pid: int) -> bool:
 
 
 @contextmanager
-def scan_metrics_store(
-    scan_id: str,
-) -> Generator[tuple[Callable[[ScanMetrics], None], Callable[[], None]], None, None]:
-    """Context manager yielding (put, delete) functions for scan metrics.
+def active_scans_store() -> Generator[ActiveScansStore, None, None]:
+    """Context manager yielding a ActiveScansStore interface.
 
-    Metrics are keyed by main process PID. The delete function should be
-    called when the scan completes to clean up the entry.
-
-    Args:
-        scan_id: Unique identifier for the scan.
+    Metrics are keyed by main process PID. Call delete_current() when
+    the scan completes to clean up the entry.
 
     Yields:
-        Tuple of (put_metrics, delete_metrics) functions.
+        ActiveScansStore interface with put, delete_current, and read_all methods.
     """
     pid_key = str(os.getpid())
     with inspect_kvstore(_STORE_NAME) as kvstore:
@@ -61,19 +82,35 @@ def scan_metrics_store(
             if not _pid_exists(int(key)):
                 kvstore.delete(key)
 
-        def put(metrics: ScanMetrics) -> None:
-            kvstore.put(
-                pid_key,
-                json.dumps(
-                    {
-                        "scan_id": scan_id,
-                        "metrics": asdict(metrics),
-                        "last_updated": time.time(),
-                    }
-                ),
-            )
+        class _Store:
+            def put(self, scan_id: str, metrics: ScanMetrics) -> None:
+                kvstore.put(
+                    pid_key,
+                    json.dumps(
+                        {
+                            "scan_id": scan_id,
+                            "metrics": asdict(metrics),
+                            "last_updated": time.time(),
+                        }
+                    ),
+                )
 
-        def delete() -> None:
-            kvstore.delete(pid_key)
+            def delete_current(self) -> None:
+                kvstore.delete(pid_key)
 
-        yield put, delete
+            def read_all(self) -> dict[str, ActiveScanInfo]:
+                result: dict[str, ActiveScanInfo] = {}
+                cursor = kvstore.conn.execute(
+                    "SELECT key, value FROM kv_store WHERE key != ?", (_VERSION_KEY,)
+                )
+                for _, value in cursor.fetchall():
+                    data = json.loads(value)
+                    info = ActiveScanInfo(
+                        scan_id=data["scan_id"],
+                        metrics=ScanMetrics(**data["metrics"]),
+                        last_updated=data["last_updated"],
+                    )
+                    result[info.scan_id] = info
+                return result
+
+        yield _Store()

@@ -61,7 +61,7 @@ from ._recorder.factory import (
     scan_recorder_type_for_location,
 )
 from ._recorder.recorder import ScanRecorder, Status
-from ._scan_metrics_store import scan_metrics_store
+from ._scan_metrics_store import active_scans_store
 from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import (
     ScanDeprecatedArgs,
@@ -765,13 +765,10 @@ async def _scan_async_inner(
                     await recorder.record(transcript, scanner, results, metrics)
                     scan_display.results(transcript, scanner, results, metrics)
 
-                with scan_metrics_store(scan.spec.scan_id) as (
-                    put_metrics,
-                    delete_metrics,
-                ):
+                with active_scans_store() as active_store:
 
                     def update_metrics(metrics: ScanMetrics) -> None:
-                        put_metrics(metrics)
+                        active_store.put(scan.spec.scan_id, metrics)
                         scan_display.metrics(metrics)
 
                     try:
@@ -784,7 +781,7 @@ async def _scan_async_inner(
                             completed=_strategy_completed,
                         )
                     finally:
-                        delete_metrics()
+                        active_store.delete_current()
 
                 # we've been throttle metrics calculation, now report it all
                 for scanner in metrics_accum:

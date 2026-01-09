@@ -6,6 +6,7 @@ from inspect_scout._query.order_by import OrderBy
 from .._query.condition import Condition
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
+from .._scan_metrics_store import ActiveScanInfo
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
@@ -109,3 +110,10 @@ class AppConfig:
 
     transcripts_dir: str | None
     scans_dir: str
+
+
+@dataclass
+class ActiveScansResponse:
+    """Response body for GET /scans/active endpoint."""
+
+    items: dict[str, ActiveScanInfo]

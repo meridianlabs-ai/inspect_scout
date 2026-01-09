@@ -24,42 +24,45 @@ export const Chip = forwardRef<HTMLDivElement, ChipProps>(
         onClick={onClick}
         title={title}
       >
-      {icon ? (
-        <i
-          className={clsx(
-            icon,
-            styles.icon,
-            onClick ? styles.clickable : undefined
-          )}
-        />
-      ) : undefined}
-      {label ? (
+        {icon ? (
+          <i
+            className={clsx(
+              icon,
+              styles.icon,
+              onClick ? styles.clickable : undefined
+            )}
+          />
+        ) : undefined}
+        {label ? (
+          <span
+            className={clsx(
+              styles.label,
+              onClick ? styles.clickable : undefined
+            )}
+          >
+            {label}
+          </span>
+        ) : undefined}
         <span
-          className={clsx(styles.label, onClick ? styles.clickable : undefined)}
+          className={clsx(styles.valueonClick ? styles.clickable : undefined)}
         >
-          {label}
+          {value}
         </span>
-      ) : undefined}
-      <span
-        className={clsx(styles.valueonClick ? styles.clickable : undefined)}
-      >
-        {value}
-      </span>
-      {onClose ? (
-        <i
-          className={clsx(
-            ApplicationIcons.xLarge,
-            styles.closeIcon,
-            styles.clickable
-          )}
-          onClick={(event) => {
-            event.stopPropagation();
-            onClose(event);
-          }}
-        />
-      ) : undefined}
-    </div>
-  );
+        {onClose ? (
+          <i
+            className={clsx(
+              ApplicationIcons.xLarge,
+              styles.closeIcon,
+              styles.clickable
+            )}
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose(event);
+            }}
+          />
+        ) : undefined}
+      </div>
+    );
   }
 );
 

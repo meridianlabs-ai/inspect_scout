@@ -126,7 +126,11 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   );
   const setTableState = useStore((state) => state.setTranscriptsTableState);
   const handleColumnFilterChange = useCallback(
-    (columnId: string, filterType: FilterType, condition: SimpleCondition | null) => {
+    (
+      columnId: string,
+      filterType: FilterType,
+      condition: SimpleCondition | null
+    ) => {
       setTableState((prev) => {
         if (condition === null) {
           // Remove the filter entirely
@@ -807,9 +811,15 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                       <ColumnFilterControl
                         columnId={header.column.id}
                         filterType={filterType}
-                        condition={columnFilters[header.column.id]?.condition ?? null}
+                        condition={
+                          columnFilters[header.column.id]?.condition ?? null
+                        }
                         onChange={(condition) =>
-                          handleColumnFilterChange(header.column.id, filterType, condition)
+                          handleColumnFilterChange(
+                            header.column.id,
+                            filterType,
+                            condition
+                          )
                         }
                       />
                     ) : null}

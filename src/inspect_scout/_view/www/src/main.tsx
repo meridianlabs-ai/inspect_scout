@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ApiError } from "./api/request";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRoot } from "react-dom/client";
 
@@ -40,7 +41,16 @@ const selectApi = (): ScanApi => {
 // Create the API, store, and query client
 const api = selectApi();
 const store = createStore(api);
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 413) return false;
+        return failureCount < 3;
+      },
+    },
+  },
+});
 
 // Read showActivityBar from query parameters
 const urlParams = new URLSearchParams(window.location.search);

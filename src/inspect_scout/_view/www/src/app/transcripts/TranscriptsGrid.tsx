@@ -28,7 +28,6 @@ import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore, FilterType } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
-import { Score } from "../../types/api-types";
 import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
@@ -42,6 +41,7 @@ type TranscriptColumn = ColumnDef<TranscriptInfo> & {
     filterable?: boolean;
     filterType?: FilterType;
   };
+  titleValue?: (value: any) => string;
 };
 
 // Helper to create strongly-typed columns
@@ -55,12 +55,14 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
     filterType?: FilterType;
   };
   cell?: (value: TranscriptInfo[K]) => React.ReactNode;
+  titleValue?: (value: TranscriptInfo[K]) => string;
 }): TranscriptColumn {
   return {
     accessorKey: config.accessorKey as string,
     header: config.header,
     size: config.size,
     meta: config.meta,
+    titleValue: config.titleValue,
     cell: (info) => {
       const value = info.getValue() as TranscriptInfo[K];
       if (config.cell) {
@@ -80,6 +82,25 @@ function transcriptItemKey(index: number, item?: TranscriptInfo): string {
     return String(index);
   }
   return `${item.source_uri}/${item.transcript_id}`;
+}
+
+// Extract title value for tooltip
+function getCellTitleValue(cell: any, columnDef: TranscriptColumn): string {
+  const value = cell.getValue();
+
+  // Use custom titleValue function if provided
+  if (columnDef.titleValue) {
+    return columnDef.titleValue(value);
+  }
+
+  // Default fallback
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value, null, 2);
+  }
+  return String(value);
 }
 
 interface TranscriptGridProps {
@@ -330,6 +351,18 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         },
       }),
       createColumn({
+        accessorKey: "transcript_id",
+        header: "Transcript ID",
+        size: 150,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          return value || "-";
+        },
+      }),
+      createColumn({
         accessorKey: "task_set",
         header: "Task Set",
         size: 150,
@@ -366,6 +399,74 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         },
       }),
       createColumn({
+        accessorKey: "model_options",
+        header: "Model Options",
+        size: 200,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          if (!value) {
+            return "-";
+          }
+          try {
+            return printObject(value, 1000);
+          } catch {
+            return String(value);
+          }
+        },
+        titleValue: (value) => {
+          if (!value) {
+            return "";
+          }
+          if (typeof value === "object") {
+            return JSON.stringify(value, null, 2);
+          }
+          return String(value);
+        },
+      }),
+      createColumn({
+        accessorKey: "agent",
+        header: "Agent",
+        size: 150,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (agent) => {
+          return agent || "-";
+        },
+      }),
+      createColumn({
+        accessorKey: "agent_args",
+        header: "Agent Args",
+        size: 200,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          if (!value) {
+            return "-";
+          }
+          try {
+            return printObject(value, 1000);
+          } catch {
+            return String(value);
+          }
+        },
+        titleValue: (value) => {
+          if (!value) {
+            return "";
+          }
+          if (typeof value === "object") {
+            return JSON.stringify(value, null, 2);
+          }
+          return String(value);
+        },
+      }),
+      createColumn({
         accessorKey: "score",
         header: "Score",
         size: 100,
@@ -378,17 +479,88 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             return "-";
           }
 
-          // TODO: Fixme
-          const scoreValue = (value as unknown as Score).value;
-          if (Array.isArray(scoreValue)) {
-            return printArray(scoreValue, 1000);
-          } else if (typeof scoreValue === "object") {
-            return printObject(scoreValue, 1000);
-          } else if (typeof scoreValue === "number") {
-            return formatPrettyDecimal(scoreValue);
+          if (Array.isArray(value)) {
+            return printArray(value, 1000);
+          } else if (typeof value === "object") {
+            return printObject(value, 1000);
+          } else if (typeof value === "number") {
+            return formatPrettyDecimal(value);
           } else {
-            return String(scoreValue);
+            return String(value);
           }
+        },
+        titleValue: (value) => {
+          if (!value) {
+            return "";
+          }
+          if (Array.isArray(value) || typeof value === "object") {
+            return JSON.stringify(value, null, 2);
+          }
+          return String(value);
+        },
+      }),
+      createColumn({
+        accessorKey: "metadata",
+        header: "Metadata",
+        size: 200,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          if (!value) {
+            return "-";
+          }
+          try {
+            return printObject(value, 1000);
+          } catch {
+            return String(value);
+          }
+        },
+        titleValue: (value) => {
+          if (!value) {
+            return "";
+          }
+          if (typeof value === "object") {
+            return JSON.stringify(value, null, 2);
+          }
+          return String(value);
+        },
+      }),
+      createColumn({
+        accessorKey: "source_id",
+        header: "Source ID",
+        size: 150,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          return value || "-";
+        },
+      }),
+      createColumn({
+        accessorKey: "source_type",
+        header: "Source Type",
+        size: 150,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          return value || "-";
+        },
+      }),
+      createColumn({
+        accessorKey: "source_uri",
+        header: "Source URI",
+        size: 300,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          return value || "-";
         },
       }),
       createColumn({
@@ -419,6 +591,30 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             return "-";
           }
           return formatPrettyDecimal(value);
+        },
+      }),
+      createColumn({
+        accessorKey: "limit",
+        header: "Limit",
+        size: 100,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          return value || "-";
+        },
+      }),
+      createColumn({
+        accessorKey: "error",
+        header: "Error",
+        size: 200,
+        meta: {
+          filterable: true,
+          filterType: "string",
+        },
+        cell: (value) => {
+          return value || "-";
         },
       }),
     ],
@@ -860,8 +1056,9 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                   onClick={(e) => handleRowClick(e, row.id, virtualRow.index)}
                 >
                   {row.getVisibleCells().map((cell) => {
-                    const align = (cell.column.columnDef as TranscriptColumn)
-                      .meta?.align;
+                    const columnDef = cell.column.columnDef as TranscriptColumn;
+                    const align = columnDef.meta?.align;
+                    const titleValue = getCellTitleValue(cell, columnDef);
                     return (
                       <td
                         key={cell.id}
@@ -870,6 +1067,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                           align === "center" && styles.cellCenter
                         )}
                         style={{ width: cell.column.getSize() }}
+                        title={titleValue}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,

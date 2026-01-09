@@ -175,7 +175,7 @@ export interface components {
             metrics: components["schemas"]["ScanMetrics"];
             /** Scan Id */
             scan_id: string;
-            summary: components["schemas"]["ScannerSummary"];
+            summary: components["schemas"]["Summary"];
         };
         /** ActiveScansResponse */
         ActiveScansResponse: {

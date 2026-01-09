@@ -15,7 +15,7 @@
             "type": "string"
           },
           "summary": {
-            "$ref": "#/components/schemas/ScannerSummary"
+            "$ref": "#/components/schemas/Summary"
           }
         },
         "required": [

@@ -272,7 +272,9 @@ def v2_api_app(
 
             content = TranscriptContent(messages="all", events="all")
             try:
-                return await view.read(infos[0], content, max_bytes=MAX_TRANSCRIPT_BYTES)
+                return await view.read(
+                    infos[0], content, max_bytes=MAX_TRANSCRIPT_BYTES
+                )
             except TranscriptTooLargeError as e:
                 raise HTTPException(
                     status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE,

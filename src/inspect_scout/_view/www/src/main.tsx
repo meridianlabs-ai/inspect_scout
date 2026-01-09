@@ -1,17 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ApiError } from "./api/request";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRoot } from "react-dom/client";
 
+import "bootstrap-icons/font/bootstrap-icons.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 import { ScanApi } from "./api/api";
 import { apiScoutServer } from "./api/api-scout-server";
 import { apiVscode } from "./api/api-vscode";
 import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "bootstrap-icons/font/bootstrap-icons.css";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
+import { defaultRetry } from "./utils/react-query";
 import { getVscodeApi } from "./utils/vscode";
 
 // Find the root element and render into it
@@ -42,14 +42,7 @@ const selectApi = (): ScanApi => {
 const api = selectApi();
 const store = createStore(api);
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        if (error instanceof ApiError && error.status === 413) return false;
-        return failureCount < 3;
-      },
-    },
-  },
+  defaultOptions: { queries: { retry: defaultRetry } },
 });
 
 // Read showActivityBar from query parameters

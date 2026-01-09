@@ -419,7 +419,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     @override
     async def read(
-        self, t: TranscriptInfo, content: TranscriptContent, max_bytes: int | None = None
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
     ) -> Transcript:
         """Load full transcript content using DuckDB.
 
@@ -494,7 +497,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if max_bytes is not None:
                 content_size = self._get_content_size(full_path, t.transcript_id)
                 if content_size > max_bytes:
-                    raise TranscriptTooLargeError(t.transcript_id, content_size, max_bytes)
+                    raise TranscriptTooLargeError(
+                        t.transcript_id, content_size, max_bytes
+                    )
 
             # Try optimistic read first (fast path for files with all columns)
             enc_config = self._read_parquet_encryption_config()

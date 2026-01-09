@@ -377,7 +377,10 @@ class EvalLogTranscriptsView(TranscriptsView):
 
     @override
     async def read(
-        self, t: TranscriptInfo, content: TranscriptContent, max_bytes: int | None = None
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
     ) -> Transcript:
         assert self._conn is not None
         cursor = self._conn.execute(

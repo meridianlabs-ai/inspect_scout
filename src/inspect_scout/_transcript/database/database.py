@@ -81,7 +81,10 @@ class TranscriptsView(abc.ABC):
 
     @abc.abstractmethod
     async def read(
-        self, t: TranscriptInfo, content: TranscriptContent, max_bytes: int | None = None
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
     ) -> Transcript:
         """Read transcript content.
 

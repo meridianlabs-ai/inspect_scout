@@ -22,6 +22,7 @@ class TranscriptTooLargeError(Exception):
         self.max_size = max_size
         super().__init__(f"Transcript {transcript_id}: {size} bytes exceeds {max_size}")
 
+
 EventType = Literal[
     "model",
     "tool",

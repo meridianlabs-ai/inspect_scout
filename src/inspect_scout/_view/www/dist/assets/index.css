@@ -7131,18 +7131,19 @@ span.ap-marker-container:hover span.ap-marker {
 ._scrollContainer_94id2_15 {
   overflow-y: auto;
 }
-._container_10hwa_1 {
+._container_gduid_1 {
   display: grid;
   grid-template-columns: 200px 1fr;
   grid-template-rows: 1fr max-content;
   height: 100%;
+  width: 100%;
 }
 
-._footer_10hwa_8 {
+._footer_gduid_9 {
   grid-column: 1 / -1;
 }
 
-._breadcrumbs_10hwa_12 {
+._breadcrumbs_gduid_13 {
   min-width: 600px !important;
 }
 ._container_1ov9x_1 {

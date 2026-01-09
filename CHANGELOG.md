@@ -1,7 +1,8 @@
 ## Unreleased
 
-- CLI: Add `scout --version` to print current scout version.
+- Transcript DB: Warn when there is no index or the index is out of date.
 - Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.
+- CLI: Add `scout --version` to print current scout version.
 
 ## 0.4.6 (08 January 2026)
 

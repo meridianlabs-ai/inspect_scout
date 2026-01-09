@@ -125,6 +125,10 @@ export const apiScoutServerV1 = (
     getActiveScans: async (): Promise<ActiveScansResponse> => {
       throw new Error("Not Yet Implemented");
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    postCode: async (): Promise<Record<string, string>> => {
+      throw new Error("Not Yet Implemented");
+    },
     storage: NoPersistence,
   };
 };

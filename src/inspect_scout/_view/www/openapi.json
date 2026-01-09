@@ -7034,6 +7034,39 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/code": {
+      "post": {
+        "description": "Process condition.",
+        "operationId": "code_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Condition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Code Code Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Code endpoint"
+      }
+    },
     "/config": {
       "get": {
         "description": "Returns app config including transcripts and scans directories.",

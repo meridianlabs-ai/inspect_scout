@@ -39,6 +39,7 @@ export interface ScanApi {
     uuid: string
   ): Promise<ScanResultInputData>;
   getActiveScans(): Promise<ActiveScansResponse>;
+  postCode(condition: Condition): Promise<Record<string, string>>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

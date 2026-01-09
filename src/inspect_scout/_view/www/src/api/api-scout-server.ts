@@ -131,6 +131,17 @@ export const apiScoutServer = (
       asyncJsonParse<ActiveScansResponse>(
         (await requestApi.fetchString("GET", `/scans/active`)).raw
       ),
+    postCode: async (condition: Condition): Promise<Record<string, string>> =>
+      asyncJsonParse<Record<string, string>>(
+        (
+          await requestApi.fetchString(
+            "POST",
+            `/code`,
+            {},
+            JSON.stringify(condition)
+          )
+        ).raw
+      ),
     storage: NoPersistence,
   };
 };

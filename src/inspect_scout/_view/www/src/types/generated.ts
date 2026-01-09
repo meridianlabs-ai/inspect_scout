@@ -190,12 +190,22 @@ export interface components {
     schemas: {
         /** ActiveScanInfo */
         ActiveScanInfo: {
+            /** Config */
+            config: string;
             /** Last Updated */
             last_updated: number;
             metrics: components["schemas"]["ScanMetrics"];
             /** Scan Id */
             scan_id: string;
+            /** Scanner Names */
+            scanner_names: string[];
+            /** Start Time */
+            start_time: number;
             summary: components["schemas"]["Summary"];
+            /** Title */
+            title: string;
+            /** Total Scans */
+            total_scans: number;
         };
         /** ActiveScansResponse */
         ActiveScansResponse: {

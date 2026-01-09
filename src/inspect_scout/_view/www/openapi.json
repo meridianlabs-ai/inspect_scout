@@ -3,6 +3,10 @@
     "schemas": {
       "ActiveScanInfo": {
         "properties": {
+          "config": {
+            "title": "Config",
+            "type": "string"
+          },
           "last_updated": {
             "title": "Last Updated",
             "type": "number"
@@ -14,15 +18,39 @@
             "title": "Scan Id",
             "type": "string"
           },
+          "scanner_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scanner Names",
+            "type": "array"
+          },
+          "start_time": {
+            "title": "Start Time",
+            "type": "number"
+          },
           "summary": {
             "$ref": "#/components/schemas/Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total_scans": {
+            "title": "Total Scans",
+            "type": "integer"
           }
         },
         "required": [
           "scan_id",
           "metrics",
           "summary",
-          "last_updated"
+          "last_updated",
+          "title",
+          "config",
+          "total_scans",
+          "start_time",
+          "scanner_names"
         ],
         "title": "ActiveScanInfo",
         "type": "object"

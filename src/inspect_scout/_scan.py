@@ -757,6 +757,7 @@ async def _scan_async_inner(
                         return None
 
                 with active_scans_store() as active_store:
+                    active_store.put_spec(scan.spec.scan_id, scan.spec, total_scans)
 
                     async def record_results(
                         transcript: TranscriptInfo,

@@ -14,15 +14,17 @@ from typing import TYPE_CHECKING, Protocol
 
 from inspect_ai._util.kvstore import inspect_kvstore
 
+from inspect_scout._display.util import scan_config_str, scan_title
 from inspect_scout._recorder.summary import Summary
 
 from ._concurrency.common import ScanMetrics
 
 if TYPE_CHECKING:
     from ._scanner.result import ResultReport
+    from ._scanspec import ScanSpec
 
 _STORE_NAME = "scout_active_scans"
-_STORE_VERSION = 1
+_STORE_VERSION = 3
 _VERSION_KEY = "__version__"
 
 
@@ -34,10 +36,21 @@ class ActiveScanInfo:
     metrics: ScanMetrics
     summary: Summary
     last_updated: float
+    title: str
+    config: str
+    total_scans: int
+    start_time: float
+    scanner_names: list[str]
 
 
 class ActiveScansStore(Protocol):
     """Interface for scan metrics store operations."""
+
+    def put_spec(
+        self, scan_id: str, spec: "ScanSpec", total_scans: int
+    ) -> None:
+        """Store spec-derived info at scan start."""
+        ...
 
     def put_metrics(self, scan_id: str, metrics: ScanMetrics) -> None:
         """Store metrics for the current process's scan."""
@@ -95,6 +108,24 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                 kvstore.delete(key)
 
         class _Store:
+            def put_spec(
+                self, scan_id: str, spec: "ScanSpec", total_scans: int
+            ) -> None:
+                scanner_names = list(spec.scanners.keys())
+                existing = json.loads(kvstore.get(pid_key) or "{}")
+                existing.update({
+                    "scan_id": scan_id,
+                    "title": scan_title(spec),
+                    "config": scan_config_str(spec),
+                    "total_scans": total_scans,
+                    "start_time": time.time(),
+                    "last_updated": time.time(),
+                    "scanner_names": scanner_names,
+                    "summary": Summary(scanners=scanner_names).model_dump(),
+                    "metrics": asdict(ScanMetrics()),
+                })
+                kvstore.put(pid_key, json.dumps(existing))
+
             def put_metrics(self, scan_id: str, metrics: ScanMetrics) -> None:
                 existing = json.loads(kvstore.get(pid_key) or "{}")
                 existing.update({
@@ -132,11 +163,14 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                     data = json.loads(value)
                     info = ActiveScanInfo(
                         scan_id=data["scan_id"],
-                        summary=Summary.model_validate(
-                            data.get("summary", {"complete": False})
-                        ),
-                        metrics=ScanMetrics(**data.get("metrics", {})),
+                        summary=Summary.model_validate(data["summary"]),
+                        metrics=ScanMetrics(**data["metrics"]),
                         last_updated=data["last_updated"],
+                        title=data["title"],
+                        config=data["config"],
+                        total_scans=data["total_scans"],
+                        start_time=data["start_time"],
+                        scanner_names=data["scanner_names"],
                     )
                     result[info.scan_id] = info
                 return result

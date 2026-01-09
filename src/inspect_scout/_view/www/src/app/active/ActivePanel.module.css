@@ -15,9 +15,6 @@
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--bs-border-color);
@@ -28,10 +25,37 @@
   font-family: monospace;
 }
 
-.progress {
+.configLine {
   color: var(--bs-secondary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-family: monospace;
+  margin-top: 0.25rem;
+}
+
+.progressSection {
+  margin-bottom: 0.75rem;
+}
+
+.progressBar {
+  height: 4px;
+  background-color: var(--bs-secondary-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--bs-success);
+  transition: width 0.3s ease;
+}
+
+.progressStats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.25rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--bs-secondary);
 }
 
 .content {
@@ -69,6 +93,9 @@
   min-width: 150px;
   border-left: 1px solid var(--bs-border-color);
   padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .sidebarSection {
@@ -89,4 +116,9 @@
 
 .stat span:first-child {
   color: var(--bs-secondary);
+}
+
+.error {
+  color: var(--bs-danger);
+  font-weight: 600;
 }

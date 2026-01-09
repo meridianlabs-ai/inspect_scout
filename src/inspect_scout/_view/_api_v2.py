@@ -13,7 +13,7 @@ from inspect_ai.model import ChatMessage
 from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
-    HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+    HTTP_413_CONTENT_TOO_LARGE,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from upath import UPath
@@ -279,7 +279,7 @@ def v2_api_app(
                 )
             except TranscriptTooLargeError as e:
                 raise HTTPException(
-                    status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    status_code=HTTP_413_CONTENT_TOO_LARGE,
                     detail=f"Transcript too large: {e.size} bytes exceeds {e.max_size} limit",
                 ) from None
 

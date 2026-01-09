@@ -17,6 +17,7 @@ import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
+from inspect_ai._util.path import pretty_path
 from inspect_ai.util import trace_action
 from typing_extensions import override
 from upath import UPath
@@ -1199,9 +1200,22 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if self._index_storage is not None:
                 idx_files = await _discover_index_files(self._index_storage)
 
+            # Skip index warnings when snapshot is provided - workers already have
+            # efficient access via the transcript_id->filename mapping from parent
+            has_snapshot = bool(self._snapshot and self._snapshot.transcript_ids)
+
             if idx_files:
                 await self._init_from_index()
+                # Check for unindexed parquet files (skip for worker processes)
+                if not has_snapshot:
+                    await self._check_index_coverage()
             else:
+                # Warn about missing index (skip for worker processes)
+                if not has_snapshot:
+                    logger.warning(
+                        f"No index found for {pretty_path(self._location)}. "
+                        f"Queries will be slower. Run `scout db index {pretty_path(self._location)}` to build an index."
+                    )
                 await self._init_from_parquet()
 
     async def _init_from_index(self) -> None:
@@ -1784,6 +1798,55 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return filename
 
         return f"{location}/{filename}"
+
+    def _to_relative_filename(self, absolute_path: str) -> str:
+        """Convert absolute path to filename relative to database location.
+
+        Inverse of _full_parquet_path(). Used for comparing discovered parquet
+        files against filenames stored in the index.
+
+        Args:
+            absolute_path: Full path (e.g., '/path/to/db/file.parquet' or
+                          's3://bucket/db/file.parquet')
+
+        Returns:
+            Relative filename (e.g., 'file.parquet')
+        """
+        if self._location is None:
+            return absolute_path
+
+        location_prefix = self._location.rstrip("/") + "/"
+        if absolute_path.startswith(location_prefix):
+            return absolute_path[len(location_prefix) :]
+
+        # Already relative or different prefix - return as-is
+        return absolute_path
+
+    async def _check_index_coverage(self) -> None:
+        """Warn if parquet files exist that aren't in the index.
+
+        Compares filenames stored in the index against actual parquet files
+        on disk. If any files are missing from the index, logs a warning.
+        """
+        assert self._conn is not None
+
+        # Get filenames from loaded index (already in memory)
+        result = self._conn.execute(
+            "SELECT DISTINCT filename FROM transcript_index"
+        ).fetchall()
+        indexed_filenames = {row[0] for row in result}
+
+        # Discover actual parquet files and normalize to relative paths
+        actual_files = await self._discover_parquet_files()
+        actual_filenames = {self._to_relative_filename(f) for f in actual_files}
+
+        # Check for unindexed files
+        unindexed = actual_filenames - indexed_filenames
+        if unindexed:
+            logger.warning(
+                f"Index is stale: {len(unindexed)} parquet file(s) not indexed. "
+                f"Run `scout db index {pretty_path(self._location)}` to rebuild."
+            )
 
     def _init_hf_auth(self) -> None:
         assert self._conn is not None

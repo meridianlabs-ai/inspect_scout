@@ -53,6 +53,11 @@
   overflow: hidden;
 }
 
+.dropdownMenu.alignRight {
+  right: 0;
+  left: auto;
+}
+
 .dropdownItem {
   display: block;
   width: 100%;

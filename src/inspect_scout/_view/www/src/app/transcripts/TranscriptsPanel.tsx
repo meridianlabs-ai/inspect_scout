@@ -8,6 +8,7 @@ import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useCode } from "../server/useCode";
 import { useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
@@ -50,6 +51,12 @@ export const TranscriptsPanel: FC = () => {
   useEffect(() => {
     clearTranscriptState();
   }, [clearTranscriptState]);
+
+  const {
+    data: filterCodeValues,
+    error: codeError,
+    loading,
+  } = useCode(condition);
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
@@ -103,7 +110,7 @@ export const TranscriptsPanel: FC = () => {
       )}
       {!error && (
         <>
-          <TranscriptFilterBar />
+          <TranscriptFilterBar filterCodeValues={filterCodeValues} />
           <TranscriptsGrid
             transcripts={transcripts}
             transcriptsDir={resolvedTranscriptDir}

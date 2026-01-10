@@ -3,14 +3,15 @@ import { FC, useCallback, useState } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
-import { Condition } from "../../query";
 import { useStore } from "../../state/store";
 import { Chip } from "../components/Chip";
 import { ChipGroup } from "../components/ChipGroup";
 
 import styles from "./TranscriptFilterBar.module.css";
 
-export const TranscriptFilterBar: FC = () => {
+export const TranscriptFilterBar: FC<{
+  filterCodeValues?: Record<string, string>;
+}> = ({ filterCodeValues }) => {
   // Transcript Filter State
   const filters = useStore(
     (state) => state.transcriptsTableState.columnFilters
@@ -74,20 +75,42 @@ export const TranscriptFilterBar: FC = () => {
         )}
       </ChipGroup>
       <div className={clsx(styles.actionButtons)}>
-        <CopyQueryButton
-          filters={Object.values(filters)
-            .map((f) => {
-              return f.condition;
-            })
-            .filter((c) => c !== null)}
-        />
+        <CopyQueryButton itemValues={filterCodeValues} />
       </div>
     </div>
   );
 };
 
-const CopyQueryButton: FC<{ filters: Condition[] }> = ({ filters }) => {
+const CopyQueryButton: FC<{ itemValues?: Record<string, string> }> = ({
+  itemValues,
+}) => {
   const [icon, setIcon] = useState<string>(ApplicationIcons.copy);
+
+  const itemDescriptors = [
+    { label: "SQL (duckdb)", value: "duckdb" },
+    { label: "SQL (postgres)", value: "postgres" },
+    { label: "SQL (sqlite)", value: "sqlite" },
+    // { label: "Python", value: "python" },
+  ];
+
+  const items = itemDescriptors.reduce(
+    (acc, desc) => {
+      acc[desc.label] = () => {
+        const text = itemValues ? itemValues[desc.value] : "";
+        if (!text) {
+          return;
+        }
+
+        void navigator.clipboard.writeText(text);
+        setIcon(ApplicationIcons.confirm);
+        setTimeout(() => {
+          setIcon(ApplicationIcons.copy);
+        }, 1250);
+      };
+      return acc;
+    },
+    {} as Record<string, () => void>
+  );
 
   // TODO: Actually copy the text
   return (
@@ -96,23 +119,9 @@ const CopyQueryButton: FC<{ filters: Condition[] }> = ({ filters }) => {
       label="Copy"
       icon={icon}
       className={styles.actionButton}
-      disabled={filters.length === 0}
-      items={{
-        SQL: () => {
-          // void navigator.clipboard.writeText();
-          setIcon(ApplicationIcons.confirm);
-          setTimeout(() => {
-            setIcon(ApplicationIcons.copy);
-          }, 1250);
-        },
-        Python: () => {
-          //void navigator.clipboard.writeText();
-          setIcon(ApplicationIcons.confirm);
-          setTimeout(() => {
-            setIcon(ApplicationIcons.copy);
-          }, 1250);
-        },
-      }}
+      disabled={Object.keys(itemValues || []).length === 0}
+      dropdownAlign="right"
+      items={items}
     />
   );
 };

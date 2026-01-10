@@ -81,6 +81,8 @@ website:
           href: reference/transcript.qmd#transcriptsreader
         - text: transcripts_db
           href: reference/transcript.qmd#transcripts_db
+        - text: transcripts_db_schema
+          href: reference/transcript.qmd#transcripts_db_schema
         - text: TranscriptsDB
           href: reference/transcript.qmd#transcriptsdb
         - text: Column

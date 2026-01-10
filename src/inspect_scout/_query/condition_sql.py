@@ -13,7 +13,55 @@ from __future__ import annotations
 from typing import Any, Literal, overload
 
 from .condition import Condition, LogicalOperator, Operator
-from .sql import SQLDialect, format_sql_value
+from .sql import ExecutableSQLDialect, SQLDialect, format_sql_value
+
+# Operators that should skip type casting (they work on text or don't need values)
+_SKIP_CAST_OPS = frozenset(
+    {
+        Operator.LIKE,
+        Operator.NOT_LIKE,
+        Operator.ILIKE,
+        Operator.NOT_ILIKE,
+        Operator.IS_NULL,
+        Operator.IS_NOT_NULL,
+    }
+)
+
+
+def _get_cast_hint(condition: Condition) -> Any:
+    """Get a type hint value for casting from a condition's params."""
+    if condition.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
+        return next((x for x in condition.params if x is not None), None)
+    elif condition.operator in (Operator.IN, Operator.NOT_IN):
+        return next((x for x in condition.params if x is not None), None)
+    else:
+        return condition.params[0] if condition.params else None
+
+
+def _apply_json_type_cast(col: str, val: Any, dialect: ExecutableSQLDialect) -> str:
+    """Apply type casting for JSON path columns based on value type and dialect."""
+    if dialect == "postgres":
+        if isinstance(val, bool):
+            return f"({col})::text::boolean"
+        if isinstance(val, int) and not isinstance(val, bool):
+            return f"({col})::text::bigint"
+        if isinstance(val, float):
+            return f"({col})::text::double precision"
+    elif dialect == "duckdb":
+        if isinstance(val, bool):
+            return f"({col})::BOOLEAN"
+        if isinstance(val, int) and not isinstance(val, bool):
+            return f"({col})::BIGINT"
+        if isinstance(val, float):
+            return f"({col})::DOUBLE"
+    return col
+
+
+def _partition_in_values(values: list[Any]) -> tuple[list[Any], bool]:
+    """Partition IN/NOT IN values into non-null values and has_null flag."""
+    non_null = [v for v in values if v is not None]
+    has_null = any(v is None for v in values)
+    return non_null, has_null
 
 
 class ConditionSQLError(ValueError):
@@ -118,16 +166,16 @@ def condition_as_sql(
     """
     if dialect == "filter":
         return _condition_as_filter_sql(condition)
-    sql, params = _build_condition_sql(condition, dialect)
+    sql, params = _build_parameterized_sql(condition, dialect)
     return (sql, params)
 
 
-def _build_condition_sql(
+def _build_parameterized_sql(
     condition: Condition,
     dialect: Literal["sqlite", "duckdb", "postgres"],
     param_offset: int = 0,
 ) -> tuple[str, list[Any]]:
-    """Recursively build SQL string and collect parameters.
+    """Build dialect-specific SQL with parameter placeholders.
 
     Args:
         condition: The Condition object to serialize.
@@ -140,7 +188,7 @@ def _build_condition_sql(
     if condition.is_compound:
         if condition.operator == LogicalOperator.NOT:
             assert isinstance(condition.left, Condition)
-            left_sql, left_params = _build_condition_sql(
+            left_sql, left_params = _build_parameterized_sql(
                 condition.left,
                 dialect,
                 param_offset,
@@ -150,14 +198,14 @@ def _build_condition_sql(
             assert isinstance(condition.left, Condition)
             assert isinstance(condition.right, Condition)
             assert condition.operator is not None
-            left_sql, left_params = _build_condition_sql(
+            left_sql, left_params = _build_parameterized_sql(
                 condition.left,
                 dialect,
                 param_offset,
             )
             # Update offset for right side based on left side parameters
             right_offset = param_offset + len(left_params)
-            right_sql, right_params = _build_condition_sql(
+            right_sql, right_params = _build_parameterized_sql(
                 condition.right,
                 dialect,
                 right_offset,
@@ -169,96 +217,21 @@ def _build_condition_sql(
     else:
         # Simple condition
         assert isinstance(condition.left, str)
-        column = _format_condition_column(condition.left, dialect)
+        column = _format_column_for_dialect(condition.left, dialect)
+        is_json_path = "." in condition.left
 
-        if (
-            dialect == "postgres"
-            and isinstance(condition.left, str)
-            and "." in condition.left
-        ):
+        # Apply type casting for JSON paths (postgres/duckdb only)
+        if is_json_path and dialect in ("postgres", "duckdb"):
+            if condition.operator not in _SKIP_CAST_OPS:
+                hint = _get_cast_hint(condition)
+                column = _apply_json_type_cast(column, hint, dialect)
 
-            def _pg_cast(col: str, val: Any) -> str:
-                # PostgreSQL's ->> returns text, so we need to cast from text
-                # bool must be checked before int (bool is a subclass of int)
-                if isinstance(val, bool):
-                    return f"({col})::text::boolean"
-                if isinstance(val, int) and not isinstance(val, bool):
-                    return f"({col})::text::bigint"
-                if isinstance(val, float):
-                    return f"({col})::text::double precision"
-                return col
-
-            # Skip casts for operators that don't compare numerically/textually
-            skip_ops = {
-                Operator.LIKE,
-                Operator.NOT_LIKE,
-                Operator.ILIKE,
-                Operator.NOT_ILIKE,
-                Operator.IS_NULL,
-                Operator.IS_NOT_NULL,
-            }
-
-            if condition.operator not in skip_ops:
-                hint = None
-                if condition.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
-                    # use first non-None bound as hint
-                    hint = next((x for x in condition.params if x is not None), None)
-                elif condition.operator in (Operator.IN, Operator.NOT_IN):
-                    # use first non-None value as hint for IN/NOT IN
-                    hint = next((x for x in condition.params if x is not None), None)
-                else:
-                    hint = condition.params[0] if condition.params else None
-                column = _pg_cast(column, hint)
-
-        # Add DuckDB type casting for JSON paths
+        # DuckDB LIKE operators need VARCHAR cast for JSON paths
         if (
             dialect == "duckdb"
-            and isinstance(condition.left, str)
-            and "." in condition.left
-        ):
-
-            def _duck_cast(col: str, val: Any) -> str:
-                # DuckDB casting for type-safe comparisons
-                if isinstance(val, bool):
-                    return f"({col})::BOOLEAN"
-                if isinstance(val, int) and not isinstance(val, bool):
-                    return f"({col})::BIGINT"
-                if isinstance(val, float):
-                    return f"({col})::DOUBLE"
-                return col
-
-            # Apply casting for non-text operators
-            skip_ops_duck = {
-                Operator.LIKE,
-                Operator.NOT_LIKE,
-                Operator.ILIKE,
-                Operator.NOT_ILIKE,
-                Operator.IS_NULL,
-                Operator.IS_NOT_NULL,
-            }
-
-            if condition.operator not in skip_ops_duck:
-                hint = None
-                if condition.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
-                    hint = next((x for x in condition.params if x is not None), None)
-                elif condition.operator in (Operator.IN, Operator.NOT_IN):
-                    hint = next((x for x in condition.params if x is not None), None)
-                else:
-                    hint = condition.params[0] if condition.params else None
-                column = _duck_cast(column, hint)
-
-        # Ensure DuckDB text operators receive VARCHAR for LIKE operations
-        if (
-            dialect == "duckdb"
+            and is_json_path
             and condition.operator
-            in {
-                Operator.LIKE,
-                Operator.NOT_LIKE,
-                Operator.ILIKE,
-                Operator.NOT_ILIKE,
-            }
-            and isinstance(condition.left, str)
-            and "." in condition.left  # Only for JSON paths
+            in {Operator.LIKE, Operator.NOT_LIKE, Operator.ILIKE, Operator.NOT_ILIKE}
         ):
             column = f"CAST({column} AS VARCHAR)"
 
@@ -267,65 +240,50 @@ def _build_condition_sql(
         elif condition.operator == Operator.IS_NOT_NULL:
             return f"{column} IS NOT NULL", []
         elif condition.operator == Operator.IN:
-            # Handle NULL values in IN list
-            vals = [v for v in condition.params if v is not None]
-            has_null = any(v is None for v in condition.params)
-            n = len(vals)
-
-            if n == 0 and not has_null:
+            vals, has_null = _partition_in_values(list(condition.params))
+            if not vals and not has_null:
                 return "1 = 0", []  # empty IN = always false
-
             sql_parts = []
-            if n > 0:
-                placeholders = _get_condition_placeholders(n, dialect, param_offset)
+            if vals:
+                placeholders = _get_placeholders(len(vals), dialect, param_offset)
                 sql_parts.append(f"{column} IN ({placeholders})")
             if has_null:
                 sql_parts.append(f"{column} IS NULL")
-
-            sql = " OR ".join(sql_parts) if sql_parts else "1 = 0"
+            sql = " OR ".join(sql_parts)
             if len(sql_parts) > 1:
                 sql = f"({sql})"
             return sql, vals
 
         elif condition.operator == Operator.NOT_IN:
-            # Handle NULL values in NOT IN list
-            vals = [v for v in condition.params if v is not None]
-            has_null = any(v is None for v in condition.params)
-            n = len(vals)
-
-            if n == 0 and not has_null:
+            vals, has_null = _partition_in_values(list(condition.params))
+            if not vals and not has_null:
                 return "1 = 1", []  # empty NOT IN = always true
-
             sql_parts = []
-            if n > 0:
-                placeholders = _get_condition_placeholders(n, dialect, param_offset)
+            if vals:
+                placeholders = _get_placeholders(len(vals), dialect, param_offset)
                 sql_parts.append(f"{column} NOT IN ({placeholders})")
             if has_null:
                 sql_parts.append(f"{column} IS NOT NULL")
-
-            if not sql_parts:
-                sql = "1 = 1"
-            elif len(sql_parts) == 1:
-                sql = sql_parts[0]
-            else:
-                sql = f"({sql_parts[0]} AND {sql_parts[1]})"
+            sql = " AND ".join(sql_parts) if len(sql_parts) > 1 else sql_parts[0]
+            if len(sql_parts) > 1:
+                sql = f"({sql})"
             return sql, vals
         elif condition.operator == Operator.BETWEEN:
-            p1 = _get_condition_placeholder(param_offset, dialect)
-            p2 = _get_condition_placeholder(param_offset + 1, dialect)
+            p1 = _get_placeholder(param_offset, dialect)
+            p2 = _get_placeholder(param_offset + 1, dialect)
             return f"{column} BETWEEN {p1} AND {p2}", list(condition.params)
         elif condition.operator == Operator.NOT_BETWEEN:
-            p1 = _get_condition_placeholder(param_offset, dialect)
-            p2 = _get_condition_placeholder(param_offset + 1, dialect)
+            p1 = _get_placeholder(param_offset, dialect)
+            p2 = _get_placeholder(param_offset + 1, dialect)
             return f"{column} NOT BETWEEN {p1} AND {p2}", list(condition.params)
         elif condition.operator == Operator.ILIKE:
-            placeholder = _get_condition_placeholder(param_offset, dialect)
+            placeholder = _get_placeholder(param_offset, dialect)
             if dialect == "postgres":
                 return f"{column} ILIKE {placeholder}", list(condition.params)
             # For SQLite and DuckDB, use LOWER() for case-insensitive comparison
             return f"LOWER({column}) LIKE LOWER({placeholder})", list(condition.params)
         elif condition.operator == Operator.NOT_ILIKE:
-            placeholder = _get_condition_placeholder(param_offset, dialect)
+            placeholder = _get_placeholder(param_offset, dialect)
             if dialect == "postgres":
                 return f"{column} NOT ILIKE {placeholder}", list(condition.params)
             # For SQLite and DuckDB, use LOWER() for case-insensitive comparison
@@ -334,24 +292,20 @@ def _build_condition_sql(
             )
         else:
             assert condition.operator is not None
-            placeholder = _get_condition_placeholder(param_offset, dialect)
+            placeholder = _get_placeholder(param_offset, dialect)
             return f"{column} {condition.operator.value} {placeholder}", list(
                 condition.params
             )
 
 
-def _esc_double(s: str) -> str:
+def _escape_identifier(s: str) -> str:
+    """Escape an identifier for use in double quotes."""
     return s.replace('"', '""')
 
 
-def _esc_single(s: str) -> str:
+def _escape_single_quotes(s: str) -> str:
+    """Escape single quotes for SQL string literals by doubling them."""
     return s.replace("'", "''")
-
-
-def _needs_sqlite_jsonpath_quotes(key: str) -> bool:
-    """Check if a key needs quotes in SQLite JSONPath."""
-    # Keys need quotes if they contain anything besides alphanumeric and underscore
-    return not key.replace("_", "").isalnum()
 
 
 def _escape_for_sqlite_jsonpath(key: str) -> str:
@@ -360,8 +314,13 @@ def _escape_for_sqlite_jsonpath(key: str) -> str:
     return key.replace('"', '\\"')
 
 
-def _parse_condition_json_path(path: str) -> tuple[str, list[tuple[str, bool]]]:
-    """Parse a JSON path supporting array indices and quoted keys.
+def _parse_json_path(path: str) -> tuple[str, list[tuple[str, bool]]]:
+    """Parse a JSON path into base column and segments.
+
+    Uses SQL standard doubled-quote escaping ("") for quoted identifiers.
+
+    Args:
+        path: JSON path like "config.model.name" or "items[0].value"
 
     Returns:
         Tuple of (base_column, list of (segment, is_array_index))
@@ -369,93 +328,85 @@ def _parse_condition_json_path(path: str) -> tuple[str, list[tuple[str, bool]]]:
     if "." not in path and "[" not in path:
         return path, []
 
-    # Identify base: everything before the first unquoted '.' or '['
-    i, n, in_quotes = 0, len(path), False
+    segments: list[tuple[str, bool]] = []
+    i = 0
+    n = len(path)
+    base: str | None = None
+
     while i < n:
         ch = path[i]
-        if ch == '"':
-            in_quotes = not in_quotes
-        elif not in_quotes and ch in ".[":
-            break
-        i += 1
 
-    base = path[:i] if i > 0 else path
-    rest = path[i:]
-    parts: list[tuple[str, bool]] = []
-
-    j = 0
-    while j < len(rest):
-        ch = rest[j]
-        if ch == ".":
-            # dotted key (quoted or unquoted)
-            j += 1
-            if j < len(rest) and rest[j] == '"':
-                # quoted key
+        if ch == "[":
+            # Array index
+            j = i + 1
+            while j < n and path[j] != "]":
                 j += 1
-                key_chars = []
-                while j < len(rest) and rest[j] != '"':
-                    # allow \" sequences
-                    if rest[j] == "\\" and j + 1 < len(rest):
-                        j += 1
-                    key_chars.append(rest[j])
+            index = path[i + 1 : j]
+            segments.append((index, True))
+            i = j + 1
+            if i < n and path[i] == ".":
+                i += 1
+
+        elif ch == '"':
+            # Quoted identifier - handle doubled quotes ("") as escape
+            j = i + 1
+            key_chars: list[str] = []
+            while j < n:
+                if path[j] == '"':
+                    if j + 1 < n and path[j + 1] == '"':
+                        key_chars.append('"')
+                        j += 2
+                    else:
+                        break
+                else:
+                    key_chars.append(path[j])
                     j += 1
-                if j < len(rest) and rest[j] == '"':
-                    j += 1  # consume closing quote
-                parts.append(("".join(key_chars), False))
+            segment = "".join(key_chars)
+            if base is None:
+                base = segment
             else:
-                # unquoted key
-                k = j
-                while k < len(rest) and rest[k] not in ".[":
-                    k += 1
-                key = rest[j:k]
-                if key.isdigit():
-                    parts.append((key, True))
-                elif key:
-                    parts.append((key, False))
-                j = k
-        elif ch == "[":
-            # bracket index: [digits]
-            k = j + 1
-            while k < len(rest) and rest[k] != "]":
-                k += 1
-            idx = rest[j + 1 : k]
-            if idx.isdigit():
-                parts.append((idx, True))
-            j = k + 1 if k < len(rest) else k  # past ']'
+                segments.append((segment, False))
+            i = j + 1
+            if i < n and path[i] == ".":
+                i += 1
+
+        elif ch == ".":
+            i += 1
+
         else:
-            j += 1
+            # Unquoted identifier
+            j = i
+            while j < n and path[j] not in '.[]"':
+                j += 1
+            if j > i:
+                segment = path[i:j]
+                if base is None:
+                    base = segment
+                else:
+                    segments.append((segment, False))
+            i = j
+            if i < n and path[i] == ".":
+                i += 1
 
-    # Handle base with bracket(s) but no dot, e.g. array[0][2]
-    if "[" in base:
-        bname = base.split("[", 1)[0]
-        btail = base[len(bname) + 1 :]  # everything after first '['
-        base = bname if bname else base
-        # parse all bracket indices from the base tail
-        temp_parts = []
-        k = 0
-        while k < len(btail):
-            if btail[k].isdigit():
-                start = k
-                while k < len(btail) and btail[k].isdigit():
-                    k += 1
-                temp_parts.append((btail[start:k], True))
-            else:
-                k += 1
-        # Insert at beginning to maintain order
-        parts = temp_parts + parts
-
-    return base, parts
+    return base or path, segments
 
 
-def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
+def _format_column_for_dialect(column_name: str, dialect: SQLDialect) -> str:
+    """Format a column reference for the target SQL dialect.
+
+    Handles JSON path syntax (config.model.name) per dialect:
+    - sqlite: json_extract("col", '$.path')
+    - duckdb: json_extract_string("col", '$.path')
+    - postgres: "col"->'path'->>'leaf'
+    """
     # If dotted, treat as: <base_column>.<json.path.inside.it>
     if "." in column_name or "[" in column_name:
-        base, path_parts = _parse_condition_json_path(column_name)
+        base, path_parts = _parse_json_path(column_name)
 
         if not path_parts:
             # No JSON path, just a column name that might contain a dot
             # in table.column format (not supported in current implementation)
-            return f'"{_esc_double(column_name)}"'
+            return f'"{_escape_identifier(column_name)}"'
 
         if dialect == "sqlite":
             # Build JSONPath like $.key[0]."user.name"
@@ -463,14 +414,14 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
             for segment, is_index in path_parts:
                 if is_index:
                     json_path_parts.append(f"[{segment}]")
-                elif _needs_sqlite_jsonpath_quotes(segment):
+                elif not segment.replace("_", "").isalnum():
                     # Keys with special chars need quoting in JSONPath
                     escaped = _escape_for_sqlite_jsonpath(segment)
                     json_path_parts.append(f'."{escaped}"')
                 else:
                     json_path_parts.append(f".{segment}")
             json_path = "$" + "".join(json_path_parts)
-            return f"json_extract(\"{_esc_double(base)}\", '{_esc_single(json_path)}')"
+            return f"json_extract(\"{_escape_identifier(base)}\", '{_escape_single_quotes(json_path)}')"
 
         elif dialect == "duckdb":
             # Use json_extract_string to extract as VARCHAR for direct comparison
@@ -484,10 +435,10 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
                 else:
                     json_path_parts.append(f".{segment}")
             json_path = "$" + "".join(json_path_parts)
-            return f"json_extract_string(\"{_esc_double(base)}\", '{_esc_single(json_path)}')"
+            return f"json_extract_string(\"{_escape_identifier(base)}\", '{_escape_single_quotes(json_path)}')"
 
         elif dialect == "postgres":
-            result = f'"{_esc_double(base)}"'
+            result = f'"{_escape_identifier(base)}"'
             for i, (segment, is_index) in enumerate(path_parts):
                 op = "->>" if i == len(path_parts) - 1 else "->"
                 if is_index:
@@ -495,14 +446,14 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
                     result = f"{result}{op}{segment}"
                 else:
                     # Object key: use quoted string
-                    result = f"{result}{op}'{_esc_single(segment)}'"
+                    result = f"{result}{op}'{_escape_single_quotes(segment)}'"
             return result
 
     # Simple (non-JSON) column
-    return f'"{_esc_double(column_name)}"'
+    return f'"{_escape_identifier(column_name)}"'
 
 
-def _get_condition_placeholder(position: int, dialect: SQLDialect) -> str:
+def _get_placeholder(position: int, dialect: SQLDialect) -> str:
     """Get parameter placeholder for the dialect.
 
     Args:
@@ -515,9 +466,7 @@ def _get_condition_placeholder(position: int, dialect: SQLDialect) -> str:
         return "?"
 
 
-def _get_condition_placeholders(
-    count: int, dialect: SQLDialect, offset: int = 0
-) -> str:
+def _get_placeholders(count: int, dialect: SQLDialect, offset: int = 0) -> str:
     """Get multiple parameter placeholders for the dialect.
 
     Args:
@@ -533,7 +482,7 @@ def _get_condition_placeholders(
 
 
 def _build_filter_sql(condition: Condition) -> str:
-    """Recursively build SQL string from condition."""
+    """Build SQL for the filter DSL (human-readable, values inlined)."""
     if condition.is_compound:
         if condition.operator == LogicalOperator.NOT:
             assert isinstance(condition.left, Condition)
@@ -549,7 +498,7 @@ def _build_filter_sql(condition: Condition) -> str:
     else:
         # Simple condition
         assert isinstance(condition.left, str)
-        column = _format_column(condition.left)
+        column = _format_filter_column(condition.left)
 
         if condition.operator == Operator.IS_NULL:
             return f"{column} IS NULL"
@@ -557,43 +506,31 @@ def _build_filter_sql(condition: Condition) -> str:
             return f"{column} IS NOT NULL"
         elif condition.operator == Operator.IN:
             values = condition.right if isinstance(condition.right, list) else []
-            # Handle NULL values specially - NULL in IN doesn't work as expected
-            non_null_values = [v for v in values if v is not None]
-            has_null = any(v is None for v in values)
-
+            non_null_values, has_null = _partition_in_values(values)
             if not non_null_values and not has_null:
                 return "1 = 0"  # Empty IN = always false
-
             sql_parts = []
             if non_null_values:
                 formatted = ", ".join(format_sql_value(v) for v in non_null_values)
                 sql_parts.append(f"{column} IN ({formatted})")
             if has_null:
                 sql_parts.append(f"{column} IS NULL")
-
-            if len(sql_parts) == 1:
-                return sql_parts[0]
-            return f"({' OR '.join(sql_parts)})"
+            sql = " OR ".join(sql_parts)
+            return f"({sql})" if len(sql_parts) > 1 else sql
 
         elif condition.operator == Operator.NOT_IN:
             values = condition.right if isinstance(condition.right, list) else []
-            # Handle NULL values specially
-            non_null_values = [v for v in values if v is not None]
-            has_null = any(v is None for v in values)
-
+            non_null_values, has_null = _partition_in_values(values)
             if not non_null_values and not has_null:
                 return "1 = 1"  # Empty NOT IN = always true
-
             sql_parts = []
             if non_null_values:
                 formatted = ", ".join(format_sql_value(v) for v in non_null_values)
                 sql_parts.append(f"{column} NOT IN ({formatted})")
             if has_null:
                 sql_parts.append(f"{column} IS NOT NULL")
-
-            if len(sql_parts) == 1:
-                return sql_parts[0]
-            return f"({' AND '.join(sql_parts)})"
+            sql = " AND ".join(sql_parts)
+            return f"({sql})" if len(sql_parts) > 1 else sql
         elif condition.operator == Operator.BETWEEN:
             if isinstance(condition.right, tuple) and len(condition.right) >= 2:
                 low = format_sql_value(condition.right[0])
@@ -619,8 +556,8 @@ def _build_filter_sql(condition: Condition) -> str:
             return f"{column} {condition.operator.value} {format_sql_value(condition.right)}"
 
 
-def _format_column(column_name: str) -> str:
-    """Format column name, using shorthand for JSON paths.
+def _format_filter_column(column_name: str) -> str:
+    """Format a column for the filter DSL (human-readable, not executable).
 
     Simple columns are output unquoted if they don't need quoting.
     JSON paths use dot notation: config.model.name
@@ -663,69 +600,12 @@ def _format_column(column_name: str) -> str:
 def _parse_json_path_segments(path: str) -> list[tuple[str, bool]]:
     """Parse a JSON path into segments with type information.
 
-    Returns list of (segment, is_array_index) tuples.
-    Handles:
-    - Simple dotted paths: config.model.name
-    - Array indices: items[0].name
-    - Quoted keys: config."key.with.dot"
+    Returns list of (segment, is_array_index) tuples including the base.
+    Delegates to _parse_json_path for actual parsing.
     """
-    segments: list[tuple[str, bool]] = []
-    i = 0
-    n = len(path)
-
-    while i < n:
-        ch = path[i]
-
-        if ch == "[":
-            # Array index
-            j = i + 1
-            while j < n and path[j] != "]":
-                j += 1
-            index = path[i + 1 : j]
-            segments.append((index, True))
-            i = j + 1
-            # Skip trailing dot if present
-            if i < n and path[i] == ".":
-                i += 1
-
-        elif ch == '"':
-            # Quoted identifier - handle doubled quotes ("") as escape
-            j = i + 1
-            key_chars: list[str] = []
-            while j < n:
-                if path[j] == '"':
-                    # Check for doubled quote (escaped)
-                    if j + 1 < n and path[j + 1] == '"':
-                        key_chars.append('"')  # Add single quote to result
-                        j += 2  # Skip both quotes
-                    else:
-                        break  # End of quoted identifier
-                else:
-                    key_chars.append(path[j])
-                    j += 1
-            segments.append(("".join(key_chars), False))
-            i = j + 1
-            # Skip trailing dot if present
-            if i < n and path[i] == ".":
-                i += 1
-
-        elif ch == ".":
-            # Skip leading/consecutive dots
-            i += 1
-
-        else:
-            # Unquoted identifier
-            j = i
-            while j < n and path[j] not in '.[]"':
-                j += 1
-            if j > i:
-                segments.append((path[i:j], False))
-            i = j
-            # Skip trailing dot if present
-            if i < n and path[i] == ".":
-                i += 1
-
-    return segments
+    base, segments = _parse_json_path(path)
+    # Include base as first segment (not an array index)
+    return [(base, False)] + segments
 
 
 def _needs_quoting(identifier: str) -> bool:
@@ -779,12 +659,6 @@ def _needs_quoting(identifier: str) -> bool:
     return False
 
 
-def _escape_identifier(identifier: str) -> str:
-    """Escape an identifier for use in double quotes."""
-    return identifier.replace('"', '""')
-
-
-# Placeholder for condition_from_sql - will be implemented next
 def condition_from_sql(sql: str) -> Condition:
     """Parse SQL expression into Condition.
 
@@ -1015,7 +889,7 @@ def _match_identifier_chain(sql: str, start: int) -> tuple[str, int] | None:
 
 
 def _parse_identifier_chain(chain: str) -> list[str]:
-    """Parse an identifier chain into its parts."""
+    """Split a dotted identifier chain like 'config.model.name' into parts."""
     parts: list[str] = []
     i = 0
     n = len(chain)

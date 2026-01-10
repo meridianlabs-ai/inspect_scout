@@ -13,6 +13,11 @@ import { ColumnFilterEditor } from "./columnFilter/ColumnFilterEditor";
 import { useColumnFilterPopover } from "./columnFilter/useColumnFilterPopover";
 import styles from "./TranscriptFilterBar.module.css";
 
+const kCopyCodeDescriptors = [
+  { label: "Python", value: "python" },
+  { label: "Filter (SQL)", value: "sql" },
+];
+
 export const TranscriptFilterBar: FC<{
   filterCodeValues?: Record<string, string>;
 }> = ({ filterCodeValues }) => {
@@ -184,14 +189,7 @@ const CopyQueryButton: FC<{ itemValues?: Record<string, string> }> = ({
 }) => {
   const [icon, setIcon] = useState<string>(ApplicationIcons.copy);
 
-  const itemDescriptors = [
-    { label: "SQL (duckdb)", value: "duckdb" },
-    { label: "SQL (postgres)", value: "postgres" },
-    { label: "SQL (sqlite)", value: "sqlite" },
-    // { label: "Python", value: "python" },
-  ];
-
-  const items = itemDescriptors.reduce(
+  const items = kCopyCodeDescriptors.reduce(
     (acc, desc) => {
       acc[desc.label] = () => {
         const text = itemValues ? itemValues[desc.value] : "";

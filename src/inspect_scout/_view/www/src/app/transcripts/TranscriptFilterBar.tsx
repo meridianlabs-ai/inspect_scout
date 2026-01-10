@@ -1,12 +1,16 @@
 import { clsx } from "clsx";
-import { FC, useCallback, useState } from "react";
+import { FC, useCallback, useRef, useState } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
+import { PopOver } from "../../components/PopOver";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
+import type { SimpleCondition } from "../../query/types";
 import { useStore } from "../../state/store";
 import { Chip } from "../components/Chip";
 import { ChipGroup } from "../components/ChipGroup";
 
+import { ColumnFilterEditor } from "./columnFilter/ColumnFilterEditor";
+import { useColumnFilterPopover } from "./columnFilter/useColumnFilterPopover";
 import styles from "./TranscriptFilterBar.module.css";
 
 export const TranscriptFilterBar: FC<{
@@ -34,7 +38,66 @@ export const TranscriptFilterBar: FC<{
     [setTranscriptsTableState]
   );
 
-  // Editing filter
+  // Filter editing state
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const chipRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const editingFilter = editingColumnId ? filters[editingColumnId] : null;
+
+  const handleFilterChange = useCallback(
+    (condition: SimpleCondition | null) => {
+      if (!editingColumnId) return;
+
+      setTranscriptsTableState((prevState) => {
+        const newFilters = { ...prevState.columnFilters };
+        if (condition === null) {
+          delete newFilters[editingColumnId];
+        } else {
+          const existingFilter = newFilters[editingColumnId];
+          if (existingFilter) {
+            newFilters[editingColumnId] = {
+              ...existingFilter,
+              condition,
+            };
+          }
+        }
+        return {
+          ...prevState,
+          columnFilters: newFilters,
+        };
+      });
+    },
+    [editingColumnId, setTranscriptsTableState]
+  );
+
+  const {
+    isOpen: isEditorOpen,
+    setIsOpen: setIsEditorOpen,
+    operator,
+    setOperator,
+    rawValue,
+    setRawValue,
+    operatorOptions,
+    isValueDisabled,
+    valueSelectRef,
+    valueInputRef,
+    commitAndClose,
+    cancelAndClose,
+  } = useColumnFilterPopover({
+    columnId: editingColumnId ?? "",
+    filterType: editingFilter?.filterType ?? "string",
+    condition: editingFilter?.condition ?? null,
+    onChange: handleFilterChange,
+  });
+
+  const editFilter = useCallback(
+    (columnId: string) => () => {
+      setEditingColumnId(columnId);
+      setIsEditorOpen(true);
+    },
+    [setIsEditorOpen]
+  );
+
   const filterEntries = Object.values(filters);
 
   return (
@@ -58,6 +121,9 @@ export const TranscriptFilterBar: FC<{
             return (
               <Chip
                 key={filter.columnId}
+                ref={(el) => {
+                  chipRefs.current[filter.columnId] = el;
+                }}
                 label={filter.columnId}
                 value={`${filter.condition.operator} ${String(filter.condition.right)}`}
                 title={`Edit ${filter.columnId} filter`}
@@ -65,6 +131,7 @@ export const TranscriptFilterBar: FC<{
                 onClose={() => {
                   removeFilter(filter.columnId);
                 }}
+                onClick={editFilter(filter.columnId)}
               />
             );
           })
@@ -74,6 +141,37 @@ export const TranscriptFilterBar: FC<{
           </div>
         )}
       </ChipGroup>
+      {editingColumnId && editingFilter && (
+        <PopOver
+          id={`transcript-filter-editor-${editingColumnId}`}
+          isOpen={isEditorOpen}
+          setIsOpen={setIsEditorOpen}
+          positionEl={chipRefs.current[editingColumnId] ?? null}
+          placement="bottom-start"
+          showArrow={true}
+          hoverDelay={-1}
+          closeOnMouseLeave={false}
+          styles={{
+            padding: "0.4rem",
+            backgroundColor: "var(--bs-light)",
+          }}
+        >
+          <ColumnFilterEditor
+            columnId={editingColumnId}
+            filterType={editingFilter.filterType}
+            operator={operator}
+            operatorOptions={operatorOptions}
+            rawValue={rawValue}
+            isValueDisabled={isValueDisabled}
+            valueSelectRef={valueSelectRef}
+            valueInputRef={valueInputRef}
+            onOperatorChange={setOperator}
+            onValueChange={setRawValue}
+            onCommit={commitAndClose}
+            onCancel={cancelAndClose}
+          />
+        </PopOver>
+      )}
       <div className={clsx(styles.actionButtons)}>
         <CopyQueryButton itemValues={filterCodeValues} />
       </div>

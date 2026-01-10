@@ -13,6 +13,7 @@ reference: "inspect_scout"
 ## Database
 
 ### transcripts_db
+### transcripts_db_schema
 ### TranscriptsDB
 
 ## Filtering

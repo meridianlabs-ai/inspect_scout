@@ -48,6 +48,7 @@ from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._query.condition_sql import conditions_as_filter
+from inspect_scout._transcript.database.schema import reserved_columns
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
@@ -60,7 +61,7 @@ from .database.database import TranscriptsView
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache
 from .transcripts import TranscriptsReader
-from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
+from .types import Transcript, TranscriptContent, TranscriptInfo
 from .util import LazyJSONDict
 
 logger = getLogger(__name__)
@@ -303,7 +304,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             metadata_dict = {
                 k: v
                 for k, v in row_dict.items()
-                if v is not None and k not in RESERVED_COLUMNS
+                if v is not None and k not in reserved_columns()
             }
             lazy_metadata = LazyJSONDict(metadata_dict, json_keys=JSON_COLUMNS)
 

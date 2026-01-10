@@ -10,7 +10,7 @@ from inspect_ai.analysis import samples_df
 from inspect_scout import LogColumns
 from inspect_scout import columns as c
 from inspect_scout import log_columns as lc
-from inspect_scout._query import Query
+from inspect_scout._query import Query, condition_as_sql
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView, TranscriptColumns
 
 
@@ -108,19 +108,19 @@ def test_sql_generation_simple_equality() -> None:
     """Test SQL generation for simple equality using typed properties."""
     # Model equality
     condition = lc.model == "gpt-4"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"model" = ?'
     assert params == ["gpt-4"]
 
     # Task name equality
     condition = lc.task_set == "math_problem"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"task_set" = ?'
     assert params == ["math_problem"]
 
     # Solver equality
     condition = lc.solver == "cot"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"agent" = ?'
     assert params == ["cot"]
 
@@ -129,25 +129,25 @@ def test_sql_generation_comparison_operators() -> None:
     """Test SQL generation for comparison operators using typed properties."""
     # Greater than
     condition = lc.epoch > 1
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"epoch" > ?'
     assert params == [1]
 
     # Less than or equal
     condition = lc.total_tokens <= 1000
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"total_tokens" <= ?'
     assert params == [1000]
 
     # Greater than or equal
     condition = lc.score >= 0.8
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"score" >= ?'
     assert params == [0.8]
 
     # Not equal
     condition = lc.solver != "cot"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"agent" != ?'
     assert params == ["cot"]
 
@@ -156,13 +156,13 @@ def test_sql_generation_complex_conditions() -> None:
     """Test SQL generation for complex conditions using typed properties."""
     # AND condition
     condition = (lc.model == "gpt-4") & (lc.epoch > 1)
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '("model" = ? AND "epoch" > ?)'
     assert params == ["gpt-4", 1]
 
     # OR condition
     condition = (lc.solver == "cot") | (lc.total_time > 10.0)
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '("agent" = ? OR "total_time" > ?)'
     assert params == ["cot", 10.0]
 
@@ -172,7 +172,7 @@ def test_sql_generation_complex_conditions() -> None:
         | ((lc.model == "claude-3") & (lc.total_tokens > 50))
     ) & (lc.score > 0.8)
 
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert "AND" in sql
     assert "OR" in sql
     assert len(params) == 5
@@ -182,25 +182,25 @@ def test_sql_generation_null_handling() -> None:
     """Test SQL generation for NULL handling using typed properties."""
     # IS NULL
     condition = lc.limit.is_null()
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"limit" IS NULL'
     assert params == []
 
     # IS NOT NULL
     condition = lc.sample_metadata.is_not_null()
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"sample_metadata" IS NOT NULL'
     assert params == []
 
     # == None should map to IS NULL
     condition = lc.limit == None  # noqa: E711
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"limit" IS NULL'
     assert params == []
 
     # != None should map to IS NOT NULL
     condition = lc.eval_metadata != None  # noqa: E711
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"eval_metadata" IS NOT NULL'
     assert params == []
 
@@ -209,13 +209,13 @@ def test_sql_generation_in_operators() -> None:
     """Test SQL generation for IN operators using typed properties."""
     # IN
     condition = lc.model.in_(["gpt-4", "claude-3", "gemini-pro"])
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"model" IN (?, ?, ?)'
     assert params == ["gpt-4", "claude-3", "gemini-pro"]
 
     # NOT IN
     condition = lc.solver.not_in(["cot", "react"])
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"agent" NOT IN (?, ?)'
     assert params == ["cot", "react"]
 
@@ -224,19 +224,19 @@ def test_sql_generation_like_operators() -> None:
     """Test SQL generation for LIKE operators using typed properties."""
     # LIKE
     condition = lc.task_set.like("math%")
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"task_set" LIKE ?'
     assert params == ["math%"]
 
     # NOT LIKE
     condition = lc.log.not_like("/tmp/%")
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"log" NOT LIKE ?'
     assert params == ["/tmp/%"]
 
     # ILIKE (case-insensitive)
     condition = lc.model.ilike("%GPT%")
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == 'LOWER("model") LIKE LOWER(?)'
     assert params == ["%GPT%"]
 
@@ -245,13 +245,13 @@ def test_sql_generation_between_operators() -> None:
     """Test SQL generation for BETWEEN operators using typed properties."""
     # BETWEEN
     condition = lc.epoch.between(1, 5)
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"epoch" BETWEEN ? AND ?'
     assert params == [1, 5]
 
     # NOT BETWEEN
     condition = lc.total_time.not_between(10.0, 20.0)
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"total_time" NOT BETWEEN ? AND ?'
     assert params == [10.0, 20.0]
 
@@ -261,17 +261,17 @@ def test_sql_generation_different_dialects() -> None:
     condition = (lc.model == "gpt-4") & (lc.epoch > 1)
 
     # SQLite
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '("model" = ? AND "epoch" > ?)'
     assert params == ["gpt-4", 1]
 
     # PostgreSQL - uses $1, $2 placeholders
-    sql, params = condition.to_sql("postgres")
+    sql, params = condition_as_sql(condition, "postgres")
     assert sql == '("model" = $1 AND "epoch" > $2)'
     assert params == ["gpt-4", 1]
 
     # DuckDB
-    sql, params = condition.to_sql("duckdb")
+    sql, params = condition_as_sql(condition, "duckdb")
     assert sql == '("model" = ? AND "epoch" > ?)'
     assert params == ["gpt-4", 1]
 
@@ -285,25 +285,25 @@ def test_dynamic_field_access() -> None:
     """Test that dynamic fields work with LogColumns."""
     # Access dynamic score columns
     condition = lc["score_accuracy"] > 0.9
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"score_accuracy" > ?'
     assert params == [0.9]
 
     # Access score_f1 column
     condition = lc["score_f1"] >= 0.7
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"score_f1" >= ?'
     assert params == [0.7]
 
     # Access metadata_* columns
     condition = lc["metadata_custom"] == "custom_value_1"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"metadata_custom" = ?'
     assert params == ["custom_value_1"]
 
     # Access completely custom fields
     condition = lc["my_custom_field"] < 100
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"my_custom_field" < ?'
     assert params == [100]
 
@@ -314,12 +314,12 @@ def test_nested_json_fields() -> None:
     condition = lc["config.nested.value"] > 10
 
     # SQLite - uses json_extract
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == "json_extract(\"config\", '$.nested.value') > ?"
     assert params == [10]
 
     # DuckDB - uses json_extract_string with type casting
-    sql, params = condition.to_sql("duckdb")
+    sql, params = condition_as_sql(condition, "duckdb")
     assert sql == "(json_extract_string(\"config\", '$.nested.value'))::BIGINT > ?"
     assert params == [10]
 
@@ -328,25 +328,25 @@ def test_json_metadata_fields() -> None:
     """Test querying nested values in eval_metadata and sample_metadata."""
     # Query nested field in eval_metadata
     condition = lc["eval_metadata.experiment"] == "exp_5"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == "json_extract(\"eval_metadata\", '$.experiment') = ?"
     assert params == ["exp_5"]
 
     # Query nested field in sample_metadata
     condition = lc["sample_metadata.custom"] == "value_10"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == "json_extract(\"sample_metadata\", '$.custom') = ?"
     assert params == ["value_10"]
 
     # Query nested field in task_args
     condition = lc["task_args.temperature"] >= 0.7
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == "json_extract(\"task_args\", '$.temperature') >= ?"
     assert params == [0.7]
 
     # Complex condition with JSON fields
     condition = (lc["eval_metadata.version"] == "1.0") & (lc.model == "gpt-4")
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert "json_extract" in sql
     assert params == ["1.0", "gpt-4"]
 
@@ -364,8 +364,8 @@ def test_backward_compatibility_with_base_metadata() -> None:
     cond_log = lc.model == "gpt-4"
     cond_base = c.model == "gpt-4"
 
-    sql_log, params_log = cond_log.to_sql("sqlite")
-    sql_base, params_base = cond_base.to_sql("sqlite")
+    sql_log, params_log = condition_as_sql(cond_log, "sqlite")
+    sql_base, params_base = condition_as_sql(cond_base, "sqlite")
 
     assert sql_log == sql_base
     assert params_log == params_base
@@ -374,8 +374,8 @@ def test_backward_compatibility_with_base_metadata() -> None:
     cond_log = (lc.epoch > 1) & (lc.total_tokens >= 100)
     cond_base = (c.epoch > 1) & (c.total_tokens >= 100)
 
-    sql_log, params_log = cond_log.to_sql("sqlite")
-    sql_base, params_base = cond_base.to_sql("sqlite")
+    sql_log, params_log = condition_as_sql(cond_log, "sqlite")
+    sql_base, params_base = condition_as_sql(cond_base, "sqlite")
 
     assert sql_log == sql_base
     assert params_log == params_base
@@ -384,8 +384,8 @@ def test_backward_compatibility_with_base_metadata() -> None:
     cond_log = lc["custom_field"] > 50
     cond_base = c["custom_field"] > 50
 
-    sql_log, params_log = cond_log.to_sql("sqlite")
-    sql_base, params_base = cond_base.to_sql("sqlite")
+    sql_log, params_log = condition_as_sql(cond_log, "sqlite")
+    sql_base, params_base = condition_as_sql(cond_base, "sqlite")
 
     assert sql_log == sql_base
     assert params_log == params_base
@@ -396,7 +396,7 @@ def test_mixing_log_and_base_metadata() -> None:
     # Mix LogColumns and base Metadata in the same query
     condition = (lc.model == "gpt-4") & (c.score > 0.8)
 
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '("model" = ? AND "score" > ?)'
     assert params == ["gpt-4", 0.8]
 
@@ -565,13 +565,13 @@ def test_special_column_names() -> None:
 
     # 'id' is a builtin but should work as a property
     condition = lc.id > 5
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"id" > ?'
     assert params == [5]
 
     # Test sample_id
     condition = lc.sample_id == "sample_001"
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert sql == '"sample_id" = ?'
     assert params == ["sample_001"]
 
@@ -597,7 +597,7 @@ def test_all_operators_with_typed_properties() -> None:
     ]
 
     for condition, expected_sql, expected_params in operators_tests:
-        sql, params = condition.to_sql("sqlite")
+        sql, params = condition_as_sql(condition, "sqlite")
         assert sql == expected_sql
         assert params == expected_params
 
@@ -610,7 +610,7 @@ def test_chaining_operations() -> None:
     condition = condition & (lc.total_tokens >= 100)
     condition = condition | (lc.solver == "cot")
 
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
     assert "AND" in sql
     assert "OR" in sql
     assert len(params) == 4

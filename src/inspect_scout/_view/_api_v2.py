@@ -1,4 +1,5 @@
 import io
+from functools import reduce
 from typing import (
     Any,
     Iterable,
@@ -29,8 +30,7 @@ from inspect_scout._project._project import project
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
 from .._active_scans_store import active_scans_store
-from .._query import Column, Condition, Query
-from .._query.sql import SQLDialect
+from .._query import Column, Condition, Query, condition_as_sql
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
@@ -358,12 +358,16 @@ def v2_api_app(
         summary="Code endpoint",
     )
     async def code(
-        body: Condition,
+        body: Condition | list[Condition],
     ) -> dict[str, str]:
         """Process condition."""
+        filter_sql = condition_as_sql(
+            reduce(lambda a, b: a & b, body) if isinstance(body, list) else body,
+            "filter",
+        )
         return {
-            "python": "Not Yet Implemented",
-            **{d.value: body.to_sql(d)[0] for d in SQLDialect},
+            "python": f'transcripts = transcripts_from("{project().transcripts}").where({filter_sql!r})',
+            "filter": filter_sql,
         }
 
     @app.get(

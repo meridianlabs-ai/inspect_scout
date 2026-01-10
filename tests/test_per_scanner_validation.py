@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 from inspect_ai.model._chat_message import ChatMessageSystem, ChatMessageUser
+from inspect_scout._query import condition_as_sql
 from inspect_scout._scan import _resolve_validation
 from inspect_scout._scanjob import ScanJob
 from inspect_scout._scanner.result import Result
@@ -232,7 +233,7 @@ def test_for_validation_dict_single_scanner() -> None:
     assert len(filtered._query.where) == 1
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     assert sql == '"sample_id" IN (?, ?)'
     assert params == ["id1", "id2"]
@@ -259,7 +260,7 @@ def test_for_validation_dict_multiple_scanners() -> None:
     filtered = transcripts.for_validation(validation_dict)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Should merge all IDs from both scanners
     assert sql == '"sample_id" IN (?, ?, ?, ?)'
@@ -287,7 +288,7 @@ def test_for_validation_dict_overlapping_ids() -> None:
     filtered = transcripts.for_validation(validation_dict)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Should deduplicate id2
     assert sql == '"sample_id" IN (?, ?, ?)'
@@ -313,7 +314,7 @@ def test_for_validation_dict_with_list_ids() -> None:
     filtered = transcripts.for_validation(validation_dict)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     assert sql == '"sample_id" IN (?, ?, ?)'
     assert set(params) == {"id1", "id2", "id3"}
@@ -330,7 +331,7 @@ def test_for_validation_dict_empty_validation_sets() -> None:
     filtered = transcripts.for_validation(validation_dict)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Should result in empty IN clause
     assert sql == "1 = 0"
@@ -358,7 +359,7 @@ def test_for_validation_preserves_order_across_scanners() -> None:
     filtered = transcripts.for_validation(validation_dict)
 
     condition = filtered._query.where[0]
-    _sql, params = condition.to_sql("sqlite")
+    _sql, params = condition_as_sql(condition, "sqlite")
 
     # Should have all unique IDs in order of first appearance
     assert len(params) == 3

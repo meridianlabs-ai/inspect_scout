@@ -10,10 +10,10 @@ Features:
 
 from __future__ import annotations
 
-from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal, overload
 
 from .condition import Condition, LogicalOperator, Operator
+from .sql import SQLDialect, format_sql_value
 
 
 class ConditionSQLError(ValueError):
@@ -43,48 +43,508 @@ class ConditionSQLUnsupportedError(ConditionSQLError):
         super().__init__(f"{message}: {construct}")
 
 
-def condition_as_sql(condition: Condition) -> str:
-    """Generate SQL with values inlined (human-readable).
+def _condition_as_filter_sql(condition: Condition) -> str:
+    """Generate a SQL-like DSL string for human editing and round-tripping.
 
-    Uses shorthand JSON path syntax: config.model.name = 'gpt-4'
+    This produces a simplified, human-readable format that is NOT directly
+    executable by any specific database. It uses shorthand syntax (e.g., dot-notation
+    for JSON paths like `config.model.name`, literal `ILIKE` regardless of
+    database support) designed to be parsed back via `condition_from_sql()`.
+
+    For executable, dialect-specific SQL, use `condition_as_sql()` instead.
+
+    WARNING: Values are inlined directly into the output string, bypassing parameterized
+    query protection. Intended for display purposes where the user is supplying
+    their own values.
 
     Args:
         condition: The Condition object to serialize.
 
     Returns:
-        SQL string with values inlined.
+        SQL-like DSL string (not executable SQL).
 
     Examples:
         >>> from inspect_scout._query import Column
         >>> c = Column("model")
-        >>> condition_as_sql(c == "gpt-4")
+        >>> condition_as_sql(c == "gpt-4", "filter")
         "model = 'gpt-4'"
-        >>> condition_as_sql(c.in_(["a", "b"]))
+        >>> condition_as_sql(c.in_(["a", "b"]), "filter")
         "model IN ('a', 'b')"
     """
-    return _build_sql(condition)
+    return _build_filter_sql(condition)
 
 
 def conditions_as_filter(conditions: list[Condition] | None) -> list[str] | None:
     if conditions is not None:
-        return [condition_as_sql(c) for c in conditions]
+        return [_condition_as_filter_sql(c) for c in conditions]
     else:
         return None
 
 
-def _build_sql(condition: Condition) -> str:
+# ---------------------------------------------------------------------------
+# condition_as_sql: dialect-specific SQL generation with parameterized queries
+# ---------------------------------------------------------------------------
+
+
+@overload
+def condition_as_sql(
+    condition: Condition,
+    dialect: Literal["filter"],
+) -> str: ...
+
+
+@overload
+def condition_as_sql(
+    condition: Condition,
+    dialect: Literal["sqlite", "duckdb", "postgres"] = ...,
+) -> tuple[str, list[Any]]: ...
+
+
+def condition_as_sql(
+    condition: Condition,
+    dialect: SQLDialect = "sqlite",
+) -> str | tuple[str, list[Any]]:
+    """Generate SQL WHERE clause and parameters.
+
+    Args:
+        condition: The Condition object to serialize.
+        dialect: Target SQL dialect. Use "filter" for human-readable DSL string
+            with inlined values (for display/editing). Use "sqlite", "duckdb", or
+            "postgres" for executable SQL with parameterized queries.
+
+    Returns:
+        If dialect="filter": SQL-like DSL string with values inlined.
+        Otherwise: Tuple of (sql_string, parameters_list).
+    """
+    if dialect == "filter":
+        return _condition_as_filter_sql(condition)
+    sql, params = _build_condition_sql(condition, dialect)
+    return (sql, params)
+
+
+def _build_condition_sql(
+    condition: Condition,
+    dialect: Literal["sqlite", "duckdb", "postgres"],
+    param_offset: int = 0,
+) -> tuple[str, list[Any]]:
+    """Recursively build SQL string and collect parameters.
+
+    Args:
+        condition: The Condition object to serialize.
+        dialect: SQL dialect to use.
+        param_offset: Starting parameter position for PostgreSQL numbering.
+
+    Returns:
+        Tuple of (sql_string, parameters_list).
+    """
+    if condition.is_compound:
+        if condition.operator == LogicalOperator.NOT:
+            assert isinstance(condition.left, Condition)
+            left_sql, left_params = _build_condition_sql(
+                condition.left,
+                dialect,
+                param_offset,
+            )
+            return f"NOT ({left_sql})", left_params
+        else:
+            assert isinstance(condition.left, Condition)
+            assert isinstance(condition.right, Condition)
+            assert condition.operator is not None
+            left_sql, left_params = _build_condition_sql(
+                condition.left,
+                dialect,
+                param_offset,
+            )
+            # Update offset for right side based on left side parameters
+            right_offset = param_offset + len(left_params)
+            right_sql, right_params = _build_condition_sql(
+                condition.right,
+                dialect,
+                right_offset,
+            )
+            return (
+                f"({left_sql} {condition.operator.value} {right_sql})",
+                left_params + right_params,
+            )
+    else:
+        # Simple condition
+        assert isinstance(condition.left, str)
+        column = _format_condition_column(condition.left, dialect)
+
+        if (
+            dialect == "postgres"
+            and isinstance(condition.left, str)
+            and "." in condition.left
+        ):
+
+            def _pg_cast(col: str, val: Any) -> str:
+                # PostgreSQL's ->> returns text, so we need to cast from text
+                # bool must be checked before int (bool is a subclass of int)
+                if isinstance(val, bool):
+                    return f"({col})::text::boolean"
+                if isinstance(val, int) and not isinstance(val, bool):
+                    return f"({col})::text::bigint"
+                if isinstance(val, float):
+                    return f"({col})::text::double precision"
+                return col
+
+            # Skip casts for operators that don't compare numerically/textually
+            skip_ops = {
+                Operator.LIKE,
+                Operator.NOT_LIKE,
+                Operator.ILIKE,
+                Operator.NOT_ILIKE,
+                Operator.IS_NULL,
+                Operator.IS_NOT_NULL,
+            }
+
+            if condition.operator not in skip_ops:
+                hint = None
+                if condition.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
+                    # use first non-None bound as hint
+                    hint = next((x for x in condition.params if x is not None), None)
+                elif condition.operator in (Operator.IN, Operator.NOT_IN):
+                    # use first non-None value as hint for IN/NOT IN
+                    hint = next((x for x in condition.params if x is not None), None)
+                else:
+                    hint = condition.params[0] if condition.params else None
+                column = _pg_cast(column, hint)
+
+        # Add DuckDB type casting for JSON paths
+        if (
+            dialect == "duckdb"
+            and isinstance(condition.left, str)
+            and "." in condition.left
+        ):
+
+            def _duck_cast(col: str, val: Any) -> str:
+                # DuckDB casting for type-safe comparisons
+                if isinstance(val, bool):
+                    return f"({col})::BOOLEAN"
+                if isinstance(val, int) and not isinstance(val, bool):
+                    return f"({col})::BIGINT"
+                if isinstance(val, float):
+                    return f"({col})::DOUBLE"
+                return col
+
+            # Apply casting for non-text operators
+            skip_ops_duck = {
+                Operator.LIKE,
+                Operator.NOT_LIKE,
+                Operator.ILIKE,
+                Operator.NOT_ILIKE,
+                Operator.IS_NULL,
+                Operator.IS_NOT_NULL,
+            }
+
+            if condition.operator not in skip_ops_duck:
+                hint = None
+                if condition.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
+                    hint = next((x for x in condition.params if x is not None), None)
+                elif condition.operator in (Operator.IN, Operator.NOT_IN):
+                    hint = next((x for x in condition.params if x is not None), None)
+                else:
+                    hint = condition.params[0] if condition.params else None
+                column = _duck_cast(column, hint)
+
+        # Ensure DuckDB text operators receive VARCHAR for LIKE operations
+        if (
+            dialect == "duckdb"
+            and condition.operator
+            in {
+                Operator.LIKE,
+                Operator.NOT_LIKE,
+                Operator.ILIKE,
+                Operator.NOT_ILIKE,
+            }
+            and isinstance(condition.left, str)
+            and "." in condition.left  # Only for JSON paths
+        ):
+            column = f"CAST({column} AS VARCHAR)"
+
+        if condition.operator == Operator.IS_NULL:
+            return f"{column} IS NULL", []
+        elif condition.operator == Operator.IS_NOT_NULL:
+            return f"{column} IS NOT NULL", []
+        elif condition.operator == Operator.IN:
+            # Handle NULL values in IN list
+            vals = [v for v in condition.params if v is not None]
+            has_null = any(v is None for v in condition.params)
+            n = len(vals)
+
+            if n == 0 and not has_null:
+                return "1 = 0", []  # empty IN = always false
+
+            sql_parts = []
+            if n > 0:
+                placeholders = _get_condition_placeholders(n, dialect, param_offset)
+                sql_parts.append(f"{column} IN ({placeholders})")
+            if has_null:
+                sql_parts.append(f"{column} IS NULL")
+
+            sql = " OR ".join(sql_parts) if sql_parts else "1 = 0"
+            if len(sql_parts) > 1:
+                sql = f"({sql})"
+            return sql, vals
+
+        elif condition.operator == Operator.NOT_IN:
+            # Handle NULL values in NOT IN list
+            vals = [v for v in condition.params if v is not None]
+            has_null = any(v is None for v in condition.params)
+            n = len(vals)
+
+            if n == 0 and not has_null:
+                return "1 = 1", []  # empty NOT IN = always true
+
+            sql_parts = []
+            if n > 0:
+                placeholders = _get_condition_placeholders(n, dialect, param_offset)
+                sql_parts.append(f"{column} NOT IN ({placeholders})")
+            if has_null:
+                sql_parts.append(f"{column} IS NOT NULL")
+
+            if not sql_parts:
+                sql = "1 = 1"
+            elif len(sql_parts) == 1:
+                sql = sql_parts[0]
+            else:
+                sql = f"({sql_parts[0]} AND {sql_parts[1]})"
+            return sql, vals
+        elif condition.operator == Operator.BETWEEN:
+            p1 = _get_condition_placeholder(param_offset, dialect)
+            p2 = _get_condition_placeholder(param_offset + 1, dialect)
+            return f"{column} BETWEEN {p1} AND {p2}", list(condition.params)
+        elif condition.operator == Operator.NOT_BETWEEN:
+            p1 = _get_condition_placeholder(param_offset, dialect)
+            p2 = _get_condition_placeholder(param_offset + 1, dialect)
+            return f"{column} NOT BETWEEN {p1} AND {p2}", list(condition.params)
+        elif condition.operator == Operator.ILIKE:
+            placeholder = _get_condition_placeholder(param_offset, dialect)
+            if dialect == "postgres":
+                return f"{column} ILIKE {placeholder}", list(condition.params)
+            # For SQLite and DuckDB, use LOWER() for case-insensitive comparison
+            return f"LOWER({column}) LIKE LOWER({placeholder})", list(condition.params)
+        elif condition.operator == Operator.NOT_ILIKE:
+            placeholder = _get_condition_placeholder(param_offset, dialect)
+            if dialect == "postgres":
+                return f"{column} NOT ILIKE {placeholder}", list(condition.params)
+            # For SQLite and DuckDB, use LOWER() for case-insensitive comparison
+            return f"LOWER({column}) NOT LIKE LOWER({placeholder})", list(
+                condition.params
+            )
+        else:
+            assert condition.operator is not None
+            placeholder = _get_condition_placeholder(param_offset, dialect)
+            return f"{column} {condition.operator.value} {placeholder}", list(
+                condition.params
+            )
+
+
+def _esc_double(s: str) -> str:
+    return s.replace('"', '""')
+
+
+def _esc_single(s: str) -> str:
+    return s.replace("'", "''")
+
+
+def _needs_sqlite_jsonpath_quotes(key: str) -> bool:
+    """Check if a key needs quotes in SQLite JSONPath."""
+    # Keys need quotes if they contain anything besides alphanumeric and underscore
+    return not key.replace("_", "").isalnum()
+
+
+def _escape_for_sqlite_jsonpath(key: str) -> str:
+    """Escape a key for use in SQLite JSONPath."""
+    # JSONPath is inside a single-quoted SQL string; the " chars need JSONPath escaping
+    return key.replace('"', '\\"')
+
+
+def _parse_condition_json_path(path: str) -> tuple[str, list[tuple[str, bool]]]:
+    """Parse a JSON path supporting array indices and quoted keys.
+
+    Returns:
+        Tuple of (base_column, list of (segment, is_array_index))
+    """
+    if "." not in path and "[" not in path:
+        return path, []
+
+    # Identify base: everything before the first unquoted '.' or '['
+    i, n, in_quotes = 0, len(path), False
+    while i < n:
+        ch = path[i]
+        if ch == '"':
+            in_quotes = not in_quotes
+        elif not in_quotes and ch in ".[":
+            break
+        i += 1
+
+    base = path[:i] if i > 0 else path
+    rest = path[i:]
+    parts: list[tuple[str, bool]] = []
+
+    j = 0
+    while j < len(rest):
+        ch = rest[j]
+        if ch == ".":
+            # dotted key (quoted or unquoted)
+            j += 1
+            if j < len(rest) and rest[j] == '"':
+                # quoted key
+                j += 1
+                key_chars = []
+                while j < len(rest) and rest[j] != '"':
+                    # allow \" sequences
+                    if rest[j] == "\\" and j + 1 < len(rest):
+                        j += 1
+                    key_chars.append(rest[j])
+                    j += 1
+                if j < len(rest) and rest[j] == '"':
+                    j += 1  # consume closing quote
+                parts.append(("".join(key_chars), False))
+            else:
+                # unquoted key
+                k = j
+                while k < len(rest) and rest[k] not in ".[":
+                    k += 1
+                key = rest[j:k]
+                if key.isdigit():
+                    parts.append((key, True))
+                elif key:
+                    parts.append((key, False))
+                j = k
+        elif ch == "[":
+            # bracket index: [digits]
+            k = j + 1
+            while k < len(rest) and rest[k] != "]":
+                k += 1
+            idx = rest[j + 1 : k]
+            if idx.isdigit():
+                parts.append((idx, True))
+            j = k + 1 if k < len(rest) else k  # past ']'
+        else:
+            j += 1
+
+    # Handle base with bracket(s) but no dot, e.g. array[0][2]
+    if "[" in base:
+        bname = base.split("[", 1)[0]
+        btail = base[len(bname) + 1 :]  # everything after first '['
+        base = bname if bname else base
+        # parse all bracket indices from the base tail
+        temp_parts = []
+        k = 0
+        while k < len(btail):
+            if btail[k].isdigit():
+                start = k
+                while k < len(btail) and btail[k].isdigit():
+                    k += 1
+                temp_parts.append((btail[start:k], True))
+            else:
+                k += 1
+        # Insert at beginning to maintain order
+        parts = temp_parts + parts
+
+    return base, parts
+
+
+def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
+    # If dotted, treat as: <base_column>.<json.path.inside.it>
+    if "." in column_name or "[" in column_name:
+        base, path_parts = _parse_condition_json_path(column_name)
+
+        if not path_parts:
+            # No JSON path, just a column name that might contain a dot
+            # in table.column format (not supported in current implementation)
+            return f'"{_esc_double(column_name)}"'
+
+        if dialect == "sqlite":
+            # Build JSONPath like $.key[0]."user.name"
+            json_path_parts = []
+            for segment, is_index in path_parts:
+                if is_index:
+                    json_path_parts.append(f"[{segment}]")
+                elif _needs_sqlite_jsonpath_quotes(segment):
+                    # Keys with special chars need quoting in JSONPath
+                    escaped = _escape_for_sqlite_jsonpath(segment)
+                    json_path_parts.append(f'."{escaped}"')
+                else:
+                    json_path_parts.append(f".{segment}")
+            json_path = "$" + "".join(json_path_parts)
+            return f"json_extract(\"{_esc_double(base)}\", '{_esc_single(json_path)}')"
+
+        elif dialect == "duckdb":
+            # Use json_extract_string to extract as VARCHAR for direct comparison
+            json_path_parts = []
+            for segment, is_index in path_parts:
+                if is_index:
+                    json_path_parts.append(f"[{segment}]")
+                elif "." in segment:
+                    # Keys with dots need quoting
+                    json_path_parts.append(f'."{segment}"')
+                else:
+                    json_path_parts.append(f".{segment}")
+            json_path = "$" + "".join(json_path_parts)
+            return f"json_extract_string(\"{_esc_double(base)}\", '{_esc_single(json_path)}')"
+
+        elif dialect == "postgres":
+            result = f'"{_esc_double(base)}"'
+            for i, (segment, is_index) in enumerate(path_parts):
+                op = "->>" if i == len(path_parts) - 1 else "->"
+                if is_index:
+                    # Array index: use unquoted integer
+                    result = f"{result}{op}{segment}"
+                else:
+                    # Object key: use quoted string
+                    result = f"{result}{op}'{_esc_single(segment)}'"
+            return result
+
+    # Simple (non-JSON) column
+    return f'"{_esc_double(column_name)}"'
+
+
+def _get_condition_placeholder(position: int, dialect: SQLDialect) -> str:
+    """Get parameter placeholder for the dialect.
+
+    Args:
+        position: Zero-based position in the parameter array.
+        dialect: SQL dialect to use.
+    """
+    if dialect == "postgres":
+        return f"${position + 1}"  # PostgreSQL uses 1-based indexing
+    else:  # SQLite and DuckDB use ?
+        return "?"
+
+
+def _get_condition_placeholders(
+    count: int, dialect: SQLDialect, offset: int = 0
+) -> str:
+    """Get multiple parameter placeholders for the dialect.
+
+    Args:
+        count: Number of placeholders to generate.
+        dialect: SQL dialect to use.
+        offset: Zero-based starting position in the parameter array.
+    """
+    if dialect == "postgres":
+        # PostgreSQL uses 1-based $1, $2, $3, etc.
+        return ", ".join([f"${offset + i + 1}" for i in range(count)])
+    else:  # SQLite and DuckDB use ?
+        return ", ".join(["?" for _ in range(count)])
+
+
+def _build_filter_sql(condition: Condition) -> str:
     """Recursively build SQL string from condition."""
     if condition.is_compound:
         if condition.operator == LogicalOperator.NOT:
             assert isinstance(condition.left, Condition)
-            left_sql = _build_sql(condition.left)
+            left_sql = _build_filter_sql(condition.left)
             return f"NOT ({left_sql})"
         else:
             assert isinstance(condition.left, Condition)
             assert isinstance(condition.right, Condition)
             assert condition.operator is not None
-            left_sql = _build_sql(condition.left)
-            right_sql = _build_sql(condition.right)
+            left_sql = _build_filter_sql(condition.left)
+            right_sql = _build_filter_sql(condition.right)
             return f"({left_sql} {condition.operator.value} {right_sql})"
     else:
         # Simple condition
@@ -106,7 +566,7 @@ def _build_sql(condition: Condition) -> str:
 
             sql_parts = []
             if non_null_values:
-                formatted = ", ".join(_format_value(v) for v in non_null_values)
+                formatted = ", ".join(format_sql_value(v) for v in non_null_values)
                 sql_parts.append(f"{column} IN ({formatted})")
             if has_null:
                 sql_parts.append(f"{column} IS NULL")
@@ -126,7 +586,7 @@ def _build_sql(condition: Condition) -> str:
 
             sql_parts = []
             if non_null_values:
-                formatted = ", ".join(_format_value(v) for v in non_null_values)
+                formatted = ", ".join(format_sql_value(v) for v in non_null_values)
                 sql_parts.append(f"{column} NOT IN ({formatted})")
             if has_null:
                 sql_parts.append(f"{column} IS NOT NULL")
@@ -136,29 +596,27 @@ def _build_sql(condition: Condition) -> str:
             return f"({' AND '.join(sql_parts)})"
         elif condition.operator == Operator.BETWEEN:
             if isinstance(condition.right, tuple) and len(condition.right) >= 2:
-                low = _format_value(condition.right[0])
-                high = _format_value(condition.right[1])
+                low = format_sql_value(condition.right[0])
+                high = format_sql_value(condition.right[1])
                 return f"{column} BETWEEN {low} AND {high}"
             return f"{column} BETWEEN NULL AND NULL"
         elif condition.operator == Operator.NOT_BETWEEN:
             if isinstance(condition.right, tuple) and len(condition.right) >= 2:
-                low = _format_value(condition.right[0])
-                high = _format_value(condition.right[1])
+                low = format_sql_value(condition.right[0])
+                high = format_sql_value(condition.right[1])
                 return f"{column} NOT BETWEEN {low} AND {high}"
             return f"{column} NOT BETWEEN NULL AND NULL"
         elif condition.operator == Operator.LIKE:
-            return f"{column} LIKE {_format_value(condition.right)}"
+            return f"{column} LIKE {format_sql_value(condition.right)}"
         elif condition.operator == Operator.NOT_LIKE:
-            return f"{column} NOT LIKE {_format_value(condition.right)}"
+            return f"{column} NOT LIKE {format_sql_value(condition.right)}"
         elif condition.operator == Operator.ILIKE:
-            return f"{column} ILIKE {_format_value(condition.right)}"
+            return f"{column} ILIKE {format_sql_value(condition.right)}"
         elif condition.operator == Operator.NOT_ILIKE:
-            return f"{column} NOT ILIKE {_format_value(condition.right)}"
+            return f"{column} NOT ILIKE {format_sql_value(condition.right)}"
         else:
             assert condition.operator is not None
-            return (
-                f"{column} {condition.operator.value} {_format_value(condition.right)}"
-            )
+            return f"{column} {condition.operator.value} {format_sql_value(condition.right)}"
 
 
 def _format_column(column_name: str) -> str:
@@ -324,29 +782,6 @@ def _needs_quoting(identifier: str) -> bool:
 def _escape_identifier(identifier: str) -> str:
     """Escape an identifier for use in double quotes."""
     return identifier.replace('"', '""')
-
-
-def _format_value(value: Any) -> str:
-    """Format a Python value as SQL literal."""
-    if value is None:
-        return "NULL"
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        return str(value)
-    if isinstance(value, str):
-        # Escape single quotes by doubling them
-        escaped = value.replace("'", "''")
-        return f"'{escaped}'"
-    if isinstance(value, datetime):
-        return f"TIMESTAMP '{value.isoformat()}'"
-    if isinstance(value, date):
-        return f"DATE '{value.isoformat()}'"
-    # Fallback for other types
-    escaped = str(value).replace("'", "''")
-    return f"'{escaped}'"
 
 
 # Placeholder for condition_from_sql - will be implemented next

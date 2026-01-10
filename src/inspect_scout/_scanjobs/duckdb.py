@@ -7,7 +7,6 @@ import pandas as pd
 from typing_extensions import override
 
 from .._query import Query
-from .._query.sql import SQLDialect
 from .._recorder.recorder import Status
 from .view import ScanJobsView
 
@@ -65,7 +64,7 @@ class DuckDBScanJobsView(ScanJobsView):
         query = query or Query()
 
         # Build SQL suffix using Query (no shuffle for scan jobs)
-        suffix, params, _ = query.to_sql_suffix(SQLDialect.DUCKDB)
+        suffix, params, _ = query.to_sql_suffix("duckdb")
         sql = f"SELECT scan_id FROM {SCAN_JOBS_TABLE}{suffix}"
 
         # Execute query
@@ -85,7 +84,7 @@ class DuckDBScanJobsView(ScanJobsView):
 
         # For count, only WHERE matters (ignore limit/order_by)
         count_query = Query(where=query.where)
-        suffix, params, _ = count_query.to_sql_suffix(SQLDialect.DUCKDB)
+        suffix, params, _ = count_query.to_sql_suffix("duckdb")
         sql = f"SELECT COUNT(*) FROM {SCAN_JOBS_TABLE}{suffix}"
 
         result = self._conn.execute(sql, params).fetchone()

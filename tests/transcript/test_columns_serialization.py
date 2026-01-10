@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import Literal
 
 import pytest
+from inspect_scout._query import condition_as_sql
 from inspect_scout._query.condition import Condition
 from inspect_scout._transcript.columns import columns as c
 from pydantic import BaseModel
@@ -22,7 +23,9 @@ class TestSimpleConditionRoundTrip:
         assert serialized["is_compound"] is False
 
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_eq_int(self) -> None:
         original = c.retries == 3
@@ -30,7 +33,9 @@ class TestSimpleConditionRoundTrip:
 
         assert serialized["right"] == 3
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_eq_float(self) -> None:
         original = c.score == 0.85
@@ -38,7 +43,9 @@ class TestSimpleConditionRoundTrip:
 
         assert serialized["right"] == 0.85
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_eq_bool(self) -> None:
         original = c.success == True  # noqa: E712
@@ -46,7 +53,9 @@ class TestSimpleConditionRoundTrip:
 
         assert serialized["right"] is True
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_eq_none_becomes_is_null(self) -> None:
         original = c.error == None  # noqa: E711
@@ -55,7 +64,9 @@ class TestSimpleConditionRoundTrip:
         assert original.operator is not None and original.operator.name == "IS_NULL"
         assert serialized["right"] is None
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_ne(self) -> None:
         original = c.status != "failed"
@@ -63,7 +74,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "NE"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_lt(self) -> None:
         original = c.score < 0.5
@@ -71,7 +84,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "LT"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_le(self) -> None:
         original = c.score <= 0.5
@@ -79,7 +94,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "LE"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_gt(self) -> None:
         original = c.score > 0.8
@@ -87,7 +104,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "GT"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_ge(self) -> None:
         original = c.score >= 0.8
@@ -95,7 +114,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "GE"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_in(self) -> None:
         original = c.model.in_(["gpt-4", "gpt-3.5", "claude-3"])
@@ -104,7 +125,9 @@ class TestSimpleConditionRoundTrip:
         assert original.operator is not None and original.operator.name == "IN"
         assert serialized["right"] == ["gpt-4", "gpt-3.5", "claude-3"]
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_not_in(self) -> None:
         original = c.status.not_in(["error", "timeout"])
@@ -112,7 +135,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "NOT_IN"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_like(self) -> None:
         original = c.model.like("gpt-%")
@@ -120,7 +145,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "LIKE"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_not_like(self) -> None:
         original = c.model.not_like("test-%")
@@ -128,7 +155,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "NOT_LIKE"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_ilike(self) -> None:
         original = c.model.ilike("%GPT%")
@@ -136,7 +165,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "ILIKE"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_is_null(self) -> None:
         original = c.error.is_null()
@@ -144,7 +175,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "IS_NULL"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_is_not_null(self) -> None:
         original = c.error.is_not_null()
@@ -152,7 +185,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "IS_NOT_NULL"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_between(self) -> None:
         original = c.score.between(0.5, 0.9)
@@ -162,7 +197,9 @@ class TestSimpleConditionRoundTrip:
         assert serialized["right"] == (0.5, 0.9)
 
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_not_between(self) -> None:
         original = c.score.not_between(0.0, 0.3)
@@ -170,7 +207,9 @@ class TestSimpleConditionRoundTrip:
 
         assert original.operator is not None and original.operator.name == "NOT_BETWEEN"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
 
 class TestCompoundConditionRoundTrip:
@@ -186,7 +225,9 @@ class TestCompoundConditionRoundTrip:
         assert serialized["right"]["is_compound"] is False
 
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_or(self) -> None:
         original = (c.model == "gpt-4") | (c.model == "claude-3")
@@ -196,7 +237,9 @@ class TestCompoundConditionRoundTrip:
         assert original.operator is not None and original.operator.name == "OR"
 
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_not(self) -> None:
         original = ~(c.status == "error")
@@ -207,7 +250,9 @@ class TestCompoundConditionRoundTrip:
         assert serialized["right"] is None
 
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_nested_compound(self) -> None:
         original = ((c.model == "gpt-4") & (c.score > 0.8)) | (
@@ -221,7 +266,9 @@ class TestCompoundConditionRoundTrip:
         assert serialized["right"]["is_compound"] is True
 
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_deeply_nested(self) -> None:
         original = (
@@ -233,7 +280,9 @@ class TestCompoundConditionRoundTrip:
         serialized = original.model_dump()
         restored = Condition.model_validate(serialized)
 
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
 
 class TestDateTimeSerialization:
@@ -247,7 +296,7 @@ class TestDateTimeSerialization:
         assert serialized["right"] == date(2024, 1, 15)
 
         restored = Condition.model_validate(serialized)
-        sql, params = restored.to_sql("sqlite")
+        sql, params = condition_as_sql(restored, "sqlite")
         assert params == [date(2024, 1, 15)]
 
     def test_datetime_preserved(self) -> None:
@@ -258,7 +307,7 @@ class TestDateTimeSerialization:
         assert serialized["right"] == datetime(2024, 6, 15, 10, 30, 0)
 
         restored = Condition.model_validate(serialized)
-        sql, params = restored.to_sql("sqlite")
+        sql, params = condition_as_sql(restored, "sqlite")
         assert params == [datetime(2024, 6, 15, 10, 30, 0)]
 
     def test_date_in_between(self) -> None:
@@ -269,7 +318,7 @@ class TestDateTimeSerialization:
         assert serialized["right"] == (date(2024, 1, 1), date(2024, 12, 31))
 
         restored = Condition.model_validate(serialized)
-        sql, params = restored.to_sql("sqlite")
+        sql, params = condition_as_sql(restored, "sqlite")
         assert params == [date(2024, 1, 1), date(2024, 12, 31)]
 
 
@@ -282,7 +331,9 @@ class TestJsonPathColumns:
 
         assert serialized["left"] == "metadata.key"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_nested_json_path(self) -> None:
         original = c["agent_args.config.timeout"] > 30
@@ -290,7 +341,9 @@ class TestJsonPathColumns:
 
         assert serialized["left"] == "agent_args.config.timeout"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_array_index_json_path(self) -> None:
         original = c["items[0].name"] == "first"
@@ -298,7 +351,9 @@ class TestJsonPathColumns:
 
         assert serialized["left"] == "items[0].name"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
 
 class TestEdgeCases:
@@ -310,7 +365,9 @@ class TestEdgeCases:
 
         assert serialized["right"] == []
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_in_with_none_values(self) -> None:
         original = c.status.in_(["active", None, "pending"])
@@ -318,7 +375,9 @@ class TestEdgeCases:
 
         assert serialized["right"] == ["active", None, "pending"]
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
     def test_special_characters_in_column(self) -> None:
         original = c["user.email-address"] == "test@example.com"
@@ -326,7 +385,9 @@ class TestEdgeCases:
 
         assert serialized["left"] == "user.email-address"
         restored = Condition.model_validate(serialized)
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
 
 
 class TestPydanticIntegration:
@@ -340,7 +401,9 @@ class TestPydanticIntegration:
         json_str = config.model_dump_json()
         config2 = QueryConfig.model_validate_json(json_str)
 
-        assert config.filter.to_sql("sqlite") == config2.filter.to_sql("sqlite")
+        assert condition_as_sql(config.filter, "sqlite") == condition_as_sql(
+            config2.filter, "sqlite"
+        )
 
     def test_optional_condition_field(self) -> None:
         class QueryConfig(BaseModel):
@@ -352,7 +415,9 @@ class TestPydanticIntegration:
         config2 = QueryConfig.model_validate_json(json_str)
         assert config.filter is not None
         assert config2.filter is not None
-        assert config.filter.to_sql("sqlite") == config2.filter.to_sql("sqlite")
+        assert condition_as_sql(config.filter, "sqlite") == condition_as_sql(
+            config2.filter, "sqlite"
+        )
 
         # Without value
         config_empty = QueryConfig()
@@ -376,7 +441,9 @@ class TestPydanticIntegration:
 
         assert len(config2.filters) == 3
         for orig, restored in zip(config.filters, config2.filters, strict=True):
-            assert orig.to_sql("sqlite") == restored.to_sql("sqlite")
+            assert condition_as_sql(orig, "sqlite") == condition_as_sql(
+                restored, "sqlite"
+            )
 
     def test_dict_condition_field(self) -> None:
         class QueryConfig(BaseModel):
@@ -395,7 +462,9 @@ class TestPydanticIntegration:
         for name in config.named_filters:
             orig = config.named_filters[name]
             restored = config2.named_filters[name]
-            assert orig.to_sql("sqlite") == restored.to_sql("sqlite")
+            assert condition_as_sql(orig, "sqlite") == condition_as_sql(
+                restored, "sqlite"
+            )
 
     def test_model_dump_produces_dict(self) -> None:
         class QueryConfig(BaseModel):
@@ -430,7 +499,9 @@ class TestDialectRoundTrip:
         serialized = original.model_dump()
         restored = Condition.model_validate(serialized)
 
-        assert original.to_sql(dialect) == restored.to_sql(dialect)
+        assert condition_as_sql(original, dialect) == condition_as_sql(
+            restored, dialect
+        )
 
     @pytest.mark.parametrize("dialect", ["sqlite", "duckdb", "postgres"])
     def test_compound_condition_all_dialects(
@@ -440,7 +511,9 @@ class TestDialectRoundTrip:
         serialized = original.model_dump()
         restored = Condition.model_validate(serialized)
 
-        assert original.to_sql(dialect) == restored.to_sql(dialect)
+        assert condition_as_sql(original, dialect) == condition_as_sql(
+            restored, dialect
+        )
 
     @pytest.mark.parametrize("dialect", ["sqlite", "duckdb", "postgres"])
     def test_in_condition_all_dialects(
@@ -450,4 +523,6 @@ class TestDialectRoundTrip:
         serialized = original.model_dump()
         restored = Condition.model_validate(serialized)
 
-        assert original.to_sql(dialect) == restored.to_sql(dialect)
+        assert condition_as_sql(original, dialect) == condition_as_sql(
+            restored, dialect
+        )

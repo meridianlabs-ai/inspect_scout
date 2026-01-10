@@ -29,7 +29,6 @@ from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ...._query import Query
-from ...._query.sql import SQLDialect
 from ...json.load_filtered import load_filtered_transcript
 from ...transcripts import (
     Transcripts,
@@ -264,7 +263,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = effective_query.to_sql_suffix(
-            SQLDialect.DUCKDB, shuffle_column="transcript_id"
+            "duckdb", shuffle_column="transcript_id"
         )
         if register_shuffle:
             register_shuffle(self._conn)
@@ -357,7 +356,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         query = query or Query()
         # For count, only WHERE matters (ignore limit/shuffle/order_by)
         count_query = Query(where=query.where)
-        suffix, params, _ = count_query.to_sql_suffix(SQLDialect.DUCKDB)
+        suffix, params, _ = count_query.to_sql_suffix("duckdb")
         sql = f"SELECT COUNT(*) FROM transcripts{suffix}"
         result = self._conn.execute(sql, params).fetchone()
         assert result is not None
@@ -388,7 +387,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 order_by=query.order_by,
             )
             suffix, params, register_shuffle = index_query.to_sql_suffix(
-                SQLDialect.DUCKDB, shuffle_column="transcript_id"
+                "duckdb", shuffle_column="transcript_id"
             )
             if register_shuffle:
                 register_shuffle(self._conn)
@@ -1250,7 +1249,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = self._query.to_sql_suffix(
-            SQLDialect.DUCKDB, shuffle_column="transcript_id"
+            "duckdb", shuffle_column="transcript_id"
         )
         if register_shuffle:
             register_shuffle(self._conn)
@@ -1362,7 +1361,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         params: list[Any] = []
         if self._query:
             suffix, params, register_shuffle = self._query.to_sql_suffix(
-                SQLDialect.DUCKDB, shuffle_column="transcript_id"
+                "duckdb", shuffle_column="transcript_id"
             )
             if register_shuffle:
                 register_shuffle(self._conn)

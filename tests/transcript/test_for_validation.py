@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from inspect_scout._query import condition_as_sql
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
@@ -59,7 +60,7 @@ def test_for_validation_single_id() -> None:
 
     # Verify the SQL generated
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     assert sql == '"sample_id" IN (?, ?)'
     assert params == ["transcript_1", "transcript_2"]
@@ -80,7 +81,7 @@ def test_for_validation_list_ids() -> None:
     assert len(filtered._query.where) == 1
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     assert sql == '"sample_id" IN (?, ?, ?)'
     assert params == ["transcript_1", "transcript_2", "transcript_3"]
@@ -100,7 +101,7 @@ def test_for_validation_mixed_ids() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     assert sql == '"sample_id" IN (?, ?, ?, ?)'
     assert params == ["transcript_1", "transcript_2", "transcript_3", "transcript_4"]
@@ -122,7 +123,7 @@ def test_for_validation_duplicate_ids() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Should only have 2 unique IDs
     assert sql == '"sample_id" IN (?, ?)'
@@ -144,7 +145,7 @@ def test_for_validation_preserves_order() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Order should be: id_c, id_a, id_b (first occurrence preserved)
     assert params == ["id_c", "id_a", "id_b"]
@@ -160,7 +161,7 @@ def test_for_validation_empty_cases() -> None:
     assert len(filtered._query.where) == 1
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Empty IN should return "1 = 0" (always false)
     assert sql == "1 = 0"
@@ -179,7 +180,7 @@ def test_for_validation_large_id_list() -> None:
     assert len(filtered._query.where) == 1
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Should have all 1500 IDs
     assert len(params) == 1500
@@ -211,12 +212,12 @@ def test_for_validation_combines_with_existing_conditions() -> None:
     assert len(filtered._query.where) == 2
 
     # First condition is the model filter
-    sql1, params1 = filtered._query.where[0].to_sql("sqlite")
+    sql1, params1 = condition_as_sql(filtered._query.where[0], "sqlite")
     assert '"model" = ?' in sql1
     assert params1 == ["gpt-4"]
 
     # Second condition is the ID filter
-    sql2, params2 = filtered._query.where[1].to_sql("sqlite")
+    sql2, params2 = condition_as_sql(filtered._query.where[1], "sqlite")
     assert '"sample_id" IN (?, ?)' in sql2
     assert params2 == ["transcript_1", "transcript_2"]
 
@@ -234,7 +235,7 @@ def test_for_validation_sql_generation_sqlite() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     assert sql == '"sample_id" IN (?, ?)'
     assert params == ["id1", "id2"]
@@ -253,7 +254,7 @@ def test_for_validation_sql_generation_postgres() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("postgres")
+    sql, params = condition_as_sql(condition, "postgres")
 
     # PostgreSQL uses $1, $2 instead of ?
     assert sql == '"sample_id" IN ($1, $2)'
@@ -273,7 +274,7 @@ def test_for_validation_sql_generation_duckdb() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("duckdb")
+    sql, params = condition_as_sql(condition, "duckdb")
 
     assert sql == '"sample_id" IN (?, ?)'
     assert params == ["id1", "id2"]
@@ -317,7 +318,7 @@ def test_for_validation_with_predicate() -> None:
 
     # Should still create the ID filter
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     assert sql == '"sample_id" IN (?)'
     assert params == ["transcript_1"]
@@ -333,7 +334,7 @@ def test_for_validation_chunk_boundary() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Should NOT use OR (fits in single IN clause)
     assert "OR" not in sql
@@ -351,7 +352,7 @@ def test_for_validation_just_over_chunk_boundary() -> None:
     filtered = transcripts.for_validation(validation)
 
     condition = filtered._query.where[0]
-    sql, params = condition.to_sql("sqlite")
+    sql, params = condition_as_sql(condition, "sqlite")
 
     # Should use OR to split into 2 chunks: 999 + 1
     assert "OR" in sql

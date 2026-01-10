@@ -53,7 +53,6 @@ from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 from .._query import Query
-from .._query.sql import SQLDialect
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
@@ -249,7 +248,7 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = query.to_sql_suffix(
-            SQLDialect.SQLITE, shuffle_column="sample_id"
+            "sqlite", shuffle_column="sample_id"
         )
         if register_shuffle:
             register_shuffle(self._conn)
@@ -345,7 +344,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         query = query or Query()
         # For count, only WHERE matters (ignore limit/shuffle/order_by)
         count_query = Query(where=query.where)
-        suffix, params, _ = count_query.to_sql_suffix(SQLDialect.SQLITE)
+        suffix, params, _ = count_query.to_sql_suffix("sqlite")
         sql = f"SELECT COUNT(*) FROM {TRANSCRIPTS}{suffix}"
         result = self._conn.execute(sql, params).fetchone()
         assert result is not None
@@ -357,7 +356,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         query = query or Query()
 
         suffix, params, register_shuffle = query.to_sql_suffix(
-            SQLDialect.SQLITE, shuffle_column="sample_id"
+            "sqlite", shuffle_column="sample_id"
         )
         if register_shuffle:
             register_shuffle(self._conn)

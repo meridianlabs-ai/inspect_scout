@@ -7,7 +7,10 @@ import pytest
 from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._query.column import Column
 from inspect_scout._query.condition import Condition, Operator
-from inspect_scout._query.condition_sql import condition_as_sql, condition_from_sql
+from inspect_scout._query.condition_sql import (
+    condition_as_sql,
+    condition_from_sql,
+)
 from inspect_scout._transcript.columns import columns as c
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
@@ -178,9 +181,15 @@ async def test_where_clause_roundtrip() -> None:
         restored = Condition.model_validate(serialized)
 
         # Verify SQL generation matches
-        assert original.to_sql("sqlite") == restored.to_sql("sqlite")
-        assert original.to_sql("duckdb") == restored.to_sql("duckdb")
-        assert original.to_sql("postgres") == restored.to_sql("postgres")
+        assert condition_as_sql(original, "sqlite") == condition_as_sql(
+            restored, "sqlite"
+        )
+        assert condition_as_sql(original, "duckdb") == condition_as_sql(
+            restored, "duckdb"
+        )
+        assert condition_as_sql(original, "postgres") == condition_as_sql(
+            restored, "postgres"
+        )
 
 
 @pytest.mark.asyncio
@@ -272,7 +281,7 @@ async def test_where_clause_preserves_sql_generation() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a condition and get its SQL
         original_condition = (c.task_set == "popularity") & (c.score > 0.8)
-        original_sql = original_condition.to_sql("sqlite")
+        original_sql = condition_as_sql(original_condition, "sqlite")
 
         # Run scan with this condition
         transcripts = transcripts_from(LOGS_DIR).where(original_condition)
@@ -293,7 +302,7 @@ async def test_where_clause_preserves_sql_generation() -> None:
         restored_condition = condition_from_sql(status.spec.transcripts.filter[0])
 
         # Verify SQL generation matches
-        restored_sql = restored_condition.to_sql("sqlite")
+        restored_sql = condition_as_sql(restored_condition, "sqlite")
         assert original_sql == restored_sql
 
 
@@ -306,7 +315,7 @@ def test_sql_roundtrip_string_with_single_quotes() -> None:
     """Test roundtrip of strings containing single quotes."""
     col = Column("name")
     condition = col == "O'Brien"
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Verify SQL escapes single quotes
     assert "'O''Brien'" in sql
@@ -321,7 +330,7 @@ def test_sql_roundtrip_between_operator() -> None:
     """Test roundtrip of BETWEEN operator."""
     col = Column("score")
     condition = col.between(0.5, 0.9)
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Verify SQL format
     assert "BETWEEN" in sql
@@ -339,7 +348,7 @@ def test_sql_roundtrip_not_between_operator() -> None:
     """Test roundtrip of NOT BETWEEN operator."""
     col = Column("score")
     condition = col.not_between(0.2, 0.8)
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Verify SQL format
     assert "NOT BETWEEN" in sql
@@ -355,7 +364,7 @@ def test_sql_roundtrip_ilike_operator() -> None:
     """Test roundtrip of ILIKE operator."""
     col = Column("model")
     condition = col.ilike("gpt%")
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Verify SQL format
     assert "ILIKE" in sql
@@ -372,7 +381,7 @@ def test_sql_roundtrip_not_ilike_operator() -> None:
     """Test roundtrip of NOT ILIKE operator."""
     col = Column("model")
     condition = col.not_ilike("claude%")
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Verify SQL format
     assert "NOT ILIKE" in sql
@@ -388,7 +397,7 @@ def test_sql_roundtrip_json_path_with_array_index() -> None:
     """Test roundtrip of JSON paths containing array indices."""
     col = Column("config.items[0].name")
     condition = col == "test"
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Verify SQL format includes the array index
     assert "items" in sql
@@ -407,7 +416,7 @@ def test_sql_roundtrip_reserved_word_identifier() -> None:
     """Test roundtrip of identifiers that are SQL reserved words."""
     col = Column("select")
     condition = col == "value"
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Reserved words should be quoted
     assert '"select"' in sql
@@ -428,7 +437,7 @@ def test_sql_roundtrip_not_operator() -> None:
     col = Column("active")
     inner_condition = col == True  # noqa: E712
     condition = ~inner_condition  # NOT operator
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Verify SQL format includes NOT
     assert "NOT" in sql
@@ -449,7 +458,7 @@ def test_sql_roundtrip_empty_in_list() -> None:
     """Test roundtrip of empty IN list (should produce always-false condition)."""
     col = Column("status")
     condition = col.in_([])
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Empty IN should produce always-false condition
     assert "1 = 0" in sql
@@ -459,7 +468,7 @@ def test_sql_roundtrip_in_with_null() -> None:
     """Test roundtrip of IN list containing NULL."""
     col = Column("status")
     condition = col.in_(["active", None, "pending"])
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Should handle NULL separately with IS NULL
     assert "IS NULL" in sql
@@ -470,7 +479,7 @@ def test_sql_roundtrip_not_in_with_null() -> None:
     """Test roundtrip of NOT IN list containing NULL."""
     col = Column("status")
     condition = col.not_in(["deleted", None])
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Should handle NULL separately with IS NOT NULL
     assert "IS NOT NULL" in sql
@@ -481,7 +490,7 @@ def test_sql_roundtrip_is_null() -> None:
     """Test roundtrip of IS NULL operator."""
     col = Column("error")
     condition = col.is_null()
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     assert "IS NULL" in sql
 
@@ -495,7 +504,7 @@ def test_sql_roundtrip_is_not_null() -> None:
     """Test roundtrip of IS NOT NULL operator."""
     col = Column("result")
     condition = col.is_not_null()
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     assert "IS NOT NULL" in sql
 
@@ -512,15 +521,15 @@ def test_sql_roundtrip_complex_nested_condition() -> None:
     col_c = Column("model")
 
     condition = ((col_a == "success") & (col_b > 0.8)) | (col_c == "gpt-4")
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     # Roundtrip through SQL parsing
     restored = condition_from_sql(sql)
     assert restored.is_compound is True
 
     # Verify SQL generation matches
-    original_sql_tuple = condition.to_sql("duckdb")
-    restored_sql_tuple = restored.to_sql("duckdb")
+    original_sql_tuple = condition_as_sql(condition, "duckdb")
+    restored_sql_tuple = condition_as_sql(restored, "duckdb")
     assert original_sql_tuple[0] == restored_sql_tuple[0]
 
 
@@ -530,14 +539,14 @@ def test_sql_roundtrip_boolean_values() -> None:
 
     # Test TRUE
     condition_true = col == True  # noqa: E712
-    sql_true = condition_as_sql(condition_true)
+    sql_true = condition_as_sql(condition_true, "filter")
     assert "TRUE" in sql_true
     restored_true = condition_from_sql(sql_true)
     assert restored_true.right is True
 
     # Test FALSE
     condition_false = col == False  # noqa: E712
-    sql_false = condition_as_sql(condition_false)
+    sql_false = condition_as_sql(condition_false, "filter")
     assert "FALSE" in sql_false
     restored_false = condition_from_sql(sql_false)
     assert restored_false.right is False
@@ -547,7 +556,7 @@ def test_sql_roundtrip_integer_values() -> None:
     """Test roundtrip of integer values."""
     col = Column("count")
     condition = col == 42
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     restored = condition_from_sql(sql)
     assert restored.right == 42
@@ -558,7 +567,7 @@ def test_sql_roundtrip_float_values() -> None:
     """Test roundtrip of float values."""
     col = Column("score")
     condition = col == 3.14159
-    sql = condition_as_sql(condition)
+    sql = condition_as_sql(condition, "filter")
 
     restored = condition_from_sql(sql)
     assert abs(float(restored.right) - 3.14159) < 0.0001  # type: ignore

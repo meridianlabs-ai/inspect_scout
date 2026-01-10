@@ -6,8 +6,9 @@ from functools import reduce
 from typing import Any, Callable
 
 from .condition import Condition
+from .condition_sql import condition_as_sql
 from .order_by import OrderBy
-from .sql import SQLDialect
+from .sql import ExecutableSQLDialect
 
 
 @dataclass
@@ -33,7 +34,7 @@ class Query:
 
     def to_sql_suffix(
         self,
-        dialect: SQLDialect,
+        dialect: ExecutableSQLDialect,
         shuffle_column: str | None = None,
     ) -> tuple[str, list[Any], Callable[[Any], None] | None]:
         """Generate SQL suffix (WHERE + ORDER BY + LIMIT).
@@ -59,7 +60,7 @@ class Query:
                 if len(self.where) == 1
                 else reduce(lambda a, b: a & b, self.where)
             )
-            where_sql, where_params = condition.to_sql(dialect)
+            where_sql, where_params = condition_as_sql(condition, dialect)
             parts.append(f" WHERE {where_sql}")
             params.extend(where_params)
 
@@ -86,16 +87,16 @@ class Query:
 
         # LIMIT clause
         if self.limit is not None:
-            placeholder = (
-                "$" + str(len(params) + 1) if dialect == SQLDialect.POSTGRES else "?"
-            )
+            placeholder = "$" + str(len(params) + 1) if dialect == "postgres" else "?"
             parts.append(f" LIMIT {placeholder}")
             params.append(self.limit)
 
         return "".join(parts), params, register_shuffle
 
 
-def _make_shuffle_registrar(dialect: SQLDialect, seed: int) -> Callable[[Any], None]:
+def _make_shuffle_registrar(
+    dialect: ExecutableSQLDialect, seed: int
+) -> Callable[[Any], None]:
     """Create a function that registers the shuffle_hash UDF on a connection.
 
     Args:
@@ -112,9 +113,9 @@ def _make_shuffle_registrar(dialect: SQLDialect, seed: int) -> Callable[[Any], N
         return hashlib.sha256(content.encode()).hexdigest()
 
     def register(conn: Any) -> None:
-        if dialect == SQLDialect.SQLITE:
+        if dialect == "sqlite":
             conn.create_function("shuffle_hash", 1, shuffle_hash)
-        elif dialect == SQLDialect.DUCKDB:
+        elif dialect == "duckdb":
             # Remove existing function first (DuckDB doesn't support replace)
             try:
                 conn.remove_function("shuffle_hash")

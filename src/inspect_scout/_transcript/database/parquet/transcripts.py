@@ -25,7 +25,6 @@ from upath import UPath
 from inspect_scout._display._display import display
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
-from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
@@ -44,6 +43,7 @@ from ...types import (
 )
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
+from ..schema import TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
 from .encryption import (
     ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
@@ -320,7 +320,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             metadata_dict = {
                 col: value
                 for col, value in row_dict.items()
-                if col not in RESERVED_COLUMNS and value is not None
+                if col not in reserved_columns() and value is not None
             }
             lazy_metadata = LazyJSONDict(metadata_dict)
 
@@ -808,8 +808,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Requirements:
         - transcript_id column must exist and be string type
-        - Optional columns (source_type, source_id, source_uri, messages, events)
-          must be string type if present
+        - Optional columns must match their expected types if present
 
         Args:
             schema: PyArrow schema to validate.
@@ -817,67 +816,48 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Raises:
             ValueError: If schema doesn't meet requirements.
         """
-        # Check transcript_id exists
-        if "transcript_id" not in schema.names:
-            raise ValueError("RecordBatch schema must contain 'transcript_id' column")
-
-        # Check transcript_id is string type
-        transcript_id_type = schema.field("transcript_id").type
-        if transcript_id_type not in (pa.string(), pa.large_string()):
-            raise ValueError(
-                f"'transcript_id' column must be string type, got {transcript_id_type}"
-            )
-
-        # Check optional string columns
-        optional_string_columns = [
-            "source_type",
-            "source_id",
-            "source_uri",
-            "date",
-            "task_set",
-            "task_id",
-            "agent",
-            "agent_args",
-            "model",
-            "model_options",
-            "score",
-            "error",
-            "limit",
-            "messages",
-            "events",
-        ]
-        for col in optional_string_columns:
-            if col in schema.names:
-                col_type = schema.field(col).type
-                if col_type not in (pa.string(), pa.large_string()):
-                    raise ValueError(
-                        f"'{col}' column must be string type, got {col_type}"
-                    )
-
-        # Check optional bool/numeric columns
-        if "success" in schema.names:
-            col_type = schema.field("success").type
-            if col_type != pa.bool_():
-                raise ValueError(f"'success' column must be bool type, got {col_type}")
-
-        if "total_time" in schema.names:
-            col_type = schema.field("total_time").type
-            if not pa.types.is_floating(col_type):
+        # Check required columns exist
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.required and field.name not in schema.names:
                 raise ValueError(
-                    f"'total_time' column must be float type, got {col_type}"
+                    f"RecordBatch schema must contain '{field.name}' column"
                 )
 
-        optional_int_columns = ["task_repeat", "total_tokens"]
-        for col in optional_int_columns:
-            if col in schema.names:
-                col_type = schema.field(col).type
+        # Validate types for columns that are present
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name not in schema.names:
+                continue
+
+            col_type = schema.field(field.name).type
+            expected_type = field.pyarrow_type
+
+            # String columns: allow large_string as equivalent
+            if expected_type == pa.string():
+                if col_type not in (pa.string(), pa.large_string()):
+                    raise ValueError(
+                        f"'{field.name}' column must be string type, got {col_type}"
+                    )
+            # Boolean columns
+            elif expected_type == pa.bool_():
+                if col_type != pa.bool_():
+                    raise ValueError(
+                        f"'{field.name}' column must be bool type, got {col_type}"
+                    )
+            # Float columns: allow any floating type
+            elif expected_type == pa.float64():
+                if not pa.types.is_floating(col_type):
+                    raise ValueError(
+                        f"'{field.name}' column must be float type, got {col_type}"
+                    )
+            # Integer columns: allow any integer type
+            elif expected_type == pa.int64():
                 if not pa.types.is_integer(col_type):
                     raise ValueError(
-                        f"'{col}' column must be integer type, got {col_type}"
+                        f"'{field.name}' column must be integer type, got {col_type}"
                     )
 
     def _ensure_required_columns(self, table: pa.Table) -> pa.Table:
-        """Add missing optional columns as null-filled string columns.
+        """Add missing optional columns as null-filled columns.
 
         Ensures all optional reserved columns exist in the table for
         schema consistency when writing Parquet files.
@@ -888,44 +868,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             Table with all optional columns present (null-filled if missing).
         """
-        optional_string_columns = [
-            "source_type",
-            "source_id",
-            "source_uri",
-            "date",
-            "task_set",
-            "task_id",
-            "agent",
-            "agent_args",
-            "model",
-            "model_options",
-            "error",
-            "limit",
-            "messages",
-            "events",
-        ]
-        for col in optional_string_columns:
-            if col not in table.column_names:
-                null_array = pa.nulls(len(table), type=pa.string())
-                table = table.append_column(col, null_array)
-
-        # Optional bool/numeric columns
-        if "success" not in table.column_names:
-            table = table.append_column(
-                "success", pa.nulls(len(table), type=pa.bool_())
-            )
-        if "total_time" not in table.column_names:
-            table = table.append_column(
-                "total_time", pa.nulls(len(table), type=pa.float64())
-            )
-        if "task_repeat" not in table.column_names:
-            table = table.append_column(
-                "task_repeat", pa.nulls(len(table), type=pa.int64())
-            )
-        if "total_tokens" not in table.column_names:
-            table = table.append_column(
-                "total_tokens", pa.nulls(len(table), type=pa.int64())
-            )
+        # Add missing columns using types from central schema definition
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name not in table.column_names:
+                # ignore needed because mypy stubs are overly strict about nulls()
+                null_array = pa.nulls(len(table), type=field.pyarrow_type)  # type: ignore[call-overload]
+                table = table.append_column(field.name, null_array)
 
         return table
 
@@ -1034,34 +982,16 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             PyArrow schema for the Parquet file.
         """
-        # Reserved columns with fixed types
+        # Reserved columns with fixed types (from central schema definition)
+        reserved_cols = reserved_columns()
         fields: list[tuple[str, pa.DataType]] = [
-            ("transcript_id", pa.string()),
-            ("source_type", pa.string()),
-            ("source_id", pa.string()),
-            ("source_uri", pa.string()),
-            ("date", pa.string()),
-            ("task_set", pa.string()),
-            ("task_id", pa.string()),
-            ("task_repeat", pa.int64()),
-            ("agent", pa.string()),
-            ("agent_args", pa.string()),
-            ("model", pa.string()),
-            ("model_options", pa.string()),
-            ("score", pa.string()),
-            ("success", pa.bool_()),
-            ("total_time", pa.float64()),
-            ("total_tokens", pa.int64()),
-            ("error", pa.string()),
-            ("limit", pa.string()),
-            ("messages", pa.string()),
-            ("events", pa.string()),
+            (f.name, f.pyarrow_type) for f in TRANSCRIPT_SCHEMA_FIELDS
         ]
 
         # Discover all metadata keys across all rows
         metadata_keys: set[str] = set()
         for row in rows:
-            metadata_keys.update(k for k in row.keys() if k not in RESERVED_COLUMNS)
+            metadata_keys.update(k for k in row.keys() if k not in reserved_cols)
 
         # Infer type for each metadata key (sorted for determinism)
         for key in sorted(metadata_keys):
@@ -1356,28 +1286,21 @@ class ParquetTranscriptsDB(TranscriptsDB):
             SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
             WHERE FALSE
         """)
-        self._conn.execute("""
+
+        # Generate column list from central schema definition
+        column_defs = []
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
+            default_value = _duckdb_default_value(field.pyarrow_type)
+            column_defs.append(f"{default_value}::{duckdb_type} AS {field.name}")
+        # Add filename column (internal)
+        column_defs.append("''::VARCHAR AS filename")
+
+        columns_sql = ",\n                ".join(column_defs)
+        self._conn.execute(f"""
             CREATE VIEW transcripts AS
             SELECT
-                ''::VARCHAR AS transcript_id,
-                ''::VARCHAR AS source_type,
-                ''::VARCHAR AS source_id,
-                ''::VARCHAR AS source_uri,
-                ''::VARCHAR AS source_uri,
-                ''::VARCHAR AS date,
-                ''::VARCHAR AS task_set,
-                ''::VARCHAR AS task_id,
-                1::BIGINT AS task_repeat,
-                ''::VARCHAR AS agent,
-                ''::VARCHAR AS agent_args,
-                ''::VARCHAR AS model,
-                ''::VARCHAR AS model_options,
-                FALSE::BOOLEAN AS success,
-                0.0::DOUBLE AS total_time,
-                0::BIGINT AS total_tokens,
-                ''::VARCHAR AS error,
-                ''::VARCHAR AS limit,
-                ''::VARCHAR AS filename
+                {columns_sql}
             WHERE FALSE
         """)
 
@@ -1919,8 +1842,40 @@ def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
     Raises:
         ValueError: If metadata contains reserved column names.
     """
-    conflicts = RESERVED_COLUMNS & metadata.keys()
+    conflicts = reserved_columns() & metadata.keys()
     if conflicts:
         raise ValueError(
             f"Metadata keys conflict with reserved column names: {sorted(conflicts)}"
         )
+
+
+def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
+    """Convert PyArrow type to DuckDB SQL type string."""
+    if pa_type == pa.string():
+        return "VARCHAR"
+    elif pa_type == pa.int64():
+        return "BIGINT"
+    elif pa_type == pa.int32():
+        return "INTEGER"
+    elif pa_type == pa.float64():
+        return "DOUBLE"
+    elif pa_type == pa.float32():
+        return "REAL"
+    elif pa_type == pa.bool_():
+        return "BOOLEAN"
+    else:
+        return "VARCHAR"
+
+
+def _duckdb_default_value(pa_type: pa.DataType) -> str:
+    """Get default value literal for a PyArrow type in DuckDB."""
+    if pa_type == pa.string():
+        return "''"
+    elif pa_type in (pa.int64(), pa.int32()):
+        return "0"
+    elif pa_type in (pa.float64(), pa.float32()):
+        return "0.0"
+    elif pa_type == pa.bool_():
+        return "FALSE"
+    else:
+        return "''"

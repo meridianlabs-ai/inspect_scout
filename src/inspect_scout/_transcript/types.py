@@ -121,30 +121,3 @@ class Transcript(TranscriptInfo):
 
     events: list[Event] = Field(default_factory=list)
     """Events from transcript."""
-
-
-# Reserved column names that cannot be used as metadata keys
-# These are actual Parquet columns, so metadata keys cannot use these names
-RESERVED_COLUMNS = {
-    "transcript_id",
-    "source_type",
-    "source_id",
-    "source_uri",
-    "date",
-    "task_set",
-    "task_id",
-    "task_repeat",
-    "agent",
-    "agent_args",
-    "model",
-    "model_options",
-    "score",
-    "success",
-    "total_time",
-    "total_tokens",
-    "error",
-    "limit",
-    "messages",
-    "events",
-    "filename",  # Internal column for DuckDB file-targeting optimization
-}

@@ -2,6 +2,94 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+}
+
+.defineScannerSection {
+  padding: 1rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.formRow {
+  display: flex;
+  gap: 2rem;
+}
+
+.formColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--bs-secondary);
+}
+
+.select {
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+}
+
+.textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+  resize: vertical;
+}
+
+.checkboxGroup {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  cursor: default;
+}
+
+.runScanButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+  cursor: default;
+  width: fit-content;
+}
+
+.scansList {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   padding: 1rem;
   gap: 1rem;
   overflow: auto;

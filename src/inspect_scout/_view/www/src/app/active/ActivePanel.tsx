@@ -10,6 +10,56 @@ import { useServerActiveScans } from "../server/useServerActiveScans";
 
 import styles from "./ActivePanel.module.css";
 
+const DefineScannerSection: FC = () => (
+  <div className={styles.defineScannerSection}>
+    <h2 className={styles.sectionTitle}>Define Scanner</h2>
+    <div className={styles.formRow}>
+      <div className={styles.formColumn}>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Type</label>
+          <select className={styles.select} disabled>
+            <option>llm_scanner</option>
+          </select>
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Question</label>
+          <textarea
+            className={styles.textarea}
+            disabled
+            rows={4}
+            defaultValue="Did the assistant refuse the user's request?"
+          />
+        </div>
+        <button className={styles.runScanButton} disabled>
+          <i className={ApplicationIcons.running} />
+          Run Scan
+        </button>
+      </div>
+      <div className={styles.formColumn}>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Answer type</label>
+          <select className={styles.select} disabled>
+            <option>Boolean</option>
+          </select>
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Message filter</label>
+          <div className={styles.checkboxGroup}>
+            <label className={styles.checkboxLabel}>
+              <input type="checkbox" disabled />
+              Exclude system
+            </label>
+            <label className={styles.checkboxLabel}>
+              <input type="checkbox" disabled />
+              Exclude tool usage
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const formatMemory = (bytes: number): string => {
   const gb = bytes / (1024 * 1024 * 1024);
   const formatted = gb.toFixed(1).replace(/\.?0+$/, "");
@@ -254,25 +304,28 @@ export const ActivePanel: FC = () => {
 
   return (
     <div className={clsx(styles.container)}>
-      <LoadingBar loading={!!loading} />
-      {error && (
-        <ErrorPanel
-          title="Error Loading Active Scans"
-          error={{ message: error.message }}
-        />
-      )}
-      {!activeScans && !error && (
-        <NoContentsPanel icon={ApplicationIcons.running} text="Loading..." />
-      )}
-      {activeScans && !error && entries.length === 0 && (
-        <NoContentsPanel
-          icon={ApplicationIcons.running}
-          text="No active scans"
-        />
-      )}
-      {activeScans &&
-        !error &&
-        entries.map(([pid, info]) => <ActiveScanCard key={pid} info={info} />)}
+      <DefineScannerSection />
+      <div className={styles.scansList}>
+        <LoadingBar loading={!!loading} />
+        {error && (
+          <ErrorPanel
+            title="Error Loading Active Scans"
+            error={{ message: error.message }}
+          />
+        )}
+        {!activeScans && !error && (
+          <NoContentsPanel icon={ApplicationIcons.running} text="Loading..." />
+        )}
+        {activeScans && !error && entries.length === 0 && (
+          <NoContentsPanel
+            icon={ApplicationIcons.running}
+            text="No active scans"
+          />
+        )}
+        {activeScans &&
+          !error &&
+          entries.map(([pid, info]) => <ActiveScanCard key={pid} info={info} />)}
+      </div>
     </div>
   );
 };

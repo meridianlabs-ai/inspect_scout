@@ -73,6 +73,7 @@ describe("useCode", () => {
 
     expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith({
       queryKey: ["code", simpleCondition],
+      enabled: true,
       queryFn: expect.any(Function),
       staleTime: Infinity,
     });
